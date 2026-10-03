@@ -2,7 +2,7 @@
 compatibility_date = "2026-01-01"
 pages_build_output_dir = "."
 
-[[kv_namespaces]]
-binding = "MARSKET_KV"
-id = "936b37254a8744a8a6f6524a674e0185"
-preview_id = "ab67155118a54c66a4ef3032d86b4fde"
+[[d1_databases]]
+binding = "DB"
+database_name = "marsket-db"
+database_id = "d1b35798-e9a0-4223-950f-1b633cff5dd3"

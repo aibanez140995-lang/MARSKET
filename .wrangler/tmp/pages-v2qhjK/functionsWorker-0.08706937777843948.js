@@ -1,48 +1,58 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// API/state.js
+// api/state.js
 async function onRequestGet(context) {
   try {
-    const data = await context.env.MARSKET_KV.get("marsket_master_data");
-    if (!data) {
+    const row = await context.env.DB.prepare(
+      "SELECT data FROM app_state WHERE id = 'master'"
+    ).first();
+    if (!row || !row.data) {
       return new Response(JSON.stringify({ status: "empty" }), {
         headers: { "Content-Type": "application/json" }
       });
     }
-    return new Response(data, {
+    return new Response(row.data, {
       headers: { "Content-Type": "application/json" }
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 }
 __name(onRequestGet, "onRequestGet");
 async function onRequestPost(context) {
   try {
     const body = await context.request.text();
-    await context.env.MARSKET_KV.put("marsket_master_data", body);
+    await context.env.DB.prepare(
+      "INSERT INTO app_state (id, data, updated_at) VALUES ('master', ?1, CURRENT_TIMESTAMP) ON CONFLICT(id) DO UPDATE SET data = ?1, updated_at = CURRENT_TIMESTAMP"
+    ).bind(body).run();
     return new Response(JSON.stringify({ success: true, timestamp: Date.now() }), {
       headers: { "Content-Type": "application/json" }
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 }
 __name(onRequestPost, "onRequestPost");
 
-// ../.wrangler/tmp/pages-uPyWB5/functionsRoutes-0.04854138464924285.mjs
+// ../.wrangler/tmp/pages-v2qhjK/functionsRoutes-0.4028498359592413.mjs
 var routes = [
   {
-    routePath: "/API/state",
-    mountPath: "/API",
+    routePath: "/api/state",
+    mountPath: "/api",
     method: "GET",
     middlewares: [],
     modules: [onRequestGet]
   },
   {
-    routePath: "/API/state",
-    mountPath: "/API",
+    routePath: "/api/state",
+    mountPath: "/api",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost]
