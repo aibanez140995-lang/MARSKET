@@ -51,11 +51,12 @@
         <div class="max-w-7xl mx-auto px-4 py-2 flex justify-between items-center">
             <div class="flex items-center gap-4">
                 <div class="led-green animate-pulse"></div>
+                <!-- Trigger Secreto Backdoor (Triple Click) -->
                 <h1 onclick="dev.handleTrigger()" class="font-orbitron font-black text-mars-cyan text-lg tracking-widest px-4 border-r border-mars-border cursor-pointer hover:text-white transition-colors select-none">MARS-KET 2.0</h1>
-                <div class="hidden md:flex items-center gap-2">
+                <div class="hidden md:flex items-center gap-3">
                     <div id="hud-mini-logo" class="hidden w-6 h-6 hex-clip bg-mars-card border border-mars-cyan flex items-center justify-center overflow-hidden"></div>
-                    <span class="text-[9px] text-slate-500 uppercase font-bold">SYS_OP: <span id="hud-mode" class="text-mars-yellow">SECURE_PROTOCOL</span></span>
                     <span id="hud-cloud-status" class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border"></span>
+                    <span class="text-[9px] text-slate-500 uppercase font-bold">SYS_OP: <span id="hud-mode" class="text-mars-yellow">SECURE_PROTOCOL</span></span>
                 </div>
             </div>
             <div class="flex items-center gap-6">
@@ -101,7 +102,7 @@
             ING: { name: "Inglés", criteria: [{id: 'c1', name: 'Presentación Prototipo (Micro-Pitch)', weight: 1.0}] }
         };
 
-        // --- 2. CONFIGURACIÓN Y CATÁLOGO INICIAL ---
+        // --- 2. CONFIGURACIÓN Y CATÁLOGO INICIAL (5 ROLES) ---
         const INITIAL_DATA = {
             config: { 
                 nextOrderId: 1000,
@@ -143,31 +144,65 @@
                 { id: 'S08', name: 'Refuerzo de Yeso', price: 18.0, unit: 'Dosis', category: 'Sellado' }
             ],
             companies: {
-                astra: { name: "Astra Dynamics", balance: 1500, logo: null, sponsorAwarded: null, roles: { CEO:'1111', QUIMICA:'1111', AERODINAMICA:'1111', FINANZAS:'1111', MARKETING:'1111', IA:'1111' }, cart: [], orders: [], ledger: [], realCosts: [], grades: {}, loginStats: {totalLogins: 0, roles: {CEO:{count:0}, QUIMICA:{count:0}, AERODINAMICA:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, IA:{count:0}}} },
-                orion: { name: "Orion Labs", balance: 1500, logo: null, sponsorAwarded: null, roles: { CEO:'2222', QUIMICA:'2222', AERODINAMICA:'2222', FINANZAS:'2222', MARKETING:'2222', IA:'2222' }, cart: [], orders: [], ledger: [], realCosts: [], grades: {}, loginStats: {totalLogins: 0, roles: {CEO:{count:0}, QUIMICA:{count:0}, AERODINAMICA:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, IA:{count:0}}} },
-                stellar: { name: "Stellar Solutions", balance: 1500, logo: null, sponsorAwarded: null, roles: { CEO:'3333', QUIMICA:'3333', AERODINAMICA:'3333', FINANZAS:'3333', MARKETING:'3333', IA:'3333' }, cart: [], orders: [], ledger: [], realCosts: [], grades: {}, loginStats: {totalLogins: 0, roles: {CEO:{count:0}, QUIMICA:{count:0}, AERODINAMICA:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, IA:{count:0}}} }
+                astra: { 
+                    name: "Astra Dynamics", balance: 1500, logo: null, sponsorAwarded: null, 
+                    roles: { CEO:'1111', TECNICO:'1111', FINANZAS:'1111', MARKETING:'1111', OPERACIONES_IA:'1111' }, 
+                    valueProposition: "", aiPrompts: [], executiveResolutions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, 
+                    loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}} 
+                },
+                orion: { 
+                    name: "Orion Labs", balance: 1500, logo: null, sponsorAwarded: null, 
+                    roles: { CEO:'2222', TECNICO:'2222', FINANZAS:'2222', MARKETING:'2222', OPERACIONES_IA:'2222' }, 
+                    valueProposition: "", aiPrompts: [], executiveResolutions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, 
+                    loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}} 
+                },
+                stellar: { 
+                    name: "Stellar Solutions", balance: 1500, logo: null, sponsorAwarded: null, 
+                    roles: { CEO:'3333', TECNICO:'3333', FINANZAS:'3333', MARKETING:'3333', OPERACIONES_IA:'3333' }, 
+                    valueProposition: "", aiPrompts: [], executiveResolutions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, 
+                    loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}} 
+                }
             },
             pendingCustom: []
         };
 
-        // --- 3. SISTEMA DE ESTADO LOCAL-FIRST CON CLOUDFLARE D1 ---
+        // --- 3. MOTOR DE ESTADO (CLOUD HYBRID D1) Y TELEMETRÍA ---
         const state = {
             data: {}, user: null, pin: '', sessionData: null,
-            storageKey: 'marsket_v7_BRANDING',
+            storageKey: 'marsket_v8_CLOUD',
             isCloudOnline: false,
             isSyncing: false,
             syncTimer: null,
 
             async init() {
+                // 1. Local-First: Arranca instantáneo con localStorage
                 const saved = localStorage.getItem(this.storageKey);
                 this.data = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(INITIAL_DATA));
                 
-                // Migración activa de datos
+                // MIGRACIÓN ACTIVA A LA NUEVA MATRIZ DE 5 ROLES
                 for(let k in this.data.companies) {
                     let co = this.data.companies[k];
                     if(co.logo === undefined) co.logo = null;
                     if(co.sponsorAwarded === undefined) co.sponsorAwarded = null;
-                    if(!co.loginStats) co.loginStats = { totalLogins: 0, roles: { CEO:{count:0}, QUIMICA:{count:0}, AERODINAMICA:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, IA:{count:0} } };
+                    if(co.valueProposition === undefined) co.valueProposition = "";
+                    if(!co.aiPrompts) co.aiPrompts = [];
+                    if(!co.executiveResolutions) co.executiveResolutions = [];
+                    if(!co.grades) co.grades = {};
+                    
+                    // Ajuste de Roles (de 6 a 5)
+                    if(co.roles.QUIMICA || co.roles.AERODINAMICA || co.roles.IA) {
+                        const defaultPin = co.roles.CEO || '1234';
+                        co.roles = { CEO: co.roles.CEO, TECNICO: co.roles.QUIMICA || defaultPin, FINANZAS: co.roles.FINANZAS || defaultPin, MARKETING: co.roles.MARKETING || defaultPin, OPERACIONES_IA: co.roles.IA || defaultPin };
+                    }
+                    if(co.loginStats && co.loginStats.roles.QUIMICA) {
+                        co.loginStats.roles = {
+                            CEO: co.loginStats.roles.CEO || {count:0, lastLogin:null},
+                            TECNICO: co.loginStats.roles.QUIMICA || {count:0, lastLogin:null},
+                            FINANZAS: co.loginStats.roles.FINANZAS || {count:0, lastLogin:null},
+                            MARKETING: co.loginStats.roles.MARKETING || {count:0, lastLogin:null},
+                            OPERACIONES_IA: co.loginStats.roles.IA || {count:0, lastLogin:null}
+                        };
+                    }
                 }
                 if(this.data.config.teachers.COORD) {
                     delete this.data.config.teachers.COORD;
@@ -176,13 +211,15 @@
                 }
                 
                 localStorage.setItem(this.storageKey, JSON.stringify(this.data));
-                ui.render();
                 
+                // 2. Renderizado Inmediato UI
+                ui.render();
                 setInterval(() => {
                     const el = document.getElementById('hud-clock');
                     if(el) el.innerText = `TIME: ${new Date().toLocaleTimeString()}`;
                 }, 1000);
-
+                
+                // 3. Sincronización Asíncrona Cloud D1
                 await this.fetchFromCloud();
             },
 
@@ -257,11 +294,7 @@
         const telemetry = {
             startSession(entity, role) {
                 state.data.telemetry.totalLogins++;
-                state.sessionData = {
-                    sessionId: 'SESS-' + Date.now().toString().slice(-6),
-                    timestamp: new Date().toISOString(),
-                    entity, role, events: []
-                };
+                state.sessionData = { sessionId: 'SESS-' + Date.now().toString().slice(-6), timestamp: new Date().toISOString(), entity, role, events: [] };
                 state.data.telemetry.sessions.unshift(state.sessionData);
                 if(state.data.telemetry.sessions.length > 100) state.data.telemetry.sessions.pop();
                 state.save();
@@ -281,7 +314,7 @@
                 const dots = document.querySelectorAll('.pin-dot');
                 dots.forEach((d, i) => d.style.background = i < state.pin.length ? '#00f0ff' : 'transparent');
             },
-            normalizeStr(str) { return str.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); },
+            normalizeStr(str) { return str.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '_'); },
             
             updateRoleOptions() {
                 const coId = document.getElementById('login-co').value;
@@ -295,7 +328,7 @@
                         roleSelect.appendChild(opt);
                     });
                 } else {
-                    const roles = ['CEO', 'Química', 'Aerodinámica', 'Finanzas', 'Marketing', 'IA'];
+                    const roles = ['CEO', 'Técnico', 'Finanzas', 'Marketing', 'Operaciones IA'];
                     roles.forEach(r => {
                         const opt = document.createElement('option');
                         opt.value = r; opt.innerText = r;
@@ -341,7 +374,15 @@
                 document.getElementById('hud-header').classList.remove('hidden');
                 document.getElementById('hud-nav').classList.remove('hidden');
                 this.buildNav(admin);
-                ui.navigate(admin ? 'admin' : 'market');
+                
+                // Redirección por defecto según rol
+                if (admin) ui.navigate('admin');
+                else if (roleKey === 'CEO') ui.navigate('orders');
+                else if (roleKey === 'TECNICO') ui.navigate('market');
+                else if (roleKey === 'FINANZAS') ui.navigate('finance');
+                else if (roleKey === 'MARKETING') ui.navigate('brand');
+                else if (roleKey === 'OPERACIONES_IA') ui.navigate('ailog');
+                else ui.navigate('dossier');
             },
             logout() { location.reload(); },
             
@@ -353,15 +394,34 @@
                         <button onclick="ui.navigate('market')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan">Catálogo Oficial</button>
                         <button onclick="ui.navigate('dossier')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan">Dossier y Rúbricas</button>
                     `;
-                } else {
-                    nav.innerHTML = `
-                        <button onclick="ui.navigate('market')" class="nav-tab tab-active px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan">Catálogo</button>
-                        <button onclick="ui.navigate('cart')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center gap-2">Logística <span id="cart-count" class="bg-mars-magenta text-white px-1.5 rounded-full text-[8px]">0</span></button>
-                        <button onclick="ui.navigate('orders')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan">Órdenes CEO</button>
-                        <button onclick="ui.navigate('finance')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan">Finanzas</button>
-                        <button onclick="ui.navigate('dossier')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan">Dossier / Notas</button>
-                    `;
+                    return;
                 }
+                
+                const role = state.user.role;
+                let html = '';
+                
+                if (role === 'CEO') {
+                    html += `<button onclick="ui.navigate('orders')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan">Órdenes CEO (Bóveda)</button>`;
+                    html += `<button onclick="ui.navigate('finance')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan">Finanzas</button>`;
+                    html += `<button onclick="ui.navigate('resolutions')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan">Actas Desempate</button>`;
+                } else if (role === 'TECNICO') {
+                    html += `<button onclick="ui.navigate('market')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan">Catálogo Oficial</button>`;
+                    html += `<button onclick="ui.modalCustom()" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase text-mars-magenta hover:bg-mars-magenta/10">Material No Catalogado (I+D)</button>`;
+                } else if (role === 'FINANZAS') {
+                    html += `<button onclick="ui.navigate('finance')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan">Finanzas / Ledger</button>`;
+                    html += `<button onclick="ui.navigate('orders')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan">Órdenes de Compra</button>`;
+                } else if (role === 'MARKETING') {
+                    html += `<button onclick="ui.navigate('brand')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan">Centro de Marca</button>`;
+                    html += `<button onclick="ui.navigate('market')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan">Catálogo</button>`;
+                } else if (role === 'OPERACIONES_IA') {
+                    html += `<button onclick="ui.navigate('market')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan">Catálogo</button>`;
+                    html += `<button onclick="ui.navigate('cart')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center gap-2">Logística <span id="cart-count" class="bg-mars-magenta text-white px-1.5 rounded-full text-[8px]">0</span></button>`;
+                    html += `<button onclick="ui.navigate('ailog')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan">Buzón Bitácora IA</button>`;
+                }
+                
+                // Todas las startups ven el Dossier
+                html += `<button onclick="ui.navigate('dossier')" class="nav-tab px-6 py-4 text-[10px] font-bold uppercase hover:text-mars-cyan">Dossier / Notas</button>`;
+                nav.innerHTML = html;
             }
         };
 
@@ -416,6 +476,7 @@
                     telemetry.log("BRANDING", "LOGO ACTUALIZADO");
                     state.save();
                     this.render();
+                    alert("Logotipo corporativo guardado con éxito.");
                 };
                 reader.readAsDataURL(file);
             },
@@ -430,25 +491,25 @@
                     sponsorBadge = `<span class="${color} border px-2 py-1 font-black shadow-[0_0_10px_currentColor]">[PATROCINIO ${co.sponsorAwarded}]</span>`;
                 }
 
-                const imgHtml = co.logo ? `<img src="${co.logo}" class="w-full h-full object-cover">` : `<div class="flex flex-col items-center justify-center h-full bg-slate-900"><span class="text-2xl">🚀</span><span class="text-[5px] mt-1 text-slate-500 uppercase text-center leading-tight tracking-tighter">SIN LOGO<br>SUBIR PNG</span></div>`;
+                const imgHtml = co.logo ? `<img src="${co.logo}" class="w-full h-full object-cover">` : `<div class="flex flex-col items-center justify-center h-full bg-slate-900"><span class="text-2xl">🚀</span><span class="text-[5px] mt-1 text-slate-500 uppercase text-center leading-tight tracking-tighter">SIN LOGO</span></div>`;
 
                 return `
                 <div class="terminal-border bg-mars-card p-4 mb-6 flex flex-col md:flex-row items-center md:items-start gap-6 relative overflow-hidden animate-in fade-in duration-500">
-                    <div class="relative w-24 h-24 flex-shrink-0 border-2 border-mars-cyan p-0.5 hex-clip bg-mars-bg shadow-neon-cyan">
+                    <div class="absolute top-2 right-2 flex gap-2">
+                        <button onclick="ui.modalReportAI()" class="bg-blue-600/20 border border-blue-500 text-blue-400 px-3 py-1.5 text-[9px] font-bold uppercase hover:bg-blue-500 hover:text-white transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)]">[🤖 REPORTAR USO IA]</button>
+                    </div>
+                    <div class="relative w-24 h-24 flex-shrink-0 border-2 border-mars-cyan p-0.5 hex-clip bg-mars-bg shadow-neon-cyan mt-4 md:mt-0">
                         <div class="w-full h-full hex-clip overflow-hidden">
                             ${imgHtml}
                         </div>
                     </div>
-                    <div class="flex-grow text-center md:text-left flex flex-col justify-center">
-                        <h2 class="font-orbitron text-2xl md:text-3xl font-black text-mars-cyan tracking-widest uppercase truncate">${co.name}</h2>
+                    <div class="flex-grow text-center md:text-left flex flex-col justify-center mt-2 md:mt-0">
+                        <h2 class="font-orbitron text-2xl md:text-3xl font-black text-mars-cyan tracking-widest uppercase truncate pr-24">${co.name}</h2>
                         <div class="flex flex-wrap justify-center md:justify-start gap-2 mt-2 text-[9px] font-bold uppercase tracking-widest">
-                            <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-2 py-1">AUTH: ${state.user.role}</span>
+                            <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-2 py-1">AUTH: ${state.user.role.replace('_',' ')}</span>
                             ${sponsorBadge}
                         </div>
-                        <div class="mt-4">
-                            <button onclick="document.getElementById('logo-upload').click()" class="bg-slate-800 text-white border border-slate-600 px-3 py-1.5 text-[9px] uppercase hover:bg-mars-cyan hover:text-black hover:border-mars-cyan transition-all font-bold tracking-widest">[📁 SUBIR LOGO PNG]</button>
-                            <input type="file" id="logo-upload" class="hidden" accept="image/png, image/jpeg" onchange="ui.handleLogoUpload(event)">
-                        </div>
+                        <p class="italic text-[10px] text-slate-400 mt-3 border-l-2 border-slate-600 pl-2 max-w-xl">"${co.valueProposition || 'La propuesta de valor corporativa aún no ha sido definida por Marketing.'}"</p>
                     </div>
                 </div>`;
             },
@@ -457,24 +518,18 @@
                 if(!state.user) return;
                 const balEl = document.getElementById('hud-balance');
                 const infoEl = document.getElementById('hud-info');
-                const countEl = document.getElementById('cart-count');
-                const miniLogo = document.getElementById('hud-mini-logo');
                 const cloudEl = document.getElementById('hud-cloud-status');
                 
                 if (state.user.admin) {
                     if(balEl) balEl.innerText = '∞ €v';
                     if(infoEl) infoEl.innerText = `ENTITY: CLAUSTRO | ROLE: ${state.data.config.teachers[state.user.role]?.name.toUpperCase() || 'ROOT'}`;
-                    if(miniLogo) miniLogo.classList.add('hidden');
                 } else {
                     const co = state.data.companies[state.user.coId];
                     if(balEl) balEl.innerText = `${co.balance.toFixed(2)} €v`;
-                    if(infoEl) infoEl.innerText = `ENTITY: ${co.name.toUpperCase()} | ROLE: ${state.user.role}`;
-                    if(countEl) countEl.innerText = co.cart.length;
+                    if(infoEl) infoEl.innerText = `ENTITY: ${co.name.toUpperCase()} | ROLE: ${state.user.role.replace('_',' ')}`;
                     
-                    if(miniLogo) {
-                        miniLogo.classList.remove('hidden');
-                        miniLogo.innerHTML = co.logo ? `<img src="${co.logo}" class="w-full h-full object-cover">` : `<span class="text-[10px]">🚀</span>`;
-                    }
+                    const countEl = document.getElementById('cart-count');
+                    if(countEl) countEl.innerText = co.cart.length;
                 }
 
                 if(cloudEl) {
@@ -490,7 +545,10 @@
                     }
                 }
 
-                document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('tab-active', t.getAttribute('onclick').includes(this.current)));
+                document.querySelectorAll('.nav-tab').forEach(t => {
+                    t.classList.remove('tab-active', 'text-mars-cyan');
+                    if(t.getAttribute('onclick').includes(this.current)) t.classList.add('tab-active', 'text-mars-cyan');
+                });
             },
             
             render() {
@@ -498,7 +556,21 @@
                 if(!vp) return;
                 vp.innerHTML = '';
                 if(!state.user) { this.viewLogin(vp); return; }
-                if (state.user.admin && ['cart', 'orders', 'finance'].includes(this.current)) this.current = 'admin';
+                
+                // Route protection check for non-admin
+                const allowedRoutes = {
+                    'CEO': ['orders', 'finance', 'resolutions', 'dossier'],
+                    'TECNICO': ['market', 'dossier'],
+                    'FINANZAS': ['finance', 'orders', 'dossier'],
+                    'MARKETING': ['brand', 'market', 'dossier'],
+                    'OPERACIONES_IA': ['market', 'cart', 'ailog', 'dossier']
+                };
+
+                if (state.user.admin && !['admin', 'market', 'dossier'].includes(this.current)) {
+                    this.current = 'admin';
+                } else if (!state.user.admin && !allowedRoutes[state.user.role].includes(this.current)) {
+                    this.current = allowedRoutes[state.user.role][0]; // fallback
+                }
                 
                 this.updateHUD();
                 const hero = this.generateHeroBanner();
@@ -510,6 +582,9 @@
                     case 'finance': vp.innerHTML = hero; this.viewFinance(vp); break;
                     case 'admin': this.viewAdmin(vp); break;
                     case 'dossier': vp.innerHTML = hero; this.viewDossier(vp); break;
+                    case 'brand': vp.innerHTML = hero; this.viewBrand(vp); break;
+                    case 'ailog': vp.innerHTML = hero; this.viewAILog(vp); break;
+                    case 'resolutions': vp.innerHTML = hero; this.viewResolutions(vp); break;
                 }
             },
 
@@ -524,7 +599,7 @@
                         <option value="admin" class="text-mars-yellow font-bold">CLAUSTRO DOCENTE</option>
                     </select>
                     <select id="login-role" class="w-full bg-slate-900 border border-mars-border p-3 text-sm mb-6 outline-none focus:border-mars-cyan uppercase text-white font-bold">
-                        <option>CEO</option><option>Química</option><option>Aerodinámica</option><option>Finanzas</option><option>Marketing</option><option>IA</option>
+                        <option>CEO</option><option>Técnico</option><option>Finanzas</option><option>Marketing</option><option>Operaciones IA</option>
                     </select>
                     <div class="flex justify-center gap-4 mb-8">
                         ${[1,2,3,4].map(() => `<div class="pin-dot w-3 h-3 rounded-full border border-mars-cyan transition-all"></div>`).join('')}
@@ -543,12 +618,11 @@
                 wrapper.innerHTML = `
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="font-orbitron text-mars-cyan text-xl uppercase tracking-tighter">Catálogo Oficial MARS-KET</h2>
-                    ${!state.user.admin ? `<button onclick="ui.modalCustom()" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-4 py-2 text-[10px] uppercase font-bold hover:bg-mars-magenta hover:text-white transition-all">Material No Catalogado</button>` : ``}
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     ${state.data.catalog.map(item => {
                         let buySection = '';
-                        if(!state.user.admin) {
+                        if(!state.user.admin && state.user.role === 'OPERACIONES_IA') {
                             if (item.id === 'P01') {
                                 buySection = `
                                 <div class="flex gap-1 mt-2">
@@ -566,10 +640,13 @@
                                 buySection = `
                                 <div class="flex items-center gap-2 mt-2">
                                     <input type="number" id="qty-${item.id}" value="1" min="1" class="w-12 bg-black border border-mars-border text-center text-[10px] text-white p-1">
-                                    <button onclick="ui.addToCart('${item.id}', parseInt(document.getElementById('qty-${item.id}').value)||1)" class="flex-grow bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-2 py-1 text-[9px] font-black uppercase hover:bg-mars-cyan hover:text-mars-bg transition-all">Añadir</button>
+                                    <button onclick="ui.addToCart('${item.id}', parseInt(document.getElementById('qty-${item.id}').value)||1)" class="flex-grow bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-2 py-1 text-[9px] font-black uppercase hover:bg-mars-cyan hover:text-mars-bg transition-all">Añadir al Manifiesto</button>
                                 </div>`;
                             }
+                        } else if (!state.user.admin) {
+                            buySection = `<p class="text-[8px] text-slate-500 uppercase mt-2 border-t border-slate-800 pt-2">Operaciones_IA gestiona la carga.</p>`;
                         }
+
                         return `
                         <div class="terminal-border bg-mars-card p-4 group hover:border-mars-cyan transition-all flex flex-col justify-between">
                             <div>
@@ -591,14 +668,14 @@
                 const total = co.cart.reduce((s, i) => s + i.price, 0);
                 const wrapper = document.createElement('div');
                 wrapper.innerHTML = `
-                <h2 class="font-orbitron text-mars-cyan text-xl mb-6 uppercase tracking-tighter">Logística de Despliegue</h2>
+                <h2 class="font-orbitron text-mars-cyan text-xl mb-6 uppercase tracking-tighter">Logística de Despliegue (Carrito)</h2>
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div class="lg:col-span-2 space-y-3">
                         ${co.cart.map((item, idx) => `
                         <div class="bg-mars-card border border-mars-border p-3 flex justify-between items-center hover:border-mars-magenta/50 transition-all">
                             <div><p class="text-white text-xs font-bold font-orbitron">${item.name}</p><p class="text-[8px] text-slate-500 uppercase">Q: ${item.qty} | ${item.category}</p></div>
                             <div class="flex items-center gap-4"><span class="text-mars-green font-mono font-bold">${item.price.toFixed(2)} €v</span><button onclick="ui.removeFromCart(${idx})" class="text-mars-magenta text-[9px] uppercase font-bold hover:underline">X</button></div>
-                        </div>`).join('') || '<div class="terminal-border border-dashed p-8 text-center text-slate-500 text-xs italic">Manifiesto vacío.</div>'}
+                        </div>`).join('') || '<div class="terminal-border border-dashed p-8 text-center text-slate-500 text-xs italic">Manifiesto vacío. Acuda al catálogo.</div>'}
                     </div>
                     <div class="terminal-border bg-mars-card p-6 h-fit border-t-4 border-t-mars-cyan">
                         <p class="text-[10px] text-slate-500 uppercase mb-1 font-bold">Total Virtual Requerido</p>
@@ -608,7 +685,7 @@
                             <div><label class="text-[9px] text-mars-magenta uppercase font-bold block mb-1">Comercio / Proveedor</label><input type="text" id="real-shop-input" class="w-full bg-slate-900 border border-mars-border p-2 text-xs text-white uppercase" placeholder="Ej: Mercadona, Ferretería..."></div>
                             <div><label class="text-[9px] text-mars-yellow uppercase font-bold block mb-1">Justificación Técnica Obligatoria</label><textarea id="audit-text" class="w-full bg-slate-900 border border-mars-border p-3 text-[10px] text-white h-24 outline-none focus:border-mars-cyan" placeholder="Estequiometría manual, mediciones, cálculo de volumen..."></textarea></div>
                         </div>
-                        <button onclick="ui.submitOrder()" class="w-full bg-mars-cyan text-mars-bg font-black py-4 text-[10px] uppercase tracking-widest hover:glow-cyan disabled:opacity-30 disabled:hover:glow-none transition-all" ${!co.cart.length ? 'disabled' : ''}>Transmitir a CEO</button>
+                        <button onclick="ui.submitOrder()" class="w-full bg-mars-cyan text-mars-bg font-black py-4 text-[10px] uppercase tracking-widest hover:glow-cyan disabled:opacity-30 disabled:hover:glow-none transition-all" ${!co.cart.length ? 'disabled' : ''}>Transmitir Orden a CEO</button>
                     </div>
                 </div>`;
                 el.appendChild(wrapper);
@@ -618,7 +695,7 @@
                 const co = state.data.companies[state.user.coId];
                 const wrapper = document.createElement('div');
                 wrapper.innerHTML = `
-                <h2 class="font-orbitron text-mars-cyan text-xl mb-6 uppercase tracking-tighter">Bóveda de Autorización CEO</h2>
+                <h2 class="font-orbitron text-mars-cyan text-xl mb-6 uppercase tracking-tighter">Bóveda de Autorización y Órdenes</h2>
                 <div class="space-y-4">
                     ${co.orders.map(order => `
                     <div class="terminal-border bg-mars-card p-6 border-l-4 ${order.status === 'APROBADO' ? 'border-l-mars-green' : order.status === 'DENEGADO' ? 'border-l-mars-magenta' : 'border-l-mars-yellow'}">
@@ -671,6 +748,106 @@
                                 <div><p class="text-white uppercase font-black tracking-widest">${r.shop}</p><p class="text-slate-400 mt-1 uppercase text-[9px]">${r.item}</p></div>
                                 <div class="text-right text-mars-magenta font-black text-sm font-mono tracking-tighter">${r.eur.toFixed(2)} €</div>
                             </div>`).join('') || '<p class="text-slate-600 italic">No hay costes reales auditados.</p>'}
+                        </div>
+                    </div>
+                </div>`;
+                el.appendChild(wrapper);
+            },
+            
+            viewBrand(el) {
+                const co = state.data.companies[state.user.coId];
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-magenta">
+                        <h2 class="font-orbitron text-mars-magenta text-lg mb-4 uppercase tracking-tighter">Identidad Corporativa</h2>
+                        <p class="text-xs text-slate-400 mb-6 uppercase">Suba el logotipo diseñado para la corporación en formato PNG o JPG con fondo transparente para su visualización en el panel HUD táctico.</p>
+                        <button onclick="document.getElementById('brand-logo-upload').click()" class="bg-mars-magenta text-white px-6 py-3 text-[10px] font-bold uppercase tracking-widest hover:shadow-[0_0_15px_#ff0055] transition-all w-full">[ Cargar Imagen / Logo ]</button>
+                        <input type="file" id="brand-logo-upload" class="hidden" accept="image/png, image/jpeg" onchange="ui.handleLogoUpload(event)">
+                    </div>
+                    <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan">
+                        <h2 class="font-orbitron text-mars-cyan text-lg mb-4 uppercase tracking-tighter">Propuesta de Valor</h2>
+                        <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">Redacte la misión, ventaja competitiva y propuesta para atraer patrocinios de inversores. Este texto será público en el Dossier Académico y evaluable.</p>
+                        <textarea id="val-prop-text" class="w-full bg-slate-900 border border-mars-border p-4 text-xs text-white h-32 outline-none focus:border-mars-cyan mb-4 leading-relaxed" placeholder="Redacte la misión corporativa aquí...">${co.valueProposition}</textarea>
+                        <button onclick="ui.saveValueProposition()" class="bg-mars-cyan text-black px-6 py-3 text-[10px] font-black uppercase tracking-widest hover:shadow-[0_0_15px_#00f0ff] transition-all w-full">Guardar Propuesta de Valor</button>
+                    </div>
+                </div>`;
+                el.appendChild(wrapper);
+            },
+            
+            viewAILog(el) {
+                const co = state.data.companies[state.user.coId];
+                const pending = co.aiPrompts.filter(p => p.status === 'PENDIENTE_VALIDACION');
+                const approved = co.aiPrompts.filter(p => p.status === 'APROBADO');
+                
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = `
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="font-orbitron text-blue-400 text-xl uppercase tracking-tighter">Buzón y Bitácora de Inteligencia Artificial</h2>
+                    <button onclick="ui.modalReportAI()" class="bg-blue-600/20 border border-blue-500 text-blue-400 px-4 py-2 text-[10px] uppercase font-bold hover:bg-blue-500 hover:text-white transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)]">Registrar Prompt Directo</button>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow">
+                        <h3 class="font-orbitron text-mars-yellow text-sm mb-4 uppercase tracking-widest">Prompts Pendientes de Auditoría</h3>
+                        <div class="space-y-4 overflow-y-auto max-h-[500px] pr-2">
+                            ${pending.map(p => `
+                            <div class="bg-slate-900/50 border border-mars-border p-4 text-[10px]">
+                                <div class="flex justify-between mb-2 border-b border-mars-border/30 pb-2">
+                                    <span class="text-mars-yellow font-bold uppercase tracking-widest">${p.tool}</span>
+                                    <span class="text-slate-500">${p.date}</span>
+                                </div>
+                                <p class="text-white font-bold mb-1 uppercase">Tarea: ${p.task}</p>
+                                <p class="text-slate-400 mb-2 italic">Emisor: Rol ${p.authorRole}</p>
+                                <div class="bg-black border border-mars-border/50 p-2 mb-2"><span class="text-blue-400 font-bold block mb-1">Prompt:</span><p class="text-slate-300">"${p.prompt}"</p></div>
+                                <div class="bg-black border border-mars-border/50 p-2 mb-3"><span class="text-mars-green font-bold block mb-1">Verificación Humana:</span><p class="text-slate-300">${p.verification}</p></div>
+                                <div class="flex gap-2">
+                                    <button onclick="ui.processAIPrompt('${p.id}', 'APROBADO')" class="flex-1 bg-mars-green text-black font-black py-2 uppercase hover:shadow-[0_0_10px_#00ff66] transition-all">Aprobar e Integrar</button>
+                                    <button onclick="ui.processAIPrompt('${p.id}', 'DESCARTADO')" class="bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2 font-bold uppercase hover:bg-mars-magenta hover:text-white transition-all">Descartar</button>
+                                </div>
+                            </div>`).join('') || '<p class="text-slate-600 text-xs italic">Bandeja limpia. No hay reportes pendientes.</p>'}
+                        </div>
+                    </div>
+                    <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-blue-500">
+                        <h3 class="font-orbitron text-blue-400 text-sm mb-4 uppercase tracking-widest">Bitácora Oficial Aprobada</h3>
+                        <div class="space-y-4 overflow-y-auto max-h-[500px] pr-2">
+                            ${approved.map(p => `
+                            <div class="bg-slate-900/50 border border-blue-900/30 p-4 text-[10px] border-l-2 border-l-blue-500">
+                                <div class="flex justify-between mb-2 border-b border-slate-800 pb-2">
+                                    <span class="text-blue-400 font-bold uppercase tracking-widest">${p.tool}</span>
+                                    <span class="text-slate-500">${p.date}</span>
+                                </div>
+                                <p class="text-white font-bold mb-1 uppercase">Tarea: ${p.task}</p>
+                                <div class="text-slate-400 mt-2"><span class="text-mars-cyan font-bold block mb-1">Prompt ValidadO:</span>"${p.prompt}"</div>
+                            </div>`).join('') || '<p class="text-slate-600 text-xs italic">Aún no se han integrado prompts aprobados a la bitácora.</p>'}
+                        </div>
+                    </div>
+                </div>`;
+                el.appendChild(wrapper);
+            },
+            
+            viewResolutions(el) {
+                const co = state.data.companies[state.user.coId];
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = `
+                <h2 class="font-orbitron text-mars-yellow text-xl mb-6 uppercase tracking-tighter">Actas de Desempate y Resoluciones Ejecutivas</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow">
+                        <h3 class="font-orbitron text-mars-yellow text-sm mb-4 uppercase tracking-widest">Redactar Nueva Resolución</h3>
+                        <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">Como CEO, tiene potestad para emitir actas oficiales en caso de empate en votaciones o necesidad de rectificar decisiones de otros departamentos.</p>
+                        <textarea id="ceo-res-text" class="w-full bg-slate-900 border border-mars-border p-4 text-xs text-white h-32 outline-none focus:border-mars-yellow mb-4 leading-relaxed" placeholder="Redacte el acta de resolución aquí..."></textarea>
+                        <button onclick="ui.saveResolution()" class="bg-mars-yellow text-black px-6 py-3 text-[10px] font-black uppercase tracking-widest hover:shadow-[0_0_15px_#ffe600] transition-all w-full">Sellar y Publicar Acta</button>
+                    </div>
+                    <div class="terminal-border bg-mars-card p-6">
+                        <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-widest">Histórico de Actas</h3>
+                        <div class="space-y-4 overflow-y-auto max-h-[400px] pr-2">
+                            ${co.executiveResolutions.map((r, i) => `
+                            <div class="border border-mars-yellow/30 bg-slate-900/50 p-4 text-[10px]">
+                                <div class="flex justify-between border-b border-mars-border/50 pb-2 mb-2">
+                                    <span class="text-mars-yellow font-bold uppercase tracking-widest">ACTA_CEO_${co.executiveResolutions.length - i}</span>
+                                    <span class="text-slate-500">${r.date}</span>
+                                </div>
+                                <p class="text-slate-300 italic">"${r.text}"</p>
+                            </div>`).join('') || '<p class="text-slate-600 text-xs italic">No hay actas emitidas.</p>'}
                         </div>
                     </div>
                 </div>`;
@@ -858,14 +1035,14 @@
                         <div class="lg:col-span-3 terminal-border bg-mars-card p-6 overflow-x-auto">
                             <h3 class="font-orbitron text-mars-yellow text-xs mb-4 uppercase tracking-widest">Gestión de PINs</h3>
                             <table class="w-full text-left text-[9px]">
-                                <thead class="text-slate-500 uppercase border-b border-mars-border"><tr><th class="py-2">Empresa</th><th>CEO</th><th>QUI</th><th>AER</th><th>FIN</th><th>MKT</th><th>IA</th><th>Acción</th></tr></thead>
+                                <thead class="text-slate-500 uppercase border-b border-mars-border"><tr><th class="py-2">Empresa</th><th>CEO</th><th>TEC</th><th>FIN</th><th>MKT</th><th>OP_IA</th><th>Acción</th></tr></thead>
                                 <tbody>
                                     ${Object.keys(state.data.companies).map(cid => {
                                         const r = state.data.companies[cid].roles;
                                         return `
                                         <tr class="border-b border-mars-border/30">
                                             <td class="py-3 font-orbitron text-white font-bold"><button onclick="ui.showCompanyLogins('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4">${state.data.companies[cid].name}</button></td>
-                                            ${['CEO','QUIMICA','AERODINAMICA','FINANZAS','MARKETING','IA'].map(rol => `
+                                            ${['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA'].map(rol => `
                                             <td class="py-3"><input type="text" maxlength="4" value="${r[rol]}" onchange="ui.updatePIN('${cid}', '${rol}', this.value)" class="w-10 bg-black border border-mars-border text-center text-mars-cyan font-bold p-1 outline-none focus:border-mars-yellow"></td>`).join('')}
                                             <td class="py-3"><button onclick="if(confirm('¿Borrar startup?')) ui.deleteStartup('${cid}')" class="text-mars-magenta font-bold hover:underline">Eliminar</button></td>
                                         </tr>`;
@@ -888,7 +1065,7 @@
                                 ${state.data.telemetry.sessions.map(sess => `
                                 <div class="border border-mars-border/50 bg-slate-900/30 p-3 text-[10px]">
                                     <div class="flex justify-between border-b border-mars-border/30 pb-2 mb-2">
-                                        <span class="text-mars-cyan font-bold">${sess.entity} | ${sess.role}</span>
+                                        <span class="text-mars-cyan font-bold">${sess.entity} | ${sess.role.replace('_',' ')}</span>
                                         <span class="text-slate-500">${sess.timestamp.replace('T',' ').slice(0,19)}</span>
                                     </div>
                                     <ul class="text-slate-300 space-y-1">
@@ -956,6 +1133,8 @@
 
                     <div class="flex gap-2 mb-6 overflow-x-auto scrollbar-hide pb-2">
                         <button onclick="ui.showDossierTab('eval')" class="doss-tab px-6 py-2 text-[10px] font-bold uppercase tracking-widest border border-mars-cyan text-mars-cyan bg-mars-cyan/10 transition-all shadow-neon-cyan">📝 Evaluaciones</button>
+                        <button onclick="ui.showDossierTab('vp')" class="doss-tab px-6 py-2 text-[10px] font-bold uppercase tracking-widest border border-mars-border transition-all">Propuesta de Valor</button>
+                        <button onclick="ui.showDossierTab('ai')" class="doss-tab px-6 py-2 text-[10px] font-bold uppercase tracking-widest border border-mars-border transition-all">Bitácora IA</button>
                         <button onclick="ui.showDossierTab('phases')" class="doss-tab tab-active px-6 py-2 text-[10px] font-bold uppercase tracking-widest border border-mars-border transition-all">Fases</button>
                         <button onclick="ui.showDossierTab('rubrics')" class="doss-tab px-6 py-2 text-[10px] font-bold uppercase tracking-widest border border-mars-border transition-all">Rúbricas</button>
                         <button onclick="ui.showDossierTab('roles')" class="doss-tab px-6 py-2 text-[10px] font-bold uppercase tracking-widest border border-mars-border transition-all">Roles</button>
@@ -1013,11 +1192,41 @@
                     evalHtml += `</div>`;
                     content.innerHTML = evalHtml;
                 }
+                else if (tab === 'vp') {
+                    const co = state.data.companies[state.user.coId];
+                    if(!co) return;
+                    content.innerHTML = `
+                    <div class="animate-in fade-in duration-300">
+                        <h3 class="font-orbitron text-mars-cyan mb-6 uppercase text-sm border-b border-mars-border pb-2">Propuesta de Valor y Ventaja Competitiva</h3>
+                        <div class="bg-slate-900/50 border border-mars-border p-6 text-sm text-slate-300 leading-relaxed whitespace-pre-wrap italic">"${co.valueProposition || 'Pendiente de redacción por el Departamento de Marketing.'}"</div>
+                    </div>`;
+                }
+                else if (tab === 'ai') {
+                    const co = state.data.companies[state.user.coId];
+                    if(!co) return;
+                    const approvedPrompts = co.aiPrompts.filter(p => p.status === 'APROBADO');
+                    content.innerHTML = `
+                    <div class="animate-in fade-in duration-300">
+                        <h3 class="font-orbitron text-mars-cyan mb-6 uppercase text-sm border-b border-mars-border pb-2">Bitácora Oficial de Prompts (IA Auditada)</h3>
+                        <div class="space-y-4">
+                            ${approvedPrompts.map(p => `
+                            <div class="bg-slate-900/50 border border-blue-900/30 p-4 text-[10px] border-l-2 border-l-blue-500">
+                                <div class="flex justify-between mb-2 border-b border-slate-800 pb-2">
+                                    <span class="text-blue-400 font-bold uppercase tracking-widest">${p.tool}</span>
+                                    <span class="text-slate-500">${p.date}</span>
+                                </div>
+                                <p class="text-white font-bold mb-1 uppercase">Tarea: ${p.task}</p>
+                                <div class="text-slate-400 mt-2"><span class="text-mars-cyan font-bold block mb-1">Prompt Verificado:</span>"${p.prompt}"</div>
+                                <div class="text-slate-400 mt-2"><span class="text-mars-green font-bold block mb-1">Resultado de Auditoría Humana:</span>"${p.verification}"</div>
+                            </div>`).join('') || '<p class="text-slate-600 text-xs italic">No hay registros de IA auditados y aprobados por Operaciones.</p>'}
+                        </div>
+                    </div>`;
+                }
                 else if (tab === 'phases') {
                     content.innerHTML = `
                     <div class="space-y-8 animate-in fade-in duration-300">
                         <div><h3 class="text-mars-cyan font-orbitron mb-2 uppercase text-sm font-bold tracking-widest">Fase I: Startup y Capital Semilla</h3><p class="text-xs text-slate-300 leading-relaxed uppercase">Captación de talento y estructuración corporativa. Preparación de identidad corporativa. Presentación del MICRO-PITCH (inglés) ante inversores para conseguir el capital de despegue.<br><span class="text-mars-yellow mt-2 block font-bold">> Patrocinios a ganar: ORO (+500€v), PLATA (+400€v), BRONCE (+250€v).</span></p></div>
-                        <div class="border-t border-mars-border/50 pt-6"><h3 class="text-mars-cyan font-orbitron mb-2 uppercase text-sm font-bold tracking-widest">Fase II: I+D (Prototipo Vuelo 2.0)</h3><p class="text-xs text-slate-300 leading-relaxed uppercase">Adquisición de suministros vía SuperMars-ket. Diseño aerodinámico y cálculos estequiométricos (Vinagre + Bicarbonato). Ejecución de autopsia química: el cohete debe volar sin lastre de reactivo muerto. Pruebas de vuelo V2.0, vídeo documental, informe final y BUSINESS PITCH definitivo (6-8 min).</p></div>
+                        <div class="border-t border-mars-border/50 pt-6"><h3 class="text-mars-cyan font-orbitron mb-2 uppercase text-sm font-bold tracking-widest">Fase II: I+D (Prototipo Vuelo 2.0)</h3><p class="text-xs text-slate-300 leading-relaxed uppercase">Adquisición de suministros vía SuperMars-ket. Diseño aerodinámico y cálculos estequiométricos (Vinagre + Bicarbonato). Ejecución de autopsia química: el cohete debe volar sin lastre de reactivo muerto. Pruebas de vuelo V2.0, informe final y BUSINESS PITCH definitivo (6-8 min).</p></div>
                         <div class="border-t border-mars-border/50 pt-6"><h3 class="text-mars-cyan font-orbitron mb-2 uppercase text-sm font-bold tracking-widest">Fase III: Concurso de Excelencia</h3><p class="text-xs text-slate-300 leading-relaxed uppercase">Gran concurso final interclases evaluando: (1) Apogeo máximo, (2) Viabilidad del Budget, (3) Diseño Corporativo y Marketing. Proclamación de la corporación colonizadora líder.</p></div>
                     </div>`;
                 } else if (tab === 'rubrics') {
@@ -1035,12 +1244,11 @@
                 } else if (tab === 'roles') {
                     content.innerHTML = `
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-[10px] uppercase tracking-tighter animate-in fade-in duration-300">
-                        <div class="p-3 border-l-2 border-mars-yellow bg-slate-900/30"><span class="text-mars-yellow font-bold block mb-1">C.E.O.</span>Máximo responsable. Firma auditorías en la bóveda, vigila entregas.</div>
-                        <div class="p-3 border-l-2 border-mars-cyan bg-slate-900/30"><span class="text-mars-cyan font-bold block mb-1">Dir. de Química</span>Ajuste estequiométrico, autopsia del vuelo.</div>
-                        <div class="p-3 border-l-2 border-mars-cyan bg-slate-900/30"><span class="text-mars-cyan font-bold block mb-1">Dir. Aerodinámica</span>Diseño del fuselaje, aletas, goniómetro trigonométrico.</div>
-                        <div class="p-3 border-l-2 border-mars-green bg-slate-900/30"><span class="text-mars-green font-bold block mb-1">Dir. de Finanzas</span>Auditoría de costes reales (€) y control del ledger virtual (€v).</div>
-                        <div class="p-3 border-l-2 border-mars-magenta bg-slate-900/30"><span class="text-mars-magenta font-bold block mb-1">Dir. de Marketing</span>Identidad visual, video-documental de vuelo, diseño Pitch.</div>
-                        <div class="p-3 border-l-2 border-blue-500 bg-slate-900/30"><span class="text-blue-500 font-bold block mb-1">Dir. IA</span>Uso técnico de LLMs, recolección de datos de telemetría.</div>
+                        <div class="p-3 border-l-2 border-mars-yellow bg-slate-900/30"><span class="text-mars-yellow font-bold block mb-1">C.E.O.</span>Presidencia, gobernanza, firma en bóveda, actas de desempates.</div>
+                        <div class="p-3 border-l-2 border-mars-cyan bg-slate-900/30"><span class="text-mars-cyan font-bold block mb-1">Técnico / Aerodinámica</span>Diseño del fuselaje, química, estequiometría, ensamblaje, goniómetro.</div>
+                        <div class="p-3 border-l-2 border-mars-green bg-slate-900/30"><span class="text-mars-green font-bold block mb-1">Finanzas</span>Balances, caja, costes reales vs virtuales, KPI de eficiencia.</div>
+                        <div class="p-3 border-l-2 border-mars-magenta bg-slate-900/30"><span class="text-mars-magenta font-bold block mb-1">Marketing</span>Identidad visual, branding, logo y redacción de Propuesta de Valor.</div>
+                        <div class="p-3 border-l-2 border-blue-500 bg-slate-900/30"><span class="text-blue-500 font-bold block mb-1">Operaciones e IA</span>Logística, aprovisionamiento, auditoría técnica y bitácora descentralizada de IA.</div>
                     </div>`;
                 } else if (tab === 'rules') {
                     content.innerHTML = `
@@ -1072,7 +1280,7 @@
                 </div>
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-4">`;
                 
-                ['CEO', 'QUIMICA', 'AERODINAMICA', 'FINANZAS', 'MARKETING', 'IA'].forEach(r => {
+                ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA'].forEach(r => {
                     const pin = co.roles[r];
                     const count = stats.roles[r]?.count || 0;
                     const last = stats.roles[r]?.lastLogin || 'NUNCA';
@@ -1083,7 +1291,7 @@
                     html += `
                     <div class="bg-black border border-mars-border p-3 flex flex-col justify-between">
                         <div class="flex justify-between items-start mb-2">
-                            <span class="text-[9px] text-slate-400 font-bold uppercase">${r}</span>
+                            <span class="text-[8px] text-slate-400 font-bold uppercase tracking-tighter truncate pr-1">${r.replace('_',' ')}</span>
                             <span class="text-[8px] text-white bg-slate-800 px-1 border border-slate-600">PIN: ${pin}</span>
                         </div>
                         <div class="text-center my-2">
@@ -1100,7 +1308,84 @@
                 this.showModal("Auditoría de Miembros", html, "");
             },
 
-            // --- LÓGICA DE NEGOCIO Y EVALUACIÓN ---
+            // --- LÓGICA DE NEGOCIO ---
+            saveValueProposition() {
+                const text = document.getElementById('val-prop-text').value;
+                state.data.companies[state.user.coId].valueProposition = text;
+                telemetry.log("BRANDING", "Propuesta de Valor guardada.");
+                state.save();
+                alert("Propuesta de valor actualizada en el servidor.");
+            },
+            
+            saveResolution() {
+                const text = document.getElementById('ceo-res-text').value;
+                if(text.length < 10) return alert("El acta es demasiado corta.");
+                state.data.companies[state.user.coId].executiveResolutions.unshift({ text: text, date: new Date().toLocaleString() });
+                telemetry.log("RESOLUCIÓN CEO", "Acta emitida.");
+                state.save();
+                this.render();
+                alert("Acta de resolución oficial publicada con éxito.");
+            },
+
+            modalReportAI() {
+                const html = `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-[9px] text-blue-400 uppercase font-bold block mb-1">Herramienta Utilizada</label>
+                            <input id="ai-tool" placeholder="Ej: ChatGPT, Gemini, Claude..." class="w-full bg-slate-900 border border-blue-500/50 p-2 text-xs text-white uppercase focus:border-blue-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[9px] text-blue-400 uppercase font-bold block mb-1">Tarea Ejecutada</label>
+                            <input id="ai-task" placeholder="Ej: Cálculos de masa, diseño de logotipo, redacción..." class="w-full bg-slate-900 border border-blue-500/50 p-2 text-xs text-white uppercase focus:border-blue-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[9px] text-blue-400 uppercase font-bold block mb-1">Prompt Exacto Introducido</label>
+                            <textarea id="ai-prompt" placeholder="Escriba el prompt exacto que usó en la IA..." class="w-full bg-slate-900 border border-blue-500/50 p-3 text-xs text-white h-24 focus:border-blue-400 outline-none"></textarea>
+                        </div>
+                        <div>
+                            <label class="text-[9px] text-mars-green uppercase font-bold block mb-1">Auditoría / Verificación Humana</label>
+                            <textarea id="ai-verification" placeholder="¿Cómo ha comprobado que la respuesta de la IA era correcta y no inventada?" class="w-full bg-slate-900 border border-mars-green/50 p-3 text-xs text-white h-20 focus:border-mars-green outline-none"></textarea>
+                        </div>
+                    </div>`;
+                const actions = `<button onclick="ui.submitAIPrompt()" class="bg-blue-600 text-white px-6 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)]">Registrar Uso en Bitácora</button>`;
+                this.showModal("Reportar Uso de IA", html, actions);
+            },
+            
+            submitAIPrompt() {
+                const tool = document.getElementById('ai-tool').value;
+                const task = document.getElementById('ai-task').value;
+                const promptText = document.getElementById('ai-prompt').value;
+                const verification = document.getElementById('ai-verification').value;
+                
+                if(!tool || !task || !promptText || !verification) return alert("Por favor, rellene todos los campos para la auditoría.");
+                
+                const status = (state.user.role === 'OPERACIONES_IA') ? 'APROBADO' : 'PENDIENTE_VALIDACION';
+                
+                state.data.companies[state.user.coId].aiPrompts.unshift({
+                    id: 'AI-' + Date.now(),
+                    authorRole: state.user.role,
+                    tool, task, prompt: promptText, verification, status,
+                    date: new Date().toLocaleString()
+                });
+                
+                telemetry.log("USO IA", `Reporte enviado (${status}). Tarea: ${task}`);
+                state.save();
+                this.closeModal();
+                alert(status === 'APROBADO' ? "Registro añadido a la bitácora oficial." : "Reporte enviado. Pendiente de auditoría por el Director de Operaciones/IA.");
+                this.render();
+            },
+            
+            processAIPrompt(id, newStatus) {
+                const p = state.data.companies[state.user.coId].aiPrompts.find(x => x.id === id);
+                if(p) {
+                    p.status = newStatus;
+                    telemetry.log("AUDITORÍA IA", `Prompt ${id} -> ${newStatus}`);
+                    state.save();
+                    this.render();
+                }
+            },
+
+            // --- RESTO DE LÓGICA EXISTENTE ---
             selectEvalCo(cid) { this.evalSelectedCo = cid; this.render(); },
             calcRealtimeGrade(subject) {
                 const config = RUBRIC_CONFIG[subject];
@@ -1192,10 +1477,10 @@
                 if(!name || isNaN(cap)) return alert("Datos inválidos.");
                 const cid = 'co_' + Date.now();
                 state.data.companies[cid] = { 
-                    name, balance: cap, logo: null, sponsorAwarded: null, 
-                    roles: { CEO:'1234', QUIMICA:'1234', AERODINAMICA:'1234', FINANZAS:'1234', MARKETING:'1234', IA:'1234' }, 
-                    cart: [], orders: [], ledger: [], realCosts: [], grades: {}, 
-                    loginStats: { totalLogins: 0, roles: { CEO:{count:0}, QUIMICA:{count:0}, AERODINAMICA:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, IA:{count:0} } } 
+                    name, balance: cap, logo: null, sponsorAwarded: null, valueProposition: "",
+                    roles: { CEO:'1234', TECNICO:'1234', FINANZAS:'1234', MARKETING:'1234', OPERACIONES_IA:'1234' }, 
+                    aiPrompts: [], executiveResolutions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, 
+                    loginStats: { totalLogins: 0, roles: { CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0} } } 
                 };
                 state.save(); this.render();
             },
@@ -1253,7 +1538,7 @@
                 reader.readAsText(file);
             },
             showModal(title, body, actions) {
-                document.getElementById('modal-title').innerText = title; document.getElementById('modal-body').innerHTML = body; document.getElementById('modal-actions').innerHTML = actions + `<button onclick="ui.closeModal()" class="bg-slate-800 text-white px-4 py-2 text-[10px] font-bold uppercase hover:bg-slate-700">Cerrar</button>`; document.getElementById('modal-overlay').classList.remove('hidden');
+                document.getElementById('modal-title').innerText = title; document.getElementById('modal-body').innerHTML = body; document.getElementById('modal-actions').innerHTML = actions + `<button onclick="ui.closeModal()" class="bg-slate-800 text-white px-4 py-2 text-[10px] font-bold uppercase hover:bg-slate-700 transition-all shadow-md hover:shadow-white/20 border border-slate-600">Cerrar</button>`; document.getElementById('modal-overlay').classList.remove('hidden');
             },
             closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
         };
