@@ -51,12 +51,11 @@
         <div class="max-w-7xl mx-auto px-4 py-2 flex justify-between items-center">
             <div class="flex items-center gap-4">
                 <div class="led-green animate-pulse"></div>
-                <!-- Trigger Secreto Backdoor (Triple Click) -->
                 <h1 onclick="dev.handleTrigger()" class="font-orbitron font-black text-mars-cyan text-lg tracking-widest px-4 border-r border-mars-border cursor-pointer hover:text-white transition-colors select-none">MARS-KET 2.0</h1>
-                <div class="hidden md:flex items-center gap-3">
+                <div class="hidden md:flex items-center gap-2">
                     <div id="hud-mini-logo" class="hidden w-6 h-6 hex-clip bg-mars-card border border-mars-cyan flex items-center justify-center overflow-hidden"></div>
-                    <div id="hud-cloud-status" class="text-[8px] font-bold uppercase border px-2 py-0.5 text-mars-yellow border-mars-border bg-black/50 transition-all">[STORAGE: LOCAL]</div>
                     <span class="text-[9px] text-slate-500 uppercase font-bold">SYS_OP: <span id="hud-mode" class="text-mars-yellow">SECURE_PROTOCOL</span></span>
+                    <span id="hud-cloud-status" class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border"></span>
                 </div>
             </div>
             <div class="flex items-center gap-6">
@@ -151,26 +150,24 @@
             pendingCustom: []
         };
 
-        // --- 3. MOTOR DE ESTADO (CLOUD HYBRID) Y TELEMETRÍA ---
+        // --- 3. SISTEMA DE ESTADO LOCAL-FIRST CON CLOUDFLARE D1 ---
         const state = {
             data: {}, user: null, pin: '', sessionData: null,
-            storageKey: 'marsket_v8_CLOUD',
+            storageKey: 'marsket_v7_BRANDING',
             isCloudOnline: false,
             isSyncing: false,
             syncTimer: null,
 
-            init() {
-                // 1. Local-First: Arranca instantáneo con localStorage
+            async init() {
                 const saved = localStorage.getItem(this.storageKey);
                 this.data = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(INITIAL_DATA));
                 
-                // MIGRACIONES DE DATOS
+                // Migración activa de datos
                 for(let k in this.data.companies) {
                     let co = this.data.companies[k];
                     if(co.logo === undefined) co.logo = null;
                     if(co.sponsorAwarded === undefined) co.sponsorAwarded = null;
                     if(!co.loginStats) co.loginStats = { totalLogins: 0, roles: { CEO:{count:0}, QUIMICA:{count:0}, AERODINAMICA:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, IA:{count:0} } };
-                    if(!co.grades) co.grades = {};
                 }
                 if(this.data.config.teachers.COORD) {
                     delete this.data.config.teachers.COORD;
@@ -179,47 +176,36 @@
                 }
                 
                 localStorage.setItem(this.storageKey, JSON.stringify(this.data));
-                
-                // 2. Renderizado Inmediato UI
                 ui.render();
+                
                 setInterval(() => {
                     const el = document.getElementById('hud-clock');
                     if(el) el.innerText = `TIME: ${new Date().toLocaleTimeString()}`;
                 }, 1000);
-                
-                // 3. Sincronización Asíncrona Cloud
-                this.fetchFromCloud();
-            },
 
-            save() { 
-                // Guardado Inmediato Local
-                localStorage.setItem(this.storageKey, JSON.stringify(this.data)); 
-                if(this.user) ui.updateHUD(); 
-                // Push asíncrono con Debounce
-                this.pushToCloud(true);
+                await this.fetchFromCloud();
             },
 
             async fetchFromCloud() {
+                this.isSyncing = true;
+                if(this.user) ui.updateHUD();
                 try {
-                    this.isSyncing = true;
-                    if(this.user) ui.updateHUD();
-                    
-                    const response = await fetch('/api/state');
-                    const remoteData = await response.json();
-                    
-                    if (remoteData && remoteData.status === "empty") {
-                        // Base de datos nueva: Forzamos subida de data inicial
-                        await this.pushToCloud(false);
-                        this.isCloudOnline = true;
-                    } else if (remoteData && Object.keys(remoteData).length > 0) {
-                        // Sincronizar datos remotos al estado local
-                        this.data = remoteData;
-                        localStorage.setItem(this.storageKey, JSON.stringify(this.data));
-                        this.isCloudOnline = true;
-                        ui.render();
+                    const res = await fetch('/api/state');
+                    if(res.ok) {
+                        const json = await res.json();
+                        if(json && json.status !== 'empty') {
+                            this.data = json;
+                            localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+                            this.isCloudOnline = true;
+                            ui.render();
+                        } else if(json && json.status === 'empty') {
+                            this.isCloudOnline = true;
+                            await this.pushToCloud(false);
+                        }
+                    } else {
+                        this.isCloudOnline = false;
                     }
-                } catch (err) {
-                    console.warn("Cloud connection offline:", err);
+                } catch(err) {
                     this.isCloudOnline = false;
                 } finally {
                     this.isSyncing = false;
@@ -227,33 +213,32 @@
                 }
             },
 
-            async pushToCloud(debounced = false) {
-                if (debounced) {
-                    clearTimeout(this.syncTimer);
-                    this.syncTimer = setTimeout(() => this.executeCloudPush(), 800);
-                } else {
-                    await this.executeCloudPush();
-                }
+            save() { 
+                localStorage.setItem(this.storageKey, JSON.stringify(this.data)); 
+                if(this.user) ui.updateHUD(); 
+                this.pushToCloud(true);
             },
 
-            async executeCloudPush() {
+            async pushToCloud(debounced = false) {
+                if(debounced) {
+                    clearTimeout(this.syncTimer);
+                    this.syncTimer = setTimeout(() => this.pushToCloud(false), 800);
+                    return;
+                }
+                this.isSyncing = true;
+                if(this.user) ui.updateHUD();
                 try {
-                    this.isSyncing = true;
-                    if(this.user) ui.updateHUD();
-                    
-                    const response = await fetch('/api/state', {
+                    const res = await fetch('/api/state', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(this.data)
                     });
-                    
-                    if (response.ok) {
+                    if(res.ok) {
                         this.isCloudOnline = true;
                     } else {
                         this.isCloudOnline = false;
                     }
-                } catch (err) {
-                    console.warn("Cloud sync failed:", err);
+                } catch(err) {
                     this.isCloudOnline = false;
                 } finally {
                     this.isSyncing = false;
@@ -324,7 +309,6 @@
                 const roleRaw = document.getElementById('login-role').value;
                 const roleNorm = this.normalizeStr(roleRaw);
                 
-                // Dev Backdoor Trigger
                 if(coId === 'admin' && state.pin === '9999') { dev.open(); this.clear(); return; }
 
                 if (coId === 'admin') {
@@ -344,7 +328,6 @@
                 state.user = { coId, role: roleKey, admin };
                 state.pin = '';
                 
-                // Track Student Login
                 if(!admin) {
                     const co = state.data.companies[coId];
                     co.loginStats.totalLogins++;
@@ -478,20 +461,6 @@
                 const miniLogo = document.getElementById('hud-mini-logo');
                 const cloudEl = document.getElementById('hud-cloud-status');
                 
-                // Cloud Sync Badge Logic
-                if(cloudEl) {
-                    if (state.isSyncing) {
-                        cloudEl.innerText = "[CLOUD: SYNCING...]";
-                        cloudEl.className = "text-[8px] font-bold uppercase border px-2 py-0.5 text-mars-cyan border-mars-cyan bg-black/50 transition-all";
-                    } else if (state.isCloudOnline) {
-                        cloudEl.innerText = "[CLOUD_KV: ONLINE]";
-                        cloudEl.className = "text-[8px] font-bold uppercase border px-2 py-0.5 text-mars-green border-mars-green/40 bg-black/50 animate-pulse transition-all";
-                    } else {
-                        cloudEl.innerText = "[STORAGE: LOCAL]";
-                        cloudEl.className = "text-[8px] font-bold uppercase border px-2 py-0.5 text-mars-yellow border-mars-border bg-black/50 transition-all";
-                    }
-                }
-
                 if (state.user.admin) {
                     if(balEl) balEl.innerText = '∞ €v';
                     if(infoEl) infoEl.innerText = `ENTITY: CLAUSTRO | ROLE: ${state.data.config.teachers[state.user.role]?.name.toUpperCase() || 'ROOT'}`;
@@ -507,6 +476,20 @@
                         miniLogo.innerHTML = co.logo ? `<img src="${co.logo}" class="w-full h-full object-cover">` : `<span class="text-[10px]">🚀</span>`;
                     }
                 }
+
+                if(cloudEl) {
+                    if(state.isSyncing) {
+                        cloudEl.className = 'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border border-mars-cyan text-mars-cyan bg-mars-cyan/10 animate-pulse';
+                        cloudEl.innerText = '[CLOUD: SYNCING...]';
+                    } else if(state.isCloudOnline) {
+                        cloudEl.className = 'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border border-mars-green/40 text-mars-green bg-mars-green/10';
+                        cloudEl.innerText = '[D1_SQLITE: SYNCED]';
+                    } else {
+                        cloudEl.className = 'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border border-mars-border text-mars-yellow bg-slate-900';
+                        cloudEl.innerText = '[STORAGE: LOCAL]';
+                    }
+                }
+
                 document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('tab-active', t.getAttribute('onclick').includes(this.current)));
             },
             
@@ -797,7 +780,6 @@
                     adminHtml += `</div>`;
 
                     if(isCoord && this.coordEvalView === 'ACTA') {
-                        // VIEW: ACTA GENERAL
                         adminHtml += `
                         <div class="terminal-border bg-mars-card p-6 overflow-x-auto">
                             <table class="w-full text-left text-[10px]">
@@ -823,7 +805,6 @@
                             </table>
                         </div>`;
                     } else if(activeSubject) {
-                        // VIEW: FORMULARIO DE EVALUACIÓN
                         const config = RUBRIC_CONFIG[activeSubject];
                         
                         let selectCoHtml = `<select id="eval-co-select" onchange="ui.selectEvalCo(this.value)" class="w-full md:w-1/2 bg-slate-900 border border-mars-border text-white text-xs p-3 uppercase font-bold outline-none focus:border-mars-cyan mb-6">
@@ -921,7 +902,15 @@
                 else if(this.adminTab === 'settings') {
                     const currentTeacher = state.data.config.teachers[state.user.role];
                     adminHtml += `
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan md:col-span-2">
+                            <h3 class="font-orbitron text-mars-cyan text-xs mb-2 uppercase">Infraestructura Cloudflare D1 (SQLite)</h3>
+                            <p class="text-[10px] text-slate-400 mb-4">Estado de red: <span class="${state.isCloudOnline ? 'text-mars-green' : 'text-mars-yellow'} font-bold">${state.isCloudOnline ? 'CONECTADO A LA NUBE (SQLITE ONLINE)' : 'MODO LOCAL (DESCONECTADO)'}</span></p>
+                            <div class="flex flex-wrap gap-3">
+                                <button onclick="state.fetchFromCloud().then(() => alert('Sincronización desde la nube completada.'))" class="bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-4 py-2 text-[10px] font-bold uppercase hover:bg-mars-cyan hover:text-black transition-all">Forzar Descarga de la Nube</button>
+                                <button onclick="state.pushToCloud(false).then(() => alert('Subida a Cloudflare D1 completada.'))" class="bg-mars-green/20 border border-mars-green text-mars-green px-4 py-2 text-[10px] font-bold uppercase hover:bg-mars-green hover:text-black transition-all">Forzar Subida Completa</button>
+                            </div>
+                        </div>
                         <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-green">
                             <h3 class="font-orbitron text-mars-green text-xs mb-4 uppercase">Exportación de Datos</h3>
                             <p class="text-[10px] text-slate-400 mb-4">Descargue los registros o restaure el sistema completo.</p>
@@ -940,14 +929,6 @@
                                 <p class="text-[10px] text-slate-400 mb-2 uppercase">Cambiar PIN para: <strong class="text-white">${currentTeacher ? currentTeacher.name : 'ROOT'}</strong></p>
                                 <input type="text" id="new-teacher-pin" maxlength="4" class="w-24 bg-black border border-mars-border p-2 text-center text-mars-cyan font-bold tracking-widest outline-none mb-3" placeholder="4 DIG.">
                                 <button onclick="ui.changeTeacherPIN()" class="block w-full bg-mars-magenta text-white py-2 text-[10px] font-bold uppercase hover:shadow-[0_0_15px_#ff0055] transition-all">Actualizar PIN</button>
-                            </div>
-                        </div>
-                        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan">
-                            <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase">Infraestructura Cloudflare KV</h3>
-                            <p class="text-[10px] text-slate-400 mb-4">Sincronización bidireccional y persistente en la nube.</p>
-                            <div class="flex flex-col gap-3">
-                                <button onclick="state.fetchFromCloud().then(()=>alert('Descarga de la nube completada.'))" class="bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-4 py-3 text-[10px] font-bold uppercase hover:bg-mars-cyan hover:text-black transition-all">[FORZAR DESCARGA DE LA NUBE]</button>
-                                <button onclick="state.pushToCloud(false).then(()=>alert('Subida manual a la nube completada.'))" class="bg-mars-green/20 border border-mars-green text-mars-green px-4 py-3 text-[10px] font-bold uppercase hover:bg-mars-green hover:text-black transition-all">[FORZAR SUBIDA COMPLETA A LA NUBE]</button>
                             </div>
                         </div>
                     </div>`;
