@@ -5,20 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MARS-KET 2.0 | TACTICAL COMMAND</title>
     
-    <!-- PWA & Favicon -->
-    <link rel="icon" type="image/png" href="/logo.png">
+    <!-- PWA & Favicon dinámico (El script de inicio forzará el fondo #05070a) -->
+    <link id="favicon" rel="icon" type="image/png" href="/logo.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#05070a">
-    <link rel="apple-touch-icon" href="/logo.png">
-    <!-- Web App Manifest (Data URI) -->
-    <link rel="manifest" href='data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22MARS-KET%202.0%22%2C%22short_name%22%3A%22MARSKET%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2305070a%22%2C%22theme_color%22%3A%22%2300f0ff%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22%2Flogo.png%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%7D%2C%7B%22src%22%3A%22%2Flogo.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D'>
+    <link id="apple-touch-icon" rel="apple-touch-icon" href="/logo.png">
+    <link id="pwa-manifest" rel="manifest" href='data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22MARS-KET%202.0%22%2C%22short_name%22%3A%22MARSKET%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2305070a%22%2C%22theme_color%22%3A%22%2305070a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22%2Flogo.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D'>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     
     <script>
-        const APP_VERSION = "1.0.1";
+        const APP_VERSION = "1.0.2";
         tailwind.config = {
             theme: {
                 extend: {
@@ -136,7 +135,7 @@
             ING: { name: "Inglés", criteria: [{id: 'c1', name: 'Presentación Prototipo (Micro-Pitch)', weight: 1.0}] }
         };
 
-        // --- 2. CONFIGURACIÓN Y CATÁLOGO INICIAL (v1.0.1) ---
+        // --- 2. CONFIGURACIÓN Y CATÁLOGO INICIAL ---
         const INITIAL_DATA = {
             config: { 
                 nextOrderId: 1000,
@@ -209,6 +208,51 @@
             }
         };
 
+        // --- PWA BLACK BACKGROUND INJECTOR ---
+        function applyPWABackground() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 192; canvas.height = 192;
+            const ctx = canvas.getContext('2d');
+            
+            // Draw solid background
+            ctx.fillStyle = '#05070a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.onload = () => {
+                // Calculate padding for logo (e.g. 20% margin)
+                const margin = 20;
+                const size = canvas.width - (margin * 2);
+                
+                // Draw logo centered
+                ctx.drawImage(img, margin, margin, size, size);
+                
+                const dataUrl = canvas.toDataURL('image/png');
+                
+                // Update specific tags for PWA and iOS
+                document.getElementById('favicon').href = dataUrl;
+                document.getElementById('apple-touch-icon').href = dataUrl;
+                
+                // Regenerate manifest with data URL directly
+                const manifestObj = {
+                    "name": "MARS-KET 2.0",
+                    "short_name": "MARSKET",
+                    "start_url": "./",
+                    "display": "standalone",
+                    "background_color": "#05070a",
+                    "theme_color": "#05070a",
+                    "icons": [
+                        { "src": dataUrl, "sizes": "192x192", "type": "image/png" },
+                        { "src": dataUrl, "sizes": "512x512", "type": "image/png" }
+                    ]
+                };
+                const manifestStr = encodeURIComponent(JSON.stringify(manifestObj));
+                document.getElementById('pwa-manifest').href = 'data:application/manifest+json;charset=utf-8,' + manifestStr;
+            };
+            img.src = '/logo.png';
+        }
+
         // --- 3. MOTOR DE ESTADO (CLOUD HYBRID D1) Y MIGRACIÓN ---
         const state = {
             data: {}, user: null, pin: '', sessionData: null,
@@ -272,6 +316,9 @@
             },
 
             async init() {
+                // Apply PWA background fix
+                applyPWABackground();
+
                 const saved = localStorage.getItem(this.storageKey);
                 const raw = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(INITIAL_DATA));
                 this.data = this.migrate(raw);
@@ -441,29 +488,25 @@
                 let html = '';
                 
                 if (role === 'CEO') {
-                    html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Órdenes CEO (Bóveda)</button>`;
+                    html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Órdenes CEO</button>`;
                     html += `<button onclick="ui.navigate('finance')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Finanzas</button>`;
-                    html += `<button onclick="ui.navigate('resolutions')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Gobernanza / Actas</button>`;
+                    html += `<button onclick="ui.navigate('resolutions')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Gobernanza</button>`;
                 } else if (role === 'TECNICO') {
                     html += `<button onclick="ui.navigate('tech')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">I+D y Pruebas</button>`;
-                    html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
-                    html += `<button onclick="ui.modalCustom()" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase text-mars-magenta hover:bg-mars-magenta/10 whitespace-nowrap">Req. Material I+D</button>`;
                 } else if (role === 'FINANZAS') {
                     html += `<button onclick="ui.navigate('finance')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Finanzas / Ledger</button>`;
-                    html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Órdenes de Compra</button>`;
+                    html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Auditoría Presupuesto</button>`;
                 } else if (role === 'MARKETING') {
                     html += `<button onclick="ui.navigate('brand')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Centro de Marca</button>`;
-                    html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
                 } else if (role === 'OPERACIONES_IA') {
                     html += `<button onclick="ui.navigate('cart')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center gap-2 whitespace-nowrap">Logística <span id="cart-count" class="bg-mars-magenta text-white px-1.5 rounded-full text-[8px]">0</span></button>`;
-                    html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
-                    html += `<button onclick="ui.navigate('ailog')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Buzón Bitácora IA</button>`;
+                    html += `<button onclick="ui.navigate('ailog')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Bitácora IA</button>`;
                 }
                 
-                if (role !== 'TECNICO' && role !== 'MARKETING' && role !== 'OPERACIONES_IA') {
-                    html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
-                }
-                html += `<button onclick="ui.navigate('dossier')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Dossier / Notas</button>`;
+                // Pestañas comunes para todos los alumnos
+                html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
+                html += `<button onclick="ui.navigate('dossier')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Dossier / Rúbricas</button>`;
+                
                 nav.innerHTML = html;
             }
         };
@@ -525,15 +568,15 @@
                 let role = state.user ? state.user.role : '';
                 if(state.user && state.user.admin) role = 'DOCENTE';
                 
-                document.getElementById('onboarding-title').innerText = `PROTOCOLO DE INCORPORACIÓN - ROL: ${role.replace('_',' ')}`;
+                document.getElementById('onboarding-title').innerText = `PROTOCOLO INCORPORACIÓN: ${role.replace('_',' ')}`;
                 let content = `<div class="space-y-4 font-mono">`;
                 switch(role) {
-                    case 'CEO': content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Acciones Inmediatas:</p><ul class="list-disc pl-5 space-y-2"><li>Revise el Cronograma Maestro de entregas para evitar sanciones de la AEE.</li><li>Vigile la Bóveda de Órdenes: no permita que Logística compre sin justificación técnica.</li><li>Supervise las mociones de Gobernanza en caso de conflicto.</li></ul>`; break;
+                    case 'CEO': content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Acciones Inmediatas:</p><ul class="list-disc pl-5 space-y-2"><li>Revise el Cronograma Maestro de entregas para evitar sanciones de la AEE.</li><li>Vigile la Bóveda de Órdenes: ejecute los pagos (coste real + virtual) cuando Finanzas apruebe el presupuesto.</li><li>Supervise las mociones de Gobernanza en caso de conflicto.</li></ul>`; break;
                     case 'TECNICO': content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Acciones Inmediatas:</p><ul class="list-disc pl-5 space-y-2"><li>Consulte el SUPERMARS-KET y solicite el aprovisionamiento de componentes.</li><li>Registre sus ensayos en el Banco de Pruebas para encontrar el KPI de eficiencia ideal.</li><li>Descargue la guía de FYQ y suba su Informe Técnico.</li></ul>`; break;
-                    case 'FINANZAS': content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Acciones Inmediatas:</p><ul class="list-disc pl-5 space-y-2"><li>Audite que el Coste Físico Real (€) registrado por Operaciones sea verídico.</li><li>Revise el Ledger y los fondos virtuales.</li><li>Prepare el Libro de Cuentas Oficial para Evaluación.</li></ul>`; break;
+                    case 'FINANZAS': content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Acciones Inmediatas:</p><ul class="list-disc pl-5 space-y-2"><li>Audite que el Coste Físico Real (€) registrado por Operaciones sea verídico.</li><li>Apruebe el Presupuesto (Virtual) en las Órdenes de Compra para que el CEO pueda ejecutarlas.</li><li>Prepare el Libro de Cuentas Oficial para Evaluación.</li></ul>`; break;
                     case 'MARKETING': content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Acciones Inmediatas:</p><ul class="list-disc pl-5 space-y-2"><li>Suba el Logo en formato transparente y asigne un Eslogan.</li><li>Redacte la Propuesta de Valor para captar Patrocinadores (Oro/Plata/Bronce).</li><li>Comience el desarrollo del Pitch de Fase I y súbalo al sistema.</li></ul>`; break;
-                    case 'OPERACIONES_IA': content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Acciones Inmediatas:</p><ul class="list-disc pl-5 space-y-2"><li>Valide los componentes en el carrito y asigne su coste real y tienda antes de enviar a CEO.</li><li>Revise y apruebe los Prompts de IA generados por el resto del equipo en el Buzón.</li></ul>`; break;
-                    case 'DOCENTE': content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Acciones Inmediatas:</p><ul class="list-disc pl-5 space-y-2"><li>Verifique el estado de las entregas de las empresas.</li><li>Utilice la pestaña 'Evaluar Rúbrica' para calificar.</li><li>En caso de Coordinación, revise la bandeja de Patrocinios y el Archivo Central.</li></ul>`; break;
+                    case 'OPERACIONES_IA': content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Acciones Inmediatas:</p><ul class="list-disc pl-5 space-y-2"><li>Verifique los componentes en el carrito, indique su Coste Físico Real (€) y Tienda, y transmítalos a Finanzas.</li><li>Revise y apruebe los Prompts de IA generados por el resto del equipo en el Buzón.</li></ul>`; break;
+                    case 'DOCENTE': content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Acciones Inmediatas:</p><ul class="list-disc pl-5 space-y-2"><li>Verifique el estado de las entregas de las empresas en el Archivo Documental.</li><li>Utilice la pestaña 'Evaluar Rúbrica' para calificar y descargar las evidencias.</li><li>En caso de Coordinación, revise la bandeja de Patrocinios, Ajuste de Plazos y sugerencias a Alex.</li></ul>`; break;
                 }
                 content += `</div>`;
                 document.getElementById('onboarding-body').innerHTML = content;
@@ -558,25 +601,25 @@
                     case 'CEO':
                         content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Funciones de la Presidencia</p>
                         <ul class="list-disc pl-5 space-y-2">
-                            <li><span class="text-mars-yellow">Bóveda de Autorización:</span> Es el único rol que puede aprobar (o denegar con motivo) las órdenes de compra solicitadas por Operaciones. Ningún gasto se efectúa sin su firma.</li>
-                            <li><span class="text-mars-yellow">Gobernanza y Actas:</span> En caso de desempate interno o decisiones críticas, el CEO debe redactar y publicar un acta, así como resolver mociones de votación.</li>
+                            <li><span class="text-mars-yellow">Bóveda de Autorización:</span> Ejecuta las compras físicas que han sido previamente auditadas y aprobadas por Finanzas.</li>
+                            <li><span class="text-mars-yellow">Gobernanza y Actas:</span> Redacta y publica actas para resolver empates en las votaciones del equipo.</li>
                             <li><span class="text-mars-yellow">Pitch & Liderazgo:</span> Supervisa la preparación de la oratoria y asume la responsabilidad final frente a las multas de retraso de la AEE.</li>
                         </ul>`;
                         break;
                     case 'TECNICO':
                         content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Funciones de Ingeniería y Química</p>
                         <ul class="list-disc pl-5 space-y-2">
-                            <li><span class="text-mars-yellow">Estequiometría y Ensayos:</span> Responsable de calcular la reacción (Bicarbonato/Vinagre). Debe registrar cada prueba de vuelo en el "Banco de Pruebas" para analizar la eficiencia.</li>
-                            <li><span class="text-mars-yellow">Catálogo I+D:</span> Debe revisar el SUPERMARS-KET y pulsar "[SOLICITAR APROVISIONAMIENTO]" para que Operaciones tramite la compra.</li>
-                            <li><span class="text-mars-yellow">Documentación:</span> Es el encargado de subir el <strong class="text-white">Informe Técnico PDF/Enlace</strong> en su panel para que sea evaluado.</li>
+                            <li><span class="text-mars-yellow">Estequiometría y Ensayos:</span> Calcula la reacción exacta. Debe registrar cada prueba de vuelo en el "Banco de Pruebas" para analizar la eficiencia.</li>
+                            <li><span class="text-mars-yellow">Catálogo I+D:</span> Debe revisar el SUPERMARS-KET y pulsar "[SOLICITAR APROVISIONAMIENTO]" para que Operaciones inicie la tramitación.</li>
+                            <li><span class="text-mars-yellow">Documentación:</span> Es el encargado de subir el <strong class="text-white">Informe Técnico PDF/Enlace</strong> en su panel para la evaluación de FYQ.</li>
                         </ul>`;
                         break;
                     case 'FINANZAS':
                         content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Funciones de Auditoría y Balance</p>
                         <ul class="list-disc pl-5 space-y-2">
-                            <li><span class="text-mars-yellow">Ledger (Libro de Caja):</span> Monitoreo en tiempo real de todos los movimientos de la cuenta corporativa virtual (€v).</li>
-                            <li><span class="text-mars-yellow">Costes Reales:</span> Vigilancia estricta del dinero físico (€) reportado componente a componente por Operaciones.</li>
-                            <li><span class="text-mars-yellow">KPI E=H/C:</span> Optimizar el Coste Total frente a la Altura para ganar competitividad. Debe entregar el Libro de Balances.</li>
+                            <li><span class="text-mars-yellow">Auditoría Presupuestaria:</span> Recibe las órdenes verificadas por Operaciones. Si hay fondos virtuales (€v) suficientes y el gasto real (€) está justificado, pulsa [DAR LUZ VERDE] para que el CEO ejecute la compra.</li>
+                            <li><span class="text-mars-yellow">Costes Reales:</span> Vigilancia estricta del dinero físico (€) gastado para no encarecer el KPI E=H/C.</li>
+                            <li><span class="text-mars-yellow">Ledger:</span> Subir el Libro de Cuentas Oficial para la evaluación de Economía.</li>
                         </ul>`;
                         break;
                     case 'MARKETING':
@@ -590,17 +633,16 @@
                     case 'OPERACIONES_IA':
                         content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Funciones de Logística y Auditoría IA</p>
                         <ul class="list-disc pl-5 space-y-2">
-                            <li><span class="text-mars-yellow">Gestión de Carga (Carrito):</span> Es el ÚNICO rol que tramita el carrito. Debe validar el ensamblaje de cada ítem, especificar su Coste Físico Real (€) y Comercio antes de enviar a CEO.</li>
+                            <li><span class="text-mars-yellow">Gestión de Carga (Logística):</span> Verifica el ensamblaje de cada ítem de las peticiones técnicas, asigna su Coste Físico Real (€) y Comercio proveedor, y transmite la orden al departamento de Finanzas.</li>
                             <li><span class="text-mars-yellow">Bitácora IA:</span> Recibe los reportes de uso de Inteligencia Artificial del resto del equipo, audita que haya habido verificación humana y los aprueba para integrarlos al dossier final.</li>
                         </ul>`;
                         break;
                     case 'DOCENTE':
                         content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Funciones del Claustro y Coordinación</p>
                         <ul class="list-disc pl-5 space-y-2">
-                            <li><span class="text-mars-yellow">Rúbricas de Evaluación:</span> En "Evaluar Rúbrica", seleccione una empresa y registre las notas (0-10) según sus criterios. El cálculo ponderado se realiza en tiempo real. Puede consultar las evidencias de cada materia.</li>
+                            <li><span class="text-mars-yellow">Rúbricas de Evaluación:</span> Seleccione una empresa y registre las notas (0-10) según sus criterios. El cálculo ponderado se realiza en tiempo real. Descargue desde ahí las evidencias de cada materia.</li>
                             <li><span class="text-mars-yellow">Sanciones AEE:</span> Aplique multas con el desplegable normativo a las empresas infractoras.</li>
-                            <li><span class="text-mars-yellow">Coordinación (Mario/Alex):</span> Controlan los Patrocinios, pueden editar los Plazos (Deadlines), descargar el Acta General y consultar el Archivo Central.</li>
-                            <li><span class="text-mars-yellow">Ajustes & D1:</span> Permite forzar la subida/bajada desde Cloudflare D1 y descargar copias de seguridad JSON completas.</li>
+                            <li><span class="text-mars-yellow">Coordinación (Mario/Alex):</span> Controlan los Patrocinios, pueden editar los Plazos (Deadlines), descargar el Acta General y consultar el Archivo Documental de todas las asignaturas.</li>
                         </ul>`;
                         break;
                     default:
@@ -636,7 +678,6 @@
                 state.save();
                 this.closeModal();
                 alert("Reporte enviado. ¡Gracias por contribuir a MARS-KET 2.0!");
-                this.render();
             },
 
             modalAEEFine(cid) {
@@ -809,7 +850,7 @@
                 vp.innerHTML = '';
                 if(!state.user) { this.viewLogin(vp); return; }
                 
-                // Route protection check for non-admin
+                // Route protection
                 const allowedRoutes = {
                     'CEO': ['orders', 'finance', 'resolutions', 'dossier', 'market'],
                     'TECNICO': ['market', 'tech', 'dossier'],
@@ -821,7 +862,7 @@
                 if (state.user.admin && !['admin', 'market', 'dossier'].includes(this.current)) {
                     this.current = 'admin';
                 } else if (!state.user.admin && !allowedRoutes[state.user.role].includes(this.current)) {
-                    this.current = allowedRoutes[state.user.role][0]; // fallback
+                    this.current = allowedRoutes[state.user.role][0];
                 }
                 
                 this.updateHUD();
@@ -907,7 +948,7 @@
                         <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">Suba el Informe Técnico Oficial (Estequiometría, Leyes de Newton y Aerodinámica) en formato PDF para su validación por FYQ.</p>
                         ${this.renderDocBadge('Informe Técnico Oficial', docs.technicalReport)}
                         <button onclick="document.getElementById('tech-doc-upload').click()" class="bg-slate-800 text-white px-6 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-mars-cyan hover:text-black transition-all mt-2 w-full md:w-auto">[ 📁 Seleccionar Archivo PDF ]</button>
-                        <input type="file" id="tech-doc-upload" class="hidden" accept="application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="ui.handleDeliverableUpload(event, 'technicalReport')">
+                        <input type="file" id="tech-doc-upload" class="hidden" accept="application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="ui.handleDeliverableHybridSubmit('technicalReport')">
                     </div>`;
                 }
 
@@ -1025,7 +1066,7 @@
                 state.data.companies[state.user.coId].cart.push({...item, qty: 1, price: item.price, name: `[REQ. TECNICA] ${item.name}`});
                 telemetry.log("CARRITO", `Petición Técnica: ${item.name}`);
                 state.save();
-                alert(`Petición de ${item.name} enviada al carrito de Logística (Operaciones).`);
+                alert(`Petición de ${item.name} enviada al carrito de Logística (Finanzas y Operaciones).`);
             },
 
             updateCartItem(idx, field, value) {
@@ -1086,6 +1127,12 @@
                 this.updateCartRealTotal(); // Run once if re-rendering
             },
 
+            removeFromCart(idx) { 
+                state.data.companies[state.user.coId].cart.splice(idx, 1); 
+                state.save(); 
+                this.render(); 
+            },
+
             updateCartRealTotal() {
                 const co = state.data.companies[state.user.coId];
                 if(!co || !co.cart.length) return;
@@ -1112,7 +1159,7 @@
                     if(allChecked) {
                         btn.disabled = false;
                         btn.className = "w-full bg-mars-cyan text-mars-bg font-black py-4 text-[10px] uppercase tracking-widest hover:shadow-[0_0_15px_#00f0ff] transition-all cursor-pointer";
-                        btn.innerText = "Transmitir Orden a CEO";
+                        btn.innerText = "Transmitir Orden a Finanzas";
                     } else {
                         btn.disabled = true;
                         btn.className = "w-full bg-slate-800 text-slate-500 font-black py-4 text-[10px] uppercase tracking-widest transition-all cursor-not-allowed";
@@ -1121,25 +1168,52 @@
                 }
             },
 
-            renderDeadlinesBlock() {
-                const dl = state.data.config.deadlines;
-                const getS = this.getDeadlineStatus;
-                return `
-                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 mb-6">
-                    <div class="bg-black border border-slate-800 p-2 text-center flex flex-col justify-between"><span class="text-[8px] text-slate-400 uppercase font-bold block mb-1 truncate">Pitch Fase I</span><span class="text-[8px] font-bold px-1 py-0.5 ${getS(dl.presPhase1).class}">${getS(dl.presPhase1).text}</span></div>
-                    <div class="bg-black border border-slate-800 p-2 text-center flex flex-col justify-between"><span class="text-[8px] text-slate-400 uppercase font-bold block mb-1 truncate">Propuesta Valor</span><span class="text-[8px] font-bold px-1 py-0.5 ${getS(dl.valuePropDoc).class}">${getS(dl.valuePropDoc).text}</span></div>
-                    <div class="bg-black border border-slate-800 p-2 text-center flex flex-col justify-between"><span class="text-[8px] text-slate-400 uppercase font-bold block mb-1 truncate">Informe Téc.</span><span class="text-[8px] font-bold px-1 py-0.5 ${getS(dl.techReport).class}">${getS(dl.techReport).text}</span></div>
-                    <div class="bg-black border border-slate-800 p-2 text-center flex flex-col justify-between"><span class="text-[8px] text-slate-400 uppercase font-bold block mb-1 truncate">Libro Finanzas</span><span class="text-[8px] font-bold px-1 py-0.5 ${getS(dl.financeBook).class}">${getS(dl.financeBook).text}</span></div>
-                    <div class="bg-black border border-slate-800 p-2 text-center flex flex-col justify-between"><span class="text-[8px] text-slate-400 uppercase font-bold block mb-1 truncate">Pitch Fase III</span><span class="text-[8px] font-bold px-1 py-0.5 ${getS(dl.presPhase3).class}">${getS(dl.presPhase3).text}</span></div>
-                </div>`;
+            submitOrder() {
+                const co = state.data.companies[state.user.coId];
+                const audit = document.getElementById('audit-text').value;
+
+                if(audit.length < 15) return alert("Justificación técnica insuficiente.");
+
+                let allChecked = true;
+                let realEurTotal = 0;
+                let processedItems = [];
+
+                for(let i=0; i<co.cart.length; i++) {
+                    const cb = document.getElementById(`cart-val-${i}`);
+                    if(!cb || !cb.checked) { allChecked = false; break; }
+                    
+                    const rEur = parseFloat(document.getElementById(`cart-eur-${i}`).value);
+                    const rShop = document.getElementById(`cart-shop-${i}`).value;
+                    
+                    if(isNaN(rEur) || rEur < 0 || !rShop) return alert(`Rellene el coste real y comercio del ítem ${i+1}`);
+                    
+                    realEurTotal += rEur;
+                    processedItems.push({...co.cart[i], realEur: rEur, realShop: rShop});
+                }
+                
+                if(!allChecked) return alert("Debe validar el ensamblaje de todos los componentes antes de transmitir la orden.");
+
+                const totalVirtual = co.cart.reduce((s, i) => s + i.price, 0);
+                
+                co.orders.unshift({ 
+                    id: state.data.config.nextOrderId++, 
+                    items: processedItems, total: totalVirtual, justification: audit, 
+                    realEurTotal: realEurTotal, status: 'PENDIENTE_FINANZAS', date: new Date().toLocaleString() 
+                });
+                
+                telemetry.log("ORDEN (OPS)", `Enviado a Finanzas: ${totalVirtual.toFixed(2)}€v`);
+                co.cart = []; state.save(); 
+                alert("Orden enviada a Auditoría Financiera.");
+                this.navigate('orders');
             },
 
             viewOrders(el) {
                 const co = state.data.companies[state.user.coId];
+                const role = state.user.role;
                 const wrapper = document.createElement('div');
                 
                 let ceoDashboard = '';
-                if(state.user.role === 'CEO') {
+                if(role === 'CEO') {
                     ceoDashboard = `
                     <h2 class="font-orbitron text-mars-cyan text-sm mb-3 uppercase tracking-tighter border-b border-mars-border pb-2">Cronograma Maestro de Entregas</h2>
                     ${this.renderDeadlinesBlock()}
@@ -1148,12 +1222,12 @@
 
                 wrapper.innerHTML = `
                 ${ceoDashboard}
-                <h2 class="font-orbitron text-mars-yellow text-lg sm:text-xl mb-6 uppercase tracking-tighter">Bóveda de Autorización Ejecutiva</h2>
+                <h2 class="font-orbitron text-mars-yellow text-lg sm:text-xl mb-6 uppercase tracking-tighter">Bóveda de Autorización y Órdenes</h2>
                 <div class="space-y-6">
                     ${co.orders.map(order => `
-                    <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 ${order.status === 'APROBADO' ? 'border-l-mars-green' : order.status === 'DENEGADO' ? 'border-l-mars-magenta' : 'border-l-mars-yellow'} animate-in slide-in-from-bottom-4 duration-300">
+                    <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 ${order.status === 'APROBADO_CEO' ? 'border-l-mars-green' : order.status === 'DENEGADO' ? 'border-l-mars-magenta' : 'border-l-mars-yellow'} animate-in slide-in-from-bottom-4 duration-300">
                         <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
-                            <div><span class="text-[9px] font-bold uppercase ${order.status === 'APROBADO' ? 'text-mars-green bg-mars-green/10' : order.status === 'DENEGADO' ? 'text-mars-magenta bg-mars-magenta/10' : 'text-mars-yellow bg-mars-yellow/10'} px-2 py-1 tracking-widest">[STATUS: ${order.status}]</span><h3 class="text-white font-orbitron mt-3 uppercase text-xs sm:text-sm">ORDER_TX: ${order.id}</h3></div>
+                            <div><span class="text-[9px] font-bold uppercase ${order.status === 'APROBADO_CEO' ? 'text-mars-green bg-mars-green/10' : order.status === 'DENEGADO' ? 'text-mars-magenta bg-mars-magenta/10' : 'text-mars-yellow bg-mars-yellow/10'} px-2 py-1 tracking-widest">[STATUS: ${order.status}]</span><h3 class="text-white font-orbitron mt-3 uppercase text-xs sm:text-sm">ORDER_TX: ${order.id}</h3></div>
                             <div class="text-left sm:text-right w-full sm:w-auto"><p class="text-mars-green font-black font-mono text-xl tracking-tighter">${order.total.toFixed(2)} €v</p><p class="text-[9px] text-slate-500 uppercase font-bold mt-1">${order.date}</p></div>
                         </div>
                         
@@ -1172,120 +1246,53 @@
                         
                         ${order.denyReason ? `<div class="bg-red-900/30 border border-red-500/50 p-3 text-[10px] text-red-200 mt-2 mb-4"><span class="font-bold">MOTIVO RECHAZO:</span> ${order.denyReason}</div>` : ''}
                         
-                        ${order.status === 'PENDIENTE_CEO' && state.user.role === 'CEO' ? `
+                        ${order.status === 'PENDIENTE_FINANZAS' && role === 'FINANZAS' ? `
                         <div class="flex flex-col sm:flex-row gap-3 border-t border-mars-border pt-4">
-                            <button onclick="ui.processOrder(${order.id}, 'APROBADO')" class="flex-grow bg-mars-green text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors">Firmar y Pagar</button>
+                            <button onclick="ui.processOrder(${order.id}, 'APROBADO_FINANZAS')" class="flex-grow bg-mars-green text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors">Dar Luz Verde (Aprobar Presupuesto)</button>
                             <button onclick="ui.promptDenyOrder(${order.id})" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-6 py-3 text-[10px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-colors whitespace-nowrap">Denegar Orden</button>
+                        </div>` : ''}
+                        
+                        ${order.status === 'APROBADO_FINANZAS' && role === 'CEO' ? `
+                        <div class="flex flex-col sm:flex-row gap-3 border-t border-mars-border pt-4">
+                            <button onclick="ui.processOrder(${order.id}, 'APROBADO_CEO')" class="flex-grow bg-mars-yellow text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors">Confirmar Compra Física y Ejecutar</button>
+                            <button onclick="ui.promptDenyOrder(${order.id})" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-6 py-3 text-[10px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-colors whitespace-nowrap">Vetar Orden</button>
                         </div>` : ''}
                     </div>`).join('') || '<p class="text-slate-600 italic text-sm">No hay peticiones en el buzón.</p>'}
                 </div>`;
                 el.appendChild(wrapper);
             },
 
-            viewResolutions(el) {
-                const co = state.data.companies[state.user.coId];
-                const wrapper = document.createElement('div');
-                
-                const openMotions = co.votingMotions.filter(m => m.status === 'ABIERTA');
-                const resolvedMotions = co.votingMotions.filter(m => m.status === 'RESUELTA');
-                
-                wrapper.innerHTML = `
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div class="space-y-6">
-                        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan">
-                            <h2 class="font-orbitron text-mars-cyan text-lg mb-4 uppercase tracking-tighter">Proponer Moción de Votación</h2>
-                            <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">Somete una decisión de diseño, logística o marca a votación de los 5 directivos de la startup.</p>
-                            <input type="text" id="mot-title" placeholder="Pregunta o Dilema" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white uppercase font-bold outline-none focus:border-mars-cyan mb-3">
-                            <div class="flex gap-2 mb-3">
-                                <input type="text" id="mot-optA" placeholder="Opción A" class="w-1/2 bg-slate-900 border border-mars-border p-3 text-xs text-white uppercase outline-none focus:border-mars-cyan">
-                                <input type="text" id="mot-optB" placeholder="Opción B" class="w-1/2 bg-slate-900 border border-mars-border p-3 text-xs text-white uppercase outline-none focus:border-mars-cyan">
-                            </div>
-                            <button onclick="ui.submitMotion()" class="w-full bg-mars-cyan/20 border border-mars-cyan text-mars-cyan font-bold py-3 text-[10px] uppercase hover:bg-mars-cyan hover:text-black transition-colors">Abrir Votación</button>
-                        </div>
-                        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow">
-                            <h2 class="font-orbitron text-mars-yellow text-lg mb-4 uppercase tracking-tighter">Mociones Abiertas</h2>
-                            <div class="space-y-4">
-                                ${openMotions.map(m => `
-                                <div class="bg-slate-900/80 border border-mars-yellow/50 p-4">
-                                    <h4 class="text-white font-bold text-xs uppercase mb-2 border-b border-slate-700 pb-2">${m.title}</h4>
-                                    <div class="flex flex-col sm:flex-row gap-2 mb-4 text-[10px]">
-                                        <button onclick="ui.voteMotion('${m.id}','A')" class="flex-1 bg-black border border-mars-border p-2 hover:border-mars-yellow transition-colors ${m.votes[state.user.role]==='A'?'border-mars-yellow text-mars-yellow':'text-slate-400'}">A: ${m.options[0]} (${Object.values(m.votes).filter(v=>v==='A').length})</button>
-                                        <button onclick="ui.voteMotion('${m.id}','B')" class="flex-1 bg-black border border-mars-border p-2 hover:border-mars-yellow transition-colors ${m.votes[state.user.role]==='B'?'border-mars-yellow text-mars-yellow':'text-slate-400'}">B: ${m.options[1]} (${Object.values(m.votes).filter(v=>v==='B').length})</button>
-                                    </div>
-                                    <div class="text-[8px] text-slate-500 uppercase flex gap-1 flex-wrap mb-3">Votos: ${Object.keys(m.votes).map(k=>`<span class="bg-slate-800 px-1 text-white">${k.substring(0,3)}</span>`).join('')}</div>
-                                    ${state.user.role === 'CEO' ? `<button onclick="ui.promptTieBreaker('${m.id}')" class="w-full bg-mars-yellow text-black font-black py-2 text-[9px] uppercase hover:bg-white">[ EJERCER VOTO DE CALIDAD / RESOLVER ]</button>` : ''}
-                                </div>`).join('') || '<p class="text-slate-500 text-xs italic">No hay votaciones activas.</p>'}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="space-y-6">
-                        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-white">
-                            <h2 class="font-orbitron text-white text-lg mb-4 uppercase tracking-tighter">Actas de Desempate (Histórico)</h2>
-                            <div class="space-y-4 overflow-y-auto max-h-[500px] pr-2">
-                                ${resolvedMotions.map(m => `
-                                <div class="bg-black/50 border border-slate-700 p-4 text-[10px]">
-                                    <span class="text-[8px] bg-white text-black px-2 py-0.5 font-bold mb-2 inline-block">ACTA OFICIAL CEO</span>
-                                    <h4 class="text-slate-300 font-bold uppercase mb-1">${m.title}</h4>
-                                    <p class="text-mars-cyan font-bold mb-2 bg-mars-cyan/10 p-2 inline-block border border-mars-cyan/30">> Decisión: ${m.options[m.resolution.choice==='A'?0:1]}</p>
-                                    <p class="text-slate-400 italic leading-relaxed border-l-2 border-slate-600 pl-2">"Justificación: ${m.resolution.justification}"</p>
-                                </div>`).join('') || '<p class="text-slate-600 text-xs italic">No hay actas emitidas.</p>'}
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-                el.appendChild(wrapper);
-            },
-
-            submitMotion() {
-                const title = document.getElementById('mot-title').value;
-                const optA = document.getElementById('mot-optA').value;
-                const optB = document.getElementById('mot-optB').value;
-                if(!title || !optA || !optB) return alert("Rellene todos los campos de la moción.");
-                
-                const co = state.data.companies[state.user.coId];
-                co.votingMotions.unshift({ id: 'MOT-'+Date.now(), title, options: [optA, optB], votes: {}, status: 'ABIERTA', resolution: null });
-                state.save();
-                this.render();
+            promptDenyOrder(oid) {
+                const html = `<input type="text" id="deny-reason" class="w-full bg-black border border-mars-magenta p-3 text-xs text-white" placeholder="Motivo del rechazo...">`;
+                const btn = `<button onclick="ui.finalizeDenyOrder(${oid})" class="bg-mars-magenta text-white px-6 py-2 text-[10px] font-bold uppercase hover:bg-white hover:text-mars-magenta">Confirmar Denegación</button>`;
+                this.showModal("Denegar Orden", html, btn);
             },
             
-            voteMotion(mid, opt) {
+            finalizeDenyOrder(oid) {
+                const reason = document.getElementById('deny-reason').value;
+                if(!reason) return alert("Especifique motivo.");
+                const o = state.data.companies[state.user.coId].orders.find(ord => ord.id === oid);
+                o.status = 'DENEGADO'; o.denyReason = `[${state.user.role}] ${reason}`;
+                telemetry.log("DENEGADO", `Orden #${oid} - Motivo: ${reason}`);
+                state.save(); this.closeModal(); this.render();
+            },
+            
+            processOrder(oid, status) {
                 const co = state.data.companies[state.user.coId];
-                const mot = co.votingMotions.find(m => m.id === mid);
-                if(mot && mot.status === 'ABIERTA') {
-                    mot.votes[state.user.role] = opt;
-                    state.save();
-                    this.render();
+                const o = co.orders.find(ord => ord.id === oid);
+                
+                if(status === 'APROBADO_FINANZAS') {
+                    if(co.balance < o.total) return alert("Alerta: Fondos virtuales insuficientes para aprobar este presupuesto.");
+                    o.status = 'APROBADO_FINANZAS';
+                    telemetry.log("APROBADO FINANZAS", `Orden #${oid} validada.`);
+                } else if(status === 'APROBADO_CEO') {
+                    if(co.balance < o.total) return alert("Fondos virtuales insuficientes en el momento de la ejecución.");
+                    state.addToLedger(state.user.coId, `Adquisición (Order #${oid})`, 'EJECUCIÓN_CEO', -o.total);
+                    o.items.forEach(i => { co.realCosts.unshift({ shop: i.realShop, item: `Order #${oid}: ${i.name}`, eur: i.realEur }); });
+                    o.status = 'APROBADO_CEO';
+                    telemetry.log("EJECUTADO CEO", `Orden #${oid} ejecutada y asimilada.`);
                 }
-            },
-
-            promptTieBreaker(mid) {
-                const html = `
-                    <div class="space-y-4">
-                        <select id="tie-choice" class="w-full bg-slate-900 border border-mars-yellow p-3 text-xs text-white uppercase outline-none focus:border-white font-bold">
-                            <option value="A">Imponer Opción A</option>
-                            <option value="B">Imponer Opción B</option>
-                        </select>
-                        <textarea id="tie-justification" class="w-full bg-slate-900 border border-mars-yellow p-3 text-xs text-white h-24 outline-none focus:border-white leading-relaxed" placeholder="Como CEO de la compañía, dicto la siguiente resolución por los motivos..."></textarea>
-                    </div>`;
-                const btn = `<button onclick="ui.resolveMotion('${mid}')" class="bg-mars-yellow text-black px-6 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-colors">Sellar Acta</button>`;
-                this.showModal("Voto de Calidad CEO", html, btn);
-            },
-
-            resolveMotion(mid) {
-                const choice = document.getElementById('tie-choice').value;
-                const just = document.getElementById('tie-justification').value;
-                if(just.length < 10) return alert("La justificación es demasiado breve.");
-                
-                const co = state.data.companies[state.user.coId];
-                const mot = co.votingMotions.find(m => m.id === mid);
-                mot.status = 'RESUELTA';
-                mot.resolution = { choice, justification: just, date: new Date().toLocaleString() };
-                
-                telemetry.log("GOBERNANZA", `Moción ${mid} resuelta por CEO.`);
-                state.save();
-                this.closeModal();
-                this.render();
+                state.save(); this.render();
             },
 
             viewFinance(el) {
@@ -1373,14 +1380,6 @@
                 </div>`;
                 el.appendChild(wrapper);
             },
-            
-            saveSlogan() {
-                const s = document.getElementById('brand-slogan').value;
-                state.data.companies[state.user.coId].slogan = s;
-                state.save();
-                alert("Eslogan guardado.");
-                this.render();
-            },
 
             viewAILog(el) {
                 const co = state.data.companies[state.user.coId];
@@ -1389,9 +1388,9 @@
                 
                 const wrapper = document.createElement('div');
                 wrapper.innerHTML = `
-                <div class="flex justify-between items-center mb-6">
+                <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
                     <h2 class="font-orbitron text-blue-400 text-xl uppercase tracking-tighter">Buzón y Bitácora de Inteligencia Artificial</h2>
-                    <button onclick="ui.modalReportAI()" class="bg-blue-600/20 border border-blue-500 text-blue-400 px-4 py-2 text-[10px] uppercase font-bold hover:bg-blue-500 hover:text-white transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)]">Registrar Prompt Directo</button>
+                    <button onclick="ui.modalReportAI()" class="bg-blue-600/20 border border-blue-500 text-blue-400 px-4 py-2 text-[10px] uppercase font-bold hover:bg-blue-500 hover:text-white transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)] w-full sm:w-auto">Registrar Prompt Directo</button>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow">
@@ -1399,7 +1398,7 @@
                         <div class="space-y-4 overflow-y-auto max-h-[500px] pr-2">
                             ${pending.map(p => `
                             <div class="bg-slate-900/50 border border-mars-border p-4 text-[10px]">
-                                <div class="flex justify-between mb-2 border-b border-mars-border/30 pb-2">
+                                <div class="flex justify-between mb-2 border-b border-mars-border/30 pb-2 flex-wrap gap-2">
                                     <span class="text-mars-yellow font-bold uppercase tracking-widest">${p.tool}</span>
                                     <span class="text-slate-500">${p.date}</span>
                                 </div>
@@ -1419,12 +1418,12 @@
                         <div class="space-y-4 overflow-y-auto max-h-[500px] pr-2">
                             ${approved.map(p => `
                             <div class="bg-slate-900/50 border border-blue-900/30 p-4 text-[10px] border-l-2 border-l-blue-500">
-                                <div class="flex justify-between mb-2 border-b border-slate-800 pb-2">
+                                <div class="flex justify-between mb-2 border-b border-slate-800 pb-2 flex-wrap gap-2">
                                     <span class="text-blue-400 font-bold uppercase tracking-widest">${p.tool}</span>
                                     <span class="text-slate-500">${p.date}</span>
                                 </div>
                                 <p class="text-white font-bold mb-1 uppercase">Tarea: ${p.task}</p>
-                                <div class="text-slate-400 mt-2 bg-black p-2"><span class="text-mars-cyan font-bold block mb-1">Prompt Validado:</span>"${p.prompt}"</div>
+                                <div class="text-slate-400 mt-2 bg-black p-2 border border-slate-800"><span class="text-mars-cyan font-bold block mb-1">Prompt Validado:</span>"${p.prompt}"</div>
                             </div>`).join('') || '<p class="text-slate-600 text-xs italic">Aún no se han integrado prompts aprobados a la bitácora.</p>'}
                         </div>
                     </div>
@@ -1432,6 +1431,83 @@
                 el.appendChild(wrapper);
             },
 
+            modalReportAI() {
+                if(state.user && state.user.admin) return alert("Esta función es exclusiva para las Startups.");
+                
+                const html = `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-[9px] text-blue-400 uppercase font-bold block mb-1">Herramienta Utilizada</label>
+                            <input id="ai-tool" placeholder="Ej: ChatGPT, Gemini, Claude..." class="w-full bg-slate-900 border border-blue-500/50 p-2 text-xs text-white uppercase focus:border-blue-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[9px] text-blue-400 uppercase font-bold block mb-1">Tarea Ejecutada</label>
+                            <input id="ai-task" placeholder="Ej: Cálculos de masa, diseño de logotipo, redacción..." class="w-full bg-slate-900 border border-blue-500/50 p-2 text-xs text-white uppercase focus:border-blue-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[9px] text-blue-400 uppercase font-bold block mb-1">Prompt Exacto Introducido</label>
+                            <textarea id="ai-prompt" placeholder="Escriba el prompt exacto que usó en la IA..." class="w-full bg-slate-900 border border-blue-500/50 p-3 text-xs text-white h-24 focus:border-blue-400 outline-none"></textarea>
+                        </div>
+                        <div>
+                            <label class="text-[9px] text-mars-green uppercase font-bold block mb-1">Auditoría / Verificación Humana</label>
+                            <textarea id="ai-verification" placeholder="¿Cómo ha comprobado que la respuesta de la IA era correcta y no inventada?" class="w-full bg-slate-900 border border-mars-green/50 p-3 text-xs text-white h-20 focus:border-mars-green outline-none"></textarea>
+                        </div>
+                    </div>`;
+                const actions = `<button onclick="ui.submitAIPrompt()" class="bg-blue-600 text-white px-6 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)] w-full sm:w-auto">Registrar Uso</button>`;
+                this.showModal("Reportar Uso de IA", html, actions);
+            },
+            
+            submitAIPrompt() {
+                const tool = document.getElementById('ai-tool').value;
+                const task = document.getElementById('ai-task').value;
+                const promptText = document.getElementById('ai-prompt').value;
+                const verification = document.getElementById('ai-verification').value;
+                
+                if(!tool || !task || !promptText || !verification) return alert("Por favor, rellene todos los campos para la auditoría.");
+                
+                const status = (state.user.role === 'OPERACIONES_IA') ? 'APROBADO' : 'PENDIENTE_VALIDACION';
+                
+                const co = state.data.companies[state.user.coId];
+                if(!co.aiPrompts) co.aiPrompts = [];
+                co.aiPrompts.unshift({
+                    id: 'AI-' + Date.now(),
+                    authorRole: state.user.role,
+                    tool, task, prompt: promptText, verification, status,
+                    date: new Date().toLocaleString()
+                });
+                
+                telemetry.log("USO IA", `Reporte enviado (${status}). Tarea: ${task}`);
+                state.save();
+                this.closeModal();
+                alert(status === 'APROBADO' ? "Registro añadido a la bitácora oficial." : "Reporte enviado. Pendiente de auditoría por Operaciones.");
+                this.render();
+            },
+            
+            processAIPrompt(id, newStatus) {
+                const p = state.data.companies[state.user.coId].aiPrompts.find(x => x.id === id);
+                if(p) {
+                    p.status = newStatus;
+                    telemetry.log("AUDITORÍA IA", `Prompt ${id} -> ${newStatus}`);
+                    state.save();
+                    this.render();
+                }
+            },
+            
+            modalCustom() {
+                this.showModal('Solicitud Extra-Catálogo (I+D)', `<input id="custom-name" placeholder="Artículo y Cantidad" class="w-full bg-slate-900 border border-mars-border p-3 text-xs mb-4 text-white font-bold uppercase"><textarea id="custom-reason" placeholder="Justificación técnica de I+D..." class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white h-24"></textarea>`, `<button onclick="ui.submitCustom()" class="bg-mars-magenta text-white px-6 py-2 text-xs font-black uppercase">Enviar Solicitud</button>`);
+            },
+            
+            submitCustom() {
+                const name = document.getElementById('custom-name').value;
+                const reason = document.getElementById('custom-reason').value;
+                if(!name || !reason) return;
+                if(!state.data.pendingCustom) state.data.pendingCustom = [];
+                state.data.pendingCustom.push({ id: Date.now(), company: state.user.coId, name, reason });
+                telemetry.log("EXTERNO", `Petición I+D: ${name}`);
+                state.save(); this.closeModal(); alert("Enviado al profesorado para su cotización.");
+            },
+
+            // --- VISTA DOCENTE ---
             viewAdmin(el) {
                 const isAlex = state.user.role === 'COORD_ALEX';
                 
@@ -1501,16 +1577,16 @@
                             </table>
                         </div>
                     </div>
-                    <div class="terminal-border bg-mars-card p-6">
-                        <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase">Solicitudes de Material Externo / I+D</h3>
+                    <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow">
+                        <h3 class="font-orbitron text-mars-yellow text-xs mb-4 uppercase">Solicitudes de Material Externo / I+D</h3>
                         <div class="space-y-3">
                             ${state.data.pendingCustom.map(p => `
-                            <div class="bg-slate-900 border border-mars-border p-3 flex justify-between items-center text-[10px]">
-                                <div><p class="text-mars-yellow font-bold uppercase">${state.data.companies[p.company].name}</p><p class="text-white font-bold text-xs uppercase">${p.name}</p><p class="text-slate-400 italic">"${p.reason}"</p></div>
-                                <div class="flex gap-2 items-center">
+                            <div class="bg-slate-900 border border-mars-border p-3 flex justify-between items-center text-[10px] flex-wrap gap-2">
+                                <div class="flex-grow min-w-[200px]"><p class="text-mars-yellow font-bold uppercase">${state.data.companies[p.company].name}</p><p class="text-white font-bold text-xs uppercase">${p.name}</p><p class="text-slate-400 italic">"${p.reason}"</p></div>
+                                <div class="flex gap-2 items-center flex-shrink-0">
                                     <input type="number" id="val-price-${p.id}" class="w-16 bg-black border border-mars-border p-2 text-mars-green text-center font-bold" placeholder="€v">
-                                    <button onclick="ui.teacherValidate('${p.id}', true)" class="bg-mars-green text-black px-4 py-2 font-black">OK</button>
-                                    <button onclick="ui.teacherValidate('${p.id}', false)" class="text-mars-magenta font-bold px-2">X</button>
+                                    <button onclick="ui.teacherValidate('${p.id}', true)" class="bg-mars-green text-black px-4 py-2 font-black hover:bg-white transition-colors">OK</button>
+                                    <button onclick="ui.teacherValidate('${p.id}', false)" class="text-mars-magenta font-bold px-3 py-2 border border-mars-magenta hover:bg-mars-magenta hover:text-white transition-colors">X</button>
                                 </div>
                             </div>`).join('') || '<p class="text-slate-600 text-xs italic">Nada pendiente.</p>'}
                         </div>
@@ -1536,7 +1612,6 @@
                     adminHtml += `</div>`;
 
                     if(isCoord && this.coordEvalView === 'ACTA') {
-                        // VIEW: ACTA GENERAL
                         adminHtml += `
                         <div class="terminal-border bg-mars-card p-6 overflow-x-auto">
                             <table class="w-full text-left text-[10px] whitespace-nowrap">
@@ -1562,7 +1637,6 @@
                             </table>
                         </div>`;
                     } else if(isCoord && this.coordEvalView === 'ARCHIVE') {
-                        // VIEW: ARCHIVO CENTRAL
                         adminHtml += `
                         <div class="terminal-border bg-mars-card p-6 overflow-x-auto">
                             <table class="w-full text-left text-[9px] whitespace-nowrap">
@@ -1595,7 +1669,6 @@
                         </div>`;
 
                     } else if(activeSubject) {
-                        // VIEW: FORMULARIO DE EVALUACIÓN + EVIDENCIAS
                         const config = RUBRIC_CONFIG[activeSubject];
                         
                         let selectCoHtml = `<select id="eval-co-select" onchange="ui.selectEvalCo(this.value)" class="w-full md:w-1/2 bg-slate-900 border border-mars-border text-white text-xs p-3 uppercase font-bold outline-none focus:border-mars-cyan mb-6">
@@ -1610,7 +1683,6 @@
                             const pastGrade = co.grades[activeSubject] || { scores: {}, feedback: '' };
                             const docs = co.deliverables || {};
                             
-                            // Bloque dinámico de Evidencias Documentales según Materia
                             let evidenceHtml = `<h4 class="font-orbitron text-mars-cyan text-xs uppercase mb-4 tracking-widest border-b border-mars-border pb-2">Evidencias Adjuntas</h4>`;
                             if (activeSubject === 'FYQ') {
                                 evidenceHtml += this.renderDocBadge('Informe Técnico (FYQ)', docs.technicalReport);
@@ -1649,10 +1721,10 @@
                                             <textarea id="eval-feedback" class="w-full bg-slate-900 border border-mars-border p-3 text-[10px] text-white h-full min-h-[100px] outline-none focus:border-mars-cyan leading-relaxed" placeholder="Observaciones cualitativas y feedback...">${pastGrade.feedback||''}</textarea>
                                             <div class="flex flex-col">
                                                 <div class="terminal-border border-dashed p-4 text-center mb-3 flex-grow bg-black flex flex-col justify-center">
-                                                    <p class="text-[8px] text-slate-500 uppercase font-bold mb-1">Nota Ponderada</p>
-                                                    <p id="realtime-grade" class="text-4xl font-orbitron text-mars-green tracking-tighter">${pastGrade.final ? pastGrade.final.toFixed(2) : '0.00'}</p>
+                                                    <p class="text-[9px] text-slate-500 uppercase font-bold mb-2 tracking-widest">Nota Ponderada</p>
+                                                    <p id="realtime-grade" class="text-5xl font-orbitron text-mars-green tracking-tighter">${pastGrade.final ? pastGrade.final.toFixed(2) : '0.00'}</p>
                                                 </div>
-                                                <button onclick="ui.saveGrade('${activeSubject}')" class="bg-mars-cyan text-black font-black py-3 text-[10px] uppercase tracking-widest hover:glow-cyan transition-all">[ REGISTRAR CALIFICACIÓN ]</button>
+                                                <button onclick="ui.saveGrade('${activeSubject}')" class="bg-mars-cyan text-black font-black py-4 text-[10px] uppercase tracking-widest hover:glow-cyan transition-all">[ REGISTRAR CALIFICACIÓN ]</button>
                                             </div>
                                         </div>
                                     </div>
@@ -1696,7 +1768,6 @@
                     </div>`;
                 }
                 else if(this.adminTab === 'telemetry') {
-                    // Calculamos sumas para la matriz
                     let matRows = '';
                     Object.keys(state.data.companies).forEach(cid => {
                         const co = state.data.companies[cid];
