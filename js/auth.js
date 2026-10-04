@@ -106,6 +106,8 @@ const auth = {
         } else if (role === 'TECNICO') {
             html += `<button onclick="ui.navigate('tech')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">I+D y Pruebas</button>`;
             html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
+            html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Órdenes I+D</button>`;
+            html += `<button onclick="ui.navigate('cart')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center gap-2 whitespace-nowrap">Logística <span id="cart-count" class="bg-mars-magenta text-white px-1.5 rounded-full text-[8px]">0</span></button>`;
             html += `<button onclick="ui.modalCustom()" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase text-mars-magenta hover:bg-mars-magenta/10 whitespace-nowrap">Req. Material I+D</button>`;
         } else if (role === 'FINANZAS') {
             html += `<button onclick="ui.navigate('finance')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Finanzas / Ledger</button>`;
@@ -137,7 +139,7 @@ const dev = {
         else { this.clickTimer = setTimeout(() => this.clickCount = 0, 400); }
     },
     open() {
-        let html = `<h4 class="text-mars-magenta glitch-text font-bold mb-4">DEV_BACKDOOR_ACCESS_GRANTED [v${APP_VERSION}]</h4>`;
+        let html = `<h4 class="text-mars-magenta glitch-text font-bold mb-4">DEV_BACKDOOR_ACCESS_GRANTED [v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0'}]</h4>`;
         html += `<div class="bg-black border border-mars-magenta p-4 text-[10px] space-y-4 mb-4 font-mono">`;
         html += `<div><p class="text-mars-cyan font-bold mb-2 border-b border-mars-cyan/30">PINs DOCENTES EN CLARO</p>`;
         for(let k in state.data.config.teachers) { html += `<p>${state.data.config.teachers[k].name}: <span class="text-white">${state.data.config.teachers[k].pin}</span></p>`; }

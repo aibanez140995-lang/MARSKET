@@ -174,6 +174,10 @@ const ui = {
 
     updateHUD() {
         if(!state.user) return;
+        
+        const verEl = document.getElementById('hud-version');
+        if (verEl && typeof APP_VERSION !== 'undefined') verEl.innerText = `v${APP_VERSION}`;
+
         const balEl = document.getElementById('hud-balance');
         const infoEl = document.getElementById('hud-info');
         const cloudEl = document.getElementById('hud-cloud-status');
