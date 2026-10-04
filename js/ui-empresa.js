@@ -179,23 +179,33 @@ Object.assign(ui, {
 
     submitTechOrderToFinance() {
         const co = state.data.companies[state.user.coId];
-        if(co.cart.length === 0) return alert("Debe añadir material al borrador de I+D antes de transmitir.");
+        if(!co.cart || co.cart.length === 0) return alert("Debe añadir material al borrador de I+D antes de transmitir.");
         
         const just = prompt("Introduzca la justificación técnica de esta petición de compra:");
         if(!just || just.length < 5) return alert("Justificación insuficiente.");
         
+        if (!co.orders) co.orders = [];
+        
         const total = co.cart.reduce((s, i) => s + i.price, 0);
-        co.orders.unshift({ 
+        const newOrder = { 
             id: state.data.config.nextOrderId++, 
-            items: [...co.cart], total: total, justification: just, 
-            status: 'PENDIENTE_FINANZAS', date: new Date().toLocaleString() 
-        });
+            items: [...co.cart], 
+            total: total, 
+            justification: just, 
+            status: 'PENDIENTE_FINANZAS', 
+            date: new Date().toLocaleString() 
+        };
+        
+        co.orders.unshift(newOrder);
         
         telemetry.log("REQUISICIÓN", `Enviada a Finanzas: ${total.toFixed(2)}€v`);
         co.cart = []; 
+        
         state.save(); 
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        
+        alert(`✅ Solicitud #${newOrder.id} transmitida con éxito. Finanzas ya puede verla en su panel.`);
         this.render();
-        alert("Solicitud transmitida a Finanzas para su luz verde presupuestaria.");
     },
 
     modalCustom() {
@@ -255,7 +265,7 @@ Object.assign(ui, {
         }
 
         let techCartHtml = '';
-        if (role === 'TECNICO' && co.cart.length > 0) {
+        if (role === 'TECNICO' && co.cart && co.cart.length > 0) {
             techCartHtml = `
             <div class="terminal-border bg-mars-card p-4 mb-6 border-t-4 border-t-mars-cyan">
                 <h3 class="font-orbitron text-mars-cyan text-sm mb-3 uppercase">Borrador de Petición (I+D)</h3>
@@ -277,15 +287,27 @@ Object.assign(ui, {
             </div>`;
         }
 
+        let financeAlertHtml = '';
+        if (role.includes('FINAN')) {
+            const pendingCount = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS').length;
+            if (pendingCount > 0) {
+                financeAlertHtml = `
+                <div class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow p-4 mb-6 animate-pulse shadow-[0_0_15px_rgba(255,230,0,0.3)]">
+                    <p class="font-bold uppercase text-xs sm:text-sm text-center tracking-widest">⚠️ ATENCIÓN FINANZAS: Hay ${pendingCount} orden(es) esperando tu aprobación presupuestaria.</p>
+                </div>`;
+            }
+        }
+
         wrapper.innerHTML = `
         ${ceoDashboard}
         ${techCartHtml}
+        ${financeAlertHtml}
         <div class="flex justify-between items-center mb-6">
             <h2 class="font-orbitron text-mars-yellow text-lg sm:text-xl uppercase tracking-tighter">Bóveda de Autorización y Finanzas</h2>
         </div>
         
         <div class="space-y-6">
-            ${co.orders.map(order => `
+            ${(co.orders || []).map(order => `
             <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 ${order.status === 'EJECUTADO' ? 'border-l-mars-cyan' : order.status === 'APROBADO_FINANZAS' ? 'border-l-mars-green' : order.status === 'DENEGADO' ? 'border-l-mars-magenta' : 'border-l-mars-yellow'} animate-in slide-in-from-bottom-4 duration-300">
                 <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
                     <div><span class="text-[9px] font-bold uppercase ${order.status === 'EJECUTADO' ? 'text-mars-cyan bg-mars-cyan/10' : order.status === 'APROBADO_FINANZAS' ? 'text-mars-green bg-mars-green/10' : order.status === 'DENEGADO' ? 'text-mars-magenta bg-mars-magenta/10' : 'text-mars-yellow bg-mars-yellow/10'} px-2 py-1 tracking-widest">[STATUS: ${order.status}]</span><h3 class="text-white font-orbitron mt-3 uppercase text-xs sm:text-sm">ORDER_TX: ${order.id}</h3></div>
@@ -307,10 +329,10 @@ Object.assign(ui, {
                 
                 ${order.denyReason ? `<div class="bg-red-900/30 border border-red-500/50 p-3 text-[10px] text-red-200 mt-2 mb-4 w-full"><span class="font-bold">MOTIVO RECHAZO:</span> ${order.denyReason}</div>` : ''}
                 
-                ${order.status === 'PENDIENTE_FINANZAS' && role === 'FINANZAS' ? `
+                ${order.status === 'PENDIENTE_FINANZAS' && role.includes('FINAN') ? `
                 <div class="flex flex-col sm:flex-row gap-3 border-t border-mars-border pt-4">
-                    <button onclick="ui.financeApproveOrder(${order.id})" class="flex-grow bg-mars-green text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors">Dar Luz Verde Presupuestaria</button>
-                    <button onclick="ui.promptDenyOrder(${order.id})" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-6 py-3 text-[10px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-colors whitespace-nowrap">Denegar</button>
+                    <button onclick="ui.financeApproveOrder('${order.id}')" class="flex-grow bg-mars-green text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors shadow-[0_0_10px_rgba(0,255,102,0.4)]">Dar Luz Verde Presupuestaria</button>
+                    <button onclick="ui.promptDenyOrder('${order.id}')" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-6 py-3 text-[10px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-colors whitespace-nowrap">Denegar</button>
                 </div>` : ''}
             </div>`).join('') || '<p class="text-slate-600 italic text-sm">No hay peticiones en el histórico.</p>'}
         </div>`;
@@ -319,35 +341,46 @@ Object.assign(ui, {
 
     financeApproveOrder(oid) {
         const co = state.data.companies[state.user.coId];
-        const o = co.orders.find(ord => ord.id == oid);
+        const o = (co.orders || []).find(ord => String(ord.id) === String(oid));
         if(!o) return alert("Orden no encontrada.");
         
-        if(co.balance < o.total) return alert("Alerta: Fondos virtuales insuficientes para aprobar este presupuesto.");
+        if(co.balance < o.total) return alert("Fondos insuficientes.");
         
         o.status = 'APROBADO_FINANZAS';
         // Inicializar campos reales para Operaciones
-        o.items = o.items.map(i => ({...i, realEur: '', realShop: ''}));
+        o.items = (o.items || []).map(i => ({...i, realEur: '', realShop: ''}));
         
         telemetry.log("APROBADO FINANZAS", `Orden #${oid} validada.`);
-        alert("Luz verde presupuestaria concedida. Orden enviada a Logística.");
         
-        state.save(); this.render();
+        state.save(); 
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        
+        alert(`Luz verde concedida a la orden #${oid}. Enviada a Logística.`);
+        this.render();
     },
 
     promptDenyOrder(oid) {
         const html = `<input type="text" id="deny-reason" class="w-full bg-black border border-mars-magenta p-3 text-xs text-white" placeholder="Motivo del rechazo...">`;
-        const btn = `<button onclick="ui.finalizeDenyOrder(${oid})" class="bg-mars-magenta text-white px-6 py-2 text-[10px] font-bold uppercase hover:bg-white hover:text-mars-magenta">Confirmar Denegación</button>`;
+        const btn = `<button onclick="ui.finalizeDenyOrder('${oid}')" class="bg-mars-magenta text-white px-6 py-2 text-[10px] font-bold uppercase hover:bg-white hover:text-mars-magenta">Confirmar Denegación</button>`;
         this.showModal("Denegar Orden", html, btn);
     },
     
     finalizeDenyOrder(oid) {
         const reason = document.getElementById('deny-reason').value;
         if(!reason) return alert("Especifique motivo.");
-        const o = state.data.companies[state.user.coId].orders.find(ord => ord.id == oid);
+        const o = state.data.companies[state.user.coId].orders.find(ord => String(ord.id) === String(oid));
         if(!o) return alert("Orden no encontrada.");
-        o.status = 'DENEGADO'; o.denyReason = `[${state.user.role}] ${reason}`;
+        
+        o.status = 'DENEGADO'; 
+        o.denyReason = `[${state.user.role}] ${reason}`;
+        
         telemetry.log("DENEGADO", `Orden #${oid} - Motivo: ${reason}`);
-        state.save(); this.closeModal(); this.render();
+        
+        state.save(); 
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        
+        this.closeModal(); 
+        this.render();
     },
 
     viewFinance(el) {
@@ -355,6 +388,27 @@ Object.assign(ui, {
         const docs = co.deliverables || {};
         const totalReal = co.realCosts.reduce((s, i) => s + i.eur, 0);
         const wrapper = document.createElement('div');
+        
+        let pendingOrdersHtml = '';
+        const pendingOrders = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS');
+        if (pendingOrders.length > 0 && state.user.role.includes('FINAN')) {
+            pendingOrdersHtml = `
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow mb-8 animate-in fade-in">
+                <h3 class="font-orbitron text-mars-yellow text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Órdenes Pendientes de Aprobación</h3>
+                <div class="space-y-3">
+                    ${pendingOrders.map(po => `
+                        <div class="bg-slate-900 border border-mars-yellow/50 p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div>
+                                <p class="text-white font-bold uppercase text-xs">Orden #${po.id}</p>
+                                <p class="text-[10px] text-slate-400 mt-1">Total: <span class="text-mars-green font-mono">${po.total.toFixed(2)} €v</span></p>
+                            </div>
+                            <button onclick="ui.navigate('orders')" class="bg-mars-yellow text-black px-4 py-2 text-[10px] font-black uppercase hover:bg-white transition-colors whitespace-nowrap">Revisar y Aprobar</button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>`;
+        }
+
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6">
             <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-green w-full"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Caja Virtual</p><p class="text-xl sm:text-2xl font-orbitron text-mars-green tracking-tighter">${co.balance.toFixed(2)} €v</p></div>
@@ -366,6 +420,8 @@ Object.assign(ui, {
         <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan mb-8">
             ${this.renderHybridUploadBox('Libro de Cuentas y Balances (Excel/PDF/URL)', 'Entregable oficial para el área de Economía con el ROI y Ledger detallado.', 'financeBook', docs.financeBook)}
         </div>` : ''}
+
+        ${pendingOrdersHtml}
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
             <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden">
@@ -399,7 +455,7 @@ Object.assign(ui, {
     // --- 4. OPERACIONES E IA ---
     updateOrderItem(oid, idx, field, value) {
         const co = state.data.companies[state.user.coId];
-        const order = co.orders.find(o => o.id == oid);
+        const order = co.orders.find(o => String(o.id) === String(oid));
         if(!order || !order.items[idx]) return;
         if(field === 'realEur') order.items[idx][field] = value ? parseFloat(value) : '';
         else order.items[idx][field] = value;
@@ -407,7 +463,7 @@ Object.assign(ui, {
 
     updateOrderRealTotal(oid) {
         const co = state.data.companies[state.user.coId];
-        const order = co.orders.find(o => o.id == oid);
+        const order = co.orders.find(o => String(o.id) === String(oid));
         if(!order) return;
         let totalR = 0;
         for(let i=0; i<order.items.length; i++) {
@@ -420,7 +476,7 @@ Object.assign(ui, {
 
     checkOrderReady(oid) {
         const co = state.data.companies[state.user.coId];
-        const order = co.orders.find(o => o.id == oid);
+        const order = co.orders.find(o => String(o.id) === String(oid));
         if(!order) return;
         let allValid = true;
         for(let i=0; i<order.items.length; i++) {
@@ -448,7 +504,7 @@ Object.assign(ui, {
 
     viewCart(el) {
         const co = state.data.companies[state.user.coId];
-        const approvedOrders = co.orders.filter(o => o.status === 'APROBADO_FINANZAS');
+        const approvedOrders = (co.orders || []).filter(o => o.status === 'APROBADO_FINANZAS');
         const wrapper = document.createElement('div');
 
         let html = `<h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl mb-6 uppercase tracking-tighter">Logística de Despliegue (Validación Física)</h2>`;
@@ -467,9 +523,9 @@ Object.assign(ui, {
                             </div>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2 pt-2 border-t border-mars-border/50">
-                            <label class="flex items-center gap-2 text-[9px] text-mars-cyan cursor-pointer p-1 w-full"><input type="checkbox" id="cart-val-${order.id}-${idx}" class="form-checkbox bg-black border-mars-cyan" onchange="ui.checkOrderReady(${order.id})"> Validado ensamblaje</label>
-                            <input type="number" id="cart-eur-${order.id}-${idx}" value="${item.realEur !== '' ? item.realEur : ''}" placeholder="Coste Real (€)" class="bg-slate-900 border border-slate-700 text-[10px] p-2 text-white outline-none focus:border-mars-magenta w-full" oninput="ui.updateOrderItem(${order.id}, ${idx}, 'realEur', this.value); ui.updateOrderRealTotal(${order.id}); ui.checkOrderReady(${order.id})" min="0" step="0.01">
-                            <input type="text" id="cart-shop-${order.id}-${idx}" value="${item.realShop || ''}" placeholder="Proveedor/Tienda" class="bg-slate-900 border border-slate-700 text-[10px] p-2 text-white uppercase outline-none focus:border-mars-magenta w-full" oninput="ui.updateOrderItem(${order.id}, ${idx}, 'realShop', this.value); ui.checkOrderReady(${order.id})">
+                            <label class="flex items-center gap-2 text-[9px] text-mars-cyan cursor-pointer p-1 w-full"><input type="checkbox" id="cart-val-${order.id}-${idx}" class="form-checkbox bg-black border-mars-cyan" onchange="ui.checkOrderReady('${order.id}')"> Validado ensamblaje</label>
+                            <input type="number" id="cart-eur-${order.id}-${idx}" value="${item.realEur !== '' ? item.realEur : ''}" placeholder="Coste Real (€)" class="bg-slate-900 border border-slate-700 text-[10px] p-2 text-white outline-none focus:border-mars-magenta w-full" oninput="ui.updateOrderItem('${order.id}', ${idx}, 'realEur', this.value); ui.updateOrderRealTotal('${order.id}'); ui.checkOrderReady('${order.id}')" min="0" step="0.01">
+                            <input type="text" id="cart-shop-${order.id}-${idx}" value="${item.realShop || ''}" placeholder="Proveedor/Tienda" class="bg-slate-900 border border-slate-700 text-[10px] p-2 text-white uppercase outline-none focus:border-mars-magenta w-full" oninput="ui.updateOrderItem('${order.id}', ${idx}, 'realShop', this.value); ui.checkOrderReady('${order.id}')">
                         </div>
                     </div>
                 `).join('');
@@ -488,7 +544,7 @@ Object.assign(ui, {
                             <p class="text-[9px] text-mars-magenta uppercase mb-1 font-bold">Suma FÍSICA Total</p>
                             <p id="dynamic-real-total-${order.id}" class="text-lg sm:text-xl font-mono text-mars-magenta font-black">0.00 €</p>
                         </div>
-                        <button id="submit-order-btn-${order.id}" onclick="ui.executeOrderPurchase(${order.id})" class="w-full sm:w-auto bg-slate-800 text-slate-500 font-black px-6 py-3 text-[10px] uppercase tracking-widest transition-all cursor-not-allowed" disabled>Validar Ensamblaje y Costes</button>
+                        <button id="submit-order-btn-${order.id}" onclick="ui.executeOrderPurchase('${order.id}')" class="w-full sm:w-auto bg-slate-800 text-slate-500 font-black px-6 py-3 text-[10px] uppercase tracking-widest transition-all cursor-not-allowed" disabled>Validar Ensamblaje y Costes</button>
                     </div>
                 </div>`;
             });
@@ -506,7 +562,7 @@ Object.assign(ui, {
 
     executeOrderPurchase(oid) {
         const co = state.data.companies[state.user.coId];
-        const order = co.orders.find(o => o.id == oid);
+        const order = co.orders.find(o => String(o.id) === String(oid));
         if(!order) return alert("Orden no encontrada.");
 
         let allChecked = true;
@@ -539,6 +595,8 @@ Object.assign(ui, {
         
         telemetry.log("EJECUCIÓN COMPRA", `Orden #${oid} | Importe: ${order.total.toFixed(2)}€v | Real: ${realEurTotal.toFixed(2)}€`);
         state.save(); 
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        
         alert("Compra física confirmada y asentada en el Ledger.");
         this.render();
     },
