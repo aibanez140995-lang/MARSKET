@@ -48,8 +48,10 @@ const auth = {
         }
     },
     fail() { alert("AUTH DENIED: PIN INCORRECTO"); this.clear(); },
+    
     login(coId, roleKey, admin, entityName) {
         state.user = { coId, role: roleKey, admin };
+        localStorage.setItem(state.sessionKey, JSON.stringify(state.user));
         state.pin = '';
         
         if(!admin) {
@@ -76,7 +78,12 @@ const auth = {
 
         ui.showWelcomeModal();
     },
-    logout() { location.reload(); },
+    
+    logout() { 
+        localStorage.removeItem(state.sessionKey);
+        sessionStorage.removeItem('hideWelcome');
+        location.reload(); 
+    },
     
     buildNav(isAdmin) {
         const nav = document.getElementById('nav-container');

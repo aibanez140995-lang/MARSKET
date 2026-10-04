@@ -1,6 +1,6 @@
 // js/config.js
 
-const APP_VERSION = "1.0.2";
+const APP_VERSION = "1.0.03";
 
 const RUBRIC_CONFIG = {
     FYQ: { name: "Física y Química", criteria: [{id: 'c1', name: 'Informe Científico Estequiometría', weight: 0.4}, {id: 'c2', name: 'Lanzamiento, Apogeo y Optimización', weight: 0.4}, {id: 'c3', name: 'Rol Técnico y Q&A', weight: 0.2}] },

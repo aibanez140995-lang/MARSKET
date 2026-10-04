@@ -4,6 +4,7 @@
 const state = {
     data: {}, user: null, pin: '', sessionData: null,
     storageKey: 'marsket_v10_PWA',
+    sessionKey: 'marsket_session_v1',
     isCloudOnline: false, isSyncing: false, syncTimer: null,
 
     migrate(d) {
@@ -66,8 +67,31 @@ const state = {
         const saved = localStorage.getItem(this.storageKey);
         const raw = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(INITIAL_DATA));
         this.data = this.migrate(raw);
-        
         localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+
+        // Rehidratar sesión persistente si existe
+        const savedSession = localStorage.getItem(this.sessionKey);
+        if (savedSession) {
+            try {
+                const sessionUser = JSON.parse(savedSession);
+                // Validar que la entidad siga existiendo en el estado
+                const isValid = sessionUser.admin 
+                    ? !!this.data.config.teachers[sessionUser.role]
+                    : !!this.data.companies[sessionUser.coId];
+
+                if (isValid) {
+                    this.user = sessionUser;
+                    document.getElementById('hud-header')?.classList.remove('hidden');
+                    document.getElementById('hud-nav')?.classList.remove('hidden');
+                    auth.buildNav(this.user.admin);
+                } else {
+                    localStorage.removeItem(this.sessionKey);
+                }
+            } catch(e) {
+                localStorage.removeItem(this.sessionKey);
+            }
+        }
+        
         ui.render();
         setInterval(() => { const el = document.getElementById('hud-clock'); if(el) el.innerText = `TIME: ${new Date().toLocaleTimeString()}`; }, 1000);
         
