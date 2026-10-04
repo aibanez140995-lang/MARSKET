@@ -190,14 +190,10 @@ const ui = {
             
             const countEl = document.getElementById('cart-count');
             if(countEl) {
-                if (state.user.role === 'OPERACIONES_IA') {
+                if (state.user.role === 'OPERACIONES_IA' || state.user.role === 'TECNICO') {
                     const pendingOps = (co.orders || []).filter(o => o.status === 'APROBADO_FINANZAS').length;
                     countEl.innerText = pendingOps;
                     countEl.style.display = pendingOps > 0 ? 'inline-block' : 'none';
-                } else if (state.user.role === 'TECNICO') {
-                    const pendingTech = (co.cart || []).length;
-                    countEl.innerText = pendingTech;
-                    countEl.style.display = pendingTech > 0 ? 'inline-block' : 'none';
                 } else {
                     countEl.style.display = 'none';
                 }
@@ -237,7 +233,7 @@ const ui = {
         // Route protection
         const allowedRoutes = {
             'CEO': ['orders', 'finance', 'resolutions', 'dossier', 'market'],
-            'TECNICO': ['market', 'tech', 'orders', 'dossier'],
+            'TECNICO': ['market', 'tech', 'cart', 'orders', 'dossier'],
             'FINANZAS': ['finance', 'orders', 'dossier', 'market'],
             'MARKETING': ['brand', 'market', 'dossier'],
             'OPERACIONES_IA': ['market', 'cart', 'ailog', 'dossier']

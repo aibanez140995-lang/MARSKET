@@ -372,6 +372,11 @@ Object.assign(ui, {
                     <button onclick="ui.financeApproveOrder('${order.id}')" class="flex-grow bg-mars-green text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors shadow-[0_0_10px_rgba(0,255,102,0.4)]">Dar Luz Verde Presupuestaria</button>
                     <button onclick="ui.promptDenyOrder('${order.id}')" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-6 py-3 text-[10px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-colors whitespace-nowrap">Denegar</button>
                 </div>` : ''}
+
+                ${order.status === 'APROBADO_FINANZAS' && (role === 'TECNICO' || role === 'OPERACIONES_IA') ? `
+                <div class="flex flex-col sm:flex-row gap-3 border-t border-mars-border pt-4">
+                    <button onclick="ui.navigate('cart')" class="flex-grow bg-mars-cyan text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors shadow-[0_0_10px_rgba(0,240,255,0.4)]">Ir a Logística para Ejecutar Compra</button>
+                </div>` : ''}
             </div>`).join('') || '<p class="text-slate-600 italic text-sm">No hay peticiones en el histórico.</p>'}
         </div>`;
         el.appendChild(wrapper);
@@ -540,6 +545,32 @@ Object.assign(ui, {
         }
     },
 
+    toggleValidateAll(oid) {
+        const co = state.data.companies[state.user.coId];
+        const order = co.orders.find(o => String(o.id) === String(oid));
+        if(!order) return;
+
+        for(let i=0; i<order.items.length; i++) {
+            const cb = document.getElementById(`cart-val-${oid}-${i}`);
+            const eur = document.getElementById(`cart-eur-${oid}-${i}`);
+            const shop = document.getElementById(`cart-shop-${oid}-${i}`);
+            
+            if(cb) cb.checked = true;
+            
+            if(eur && (eur.value === '' || isNaN(parseFloat(eur.value)))) {
+                eur.value = '0.00';
+                this.updateOrderItem(oid, i, 'realEur', '0.00');
+            }
+            
+            if(shop && shop.value.trim() === '') {
+                shop.value = 'SUPERMARS-KET';
+                this.updateOrderItem(oid, i, 'realShop', 'SUPERMARS-KET');
+            }
+        }
+        this.updateOrderRealTotal(oid);
+        this.checkOrderReady(oid);
+    },
+
     viewCart(el) {
         const co = state.data.companies[state.user.coId];
         const approvedOrders = (co.orders || []).filter(o => o.status === 'APROBADO_FINANZAS');
@@ -570,9 +601,12 @@ Object.assign(ui, {
 
                 html += `
                 <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
-                    <div class="flex justify-between items-center mb-4 border-b border-mars-border/50 pb-2">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border/50 pb-2 gap-3">
                         <h3 class="font-orbitron text-mars-cyan text-sm uppercase">ORDEN #${order.id}</h3>
-                        <span class="text-mars-green font-mono font-bold">${order.total.toFixed(2)} €v</span>
+                        <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                            <span class="text-mars-green font-mono font-bold">${order.total.toFixed(2)} €v</span>
+                            <button onclick="ui.toggleValidateAll('${order.id}')" class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-3 py-1.5 text-[9px] font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors whitespace-nowrap">[ VALIDAR TODOS ]</button>
+                        </div>
                     </div>
                     <div class="space-y-4 mb-6">
                         ${cartItemsHtml}
