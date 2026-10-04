@@ -455,7 +455,15 @@ Object.assign(ui, {
         if(ok) {
             const price = parseFloat(document.getElementById(`val-price-${pid}`).value);
             if(!price) return alert("Falta precio €v.");
-            state.data.catalog.unshift({ id: 'CUST-'+pid, name: `[ESP] ${state.data.pendingCustom[reqIdx].name}`, price, unit: 'Especial', category: 'Externo' });
+            state.data.catalog.unshift({ 
+                id: 'CUST-' + pid, 
+                name: `[ESP] ${state.data.pendingCustom[reqIdx].name}`, 
+                price: price, 
+                unit: 'Especial', 
+                category: 'Externo',
+                origin: 'I+D Local',
+                exclusiveFor: state.data.pendingCustom[reqIdx].company
+            });
         }
         state.data.pendingCustom.splice(reqIdx, 1); 
         state.save(); 

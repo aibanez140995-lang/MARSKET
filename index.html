@@ -6,14 +6,14 @@
     <title>MARS-KET 2.0 | TACTICAL COMMAND</title>
     
     <!-- PWA & Favicon -->
-    <link id="favicon" rel="icon" type="image/png" href="/logo.png">
+    <link id="favicon" rel="icon" type="image/jpeg" href="/logo.jpg">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#05070a">
-    <link id="apple-touch-icon" rel="apple-touch-icon" href="/logo.png">
+    <link id="apple-touch-icon" rel="apple-touch-icon" href="/logo.jpg">
     
     <!-- Web App Manifest (Data URI) -->
-    <link id="pwa-manifest" rel="manifest" href='data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22MARS-KET%202.0%22%2C%22short_name%22%3A%22MARSKET%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2305070a%22%2C%22theme_color%22%3A%22%2305070a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22%2Flogo.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D'>
+    <link id="pwa-manifest" rel="manifest" href='data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22MARS-KET%202.0%22%2C%22short_name%22%3A%22MARSKET%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2305070a%22%2C%22theme_color%22%3A%22%2305070a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22%2Flogo.jpg%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fjpeg%22%7D%5D%7D'>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
@@ -68,10 +68,10 @@
                 <div class="led-green animate-pulse"></div>
                 <!-- Trigger Secreto Backdoor (Triple Click) con Logo Oficial -->
                 <div onclick="dev.handleTrigger()" class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity select-none pr-4 border-r border-mars-border group">
-                    <img src="/logo.png" alt="M2" class="w-8 h-8 object-contain drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]" onerror="this.style.display='none'">
+                    <img src="/logo.jpg" alt="M2" class="w-8 h-8 object-contain drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]" onerror="this.onerror=null; this.src='/logo.png';">
                     <div class="flex flex-col">
                         <h1 class="font-orbitron font-black text-mars-cyan text-lg tracking-widest group-hover:text-white transition-colors leading-none">MARS-KET 2.0</h1>
-                        <span id="hud-version" class="text-[7px] text-mars-cyan uppercase tracking-widest mt-1">v1.0.03</span>
+                        <span id="hud-version" class="text-[7px] text-mars-cyan uppercase tracking-widest mt-1">v1.0.04</span>
                     </div>
                 </div>
 

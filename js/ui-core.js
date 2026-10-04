@@ -27,15 +27,63 @@ const ui = {
         let role = state.user ? state.user.role : '';
         if(state.user && state.user.admin) role = 'DOCENTE';
         
-        document.getElementById('onboarding-title').innerText = `PROTOCOLO INCORPORACIÓN: ${role.replace('_',' ')}`;
-        let content = `<div class="space-y-4 font-mono">`;
+        document.getElementById('onboarding-title').innerText = `¡HOLA, ${role.replace('_',' ')}! 🚀`;
+        let content = `<div class="space-y-4 font-mono text-sm leading-relaxed">`;
+        
         switch(role) {
-            case 'CEO': content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Acciones Inmediatas:</p><ul class="list-disc pl-5 space-y-2"><li>Revise el Cronograma Maestro de entregas para evitar sanciones de la AEE.</li><li>Vigile la Bóveda de Órdenes: ejecute los pagos (coste real + virtual) cuando Finanzas apruebe el presupuesto.</li><li>Supervise las mociones de Gobernanza en caso de conflicto.</li></ul>`; break;
-            case 'TECNICO': content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Acciones Inmediatas:</p><ul class="list-disc pl-5 space-y-2"><li>Consulte el SUPERMARS-KET y solicite el aprovisionamiento de componentes.</li><li>Registre sus ensayos en el Banco de Pruebas para encontrar el KPI de eficiencia ideal.</li><li>Descargue la guía de FYQ y suba su Informe Técnico.</li></ul>`; break;
-            case 'FINANZAS': content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Acciones Inmediatas:</p><ul class="list-disc pl-5 space-y-2"><li>Audite que el Coste Físico Real (€) registrado por Operaciones sea verídico.</li><li>Apruebe el Presupuesto (Virtual) en las Órdenes de Compra para que el CEO pueda ejecutarlas.</li><li>Prepare el Libro de Cuentas Oficial para Evaluación.</li></ul>`; break;
-            case 'MARKETING': content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Acciones Inmediatas:</p><ul class="list-disc pl-5 space-y-2"><li>Suba el Logo en formato transparente y asigne un Eslogan.</li><li>Redacte la Propuesta de Valor para captar Patrocinadores (Oro/Plata/Bronce).</li><li>Comience el desarrollo del Pitch de Fase I y súbalo al sistema.</li></ul>`; break;
-            case 'OPERACIONES_IA': content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Acciones Inmediatas:</p><ul class="list-disc pl-5 space-y-2"><li>Verifique los componentes en el carrito, indique su Coste Físico Real (€) y Tienda, y transmítalos a Finanzas.</li><li>Revise y apruebe los Prompts de IA generados por el resto del equipo en el Buzón.</li></ul>`; break;
-            case 'DOCENTE': content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Acciones Inmediatas:</p><ul class="list-disc pl-5 space-y-2"><li>Verifique el estado de las entregas de las empresas en el Archivo Documental.</li><li>Utilice la pestaña 'Evaluar Rúbrica' para calificar y descargar las evidencias.</li><li>En caso de Coordinación, revise la bandeja de Patrocinios, Ajuste de Plazos y sugerencias a Alex.</li></ul>`; break;
+            case 'CEO': 
+                content += `<p class="text-mars-cyan font-bold">¡Bienvenido a la silla de la presidencia!</p>
+                <p class="text-slate-300">Tu misión principal es que la startup no se hunda antes del despegue.</p>
+                <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400">
+                    <li>Vigila el <strong>Cronograma Maestro</strong>. La Agencia Espacial Escolar (AEE) no perdona los retrasos y las multas duelen.</li>
+                    <li>Supervisa la <strong>Bóveda de Órdenes</strong>. Asegúrate de que Finanzas y Operaciones fluyan sin cuellos de botella.</li>
+                    <li>Si hay peleas en el equipo, usa tu <strong>voto de calidad</strong> en la pestaña de Gobernanza.</li>
+                </ul>`; 
+                break;
+            case 'TECNICO': 
+                content += `<p class="text-mars-cyan font-bold">¡Saludos, cerebro de la propulsión química! 🧪</p>
+                <p class="text-slate-300">De ti depende que el cohete suba y no explote en la rampa de lanzamiento.</p>
+                <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400">
+                    <li>Pide los materiales en el <strong>SUPERMARS-KET</strong> y justifica muy bien por qué los necesitas.</li>
+                    <li>Registra cada ensayo en el <strong>Banco de Pruebas</strong>. Recuerda: buscamos la máxima eficiencia (E = Altura / Coste).</li>
+                    <li>Sube tu <strong>Informe Técnico</strong> a tiempo para que Física y Química te evalúe.</li>
+                </ul>`; 
+                break;
+            case 'FINANZAS': 
+                content += `<p class="text-mars-cyan font-bold">¡Bienvenido, guardián de la caja virtual! 💰</p>
+                <p class="text-slate-300">Sin tu luz verde presupuestaria, aquí no se mueve ni un tornillo.</p>
+                <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400">
+                    <li>Revisa las peticiones del Técnico. Si no hay fondos o la justificación es mala, <strong>deniega sin piedad</strong>.</li>
+                    <li>Vigila el <strong>Ledger Inmutable</strong>. Cada céntimo virtual gastado afecta a la rentabilidad.</li>
+                    <li>Prepara el <strong>Libro de Cuentas</strong> oficial para la evaluación de Economía.</li>
+                </ul>`; 
+                break;
+            case 'MARKETING': 
+                content += `<p class="text-mars-cyan font-bold">¡Hola, genio creativo! 🎨</p>
+                <p class="text-slate-300">Un cohete sin marca es solo un tubo de plástico con vinagre.</p>
+                <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400">
+                    <li>Sube el <strong>Logotipo</strong> transparente y define un <strong>Eslogan</strong> pegadizo.</li>
+                    <li>Redacta la <strong>Propuesta de Valor</strong>. Necesitamos convencer a los inversores para conseguir patrocinios Oro.</li>
+                    <li>Prepara y sube las presentaciones para los <strong>Pitches de Oratoria</strong> (Inglés y Lengua).</li>
+                </ul>`; 
+                break;
+            case 'OPERACIONES_IA': 
+                content += `<p class="text-mars-cyan font-bold">¡Saludos, maestro de la logística y la ética IA! 📦🤖</p>
+                <p class="text-slate-300">Tú conectas el mundo virtual con el mundo físico real.</p>
+                <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400">
+                    <li>En la pestaña <strong>Logística</strong>, valida el ensamblaje de las compras aprobadas por Finanzas y anota lo que han costado en euros reales (€).</li>
+                    <li>Vigila la <strong>Bitácora IA</strong>. Audita que nadie del equipo use ChatGPT o Claude sin verificar humanamente la información.</li>
+                </ul>`; 
+                break;
+            case 'DOCENTE': 
+                content += `<p class="text-mars-cyan font-bold">¡Bienvenido al Alto Mando, Inspector/a! 🎖️</p>
+                <p class="text-slate-300">El Centro de Mando Docente está listo para la evaluación.</p>
+                <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400">
+                    <li>Usa la pestaña <strong>Rúbricas & Entregas</strong> para calificar en tiempo real.</li>
+                    <li>Revisa el <strong>Archivo Documental</strong> centralizado de todas las startups.</li>
+                    <li>Si eres Coordinador, gestiona los patrocinios, ajusta los plazos y aplica sanciones de la AEE si es necesario.</li>
+                </ul>`; 
+                break;
         }
         content += `</div>`;
         document.getElementById('onboarding-body').innerHTML = content;
@@ -50,62 +98,102 @@ const ui = {
     },
 
     showGuide() {
-        let role = state.user ? state.user.role : '';
-        if(state.user && state.user.admin) role = 'DOCENTE';
-        
-        let title = "Manual de Operaciones: " + role.replace('_',' ');
+        const viewTitles = {
+            'market': 'SUPERMARS-KET Oficial',
+            'tech': 'I+D y Banco de Pruebas',
+            'orders': 'Bóveda de Órdenes',
+            'finance': 'Finanzas y Ledger',
+            'cart': 'Logística de Despliegue',
+            'brand': 'Centro de Marca',
+            'ailog': 'Bitácora de IA',
+            'resolutions': 'Gobernanza y Actas',
+            'dossier': 'Dossier y Notas',
+            'admin': 'Centro de Mando Docente'
+        };
+
+        let title = `Manual Táctico: ${viewTitles[this.current] || 'General'}`;
         let content = `<div class="space-y-4 text-xs leading-relaxed font-mono">`;
         
-        switch(role) {
-            case 'CEO':
-                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Funciones de la Presidencia</p>
-                <ul class="list-disc pl-5 space-y-2">
-                    <li><span class="text-mars-yellow">Bóveda de Autorización:</span> Ejecuta las compras físicas que han sido previamente auditadas y aprobadas por Finanzas.</li>
-                    <li><span class="text-mars-yellow">Gobernanza y Actas:</span> Redacta y publica actas para resolver empates en las votaciones del equipo.</li>
-                    <li><span class="text-mars-yellow">Pitch & Liderazgo:</span> Supervisa la preparación de la oratoria y asume la responsabilidad final frente a las multas de retraso de la AEE.</li>
+        switch(this.current) {
+            case 'market':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Catálogo de Aprovisionamiento</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Origen de Materiales:</span> Fíjate en el país de origen de cada componente. Esto es vital para el análisis de rutas comerciales internacionales en Economía.</li>
+                    <li><span class="text-mars-yellow">Peticiones:</span> Solo el Dpto. Técnico puede añadir materiales al borrador. Al pulsar "Transmitir a Finanzas", se exigirá una justificación técnica.</li>
+                    <li><span class="text-mars-yellow">Reactivos:</span> El Bicarbonato se pide en gramos y el Vinagre en dosis de 10ml. Calcula bien la estequiometría.</li>
                 </ul>`;
                 break;
-            case 'TECNICO':
-                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Funciones de Ingeniería y Química</p>
-                <ul class="list-disc pl-5 space-y-2">
-                    <li><span class="text-mars-yellow">Estequiometría y Ensayos:</span> Calcula la reacción exacta. Debe registrar cada prueba de vuelo en el "Banco de Pruebas" para analizar la eficiencia.</li>
-                    <li><span class="text-mars-yellow">Catálogo I+D:</span> Debe revisar el SUPERMARS-KET y pulsar "[SOLICITAR APROVISIONAMIENTO]" para que Operaciones inicie la tramitación.</li>
-                    <li><span class="text-mars-yellow">Documentación:</span> Es el encargado de subir el <strong class="text-white">Informe Técnico PDF/Enlace</strong> en su panel para la evaluación de FYQ.</li>
+            case 'tech':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Investigación y Desarrollo</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Banco de Pruebas:</span> Registra cada lanzamiento. El sistema calculará automáticamente la Eficiencia (E = Altura / Coste). Busca maximizar este KPI.</li>
+                    <li><span class="text-mars-yellow">Entregable FYQ:</span> Sube el Informe Técnico (PDF o URL) con los cálculos estequiométricos, leyes de Newton y diseño aerodinámico.</li>
                 </ul>`;
                 break;
-            case 'FINANZAS':
-                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Funciones de Auditoría y Balance</p>
-                <ul class="list-disc pl-5 space-y-2">
-                    <li><span class="text-mars-yellow">Auditoría Presupuestaria:</span> Recibe las órdenes verificadas por Operaciones. Si hay fondos virtuales (€v) suficientes y el gasto real (€) está justificado, pulsa [DAR LUZ VERDE] para que el CEO ejecute la compra.</li>
-                    <li><span class="text-mars-yellow">Costes Reales:</span> Vigilancia estricta del dinero físico (€) gastado para no encarecer el KPI E=H/C.</li>
-                    <li><span class="text-mars-yellow">Ledger:</span> Subir el Libro de Cuentas Oficial para la evaluación de Economía.</li>
+            case 'orders':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Control Presupuestario</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Circuito de Aprobación:</span> Las órdenes llegan como "PENDIENTE FINANZAS". El Dpto. Financiero debe auditar la justificación técnica y dar luz verde o denegar.</li>
+                    <li><span class="text-mars-yellow">Cronograma:</span> Vigila los semáforos de plazos. Si un entregable entra en rojo (Vencido), la AEE aplicará multas severas al balance virtual.</li>
                 </ul>`;
                 break;
-            case 'MARKETING':
-                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Funciones de Branding e Identidad</p>
-                <ul class="list-disc pl-5 space-y-2">
-                    <li><span class="text-mars-yellow">Logotipo y Eslogan:</span> Diseñar el logo corporativo transparente y definir el eslogan oficial.</li>
-                    <li><span class="text-mars-yellow">Propuesta de Valor:</span> Redactar el manifiesto corporativo y la ventaja competitiva para atraer patrocinios de inversores.</li>
-                    <li><span class="text-mars-yellow">Entregables de Oratoria:</span> Subir los archivos oficiales del Micro-Pitch (Fase I) y del Pitch Final (Fase III).</li>
+            case 'finance':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Auditoría y Contabilidad</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Ledger Inmutable:</span> Todas las transacciones virtuales (compras, multas, patrocinios) quedan registradas aquí de forma permanente.</li>
+                    <li><span class="text-mars-yellow">Gasto Físico:</span> Controla el dinero real (€) que Operaciones anota al hacer las compras físicas.</li>
+                    <li><span class="text-mars-yellow">Entregable ECO:</span> Sube el Libro de Cuentas Financiero con el ROI y los balances para su evaluación.</li>
                 </ul>`;
                 break;
-            case 'OPERACIONES_IA':
-                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Funciones de Logística y Auditoría IA</p>
-                <ul class="list-disc pl-5 space-y-2">
-                    <li><span class="text-mars-yellow">Gestión de Carga (Logística):</span> Verifica el ensamblaje de cada ítem de las peticiones técnicas, asigna su Coste Físico Real (€) y Comercio proveedor, y transmite la orden al departamento de Finanzas.</li>
-                    <li><span class="text-mars-yellow">Bitácora IA:</span> Recibe los reportes de uso de Inteligencia Artificial del resto del equipo, audita que haya habido verificación humana y los aprueba para integrarlos al dossier final.</li>
+            case 'cart':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Logística y Ejecución Física</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Órdenes Aprobadas:</span> Aquí aparecen las órdenes que Finanzas ha autorizado.</li>
+                    <li><span class="text-mars-yellow">Validación:</span> Debes marcar el ensamblaje de cada pieza, anotar el coste real físico (€) y la tienda/proveedor.</li>
+                    <li><span class="text-mars-yellow">Ejecución:</span> Al pulsar "Confirmar Compra", se descontará el dinero virtual del Ledger y se guardarán los costes reales.</li>
                 </ul>`;
                 break;
-            case 'DOCENTE':
-                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Funciones del Claustro y Coordinación</p>
-                <ul class="list-disc pl-5 space-y-2">
-                    <li><span class="text-mars-yellow">Rúbricas de Evaluación:</span> Seleccione una empresa y registre las notas (0-10) según sus criterios. El cálculo ponderado se realiza en tiempo real. Descargue desde ahí las evidencias de cada materia.</li>
-                    <li><span class="text-mars-yellow">Sanciones AEE:</span> Aplique multas con el desplegable normativo a las empresas infractoras.</li>
-                    <li><span class="text-mars-yellow">Coordinación (Mario/Alex):</span> Controlan los Patrocinios, pueden editar los Plazos (Deadlines), descargar el Acta General y consultar el Archivo Documental de todas las asignaturas.</li>
+            case 'brand':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Identidad Corporativa y Oratoria</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Branding:</span> Sube un logo transparente (PNG/JPG < 1MB) y define el eslogan para personalizar tu HUD.</li>
+                    <li><span class="text-mars-yellow">Propuesta de Valor:</span> Redacta el manifiesto de la empresa. Es clave para atraer inversores y patrocinios.</li>
+                    <li><span class="text-mars-yellow">Pitches:</span> Sube los enlaces o PDFs de las presentaciones para las defensas de Inglés (Fase I) y Lengua (Fase III).</li>
+                </ul>`;
+                break;
+            case 'ailog':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Auditoría de Inteligencia Artificial</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Transparencia:</span> Cualquier miembro del equipo que use IA (ChatGPT, Claude, etc.) debe registrar el prompt exacto aquí.</li>
+                    <li><span class="text-mars-yellow">Verificación:</span> Es obligatorio explicar cómo se ha verificado humanamente que la IA no ha alucinado.</li>
+                    <li><span class="text-mars-yellow">Aprobación:</span> Operaciones IA debe revisar y aprobar los prompts para integrarlos a la bitácora oficial del dossier.</li>
+                </ul>`;
+                break;
+            case 'resolutions':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Gobernanza y Actas</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Mociones:</span> Cualquier miembro puede proponer una moción para tomar decisiones de equipo.</li>
+                    <li><span class="text-mars-yellow">Votaciones:</span> Todos deben votar a favor o en contra.</li>
+                    <li><span class="text-mars-yellow">Voto de Calidad:</span> En caso de empate, el CEO tiene la responsabilidad de ejercer el voto de calidad para cerrar el acta.</li>
+                </ul>`;
+                break;
+            case 'dossier':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Expediente Académico</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Evaluación Continua:</span> Consulta en tiempo real las calificaciones y el feedback cualitativo del claustro en las 6 materias oficiales.</li>
+                    <li><span class="text-mars-yellow">Archivo Documental:</span> Acceso rápido a todos los entregables (PDFs y enlaces) que la startup ha subido al sistema.</li>
+                </ul>`;
+                break;
+            case 'admin':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Centro de Mando Docente</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">AEE & Finanzas:</span> Visión global del gasto real de la clase, patrocinios y emisión de expedientes sancionadores.</li>
+                    <li><span class="text-mars-yellow">Rúbricas:</span> Evalúa a las startups en tiempo real. La nota ponderada se calcula automáticamente.</li>
+                    <li><span class="text-mars-yellow">Ajustes:</span> Configura los plazos de entrega (deadlines) y fuerza la sincronización con la base de datos D1.</li>
                 </ul>`;
                 break;
             default:
-                content += `<p>Acceda con un rol para visualizar las instrucciones operativas.</p>`;
+                content += `<p>Navega por las pestañas para ver la ayuda contextual de cada sección.</p>`;
         }
         content += `</div>`;
         this.showModal(title, content, "");

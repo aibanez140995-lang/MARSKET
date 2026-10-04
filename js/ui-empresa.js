@@ -41,13 +41,29 @@ Object.assign(ui, {
             
             if (co.cart && co.cart.length > 0) {
                 const totalEurV = co.cart.reduce((s, i) => s + i.price, 0).toFixed(2);
-                techBanner = `
-                <div class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow p-4 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4 animate-pulse shadow-[0_0_15px_rgba(255,230,0,0.3)]">
-                    <div>
-                        <p class="font-bold uppercase text-xs sm:text-sm tracking-widest text-center sm:text-left">Lista de I+D Activa: ${co.cart.length} componente(s)</p>
-                        <p class="text-[10px] uppercase tracking-widest text-center sm:text-left mt-1">Total acumulado: ${totalEurV} €v</p>
+                
+                const draftItemsHtml = co.cart.map((item, idx) => `
+                    <div class="flex justify-between items-center bg-slate-900 p-2 border border-mars-border text-[10px] mb-1">
+                        <span class="text-white">${item.name} (x${item.qty})</span>
+                        <div class="flex items-center gap-3">
+                            <span class="text-mars-green font-mono">${item.price.toFixed(2)} €v</span>
+                            <button onclick="ui.removeFromCart(${idx})" class="text-mars-magenta hover:text-white font-bold px-2">X</button>
+                        </div>
                     </div>
-                    <button onclick="ui.modalSubmitOrderToFinance()" class="bg-mars-yellow text-black px-6 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all whitespace-nowrap w-full sm:w-auto">[ REVISAR Y ENVIAR A FINANZAS ]</button>
+                `).join('');
+
+                techBanner = `
+                <div class="bg-mars-yellow/10 border border-mars-yellow p-4 mb-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                        <div>
+                            <p class="text-mars-yellow font-bold uppercase text-xs sm:text-sm tracking-widest">Borrador de I+D: ${co.cart.length} componente(s)</p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Total acumulado: <span class="text-mars-green font-bold">${totalEurV} €v</span></p>
+                        </div>
+                        <button onclick="ui.modalSubmitOrderToFinance()" class="bg-mars-yellow text-black px-6 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all whitespace-nowrap w-full sm:w-auto">[ REVISAR Y ENVIAR A FINANZAS ]</button>
+                    </div>
+                    <div class="max-h-32 overflow-y-auto pr-2">
+                        ${draftItemsHtml}
+                    </div>
                 </div>`;
             }
 
@@ -62,6 +78,12 @@ Object.assign(ui, {
             </div>`;
         }
 
+        const visibleCatalog = state.data.catalog.filter(item => {
+            if (!item.exclusiveFor) return true;
+            if (state.user && state.user.admin) return true;
+            return state.user && state.user.coId === item.exclusiveFor;
+        });
+
         wrapper.innerHTML = `
         ${topSection}
         <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
@@ -69,7 +91,7 @@ Object.assign(ui, {
             ${!state.user.admin && state.user.role === 'TECNICO' ? `<button onclick="ui.modalCustom()" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-3 py-1.5 text-[9px] sm:text-[10px] uppercase font-bold hover:bg-mars-magenta hover:text-white transition-all whitespace-nowrap">Solicitar I+D</button>` : ``}
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            ${state.data.catalog.map(item => {
+            ${visibleCatalog.map(item => {
                 let buySection = '';
                 if(!state.user.admin) {
                     if (state.user.role === 'TECNICO') {
@@ -88,8 +110,12 @@ Object.assign(ui, {
                 return `
                 <div class="terminal-border bg-mars-card p-4 group hover:border-mars-cyan transition-all flex flex-col justify-between">
                     <div>
-                        <div class="flex justify-between text-[8px] text-slate-500 mb-2 uppercase font-bold tracking-widest"><span>${item.category}</span><span class="text-mars-yellow">${item.unit}</span></div>
-                        <h3 class="font-orbitron text-white text-[11px] mb-2 leading-tight uppercase">${item.name}</h3>
+                        <div class="flex justify-between text-[8px] text-slate-500 mb-2 uppercase font-bold tracking-widest">
+                            <span>${item.category}</span>
+                            <span class="text-mars-yellow">${item.unit}</span>
+                        </div>
+                        <h3 class="font-orbitron text-white text-[11px] mb-1 leading-tight uppercase">${item.name}</h3>
+                        <p class="text-[8px] text-slate-400 uppercase mb-2">[🌍 ${item.origin || 'Desconocido'}]</p>
                     </div>
                     <div>
                         <span class="text-mars-green font-black text-base font-mono tracking-tighter">${item.price.toFixed(2)} €v</span>
@@ -109,7 +135,6 @@ Object.assign(ui, {
         state.data.companies[state.user.coId].cart.push({...item, qty, price: item.price * qty, name, realEur: '', realShop: ''});
         telemetry.log("REQ TÉCNICA", `Añadido a borrador: ${name}`);
         state.save();
-        alert(`Añadido ${name} al borrador de petición. Vaya a 'I+D y Pruebas' o 'Órdenes' para transmitir a Finanzas.`);
         this.render();
     },
 
@@ -286,6 +311,7 @@ Object.assign(ui, {
     viewOrders(el) {
         const co = state.data.companies[state.user.coId];
         const role = state.user.role;
+        const docs = co.deliverables || {};
         const wrapper = document.createElement('div');
         
         let ceoDashboard = '';
@@ -293,30 +319,18 @@ Object.assign(ui, {
             ceoDashboard = `
             <h2 class="font-orbitron text-mars-cyan text-sm mb-3 uppercase tracking-tighter border-b border-mars-border pb-2">Cronograma Maestro de Entregas</h2>
             ${this.renderDeadlinesBlock()}
+            
+            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan mb-8">
+                <h2 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Bóveda Documental Corporativa</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    ${this.renderDocBadge('Informe Técnico (FYQ)', docs.technicalReport)}
+                    ${this.renderDocBadge('Libro de Cuentas (ECO)', docs.financeBook)}
+                    ${this.renderDocBadge('Micro-Pitch Fase I (ING/LYE)', docs.presPhase1)}
+                    ${this.renderDocBadge('Pitch Final Fase III (LEN)', docs.presPhase3)}
+                    ${this.renderDocBadge('Propuesta de Valor (LYE)', docs.valuePropDoc)}
+                </div>
+            </div>
             `;
-        }
-
-        let techCartHtml = '';
-        if (role === 'TECNICO' && co.cart && co.cart.length > 0) {
-            techCartHtml = `
-            <div class="terminal-border bg-mars-card p-4 mb-6 border-t-4 border-t-mars-cyan">
-                <h3 class="font-orbitron text-mars-cyan text-sm mb-3 uppercase">Borrador de Petición (I+D)</h3>
-                <div class="space-y-2 mb-4">
-                    ${co.cart.map((item, idx) => `
-                        <div class="flex justify-between items-center bg-slate-900 p-2 border border-mars-border text-[10px]">
-                            <span class="text-white">${item.name} (x${item.qty})</span>
-                            <div class="flex items-center gap-3">
-                                <span class="text-mars-green font-mono">${item.price.toFixed(2)} €v</span>
-                                <button onclick="ui.removeFromCart(${idx})" class="text-mars-magenta hover:text-white font-bold px-2">X</button>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-                <div class="flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-mars-border/50 pt-3">
-                    <span class="text-[10px] text-slate-400 uppercase font-bold">Total Virtual: <span class="text-mars-green font-mono text-sm">${co.cart.reduce((s,i)=>s+i.price,0).toFixed(2)} €v</span></span>
-                    <button onclick="ui.modalSubmitOrderToFinance()" class="w-full sm:w-auto bg-mars-cyan text-black px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-colors">Transmitir a Finanzas</button>
-                </div>
-            </div>`;
         }
 
         let financeAlertHtml = '';
@@ -338,7 +352,6 @@ Object.assign(ui, {
 
         wrapper.innerHTML = `
         ${ceoDashboard}
-        ${techCartHtml}
         ${financeAlertHtml}
         <div class="flex justify-between items-center mb-6">
             <h2 class="font-orbitron text-mars-yellow text-lg sm:text-xl uppercase tracking-tighter">Bóveda de Autorización y Finanzas</h2>
@@ -452,21 +465,18 @@ Object.assign(ui, {
             </div>`;
         }
 
-        wrapper.innerHTML = `
+        const isFinanzas = state.user.role === 'FINANZAS';
+        const isCEOOrAdmin = state.user.role === 'CEO' || state.user.admin;
+
+        let financeCards = `
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6">
             <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-green w-full"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Caja Virtual</p><p class="text-xl sm:text-2xl font-orbitron text-mars-green tracking-tighter">${co.balance.toFixed(2)} €v</p></div>
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-magenta w-full"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Gasto Físico Auditado</p><p class="text-xl sm:text-2xl font-orbitron text-white tracking-tighter">${totalReal.toFixed(2)} €</p></div>
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-cyan w-full"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Transacciones Ledger</p><p class="text-xl sm:text-2xl font-orbitron text-mars-cyan tracking-tighter">${co.ledger.length}</p></div>
-        </div>
-        
-        ${state.user.role === 'FINANZAS' ? `
-        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan mb-8">
-            ${this.renderHybridUploadBox('Libro de Cuentas y Balances (Excel/PDF/URL)', 'Entregable oficial para el área de Economía con el ROI y Ledger detallado.', 'financeBook', docs.financeBook)}
-        </div>` : ''}
+            ${isCEOOrAdmin ? `<div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-magenta w-full"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Gasto Físico Auditado</p><p class="text-xl sm:text-2xl font-orbitron text-white tracking-tighter">${totalReal.toFixed(2)} €</p></div>` : ''}
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-cyan w-full ${!isCEOOrAdmin ? 'md:col-span-2' : ''}"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Transacciones Ledger</p><p class="text-xl sm:text-2xl font-orbitron text-mars-cyan tracking-tighter">${co.ledger.length}</p></div>
+        </div>`;
 
-        ${pendingOrdersHtml}
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+        let financeDetails = `
+        <div class="grid grid-cols-1 ${isCEOOrAdmin ? 'lg:grid-cols-2' : ''} gap-6 sm:gap-8">
             <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden">
                 <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Ledger Histórico inmutable</h3>
                 <div class="overflow-x-auto w-full">
@@ -479,6 +489,7 @@ Object.assign(ui, {
                     </div>
                 </div>
             </div>
+            ${isCEOOrAdmin ? `
             <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden">
                 <h3 class="font-orbitron text-mars-magenta text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Desglose Físico Componentes (€)</h3>
                 <div class="overflow-x-auto w-full">
@@ -490,8 +501,25 @@ Object.assign(ui, {
                         </div>`).join('') || '<p class="text-slate-600 italic">No hay costes reales auditados.</p>'}
                     </div>
                 </div>
+            </div>` : `
+            <div class="terminal-border border-dashed border-mars-border p-8 text-center flex flex-col justify-center items-center">
+                <span class="text-3xl mb-3">🔒</span>
+                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Auditoría de gasto real (€) restringida a Dirección General (CEO) y Coordinación.</p>
             </div>
+            `}
         </div>`;
+
+        wrapper.innerHTML = `
+        ${financeCards}
+        
+        ${isFinanzas ? `
+        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan mb-8">
+            ${this.renderHybridUploadBox('Libro de Cuentas y Balances (Excel/PDF/URL)', 'Entregable oficial para el área de Economía con el ROI y Ledger detallado.', 'financeBook', docs.financeBook)}
+        </div>` : ''}
+
+        ${pendingOrdersHtml}
+        ${financeDetails}
+        `;
         el.appendChild(wrapper);
     },
 

@@ -1,6 +1,6 @@
 // js/config.js
 
-const APP_VERSION = "1.0.03";
+const APP_VERSION = "1.0.04";
 
 const RUBRIC_CONFIG = {
     FYQ: { name: "Física y Química", criteria: [{id: 'c1', name: 'Informe Científico Estequiometría', weight: 0.4}, {id: 'c2', name: 'Lanzamiento, Apogeo y Optimización', weight: 0.4}, {id: 'c3', name: 'Rol Técnico y Q&A', weight: 0.2}] },
@@ -34,29 +34,29 @@ const INITIAL_DATA = {
     pendingCustom: [],
     telemetry: { totalLogins: 0, sessions: [] },
     catalog: [
-        { id: 'F01', name: 'Botella PET 500ml', price: 97.0, unit: 'Unidad', category: 'Fuselaje' },
-        { id: 'F02', name: 'Botella PET 1L', price: 120.0, unit: 'Unidad', category: 'Fuselaje' },
-        { id: 'F03', name: 'Botella PET 1.25L', price: 145.0, unit: 'Unidad', category: 'Fuselaje' },
-        { id: 'F04', name: 'Botella PET 1.5L', price: 165.0, unit: 'Unidad', category: 'Fuselaje' },
-        { id: 'F05', name: 'Botella PET 2L', price: 200.0, unit: 'Unidad', category: 'Fuselaje' },
-        { id: 'P01', name: 'Bicarbonato de Sodio', price: 10.0, unit: 'Gramo', category: 'Propulsión' },
-        { id: 'P02', name: 'Vinagre', price: 5.0, unit: '10ml', category: 'Propulsión' },
-        { id: 'A01', name: 'Cartón Básico', price: 30.0, unit: 'Set', category: 'Aerodinámica' },
-        { id: 'A02', name: 'Aletas de Plástico', price: 50.0, unit: 'Set', category: 'Aerodinámica' },
-        { id: 'A03', name: 'Aletas PVC Rígido', price: 85.0, unit: 'Set', category: 'Aerodinámica' },
-        { id: 'A04', name: 'Suplemento Plastificado', price: 15.0, unit: 'Unidad', category: 'Aerodinámica' },
-        { id: 'A05', name: 'Punta Cartulina', price: 45.0, unit: 'Unidad', category: 'Aerodinámica' },
-        { id: 'A06', name: 'Punta PET', price: 95.0, unit: 'Unidad', category: 'Aerodinámica' },
-        { id: 'A07', name: 'Punta Impresión 3D', price: 110.0, unit: 'Unidad', category: 'Aerodinámica' },
-        { id: 'A08', name: 'Punta Lastrada', price: 135.0, unit: 'Unidad', category: 'Aerodinámica' },
-        { id: 'S01', name: 'Papel de Cocina', price: 5.0, unit: 'Unidad', category: 'Sellado' },
-        { id: 'S02', name: 'Hilo de Algodón', price: 2.0, unit: 'Decímetro', category: 'Sellado' },
-        { id: 'S03', name: 'Corcho de Vino', price: 25.0, unit: 'Unidad', category: 'Sellado' },
-        { id: 'S04', name: 'Tapón de Goma Hermético', price: 60.0, unit: 'Unidad', category: 'Sellado' },
-        { id: 'S05', name: 'Cinta Aislante', price: 10.0, unit: 'Rollo', category: 'Sellado' },
-        { id: 'S06', name: 'Celo Adhesivo', price: 5.0, unit: 'Rollo', category: 'Sellado' },
-        { id: 'S07', name: 'Pegamento Termofusible', price: 40.0, unit: 'Barra', category: 'Sellado' },
-        { id: 'S08', name: 'Refuerzo de Yeso', price: 18.0, unit: 'Dosis', category: 'Sellado' }
+        { id: 'F01', name: 'Botella PET 500ml', price: 97.0, unit: 'Unidad', category: 'Fuselaje', origin: 'China' },
+        { id: 'F02', name: 'Botella PET 1L', price: 120.0, unit: 'Unidad', category: 'Fuselaje', origin: 'China' },
+        { id: 'F03', name: 'Botella PET 1.25L', price: 145.0, unit: 'Unidad', category: 'Fuselaje', origin: 'Alemania' },
+        { id: 'F04', name: 'Botella PET 1.5L', price: 165.0, unit: 'Unidad', category: 'Fuselaje', origin: 'España' },
+        { id: 'F05', name: 'Botella PET 2L', price: 200.0, unit: 'Unidad', category: 'Fuselaje', origin: 'China' },
+        { id: 'P01', name: 'Bicarbonato de Sodio', price: 10.0, unit: 'Gramo', category: 'Propulsión', origin: 'Turquía' },
+        { id: 'P02', name: 'Vinagre', price: 5.0, unit: '10ml', category: 'Propulsión', origin: 'España' },
+        { id: 'A01', name: 'Cartón Básico', price: 30.0, unit: 'Set', category: 'Aerodinámica', origin: 'Marruecos' },
+        { id: 'A02', name: 'Aletas de Plástico', price: 50.0, unit: 'Set', category: 'Aerodinámica', origin: 'China' },
+        { id: 'A03', name: 'Aletas PVC Rígido', price: 85.0, unit: 'Set', category: 'Aerodinámica', origin: 'Alemania' },
+        { id: 'A04', name: 'Suplemento Plastificado', price: 15.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'Francia' },
+        { id: 'A05', name: 'Punta Cartulina', price: 45.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'Marruecos' },
+        { id: 'A06', name: 'Punta PET', price: 95.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'Polonia' },
+        { id: 'A07', name: 'Punta Impresión 3D', price: 110.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'España' },
+        { id: 'A08', name: 'Punta Lastrada', price: 135.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'Italia' },
+        { id: 'S01', name: 'Papel de Cocina', price: 5.0, unit: 'Unidad', category: 'Sellado', origin: 'Portugal' },
+        { id: 'S02', name: 'Hilo de Algodón', price: 2.0, unit: 'Decímetro', category: 'Sellado', origin: 'India' },
+        { id: 'S03', name: 'Corcho de Vino', price: 25.0, unit: 'Unidad', category: 'Sellado', origin: 'España' },
+        { id: 'S04', name: 'Tapón de Goma Hermético', price: 60.0, unit: 'Unidad', category: 'Sellado', origin: 'República Checa' },
+        { id: 'S05', name: 'Cinta Aislante', price: 10.0, unit: 'Rollo', category: 'Sellado', origin: 'Alemania' },
+        { id: 'S06', name: 'Celo Adhesivo', price: 5.0, unit: 'Rollo', category: 'Sellado', origin: 'China' },
+        { id: 'S07', name: 'Pegamento Termofusible', price: 40.0, unit: 'Barra', category: 'Sellado', origin: 'Japón' },
+        { id: 'S08', name: 'Refuerzo de Yeso', price: 18.0, unit: 'Dosis', category: 'Sellado', origin: 'España' }
     ],
     companies: {
         astra: { 
