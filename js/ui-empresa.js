@@ -319,7 +319,8 @@ Object.assign(ui, {
 
     financeApproveOrder(oid) {
         const co = state.data.companies[state.user.coId];
-        const o = co.orders.find(ord => ord.id === oid);
+        const o = co.orders.find(ord => ord.id == oid);
+        if(!o) return alert("Orden no encontrada.");
         
         if(co.balance < o.total) return alert("Alerta: Fondos virtuales insuficientes para aprobar este presupuesto.");
         
@@ -328,7 +329,7 @@ Object.assign(ui, {
         o.items = o.items.map(i => ({...i, realEur: '', realShop: ''}));
         
         telemetry.log("APROBADO FINANZAS", `Orden #${oid} validada.`);
-        alert("Presupuesto aprobado. La orden ha sido enviada a Logística (Operaciones) para la compra física.");
+        alert("Luz verde presupuestaria concedida. Orden enviada a Logística.");
         
         state.save(); this.render();
     },
@@ -342,7 +343,8 @@ Object.assign(ui, {
     finalizeDenyOrder(oid) {
         const reason = document.getElementById('deny-reason').value;
         if(!reason) return alert("Especifique motivo.");
-        const o = state.data.companies[state.user.coId].orders.find(ord => ord.id === oid);
+        const o = state.data.companies[state.user.coId].orders.find(ord => ord.id == oid);
+        if(!o) return alert("Orden no encontrada.");
         o.status = 'DENEGADO'; o.denyReason = `[${state.user.role}] ${reason}`;
         telemetry.log("DENEGADO", `Orden #${oid} - Motivo: ${reason}`);
         state.save(); this.closeModal(); this.render();
@@ -397,7 +399,7 @@ Object.assign(ui, {
     // --- 4. OPERACIONES E IA ---
     updateOrderItem(oid, idx, field, value) {
         const co = state.data.companies[state.user.coId];
-        const order = co.orders.find(o => o.id === oid);
+        const order = co.orders.find(o => o.id == oid);
         if(!order || !order.items[idx]) return;
         if(field === 'realEur') order.items[idx][field] = value ? parseFloat(value) : '';
         else order.items[idx][field] = value;
@@ -405,7 +407,7 @@ Object.assign(ui, {
 
     updateOrderRealTotal(oid) {
         const co = state.data.companies[state.user.coId];
-        const order = co.orders.find(o => o.id === oid);
+        const order = co.orders.find(o => o.id == oid);
         if(!order) return;
         let totalR = 0;
         for(let i=0; i<order.items.length; i++) {
@@ -418,7 +420,7 @@ Object.assign(ui, {
 
     checkOrderReady(oid) {
         const co = state.data.companies[state.user.coId];
-        const order = co.orders.find(o => o.id === oid);
+        const order = co.orders.find(o => o.id == oid);
         if(!order) return;
         let allValid = true;
         for(let i=0; i<order.items.length; i++) {
@@ -504,8 +506,8 @@ Object.assign(ui, {
 
     executeOrderPurchase(oid) {
         const co = state.data.companies[state.user.coId];
-        const order = co.orders.find(o => o.id === oid);
-        if(!order) return;
+        const order = co.orders.find(o => o.id == oid);
+        if(!order) return alert("Orden no encontrada.");
 
         let allChecked = true;
         let realEurTotal = 0;
