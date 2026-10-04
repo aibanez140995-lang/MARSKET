@@ -6,24 +6,26 @@ Object.assign(ui, {
     viewLogin(el) {
         let coOptions = Object.keys(state.data.companies).map(k => `<option value="${k}">${state.data.companies[k].name}</option>`).join('');
         el.innerHTML = `
-        <div class="max-w-md mx-auto mt-12 terminal-border bg-mars-card p-6 sm:p-8 glow-cyan animate-in fade-in zoom-in duration-300 mx-4">
-            <img src="/logo.png" alt="MARS-KET 2.0" class="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]" onerror="this.style.display='none'">
-            <h2 class="font-orbitron text-center text-mars-cyan text-lg sm:text-xl mb-6 tracking-widest uppercase font-black">Secure_Access</h2>
-            <select id="login-co" onchange="auth.updateRoleOptions()" class="w-full bg-slate-900 border border-mars-border p-3 text-sm mb-4 outline-none focus:border-mars-cyan text-white">
-                ${coOptions}
-                <option value="admin" class="text-mars-yellow font-bold">CLAUSTRO DOCENTE</option>
-            </select>
-            <select id="login-role" class="w-full bg-slate-900 border border-mars-border p-3 text-sm mb-6 outline-none focus:border-mars-cyan uppercase text-white font-bold">
-                <option>CEO</option><option>Técnico</option><option>Finanzas</option><option>Marketing</option><option>Operaciones IA</option>
-            </select>
-            <div class="flex justify-center gap-4 mb-8">
-                ${[1,2,3,4].map(() => `<div class="pin-dot w-3 h-3 rounded-full border border-mars-cyan transition-all"></div>`).join('')}
-            </div>
-            <div class="grid grid-cols-3 gap-2 max-w-[220px] mx-auto">
-                ${[1,2,3,4,5,6,7,8,9].map(n => `<button onclick="auth.press('${n}')" class="bg-slate-800 p-4 text-sm font-bold hover:bg-mars-cyan hover:text-mars-bg transition-all active:scale-95">${n}</button>`).join('')}
-                <button onclick="auth.clear()" class="bg-slate-800 p-4 text-mars-magenta text-xs font-bold hover:bg-mars-magenta hover:text-white transition-all active:scale-95">CLR</button>
-                <button onclick="auth.press('0')" class="bg-slate-800 p-4 text-sm font-bold hover:bg-mars-cyan hover:text-mars-bg transition-all active:scale-95">0</button>
-                <button onclick="auth.verify()" class="bg-mars-green/20 border border-mars-green text-mars-green p-4 text-xs font-bold hover:bg-mars-green hover:text-mars-bg transition-all active:scale-95">ENT</button>
+        <div class="min-h-[75vh] flex items-center justify-center w-full px-4">
+            <div class="max-w-md w-full terminal-border bg-mars-card p-6 sm:p-8 glow-cyan animate-in fade-in zoom-in duration-300">
+                <img src="/logo.png" alt="MARS-KET 2.0" class="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]" onerror="this.style.display='none'">
+                <h2 class="font-orbitron text-center text-mars-cyan text-lg sm:text-xl mb-6 tracking-widest uppercase font-black">Secure_Access</h2>
+                <select id="login-co" onchange="auth.updateRoleOptions()" class="w-full bg-slate-900 border border-mars-border p-3 text-sm mb-4 outline-none focus:border-mars-cyan text-white">
+                    ${coOptions}
+                    <option value="admin" class="text-mars-yellow font-bold">CLAUSTRO DOCENTE</option>
+                </select>
+                <select id="login-role" class="w-full bg-slate-900 border border-mars-border p-3 text-sm mb-6 outline-none focus:border-mars-cyan uppercase text-white font-bold">
+                    <option>CEO</option><option>Técnico</option><option>Finanzas</option><option>Marketing</option><option>Operaciones IA</option>
+                </select>
+                <div class="flex justify-center gap-4 mb-8">
+                    ${[1,2,3,4].map(() => `<div class="pin-dot w-3 h-3 rounded-full border border-mars-cyan transition-all"></div>`).join('')}
+                </div>
+                <div class="grid grid-cols-3 gap-2 max-w-[220px] mx-auto">
+                    ${[1,2,3,4,5,6,7,8,9].map(n => `<button onclick="auth.press('${n}')" class="bg-slate-800 p-4 text-sm font-bold hover:bg-mars-cyan hover:text-mars-bg transition-all active:scale-95">${n}</button>`).join('')}
+                    <button onclick="auth.clear()" class="bg-slate-800 p-4 text-mars-magenta text-xs font-bold hover:bg-mars-magenta hover:text-white transition-all active:scale-95">CLR</button>
+                    <button onclick="auth.press('0')" class="bg-slate-800 p-4 text-sm font-bold hover:bg-mars-cyan hover:text-mars-bg transition-all active:scale-95">0</button>
+                    <button onclick="auth.verify()" class="bg-mars-green/20 border border-mars-green text-mars-green p-4 text-xs font-bold hover:bg-mars-green hover:text-mars-bg transition-all active:scale-95">ENT</button>
+                </div>
             </div>
         </div>`;
     },
@@ -92,7 +94,7 @@ Object.assign(ui, {
         state.data.companies[state.user.coId].cart.push({...item, qty, price: item.price * qty, name, realEur: '', realShop: ''});
         telemetry.log("REQ TÉCNICA", `Petición: ${name}`);
         state.save();
-        alert(`Petición de ${name} enviada a Finanzas/Operaciones.`);
+        alert(`Petición de ${name} añadida al manifiesto de I+D.`);
     },
 
     removeFromCart(idx) { 
@@ -134,15 +136,15 @@ Object.assign(ui, {
             <div class="lg:col-span-2 terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow">
                 <h2 class="font-orbitron text-mars-yellow text-lg mb-4 uppercase tracking-tighter">Banco de Pruebas de Vuelo</h2>
                 <div class="bg-black border border-mars-border p-4 mb-6 grid grid-cols-2 md:grid-cols-3 gap-4 text-[10px]">
-                    <input type="text" id="ft-bottle" placeholder="Botella usada (Ej: 1.5L Lisa)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-yellow">
-                    <input type="number" id="ft-nahco3" placeholder="NaHCO3 (g)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-cyan" step="0.1">
-                    <input type="number" id="ft-vinegar" placeholder="Vinagre (ml)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-cyan" step="1">
-                    <input type="number" id="ft-cost" placeholder="Coste Ensayo (€v)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-magenta" step="0.1">
-                    <input type="number" id="ft-height" placeholder="Altura H (metros)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-green font-bold" step="0.1">
-                    <button onclick="ui.submitFlightTest()" class="bg-mars-yellow text-black font-black uppercase tracking-widest hover:shadow-[0_0_10px_#ffe600] transition-all py-2">Registrar Vuelo</button>
+                    <input type="text" id="ft-bottle" placeholder="Botella usada (Ej: 1.5L Lisa)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-yellow w-full">
+                    <input type="number" id="ft-nahco3" placeholder="NaHCO3 (g)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-cyan w-full" step="0.1">
+                    <input type="number" id="ft-vinegar" placeholder="Vinagre (ml)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-cyan w-full" step="1">
+                    <input type="number" id="ft-cost" placeholder="Coste Ensayo (€v)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-magenta w-full" step="0.1">
+                    <input type="number" id="ft-height" placeholder="Altura H (metros)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-green font-bold w-full" step="0.1">
+                    <button onclick="ui.submitFlightTest()" class="bg-mars-yellow text-black font-black uppercase tracking-widest hover:shadow-[0_0_10px_#ffe600] transition-all py-2 w-full">Registrar Vuelo</button>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-[10px] whitespace-nowrap">
+                <div class="overflow-x-auto w-full">
+                    <table class="w-full text-left text-[10px] whitespace-nowrap min-w-max">
                         <thead class="text-slate-500 uppercase border-b border-mars-border">
                             <tr><th class="py-2">Fecha</th><th>Fuselaje</th><th>Mix (Sól/Líq)</th><th>Coste (€v)</th><th>H (m)</th><th class="text-mars-yellow">E = H/C</th></tr>
                         </thead>
@@ -189,7 +191,8 @@ Object.assign(ui, {
         });
         
         telemetry.log("REQUISICIÓN", `Enviada a Finanzas: ${total.toFixed(2)}€v`);
-        co.cart = []; state.save(); 
+        co.cart = []; 
+        state.save(); 
         this.render();
         alert("Solicitud transmitida a Finanzas para su luz verde presupuestaria.");
     },
@@ -230,7 +233,7 @@ Object.assign(ui, {
     renderSingleDeadline(name, dateStr) {
         const status = this.getDeadlineStatus(dateStr);
         return `
-        <div class="bg-slate-900 border border-mars-border p-3 flex flex-col justify-between">
+        <div class="bg-slate-900 border border-mars-border p-3 flex flex-col justify-between w-full">
             <span class="text-[9px] text-slate-400 uppercase font-bold mb-1">${name}</span>
             <span class="text-xs font-mono text-white mb-2">${dateStr ? dateStr.replace('T', ' ') : 'No definido'}</span>
             <span class="text-[8px] font-black uppercase px-2 py-1 text-center ${status.class}">${status.text}</span>
@@ -266,19 +269,19 @@ Object.assign(ui, {
                 </div>
                 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-                    <div class="bg-black/50 p-4 border border-mars-border/50 text-[10px]"><span class="block text-mars-cyan font-bold uppercase mb-2 border-b border-mars-cyan/30 pb-1">Justificación Técnica:</span><p class="text-slate-300 italic leading-relaxed">"${order.justification}"</p></div>
-                    <div class="bg-black/50 p-4 border border-mars-border/50 text-[9px] overflow-x-auto">
+                    <div class="bg-black/50 p-4 border border-mars-border/50 text-[10px] w-full"><span class="block text-mars-cyan font-bold uppercase mb-2 border-b border-mars-cyan/30 pb-1">Justificación Técnica:</span><p class="text-slate-300 italic leading-relaxed">"${order.justification}"</p></div>
+                    <div class="bg-black/50 p-4 border border-mars-border/50 text-[9px] overflow-x-auto w-full">
                         <span class="block text-mars-magenta font-bold uppercase mb-2 border-b border-mars-magenta/30 pb-1">Desglose Físico Verificado:</span>
-                        <table class="w-full text-left whitespace-nowrap">
+                        <table class="w-full text-left whitespace-nowrap min-w-max">
                             <tbody>
-                                ${order.items.map(i => `<tr><td class="py-1 text-slate-400 pr-4">${i.name}</td><td class="py-1 text-slate-500 uppercase pr-4">${i.realShop||'N/A'}</td><td class="py-1 text-mars-magenta font-bold text-right">${i.realEur!==undefined ? i.realEur.toFixed(2)+' €' : '---'}</td></tr>`).join('')}
+                                ${order.items.map(i => `<tr><td class="py-1 text-slate-400 pr-4">${i.name}</td><td class="py-1 text-slate-500 uppercase pr-4">${i.realShop||'N/A'}</td><td class="py-1 text-mars-magenta font-bold text-right">${i.realEur!==undefined && i.realEur!=='' ? parseFloat(i.realEur).toFixed(2)+' €' : '---'}</td></tr>`).join('')}
                             </tbody>
                         </table>
                         <div class="flex justify-between pt-2 mt-2 border-t border-slate-800 font-bold text-[10px]"><span class="text-white">TOTAL FÍSICO</span><span class="text-mars-magenta bg-mars-magenta/10 px-2 py-0.5">${order.realEurTotal!==undefined ? order.realEurTotal.toFixed(2)+' €' : '---'}</span></div>
                     </div>
                 </div>
                 
-                ${order.denyReason ? `<div class="bg-red-900/30 border border-red-500/50 p-3 text-[10px] text-red-200 mt-2 mb-4"><span class="font-bold">MOTIVO RECHAZO:</span> ${order.denyReason}</div>` : ''}
+                ${order.denyReason ? `<div class="bg-red-900/30 border border-red-500/50 p-3 text-[10px] text-red-200 mt-2 mb-4 w-full"><span class="font-bold">MOTIVO RECHAZO:</span> ${order.denyReason}</div>` : ''}
                 
                 ${order.status === 'PENDIENTE_FINANZAS' && role === 'FINANZAS' ? `
                 <div class="flex flex-col sm:flex-row gap-3 border-t border-mars-border pt-4">
@@ -295,11 +298,14 @@ Object.assign(ui, {
         const o = co.orders.find(ord => ord.id === oid);
         
         if(co.balance < o.total) return alert("Alerta: Fondos virtuales insuficientes para aprobar este presupuesto.");
+        
+        if(co.cart.length > 0) return alert("Operaciones ya tiene un manifiesto en curso. Espere a que lo ejecuten antes de aprobar otro.");
+
         o.status = 'APROBADO_FINANZAS';
         telemetry.log("APROBADO FINANZAS", `Orden #${oid} validada.`);
         
         // Pasar los items al carrito de logística (OPERACIONES_IA) para que termine la compra
-        co.cart = [...o.items].map(i => ({...i, realEur: '', realShop: ''}));
+        co.cart = [...o.items].map(i => ({...i, realEur: '', realShop: '', orderId: oid}));
         alert("Presupuesto aprobado. Los ítems han sido enviados a Logística (Operaciones) para la compra física.");
         
         state.save(); this.render();
@@ -327,9 +333,9 @@ Object.assign(ui, {
         const wrapper = document.createElement('div');
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6">
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-green"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Caja Virtual</p><p class="text-xl sm:text-2xl font-orbitron text-mars-green tracking-tighter">${co.balance.toFixed(2)} €v</p></div>
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-magenta"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Gasto Físico Auditado</p><p class="text-xl sm:text-2xl font-orbitron text-white tracking-tighter">${totalReal.toFixed(2)} €</p></div>
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-cyan"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Transacciones Ledger</p><p class="text-xl sm:text-2xl font-orbitron text-mars-cyan tracking-tighter">${co.ledger.length}</p></div>
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-green w-full"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Caja Virtual</p><p class="text-xl sm:text-2xl font-orbitron text-mars-green tracking-tighter">${co.balance.toFixed(2)} €v</p></div>
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-magenta w-full"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Gasto Físico Auditado</p><p class="text-xl sm:text-2xl font-orbitron text-white tracking-tighter">${totalReal.toFixed(2)} €</p></div>
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-cyan w-full"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Transacciones Ledger</p><p class="text-xl sm:text-2xl font-orbitron text-mars-cyan tracking-tighter">${co.ledger.length}</p></div>
         </div>
         
         ${state.user.role === 'FINANZAS' ? `
@@ -338,9 +344,9 @@ Object.assign(ui, {
         </div>` : ''}
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-            <div class="terminal-border bg-mars-card p-4 sm:p-6">
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden">
                 <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Ledger Histórico inmutable</h3>
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto w-full">
                     <div class="overflow-y-auto max-h-[400px] text-[10px] pr-2 min-w-[300px]">
                         ${co.ledger.map(l => `
                         <div class="border-b border-mars-border/30 py-3 flex justify-between gap-4">
@@ -350,9 +356,9 @@ Object.assign(ui, {
                     </div>
                 </div>
             </div>
-            <div class="terminal-border bg-mars-card p-4 sm:p-6">
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden">
                 <h3 class="font-orbitron text-mars-magenta text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Desglose Físico Componentes (€)</h3>
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto w-full">
                     <div class="overflow-y-auto max-h-[400px] text-[10px] pr-2 min-w-[300px]">
                         ${co.realCosts.map(r => `
                         <div class="border-b border-mars-border/30 py-3 flex justify-between gap-4">
@@ -390,21 +396,26 @@ Object.assign(ui, {
     checkCartReady() {
         const co = state.data.companies[state.user.coId];
         if(!co || !co.cart.length) return;
-        let allChecked = true;
+        let allValid = true;
         for(let i=0; i<co.cart.length; i++) {
             const cb = document.getElementById(`cart-val-${i}`);
-            if(!cb || !cb.checked) allChecked = false;
+            const eur = document.getElementById(`cart-eur-${i}`);
+            const shop = document.getElementById(`cart-shop-${i}`);
+            
+            if(!cb || !cb.checked) allValid = false;
+            if(!eur || eur.value === '' || parseFloat(eur.value) < 0) allValid = false;
+            if(!shop || shop.value.trim() === '') allValid = false;
         }
         const btn = document.getElementById('submit-order-btn');
         if(btn) {
-            if(allChecked) {
+            if(allValid) {
                 btn.disabled = false;
                 btn.className = "w-full bg-mars-cyan text-mars-bg font-black py-4 text-[10px] uppercase tracking-widest hover:shadow-[0_0_15px_#00f0ff] transition-all cursor-pointer";
                 btn.innerText = "Confirmar Compra Física y Ejecutar";
             } else {
                 btn.disabled = true;
                 btn.className = "w-full bg-slate-800 text-slate-500 font-black py-4 text-[10px] uppercase tracking-widest transition-all cursor-not-allowed";
-                btn.innerText = "Validar Todos los Ítems";
+                btn.innerText = "Validar Ensamblaje y Costes Reales";
             }
         }
     },
@@ -415,7 +426,7 @@ Object.assign(ui, {
         const wrapper = document.createElement('div');
         
         const cartItemsHtml = co.cart.map((item, idx) => `
-            <div class="bg-mars-card border border-mars-border p-3 flex flex-col gap-2 hover:border-mars-magenta/50 transition-all shadow-sm">
+            <div class="bg-mars-card border border-mars-border p-3 flex flex-col gap-2 hover:border-mars-magenta/50 transition-all shadow-sm w-full">
                 <div class="flex justify-between items-start gap-2 flex-wrap">
                     <div class="flex-1 min-w-[150px]"><p class="text-white text-xs font-bold font-orbitron leading-tight">${item.name}</p><p class="text-[8px] text-slate-500 uppercase mt-1">Q: ${item.qty} | ${item.category}</p></div>
                     <div class="flex items-center gap-3">
@@ -424,9 +435,9 @@ Object.assign(ui, {
                     </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2 pt-2 border-t border-mars-border/50">
-                    <label class="flex items-center gap-2 text-[9px] text-mars-cyan cursor-pointer p-1"><input type="checkbox" id="cart-val-${idx}" class="form-checkbox bg-black border-mars-cyan" onchange="ui.checkCartReady()"> Validado ensamblaje</label>
-                    <input type="number" id="cart-eur-${idx}" value="${item.realEur !== '' ? item.realEur : ''}" placeholder="Coste Real (€)" class="bg-slate-900 border border-slate-700 text-[10px] p-2 text-white outline-none focus:border-mars-magenta" oninput="ui.updateCartItem(${idx}, 'realEur', this.value); ui.updateCartRealTotal()" min="0" step="0.01">
-                    <input type="text" id="cart-shop-${idx}" value="${item.realShop || ''}" placeholder="Proveedor/Tienda" class="bg-slate-900 border border-slate-700 text-[10px] p-2 text-white uppercase outline-none focus:border-mars-magenta" oninput="ui.updateCartItem(${idx}, 'realShop', this.value)">
+                    <label class="flex items-center gap-2 text-[9px] text-mars-cyan cursor-pointer p-1 w-full"><input type="checkbox" id="cart-val-${idx}" class="form-checkbox bg-black border-mars-cyan" onchange="ui.checkCartReady()"> Validado ensamblaje</label>
+                    <input type="number" id="cart-eur-${idx}" value="${item.realEur !== '' ? item.realEur : ''}" placeholder="Coste Real (€)" class="bg-slate-900 border border-slate-700 text-[10px] p-2 text-white outline-none focus:border-mars-magenta w-full" oninput="ui.updateCartItem(${idx}, 'realEur', this.value); ui.updateCartRealTotal(); ui.checkCartReady()" min="0" step="0.01">
+                    <input type="text" id="cart-shop-${idx}" value="${item.realShop || ''}" placeholder="Proveedor/Tienda" class="bg-slate-900 border border-slate-700 text-[10px] p-2 text-white uppercase outline-none focus:border-mars-magenta w-full" oninput="ui.updateCartItem(${idx}, 'realShop', this.value); ui.checkCartReady()">
                 </div>
             </div>
         `).join('');
@@ -434,10 +445,10 @@ Object.assign(ui, {
         wrapper.innerHTML = `
         <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl mb-6 uppercase tracking-tighter">Logística de Despliegue (Validación Física)</h2>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-2 space-y-4">
-                ${cartItemsHtml || '<div class="terminal-border border-dashed p-8 text-center text-slate-500 text-xs italic">El manifiesto está vacío. Espere peticiones técnicas de I+D.</div>'}
+            <div class="lg:col-span-2 space-y-4 w-full">
+                ${cartItemsHtml || '<div class="terminal-border border-dashed p-8 text-center text-slate-500 text-xs italic w-full">El manifiesto está vacío. Espere peticiones técnicas de I+D.</div>'}
             </div>
-            <div class="terminal-border bg-mars-card p-6 h-fit border-t-4 border-t-mars-cyan sticky top-20">
+            <div class="terminal-border bg-mars-card p-6 h-fit border-t-4 border-t-mars-cyan sticky top-20 w-full">
                 <div class="flex justify-between items-end border-b border-mars-border/50 pb-4 mb-4">
                     <div>
                         <p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Total Virtual (Finanzas)</p>
@@ -448,7 +459,7 @@ Object.assign(ui, {
                         <p id="dynamic-real-total" class="text-lg sm:text-xl font-mono text-mars-magenta font-black">0.00 €</p>
                     </div>
                 </div>
-                <button id="submit-order-btn" onclick="ui.executeFinalPurchase()" class="w-full bg-slate-800 text-slate-500 font-black py-4 text-[10px] uppercase tracking-widest transition-all cursor-not-allowed" disabled>Validar Todos los Ítems</button>
+                <button id="submit-order-btn" onclick="ui.executeFinalPurchase()" class="w-full bg-slate-800 text-slate-500 font-black py-4 text-[10px] uppercase tracking-widest transition-all cursor-not-allowed" disabled>Validar Ensamblaje y Costes Reales</button>
             </div>
         </div>`;
         el.appendChild(wrapper);
@@ -461,35 +472,53 @@ Object.assign(ui, {
         let allChecked = true;
         let realEurTotal = 0;
         let processedItems = [];
+        let targetOrderId = null;
 
         for(let i=0; i<co.cart.length; i++) {
             const cb = document.getElementById(`cart-val-${i}`);
-            if(!cb || !cb.checked) { allChecked = false; break; }
-            
             const rEur = parseFloat(document.getElementById(`cart-eur-${i}`).value);
             const rShop = document.getElementById(`cart-shop-${i}`).value;
             
-            if(isNaN(rEur) || rEur < 0 || !rShop) return alert(`Rellene el coste real y comercio del ítem ${i+1}`);
+            if(!cb || !cb.checked || isNaN(rEur) || rEur < 0 || !rShop.trim()) { 
+                allChecked = false; 
+                break; 
+            }
             
             realEurTotal += rEur;
             processedItems.push({...co.cart[i], realEur: rEur, realShop: rShop});
+            if(co.cart[i].orderId) targetOrderId = co.cart[i].orderId;
         }
         
-        if(!allChecked) return alert("Debe validar el ensamblaje de todos los componentes.");
+        if(!allChecked) return alert("Debe validar el ensamblaje y rellenar los costes reales de todos los componentes.");
 
         const totalVirtual = co.cart.reduce((s, i) => s + i.price, 0);
         
-        // OPERACIONES EXECUTES (Direct discount from ledger)
         if(co.balance < totalVirtual) return alert("Fondos virtuales insuficientes para ejecutar la compra.");
         
         state.addToLedger(state.user.coId, `Adquisición Física Directa`, 'OPERACIONES', -totalVirtual);
         processedItems.forEach(i => { co.realCosts.unshift({ shop: i.realShop, item: i.name, eur: i.realEur }); });
         
-        co.orders.unshift({ 
-            id: state.data.config.nextOrderId++, 
-            items: processedItems, total: totalVirtual, justification: 'Validación directa por Operaciones.', 
-            realEurTotal: realEurTotal, status: 'EJECUTADO', date: new Date().toLocaleString() 
-        });
+        if (targetOrderId) {
+            const order = co.orders.find(o => o.id === targetOrderId);
+            if (order) {
+                order.status = 'EJECUTADO';
+                order.realEurTotal = realEurTotal;
+                order.items = processedItems;
+            }
+        } else {
+            const pendingOrder = co.orders.find(o => o.status === 'APROBADO_FINANZAS');
+            if (pendingOrder) {
+                pendingOrder.status = 'EJECUTADO';
+                pendingOrder.realEurTotal = realEurTotal;
+                pendingOrder.items = processedItems;
+            } else {
+                co.orders.unshift({ 
+                    id: state.data.config.nextOrderId++, 
+                    items: processedItems, total: totalVirtual, justification: 'Validación directa por Operaciones.', 
+                    realEurTotal: realEurTotal, status: 'EJECUTADO', date: new Date().toLocaleString() 
+                });
+            }
+        }
         
         telemetry.log("EJECUCIÓN COMPRA", `Importe: ${totalVirtual.toFixed(2)}€v | Real: ${realEurTotal.toFixed(2)}€`);
         co.cart = []; state.save(); 
@@ -510,37 +539,37 @@ Object.assign(ui, {
             <button onclick="ui.modalReportAI()" class="bg-blue-600/20 border border-blue-500 text-blue-400 px-4 py-2 text-[10px] uppercase font-bold hover:bg-blue-500 hover:text-white transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)]">Registrar Prompt Directo</button>
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow">
+            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow w-full overflow-hidden">
                 <h3 class="font-orbitron text-mars-yellow text-sm mb-4 uppercase tracking-widest border-b border-mars-border/50 pb-2">Prompts Pendientes de Auditoría</h3>
-                <div class="space-y-4 overflow-y-auto max-h-[500px] pr-2">
+                <div class="space-y-4 overflow-y-auto max-h-[500px] pr-2 w-full">
                     ${pending.map(p => `
-                    <div class="bg-slate-900/50 border border-mars-border p-4 text-[10px]">
+                    <div class="bg-slate-900/50 border border-mars-border p-4 text-[10px] w-full">
                         <div class="flex justify-between mb-2 border-b border-mars-border/30 pb-2">
                             <span class="text-mars-yellow font-bold uppercase tracking-widest">${p.tool}</span>
                             <span class="text-slate-500">${p.date}</span>
                         </div>
                         <p class="text-white font-bold mb-1 uppercase">Tarea: ${p.task}</p>
                         <p class="text-slate-400 mb-2 italic">Emisor: Rol ${p.authorRole.replace('_',' ')}</p>
-                        <div class="bg-black border border-mars-border/50 p-3 mb-2"><span class="text-blue-400 font-bold block mb-1">Prompt:</span><p class="text-slate-300">"${p.prompt}"</p></div>
-                        <div class="bg-black border border-mars-border/50 p-3 mb-3"><span class="text-mars-green font-bold block mb-1">Verificación Humana:</span><p class="text-slate-300">${p.verification}</p></div>
-                        <div class="flex flex-col sm:flex-row gap-2">
+                        <div class="bg-black border border-mars-border/50 p-3 mb-2 w-full"><span class="text-blue-400 font-bold block mb-1">Prompt:</span><p class="text-slate-300">"${p.prompt}"</p></div>
+                        <div class="bg-black border border-mars-border/50 p-3 mb-3 w-full"><span class="text-mars-green font-bold block mb-1">Verificación Humana:</span><p class="text-slate-300">${p.verification}</p></div>
+                        <div class="flex flex-col sm:flex-row gap-2 w-full">
                             <button onclick="ui.processAIPrompt('${p.id}', 'APROBADO')" class="flex-1 bg-mars-green text-black font-black py-2 uppercase hover:shadow-[0_0_10px_#00ff66] transition-all">Aprobar e Integrar</button>
                             <button onclick="ui.processAIPrompt('${p.id}', 'DESCARTADO')" class="bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2 font-bold uppercase hover:bg-mars-magenta hover:text-white transition-all">Descartar</button>
                         </div>
                     </div>`).join('') || '<p class="text-slate-600 text-xs italic">Bandeja limpia. No hay reportes pendientes.</p>'}
                 </div>
             </div>
-            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-blue-500">
+            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-blue-500 w-full overflow-hidden">
                 <h3 class="font-orbitron text-blue-400 text-sm mb-4 uppercase tracking-widest border-b border-mars-border/50 pb-2">Bitácora Oficial Aprobada</h3>
-                <div class="space-y-4 overflow-y-auto max-h-[500px] pr-2">
+                <div class="space-y-4 overflow-y-auto max-h-[500px] pr-2 w-full">
                     ${approved.map(p => `
-                    <div class="bg-slate-900/50 border border-blue-900/30 p-4 text-[10px] border-l-2 border-l-blue-500">
+                    <div class="bg-slate-900/50 border border-blue-900/30 p-4 text-[10px] border-l-2 border-l-blue-500 w-full">
                         <div class="flex justify-between mb-2 border-b border-slate-800 pb-2">
                             <span class="text-blue-400 font-bold uppercase tracking-widest">${p.tool}</span>
                             <span class="text-slate-500">${p.date}</span>
                         </div>
                         <p class="text-white font-bold mb-1 uppercase">Tarea: ${p.task}</p>
-                        <div class="text-slate-400 mt-2 bg-black p-2 border border-slate-800"><span class="text-mars-cyan font-bold block mb-1">Prompt Validado:</span>"${p.prompt}"</div>
+                        <div class="text-slate-400 mt-2 bg-black p-2 border border-slate-800 w-full"><span class="text-mars-cyan font-bold block mb-1">Prompt Validado:</span>"${p.prompt}"</div>
                     </div>`).join('') || '<p class="text-slate-600 text-xs italic">Aún no se han integrado prompts aprobados a la bitácora.</p>'}
                 </div>
             </div>
@@ -622,7 +651,7 @@ Object.assign(ui, {
                 }
 
                 return `
-                <div class="terminal-border bg-mars-card p-4 border-l-4 ${m.status === 'ABIERTA' ? 'border-l-mars-yellow' : (m.result === 'APROBADA' ? 'border-l-mars-green' : 'border-l-mars-magenta')}">
+                <div class="terminal-border bg-mars-card p-4 border-l-4 ${m.status === 'ABIERTA' ? 'border-l-mars-yellow' : (m.result === 'APROBADA' ? 'border-l-mars-green' : 'border-l-mars-magenta')} w-full">
                     <div class="flex justify-between mb-2"><h3 class="text-white font-bold uppercase text-xs">${m.title}</h3><span class="text-[8px] text-slate-500">${m.date}</span></div>
                     <p class="text-[10px] text-slate-400 mb-2">${m.desc}</p>
                     <div class="flex gap-4 text-[9px] text-slate-500 uppercase font-bold"><span>A Favor: <span class="text-mars-green">${y}</span></span><span>En Contra: <span class="text-mars-magenta">${n}</span></span></div>
@@ -707,32 +736,32 @@ Object.assign(ui, {
         const wrapper = document.createElement('div');
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="space-y-6">
-                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-magenta">
+            <div class="space-y-6 w-full overflow-hidden">
+                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-magenta w-full">
                     <h2 class="font-orbitron text-mars-magenta text-lg mb-4 uppercase tracking-tighter">Identidad Corporativa</h2>
                     <input type="text" id="brand-slogan" value="${co.slogan||''}" placeholder="Eslogan corto corporativo..." class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-mars-yellow font-bold uppercase mb-4 focus:border-mars-magenta outline-none">
                     <p class="text-[9px] text-slate-400 mb-4 uppercase">Suba el logotipo diseñado para la corporación en formato PNG o JPG con fondo transparente para su visualización en el panel HUD.</p>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 w-full">
                         <button onclick="document.getElementById('brand-logo-upload').click()" class="bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-mars-magenta hover:text-white transition-all w-full">[ Cargar Imagen / Logo ]</button>
                         <button onclick="ui.saveSlogan()" class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-4 py-3 text-[10px] font-bold uppercase hover:bg-mars-yellow hover:text-black transition-all">Guardar</button>
                     </div>
                     <input type="file" id="brand-logo-upload" class="hidden" accept="image/png, image/jpeg" onchange="ui.handleLogoUpload(event)">
                 </div>
-                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan">
+                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan w-full">
                     <h2 class="font-orbitron text-mars-cyan text-lg mb-4 uppercase tracking-tighter">Manifiesto & Propuesta de Valor</h2>
                     <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">Redacte la misión, ventaja competitiva y pitch de atracción para inversores. Texto público en el Dossier Académico.</p>
                     <textarea id="val-prop-text" class="w-full bg-slate-900 border border-mars-border p-4 text-xs text-white h-32 outline-none focus:border-mars-cyan mb-4 leading-relaxed" placeholder="Redacte la misión corporativa aquí...">${co.valueProposition}</textarea>
                     <button onclick="ui.saveValueProposition()" class="bg-mars-cyan text-black px-6 py-3 text-[10px] font-black uppercase tracking-widest hover:shadow-[0_0_15px_#00f0ff] transition-all w-full">Guardar Propuesta de Valor</button>
-                    <div class="mt-4 border-t border-slate-800 pt-4">
+                    <div class="mt-4 border-t border-slate-800 pt-4 w-full">
                         ${this.renderHybridUploadBox('Dossier Propuesta de Valor (PDF/URL)', 'Entregable oficial para Evaluación LYE.', 'valuePropDoc', docs.valuePropDoc)}
                     </div>
                 </div>
             </div>
-            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow h-fit">
+            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow h-fit w-full overflow-hidden">
                 <h2 class="font-orbitron text-mars-yellow text-lg mb-4 uppercase tracking-tighter">Entregas Oficiales de Oratoria & Pitch</h2>
                 <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Cargue los documentos de presentación requeridos para las defensas de oratoria ante el claustro. Soporta archivos o enlaces directos de Canva/Drive.</p>
                 
-                <div class="space-y-6">
+                <div class="space-y-6 w-full">
                     ${this.renderHybridUploadBox('Presentación Fase I (Inglés - Micro-Pitch)', 'Evaluado por Liderazgo e Inglés.', 'presPhase1', docs.presPhase1)}
                     ${this.renderHybridUploadBox('Presentación Fase III (Castellano - Final)', 'Evaluado por Lengua Castellana.', 'presPhase3', docs.presPhase3)}
                 </div>
@@ -811,7 +840,7 @@ Object.assign(ui, {
             <button onclick="ui.showDossierTab('eval')" class="px-4 py-2 text-[10px] font-bold uppercase ${tab==='eval'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">Evaluación Continua</button>
             <button onclick="ui.showDossierTab('docs')" class="px-4 py-2 text-[10px] font-bold uppercase ${tab==='docs'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">Archivo Documental</button>
         </div>
-        <div id="dossier-content"></div>
+        <div id="dossier-content" class="w-full"></div>
         `;
         el.appendChild(wrapper);
         this.renderDossierContent(tab);
@@ -828,26 +857,26 @@ Object.assign(ui, {
         
         if(tab === 'eval') {
             const subjects = ['FYQ', 'ECO', 'LYE', 'LEN', 'MAT', 'ING'];
-            let html = `<div class="grid grid-cols-1 md:grid-cols-2 gap-6">`;
+            let html = `<div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">`;
             
             subjects.forEach(sub => {
                 const config = RUBRIC_CONFIG[sub];
                 const grade = co.grades[sub] || { scores: {}, feedback: '', final: null };
                 
                 html += `
-                <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-cyan">
+                <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-cyan w-full">
                     <div class="flex justify-between items-center mb-3 border-b border-mars-border/50 pb-2">
                         <h3 class="font-orbitron text-mars-cyan text-xs uppercase">${config.name}</h3>
                         <span class="text-lg font-mono font-black ${grade.final !== null ? 'text-mars-green' : 'text-slate-600'}">${grade.final !== null ? grade.final.toFixed(2) : '--'}</span>
                     </div>
-                    <div class="space-y-2 mb-3">
+                    <div class="space-y-2 mb-3 w-full">
                         ${config.criteria.map(c => `
-                        <div class="flex justify-between text-[9px] uppercase">
+                        <div class="flex justify-between text-[9px] uppercase w-full">
                             <span class="text-slate-400">${c.name} (${c.weight*100}%)</span>
                             <span class="font-bold ${grade.scores[c.id] ? 'text-white' : 'text-slate-600'}">${grade.scores[c.id] || '-'}</span>
                         </div>`).join('')}
                     </div>
-                    ${grade.feedback ? `<div class="bg-black p-2 border border-slate-800 text-[9px] text-slate-300 italic">"${grade.feedback}"</div>` : ''}
+                    ${grade.feedback ? `<div class="bg-black p-2 border border-slate-800 text-[9px] text-slate-300 italic w-full">"${grade.feedback}"</div>` : ''}
                 </div>`;
             });
             html += `</div>`;
@@ -855,9 +884,9 @@ Object.assign(ui, {
         } else {
             const docs = co.deliverables || {};
             container.innerHTML = `
-            <div class="terminal-border bg-mars-card p-6">
+            <div class="terminal-border bg-mars-card p-6 w-full">
                 <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase">Archivo Documental</h3>
-                <div class="space-y-4">
+                <div class="space-y-4 w-full">
                     ${this.renderDocBadge('Informe Técnico (FYQ)', docs.technicalReport)}
                     ${this.renderDocBadge('Libro de Cuentas (ECO)', docs.financeBook)}
                     ${this.renderDocBadge('Micro-Pitch Fase I (ING/LYE)', docs.presPhase1)}
