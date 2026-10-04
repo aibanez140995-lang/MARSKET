@@ -189,7 +189,19 @@ const ui = {
             if(infoEl) infoEl.innerText = `ENTITY: ${co.name.toUpperCase()} | ROLE: ${state.user.role.replace('_',' ')}`;
             
             const countEl = document.getElementById('cart-count');
-            if(countEl) countEl.innerText = co.cart.length;
+            if(countEl) {
+                if (state.user.role === 'OPERACIONES_IA') {
+                    const pendingOps = (co.orders || []).filter(o => o.status === 'APROBADO_FINANZAS').length;
+                    countEl.innerText = pendingOps;
+                    countEl.style.display = pendingOps > 0 ? 'inline-block' : 'none';
+                } else if (state.user.role === 'TECNICO') {
+                    const pendingTech = (co.cart || []).length;
+                    countEl.innerText = pendingTech;
+                    countEl.style.display = pendingTech > 0 ? 'inline-block' : 'none';
+                } else {
+                    countEl.style.display = 'none';
+                }
+            }
 
             if(miniLogo) {
                 miniLogo.classList.remove('hidden');
@@ -225,7 +237,7 @@ const ui = {
         // Route protection
         const allowedRoutes = {
             'CEO': ['orders', 'finance', 'resolutions', 'dossier', 'market'],
-            'TECNICO': ['market', 'tech', 'dossier'],
+            'TECNICO': ['market', 'tech', 'orders', 'dossier'],
             'FINANZAS': ['finance', 'orders', 'dossier', 'market'],
             'MARKETING': ['brand', 'market', 'dossier'],
             'OPERACIONES_IA': ['market', 'cart', 'ailog', 'dossier']

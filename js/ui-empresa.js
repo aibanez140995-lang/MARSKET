@@ -33,11 +33,26 @@ Object.assign(ui, {
     viewMarket(el) {
         const wrapper = document.createElement('div');
         let topSection = '';
+        let techBanner = '';
         
         if(state.user && state.user.role === 'TECNICO') {
             const co = state.data.companies[state.user.coId];
             const docs = co.deliverables || {};
+            
+            if (co.cart && co.cart.length > 0) {
+                const totalEurV = co.cart.reduce((s, i) => s + i.price, 0).toFixed(2);
+                techBanner = `
+                <div class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow p-4 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4 animate-pulse shadow-[0_0_15px_rgba(255,230,0,0.3)]">
+                    <div>
+                        <p class="font-bold uppercase text-xs sm:text-sm tracking-widest text-center sm:text-left">Lista de I+D Activa: ${co.cart.length} componente(s)</p>
+                        <p class="text-[10px] uppercase tracking-widest text-center sm:text-left mt-1">Total acumulado: ${totalEurV} €v</p>
+                    </div>
+                    <button onclick="ui.modalSubmitOrderToFinance()" class="bg-mars-yellow text-black px-6 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all whitespace-nowrap w-full sm:w-auto">[ REVISAR Y ENVIAR A FINANZAS ]</button>
+                </div>`;
+            }
+
             topSection = `
+            ${techBanner}
             <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan mb-6">
                 <h2 class="font-orbitron text-mars-cyan text-lg mb-2 uppercase tracking-tighter">Documentación Científico-Técnica</h2>
                 <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">Suba el Informe Técnico Oficial (Estequiometría, Leyes de Newton y Aerodinámica) en formato PDF o Enlace.</p>
@@ -107,6 +122,54 @@ Object.assign(ui, {
         }
     },
 
+    modalSubmitOrderToFinance() {
+        const co = state.data.companies[state.user.coId];
+        if(!co.cart || co.cart.length === 0) return alert("El carrito de I+D está vacío.");
+        
+        const total = co.cart.reduce((s, i) => s + i.price, 0).toFixed(2);
+        const itemsHtml = co.cart.map(i => `<div class="flex justify-between text-[10px] border-b border-mars-border/50 py-1"><span class="text-white">${i.name} (x${i.qty})</span><span class="text-mars-green">${i.price.toFixed(2)} €v</span></div>`).join('');
+        
+        const html = `
+            <div class="mb-4 bg-slate-900 p-3 border border-mars-border max-h-32 overflow-y-auto w-full">
+                ${itemsHtml}
+                <div class="flex justify-between text-xs font-bold mt-2 pt-2 border-t border-mars-border"><span class="text-mars-cyan">TOTAL VIRTUAL:</span><span class="text-mars-green">${total} €v</span></div>
+            </div>
+            <p class="text-[10px] text-mars-cyan mb-2 uppercase font-bold">Justificación Técnica (Obligatoria):</p>
+            <textarea id="tech-order-just" placeholder="Explica para qué se necesitan estos componentes y su impacto en el diseño..." class="w-full bg-black border border-mars-cyan p-3 text-xs text-white h-24 outline-none focus:border-white"></textarea>
+        `;
+        const actions = `<button onclick="ui.confirmTechOrderToFinance()" class="bg-mars-cyan text-black px-6 py-2 text-[10px] font-bold uppercase hover:bg-white transition-colors">Transmitir a Finanzas</button>`;
+        this.showModal("Transmisión de Orden a Finanzas", html, actions);
+    },
+
+    confirmTechOrderToFinance() {
+        const justText = document.getElementById('tech-order-just').value.trim();
+        if(justText.length < 5) return alert("Justificación técnica obligatoria.");
+        
+        const co = state.data.companies[state.user.coId];
+        if (!co.orders) co.orders = [];
+        
+        const total = co.cart.reduce((s, i) => s + i.price, 0);
+        const newOrder = { 
+            id: state.data.config.nextOrderId++, 
+            items: [...co.cart], 
+            total: total, 
+            justification: justText, 
+            status: 'PENDIENTE_FINANZAS', 
+            date: new Date().toLocaleString() 
+        };
+        
+        co.orders.unshift(newOrder);
+        telemetry.log("REQUISICIÓN", `Enviada a Finanzas: ${total.toFixed(2)}€v`);
+        
+        co.cart = []; 
+        state.save(); 
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        
+        this.closeModal();
+        alert(`✅ Orden #${newOrder.id} transmitida con éxito a Finanzas.`);
+        this.render();
+    },
+
     // --- 2. DPTO. TÉCNICO ---
     viewTech(el) {
         const co = state.data.companies[state.user.coId];
@@ -174,37 +237,6 @@ Object.assign(ui, {
         
         telemetry.log("PRUEBA VUELO", `Registrado H=${heightM}m, E=${efficiency.toFixed(3)}`);
         state.save();
-        this.render();
-    },
-
-    submitTechOrderToFinance() {
-        const co = state.data.companies[state.user.coId];
-        if(!co.cart || co.cart.length === 0) return alert("Debe añadir material al borrador de I+D antes de transmitir.");
-        
-        const just = prompt("Introduzca la justificación técnica de esta petición de compra:");
-        if(!just || just.length < 5) return alert("Justificación insuficiente.");
-        
-        if (!co.orders) co.orders = [];
-        
-        const total = co.cart.reduce((s, i) => s + i.price, 0);
-        const newOrder = { 
-            id: state.data.config.nextOrderId++, 
-            items: [...co.cart], 
-            total: total, 
-            justification: just, 
-            status: 'PENDIENTE_FINANZAS', 
-            date: new Date().toLocaleString() 
-        };
-        
-        co.orders.unshift(newOrder);
-        
-        telemetry.log("REQUISICIÓN", `Enviada a Finanzas: ${total.toFixed(2)}€v`);
-        co.cart = []; 
-        
-        state.save(); 
-        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
-        
-        alert(`✅ Solicitud #${newOrder.id} transmitida con éxito. Finanzas ya puede verla en su panel.`);
         this.render();
     },
 
@@ -282,7 +314,7 @@ Object.assign(ui, {
                 </div>
                 <div class="flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-mars-border/50 pt-3">
                     <span class="text-[10px] text-slate-400 uppercase font-bold">Total Virtual: <span class="text-mars-green font-mono text-sm">${co.cart.reduce((s,i)=>s+i.price,0).toFixed(2)} €v</span></span>
-                    <button onclick="ui.submitTechOrderToFinance()" class="w-full sm:w-auto bg-mars-cyan text-black px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-colors">Transmitir a Finanzas</button>
+                    <button onclick="ui.modalSubmitOrderToFinance()" class="w-full sm:w-auto bg-mars-cyan text-black px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-colors">Transmitir a Finanzas</button>
                 </div>
             </div>`;
         }
@@ -298,6 +330,12 @@ Object.assign(ui, {
             }
         }
 
+        const sortedOrders = [...(co.orders || [])].sort((a, b) => {
+            if (a.status === 'PENDIENTE_FINANZAS' && b.status !== 'PENDIENTE_FINANZAS') return -1;
+            if (a.status !== 'PENDIENTE_FINANZAS' && b.status === 'PENDIENTE_FINANZAS') return 1;
+            return 0;
+        });
+
         wrapper.innerHTML = `
         ${ceoDashboard}
         ${techCartHtml}
@@ -307,7 +345,7 @@ Object.assign(ui, {
         </div>
         
         <div class="space-y-6">
-            ${(co.orders || []).map(order => `
+            ${sortedOrders.map(order => `
             <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 ${order.status === 'EJECUTADO' ? 'border-l-mars-cyan' : order.status === 'APROBADO_FINANZAS' ? 'border-l-mars-green' : order.status === 'DENEGADO' ? 'border-l-mars-magenta' : 'border-l-mars-yellow'} animate-in slide-in-from-bottom-4 duration-300">
                 <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
                     <div><span class="text-[9px] font-bold uppercase ${order.status === 'EJECUTADO' ? 'text-mars-cyan bg-mars-cyan/10' : order.status === 'APROBADO_FINANZAS' ? 'text-mars-green bg-mars-green/10' : order.status === 'DENEGADO' ? 'text-mars-magenta bg-mars-magenta/10' : 'text-mars-yellow bg-mars-yellow/10'} px-2 py-1 tracking-widest">[STATUS: ${order.status}]</span><h3 class="text-white font-orbitron mt-3 uppercase text-xs sm:text-sm">ORDER_TX: ${order.id}</h3></div>
