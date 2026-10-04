@@ -1,0 +1,17 @@
+{
+  "name": "mars-ket-2.0",
+  "version": "1.0.05",
+  "scripts": {
+    "dev": "serve . -p 3000",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.42.0",
+    "happy-dom": "^14.0.0",
+    "serve": "^14.2.1",
+    "vitest": "^1.4.0"
+  }
+}

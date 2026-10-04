@@ -164,3 +164,4 @@ const telemetry = {
         state.save();
     }
 };
+if (typeof module !== 'undefined' && module.exports) { module.exports = { state }; }

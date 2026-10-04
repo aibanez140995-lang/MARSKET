@@ -672,7 +672,14 @@ Object.assign(ui, {
                                 <span class="text-mars-magenta">Físico: ${eo.realEurTotal !== undefined ? eo.realEurTotal.toFixed(2) + ' €' : 'N/A'}</span>
                             </div>
                             <div class="text-[8px] text-slate-400 space-y-1">
-                                ${eo.items.map(i => `<p>- ${i.name} (x${i.qty}) @ ${i.realShop || 'N/A'}: <span class="text-mars-magenta">${i.realEur !== '' ? parseFloat(i.realEur).toFixed(2)+' €' : '---'}</span></p>`).join('')}
+                                ${eo.items.map(i => `
+                                <div class="flex justify-between border-b border-slate-800/50 py-1">
+                                    <span class="truncate pr-2">- ${i.name} (x${i.qty})</span>
+                                    <div class="flex gap-3 text-right shrink-0">
+                                        <span class="text-mars-cyan">${i.price.toFixed(2)} €v</span>
+                                        <span>@ ${i.realShop || 'N/A'}: <span class="text-mars-magenta">${i.realEur !== '' ? parseFloat(i.realEur).toFixed(2)+' €' : '---'}</span></span>
+                                    </div>
+                                </div>`).join('')}
                             </div>
                         </div>
                         `).join('')}
