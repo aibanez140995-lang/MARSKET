@@ -1,6 +1,7 @@
 // js/config.js
 
-const APP_VERSION = "1.0.04";
+const APP_VERSION = "1.0.05";
+const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const RUBRIC_CONFIG = {
     FYQ: { name: "Física y Química", criteria: [{id: 'c1', name: 'Informe Científico Estequiometría', weight: 0.4}, {id: 'c2', name: 'Lanzamiento, Apogeo y Optimización', weight: 0.4}, {id: 'c3', name: 'Rol Técnico y Q&A', weight: 0.2}] },
@@ -44,7 +45,7 @@ const INITIAL_DATA = {
         { id: 'A01', name: 'Cartón Básico', price: 30.0, unit: 'Set', category: 'Aerodinámica', origin: 'Marruecos' },
         { id: 'A02', name: 'Aletas de Plástico', price: 50.0, unit: 'Set', category: 'Aerodinámica', origin: 'China' },
         { id: 'A03', name: 'Aletas PVC Rígido', price: 85.0, unit: 'Set', category: 'Aerodinámica', origin: 'Alemania' },
-        { id: 'A04', name: 'Suplemento Plastificado', price: 15.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'Francia' },
+        { id: 'A04', name: 'Suplemento Plastificado', price: 15.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'ESA / Francia' },
         { id: 'A05', name: 'Punta Cartulina', price: 45.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'Marruecos' },
         { id: 'A06', name: 'Punta PET', price: 95.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'Polonia' },
         { id: 'A07', name: 'Punta Impresión 3D', price: 110.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'España' },
@@ -60,7 +61,7 @@ const INITIAL_DATA = {
     ],
     companies: {
         astra: { 
-            name: "Astra Dynamics", balance: 1500, logo: null, sponsorAwarded: null, 
+            name: "Astra Dynamics", balance: 1500, logo: null, sponsorAwarded: null, classGroup: 'A',
             slogan: "", valueProposition: "", aiPrompts: [], executiveResolutions: [], 
             flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, 
             roles: { CEO:'1111', TECNICO:'1111', FINANZAS:'1111', MARKETING:'1111', OPERACIONES_IA:'1111' }, 
@@ -68,7 +69,7 @@ const INITIAL_DATA = {
             deliverables: { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null }
         },
         orion: { 
-            name: "Orion Labs", balance: 1500, logo: null, sponsorAwarded: null, 
+            name: "Orion Labs", balance: 1500, logo: null, sponsorAwarded: null, classGroup: 'B',
             slogan: "", valueProposition: "", aiPrompts: [], executiveResolutions: [], 
             flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, 
             roles: { CEO:'2222', TECNICO:'2222', FINANZAS:'2222', MARKETING:'2222', OPERACIONES_IA:'2222' }, 
@@ -76,7 +77,7 @@ const INITIAL_DATA = {
             deliverables: { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null }
         },
         stellar: { 
-            name: "Stellar Solutions", balance: 1500, logo: null, sponsorAwarded: null, 
+            name: "Stellar Solutions", balance: 1500, logo: null, sponsorAwarded: null, classGroup: 'C',
             slogan: "", valueProposition: "", aiPrompts: [], executiveResolutions: [], 
             flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, 
             roles: { CEO:'3333', TECNICO:'3333', FINANZAS:'3333', MARKETING:'3333', OPERACIONES_IA:'3333' }, 

@@ -22,11 +22,21 @@ const auth = {
                 roleSelect.appendChild(opt);
             });
         } else {
-            ['CEO', 'Técnico', 'Finanzas', 'Marketing', 'Operaciones IA'].forEach(r => {
-                const opt = document.createElement('option');
-                opt.value = r; opt.innerText = r;
-                roleSelect.appendChild(opt);
-            });
+            const co = state.data.companies[coId];
+            if (co && co.roles) {
+                Object.keys(co.roles).forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r; 
+                    opt.innerText = r.replace('_', ' ');
+                    roleSelect.appendChild(opt);
+                });
+            } else {
+                ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA'].forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r; opt.innerText = r.replace('_', ' ');
+                    roleSelect.appendChild(opt);
+                });
+            }
         }
     },
 
@@ -74,6 +84,7 @@ const auth = {
         else if (roleKey === 'FINANZAS') ui.navigate('finance');
         else if (roleKey === 'MARKETING') ui.navigate('brand');
         else if (roleKey === 'OPERACIONES_IA') ui.navigate('cart');
+        else if (roleKey === 'AUXILIAR') ui.navigate('dossier');
         else ui.navigate('dossier');
 
         ui.showWelcomeModal();
@@ -119,9 +130,12 @@ const auth = {
             html += `<button onclick="ui.navigate('cart')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center gap-2 whitespace-nowrap">Logística <span id="cart-count" class="bg-mars-magenta text-white px-1.5 rounded-full text-[8px]">0</span></button>`;
             html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
             html += `<button onclick="ui.navigate('ailog')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Buzón Bitácora IA</button>`;
+        } else if (role === 'AUXILIAR') {
+            html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
+            html += `<button onclick="ui.navigate('resolutions')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Gobernanza / Actas</button>`;
         }
         
-        if (role !== 'TECNICO' && role !== 'MARKETING' && role !== 'OPERACIONES_IA') {
+        if (role !== 'TECNICO' && role !== 'MARKETING' && role !== 'OPERACIONES_IA' && role !== 'AUXILIAR') {
             html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
         }
         html += `<button onclick="ui.navigate('dossier')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Dossier / Notas</button>`;

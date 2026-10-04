@@ -24,6 +24,7 @@ const state = {
 
         for(let k in d.companies) {
             let co = d.companies[k];
+            co.classGroup = co.classGroup || 'A';
             co.deliverables = co.deliverables || { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null };
             co.flightTests = co.flightTests || [];
             co.votingMotions = co.votingMotions || [];

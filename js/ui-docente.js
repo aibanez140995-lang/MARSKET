@@ -2,9 +2,12 @@
 // --- MÓDULO DE VISTAS Y ACCIONES PARA CLAUSTRO DOCENTE ---
 
 Object.assign(ui, {
+    evalClassFilter: 'ALL',
+
     // --- 1. VISTA PRINCIPAL DE ADMINISTRACIÓN ---
     viewAdmin(el) {
         const isAlex = state.user.role === 'COORD_ALEX';
+        const isCoord = state.user.role.startsWith('COORD');
         
         let adminHtml = `
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
@@ -88,7 +91,6 @@ Object.assign(ui, {
             </div>`;
         } 
         else if(this.adminTab === 'eval') {
-            const isCoord = state.user.role.startsWith('COORD');
             const activeSubject = isCoord ? (this.coordEvalView === 'ACTA' || this.coordEvalView === 'ARCHIVE' ? null : this.coordEvalView) : state.user.role;
             
             adminHtml += `<div class="mb-6 flex flex-wrap gap-4 items-center bg-slate-900 p-2 border border-mars-border">`;
@@ -104,7 +106,13 @@ Object.assign(ui, {
             } else {
                 adminHtml += `<h3 class="font-orbitron text-mars-cyan text-sm uppercase px-4 py-2">Módulo Calificador: <span class="text-white">${RUBRIC_CONFIG[activeSubject].name}</span></h3>`;
             }
-            adminHtml += `</div>`;
+            
+            adminHtml += `
+                <select onchange="ui.evalClassFilter=this.value; ui.evalSelectedCo=''; ui.render()" class="bg-black border border-mars-yellow text-mars-yellow text-xs p-2 uppercase font-bold outline-none cursor-pointer ml-auto">
+                    <option value="ALL" ${this.evalClassFilter==='ALL'?'selected':''}>Todas las Clases</option>
+                    ${['A','B','C','D','E','F'].map(c => `<option value="${c}" ${this.evalClassFilter===c?'selected':''}>Clase ${c}</option>`).join('')}
+                </select>
+            </div>`;
 
             if(isCoord && this.coordEvalView === 'ACTA') {
                 adminHtml += `
@@ -114,7 +122,9 @@ Object.assign(ui, {
                             <tr><th class="py-3 pr-4">Startups</th><th class="pr-3">FYQ</th><th class="pr-3">ECO</th><th class="pr-3">LYE</th><th class="pr-3">LEN</th><th class="pr-3">MAT</th><th class="pr-3">ING</th><th class="text-mars-yellow">Media Global</th></tr>
                         </thead>
                         <tbody>
-                            ${Object.keys(state.data.companies).map(cid => {
+                            ${Object.keys(state.data.companies)
+                                .filter(cid => this.evalClassFilter === 'ALL' || state.data.companies[cid].classGroup === this.evalClassFilter)
+                                .map(cid => {
                                 const co = state.data.companies[cid];
                                 const g = co.grades || {};
                                 const vals = ['FYQ','ECO','LYE','LEN','MAT','ING'].map(s => g[s] ? g[s].final : null);
@@ -123,7 +133,7 @@ Object.assign(ui, {
                                 
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-mars-cyan/5">
-                                    <td class="py-3 font-orbitron text-white font-bold pr-4"><button onclick="ui.showCompanyLogins('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4">${co.name}</button></td>
+                                    <td class="py-3 font-orbitron text-white font-bold pr-4"><button onclick="ui.showCompanyLogins('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4">${co.name} [${co.classGroup}]</button></td>
                                     ${vals.map(v => `<td class="py-3 font-mono pr-3 ${v!==null?'text-mars-cyan font-bold':'text-slate-600'}">${v!==null ? v.toFixed(2) : '--'}</td>`).join('')}
                                     <td class="py-3 font-mono text-mars-yellow font-black text-sm">${avg}</td>
                                 </tr>`;
@@ -139,7 +149,9 @@ Object.assign(ui, {
                             <tr><th class="py-3 pr-4">Empresa</th><th class="pr-4">Informe Téc (FYQ)</th><th class="pr-4">P. Fase I (ING/LYE)</th><th class="pr-4">P. Fase III (LEN)</th><th class="pr-4">Libro Finanzas (ECO)</th><th class="pr-4">Propuesta Valor</th><th>IA Prompts</th></tr>
                         </thead>
                         <tbody>
-                            ${Object.keys(state.data.companies).map(cid => {
+                            ${Object.keys(state.data.companies)
+                                .filter(cid => this.evalClassFilter === 'ALL' || state.data.companies[cid].classGroup === this.evalClassFilter)
+                                .map(cid => {
                                 const co = state.data.companies[cid];
                                 const d = co.deliverables || {};
                                 const aiCount = (co.aiPrompts||[]).filter(p=>p.status==='APROBADO').length;
@@ -150,7 +162,7 @@ Object.assign(ui, {
 
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
-                                    <td class="py-3 font-orbitron text-white font-bold pr-4">${co.name}</td>
+                                    <td class="py-3 font-orbitron text-white font-bold pr-4">${co.name} [${co.classGroup}]</td>
                                     <td class="py-3 pr-4">${dLink(d.technicalReport)}</td>
                                     <td class="py-3 pr-4">${dLink(d.presPhase1)}</td>
                                     <td class="py-3 pr-4">${dLink(d.presPhase3)}</td>
@@ -168,7 +180,9 @@ Object.assign(ui, {
                 
                 let selectCoHtml = `<select id="eval-co-select" onchange="ui.selectEvalCo(this.value)" class="w-full md:w-1/2 bg-slate-900 border border-mars-border text-white text-xs p-3 uppercase font-bold outline-none focus:border-mars-cyan mb-6">
                     <option value="">-- Seleccione Startup a Evaluar --</option>
-                    ${Object.keys(state.data.companies).map(cid => `<option value="${cid}" ${this.evalSelectedCo===cid?'selected':''}>${state.data.companies[cid].name}</option>`).join('')}
+                    ${Object.keys(state.data.companies)
+                        .filter(cid => this.evalClassFilter === 'ALL' || state.data.companies[cid].classGroup === this.evalClassFilter)
+                        .map(cid => `<option value="${cid}" ${this.evalSelectedCo===cid?'selected':''}>${state.data.companies[cid].name} [${state.data.companies[cid].classGroup}]</option>`).join('')}
                 </select>`;
 
                 if(!this.evalSelectedCo) {
@@ -239,26 +253,33 @@ Object.assign(ui, {
                     <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Crear Startup</h3>
                     <input type="text" id="new-co-name" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white mb-3 outline-none focus:border-mars-cyan" placeholder="Nombre Corporativo">
                     <input type="number" id="new-co-cap" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white mb-4 outline-none focus:border-mars-cyan" placeholder="Capital (€v)" value="1500">
+                    <select id="new-co-class" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white mb-4 outline-none focus:border-mars-cyan">
+                        ${['A','B','C','D','E','F'].map(c => `<option value="${c}">Clase ${c}</option>`).join('')}
+                    </select>
                     <button onclick="ui.createStartup()" class="w-full bg-mars-cyan text-black font-black py-3 text-[10px] uppercase tracking-widest hover:shadow-[0_0_10px_#00f0ff] transition-shadow">Registrar</button>
                 </div>
                 <div class="xl:col-span-3 terminal-border bg-mars-card p-6 overflow-x-auto border-t-4 border-t-mars-yellow">
                     <h3 class="font-orbitron text-mars-yellow text-xs mb-4 uppercase tracking-widest">Gestión de PINs de Acceso</h3>
                     <table class="w-full text-left text-[9px] whitespace-nowrap">
-                        <thead class="text-slate-500 uppercase border-b border-mars-border"><tr><th class="py-2">Empresa</th><th>CEO</th><th>TEC</th><th>FIN</th><th>MKT</th><th>OP_IA</th><th>Acción</th></tr></thead>
+                        <thead class="text-slate-500 uppercase border-b border-mars-border"><tr><th class="py-2">Empresa</th><th>Clase</th><th>CEO</th><th>TEC</th><th>FIN</th><th>MKT</th><th>OP_IA</th><th>Acción</th></tr></thead>
                         <tbody>
                             ${Object.keys(state.data.companies).map(cid => {
                                 const r = state.data.companies[cid].roles;
+                                const co = state.data.companies[cid];
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
-                                    <td class="py-3 font-orbitron text-white font-bold"><button onclick="ui.showCompanyLogins('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4">${state.data.companies[cid].name}</button></td>
+                                    <td class="py-3 font-orbitron text-white font-bold"><button onclick="ui.showCompanyLogins('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4">${co.name}</button></td>
+                                    <td class="py-3 text-mars-yellow font-bold">${co.classGroup}</td>
                                     ${['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA'].map(rol => `
-                                    <td class="py-3"><input type="text" maxlength="4" value="${r[rol]}" onchange="ui.updatePIN('${cid}', '${rol}', this.value)" class="w-10 bg-black border border-mars-border text-center text-mars-cyan font-bold p-1 outline-none focus:border-mars-yellow"></td>`).join('')}
-                                    <td class="py-3"><button onclick="if(confirm('¿Borrar startup irreversiblemente?')) ui.deleteStartup('${cid}')" class="text-mars-magenta font-bold hover:underline">Eliminar</button></td>
+                                    <td class="py-3">
+                                        ${isCoord ? `<input type="text" maxlength="4" value="${r[rol]}" onchange="ui.updatePIN('${cid}', '${rol}', this.value)" class="w-10 bg-black border border-mars-border text-center text-mars-cyan font-bold p-1 outline-none focus:border-mars-yellow">` : `<span class="text-slate-500">****</span>`}
+                                    </td>`).join('')}
+                                    <td class="py-3">${isCoord ? `<button onclick="if(confirm('¿Borrar startup irreversiblemente?')) ui.deleteStartup('${cid}')" class="text-mars-magenta font-bold hover:underline">Eliminar</button>` : `<span class="text-slate-600">Bloqueado</span>`}</td>
                                 </tr>`;
                             }).join('')}
                         </tbody>
                     </table>
-                    <p class="text-[8px] text-slate-500 mt-4 uppercase">* Modifique los 4 dígitos y pulse Enter o cambie de campo para guardar automáticamente.</p>
+                    ${isCoord ? `<p class="text-[8px] text-slate-500 mt-4 uppercase">* Modifique los 4 dígitos y pulse Enter o cambie de campo para guardar automáticamente.</p>` : `<p class="text-[8px] text-mars-magenta mt-4 uppercase">Solo Coordinación puede modificar PINs o eliminar startups.</p>`}
                 </div>
             </div>`;
         }
@@ -535,10 +556,11 @@ Object.assign(ui, {
     createStartup() {
         const name = document.getElementById('new-co-name').value;
         const cap = parseFloat(document.getElementById('new-co-cap').value);
+        const classGroup = document.getElementById('new-co-class').value || 'A';
         if(!name || isNaN(cap)) return alert("Datos inválidos.");
         const cid = 'co_' + Date.now();
         state.data.companies[cid] = { 
-            name, balance: cap, logo: null, sponsorAwarded: null, valueProposition: "", slogan: "",
+            name, balance: cap, logo: null, sponsorAwarded: null, valueProposition: "", slogan: "", classGroup,
             roles: { CEO:'1234', TECNICO:'1234', FINANZAS:'1234', MARKETING:'1234', OPERACIONES_IA:'1234' }, 
             aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, 
             loginStats: { totalLogins: 0, roles: { CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0} } },
@@ -554,6 +576,7 @@ Object.assign(ui, {
     },
 
     updatePIN(coId, role, val) { 
+        if(!state.user.role.startsWith('COORD')) return alert("Solo Coordinación puede modificar PINs.");
         if(val.length !== 4) return alert("4 dígitos."); 
         state.data.companies[coId].roles[role] = val; 
         state.save(); 

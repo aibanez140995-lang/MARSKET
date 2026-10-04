@@ -15,7 +15,7 @@ Object.assign(ui, {
                     <option value="admin" class="text-mars-yellow font-bold">CLAUSTRO DOCENTE</option>
                 </select>
                 <select id="login-role" class="w-full bg-slate-900 border border-mars-border p-3 text-sm mb-6 outline-none focus:border-mars-cyan uppercase text-white font-bold">
-                    <option>CEO</option><option>Técnico</option><option>Finanzas</option><option>Marketing</option><option>Operaciones IA</option>
+                    <option>CEO</option><option>Técnico</option><option>Finanzas</option><option>Marketing</option><option>Operaciones IA</option><option>Auxiliar</option>
                 </select>
                 <div class="flex justify-center gap-4 mb-8">
                     ${[1,2,3,4].map(() => `<div class="pin-dot w-3 h-3 rounded-full border border-mars-cyan transition-all"></div>`).join('')}
@@ -28,6 +28,13 @@ Object.assign(ui, {
                 </div>
             </div>
         </div>`;
+        // Forzar actualización inicial de roles para la startup seleccionada por defecto
+        setTimeout(() => auth.updateRoleOptions(), 50);
+    },
+
+    setMarketFilter(cat) {
+        this.marketFilter = cat;
+        this.render();
     },
 
     viewMarket(el) {
@@ -79,21 +86,36 @@ Object.assign(ui, {
         }
 
         const visibleCatalog = state.data.catalog.filter(item => {
-            if (!item.exclusiveFor) return true;
-            if (state.user && state.user.admin) return true;
-            return state.user && state.user.coId === item.exclusiveFor;
+            let isAllowed = false;
+            if (!item.exclusiveFor) isAllowed = true;
+            else if (state.user && state.user.admin) isAllowed = true;
+            else if (state.user && state.user.coId === item.exclusiveFor) isAllowed = true;
+
+            if (!isAllowed) return false;
+            
+            if (this.marketFilter === 'ALL') return true;
+            return item.category.toUpperCase() === this.marketFilter.toUpperCase();
         });
+
+        const filterButtons = ['ALL', 'Fuselaje', 'Propulsión', 'Aerodinámica', 'Sellado', 'Externo'].map(cat => `
+            <button onclick="ui.setMarketFilter('${cat}')" class="px-3 py-1.5 text-[9px] font-bold uppercase border ${this.marketFilter === cat ? 'bg-mars-cyan text-black border-mars-cyan' : 'bg-transparent text-slate-400 border-mars-border hover:border-mars-cyan hover:text-mars-cyan'} transition-colors whitespace-nowrap">
+                ${cat === 'ALL' ? 'TODOS' : cat}
+            </button>
+        `).join('');
 
         wrapper.innerHTML = `
         ${topSection}
-        <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">SUPERMARS-KET Oficial</h2>
             ${!state.user.admin && state.user.role === 'TECNICO' ? `<button onclick="ui.modalCustom()" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-3 py-1.5 text-[9px] sm:text-[10px] uppercase font-bold hover:bg-mars-magenta hover:text-white transition-all whitespace-nowrap">Solicitar I+D</button>` : ``}
+        </div>
+        <div class="flex flex-wrap gap-2 mb-6 pb-4 border-b border-mars-border">
+            ${filterButtons}
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             ${visibleCatalog.map(item => {
                 let buySection = '';
-                if(!state.user.admin) {
+                if(!state.user.admin && state.user.role !== 'AUXILIAR') {
                     if (state.user.role === 'TECNICO') {
                         if (item.id === 'P01') {
                             buySection = `<div class="flex gap-1 mt-2"><button onclick="ui.techAddToCart('${item.id}', 10)" class="flex-1 bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-1 text-[9px] font-bold hover:bg-mars-cyan hover:text-black">+10g</button><button onclick="ui.techAddToCart('${item.id}', 25)" class="flex-1 bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-1 text-[9px] font-bold hover:bg-mars-cyan hover:text-black">+25g</button><button onclick="ui.techAddToCart('${item.id}', 50)" class="flex-1 bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-1 text-[9px] font-bold hover:bg-mars-cyan hover:text-black">+50g</button></div>`;
@@ -122,7 +144,7 @@ Object.assign(ui, {
                         ${buySection}
                     </div>
                 </div>`;
-            }).join('')}
+            }).join('') || '<p class="text-slate-500 italic text-sm col-span-full">No hay materiales en esta categoría.</p>'}
         </div>`;
         el.appendChild(wrapper);
     },
@@ -199,6 +221,8 @@ Object.assign(ui, {
     viewTech(el) {
         const co = state.data.companies[state.user.coId];
         const docs = co.deliverables || {};
+        co.bom = co.bom || [];
+        
         const wrapper = document.createElement('div');
         
         let ftHtml = co.flightTests.map(f => `
@@ -212,6 +236,37 @@ Object.assign(ui, {
             </tr>
         `).join('') || `<tr><td colspan="6" class="text-center py-4 text-slate-600 italic text-xs">No hay ensayos registrados.</td></tr>`;
 
+        // BOM Logic
+        let executedItems = [];
+        (co.orders || []).filter(o => o.status === 'EJECUTADO').forEach(o => {
+            o.items.forEach(item => {
+                executedItems.push({ ...item, orderId: o.id });
+            });
+        });
+
+        let bomTotal = 0;
+        let bomHtml = '';
+
+        if (executedItems.length === 0) {
+            bomHtml = `<p class="text-slate-500 italic text-xs">No hay componentes adquiridos y ejecutados para configurar el BOM.</p>`;
+        } else {
+            bomHtml = executedItems.map((item, idx) => {
+                const isChecked = co.bom.includes(`${item.orderId}-${idx}`);
+                if (isChecked) bomTotal += item.price;
+                return `
+                <div class="flex justify-between items-center bg-slate-900 p-2 border border-mars-border text-[10px] mb-1">
+                    <label class="flex items-center gap-2 text-white cursor-pointer flex-grow">
+                        <input type="checkbox" class="form-checkbox bg-black border-mars-cyan" ${isChecked ? 'checked' : ''} onchange="ui.toggleBomItem('${item.orderId}-${idx}', this.checked)">
+                        ${item.name} (x${item.qty})
+                    </label>
+                    <span class="text-mars-green font-mono">${item.price.toFixed(2)} €v</span>
+                </div>
+                `;
+            }).join('');
+        }
+
+        const totalDevCost = (co.orders || []).filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + o.total, 0);
+
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-1 space-y-6">
@@ -220,6 +275,26 @@ Object.assign(ui, {
                     ${state.data.config.guidelines.techReportNotes ? `<p class="text-[10px] text-mars-yellow mb-3 italic">Info: ${state.data.config.guidelines.techReportNotes}</p>` : ''}
                     ${state.data.config.guidelines.techReportDocUrl ? `<a href="${state.data.config.guidelines.techReportDocUrl}" target="_blank" class="block text-center border border-mars-cyan text-mars-cyan text-[10px] py-2 mb-4 font-bold uppercase hover:bg-mars-cyan hover:text-black">Descargar Guía Oficial FYQ</a>` : ''}
                     ${this.renderHybridUploadBox('Informe Técnico Oficial (PDF/Enlace)', 'Documento con cálculos estequiométricos y diseño aerodinámico.', 'technicalReport', docs.technicalReport)}
+                </div>
+
+                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-magenta">
+                    <h2 class="font-orbitron text-mars-magenta text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Configurador de Prototipo (BOM)</h2>
+                    <p class="text-[9px] text-slate-400 mb-4 uppercase leading-relaxed">Selecciona los componentes del histórico de compras que forman parte del cohete definitivo.</p>
+                    
+                    <div class="flex justify-between items-center mb-4 bg-black p-3 border border-mars-border">
+                        <div class="text-center">
+                            <p class="text-[8px] text-slate-500 uppercase font-bold">Coste Desarrollo</p>
+                            <p class="text-mars-cyan font-mono font-bold">${totalDevCost.toFixed(2)} €v</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-[8px] text-slate-500 uppercase font-bold">Coste Prototipo (BOM)</p>
+                            <p class="text-mars-green font-mono font-bold text-lg">${bomTotal.toFixed(2)} €v</p>
+                        </div>
+                    </div>
+
+                    <div class="max-h-48 overflow-y-auto pr-2">
+                        ${bomHtml}
+                    </div>
                 </div>
             </div>
             <div class="lg:col-span-2 terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow">
@@ -243,6 +318,18 @@ Object.assign(ui, {
             </div>
         </div>`;
         el.appendChild(wrapper);
+    },
+
+    toggleBomItem(itemKey, isChecked) {
+        const co = state.data.companies[state.user.coId];
+        co.bom = co.bom || [];
+        if (isChecked) {
+            if (!co.bom.includes(itemKey)) co.bom.push(itemKey);
+        } else {
+            co.bom = co.bom.filter(k => k !== itemKey);
+        }
+        state.save();
+        this.render();
     },
 
     submitFlightTest() {
@@ -317,7 +404,10 @@ Object.assign(ui, {
         let ceoDashboard = '';
         if(role === 'CEO') {
             ceoDashboard = `
-            <h2 class="font-orbitron text-mars-cyan text-sm mb-3 uppercase tracking-tighter border-b border-mars-border pb-2">Cronograma Maestro de Entregas</h2>
+            <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
+                <h2 class="font-orbitron text-mars-cyan text-sm uppercase tracking-tighter">Cronograma Maestro de Entregas</h2>
+                <button onclick="ui.modalCreateAuxRole()" class="bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-3 py-1.5 text-[9px] font-bold uppercase hover:bg-mars-cyan hover:text-black transition-colors whitespace-nowrap">Gestionar Rol Observador</button>
+            </div>
             ${this.renderDeadlinesBlock()}
             
             <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan mb-8">
@@ -350,6 +440,8 @@ Object.assign(ui, {
             return 0;
         });
 
+        const isCEOOrAdmin = state.user.role === 'CEO' || state.user.admin;
+
         wrapper.innerHTML = `
         ${ceoDashboard}
         ${financeAlertHtml}
@@ -358,15 +450,10 @@ Object.assign(ui, {
         </div>
         
         <div class="space-y-6">
-            ${sortedOrders.map(order => `
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 ${order.status === 'EJECUTADO' ? 'border-l-mars-cyan' : order.status === 'APROBADO_FINANZAS' ? 'border-l-mars-green' : order.status === 'DENEGADO' ? 'border-l-mars-magenta' : 'border-l-mars-yellow'} animate-in slide-in-from-bottom-4 duration-300">
-                <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
-                    <div><span class="text-[9px] font-bold uppercase ${order.status === 'EJECUTADO' ? 'text-mars-cyan bg-mars-cyan/10' : order.status === 'APROBADO_FINANZAS' ? 'text-mars-green bg-mars-green/10' : order.status === 'DENEGADO' ? 'text-mars-magenta bg-mars-magenta/10' : 'text-mars-yellow bg-mars-yellow/10'} px-2 py-1 tracking-widest">[STATUS: ${order.status}]</span><h3 class="text-white font-orbitron mt-3 uppercase text-xs sm:text-sm">ORDER_TX: ${order.id}</h3></div>
-                    <div class="text-left sm:text-right w-full sm:w-auto"><p class="text-mars-green font-black font-mono text-xl tracking-tighter">${order.total.toFixed(2)} €v</p><p class="text-[9px] text-slate-500 uppercase font-bold mt-1">${order.date}</p></div>
-                </div>
-                
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-                    <div class="bg-black/50 p-4 border border-mars-border/50 text-[10px] w-full"><span class="block text-mars-cyan font-bold uppercase mb-2 border-b border-mars-cyan/30 pb-1">Justificación Técnica:</span><p class="text-slate-300 italic leading-relaxed">"${order.justification}"</p></div>
+            ${sortedOrders.map(order => {
+                let physicalCostsHtml = '';
+                if (isCEOOrAdmin && (order.status === 'EJECUTADO' || order.status === 'APROBADO_FINANZAS')) {
+                    physicalCostsHtml = `
                     <div class="bg-black/50 p-4 border border-mars-border/50 text-[9px] overflow-x-auto w-full">
                         <span class="block text-mars-magenta font-bold uppercase mb-2 border-b border-mars-magenta/30 pb-1">Desglose Físico Verificado:</span>
                         <table class="w-full text-left whitespace-nowrap min-w-max">
@@ -375,42 +462,126 @@ Object.assign(ui, {
                             </tbody>
                         </table>
                         <div class="flex justify-between pt-2 mt-2 border-t border-slate-800 font-bold text-[10px]"><span class="text-white">TOTAL FÍSICO</span><span class="text-mars-magenta bg-mars-magenta/10 px-2 py-0.5">${order.realEurTotal!==undefined ? order.realEurTotal.toFixed(2)+' €' : '---'}</span></div>
-                    </div>
-                </div>
-                
-                ${order.denyReason ? `<div class="bg-red-900/30 border border-red-500/50 p-3 text-[10px] text-red-200 mt-2 mb-4 w-full"><span class="font-bold">MOTIVO RECHAZO:</span> ${order.denyReason}</div>` : ''}
-                
-                ${order.status === 'PENDIENTE_FINANZAS' && role.includes('FINAN') ? `
-                <div class="flex flex-col sm:flex-row gap-3 border-t border-mars-border pt-4">
-                    <button onclick="ui.financeApproveOrder('${order.id}')" class="flex-grow bg-mars-green text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors shadow-[0_0_10px_rgba(0,255,102,0.4)]">Dar Luz Verde Presupuestaria</button>
-                    <button onclick="ui.promptDenyOrder('${order.id}')" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-6 py-3 text-[10px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-colors whitespace-nowrap">Denegar</button>
-                </div>` : ''}
+                    </div>`;
+                }
 
-                ${order.status === 'APROBADO_FINANZAS' && (role === 'TECNICO' || role === 'OPERACIONES_IA') ? `
-                <div class="flex flex-col sm:flex-row gap-3 border-t border-mars-border pt-4">
-                    <button onclick="ui.navigate('cart')" class="flex-grow bg-mars-cyan text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors shadow-[0_0_10px_rgba(0,240,255,0.4)]">Ir a Logística para Ejecutar Compra</button>
-                </div>` : ''}
-            </div>`).join('') || '<p class="text-slate-600 italic text-sm">No hay peticiones en el histórico.</p>'}
+                return `
+                <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 ${order.status === 'EJECUTADO' ? 'border-l-mars-cyan' : order.status === 'APROBADO_FINANZAS' ? 'border-l-mars-green' : order.status === 'DENEGADO' ? 'border-l-mars-magenta' : 'border-l-mars-yellow'} animate-in slide-in-from-bottom-4 duration-300">
+                    <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+                        <div><span class="text-[9px] font-bold uppercase ${order.status === 'EJECUTADO' ? 'text-mars-cyan bg-mars-cyan/10' : order.status === 'APROBADO_FINANZAS' ? 'text-mars-green bg-mars-green/10' : order.status === 'DENEGADO' ? 'text-mars-magenta bg-mars-magenta/10' : 'text-mars-yellow bg-mars-yellow/10'} px-2 py-1 tracking-widest">[STATUS: ${order.status}]</span><h3 class="text-white font-orbitron mt-3 uppercase text-xs sm:text-sm">ORDER_TX: ${order.id}</h3></div>
+                        <div class="text-left sm:text-right w-full sm:w-auto"><p class="text-mars-green font-black font-mono text-xl tracking-tighter">${order.total.toFixed(2)} €v</p><p class="text-[9px] text-slate-500 uppercase font-bold mt-1">${order.date}</p></div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 ${physicalCostsHtml ? 'lg:grid-cols-2' : ''} gap-4 mb-4">
+                        <div class="bg-black/50 p-4 border border-mars-border/50 text-[10px] w-full"><span class="block text-mars-cyan font-bold uppercase mb-2 border-b border-mars-cyan/30 pb-1">Justificación Técnica:</span><p class="text-slate-300 italic leading-relaxed">"${order.justification}"</p></div>
+                        ${physicalCostsHtml}
+                    </div>
+                    
+                    ${order.denyReason ? `<div class="bg-red-900/30 border border-red-500/50 p-3 text-[10px] text-red-200 mt-2 mb-4 w-full"><span class="font-bold">MOTIVO RECHAZO:</span> ${order.denyReason}</div>` : ''}
+                    
+                    ${order.status === 'PENDIENTE_FINANZAS' && role.includes('FINAN') ? `
+                    <div class="flex flex-col sm:flex-row gap-3 border-t border-mars-border pt-4">
+                        <button onclick="ui.promptPartialApproveOrder('${order.id}')" class="flex-grow bg-mars-green text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors shadow-[0_0_10px_rgba(0,255,102,0.4)]">Revisar y Aprobar Presupuesto</button>
+                        <button onclick="ui.promptDenyOrder('${order.id}')" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-6 py-3 text-[10px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-colors whitespace-nowrap">Denegar Totalmente</button>
+                    </div>` : ''}
+
+                    ${order.status === 'APROBADO_FINANZAS' && (role === 'TECNICO' || role === 'OPERACIONES_IA') ? `
+                    <div class="flex flex-col sm:flex-row gap-3 border-t border-mars-border pt-4">
+                        <button onclick="ui.navigate('cart')" class="flex-grow bg-mars-cyan text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors shadow-[0_0_10px_rgba(0,240,255,0.4)]">Ir a Logística para Ejecutar Compra</button>
+                    </div>` : ''}
+                </div>`;
+            }).join('') || '<p class="text-slate-600 italic text-sm">No hay peticiones en el histórico.</p>'}
         </div>`;
         el.appendChild(wrapper);
     },
 
-    financeApproveOrder(oid) {
+    modalCreateAuxRole() {
         const co = state.data.companies[state.user.coId];
-        const o = (co.orders || []).find(ord => String(ord.id) === String(oid));
-        if(!o) return alert("Orden no encontrada.");
+        const currentPin = co.roles['AUXILIAR'] || 'No definido';
         
-        if(co.balance < o.total) return alert("Fondos insuficientes.");
+        const html = `
+            <p class="text-[10px] text-slate-400 mb-4">El rol Auxiliar tiene acceso de solo lectura al catálogo y al dossier corporativo. Útil para miembros adicionales del equipo.</p>
+            <div class="bg-slate-900 p-4 border border-mars-cyan mb-4">
+                <p class="text-[10px] text-mars-cyan uppercase font-bold mb-2">PIN Actual: <span class="text-white">${currentPin}</span></p>
+                <input type="text" id="aux-pin-input" maxlength="4" placeholder="Nuevo PIN de 4 dígitos..." class="w-full bg-black border border-mars-border p-3 text-center text-white font-bold tracking-widest outline-none focus:border-mars-cyan">
+            </div>
+        `;
+        const actions = `<button onclick="ui.submitAuxRole()" class="bg-mars-cyan text-black px-6 py-2 text-[10px] font-bold uppercase hover:bg-white transition-colors">Guardar PIN Auxiliar</button>`;
+        this.showModal("Gestionar Rol Observador (Auxiliar)", html, actions);
+    },
+
+    submitAuxRole() {
+        const pin = document.getElementById('aux-pin-input').value;
+        if(pin.length !== 4) return alert("El PIN debe tener exactamente 4 dígitos.");
         
-        o.status = 'APROBADO_FINANZAS';
-        // Inicializar campos reales para Operaciones
-        o.items = (o.items || []).map(i => ({...i, realEur: '', realShop: ''}));
+        const co = state.data.companies[state.user.coId];
+        co.roles['AUXILIAR'] = pin;
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         
-        telemetry.log("APROBADO FINANZAS", `Orden #${oid} validada.`);
+        this.closeModal();
+        alert("Rol Auxiliar configurado correctamente.");
+    },
+
+    promptPartialApproveOrder(oid) {
+        const co = state.data.companies[state.user.coId];
+        const order = co.orders.find(o => String(o.id) === String(oid));
+        if(!order) return alert("Orden no encontrada.");
+
+        let itemsHtml = order.items.map((item, idx) => `
+            <div class="flex justify-between items-center bg-black p-2 border border-mars-border mb-2">
+                <label class="flex items-center gap-2 text-[10px] text-white cursor-pointer flex-grow">
+                    <input type="checkbox" id="approve-item-${idx}" class="form-checkbox bg-slate-900 border-mars-cyan" checked>
+                    ${item.name} (x${item.qty})
+                </label>
+                <span class="text-mars-green font-mono text-[10px] shrink-0">${item.price.toFixed(2)} €v</span>
+            </div>
+        `).join('');
+
+        const html = `
+            <p class="text-[10px] text-slate-400 mb-4">Desmarca los componentes que no autorices para esta compra. El presupuesto se recalculará automáticamente.</p>
+            <div class="max-h-60 overflow-y-auto pr-2 mb-4">
+                ${itemsHtml}
+            </div>
+        `;
+        const actions = `<button onclick="ui.finalizePartialApproveOrder('${oid}')" class="bg-mars-green text-black px-6 py-2 text-[10px] font-bold uppercase hover:bg-white transition-colors shadow-[0_0_10px_rgba(0,255,102,0.4)]">Confirmar Aprobación</button>`;
+        this.showModal(`Aprobar Orden #${oid}`, html, actions);
+    },
+
+    finalizePartialApproveOrder(oid) {
+        const co = state.data.companies[state.user.coId];
+        const order = co.orders.find(o => String(o.id) === String(oid));
+        if(!order) return;
+
+        let approvedItems = [];
+        let newTotal = 0;
+
+        for(let i=0; i<order.items.length; i++) {
+            const cb = document.getElementById(`approve-item-${i}`);
+            if(cb && cb.checked) {
+                approvedItems.push(order.items[i]);
+                newTotal += order.items[i].price;
+            }
+        }
+
+        if(approvedItems.length === 0) {
+            alert("No has aprobado ningún ítem. La orden será denegada.");
+            this.closeModal();
+            return this.finalizeDenyOrder(oid, "Rechazados todos los ítems en auditoría parcial.");
+        }
+
+        if(co.balance < newTotal) return alert("Fondos insuficientes para el nuevo total.");
+
+        order.items = approvedItems.map(i => ({...i, realEur: '', realShop: ''}));
+        order.total = newTotal;
+        order.status = 'APROBADO_FINANZAS';
+
+        telemetry.log("APROBADO FINANZAS", `Orden #${oid} validada parcialmente. Nuevo total: ${newTotal.toFixed(2)}€v`);
         
         state.save(); 
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         
+        this.closeModal();
         alert(`Luz verde concedida a la orden #${oid}. Enviada a Logística.`);
         this.render();
     },
@@ -421,10 +592,17 @@ Object.assign(ui, {
         this.showModal("Denegar Orden", html, btn);
     },
     
-    finalizeDenyOrder(oid) {
-        const reason = document.getElementById('deny-reason').value;
+    finalizeDenyOrder(oid, forceReason = null) {
+        let reason = forceReason;
+        if (!reason) {
+            const reasonInput = document.getElementById('deny-reason');
+            if(reasonInput) reason = reasonInput.value;
+        }
+        
         if(!reason) return alert("Especifique motivo.");
-        const o = state.data.companies[state.user.coId].orders.find(ord => String(ord.id) === String(oid));
+        
+        const co = state.data.companies[state.user.coId];
+        const o = co.orders.find(ord => String(ord.id) === String(oid));
         if(!o) return alert("Orden no encontrada.");
         
         o.status = 'DENEGADO'; 
@@ -435,7 +613,7 @@ Object.assign(ui, {
         state.save(); 
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         
-        this.closeModal(); 
+        if(!forceReason) this.closeModal(); 
         this.render();
     },
 
@@ -475,22 +653,53 @@ Object.assign(ui, {
             <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-cyan w-full ${!isCEOOrAdmin ? 'md:col-span-2' : ''}"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Transacciones Ledger</p><p class="text-xl sm:text-2xl font-orbitron text-mars-cyan tracking-tighter">${co.ledger.length}</p></div>
         </div>`;
 
+        let executedOrdersHtml = '';
+        if (isFinanzas || isCEOOrAdmin) {
+            const executedOrders = (co.orders || []).filter(o => o.status === 'EJECUTADO');
+            if (executedOrders.length > 0) {
+                executedOrdersHtml = `
+                <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden mt-6">
+                    <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Historial de Órdenes Ejecutadas</h3>
+                    <div class="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                        ${executedOrders.map(eo => `
+                        <div class="bg-black/50 border border-mars-border/50 p-3">
+                            <div class="flex justify-between items-center border-b border-mars-border/30 pb-2 mb-2">
+                                <span class="text-white font-bold text-[10px] uppercase">Orden #${eo.id}</span>
+                                <span class="text-[8px] text-slate-500">${eo.date}</span>
+                            </div>
+                            <div class="flex justify-between text-[9px] mb-2">
+                                <span class="text-mars-green">Virtual: ${eo.total.toFixed(2)} €v</span>
+                                <span class="text-mars-magenta">Físico: ${eo.realEurTotal !== undefined ? eo.realEurTotal.toFixed(2) + ' €' : 'N/A'}</span>
+                            </div>
+                            <div class="text-[8px] text-slate-400 space-y-1">
+                                ${eo.items.map(i => `<p>- ${i.name} (x${i.qty}) @ ${i.realShop || 'N/A'}: <span class="text-mars-magenta">${i.realEur !== '' ? parseFloat(i.realEur).toFixed(2)+' €' : '---'}</span></p>`).join('')}
+                            </div>
+                        </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            }
+        }
+
         let financeDetails = `
         <div class="grid grid-cols-1 ${isCEOOrAdmin ? 'lg:grid-cols-2' : ''} gap-6 sm:gap-8">
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden">
-                <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Ledger Histórico inmutable</h3>
-                <div class="overflow-x-auto w-full">
-                    <div class="overflow-y-auto max-h-[400px] text-[10px] pr-2 min-w-[300px]">
-                        ${co.ledger.map(l => `
-                        <div class="border-b border-mars-border/30 py-3 flex justify-between gap-4">
-                            <div class="flex-1"><p class="text-white font-bold leading-tight">${l.concept}</p><p class="text-[8px] text-slate-500 uppercase mt-1">${l.id} | ${l.date}</p></div>
-                            <div class="text-right shrink-0"><p class="font-mono font-bold text-sm ${l.delta > 0 ? 'text-mars-green' : 'text-mars-magenta'}">${l.delta > 0 ? '+' : ''}${l.delta.toFixed(2)}</p><p class="text-slate-500 text-[8px]">Bal: ${l.final.toFixed(2)}</p></div>
-                        </div>`).join('') || '<p class="text-slate-600 italic">Registro inmutable vacío.</p>'}
+            <div class="flex flex-col gap-6 w-full overflow-hidden">
+                <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden">
+                    <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Ledger Histórico inmutable</h3>
+                    <div class="overflow-x-auto w-full">
+                        <div class="overflow-y-auto max-h-[400px] text-[10px] pr-2 min-w-[300px]">
+                            ${co.ledger.map(l => `
+                            <div class="border-b border-mars-border/30 py-3 flex justify-between gap-4">
+                                <div class="flex-1"><p class="text-white font-bold leading-tight">${l.concept}</p><p class="text-[8px] text-slate-500 uppercase mt-1">${l.id} | ${l.date}</p></div>
+                                <div class="text-right shrink-0"><p class="font-mono font-bold text-sm ${l.delta > 0 ? 'text-mars-green' : 'text-mars-magenta'}">${l.delta > 0 ? '+' : ''}${l.delta.toFixed(2)}</p><p class="text-slate-500 text-[8px]">Bal: ${l.final.toFixed(2)}</p></div>
+                            </div>`).join('') || '<p class="text-slate-600 italic">Registro inmutable vacío.</p>'}
+                        </div>
                     </div>
                 </div>
+                ${executedOrdersHtml}
             </div>
             ${isCEOOrAdmin ? `
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden">
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden h-fit">
                 <h3 class="font-orbitron text-mars-magenta text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Desglose Físico Componentes (€)</h3>
                 <div class="overflow-x-auto w-full">
                     <div class="overflow-y-auto max-h-[400px] text-[10px] pr-2 min-w-[300px]">
@@ -502,7 +711,7 @@ Object.assign(ui, {
                     </div>
                 </div>
             </div>` : `
-            <div class="terminal-border border-dashed border-mars-border p-8 text-center flex flex-col justify-center items-center">
+            <div class="terminal-border border-dashed border-mars-border p-8 text-center flex flex-col justify-center items-center h-fit">
                 <span class="text-3xl mb-3">🔒</span>
                 <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Auditoría de gasto real (€) restringida a Dirección General (CEO) y Coordinación.</p>
             </div>
@@ -667,6 +876,7 @@ Object.assign(ui, {
 
         let allChecked = true;
         let realEurTotal = 0;
+        let itemNames = [];
 
         for(let i=0; i<order.items.length; i++) {
             const cb = document.getElementById(`cart-val-${oid}-${i}`);
@@ -680,13 +890,15 @@ Object.assign(ui, {
             realEurTotal += rEur;
             order.items[i].realEur = rEur;
             order.items[i].realShop = rShop;
+            itemNames.push(order.items[i].name);
         }
         
         if(!allChecked) return alert("Debe validar el ensamblaje y rellenar los costes reales de todos los componentes.");
 
         if(co.balance < order.total) return alert("Fondos virtuales insuficientes para ejecutar la compra.");
         
-        state.addToLedger(state.user.coId, `Adquisición Materiales Orden #${oid}`, 'OPERACIONES', -order.total);
+        const conceptStr = `Adquisición Orden #${oid}: ${itemNames.join(', ')}`;
+        state.addToLedger(state.user.coId, conceptStr, 'OPERACIONES', -order.total);
         
         order.items.forEach(i => { co.realCosts.unshift({ shop: i.realShop, item: i.name, eur: i.realEur }); });
         
@@ -798,10 +1010,16 @@ Object.assign(ui, {
         if(!co.votingMotions) co.votingMotions = [];
         
         const wrapper = document.createElement('div');
+        
+        let headerActions = '';
+        if (state.user.role !== 'AUXILIAR') {
+            headerActions = `<button onclick="ui.modalMotion()" class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-4 py-2 text-[10px] uppercase font-bold hover:bg-mars-yellow hover:text-black transition-all">Proponer Moción</button>`;
+        }
+
         wrapper.innerHTML = `
         <div class="flex justify-between items-center mb-6">
             <h2 class="font-orbitron text-mars-yellow text-xl uppercase tracking-tighter">Gobernanza y Resoluciones</h2>
-            <button onclick="ui.modalMotion()" class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-4 py-2 text-[10px] uppercase font-bold hover:bg-mars-yellow hover:text-black transition-all">Proponer Moción</button>
+            ${headerActions}
         </div>
         <div class="space-y-4">
             ${co.votingMotions.map(m => {
@@ -813,13 +1031,20 @@ Object.assign(ui, {
                 
                 let actions = '';
                 if(m.status === 'ABIERTA') {
-                    if(!myVote) {
-                        actions = `<div class="flex gap-2 mt-3"><button onclick="ui.voteMotion('${m.id}', 'A FAVOR')" class="bg-mars-green text-black px-3 py-1 text-[9px] font-bold uppercase hover:bg-white transition-colors">A Favor</button><button onclick="ui.voteMotion('${m.id}', 'EN CONTRA')" class="bg-mars-magenta text-white px-3 py-1 text-[9px] font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">En Contra</button></div>`;
+                    if (state.user.role !== 'AUXILIAR') {
+                        if(!myVote) {
+                            actions = `<div class="flex gap-2 mt-3"><button onclick="ui.voteMotion('${m.id}', 'A FAVOR')" class="bg-mars-green text-black px-3 py-1 text-[9px] font-bold uppercase hover:bg-white transition-colors">A Favor</button><button onclick="ui.voteMotion('${m.id}', 'EN CONTRA')" class="bg-mars-magenta text-white px-3 py-1 text-[9px] font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">En Contra</button></div>`;
+                        } else {
+                            actions = `<p class="text-[9px] text-mars-cyan mt-3 uppercase font-bold">Tu voto: ${myVote}</p>`;
+                        }
                     } else {
-                        actions = `<p class="text-[9px] text-mars-cyan mt-3 uppercase font-bold">Tu voto: ${myVote}</p>`;
+                        actions = `<p class="text-[9px] text-slate-500 mt-3 uppercase font-bold">Modo Observador: No puedes votar.</p>`;
                     }
-                    if(state.user.role === 'CEO' && total === 5) {
+
+                    if(state.user.role === 'CEO' && total === Object.keys(co.roles).length) {
                         actions += `<button onclick="ui.resolveMotion('${m.id}')" class="mt-3 bg-mars-yellow text-black px-4 py-2 text-[10px] font-bold uppercase w-full hover:bg-white transition-colors">Cerrar Votación</button>`;
+                    } else if (state.user.role === 'CEO') {
+                        actions += `<button onclick="ui.resolveMotion('${m.id}')" class="mt-3 bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-4 py-2 text-[10px] font-bold uppercase w-full hover:bg-mars-yellow hover:text-black transition-colors">Forzar Cierre de Votación</button>`;
                     }
                 } else {
                     actions = `<p class="text-[10px] font-bold mt-3 uppercase ${m.result === 'APROBADA' ? 'text-mars-green' : 'text-mars-magenta'}">RESULTADO: ${m.result}</p>`;
@@ -867,6 +1092,7 @@ Object.assign(ui, {
     },
 
     resolveMotion(id) {
+        if (state.user.role !== 'CEO') return alert("Solo el CEO puede cerrar votaciones.");
         const co = state.data.companies[state.user.coId];
         const m = co.votingMotions.find(x => x.id === id);
         if(m) {
@@ -882,6 +1108,7 @@ Object.assign(ui, {
     },
 
     promptTieBreaker(id) {
+        if (state.user.role !== 'CEO') return;
         const html = `
             <p class="text-xs text-slate-300 mb-4">La votación ha resultado en empate. Como CEO, debes ejercer tu voto de calidad para desempatar.</p>
             <div class="flex gap-4">
@@ -893,6 +1120,7 @@ Object.assign(ui, {
     },
 
     executeTieBreaker(id, result) {
+        if (state.user.role !== 'CEO') return;
         const co = state.data.companies[state.user.coId];
         const m = co.votingMotions.find(x => x.id === id);
         if(m) {
@@ -909,6 +1137,29 @@ Object.assign(ui, {
         const co = state.data.companies[state.user.coId];
         const docs = co.deliverables || {};
         const wrapper = document.createElement('div');
+        
+        let bestFlightHtml = '<p class="text-slate-500 italic text-xs">Aún no hay ensayos de vuelo registrados por el Dpto. Técnico.</p>';
+        if (co.flightTests && co.flightTests.length > 0) {
+            const bestFlight = [...co.flightTests].sort((a, b) => b.efficiency - a.efficiency)[0];
+            bestFlightHtml = `
+                <div class="bg-black p-3 border border-mars-border">
+                    <p class="text-[9px] text-mars-yellow uppercase font-bold mb-1">Mejor Ensayo Registrado</p>
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-white font-bold text-xs">${bestFlight.bottle}</p>
+                            <p class="text-[9px] text-slate-400">Coste: ${bestFlight.costEurV.toFixed(2)} €v | Altura: ${bestFlight.heightM.toFixed(1)}m</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[8px] text-slate-500 uppercase">Eficiencia (E)</p>
+                            <p class="text-mars-green font-mono font-bold text-lg">${bestFlight.efficiency.toFixed(3)}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const totalDevCost = (co.orders || []).filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + o.total, 0);
+
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="space-y-6 w-full overflow-hidden">
@@ -922,6 +1173,19 @@ Object.assign(ui, {
                     </div>
                     <input type="file" id="brand-logo-upload" class="hidden" accept="image/png, image/jpeg" onchange="ui.handleLogoUpload(event)">
                 </div>
+                
+                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-green w-full">
+                    <h2 class="font-orbitron text-mars-green text-lg mb-4 uppercase tracking-tighter">Inteligencia de Mercado y KPIs</h2>
+                    <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">Datos técnicos reales para fundamentar los pitches ante inversores.</p>
+                    <div class="space-y-4">
+                        <div class="bg-black p-3 border border-mars-border flex justify-between items-center">
+                            <span class="text-[9px] text-mars-cyan uppercase font-bold">Inversión Total I+D</span>
+                            <span class="text-mars-cyan font-mono font-bold text-base">${totalDevCost.toFixed(2)} €v</span>
+                        </div>
+                        ${bestFlightHtml}
+                    </div>
+                </div>
+
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan w-full">
                     <h2 class="font-orbitron text-mars-cyan text-lg mb-4 uppercase tracking-tighter">Manifiesto & Propuesta de Valor</h2>
                     <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">Redacte la misión, ventaja competitiva y pitch de atracción para inversores. Texto público en el Dossier Académico.</p>
