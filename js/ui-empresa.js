@@ -63,7 +63,7 @@ Object.assign(ui, {
                         } else if (item.id === 'P02') {
                             buySection = `<div class="flex gap-1 mt-2"><button onclick="ui.techAddToCart('${item.id}', 50)" class="flex-1 bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-1 text-[9px] font-bold hover:bg-mars-cyan hover:text-black">+50ml</button><button onclick="ui.techAddToCart('${item.id}', 100)" class="flex-1 bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-1 text-[9px] font-bold hover:bg-mars-cyan hover:text-black">+100ml</button></div>`;
                         } else {
-                            buySection = `<div class="flex items-center gap-2 mt-2"><input type="number" id="qty-${item.id}" value="1" min="1" class="w-12 bg-black border border-mars-border text-center text-[10px] text-white p-1"><button onclick="ui.techAddToCart('${item.id}', parseInt(document.getElementById('qty-${item.id}').value)||1)" class="flex-grow bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-2 py-1 text-[9px] font-black uppercase hover:bg-mars-cyan hover:text-mars-bg transition-all">Pedir a Operaciones</button></div>`;
+                            buySection = `<div class="flex items-center gap-2 mt-2"><input type="number" id="qty-${item.id}" value="1" min="1" class="w-12 bg-black border border-mars-border text-center text-[10px] text-white p-1"><button onclick="ui.techAddToCart('${item.id}', parseInt(document.getElementById('qty-${item.id}').value)||1)" class="flex-grow bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-2 py-1 text-[9px] font-black uppercase hover:bg-mars-cyan hover:text-mars-bg transition-all">Añadir a Petición</button></div>`;
                         }
                     } else {
                         buySection = `<p class="text-[8px] text-slate-500 uppercase mt-2 border-t border-slate-800 pt-2">El Dpto. Técnico realiza las peticiones.</p>`;
@@ -92,9 +92,10 @@ Object.assign(ui, {
         if(id === 'P01' || id === 'P02') name = `${item.name} (${qty}${item.unit})`;
         
         state.data.companies[state.user.coId].cart.push({...item, qty, price: item.price * qty, name, realEur: '', realShop: ''});
-        telemetry.log("REQ TÉCNICA", `Petición: ${name}`);
+        telemetry.log("REQ TÉCNICA", `Añadido a borrador: ${name}`);
         state.save();
-        alert(`Petición de ${name} añadida al manifiesto de I+D.`);
+        alert(`Añadido ${name} al borrador de petición. Vaya a 'I+D y Pruebas' o 'Órdenes' para transmitir a Finanzas.`);
+        this.render();
     },
 
     removeFromCart(idx) { 
@@ -178,7 +179,7 @@ Object.assign(ui, {
 
     submitTechOrderToFinance() {
         const co = state.data.companies[state.user.coId];
-        if(co.cart.length === 0) return alert("Debe añadir material al carro de I+D antes de transmitir.");
+        if(co.cart.length === 0) return alert("Debe añadir material al borrador de I+D antes de transmitir.");
         
         const just = prompt("Introduzca la justificación técnica de esta petición de compra:");
         if(!just || just.length < 5) return alert("Justificación insuficiente.");
@@ -253,11 +254,34 @@ Object.assign(ui, {
             `;
         }
 
+        let techCartHtml = '';
+        if (role === 'TECNICO' && co.cart.length > 0) {
+            techCartHtml = `
+            <div class="terminal-border bg-mars-card p-4 mb-6 border-t-4 border-t-mars-cyan">
+                <h3 class="font-orbitron text-mars-cyan text-sm mb-3 uppercase">Borrador de Petición (I+D)</h3>
+                <div class="space-y-2 mb-4">
+                    ${co.cart.map((item, idx) => `
+                        <div class="flex justify-between items-center bg-slate-900 p-2 border border-mars-border text-[10px]">
+                            <span class="text-white">${item.name} (x${item.qty})</span>
+                            <div class="flex items-center gap-3">
+                                <span class="text-mars-green font-mono">${item.price.toFixed(2)} €v</span>
+                                <button onclick="ui.removeFromCart(${idx})" class="text-mars-magenta hover:text-white font-bold px-2">X</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-mars-border/50 pt-3">
+                    <span class="text-[10px] text-slate-400 uppercase font-bold">Total Virtual: <span class="text-mars-green font-mono text-sm">${co.cart.reduce((s,i)=>s+i.price,0).toFixed(2)} €v</span></span>
+                    <button onclick="ui.submitTechOrderToFinance()" class="w-full sm:w-auto bg-mars-cyan text-black px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-colors">Transmitir a Finanzas</button>
+                </div>
+            </div>`;
+        }
+
         wrapper.innerHTML = `
         ${ceoDashboard}
+        ${techCartHtml}
         <div class="flex justify-between items-center mb-6">
             <h2 class="font-orbitron text-mars-yellow text-lg sm:text-xl uppercase tracking-tighter">Bóveda de Autorización y Finanzas</h2>
-            ${role === 'TECNICO' ? `<button onclick="ui.submitTechOrderToFinance()" class="bg-mars-cyan text-black px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-colors" ${co.cart.length===0?'disabled opacity-50':''}>Transmitir Solicitud a Finanzas</button>` : ''}
         </div>
         
         <div class="space-y-6">
@@ -299,14 +323,12 @@ Object.assign(ui, {
         
         if(co.balance < o.total) return alert("Alerta: Fondos virtuales insuficientes para aprobar este presupuesto.");
         
-        if(co.cart.length > 0) return alert("Operaciones ya tiene un manifiesto en curso. Espere a que lo ejecuten antes de aprobar otro.");
-
         o.status = 'APROBADO_FINANZAS';
-        telemetry.log("APROBADO FINANZAS", `Orden #${oid} validada.`);
+        // Inicializar campos reales para Operaciones
+        o.items = o.items.map(i => ({...i, realEur: '', realShop: ''}));
         
-        // Pasar los items al carrito de logística (OPERACIONES_IA) para que termine la compra
-        co.cart = [...o.items].map(i => ({...i, realEur: '', realShop: '', orderId: oid}));
-        alert("Presupuesto aprobado. Los ítems han sido enviados a Logística (Operaciones) para la compra física.");
+        telemetry.log("APROBADO FINANZAS", `Orden #${oid} validada.`);
+        alert("Presupuesto aprobado. La orden ha sido enviada a Logística (Operaciones) para la compra física.");
         
         state.save(); this.render();
     },
@@ -373,155 +395,148 @@ Object.assign(ui, {
     },
 
     // --- 4. OPERACIONES E IA ---
-    updateCartItem(idx, field, value) {
+    updateOrderItem(oid, idx, field, value) {
         const co = state.data.companies[state.user.coId];
-        if(!co || !co.cart[idx]) return;
-        if(field === 'realEur') co.cart[idx][field] = value ? parseFloat(value) : '';
-        else co.cart[idx][field] = value;
+        const order = co.orders.find(o => o.id === oid);
+        if(!order || !order.items[idx]) return;
+        if(field === 'realEur') order.items[idx][field] = value ? parseFloat(value) : '';
+        else order.items[idx][field] = value;
     },
 
-    updateCartRealTotal() {
+    updateOrderRealTotal(oid) {
         const co = state.data.companies[state.user.coId];
-        if(!co || !co.cart.length) return;
+        const order = co.orders.find(o => o.id === oid);
+        if(!order) return;
         let totalR = 0;
-        for(let i=0; i<co.cart.length; i++) {
-            const el = document.getElementById(`cart-eur-${i}`);
+        for(let i=0; i<order.items.length; i++) {
+            const el = document.getElementById(`cart-eur-${oid}-${i}`);
             if(el && el.value) totalR += parseFloat(el.value) || 0;
         }
-        const display = document.getElementById('dynamic-real-total');
+        const display = document.getElementById(`dynamic-real-total-${oid}`);
         if(display) display.innerText = totalR.toFixed(2) + ' €';
-        this.checkCartReady();
     },
 
-    checkCartReady() {
+    checkOrderReady(oid) {
         const co = state.data.companies[state.user.coId];
-        if(!co || !co.cart.length) return;
+        const order = co.orders.find(o => o.id === oid);
+        if(!order) return;
         let allValid = true;
-        for(let i=0; i<co.cart.length; i++) {
-            const cb = document.getElementById(`cart-val-${i}`);
-            const eur = document.getElementById(`cart-eur-${i}`);
-            const shop = document.getElementById(`cart-shop-${i}`);
+        for(let i=0; i<order.items.length; i++) {
+            const cb = document.getElementById(`cart-val-${oid}-${i}`);
+            const eur = document.getElementById(`cart-eur-${oid}-${i}`);
+            const shop = document.getElementById(`cart-shop-${oid}-${i}`);
             
             if(!cb || !cb.checked) allValid = false;
             if(!eur || eur.value === '' || parseFloat(eur.value) < 0) allValid = false;
             if(!shop || shop.value.trim() === '') allValid = false;
         }
-        const btn = document.getElementById('submit-order-btn');
+        const btn = document.getElementById(`submit-order-btn-${oid}`);
         if(btn) {
             if(allValid) {
                 btn.disabled = false;
-                btn.className = "w-full bg-mars-cyan text-mars-bg font-black py-4 text-[10px] uppercase tracking-widest hover:shadow-[0_0_15px_#00f0ff] transition-all cursor-pointer";
+                btn.className = "w-full sm:w-auto bg-mars-cyan text-mars-bg font-black px-6 py-3 text-[10px] uppercase tracking-widest hover:shadow-[0_0_15px_#00f0ff] transition-all cursor-pointer";
                 btn.innerText = "Confirmar Compra Física y Ejecutar";
             } else {
                 btn.disabled = true;
-                btn.className = "w-full bg-slate-800 text-slate-500 font-black py-4 text-[10px] uppercase tracking-widest transition-all cursor-not-allowed";
-                btn.innerText = "Validar Ensamblaje y Costes Reales";
+                btn.className = "w-full sm:w-auto bg-slate-800 text-slate-500 font-black px-6 py-3 text-[10px] uppercase tracking-widest transition-all cursor-not-allowed";
+                btn.innerText = "Validar Ensamblaje y Costes";
             }
         }
     },
 
     viewCart(el) {
         const co = state.data.companies[state.user.coId];
-        const totalVirtual = co.cart.reduce((s, i) => s + i.price, 0);
+        const approvedOrders = co.orders.filter(o => o.status === 'APROBADO_FINANZAS');
         const wrapper = document.createElement('div');
-        
-        const cartItemsHtml = co.cart.map((item, idx) => `
-            <div class="bg-mars-card border border-mars-border p-3 flex flex-col gap-2 hover:border-mars-magenta/50 transition-all shadow-sm w-full">
-                <div class="flex justify-between items-start gap-2 flex-wrap">
-                    <div class="flex-1 min-w-[150px]"><p class="text-white text-xs font-bold font-orbitron leading-tight">${item.name}</p><p class="text-[8px] text-slate-500 uppercase mt-1">Q: ${item.qty} | ${item.category}</p></div>
-                    <div class="flex items-center gap-3">
-                        <span class="text-mars-green font-mono font-bold whitespace-nowrap">${item.price.toFixed(2)} €v</span>
-                        <button onclick="ui.removeFromCart(${idx})" class="bg-red-900/30 text-mars-magenta px-2 py-1 text-[9px] uppercase font-bold hover:bg-mars-magenta hover:text-white transition-colors">X</button>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2 pt-2 border-t border-mars-border/50">
-                    <label class="flex items-center gap-2 text-[9px] text-mars-cyan cursor-pointer p-1 w-full"><input type="checkbox" id="cart-val-${idx}" class="form-checkbox bg-black border-mars-cyan" onchange="ui.checkCartReady()"> Validado ensamblaje</label>
-                    <input type="number" id="cart-eur-${idx}" value="${item.realEur !== '' ? item.realEur : ''}" placeholder="Coste Real (€)" class="bg-slate-900 border border-slate-700 text-[10px] p-2 text-white outline-none focus:border-mars-magenta w-full" oninput="ui.updateCartItem(${idx}, 'realEur', this.value); ui.updateCartRealTotal(); ui.checkCartReady()" min="0" step="0.01">
-                    <input type="text" id="cart-shop-${idx}" value="${item.realShop || ''}" placeholder="Proveedor/Tienda" class="bg-slate-900 border border-slate-700 text-[10px] p-2 text-white uppercase outline-none focus:border-mars-magenta w-full" oninput="ui.updateCartItem(${idx}, 'realShop', this.value); ui.checkCartReady()">
-                </div>
-            </div>
-        `).join('');
 
-        wrapper.innerHTML = `
-        <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl mb-6 uppercase tracking-tighter">Logística de Despliegue (Validación Física)</h2>
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-2 space-y-4 w-full">
-                ${cartItemsHtml || '<div class="terminal-border border-dashed p-8 text-center text-slate-500 text-xs italic w-full">El manifiesto está vacío. Espere peticiones técnicas de I+D.</div>'}
-            </div>
-            <div class="terminal-border bg-mars-card p-6 h-fit border-t-4 border-t-mars-cyan sticky top-20 w-full">
-                <div class="flex justify-between items-end border-b border-mars-border/50 pb-4 mb-4">
-                    <div>
-                        <p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Total Virtual (Finanzas)</p>
-                        <p class="text-2xl sm:text-3xl font-orbitron text-mars-green tracking-tighter">${totalVirtual.toFixed(2)} €v</p>
+        let html = `<h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl mb-6 uppercase tracking-tighter">Logística de Despliegue (Validación Física)</h2>`;
+
+        if(approvedOrders.length === 0) {
+            html += `<div class="terminal-border border-dashed p-8 text-center text-slate-500 text-xs italic w-full">No hay órdenes aprobadas pendientes de ejecución física.</div>`;
+        } else {
+            html += `<div class="space-y-8">`;
+            approvedOrders.forEach(order => {
+                const cartItemsHtml = order.items.map((item, idx) => `
+                    <div class="bg-mars-card border border-mars-border p-3 flex flex-col gap-2 hover:border-mars-magenta/50 transition-all shadow-sm w-full">
+                        <div class="flex justify-between items-start gap-2 flex-wrap">
+                            <div class="flex-1 min-w-[150px]"><p class="text-white text-xs font-bold font-orbitron leading-tight">${item.name}</p><p class="text-[8px] text-slate-500 uppercase mt-1">Q: ${item.qty} | ${item.category}</p></div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-mars-green font-mono font-bold whitespace-nowrap">${item.price.toFixed(2)} €v</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2 pt-2 border-t border-mars-border/50">
+                            <label class="flex items-center gap-2 text-[9px] text-mars-cyan cursor-pointer p-1 w-full"><input type="checkbox" id="cart-val-${order.id}-${idx}" class="form-checkbox bg-black border-mars-cyan" onchange="ui.checkOrderReady(${order.id})"> Validado ensamblaje</label>
+                            <input type="number" id="cart-eur-${order.id}-${idx}" value="${item.realEur !== '' ? item.realEur : ''}" placeholder="Coste Real (€)" class="bg-slate-900 border border-slate-700 text-[10px] p-2 text-white outline-none focus:border-mars-magenta w-full" oninput="ui.updateOrderItem(${order.id}, ${idx}, 'realEur', this.value); ui.updateOrderRealTotal(${order.id}); ui.checkOrderReady(${order.id})" min="0" step="0.01">
+                            <input type="text" id="cart-shop-${order.id}-${idx}" value="${item.realShop || ''}" placeholder="Proveedor/Tienda" class="bg-slate-900 border border-slate-700 text-[10px] p-2 text-white uppercase outline-none focus:border-mars-magenta w-full" oninput="ui.updateOrderItem(${order.id}, ${idx}, 'realShop', this.value); ui.checkOrderReady(${order.id})">
+                        </div>
                     </div>
-                    <div class="text-right">
-                        <p class="text-[9px] text-mars-magenta uppercase mb-1 font-bold">Suma FÍSICA</p>
-                        <p id="dynamic-real-total" class="text-lg sm:text-xl font-mono text-mars-magenta font-black">0.00 €</p>
+                `).join('');
+
+                html += `
+                <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
+                    <div class="flex justify-between items-center mb-4 border-b border-mars-border/50 pb-2">
+                        <h3 class="font-orbitron text-mars-cyan text-sm uppercase">ORDEN #${order.id}</h3>
+                        <span class="text-mars-green font-mono font-bold">${order.total.toFixed(2)} €v</span>
                     </div>
-                </div>
-                <button id="submit-order-btn" onclick="ui.executeFinalPurchase()" class="w-full bg-slate-800 text-slate-500 font-black py-4 text-[10px] uppercase tracking-widest transition-all cursor-not-allowed" disabled>Validar Ensamblaje y Costes Reales</button>
-            </div>
-        </div>`;
+                    <div class="space-y-4 mb-6">
+                        ${cartItemsHtml}
+                    </div>
+                    <div class="flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-mars-border/50 pt-4">
+                        <div class="text-left w-full sm:w-auto">
+                            <p class="text-[9px] text-mars-magenta uppercase mb-1 font-bold">Suma FÍSICA Total</p>
+                            <p id="dynamic-real-total-${order.id}" class="text-lg sm:text-xl font-mono text-mars-magenta font-black">0.00 €</p>
+                        </div>
+                        <button id="submit-order-btn-${order.id}" onclick="ui.executeOrderPurchase(${order.id})" class="w-full sm:w-auto bg-slate-800 text-slate-500 font-black px-6 py-3 text-[10px] uppercase tracking-widest transition-all cursor-not-allowed" disabled>Validar Ensamblaje y Costes</button>
+                    </div>
+                </div>`;
+            });
+            html += `</div>`;
+        }
+        wrapper.innerHTML = html;
         el.appendChild(wrapper);
-        this.updateCartRealTotal(); // Initialize
+
+        // Initialize totals
+        approvedOrders.forEach(o => {
+            this.updateOrderRealTotal(o.id);
+            this.checkOrderReady(o.id);
+        });
     },
 
-    executeFinalPurchase() {
+    executeOrderPurchase(oid) {
         const co = state.data.companies[state.user.coId];
-        
+        const order = co.orders.find(o => o.id === oid);
+        if(!order) return;
+
         let allChecked = true;
         let realEurTotal = 0;
-        let processedItems = [];
-        let targetOrderId = null;
 
-        for(let i=0; i<co.cart.length; i++) {
-            const cb = document.getElementById(`cart-val-${i}`);
-            const rEur = parseFloat(document.getElementById(`cart-eur-${i}`).value);
-            const rShop = document.getElementById(`cart-shop-${i}`).value;
+        for(let i=0; i<order.items.length; i++) {
+            const cb = document.getElementById(`cart-val-${oid}-${i}`);
+            const rEur = parseFloat(document.getElementById(`cart-eur-${oid}-${i}`).value);
+            const rShop = document.getElementById(`cart-shop-${oid}-${i}`).value;
             
             if(!cb || !cb.checked || isNaN(rEur) || rEur < 0 || !rShop.trim()) { 
                 allChecked = false; 
                 break; 
             }
-            
             realEurTotal += rEur;
-            processedItems.push({...co.cart[i], realEur: rEur, realShop: rShop});
-            if(co.cart[i].orderId) targetOrderId = co.cart[i].orderId;
+            order.items[i].realEur = rEur;
+            order.items[i].realShop = rShop;
         }
         
         if(!allChecked) return alert("Debe validar el ensamblaje y rellenar los costes reales de todos los componentes.");
 
-        const totalVirtual = co.cart.reduce((s, i) => s + i.price, 0);
+        if(co.balance < order.total) return alert("Fondos virtuales insuficientes para ejecutar la compra.");
         
-        if(co.balance < totalVirtual) return alert("Fondos virtuales insuficientes para ejecutar la compra.");
+        state.addToLedger(state.user.coId, `Adquisición Materiales Orden #${oid}`, 'OPERACIONES', -order.total);
         
-        state.addToLedger(state.user.coId, `Adquisición Física Directa`, 'OPERACIONES', -totalVirtual);
-        processedItems.forEach(i => { co.realCosts.unshift({ shop: i.realShop, item: i.name, eur: i.realEur }); });
+        order.items.forEach(i => { co.realCosts.unshift({ shop: i.realShop, item: i.name, eur: i.realEur }); });
         
-        if (targetOrderId) {
-            const order = co.orders.find(o => o.id === targetOrderId);
-            if (order) {
-                order.status = 'EJECUTADO';
-                order.realEurTotal = realEurTotal;
-                order.items = processedItems;
-            }
-        } else {
-            const pendingOrder = co.orders.find(o => o.status === 'APROBADO_FINANZAS');
-            if (pendingOrder) {
-                pendingOrder.status = 'EJECUTADO';
-                pendingOrder.realEurTotal = realEurTotal;
-                pendingOrder.items = processedItems;
-            } else {
-                co.orders.unshift({ 
-                    id: state.data.config.nextOrderId++, 
-                    items: processedItems, total: totalVirtual, justification: 'Validación directa por Operaciones.', 
-                    realEurTotal: realEurTotal, status: 'EJECUTADO', date: new Date().toLocaleString() 
-                });
-            }
-        }
+        order.status = 'EJECUTADO';
+        order.realEurTotal = realEurTotal;
         
-        telemetry.log("EJECUCIÓN COMPRA", `Importe: ${totalVirtual.toFixed(2)}€v | Real: ${realEurTotal.toFixed(2)}€`);
-        co.cart = []; state.save(); 
+        telemetry.log("EJECUCIÓN COMPRA", `Orden #${oid} | Importe: ${order.total.toFixed(2)}€v | Real: ${realEurTotal.toFixed(2)}€`);
+        state.save(); 
         alert("Compra física confirmada y asentada en el Ledger.");
         this.render();
     },
