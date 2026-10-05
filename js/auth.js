@@ -1,6 +1,5 @@
 // js/auth.js
 
-// --- 4. AUTENTICACIÓN Y NORMALIZACIÓN ---
 const auth = {
     press(n) { if(state.pin.length < 4) { state.pin += n; this.updateDots(); } },
     clear() { state.pin = ''; this.updateDots(); },
@@ -11,15 +10,18 @@ const auth = {
     normalizeStr(str) { return str.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '_'); },
     
     updateRoleOptions() {
-        const coId = document.getElementById('login-co').value;
-        const roleSelect = document.getElementById('login-role');
-        roleSelect.innerHTML = '';
+        const elCo = document.getElementById('login-co');
+        const elRole = document.getElementById('login-role');
+        if (!elCo || !elRole) return; // REGLA 3: DOM Seguro
+        
+        const coId = elCo.value;
+        elRole.innerHTML = '';
         
         if (coId === 'admin') {
             Object.keys(state.data.config.teachers).forEach(key => {
                 const opt = document.createElement('option');
                 opt.value = key; opt.innerText = state.data.config.teachers[key].name;
-                roleSelect.appendChild(opt);
+                elRole.appendChild(opt);
             });
         } else {
             const co = state.data.companies[coId];
@@ -28,24 +30,28 @@ const auth = {
                     const opt = document.createElement('option');
                     opt.value = r; 
                     opt.innerText = r.replace('_', ' ');
-                    roleSelect.appendChild(opt);
+                    elRole.appendChild(opt);
                 });
             } else {
                 ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA'].forEach(r => {
                     const opt = document.createElement('option');
                     opt.value = r; opt.innerText = r.replace('_', ' ');
-                    roleSelect.appendChild(opt);
+                    elRole.appendChild(opt);
                 });
             }
         }
     },
 
     verify() {
-        // BLINDAJE: Evitar ghost clicks y envíos incompletos
+        // REGLA 2: Protección Ghost Clicks
         if (!state.pin || state.pin.length < 4) return;
 
-        const coId = document.getElementById('login-co').value;
-        const roleRaw = document.getElementById('login-role').value;
+        const elCo = document.getElementById('login-co');
+        const elRole = document.getElementById('login-role');
+        if (!elCo || !elRole) return; // REGLA 3
+        
+        const coId = elCo.value;
+        const roleRaw = elRole.value;
         const roleNorm = this.normalizeStr(roleRaw);
         
         if(coId === 'admin' && state.pin === '9999') { dev.open(); this.clear(); return; }
@@ -67,19 +73,20 @@ const auth = {
     },
     
     login(coId, roleKey, admin, entityName) {
+        if (!coId || !roleKey) return; // REGLA 2
+        
         state.user = { coId, role: roleKey, admin };
         localStorage.setItem(state.sessionKey, JSON.stringify(state.user));
         
-        // Vaciamos el PIN y actualizamos la UI inmediatamente para dar feedback al usuario
         state.pin = '';
         this.updateDots();
         
         if(!admin) {
             const co = state.data.companies[coId];
+            if (!co) return; // REGLA 1
             
-            // Red de seguridad para evitar el crash de loginStats
-            if (!co.loginStats) co.loginStats = { totalLogins: 0, roles: {} };
-            if (!co.loginStats.roles) co.loginStats.roles = {};
+            co.loginStats = co.loginStats || { totalLogins: 0, roles: {} };
+            co.loginStats.roles = co.loginStats.roles || {};
 
             co.loginStats.totalLogins++;
             if(!co.loginStats.roles[roleKey]) co.loginStats.roles[roleKey] = {count:0, lastLogin:null};
@@ -113,7 +120,7 @@ const auth = {
     
     buildNav(isAdmin) {
         const nav = document.getElementById('nav-container');
-        if (!nav) return; // BLINDAJE: Si el DOM no está listo, abortar sin crashear
+        if (!nav) return; // REGLA 3
         
         if (isAdmin) {
             nav.innerHTML = `
@@ -130,7 +137,6 @@ const auth = {
         if (role === 'CEO') {
             html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Órdenes CEO (Bóveda)</button>`;
             html += `<button onclick="ui.navigate('finance')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Finanzas</button>`;
-            html += `<button onclick="ui.navigate('resolutions')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Gobernanza / Actas</button>`;
         } else if (role === 'TECNICO') {
             html += `<button onclick="ui.navigate('tech')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">I+D y Pruebas</button>`;
             html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
@@ -149,18 +155,20 @@ const auth = {
             html += `<button onclick="ui.navigate('ailog')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Buzón Bitácora IA</button>`;
         } else if (role === 'AUXILIAR') {
             html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
-            html += `<button onclick="ui.navigate('resolutions')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Gobernanza / Actas</button>`;
         }
         
         if (role !== 'TECNICO' && role !== 'MARKETING' && role !== 'OPERACIONES_IA' && role !== 'AUXILIAR') {
             html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
         }
+        
+        // FASE 1: Gobernanza descentralizada para TODOS los roles
+        html += `<button onclick="ui.navigate('resolutions')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Gobernanza / Actas</button>`;
+        
         html += `<button onclick="ui.navigate('dossier')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Dossier / Notas</button>`;
         nav.innerHTML = html;
     }
 };
 
-// --- 5. DEV BACKDOOR ---
 const dev = {
     clickCount: 0, clickTimer: null,
     handleTrigger() {

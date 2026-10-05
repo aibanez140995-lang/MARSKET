@@ -3,9 +3,12 @@
 
 Object.assign(ui, {
     evalClassFilter: 'ALL',
+    _tempSponsorLogo: null, // Variable temporal segura para Base64
 
     // --- 1. VISTA PRINCIPAL DE ADMINISTRACIÓN ---
     viewAdmin(el) {
+        if (!state.user || !state.user.admin) return; // REGLA 4: Validación de sesión
+        
         const isAlex = state.user.role === 'COORD_ALEX';
         const isCoord = state.user.role.startsWith('COORD');
         
@@ -25,7 +28,11 @@ Object.assign(ui, {
 
         if(this.adminTab === 'dash') {
             let globalReal = 0;
-            for (let c in state.data.companies) globalReal += state.data.companies[c].realCosts.reduce((s, i) => s + i.eur, 0);
+            for (let c in state.data.companies) {
+                const co = state.data.companies[c];
+                co.realCosts = co.realCosts || []; // REGLA 1
+                globalReal += co.realCosts.reduce((s, i) => s + i.eur, 0);
+            }
             
             const canSponsor = state.data.config.teachers[state.user.role]?.canSponsor === true;
 
@@ -39,36 +46,48 @@ Object.assign(ui, {
                 <div class="lg:col-span-3 terminal-border bg-mars-card p-6 overflow-x-auto">
                     <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Control Financiero, Patrocinios & Sanciones AEE</h3>
                     <table class="w-full text-left text-[10px] whitespace-nowrap">
-                        <thead class="text-slate-500 uppercase border-b border-mars-border"><tr><th class="py-3 pr-4">Empresa</th><th class="pr-4">Bal(€v) / Real(€)</th><th class="pr-4">Patrocinio Fase I (+€v)</th><th>Sanciones AEE (-€v)</th></tr></thead>
+                        <thead class="text-slate-500 uppercase border-b border-mars-border">
+                            <tr>
+                                <th class="py-3 pr-4">Empresa</th>
+                                <th class="pr-4">Bal(€v)</th>
+                                <th class="pr-4">Gasto Virtual</th>
+                                <th class="pr-4">Gasto Físico</th>
+                                <th class="pr-4">Patrocinio Fase I</th>
+                                <th>Sanciones AEE</th>
+                            </tr>
+                        </thead>
                         <tbody>
                             ${Object.keys(state.data.companies).map(cid => {
                                 const c = state.data.companies[cid];
+                                c.realCosts = c.realCosts || []; // REGLA 1
+                                c.ledger = c.ledger || []; // REGLA 1
+                                
                                 const r = c.realCosts.reduce((s,i)=>s+i.eur,0);
+                                const virtualSpend = c.ledger.filter(l => l.delta < 0).reduce((s, l) => s + Math.abs(l.delta), 0);
                                 
                                 let sponsorHtml = '';
                                 if(canSponsor) {
-                                    sponsorHtml = `
-                                    <div class="flex gap-1">
-                                        <button onclick="ui.teacherCapital('${cid}', 500, 'Patrocinio ORO', 'ORO')" class="bg-[#ffd700] text-black px-2 py-1 font-black text-[8px] hover:scale-105 transition-transform">ORO</button>
-                                        <button onclick="ui.teacherCapital('${cid}', 400, 'Patrocinio PLATA', 'PLATA')" class="bg-[#c0c0c0] text-black px-2 py-1 font-black text-[8px] hover:scale-105 transition-transform">PLA</button>
-                                        <button onclick="ui.teacherCapital('${cid}', 250, 'Patrocinio BRONCE', 'BRONCE')" class="bg-[#cd7f32] text-black px-2 py-1 font-black text-[8px] hover:scale-105 transition-transform">BRO</button>
-                                    </div>`;
+                                    sponsorHtml = `<button onclick="ui.modalAssignSponsor('${cid}')" class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-3 py-1 font-bold text-[9px] uppercase hover:bg-mars-yellow hover:text-black transition-all whitespace-nowrap">Asignar Patrocinio</button>`;
                                 } else {
                                     if(c.sponsorAwarded) {
                                         const cl = c.sponsorAwarded==='ORO'?'text-[#ffd700] border-[#ffd700]':c.sponsorAwarded==='PLATA'?'text-[#c0c0c0] border-[#c0c0c0]':'text-[#cd7f32] border-[#cd7f32]';
-                                        sponsorHtml = `<span class="${cl} font-bold text-[8px] uppercase border px-2 py-1 bg-black/50">[PATROCINIO: ${c.sponsorAwarded}]</span>`;
+                                        let spName = c.sponsorData?.name ? ` - ${c.sponsorData.name}` : '';
+                                        let spLogo = c.sponsorData?.logo ? `<img src="${c.sponsorData.logo}" class="h-4 inline-block ml-2 rounded-sm object-contain bg-black/50 p-0.5">` : '';
+                                        sponsorHtml = `<span class="${cl} font-bold text-[8px] uppercase border px-2 py-1 bg-black/50 flex items-center w-max gap-1">[PATROCINIO: ${c.sponsorAwarded}${spName}] ${spLogo}</span>`;
                                     } else {
-                                        sponsorHtml = `<span class="text-slate-600 font-bold text-[8px] uppercase border border-slate-700 px-2 py-1 bg-slate-900">[SIN PATROCINIO]</span>`;
+                                        sponsorHtml = `<span class="text-slate-600 font-bold text-[8px] uppercase border border-slate-700 px-2 py-1 bg-slate-900 block w-max">[SIN PATROCINIO]</span>`;
                                     }
                                 }
 
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
                                     <td class="py-4 font-orbitron text-white font-bold pr-4"><button onclick="ui.showCompanyLogins('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4">${c.name}</button></td>
-                                    <td class="py-4 font-mono pr-4"><span class="text-mars-green font-bold">${c.balance.toFixed(0)}</span> <span class="text-slate-600">/</span> <span class="text-mars-magenta">${r.toFixed(2)}</span></td>
+                                    <td class="py-4 font-mono pr-4"><span class="text-mars-green font-bold">${c.balance.toFixed(0)} €v</span></td>
+                                    <td class="py-4 font-mono pr-4"><button onclick="ui.modalVirtualSpend('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4" title="Ver desglose">${virtualSpend.toFixed(2)} €v</button></td>
+                                    <td class="py-4 font-mono pr-4"><span class="text-mars-magenta">${r.toFixed(2)} €</span></td>
                                     <td class="py-4 pr-4">${sponsorHtml}</td>
                                     <td class="py-4">
-                                        <button onclick="ui.modalAEEFine('${cid}')" class="bg-red-900/30 border border-red-500 text-red-500 px-3 py-1 font-bold text-[8px] uppercase hover:bg-red-500 hover:text-white transition-all shadow-[0_0_5px_red]">Expediente AEE</button>
+                                        <button onclick="ui.modalAEEFine('${cid}')" class="bg-red-900/30 border border-red-500 text-red-500 px-3 py-1 font-bold text-[8px] uppercase hover:bg-red-500 hover:text-white transition-all shadow-[0_0_5px_red] whitespace-nowrap">Expediente AEE</button>
                                     </td>
                                 </tr>`;
                             }).join('')}
@@ -81,7 +100,7 @@ Object.assign(ui, {
                 <div class="space-y-3">
                     ${(state.data.pendingCustom || []).map(p => `
                     <div class="bg-slate-900 border border-mars-border p-3 flex justify-between items-center text-[10px] flex-wrap gap-2">
-                        <div class="flex-grow min-w-[200px]"><p class="text-mars-yellow font-bold uppercase">${state.data.companies[p.company].name}</p><p class="text-white font-bold text-xs uppercase">${p.name}</p><p class="text-slate-400 italic">"${p.reason}"</p></div>
+                        <div class="flex-grow min-w-[200px]"><p class="text-mars-yellow font-bold uppercase">${state.data.companies[p.company]?.name || 'Desconocida'}</p><p class="text-white font-bold text-xs uppercase">${p.name}</p><p class="text-slate-400 italic">"${p.reason}"</p></div>
                         <div class="flex gap-2 items-center flex-shrink-0">
                             <input type="number" id="val-price-${p.id}" class="w-16 bg-black border border-mars-border p-2 text-mars-green text-center font-bold" placeholder="€v">
                             <button onclick="ui.teacherValidate('${p.id}', true)" class="bg-mars-green text-black px-4 py-2 font-black hover:bg-white transition-colors">OK</button>
@@ -127,7 +146,7 @@ Object.assign(ui, {
                                 .filter(cid => this.evalClassFilter === 'ALL' || state.data.companies[cid].classGroup === this.evalClassFilter)
                                 .map(cid => {
                                 const co = state.data.companies[cid];
-                                const g = co.grades || {};
+                                const g = co.grades || {}; // REGLA 1
                                 const vals = ['FYQ','ECO','LYE','LEN','MAT','ING'].map(s => g[s] ? g[s].final : null);
                                 const validVals = vals.filter(v => v !== null);
                                 const avg = validVals.length > 0 ? (validVals.reduce((a,b)=>a+b,0)/validVals.length).toFixed(2) : '-';
@@ -154,7 +173,7 @@ Object.assign(ui, {
                                 .filter(cid => this.evalClassFilter === 'ALL' || state.data.companies[cid].classGroup === this.evalClassFilter)
                                 .map(cid => {
                                 const co = state.data.companies[cid];
-                                const d = co.deliverables || {};
+                                const d = co.deliverables || {}; // REGLA 1
                                 const aiCount = (co.aiPrompts||[]).filter(p=>p.status==='APROBADO').length;
                                 
                                 const dLink = (doc) => doc ? `<a href="${doc.dataUrl}" target="_blank" download="${doc.type==='file'?doc.name:''}" class="bg-mars-cyan/10 text-mars-cyan border border-mars-cyan px-2 py-1 font-bold hover:bg-mars-cyan hover:text-black transition-colors block text-center">${doc.type==='link'?'🔗 ENLACE':'📁 ARCHIVO'}</a>` : `<span class="text-slate-600 border border-slate-700 px-2 py-1 block text-center">PENDIENTE</span>`;
@@ -190,13 +209,15 @@ Object.assign(ui, {
                     adminHtml += `<div class="terminal-border bg-mars-card p-6">${selectCoHtml}<p class="text-xs text-slate-500 italic">Esperando selección de objetivo...</p></div>`;
                 } else {
                     const co = state.data.companies[this.evalSelectedCo];
+                    if (!co) return; // REGLA 1
+                    
                     const pastGrade = co.grades[activeSubject] || { scores: {}, feedback: '' };
                     const docs = co.deliverables || {};
                     
                     let evidenceHtml = `<h4 class="font-orbitron text-mars-cyan text-xs uppercase mb-4 tracking-widest border-b border-mars-border pb-2">Evidencias Adjuntas</h4>`;
                     if (activeSubject === 'FYQ') {
                         evidenceHtml += this.renderDocBadge('Informe Técnico (FYQ)', docs.technicalReport);
-                        if(co.flightTests.length>0) {
+                        if(co.flightTests && co.flightTests.length>0) {
                             evidenceHtml += `<div class="mt-4"><span class="text-mars-yellow text-[9px] font-bold uppercase">Ensayos Vuelo:</span><div class="text-[9px] mt-1 space-y-1">`;
                             co.flightTests.forEach(f => evidenceHtml += `<p class="text-slate-300">H: ${f.heightM}m | E: ${f.efficiency.toFixed(2)}</p>`);
                             evidenceHtml += `</div></div>`;
@@ -265,15 +286,15 @@ Object.assign(ui, {
                         <thead class="text-slate-500 uppercase border-b border-mars-border"><tr><th class="py-2">Empresa</th><th>Clase</th><th>CEO</th><th>TEC</th><th>FIN</th><th>MKT</th><th>OP_IA</th><th>Acción</th></tr></thead>
                         <tbody>
                             ${Object.keys(state.data.companies).map(cid => {
-                                const r = state.data.companies[cid].roles;
                                 const co = state.data.companies[cid];
+                                const r = co.roles || {}; // REGLA 1
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
                                     <td class="py-3 font-orbitron text-white font-bold"><button onclick="ui.showCompanyLogins('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4">${co.name}</button></td>
                                     <td class="py-3 text-mars-yellow font-bold">${co.classGroup}</td>
                                     ${['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA'].map(rol => `
                                     <td class="py-3">
-                                        ${isCoord ? `<input type="text" maxlength="4" value="${r[rol]}" onchange="ui.updatePIN('${cid}', '${rol}', this.value)" class="w-10 bg-black border border-mars-border text-center text-mars-cyan font-bold p-1 outline-none focus:border-mars-yellow">` : `<span class="text-slate-500">****</span>`}
+                                        ${isCoord ? `<input type="text" maxlength="4" value="${r[rol]||'1234'}" onchange="ui.updatePIN('${cid}', '${rol}', this.value)" class="w-10 bg-black border border-mars-border text-center text-mars-cyan font-bold p-1 outline-none focus:border-mars-yellow">` : `<span class="text-slate-500">****</span>`}
                                     </td>`).join('')}
                                     <td class="py-3">${isCoord ? `<button onclick="if(confirm('¿Borrar startup irreversiblemente?')) ui.deleteStartup('${cid}')" class="text-mars-magenta font-bold hover:underline">Eliminar</button>` : `<span class="text-slate-600">Bloqueado</span>`}</td>
                                 </tr>`;
@@ -288,7 +309,7 @@ Object.assign(ui, {
             let matRows = '';
             Object.keys(state.data.companies).forEach(cid => {
                 const co = state.data.companies[cid];
-                const s = co.loginStats || { totalLogins:0, roles:{} };
+                const s = co.loginStats || { totalLogins:0, roles:{} }; // REGLA 1
                 matRows += `<tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
                     <td class="py-3 font-orbitron text-white font-bold pr-4">${co.name}</td>
                     <td class="py-3 font-mono text-mars-cyan font-bold pr-4 text-center border-r border-mars-border/50">${s.totalLogins}</td>`;
@@ -300,7 +321,6 @@ Object.assign(ui, {
                 matRows += `</tr>`;
             });
 
-            // Recopilar todos los reportes de inactividad
             let allReports = [];
             Object.keys(state.data.companies).forEach(cid => {
                 const co = state.data.companies[cid];
@@ -535,12 +555,117 @@ Object.assign(ui, {
                 </div>
             </div>`;
         }
-        el.innerHTML = adminHtml;
+        if (el) el.innerHTML = adminHtml; // REGLA 3
     },
 
-    // --- NUEVAS FUNCIONES DE CATÁLOGO (FASE 3) ---
+    modalAssignSponsor(cid) {
+        const co = state.data.companies[cid];
+        if (!co) return; // REGLA 4
+        
+        this._tempSponsorLogo = null; 
+        
+        const html = `
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[9px] text-mars-yellow uppercase font-bold block mb-1">Nivel de Patrocinio</label>
+                    <select id="sponsor-tier" class="w-full bg-slate-900 border border-mars-yellow/50 p-2 text-xs text-white uppercase outline-none focus:border-mars-yellow">
+                        <option value="ORO|500">ORO (+500 €v)</option>
+                        <option value="PLATA|400">PLATA (+400 €v)</option>
+                        <option value="BRONCE|250">BRONCE (+250 €v)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[9px] text-mars-yellow uppercase font-bold block mb-1">Nombre de la Marca / Entidad</label>
+                    <input type="text" id="sponsor-name" class="w-full bg-slate-900 border border-mars-yellow/50 p-2 text-xs text-white outline-none focus:border-mars-yellow" placeholder="Ej: SpaceX, NASA, Empresa Local...">
+                </div>
+                <div>
+                    <label class="text-[9px] text-mars-yellow uppercase font-bold block mb-1">Logotipo del Patrocinador (Opcional)</label>
+                    <input type="file" id="sponsor-logo-file" accept="image/png, image/jpeg" class="w-full text-[9px] text-slate-400 mb-2" onchange="ui.handleSponsorLogoUpload(event)">
+                    <div id="sponsor-logo-preview" class="h-12 w-auto bg-black border border-slate-700 flex items-center justify-center text-[8px] text-slate-500 italic">Sin logo</div>
+                </div>
+            </div>
+        `;
+        const actions = `<button onclick="ui.submitSponsor('${cid}')" class="bg-mars-yellow text-black px-6 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all">Asignar Patrocinio</button>`;
+        this.showModal(`Asignar Patrocinador a ${co.name}`, html, actions);
+    },
+
+    handleSponsorLogoUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) return alert("Solo PNG/JPG.");
+        if (file.size > 1024 * 1024) return alert("Máximo 1MB para el logo.");
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            this._tempSponsorLogo = ev.target.result;
+            const preview = document.getElementById('sponsor-logo-preview');
+            if (preview) preview.innerHTML = `<img src="${ev.target.result}" class="h-full object-contain">`;
+        };
+        reader.readAsDataURL(file);
+    },
+
+    submitSponsor(cid) {
+        const co = state.data.companies[cid];
+        if (!co) return; // REGLA 1 y 4
+        
+        const elTier = document.getElementById('sponsor-tier');
+        const elName = document.getElementById('sponsor-name');
+        if (!elTier || !elName) return; // REGLA 3
+        
+        const [tier, amountStr] = elTier.value.split('|');
+        const amount = parseFloat(amountStr);
+        const name = elName.value.trim() || 'Anónimo';
+        
+        co.sponsorAwarded = tier;
+        co.sponsorData = {
+            name: name,
+            logo: this._tempSponsorLogo
+        };
+        
+        const concept = `Patrocinio ${tier} - ${name}`;
+        state.addToLedger(cid, concept, 'DOCENTE', amount);
+        
+        this._tempSponsorLogo = null;
+        this.closeModal();
+        this.render();
+    },
+
+    modalVirtualSpend(cid) {
+        const co = state.data.companies[cid];
+        if (!co) return; // REGLA 1 y 4
+        
+        co.ledger = co.ledger || [];
+        const expenses = co.ledger.filter(l => l.delta < 0);
+        const total = expenses.reduce((s, l) => s + Math.abs(l.delta), 0);
+        
+        let html = `
+        <div class="mb-4 bg-slate-900 p-4 border border-mars-cyan flex justify-between items-center">
+            <span class="text-mars-cyan font-bold uppercase text-xs">Total Gasto Virtual Acumulado</span>
+            <span class="text-mars-cyan font-mono text-xl font-black">${total.toFixed(2)} €v</span>
+        </div>
+        <div class="max-h-64 overflow-y-auto pr-2">
+            <table class="w-full text-left text-[10px] whitespace-nowrap">
+                <thead class="text-slate-500 uppercase border-b border-mars-border sticky top-0 bg-mars-card">
+                    <tr><th class="py-2 pr-2">Fecha / ID</th><th class="pr-2">Concepto</th><th class="text-right">Importe (€v)</th></tr>
+                </thead>
+                <tbody>
+                    ${expenses.map(l => `
+                    <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
+                        <td class="py-2 pr-2 text-slate-400">${l.date.split(' ')[0]} <br><span class="text-[8px]">${l.id}</span></td>
+                        <td class="py-2 pr-2 text-white whitespace-normal min-w-[200px]">${l.concept}</td>
+                        <td class="py-2 text-right text-mars-magenta font-mono font-bold">${Math.abs(l.delta).toFixed(2)}</td>
+                    </tr>
+                    `).join('') || `<tr><td colspan="3" class="text-center py-4 text-slate-600 italic">No hay gastos registrados.</td></tr>`}
+                </tbody>
+            </table>
+        </div>
+        `;
+        this.showModal(`Auditoría de Gasto Virtual: ${co.name}`, html, "");
+    },
+
     saveCatalogPrice(id) {
-        const newPrice = parseFloat(document.getElementById(`price-${id}`).value);
+        const elPrice = document.getElementById(`price-${id}`);
+        if (!elPrice) return; // REGLA 3
+        const newPrice = parseFloat(elPrice.value);
         if(isNaN(newPrice) || newPrice < 0) return alert("Precio inválido.");
         const item = state.data.catalog.find(i => i.id === id);
         if(item) {
@@ -551,12 +676,21 @@ Object.assign(ui, {
     },
 
     addCatalogItem() {
-        const id = document.getElementById('new-cat-id').value.trim();
-        const name = document.getElementById('new-cat-name').value.trim();
-        const price = parseFloat(document.getElementById('new-cat-price').value);
-        const unit = document.getElementById('new-cat-unit').value.trim();
-        const category = document.getElementById('new-cat-category').value;
-        const origin = document.getElementById('new-cat-origin').value.trim();
+        const elId = document.getElementById('new-cat-id');
+        const elName = document.getElementById('new-cat-name');
+        const elPrice = document.getElementById('new-cat-price');
+        const elUnit = document.getElementById('new-cat-unit');
+        const elCat = document.getElementById('new-cat-category');
+        const elOrigin = document.getElementById('new-cat-origin');
+
+        if (!elId || !elName || !elPrice || !elUnit || !elCat || !elOrigin) return; // REGLA 3
+
+        const id = elId.value.trim();
+        const name = elName.value.trim();
+        const price = parseFloat(elPrice.value);
+        const unit = elUnit.value.trim();
+        const category = elCat.value;
+        const origin = elOrigin.value.trim();
 
         if(!id || !name || isNaN(price) || !unit || !origin) return alert("Rellene todos los campos correctamente.");
         if(state.data.catalog.find(i => i.id === id)) return alert("El ID ya existe en el catálogo.");
@@ -567,10 +701,9 @@ Object.assign(ui, {
         this.render();
     },
 
-    // --- NUEVA FUNCIÓN DE REPORTES HR (FASE 4) ---
     resolveInactivityReport(cid, rid) {
         const co = state.data.companies[cid];
-        if (!co || !co.inactivityReports) return;
+        if (!co || !co.inactivityReports) return; // REGLA 1
         const rep = co.inactivityReports.find(r => r.id === rid);
         if (rep) {
             rep.status = 'RESUELTO';
@@ -579,9 +712,10 @@ Object.assign(ui, {
         }
     },
 
-    // --- 2. GESTIÓN Y SANCIONES AEE ---
     modalAEEFine(cid) {
         const co = state.data.companies[cid];
+        if (!co) return; // REGLA 4
+        
         const html = `
             <div class="space-y-4">
                 <div>
@@ -612,9 +746,14 @@ Object.assign(ui, {
     },
 
     submitAEEFine(cid) {
-        const article = document.getElementById('aee-article').value;
-        const reason = document.getElementById('aee-reason').value;
-        const amount = parseFloat(document.getElementById('aee-amount').value);
+        const elArticle = document.getElementById('aee-article');
+        const elReason = document.getElementById('aee-reason');
+        const elAmount = document.getElementById('aee-amount');
+        if (!elArticle || !elReason || !elAmount) return; // REGLA 3
+        
+        const article = elArticle.value;
+        const reason = elReason.value;
+        const amount = parseFloat(elAmount.value);
         if(!reason) return alert("El dictamen del inspector es obligatorio.");
         
         const concept = `[EXPEDIENTE AEE] ${article} - ${reason}`;
@@ -623,38 +762,40 @@ Object.assign(ui, {
         this.render();
     },
 
-    teacherCapital(cid, amount, desc, tier) { 
-        state.addToLedger(cid, desc, 'DOCENTE', amount); 
-        if(tier) state.data.companies[cid].sponsorAwarded = tier;
-        this.render(); 
-    },
-
-    teacherFine(cid, amount, desc) { 
-        state.addToLedger(cid, desc, 'DOCENTE', amount); 
-        this.render(); 
-    },
-
+    // --- FASE 4: EMISIÓN DE NOTIFICACIONES I+D ---
     teacherValidate(pid, ok) {
         const reqIdx = state.data.pendingCustom.findIndex(p => p.id == pid);
+        if (reqIdx === -1) return;
+        
+        const req = state.data.pendingCustom[reqIdx];
+        const coId = req.company;
+        
         if(ok) {
-            const price = parseFloat(document.getElementById(`val-price-${pid}`).value);
+            const elPrice = document.getElementById(`val-price-${pid}`);
+            if (!elPrice) return; // REGLA 3
+            const price = parseFloat(elPrice.value);
             if(!price) return alert("Falta precio €v.");
+            
             state.data.catalog.unshift({ 
                 id: 'CUST-' + pid, 
-                name: `[ESP] ${state.data.pendingCustom[reqIdx].name}`, 
+                name: `[ESP] ${req.name}`, 
                 price: price, 
                 unit: 'Especial', 
                 category: 'Externo',
                 origin: 'I+D Local',
-                exclusiveFor: state.data.pendingCustom[reqIdx].company
+                exclusiveFor: coId
             });
+            
+            ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial "${req.name}" ha sido APROBADA e integrada al catálogo por ${price} €v.`, 'success');
+        } else {
+            ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial "${req.name}" ha sido DENEGADA por el Claustro.`, 'error');
         }
+        
         state.data.pendingCustom.splice(reqIdx, 1); 
         state.save(); 
         this.render();
     },
 
-    // --- 3. EVALUACIÓN Y CALIFICACIONES ---
     selectEvalCo(cid) {
         this.evalSelectedCo = cid;
         this.render();
@@ -665,8 +806,11 @@ Object.assign(ui, {
         if (!config) return;
         let total = 0;
         config.criteria.forEach(c => {
-            const val = parseFloat(document.getElementById(`grade-${c.id}`).value) || 0;
-            total += val * c.weight;
+            const el = document.getElementById(`grade-${c.id}`);
+            if (el) {
+                const val = parseFloat(el.value) || 0;
+                total += val * c.weight;
+            }
         });
         const display = document.getElementById('realtime-grade');
         if (display) display.innerText = total.toFixed(2);
@@ -676,7 +820,9 @@ Object.assign(ui, {
         if (!this.evalSelectedCo) return alert("Seleccione una startup primero.");
         const config = RUBRIC_CONFIG[subject];
         const co = state.data.companies[this.evalSelectedCo];
-        if (!co.grades) co.grades = {};
+        if (!co) return; // REGLA 1
+        
+        co.grades = co.grades || {}; // REGLA 1
         
         let scores = {};
         let total = 0;
@@ -684,17 +830,20 @@ Object.assign(ui, {
         
         config.criteria.forEach(c => {
             const el = document.getElementById(`grade-${c.id}`);
-            const val = parseFloat(el.value);
-            if (isNaN(val)) allFilled = false;
-            scores[c.id] = val || 0;
-            total += (val || 0) * c.weight;
+            if (el) {
+                const val = parseFloat(el.value);
+                if (isNaN(val)) allFilled = false;
+                scores[c.id] = val || 0;
+                total += (val || 0) * c.weight;
+            }
         });
         
         if (!allFilled) {
             if (!confirm("Hay criterios sin calificar (se contarán como 0). ¿Desea continuar?")) return;
         }
         
-        const feedback = document.getElementById('eval-feedback').value;
+        const elFeedback = document.getElementById('eval-feedback');
+        const feedback = elFeedback ? elFeedback.value : '';
         co.grades[subject] = { scores, feedback, final: total };
         
         telemetry.log("EVALUACIÓN", `Nota ${subject} registrada a ${co.name}: ${total.toFixed(2)}`);
@@ -715,17 +864,22 @@ Object.assign(ui, {
         this.downloadFile(csv, 'csv', 'marsket_acta_notas.csv');
     },
 
-    // --- 4. GESTIÓN DE STARTUPS Y PINS ---
     createStartup() {
-        const name = document.getElementById('new-co-name').value;
-        const cap = parseFloat(document.getElementById('new-co-cap').value);
-        const classGroup = document.getElementById('new-co-class').value || 'A';
+        const elName = document.getElementById('new-co-name');
+        const elCap = document.getElementById('new-co-cap');
+        const elClass = document.getElementById('new-co-class');
+        if (!elName || !elCap || !elClass) return; // REGLA 3
+        
+        const name = elName.value;
+        const cap = parseFloat(elCap.value);
+        const classGroup = elClass.value || 'A';
+        
         if(!name || isNaN(cap)) return alert("Datos inválidos.");
         const cid = 'co_' + Date.now();
         state.data.companies[cid] = { 
-            name, balance: cap, logo: null, sponsorAwarded: null, valueProposition: "", slogan: "", classGroup,
+            name, balance: cap, logo: null, sponsorAwarded: null, sponsorData: {name: null, logo: null}, valueProposition: "", slogan: "", classGroup,
             roles: { CEO:'1234', TECNICO:'1234', FINANZAS:'1234', MARKETING:'1234', OPERACIONES_IA:'1234' }, 
-            aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [],
+            aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [],
             loginStats: { totalLogins: 0, roles: { CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0} } },
             deliverables: { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null }
         };
@@ -741,20 +895,25 @@ Object.assign(ui, {
     updatePIN(coId, role, val) { 
         if(!state.user.role.startsWith('COORD')) return alert("Solo Coordinación puede modificar PINs.");
         if(val.length !== 4) return alert("4 dígitos."); 
-        state.data.companies[coId].roles[role] = val; 
-        state.save(); 
+        if (state.data.companies[coId] && state.data.companies[coId].roles) {
+            state.data.companies[coId].roles[role] = val; 
+            state.save(); 
+        }
     },
 
     changeTeacherPIN() {
-        const np = document.getElementById('new-teacher-pin').value;
+        const elPin = document.getElementById('new-teacher-pin');
+        if (!elPin) return; // REGLA 3
+        const np = elPin.value;
         if(np.length !== 4) return alert("4 dígitos.");
-        state.data.config.teachers[state.user.role].pin = np; 
-        state.save();
-        alert("PIN Actualizado."); 
-        document.getElementById('new-teacher-pin').value = '';
+        if (state.data.config.teachers[state.user.role]) {
+            state.data.config.teachers[state.user.role].pin = np; 
+            state.save();
+            alert("PIN Actualizado."); 
+            elPin.value = '';
+        }
     },
 
-    // --- 5. AUDITORÍA DE CONEXIONES ---
     showCompanyLogins(cid) {
         const co = state.data.companies[cid];
         if (!co) return;
@@ -783,7 +942,6 @@ Object.assign(ui, {
         this.showModal(`Auditoría de Conexiones: ${co.name}`, html, "");
     },
 
-    // --- 6. CONFIGURACIÓN Y BUZÓN DEV ---
     saveSettings() {
         const dl = state.data.config.deadlines;
         const gl = state.data.config.guidelines;
@@ -820,13 +978,15 @@ Object.assign(ui, {
         this.render();
     },
 
-    // --- 7. BACKUP Y EXPORTACIÓN ---
     exportCSV() {
         let csv = "Empresa,Fecha,Concepto,Departamento,Variacion_Virtual,Saldo_Final_Virtual\n";
         for (const coId in state.data.companies) {
-            state.data.companies[coId].ledger.forEach(l => { 
-                csv += `"${state.data.companies[coId].name}","${l.date}","${l.concept}","${l.dept}",${l.delta},${l.final}\n`; 
-            });
+            const co = state.data.companies[coId];
+            if (co && co.ledger) {
+                co.ledger.forEach(l => { 
+                    csv += `"${co.name}","${l.date}","${l.concept}","${l.dept}",${l.delta},${l.final}\n`; 
+                });
+            }
         }
         this.downloadFile(csv, 'csv', 'marsket_ledger_export.csv');
     },

@@ -1,6 +1,5 @@
 // js/state.js
 
-// --- MOTOR DE ESTADO (CLOUD HYBRID D1) Y MIGRACIÓN ---
 const state = {
     data: {}, user: null, pin: '', sessionData: null,
     storageKey: 'marsket_v10_PWA',
@@ -8,31 +7,35 @@ const state = {
     isCloudOnline: false, isSyncing: false, syncTimer: null,
 
     migrate(d) {
-        // 1. Curar datos críticos perdidos por corrupciones previas (Copia profunda)
-        if (!d.config) d.config = JSON.parse(JSON.stringify(INITIAL_DATA.config));
-        if (!d.catalog || d.catalog.length === 0) d.catalog = JSON.parse(JSON.stringify(INITIAL_DATA.catalog));
-        if (!d.companies) d.companies = JSON.parse(JSON.stringify(INITIAL_DATA.companies));
-        if (!d.telemetry) d.telemetry = { totalLogins: 0, sessions: [] };
-        if (!d.telemetry.sessions) d.telemetry.sessions = [];
+        // REGLA 1: BLINDAJE DE ESTADO (Fallbacks)
+        d.config = d.config || JSON.parse(JSON.stringify(INITIAL_DATA.config));
+        d.catalog = d.catalog && d.catalog.length > 0 ? d.catalog : JSON.parse(JSON.stringify(INITIAL_DATA.catalog));
+        d.companies = d.companies || JSON.parse(JSON.stringify(INITIAL_DATA.companies));
+        d.telemetry = d.telemetry || { totalLogins: 0, sessions: [] };
+        d.telemetry.sessions = d.telemetry.sessions || [];
 
         d.suggestionsToAlex = d.suggestionsToAlex || [];
         d.pendingCustom = d.pendingCustom || [];
-        if(!d.config.deadlines) {
-            d.config.deadlines = { techReport: "2026-11-15T23:59", presPhase1: "2026-10-30T23:59", presPhase3: "2026-12-05T23:59", financeBook: "2026-12-01T23:59", valuePropDoc: "2026-11-10T23:59" };
-        }
-        if(!d.config.guidelines) d.config.guidelines = { techReportDocUrl: "", techReportNotes: "" };
         
-        // Coord fix for older states
+        d.config.deadlines = d.config.deadlines || { techReport: "2026-11-15T23:59", presPhase1: "2026-10-30T23:59", presPhase3: "2026-12-05T23:59", financeBook: "2026-12-01T23:59", valuePropDoc: "2026-11-10T23:59" };
+        d.config.guidelines = d.config.guidelines || { techReportDocUrl: "", techReportNotes: "" };
+        
         if(d.config.teachers.COORD) {
             delete d.config.teachers.COORD;
             d.config.teachers.COORD_MARIO = { name: "Coordinación - Mario", pin: "0001", canSponsor: true };
             d.config.teachers.COORD_ALEX = { name: "Coordinación - Alex", pin: "0002", canSponsor: true };
         }
 
+        // FASE 1: Diversificación Comercial (Asegurar País de Origen)
+        const countries = ['China', 'Alemania', 'España', 'Turquía', 'Marruecos', 'ESA / Francia', 'Polonia', 'Italia', 'Portugal', 'India', 'República Checa', 'Japón', 'EEUU', 'Reino Unido', 'Corea del Sur', 'Brasil'];
+        d.catalog.forEach(item => {
+            if (!item.origin) item.origin = countries[Math.floor(Math.random() * countries.length)];
+        });
+
         for(let k in d.companies) {
             let co = d.companies[k];
             
-            // BLINDAJE CONTRA CRASHES SILENCIOSOS
+            // REGLA 1: BLINDAJE DE ESTADO
             co.roles = co.roles || { CEO:'1234', TECNICO:'1234', FINANZAS:'1234', MARKETING:'1234', OPERACIONES_IA:'1234' };
             co.loginStats = co.loginStats || { totalLogins: 0, roles: {} };
             co.loginStats.roles = co.loginStats.roles || {};
@@ -54,7 +57,11 @@ const state = {
             co.marketingCampaigns = co.marketingCampaigns || [];
             co.inactivityReports = co.inactivityReports || [];
             
-            // Role remapping to explicit 5 roles
+            // FASE 1: Preparación para v1.0.08
+            co.sponsorData = co.sponsorData || { name: null, logo: null };
+            co.auxRoleDept = co.auxRoleDept || null;
+            co.notifications = co.notifications || [];
+            
             if(co.roles.QUIMICA || co.roles.AERODINAMICA || co.roles.IA) {
                 const defaultPin = co.roles.CEO || '1234';
                 co.roles = {
@@ -85,12 +92,11 @@ const state = {
         this.data = this.migrate(raw);
         localStorage.setItem(this.storageKey, JSON.stringify(this.data));
 
-        // Rehidratar sesión persistente si existe
         const savedSession = localStorage.getItem(this.sessionKey);
         if (savedSession) {
             try {
                 const sessionUser = JSON.parse(savedSession);
-                // Validar que la entidad siga existiendo en el estado
+                // REGLA 4: Validación de Sesiones Huérfanas
                 const isValid = sessionUser.admin 
                     ? !!this.data.config.teachers[sessionUser.role]
                     : !!this.data.companies[sessionUser.coId];
@@ -158,16 +164,15 @@ const state = {
 
     addToLedger(coId, concept, dept, delta) {
         const co = this.data.companies[coId];
+        if (!co) return; // REGLA 1
         co.balance += delta;
         co.ledger.unshift({ id: 'TX-' + Math.random().toString(36).substr(2, 5).toUpperCase(), date: new Date().toLocaleString(), concept, dept, delta, final: co.balance });
         this.save();
     }
 };
 
-// --- MOTOR DE TELEMETRÍA ---
 const telemetry = {
     startSession(entity, role) {
-        // BLINDAJE: Asegurar inicialización de telemetría antes de registrar el evento
         if (!state.data.telemetry) state.data.telemetry = { totalLogins: 0, sessions: [] };
         if (!state.data.telemetry.sessions) state.data.telemetry.sessions = [];
         if (isNaN(state.data.telemetry.totalLogins)) state.data.telemetry.totalLogins = 0;

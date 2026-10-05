@@ -4,6 +4,7 @@
 Object.assign(ui, {
     // --- 1. LOGIN Y CATÁLOGO ---
     viewLogin(el) {
+        if (!el) return; // REGLA 3
         let coOptions = Object.keys(state.data.companies).map(k => `<option value="${k}">${state.data.companies[k].name}</option>`).join('');
         el.innerHTML = `
         <div class="min-h-[75vh] flex items-center justify-center w-full px-4">
@@ -28,7 +29,6 @@ Object.assign(ui, {
                 </div>
             </div>
         </div>`;
-        // Forzar actualización inicial de roles para la startup seleccionada por defecto
         setTimeout(() => auth.updateRoleOptions(), 50);
     },
 
@@ -38,15 +38,20 @@ Object.assign(ui, {
     },
 
     viewMarket(el) {
+        if (!el || !state.user || state.user.admin) return; // REGLA 3 y 4
+        
+        const co = state.data.companies[state.user.coId];
+        if (!co) return; // REGLA 1
+        
         const wrapper = document.createElement('div');
         let topSection = '';
         let techBanner = '';
         
-        if(state.user && state.user.role === 'TECNICO') {
-            const co = state.data.companies[state.user.coId];
+        if(state.user.role === 'TECNICO') {
             const docs = co.deliverables || {};
+            co.cart = co.cart || [];
             
-            if (co.cart && co.cart.length > 0) {
+            if (co.cart.length > 0) {
                 const totalEurV = co.cart.reduce((s, i) => s + i.price, 0).toFixed(2);
                 
                 const draftItemsHtml = co.cart.map((item, idx) => `
@@ -85,17 +90,14 @@ Object.assign(ui, {
             </div>`;
         }
 
-        // FIX BUG: Asignar 'ALL' por defecto si marketFilter es undefined
         const currentFilter = this.marketFilter || 'ALL';
 
         const visibleCatalog = state.data.catalog.filter(item => {
             let isAllowed = false;
             if (!item.exclusiveFor) isAllowed = true;
-            else if (state.user && state.user.admin) isAllowed = true;
-            else if (state.user && state.user.coId === item.exclusiveFor) isAllowed = true;
+            else if (state.user.coId === item.exclusiveFor) isAllowed = true;
 
             if (!isAllowed) return false;
-            
             if (currentFilter === 'ALL') return true;
             return item.category.toUpperCase() === currentFilter.toUpperCase();
         });
@@ -110,7 +112,7 @@ Object.assign(ui, {
         ${topSection}
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">SUPERMARS-KET Oficial</h2>
-            ${!state.user.admin && state.user.role === 'TECNICO' ? `<button onclick="ui.modalCustom()" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-3 py-1.5 text-[9px] sm:text-[10px] uppercase font-bold hover:bg-mars-magenta hover:text-white transition-all whitespace-nowrap">Solicitar I+D</button>` : ``}
+            ${state.user.role === 'TECNICO' ? `<button onclick="ui.modalCustom()" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-3 py-1.5 text-[9px] sm:text-[10px] uppercase font-bold hover:bg-mars-magenta hover:text-white transition-all whitespace-nowrap">Solicitar I+D</button>` : ``}
         </div>
         <div class="flex flex-wrap gap-2 mb-6 pb-4 border-b border-mars-border">
             ${filterButtons}
@@ -118,14 +120,14 @@ Object.assign(ui, {
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             ${visibleCatalog.map(item => {
                 let buySection = '';
-                if(!state.user.admin && state.user.role !== 'AUXILIAR') {
+                if(state.user.role !== 'AUXILIAR') {
                     if (state.user.role === 'TECNICO') {
                         if (item.id === 'P01') {
                             buySection = `<div class="flex gap-1 mt-2"><button onclick="ui.techAddToCart('${item.id}', 10)" class="flex-1 bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-1 text-[9px] font-bold hover:bg-mars-cyan hover:text-black">+10g</button><button onclick="ui.techAddToCart('${item.id}', 25)" class="flex-1 bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-1 text-[9px] font-bold hover:bg-mars-cyan hover:text-black">+25g</button><button onclick="ui.techAddToCart('${item.id}', 50)" class="flex-1 bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-1 text-[9px] font-bold hover:bg-mars-cyan hover:text-black">+50g</button></div>`;
                         } else if (item.id === 'P02') {
                             buySection = `<div class="flex gap-1 mt-2"><button onclick="ui.techAddToCart('${item.id}', 50)" class="flex-1 bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-1 text-[9px] font-bold hover:bg-mars-cyan hover:text-black">+50ml</button><button onclick="ui.techAddToCart('${item.id}', 100)" class="flex-1 bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-1 text-[9px] font-bold hover:bg-mars-cyan hover:text-black">+100ml</button></div>`;
                         } else {
-                            buySection = `<div class="flex items-center gap-2 mt-2"><input type="number" id="qty-${item.id}" value="1" min="1" class="w-12 bg-black border border-mars-border text-center text-[10px] text-white p-1"><button onclick="ui.techAddToCart('${item.id}', parseInt(document.getElementById('qty-${item.id}').value)||1)" class="flex-grow bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-2 py-1 text-[9px] font-black uppercase hover:bg-mars-cyan hover:text-mars-bg transition-all">Añadir a Petición</button></div>`;
+                            buySection = `<div class="flex items-center gap-2 mt-2"><input type="number" id="qty-${item.id}" value="1" min="1" class="w-12 bg-black border border-mars-border text-center text-[10px] text-white p-1"><button onclick="ui.techAddToCart('${item.id}', parseInt(document.getElementById('qty-${item.id}')?.value)||1)" class="flex-grow bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-2 py-1 text-[9px] font-black uppercase hover:bg-mars-cyan hover:text-mars-bg transition-all">Añadir a Petición</button></div>`;
                         }
                     } else {
                         buySection = `<p class="text-[8px] text-slate-500 uppercase mt-2 border-t border-slate-800 pt-2">El Dpto. Técnico realiza las peticiones.</p>`;
@@ -153,11 +155,17 @@ Object.assign(ui, {
     },
 
     techAddToCart(id, qty = 1) {
+        const co = state.data.companies[state.user.coId];
+        if (!co) return; // REGLA 1
+        co.cart = co.cart || [];
+        
         const item = state.data.catalog.find(i => i.id === id);
+        if (!item) return;
+        
         let name = item.name;
         if(id === 'P01' || id === 'P02') name = `${item.name} (${qty}${item.unit})`;
         
-        state.data.companies[state.user.coId].cart.push({...item, qty, price: item.price * qty, name, realEur: '', realShop: ''});
+        co.cart.push({...item, qty, price: item.price * qty, name, realEur: '', realShop: ''});
         telemetry.log("REQ TÉCNICA", `Añadido a borrador: ${name}`);
         state.save();
         this.render();
@@ -174,7 +182,10 @@ Object.assign(ui, {
 
     modalSubmitOrderToFinance() {
         const co = state.data.companies[state.user.coId];
-        if(!co.cart || co.cart.length === 0) return alert("El carrito de I+D está vacío.");
+        if (!co) return;
+        co.cart = co.cart || [];
+        
+        if(co.cart.length === 0) return alert("El carrito de I+D está vacío.");
         
         const total = co.cart.reduce((s, i) => s + i.price, 0).toFixed(2);
         const itemsHtml = co.cart.map(i => `<div class="flex justify-between text-[10px] border-b border-mars-border/50 py-1"><span class="text-white">${i.name} (x${i.qty})</span><span class="text-mars-green">${i.price.toFixed(2)} €v</span></div>`).join('');
@@ -192,11 +203,15 @@ Object.assign(ui, {
     },
 
     confirmTechOrderToFinance() {
-        const justText = document.getElementById('tech-order-just').value.trim();
+        const elJust = document.getElementById('tech-order-just');
+        if (!elJust) return; // REGLA 3
+        const justText = elJust.value.trim();
         if(justText.length < 5) return alert("Justificación técnica obligatoria.");
         
         const co = state.data.companies[state.user.coId];
-        if (!co.orders) co.orders = [];
+        if (!co) return;
+        co.orders = co.orders || [];
+        co.cart = co.cart || [];
         
         const total = co.cart.reduce((s, i) => s + i.price, 0);
         const newOrder = { 
@@ -222,9 +237,14 @@ Object.assign(ui, {
 
     // --- 2. DPTO. TÉCNICO ---
     viewTech(el) {
+        if (!el || !state.user) return;
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        
         const docs = co.deliverables || {};
         co.bom = co.bom || [];
+        co.flightTests = co.flightTests || [];
+        co.orders = co.orders || [];
         
         const wrapper = document.createElement('div');
         
@@ -239,9 +259,8 @@ Object.assign(ui, {
             </tr>
         `).join('') || `<tr><td colspan="6" class="text-center py-4 text-slate-600 italic text-xs">No hay ensayos registrados.</td></tr>`;
 
-        // BOM Logic
         let executedItems = [];
-        (co.orders || []).filter(o => o.status === 'EJECUTADO').forEach(o => {
+        co.orders.filter(o => o.status === 'EJECUTADO').forEach(o => {
             o.items.forEach(item => {
                 executedItems.push({ ...item, orderId: o.id });
             });
@@ -268,7 +287,7 @@ Object.assign(ui, {
             }).join('');
         }
 
-        const totalDevCost = (co.orders || []).filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + o.total, 0);
+        const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + o.total, 0);
 
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -325,6 +344,7 @@ Object.assign(ui, {
 
     toggleBomItem(itemKey, isChecked) {
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
         co.bom = co.bom || [];
         if (isChecked) {
             if (!co.bom.includes(itemKey)) co.bom.push(itemKey);
@@ -336,18 +356,28 @@ Object.assign(ui, {
     },
 
     submitFlightTest() {
-        const bottle = document.getElementById('ft-bottle').value;
-        const naHCO3 = parseFloat(document.getElementById('ft-nahco3').value);
-        const vinegar = parseFloat(document.getElementById('ft-vinegar').value);
-        const costEurV = parseFloat(document.getElementById('ft-cost').value);
-        const heightM = parseFloat(document.getElementById('ft-height').value);
+        const elBottle = document.getElementById('ft-bottle');
+        const elNahco3 = document.getElementById('ft-nahco3');
+        const elVinegar = document.getElementById('ft-vinegar');
+        const elCost = document.getElementById('ft-cost');
+        const elHeight = document.getElementById('ft-height');
+        
+        if (!elBottle || !elNahco3 || !elVinegar || !elCost || !elHeight) return; // REGLA 3
+
+        const bottle = elBottle.value;
+        const naHCO3 = parseFloat(elNahco3.value);
+        const vinegar = parseFloat(elVinegar.value);
+        const costEurV = parseFloat(elCost.value);
+        const heightM = parseFloat(elHeight.value);
 
         if(!bottle || isNaN(naHCO3) || isNaN(vinegar) || isNaN(costEurV) || isNaN(heightM)) return alert("Rellene todos los datos numéricos del ensayo.");
         if(costEurV <= 0) return alert("El coste no puede ser cero.");
 
         const efficiency = heightM / costEurV;
         const co = state.data.companies[state.user.coId];
-        if(!co.flightTests) co.flightTests = [];
+        if (!co) return;
+        
+        co.flightTests = co.flightTests || [];
         co.flightTests.unshift({ id: 'FLT-'+Date.now(), date: new Date().toLocaleDateString(), bottle, naHCO3, vinegar, costEurV, heightM, efficiency });
         
         telemetry.log("PRUEBA VUELO", `Registrado H=${heightM}m, E=${efficiency.toFixed(3)}`);
@@ -365,10 +395,15 @@ Object.assign(ui, {
     },
 
     submitCustom() {
-        const name = document.getElementById('custom-name').value;
-        const reason = document.getElementById('custom-reason').value;
+        const elName = document.getElementById('custom-name');
+        const elReason = document.getElementById('custom-reason');
+        if (!elName || !elReason) return; // REGLA 3
+        
+        const name = elName.value;
+        const reason = elReason.value;
         if(!name || !reason) return alert("Rellene todos los campos.");
-        if(!state.data.pendingCustom) state.data.pendingCustom = [];
+        
+        state.data.pendingCustom = state.data.pendingCustom || [];
         state.data.pendingCustom.push({ id: Date.now(), company: state.user.coId, name, reason });
         state.save();
         this.closeModal();
@@ -399,9 +434,14 @@ Object.assign(ui, {
     },
 
     viewOrders(el) {
+        if (!el || !state.user) return;
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        
         const role = state.user.role;
         const docs = co.deliverables || {};
+        co.orders = co.orders || [];
+        
         const wrapper = document.createElement('div');
         
         let ceoDashboard = '';
@@ -428,7 +468,7 @@ Object.assign(ui, {
 
         let financeAlertHtml = '';
         if (role.includes('FINAN')) {
-            const pendingCount = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS').length;
+            const pendingCount = co.orders.filter(o => o.status === 'PENDIENTE_FINANZAS').length;
             if (pendingCount > 0) {
                 financeAlertHtml = `
                 <div class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow p-4 mb-6 animate-pulse shadow-[0_0_15px_rgba(255,230,0,0.3)]">
@@ -437,13 +477,11 @@ Object.assign(ui, {
             }
         }
 
-        const sortedOrders = [...(co.orders || [])].sort((a, b) => {
+        const sortedOrders = [...co.orders].sort((a, b) => {
             if (a.status === 'PENDIENTE_FINANZAS' && b.status !== 'PENDIENTE_FINANZAS') return -1;
             if (a.status !== 'PENDIENTE_FINANZAS' && b.status === 'PENDIENTE_FINANZAS') return 1;
             return 0;
         });
-
-        const isAdmin = state.user && state.user.admin;
 
         wrapper.innerHTML = `
         ${ceoDashboard}
@@ -454,20 +492,6 @@ Object.assign(ui, {
         
         <div class="space-y-6">
             ${sortedOrders.map(order => {
-                let physicalCostsHtml = '';
-                if (isAdmin && (order.status === 'EJECUTADO' || order.status === 'APROBADO_FINANZAS')) {
-                    physicalCostsHtml = `
-                    <div class="bg-black/50 p-4 border border-mars-border/50 text-[9px] overflow-x-auto w-full">
-                        <span class="block text-mars-magenta font-bold uppercase mb-2 border-b border-mars-magenta/30 pb-1">Desglose Físico Verificado:</span>
-                        <table class="w-full text-left whitespace-nowrap min-w-max">
-                            <tbody>
-                                ${order.items.map(i => `<tr><td class="py-1 text-slate-400 pr-4">${i.name}</td><td class="py-1 text-slate-500 uppercase pr-4">${i.realShop||'N/A'}</td><td class="py-1 text-mars-magenta font-bold text-right">${i.realEur!==undefined && i.realEur!=='' ? parseFloat(i.realEur).toFixed(2)+' €' : '---'}</td></tr>`).join('')}
-                            </tbody>
-                        </table>
-                        <div class="flex justify-between pt-2 mt-2 border-t border-slate-800 font-bold text-[10px]"><span class="text-white">TOTAL FÍSICO</span><span class="text-mars-magenta bg-mars-magenta/10 px-2 py-0.5">${order.realEurTotal!==undefined ? order.realEurTotal.toFixed(2)+' €' : '---'}</span></div>
-                    </div>`;
-                }
-
                 return `
                 <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 ${order.status === 'EJECUTADO' ? 'border-l-mars-cyan' : order.status === 'APROBADO_FINANZAS' ? 'border-l-mars-green' : order.status === 'DENEGADO' ? 'border-l-mars-magenta' : 'border-l-mars-yellow'} animate-in slide-in-from-bottom-4 duration-300">
                     <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
@@ -475,9 +499,8 @@ Object.assign(ui, {
                         <div class="text-left sm:text-right w-full sm:w-auto"><p class="text-mars-green font-black font-mono text-xl tracking-tighter">${order.total.toFixed(2)} €v</p><p class="text-[9px] text-slate-500 uppercase font-bold mt-1">${order.date}</p></div>
                     </div>
                     
-                    <div class="grid grid-cols-1 ${physicalCostsHtml ? 'lg:grid-cols-2' : ''} gap-4 mb-4">
+                    <div class="grid grid-cols-1 gap-4 mb-4">
                         <div class="bg-black/50 p-4 border border-mars-border/50 text-[10px] w-full"><span class="block text-mars-cyan font-bold uppercase mb-2 border-b border-mars-cyan/30 pb-1">Justificación Técnica:</span><p class="text-slate-300 italic leading-relaxed">"${order.justification}"</p></div>
-                        ${physicalCostsHtml}
                     </div>
                     
                     ${order.denyReason ? `<div class="bg-red-900/30 border border-red-500/50 p-3 text-[10px] text-red-200 mt-2 mb-4 w-full"><span class="font-bold">MOTIVO RECHAZO:</span> ${order.denyReason}</div>` : ''}
@@ -498,36 +521,64 @@ Object.assign(ui, {
         el.appendChild(wrapper);
     },
 
+    // --- FASE 3: ESPECIALIZACIÓN ROL AUXILIAR ---
     modalCreateAuxRole() {
         const co = state.data.companies[state.user.coId];
+        if (!co) return; // REGLA 4
+        
+        co.roles = co.roles || {};
         const currentPin = co.roles['AUXILIAR'] || 'No definido';
+        const currentDept = co.auxRoleDept || 'No asignado';
         
         const html = `
-            <p class="text-[10px] text-slate-400 mb-4">El rol Auxiliar tiene acceso de solo lectura al catálogo y al dossier corporativo. Útil para miembros adicionales del equipo.</p>
+            <p class="text-[10px] text-slate-400 mb-4">El rol Auxiliar tiene acceso de lectura y participación en mociones. Debes vincularlo a un departamento específico.</p>
             <div class="bg-slate-900 p-4 border border-mars-cyan mb-4">
-                <p class="text-[10px] text-mars-cyan uppercase font-bold mb-2">PIN Actual: <span class="text-white">${currentPin}</span></p>
-                <input type="text" id="aux-pin-input" maxlength="4" placeholder="Nuevo PIN de 4 dígitos..." class="w-full bg-black border border-mars-border p-3 text-center text-white font-bold tracking-widest outline-none focus:border-mars-cyan">
+                <p class="text-[10px] text-mars-cyan uppercase font-bold mb-2">PIN Actual: <span class="text-white">${currentPin}</span> | Dpto: <span class="text-white">${currentDept}</span></p>
+                <input type="text" id="aux-pin-input" maxlength="4" placeholder="Nuevo PIN de 4 dígitos..." class="w-full bg-black border border-mars-border p-3 text-center text-white font-bold tracking-widest outline-none focus:border-mars-cyan mb-3">
+                <select id="aux-dept-select" class="w-full bg-black border border-mars-border p-3 text-xs text-white uppercase outline-none focus:border-mars-cyan">
+                    <option value="">-- Selecciona Departamento Vinculado --</option>
+                    <option value="CEO">Dirección General (CEO)</option>
+                    <option value="TECNICO">Dpto. Técnico (I+D)</option>
+                    <option value="FINANZAS">Dpto. Financiero</option>
+                    <option value="MARKETING">Dpto. Marketing</option>
+                    <option value="OPERACIONES_IA">Dpto. Operaciones e IA</option>
+                </select>
             </div>
         `;
-        const actions = `<button onclick="ui.submitAuxRole()" class="bg-mars-cyan text-black px-6 py-2 text-[10px] font-bold uppercase hover:bg-white transition-colors">Guardar PIN Auxiliar</button>`;
+        const actions = `<button onclick="ui.submitAuxRole()" class="bg-mars-cyan text-black px-6 py-2 text-[10px] font-bold uppercase hover:bg-white transition-colors">Guardar Rol Auxiliar</button>`;
         this.showModal("Gestionar Rol Observador (Auxiliar)", html, actions);
     },
 
     submitAuxRole() {
-        const pin = document.getElementById('aux-pin-input').value;
+        const elPin = document.getElementById('aux-pin-input');
+        const elDept = document.getElementById('aux-dept-select');
+        if (!elPin || !elDept) return; // REGLA 3
+        
+        const pin = elPin.value;
+        const dept = elDept.value;
+        
         if(pin.length !== 4) return alert("El PIN debe tener exactamente 4 dígitos.");
+        if(!dept) return alert("Debes seleccionar un departamento vinculado.");
         
         const co = state.data.companies[state.user.coId];
+        if (!co) return; // REGLA 1
+        
+        co.roles = co.roles || {};
         co.roles['AUXILIAR'] = pin;
+        co.auxRoleDept = dept;
+        
         state.save();
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         
         this.closeModal();
-        alert("Rol Auxiliar configurado correctamente.");
+        alert(`Rol Auxiliar configurado y vinculado a ${dept}.`);
     },
 
     promptPartialApproveOrder(oid) {
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        co.orders = co.orders || [];
+        
         const order = co.orders.find(o => String(o.id) === String(oid));
         if(!order) return alert("Orden no encontrada.");
 
@@ -553,6 +604,9 @@ Object.assign(ui, {
 
     finalizePartialApproveOrder(oid) {
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        co.orders = co.orders || [];
+        
         const order = co.orders.find(o => String(o.id) === String(oid));
         if(!order) return;
 
@@ -605,6 +659,9 @@ Object.assign(ui, {
         if(!reason) return alert("Especifique motivo.");
         
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        co.orders = co.orders || [];
+        
         const o = co.orders.find(ord => String(ord.id) === String(oid));
         if(!o) return alert("Orden no encontrada.");
         
@@ -621,13 +678,20 @@ Object.assign(ui, {
     },
 
     viewFinance(el) {
+        if (!el || !state.user) return;
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        
         const docs = co.deliverables || {};
+        co.realCosts = co.realCosts || [];
+        co.orders = co.orders || [];
+        co.ledger = co.ledger || [];
+        
         const totalReal = co.realCosts.reduce((s, i) => s + i.eur, 0);
         const wrapper = document.createElement('div');
         
         let pendingOrdersHtml = '';
-        const pendingOrders = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS');
+        const pendingOrders = co.orders.filter(o => o.status === 'PENDIENTE_FINANZAS');
         if (pendingOrders.length > 0 && state.user.role.includes('FINAN')) {
             pendingOrdersHtml = `
             <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow mb-8 animate-in fade-in">
@@ -647,18 +711,16 @@ Object.assign(ui, {
         }
 
         const isFinanzas = state.user.role === 'FINANZAS';
-        const isAdmin = state.user && state.user.admin;
-
+        
         let financeCards = `
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">
             <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-green w-full"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Caja Virtual</p><p class="text-xl sm:text-2xl font-orbitron text-mars-green tracking-tighter">${co.balance.toFixed(2)} €v</p></div>
-            ${isAdmin ? `<div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-magenta w-full"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Gasto Físico Auditado</p><p class="text-xl sm:text-2xl font-orbitron text-white tracking-tighter">${totalReal.toFixed(2)} €</p></div>` : ''}
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-cyan w-full ${!isAdmin ? 'md:col-span-2' : ''}"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Transacciones Ledger</p><p class="text-xl sm:text-2xl font-orbitron text-mars-cyan tracking-tighter">${co.ledger.length}</p></div>
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-cyan w-full"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Transacciones Ledger</p><p class="text-xl sm:text-2xl font-orbitron text-mars-cyan tracking-tighter">${co.ledger.length}</p></div>
         </div>`;
 
         let executedOrdersHtml = '';
-        if (isFinanzas || isAdmin) {
-            const executedOrders = (co.orders || []).filter(o => o.status === 'EJECUTADO');
+        if (isFinanzas) {
+            const executedOrders = co.orders.filter(o => o.status === 'EJECUTADO');
             if (executedOrders.length > 0) {
                 executedOrdersHtml = `
                 <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden mt-6">
@@ -672,7 +734,6 @@ Object.assign(ui, {
                             </div>
                             <div class="flex justify-between text-[9px] mb-2">
                                 <span class="text-mars-green">Virtual: ${eo.total.toFixed(2)} €v</span>
-                                ${isAdmin ? `<span class="text-mars-magenta">Físico: ${eo.realEurTotal !== undefined ? eo.realEurTotal.toFixed(2) + ' €' : 'N/A'}</span>` : ''}
                             </div>
                             <div class="text-[8px] text-slate-400 space-y-1">
                                 ${eo.items.map(i => `
@@ -680,7 +741,6 @@ Object.assign(ui, {
                                     <span class="truncate pr-2">- ${i.name} (x${i.qty})</span>
                                     <div class="flex gap-3 text-right shrink-0">
                                         <span class="text-mars-cyan">${i.price.toFixed(2)} €v</span>
-                                        ${isAdmin ? `<span>@ ${i.realShop || 'N/A'}: <span class="text-mars-magenta">${i.realEur !== '' ? parseFloat(i.realEur).toFixed(2)+' €' : '---'}</span></span>` : ''}
                                     </div>
                                 </div>`).join('')}
                             </div>
@@ -692,7 +752,7 @@ Object.assign(ui, {
         }
 
         let financeDetails = `
-        <div class="grid grid-cols-1 ${isAdmin ? 'lg:grid-cols-2' : ''} gap-6 sm:gap-8">
+        <div class="grid grid-cols-1 gap-6 sm:gap-8">
             <div class="flex flex-col gap-6 w-full overflow-hidden">
                 <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden">
                     <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Ledger Histórico inmutable</h3>
@@ -708,24 +768,6 @@ Object.assign(ui, {
                 </div>
                 ${executedOrdersHtml}
             </div>
-            ${isAdmin ? `
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden h-fit">
-                <h3 class="font-orbitron text-mars-magenta text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Desglose Físico Componentes (€)</h3>
-                <div class="overflow-x-auto w-full">
-                    <div class="overflow-y-auto max-h-[400px] text-[10px] pr-2 min-w-[300px]">
-                        ${co.realCosts.map(r => `
-                        <div class="border-b border-mars-border/30 py-3 flex justify-between gap-4">
-                            <div class="flex-1 overflow-hidden"><p class="text-white uppercase font-black tracking-widest truncate">${r.shop}</p><p class="text-slate-400 mt-1 uppercase text-[9px] truncate">${r.item}</p></div>
-                            <div class="text-right text-mars-magenta font-black text-sm font-mono tracking-tighter shrink-0">${r.eur.toFixed(2)} €</div>
-                        </div>`).join('') || '<p class="text-slate-600 italic">No hay costes reales auditados.</p>'}
-                    </div>
-                </div>
-            </div>` : `
-            <div class="terminal-border border-dashed border-mars-border p-8 text-center flex flex-col justify-center items-center h-fit">
-                <span class="text-3xl mb-3">🔒</span>
-                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Auditoría de gasto real (€) restringida al Claustro Docente.</p>
-            </div>
-            `}
         </div>`;
 
         wrapper.innerHTML = `
@@ -745,6 +787,9 @@ Object.assign(ui, {
     // --- 4. OPERACIONES E IA ---
     updateOrderItem(oid, idx, field, value) {
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        co.orders = co.orders || [];
+        
         const order = co.orders.find(o => String(o.id) === String(oid));
         if(!order || !order.items[idx]) return;
         if(field === 'realEur') order.items[idx][field] = value ? parseFloat(value) : '';
@@ -753,6 +798,9 @@ Object.assign(ui, {
 
     updateOrderRealTotal(oid) {
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        co.orders = co.orders || [];
+        
         const order = co.orders.find(o => String(o.id) === String(oid));
         if(!order) return;
         let totalR = 0;
@@ -766,6 +814,9 @@ Object.assign(ui, {
 
     checkOrderReady(oid) {
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        co.orders = co.orders || [];
+        
         const order = co.orders.find(o => String(o.id) === String(oid));
         if(!order) return;
         let allValid = true;
@@ -794,6 +845,9 @@ Object.assign(ui, {
 
     toggleValidateAll(oid) {
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        co.orders = co.orders || [];
+        
         const order = co.orders.find(o => String(o.id) === String(oid));
         if(!order) return;
 
@@ -819,8 +873,12 @@ Object.assign(ui, {
     },
 
     viewCart(el) {
+        if (!el || !state.user) return;
         const co = state.data.companies[state.user.coId];
-        const approvedOrders = (co.orders || []).filter(o => o.status === 'APROBADO_FINANZAS');
+        if (!co) return;
+        
+        co.orders = co.orders || [];
+        const approvedOrders = co.orders.filter(o => o.status === 'APROBADO_FINANZAS');
         const wrapper = document.createElement('div');
 
         let html = `<h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl mb-6 uppercase tracking-tighter">Logística de Despliegue (Validación Física)</h2>`;
@@ -872,7 +930,6 @@ Object.assign(ui, {
         wrapper.innerHTML = html;
         el.appendChild(wrapper);
 
-        // Initialize totals
         approvedOrders.forEach(o => {
             this.updateOrderRealTotal(o.id);
             this.checkOrderReady(o.id);
@@ -881,6 +938,10 @@ Object.assign(ui, {
 
     executeOrderPurchase(oid) {
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        co.orders = co.orders || [];
+        co.realCosts = co.realCosts || [];
+        
         const order = co.orders.find(o => String(o.id) === String(oid));
         if(!order) return alert("Orden no encontrada.");
 
@@ -890,10 +951,15 @@ Object.assign(ui, {
 
         for(let i=0; i<order.items.length; i++) {
             const cb = document.getElementById(`cart-val-${oid}-${i}`);
-            const rEur = parseFloat(document.getElementById(`cart-eur-${oid}-${i}`).value);
-            const rShop = document.getElementById(`cart-shop-${oid}-${i}`).value;
+            const elEur = document.getElementById(`cart-eur-${oid}-${i}`);
+            const elShop = document.getElementById(`cart-shop-${oid}-${i}`);
             
-            if(!cb || !cb.checked || isNaN(rEur) || rEur < 0 || !rShop.trim()) { 
+            if (!cb || !elEur || !elShop) { allChecked = false; break; } // REGLA 3
+            
+            const rEur = parseFloat(elEur.value);
+            const rShop = elShop.value;
+            
+            if(!cb.checked || isNaN(rEur) || rEur < 0 || !rShop.trim()) { 
                 allChecked = false; 
                 break; 
             }
@@ -904,7 +970,6 @@ Object.assign(ui, {
         }
         
         if(!allChecked) return alert("Debe validar el ensamblaje y rellenar los costes reales de todos los componentes.");
-
         if(co.balance < order.total) return alert("Fondos virtuales insuficientes para ejecutar la compra.");
         
         const conceptStr = `Adquisición Orden #${oid}: ${itemNames.join(', ')}`;
@@ -924,8 +989,11 @@ Object.assign(ui, {
     },
 
     viewAILog(el) {
+        if (!el || !state.user) return;
         const co = state.data.companies[state.user.coId];
-        if(!co.aiPrompts) co.aiPrompts = [];
+        if (!co) return;
+        
+        co.aiPrompts = co.aiPrompts || [];
         const pending = co.aiPrompts.filter(p => p.status === 'PENDIENTE_VALIDACION');
         const approved = co.aiPrompts.filter(p => p.status === 'APROBADO');
         
@@ -986,14 +1054,24 @@ Object.assign(ui, {
     },
 
     submitAIPrompt() {
-        const tool = document.getElementById('ai-tool').value;
-        const task = document.getElementById('ai-task').value;
-        const prompt = document.getElementById('ai-prompt').value;
-        const verification = document.getElementById('ai-verification').value;
+        const elTool = document.getElementById('ai-tool');
+        const elTask = document.getElementById('ai-task');
+        const elPrompt = document.getElementById('ai-prompt');
+        const elVerif = document.getElementById('ai-verification');
+        
+        if (!elTool || !elTask || !elPrompt || !elVerif) return; // REGLA 3
+        
+        const tool = elTool.value;
+        const task = elTask.value;
+        const prompt = elPrompt.value;
+        const verification = elVerif.value;
+        
         if(!tool || !task || !prompt || !verification) return alert("Todos los campos son obligatorios.");
         
         const co = state.data.companies[state.user.coId];
-        if(!co.aiPrompts) co.aiPrompts = [];
+        if (!co) return;
+        co.aiPrompts = co.aiPrompts || [];
+        
         co.aiPrompts.unshift({
             id: 'AI-'+Date.now(), tool, task, prompt, verification,
             authorRole: state.user.role, date: new Date().toLocaleString(), status: 'PENDIENTE_VALIDACION'
@@ -1006,6 +1084,9 @@ Object.assign(ui, {
 
     processAIPrompt(id, status) {
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        co.aiPrompts = co.aiPrompts || [];
+        
         const p = co.aiPrompts.find(x => x.id === id);
         if(p) {
             p.status = status;
@@ -1014,21 +1095,22 @@ Object.assign(ui, {
         }
     },
 
-    // --- 5. GOBERNANZA E INACTIVIDAD ---
+    // --- FASE 3: GOBERNANZA E INACTIVIDAD DESCENTRALIZADA ---
     viewResolutions(el) {
+        if (!el || !state.user) return;
         const co = state.data.companies[state.user.coId];
-        if(!co.votingMotions) co.votingMotions = [];
+        if (!co) return; // REGLA 4
+        
+        co.votingMotions = co.votingMotions || []; // REGLA 1
         
         const wrapper = document.createElement('div');
         
-        let headerActions = '';
-        if (state.user.role !== 'AUXILIAR') {
-            headerActions = `
-            <div class="flex gap-2">
-                <button onclick="ui.modalReportInactivity()" class="bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-1.5 text-[9px] uppercase font-bold hover:bg-mars-magenta hover:text-white transition-all">Reportar Inactividad</button>
-                <button onclick="ui.modalMotion()" class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-3 py-1.5 text-[9px] uppercase font-bold hover:bg-mars-yellow hover:text-black transition-all">Proponer Moción</button>
-            </div>`;
-        }
+        // FASE 3: Todos los roles pueden proponer mociones y reportar inactividad
+        let headerActions = `
+        <div class="flex gap-2">
+            <button onclick="ui.modalReportInactivity()" class="bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-1.5 text-[9px] uppercase font-bold hover:bg-mars-magenta hover:text-white transition-all">Reportar Inactividad</button>
+            <button onclick="ui.modalMotion()" class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-3 py-1.5 text-[9px] uppercase font-bold hover:bg-mars-yellow hover:text-black transition-all">Proponer Moción</button>
+        </div>`;
 
         wrapper.innerHTML = `
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -1045,17 +1127,17 @@ Object.assign(ui, {
                 
                 let actions = '';
                 if(m.status === 'ABIERTA') {
-                    if (state.user.role !== 'AUXILIAR') {
-                        if(!myVote) {
-                            actions = `<div class="flex gap-2 mt-3"><button onclick="ui.voteMotion('${m.id}', 'A FAVOR')" class="bg-mars-green text-black px-3 py-1 text-[9px] font-bold uppercase hover:bg-white transition-colors">A Favor</button><button onclick="ui.voteMotion('${m.id}', 'EN CONTRA')" class="bg-mars-magenta text-white px-3 py-1 text-[9px] font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">En Contra</button></div>`;
-                        } else {
-                            actions = `<p class="text-[9px] text-mars-cyan mt-3 uppercase font-bold">Tu voto: ${myVote}</p>`;
-                        }
+                    // FASE 3: Todos los roles pueden votar
+                    if(!myVote) {
+                        actions = `<div class="flex gap-2 mt-3"><button onclick="ui.voteMotion('${m.id}', 'A FAVOR')" class="bg-mars-green text-black px-3 py-1 text-[9px] font-bold uppercase hover:bg-white transition-colors">A Favor</button><button onclick="ui.voteMotion('${m.id}', 'EN CONTRA')" class="bg-mars-magenta text-white px-3 py-1 text-[9px] font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">En Contra</button></div>`;
                     } else {
-                        actions = `<p class="text-[9px] text-slate-500 mt-3 uppercase font-bold">Modo Observador: No puedes votar.</p>`;
+                        actions = `<p class="text-[9px] text-mars-cyan mt-3 uppercase font-bold">Tu voto: ${myVote}</p>`;
                     }
 
-                    if(state.user.role === 'CEO' && total === Object.keys(co.roles).length) {
+                    // Calcular el total de roles activos en la empresa para saber si todos han votado
+                    const totalRoles = Object.keys(co.roles || {}).length;
+
+                    if(state.user.role === 'CEO' && total >= totalRoles) {
                         actions += `<button onclick="ui.resolveMotion('${m.id}')" class="mt-3 bg-mars-yellow text-black px-4 py-2 text-[10px] font-bold uppercase w-full hover:bg-white transition-colors">Cerrar Votación</button>`;
                     } else if (state.user.role === 'CEO') {
                         actions += `<button onclick="ui.resolveMotion('${m.id}')" class="mt-3 bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-4 py-2 text-[10px] font-bold uppercase w-full hover:bg-mars-yellow hover:text-black transition-colors">Forzar Cierre de Votación</button>`;
@@ -1094,14 +1176,19 @@ Object.assign(ui, {
     },
 
     submitInactivityReport() {
-        const dept = document.getElementById('inactivity-dept').value;
-        const reason = document.getElementById('inactivity-reason').value.trim();
+        const elDept = document.getElementById('inactivity-dept');
+        const elReason = document.getElementById('inactivity-reason');
+        if (!elDept || !elReason) return; // REGLA 3
+        
+        const dept = elDept.value;
+        const reason = elReason.value.trim();
         
         if(!dept || !reason) return alert("Debes seleccionar un departamento y justificar el reporte.");
         if(dept === state.user.role) return alert("No puedes reportarte a ti mismo.");
         
         const co = state.data.companies[state.user.coId];
-        if(!co.inactivityReports) co.inactivityReports = [];
+        if (!co) return;
+        co.inactivityReports = co.inactivityReports || [];
         
         co.inactivityReports.unshift({
             id: 'REP-' + Date.now(),
@@ -1128,20 +1215,30 @@ Object.assign(ui, {
     },
 
     submitMotion() {
-        const title = document.getElementById('motion-title').value;
-        const desc = document.getElementById('motion-desc').value;
+        const elTitle = document.getElementById('motion-title');
+        const elDesc = document.getElementById('motion-desc');
+        if (!elTitle || !elDesc) return; // REGLA 3
+        
+        const title = elTitle.value;
+        const desc = elDesc.value;
         if(!title || !desc) return alert("Rellene todos los campos.");
+        
         const co = state.data.companies[state.user.coId];
-        if(!co.votingMotions) co.votingMotions = [];
+        if (!co) return;
+        co.votingMotions = co.votingMotions || [];
+        
         co.votingMotions.unshift({ id: 'MOT-'+Date.now(), title, desc, authorRole: state.user.role, date: new Date().toLocaleString(), status: 'ABIERTA', votes: {} });
         state.save(); this.closeModal(); this.render();
     },
 
     voteMotion(id, vote) {
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        co.votingMotions = co.votingMotions || [];
+        
         const m = co.votingMotions.find(x => x.id === id);
         if(m) {
-            if(!m.votes) m.votes = {};
+            m.votes = m.votes || {};
             m.votes[state.user.role] = vote;
             state.save(); this.render();
         }
@@ -1150,6 +1247,9 @@ Object.assign(ui, {
     resolveMotion(id) {
         if (state.user.role !== 'CEO') return alert("Solo el CEO puede cerrar votaciones.");
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        co.votingMotions = co.votingMotions || [];
+        
         const m = co.votingMotions.find(x => x.id === id);
         if(m) {
             const votes = Object.values(m.votes || {});
@@ -1178,6 +1278,9 @@ Object.assign(ui, {
     executeTieBreaker(id, result) {
         if (state.user.role !== 'CEO') return;
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        co.votingMotions = co.votingMotions || [];
+        
         const m = co.votingMotions.find(x => x.id === id);
         if(m) {
             m.result = result;
@@ -1190,12 +1293,19 @@ Object.assign(ui, {
 
     // --- 6. MARCA ---
     viewBrand(el) {
+        if (!el || !state.user) return;
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        
         const docs = co.deliverables || {};
+        co.flightTests = co.flightTests || [];
+        co.orders = co.orders || [];
+        co.marketingCampaigns = co.marketingCampaigns || [];
+        
         const wrapper = document.createElement('div');
         
         let bestFlightHtml = '<p class="text-slate-500 italic text-xs">Aún no hay ensayos de vuelo registrados por el Dpto. Técnico.</p>';
-        if (co.flightTests && co.flightTests.length > 0) {
+        if (co.flightTests.length > 0) {
             const bestFlight = [...co.flightTests].sort((a, b) => b.efficiency - a.efficiency)[0];
             bestFlightHtml = `
                 <div class="bg-black p-3 border border-mars-border">
@@ -1214,9 +1324,9 @@ Object.assign(ui, {
             `;
         }
 
-        const totalDevCost = (co.orders || []).filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + o.total, 0);
+        const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + o.total, 0);
 
-        let campaignsHtml = (co.marketingCampaigns || []).map(c => `
+        let campaignsHtml = co.marketingCampaigns.map(c => `
             <div class="bg-black/50 border border-mars-border/50 p-3 mb-2">
                 <div class="flex justify-between items-center border-b border-mars-border/30 pb-2 mb-2">
                     <span class="text-mars-cyan font-bold uppercase text-[10px]">${c.title}</span>
@@ -1256,7 +1366,7 @@ Object.assign(ui, {
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan w-full">
                     <h2 class="font-orbitron text-mars-cyan text-lg mb-4 uppercase tracking-tighter">Manifiesto & Propuesta de Valor</h2>
                     <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">Redacte la misión, ventaja competitiva y pitch de atracción para inversores. Texto público en el Dossier Académico.</p>
-                    <textarea id="val-prop-text" class="w-full bg-slate-900 border border-mars-border p-4 text-xs text-white h-32 outline-none focus:border-mars-cyan mb-4 leading-relaxed" placeholder="Redacte la misión corporativa aquí...">${co.valueProposition}</textarea>
+                    <textarea id="val-prop-text" class="w-full bg-slate-900 border border-mars-border p-4 text-xs text-white h-32 outline-none focus:border-mars-cyan mb-4 leading-relaxed" placeholder="Redacte la misión corporativa aquí...">${co.valueProposition || ''}</textarea>
                     <button onclick="ui.saveValueProposition()" class="bg-mars-cyan text-black px-6 py-3 text-[10px] font-black uppercase tracking-widest hover:shadow-[0_0_15px_#00f0ff] transition-all w-full">Guardar Propuesta de Valor</button>
                     <div class="mt-4 border-t border-slate-800 pt-4 w-full">
                         ${this.renderHybridUploadBox('Dossier Propuesta de Valor (PDF/URL)', 'Entregable oficial para Evaluación LYE.', 'valuePropDoc', docs.valuePropDoc)}
@@ -1274,7 +1384,6 @@ Object.assign(ui, {
                     </div>
                 </div>
                 
-                <!-- NEW: Marketing Campaigns -->
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan w-full">
                     <h2 class="font-orbitron text-mars-cyan text-lg mb-4 uppercase tracking-tighter">Campañas de Marketing</h2>
                     <div class="space-y-4">
@@ -1295,12 +1404,20 @@ Object.assign(ui, {
     },
 
     submitMarketingCampaign() {
-        const title = document.getElementById('mkt-camp-title').value;
-        const desc = document.getElementById('mkt-camp-desc').value;
-        const url = document.getElementById('mkt-camp-url').value;
+        const elTitle = document.getElementById('mkt-camp-title');
+        const elDesc = document.getElementById('mkt-camp-desc');
+        const elUrl = document.getElementById('mkt-camp-url');
+        if (!elTitle || !elDesc || !elUrl) return; // REGLA 3
+        
+        const title = elTitle.value;
+        const desc = elDesc.value;
+        const url = elUrl.value;
+        
         if(!title || !desc) return alert("El título y la descripción son obligatorios.");
         const co = state.data.companies[state.user.coId];
-        if(!co.marketingCampaigns) co.marketingCampaigns = [];
+        if (!co) return;
+        co.marketingCampaigns = co.marketingCampaigns || [];
+        
         co.marketingCampaigns.unshift({ id: 'MKT-'+Date.now(), title, desc, url, date: new Date().toLocaleString() });
         telemetry.log("MARKETING", `Campaña registrada: ${title}`);
         state.save();
@@ -1308,16 +1425,26 @@ Object.assign(ui, {
     },
 
     saveSlogan() {
-        const s = document.getElementById('brand-slogan').value;
-        state.data.companies[state.user.coId].slogan = s;
+        const elSlogan = document.getElementById('brand-slogan');
+        if (!elSlogan) return; // REGLA 3
+        
+        const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        
+        co.slogan = elSlogan.value;
         state.save();
         alert("Eslogan guardado.");
         this.render();
     },
 
     saveValueProposition() {
-        const text = document.getElementById('val-prop-text').value;
-        state.data.companies[state.user.coId].valueProposition = text;
+        const elText = document.getElementById('val-prop-text');
+        if (!elText) return; // REGLA 3
+        
+        const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        
+        co.valueProposition = elText.value;
         state.save();
         alert("Propuesta de valor guardada.");
         this.render();
@@ -1330,7 +1457,9 @@ Object.assign(ui, {
         if (file.size > 1024 * 1024) return alert("Máximo 1MB para el logo.");
         const reader = new FileReader();
         reader.onload = (ev) => {
-            state.data.companies[state.user.coId].logo = ev.target.result;
+            const co = state.data.companies[state.user.coId];
+            if (!co) return;
+            co.logo = ev.target.result;
             telemetry.log("BRANDING", "LOGO ACTUALIZADO");
             state.save();
             this.render();
@@ -1342,13 +1471,16 @@ Object.assign(ui, {
     handleDeliverableHybridSubmit(docType) {
         const fileInput = document.getElementById(`upload-file-${docType}`);
         const urlInput = document.getElementById(`upload-url-${docType}`);
+        if (!fileInput || !urlInput) return; // REGLA 3
+        
         const file = fileInput.files[0];
         const url = urlInput.value;
         
         if(!file && !url) return alert("Debe adjuntar un archivo o proporcionar un enlace (URL).");
         
         const co = state.data.companies[state.user.coId];
-        if(!co.deliverables) co.deliverables = { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null };
+        if (!co) return;
+        co.deliverables = co.deliverables || { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null };
 
         if(file) {
             if (file.size > 2 * 1024 * 1024) return alert("El archivo supera el límite de 2MB. Envíe un enlace en su lugar.");
@@ -1369,6 +1501,7 @@ Object.assign(ui, {
 
     // --- 7. DOSSIER DE ALUMNOS ---
     viewDossier(el) {
+        if (!el) return; // REGLA 3
         const tab = this.dossierTab || 'eval';
         
         const wrapper = document.createElement('div');
@@ -1390,7 +1523,10 @@ Object.assign(ui, {
 
     renderDossierContent(tab) {
         const container = document.getElementById('dossier-content');
+        if (!container || !state.user) return; // REGLA 3 y 4
+        
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
         
         if(tab === 'eval') {
             const subjects = ['FYQ', 'ECO', 'LYE', 'LEN', 'MAT', 'ING'];
@@ -1398,7 +1534,7 @@ Object.assign(ui, {
             
             subjects.forEach(sub => {
                 const config = RUBRIC_CONFIG[sub];
-                const grade = co.grades[sub] || { scores: {}, feedback: '', final: null };
+                const grade = (co.grades && co.grades[sub]) ? co.grades[sub] : { scores: {}, feedback: '', final: null };
                 
                 html += `
                 <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-cyan w-full">
