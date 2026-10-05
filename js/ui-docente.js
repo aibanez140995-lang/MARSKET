@@ -333,37 +333,28 @@ Object.assign(ui, {
             const currentTeacher = state.data.config.teachers[state.user.role];
             const dl = state.data.config.deadlines;
             const gl = state.data.config.guidelines;
-            const role = state.user.role;
-            const isCoord = role.startsWith('COORD');
-
-            let deadlinesHtml = '';
-            if (isCoord || role === 'ING') deadlinesHtml += `<div><label class="text-mars-cyan font-bold block mb-1">Cierre Pitch Fase I (Inglés)</label><input type="datetime-local" id="dl-pres1" value="${dl.presPhase1}" class="w-full bg-slate-900 border border-mars-border p-2 text-white"></div>`;
-            if (isCoord || role === 'LYE') deadlinesHtml += `<div><label class="text-mars-cyan font-bold block mb-1">Cierre Doc. Propuesta de Valor</label><input type="datetime-local" id="dl-vp" value="${dl.valuePropDoc}" class="w-full bg-slate-900 border border-mars-border p-2 text-white"></div>`;
-            if (isCoord || role === 'FYQ') deadlinesHtml += `<div><label class="text-mars-cyan font-bold block mb-1">Cierre Informe Técnico FYQ</label><input type="datetime-local" id="dl-tech" value="${dl.techReport}" class="w-full bg-slate-900 border border-mars-border p-2 text-white"></div>`;
-            if (isCoord || role === 'ECO') deadlinesHtml += `<div><label class="text-mars-cyan font-bold block mb-1">Cierre Libro Cuentas FIN</label><input type="datetime-local" id="dl-fin" value="${dl.financeBook}" class="w-full bg-slate-900 border border-mars-border p-2 text-white"></div>`;
-            if (isCoord || role === 'LEN') deadlinesHtml += `<div><label class="text-mars-cyan font-bold block mb-1">Cierre Pitch Fase III (Castellano)</label><input type="datetime-local" id="dl-pres3" value="${dl.presPhase3}" class="w-full bg-slate-900 border border-mars-border p-2 text-white"></div>`;
-            
-            if (deadlinesHtml === '') deadlinesHtml = `<p class="text-slate-500 italic text-xs col-span-full">No hay plazos configurables asociados a tu materia.</p>`;
-
-            let guidelinesHtml = '';
-            if (isCoord || role === 'FYQ') {
-                guidelinesHtml = `
-                <div class="border-t border-mars-border/50 pt-3 mt-3 col-span-full">
-                    <label class="text-mars-magenta font-bold block mb-1">Enlace a Guía Oficial Informe FYQ (URL)</label>
-                    <input type="text" id="gl-url" value="${gl.techReportDocUrl}" placeholder="https://..." class="w-full bg-slate-900 border border-mars-border p-2 text-white mb-2">
-                    <input type="text" id="gl-notes" value="${gl.techReportNotes}" placeholder="Notas breves..." class="w-full bg-slate-900 border border-mars-border p-2 text-white">
-                </div>`;
-            }
 
             adminHtml += `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow md:col-span-2">
                     <h3 class="font-orbitron text-mars-yellow text-xs mb-4 uppercase">Configuración de Plazos (Deadlines) y Guías</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-[10px]">
-                        ${deadlinesHtml}
-                        ${guidelinesHtml}
+                        <div class="space-y-3">
+                            <div><label class="text-mars-cyan font-bold block mb-1">Cierre Pitch Fase I (Inglés)</label><input type="datetime-local" id="dl-pres1" value="${dl.presPhase1}" class="w-full bg-slate-900 border border-mars-border p-2 text-white"></div>
+                            <div><label class="text-mars-cyan font-bold block mb-1">Cierre Doc. Propuesta de Valor</label><input type="datetime-local" id="dl-vp" value="${dl.valuePropDoc}" class="w-full bg-slate-900 border border-mars-border p-2 text-white"></div>
+                            <div><label class="text-mars-cyan font-bold block mb-1">Cierre Informe Técnico FYQ</label><input type="datetime-local" id="dl-tech" value="${dl.techReport}" class="w-full bg-slate-900 border border-mars-border p-2 text-white"></div>
+                        </div>
+                        <div class="space-y-3">
+                            <div><label class="text-mars-cyan font-bold block mb-1">Cierre Libro Cuentas FIN</label><input type="datetime-local" id="dl-fin" value="${dl.financeBook}" class="w-full bg-slate-900 border border-mars-border p-2 text-white"></div>
+                            <div><label class="text-mars-cyan font-bold block mb-1">Cierre Pitch Fase III (Castellano)</label><input type="datetime-local" id="dl-pres3" value="${dl.presPhase3}" class="w-full bg-slate-900 border border-mars-border p-2 text-white"></div>
+                            <div class="border-t border-mars-border/50 pt-3 mt-3">
+                                <label class="text-mars-magenta font-bold block mb-1">Enlace a Guía Oficial Informe FYQ (URL)</label>
+                                <input type="text" id="gl-url" value="${gl.techReportDocUrl}" placeholder="https://..." class="w-full bg-slate-900 border border-mars-border p-2 text-white mb-2">
+                                <input type="text" id="gl-notes" value="${gl.techReportNotes}" placeholder="Notas breves..." class="w-full bg-slate-900 border border-mars-border p-2 text-white">
+                            </div>
+                        </div>
                     </div>
-                    <button onclick="ui.saveSettings()" class="w-full bg-mars-yellow text-black font-black py-3 mt-4 text-[10px] uppercase hover:bg-white transition-all">Guardar Configuración</button>
+                    <button onclick="ui.saveSettings()" class="w-full bg-mars-yellow text-black font-black py-3 mt-4 text-[10px] uppercase hover:bg-white transition-all">Guardar Configuración Global</button>
                 </div>
                 
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan md:col-span-2">
@@ -571,7 +562,7 @@ Object.assign(ui, {
         state.data.companies[cid] = { 
             name, balance: cap, logo: null, sponsorAwarded: null, valueProposition: "", slogan: "", classGroup,
             roles: { CEO:'1234', TECNICO:'1234', FINANZAS:'1234', MARKETING:'1234', OPERACIONES_IA:'1234' }, 
-            aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [],
+            aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, 
             loginStats: { totalLogins: 0, roles: { CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0} } },
             deliverables: { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null }
         };
@@ -634,29 +625,17 @@ Object.assign(ui, {
         const dl = state.data.config.deadlines;
         const gl = state.data.config.guidelines;
         
-        const elPres1 = document.getElementById('dl-pres1');
-        if(elPres1) dl.presPhase1 = elPres1.value;
+        dl.presPhase1 = document.getElementById('dl-pres1').value;
+        dl.valuePropDoc = document.getElementById('dl-vp').value;
+        dl.techReport = document.getElementById('dl-tech').value;
+        dl.financeBook = document.getElementById('dl-fin').value;
+        dl.presPhase3 = document.getElementById('dl-pres3').value;
         
-        const elVp = document.getElementById('dl-vp');
-        if(elVp) dl.valuePropDoc = elVp.value;
-        
-        const elTech = document.getElementById('dl-tech');
-        if(elTech) dl.techReport = elTech.value;
-        
-        const elFin = document.getElementById('dl-fin');
-        if(elFin) dl.financeBook = elFin.value;
-        
-        const elPres3 = document.getElementById('dl-pres3');
-        if(elPres3) dl.presPhase3 = elPres3.value;
-        
-        const elGlUrl = document.getElementById('gl-url');
-        if(elGlUrl) gl.techReportDocUrl = elGlUrl.value;
-        
-        const elGlNotes = document.getElementById('gl-notes');
-        if(elGlNotes) gl.techReportNotes = elGlNotes.value;
+        gl.techReportDocUrl = document.getElementById('gl-url').value;
+        gl.techReportNotes = document.getElementById('gl-notes').value;
         
         state.save();
-        alert("Configuración guardada con éxito.");
+        alert("Configuración de plazos y guías guardada con éxito.");
         this.render();
     },
     

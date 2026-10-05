@@ -1167,17 +1167,6 @@ Object.assign(ui, {
 
         const totalDevCost = (co.orders || []).filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + o.total, 0);
 
-        let campaignsHtml = (co.marketingCampaigns || []).map(c => `
-            <div class="bg-black/50 border border-mars-border/50 p-3 mb-2">
-                <div class="flex justify-between items-center border-b border-mars-border/30 pb-2 mb-2">
-                    <span class="text-mars-cyan font-bold uppercase text-[10px]">${c.title}</span>
-                    <span class="text-[8px] text-slate-500">${c.date}</span>
-                </div>
-                <p class="text-[9px] text-slate-300 italic mb-2">"${c.desc}"</p>
-                ${c.url ? `<a href="${c.url}" target="_blank" class="text-[9px] text-mars-yellow hover:underline">🔗 Ver Creatividad</a>` : ''}
-            </div>
-        `).join('') || '<p class="text-slate-500 italic text-xs">No hay campañas registradas.</p>';
-
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="space-y-6 w-full overflow-hidden">
@@ -1223,35 +1212,8 @@ Object.assign(ui, {
                     ${this.renderHybridUploadBox('Presentación Fase III (Castellano - Final)', 'Evaluado por Lengua Castellana.', 'presPhase3', docs.presPhase3)}
                 </div>
             </div>
-        </div>
-        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan w-full mt-6">
-            <h2 class="font-orbitron text-mars-cyan text-lg mb-4 uppercase tracking-tighter">Campañas de Marketing</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <input type="text" id="mkt-camp-title" placeholder="Título de la campaña..." class="w-full bg-slate-900 border border-mars-border p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
-                    <textarea id="mkt-camp-desc" placeholder="Descripción de las acciones..." class="w-full bg-slate-900 border border-mars-border p-2 text-xs text-white h-20 mb-2 outline-none focus:border-mars-cyan"></textarea>
-                    <input type="text" id="mkt-camp-url" placeholder="URL de la creatividad (Drive/Canva)..." class="w-full bg-slate-900 border border-mars-border p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
-                    <button onclick="ui.submitMarketingCampaign()" class="bg-mars-cyan text-black px-4 py-2 text-[10px] font-black uppercase hover:bg-white transition-colors w-full">Registrar Campaña</button>
-                </div>
-                <div class="max-h-48 overflow-y-auto pr-2 space-y-2">
-                    ${campaignsHtml}
-                </div>
-            </div>
         </div>`;
         el.appendChild(wrapper);
-    },
-
-    submitMarketingCampaign() {
-        const title = document.getElementById('mkt-camp-title').value;
-        const desc = document.getElementById('mkt-camp-desc').value;
-        const url = document.getElementById('mkt-camp-url').value;
-        if(!title || !desc) return alert("El título y la descripción son obligatorios.");
-        const co = state.data.companies[state.user.coId];
-        if(!co.marketingCampaigns) co.marketingCampaigns = [];
-        co.marketingCampaigns.unshift({ id: 'MKT-'+Date.now(), title, desc, url, date: new Date().toLocaleString() });
-        telemetry.log("MARKETING", `Campaña registrada: ${title}`);
-        state.save();
-        this.render();
     },
 
     saveSlogan() {
