@@ -8,6 +8,13 @@ const state = {
     isCloudOnline: false, isSyncing: false, syncTimer: null,
 
     migrate(d) {
+        // 1. Curar datos críticos perdidos por corrupciones previas
+        if (!d.config) d.config = INITIAL_DATA.config;
+        if (!d.catalog || d.catalog.length === 0) d.catalog = INITIAL_DATA.catalog;
+        if (!d.companies) d.companies = INITIAL_DATA.companies;
+        if (!d.telemetry) d.telemetry = { totalLogins: 0, sessions: [] };
+        if (!d.telemetry.sessions) d.telemetry.sessions = [];
+
         d.suggestionsToAlex = d.suggestionsToAlex || [];
         d.pendingCustom = d.pendingCustom || [];
         if(!d.config.deadlines) {

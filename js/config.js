@@ -1,6 +1,6 @@
 // js/config.js
 
-const APP_VERSION = "1.0.05";
+const APP_VERSION = "1.0.06";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const RUBRIC_CONFIG = {
