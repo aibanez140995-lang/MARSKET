@@ -41,9 +41,8 @@ const auth = {
     },
 
     verify() {
-        // FIX CRÍTICO: Absorber el "ghost click" o double-tap de móviles
-        // Si el PIN está vacío (porque el primer clic ya lo procesó y lo borró), salimos silenciosamente.
-        if (!state.pin || state.pin.length === 0) return;
+        // BLINDAJE: Evitar ghost clicks y envíos incompletos
+        if (!state.pin || state.pin.length < 4) return;
 
         const coId = document.getElementById('login-co').value;
         const roleRaw = document.getElementById('login-role').value;
@@ -70,12 +69,14 @@ const auth = {
     login(coId, roleKey, admin, entityName) {
         state.user = { coId, role: roleKey, admin };
         localStorage.setItem(state.sessionKey, JSON.stringify(state.user));
-        state.pin = ''; // Esto es lo que vacía el PIN y activa la protección del ghost click arriba
+        
+        // Vaciamos el PIN y actualizamos la UI inmediatamente para dar feedback al usuario
+        state.pin = '';
+        this.updateDots();
         
         if(!admin) {
             const co = state.data.companies[coId];
             
-            // Red de seguridad para evitar el crash del Bug 1 (Mantenida de la v1.0.06)
             if (!co.loginStats) co.loginStats = { totalLogins: 0, roles: {} };
             if (!co.loginStats.roles) co.loginStats.roles = {};
 
@@ -87,7 +88,6 @@ const auth = {
         
         telemetry.startSession(entityName, roleKey);
         
-        // Usamos optional chaining por seguridad extra al manipular el DOM global
         document.getElementById('hud-header')?.classList.remove('hidden');
         document.getElementById('hud-nav')?.classList.remove('hidden');
         this.buildNav(admin);
@@ -112,6 +112,8 @@ const auth = {
     
     buildNav(isAdmin) {
         const nav = document.getElementById('nav-container');
+        if (!nav) return; // BLINDAJE: Si el DOM no está listo, abortar sin crashear
+        
         if (isAdmin) {
             nav.innerHTML = `
                 <button onclick="ui.navigate('admin')" class="nav-tab tab-active px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase border-r border-mars-border text-mars-yellow whitespace-nowrap">Terminal Docente</button>

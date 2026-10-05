@@ -162,3 +162,24 @@ const state = {
         this.save();
     }
 };
+
+// --- MOTOR DE TELEMETRÍA ---
+const telemetry = {
+    startSession(entity, role) {
+        // BLINDAJE: Asegurar inicialización de telemetría antes de registrar el evento
+        if (!state.data.telemetry) state.data.telemetry = { totalLogins: 0, sessions: [] };
+        if (!state.data.telemetry.sessions) state.data.telemetry.sessions = [];
+        if (isNaN(state.data.telemetry.totalLogins)) state.data.telemetry.totalLogins = 0;
+
+        state.data.telemetry.totalLogins++;
+        state.sessionData = { sessionId: 'SESS-' + Date.now().toString().slice(-6), timestamp: new Date().toISOString(), entity, role, events: [] };
+        state.data.telemetry.sessions.unshift(state.sessionData);
+        if(state.data.telemetry.sessions.length > 100) state.data.telemetry.sessions.pop();
+        state.save();
+    },
+    log(action, details) {
+        if(!state.sessionData) return;
+        state.sessionData.events.push({ time: new Date().toLocaleTimeString(), action, details });
+        state.save();
+    }
+};

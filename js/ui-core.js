@@ -17,7 +17,6 @@ const ui = {
     },
 
     setupPwaBlackIcon() {
-        // Helper para forzar icono negro en PWA si es necesario
         const metaTheme = document.querySelector('meta[name="theme-color"]');
         if (metaTheme) metaTheme.setAttribute('content', '#000000');
     },
@@ -38,6 +37,7 @@ const ui = {
                     <li>Vigila el <strong>Cronograma Maestro</strong>. La Agencia Espacial Escolar (AEE) no perdona los retrasos y las multas duelen.</li>
                     <li>Supervisa la <strong>Bóveda de Órdenes</strong>. Asegúrate de que Finanzas y Operaciones fluyan sin cuellos de botella.</li>
                     <li>Si hay peleas en el equipo, usa tu <strong>voto de calidad</strong> en la pestaña de Gobernanza.</li>
+                    <li>Gestiona el <strong>Rol Observador (Auxiliar)</strong> para dar acceso de solo lectura a miembros adicionales del equipo.</li>
                 </ul>`; 
                 break;
             case 'TECNICO': 
@@ -46,6 +46,7 @@ const ui = {
                 <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400">
                     <li>Pide los materiales en el <strong>SUPERMARS-KET</strong> y justifica muy bien por qué los necesitas.</li>
                     <li>Registra cada ensayo en el <strong>Banco de Pruebas</strong>. Recuerda: buscamos la máxima eficiencia (E = Altura / Coste).</li>
+                    <li>Selecciona los componentes definitivos en el <strong>Configurador de Prototipo (BOM)</strong> basándote en el histórico de compras.</li>
                     <li>Sube tu <strong>Informe Técnico</strong> a tiempo para que Física y Química te evalúe.</li>
                 </ul>`; 
                 break;
@@ -54,6 +55,7 @@ const ui = {
                 <p class="text-slate-300">Sin tu luz verde presupuestaria, aquí no se mueve ni un tornillo.</p>
                 <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400">
                     <li>Revisa las peticiones del Técnico. Si no hay fondos o la justificación es mala, <strong>deniega sin piedad</strong>.</li>
+                    <li>Realiza <strong>Auditorías Parciales</strong> desmarcando ítems específicos de una orden si no consideras justificado todo el gasto.</li>
                     <li>Vigila el <strong>Ledger Inmutable</strong>. Cada céntimo virtual gastado afecta a la rentabilidad.</li>
                     <li>Prepara el <strong>Libro de Cuentas</strong> oficial para la evaluación de Economía.</li>
                 </ul>`; 
@@ -64,6 +66,7 @@ const ui = {
                 <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400">
                     <li>Sube el <strong>Logotipo</strong> transparente y define un <strong>Eslogan</strong> pegadizo.</li>
                     <li>Redacta la <strong>Propuesta de Valor</strong>. Necesitamos convencer a los inversores para conseguir patrocinios Oro.</li>
+                    <li>Consulta el panel de <strong>Inteligencia de Mercado</strong> para usar datos reales de I+D y eficiencia en tus pitches.</li>
                     <li>Registra las <strong>Campañas de Marketing</strong>, detallando la estrategia promocional y enlazando las creatividades (Drive/Canva) en el histórico.</li>
                     <li>Prepara y sube las presentaciones para los <strong>Pitches de Oratoria</strong> (Inglés y Lengua).</li>
                 </ul>`; 
@@ -76,11 +79,21 @@ const ui = {
                     <li>Vigila la <strong>Bitácora IA</strong>. Audita que nadie del equipo use ChatGPT o Claude sin verificar humanamente la información.</li>
                 </ul>`; 
                 break;
+            case 'AUXILIAR': 
+                content += `<p class="text-mars-cyan font-bold">¡Bienvenido, Observador! 👁️</p>
+                <p class="text-slate-300">Tienes acceso de solo lectura a los sistemas de la corporación.</p>
+                <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400">
+                    <li>Consulta el <strong>SUPERMARS-KET</strong> para ver el catálogo de componentes.</li>
+                    <li>Revisa el <strong>Dossier y Notas</strong> para seguir el progreso académico y documental.</li>
+                    <li>Observa las mociones en <strong>Gobernanza</strong> (sin derecho a voto).</li>
+                </ul>`; 
+                break;
             case 'DOCENTE': 
                 content += `<p class="text-mars-cyan font-bold">¡Bienvenido al Alto Mando, Inspector/a! 🎖️</p>
                 <p class="text-slate-300">El Centro de Mando Docente está listo para la evaluación.</p>
                 <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400">
                     <li>Usa la pestaña <strong>Rúbricas & Entregas</strong> para calificar en tiempo real.</li>
+                    <li>Filtra las actas y el archivo documental por <strong>Clases (A-F)</strong> para una evaluación más ágil.</li>
                     <li>Revisa el <strong>Archivo Documental</strong> centralizado de todas las startups.</li>
                     <li>En <strong>Ajustes</strong>, gestiona la fecha de entrega exclusiva de tu asignatura. La Coordinación mantiene el control global (patrocinios, plazos maestros y sanciones AEE).</li>
                 </ul>`; 
@@ -128,6 +141,7 @@ const ui = {
                 content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Investigación y Desarrollo</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300">
                     <li><span class="text-mars-yellow">Banco de Pruebas:</span> Registra cada lanzamiento. El sistema calculará automáticamente la Eficiencia (E = Altura / Coste). Busca maximizar este KPI.</li>
+                    <li><span class="text-mars-yellow">Configurador BOM:</span> Selecciona qué componentes del histórico de compras forman el cohete final para calcular su coste exacto.</li>
                     <li><span class="text-mars-yellow">Entregable FYQ:</span> Sube el Informe Técnico (PDF o URL) con los cálculos estequiométricos, leyes de Newton y diseño aerodinámico.</li>
                 </ul>`;
                 break;
@@ -141,7 +155,9 @@ const ui = {
             case 'finance':
                 content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Auditoría y Contabilidad</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Aprobación Parcial:</span> Puedes aprobar solo ciertos ítems de una orden desmarcándolos antes de confirmar.</li>
                     <li><span class="text-mars-yellow">Ledger Inmutable:</span> Todas las transacciones virtuales (compras, multas, patrocinios) quedan registradas aquí de forma permanente.</li>
+                    <li><span class="text-mars-yellow">Historial Ejecutado:</span> Revisa el desglose detallado de las órdenes que ya han sido compradas físicamente.</li>
                     <li><span class="text-mars-yellow">Gasto Físico:</span> Controla el dinero real (€) que Operaciones anota al hacer las compras físicas.</li>
                     <li><span class="text-mars-yellow">Entregable ECO:</span> Sube el Libro de Cuentas Financiero con el ROI y los balances para su evaluación.</li>
                 </ul>`;
@@ -158,8 +174,9 @@ const ui = {
                 content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Identidad Corporativa y Oratoria</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300">
                     <li><span class="text-mars-yellow">Branding:</span> Sube un logo transparente (PNG/JPG < 1MB) y define el eslogan para personalizar tu HUD.</li>
-                    <li><span class="text-mars-yellow">Propuesta de Valor:</span> Redacta el manifiesto de la empresa. Es clave para atraer inversores y patrocinios.</li>
+                    <li><span class="text-mars-yellow">Inteligencia de Mercado:</span> Utiliza los KPIs y el registro del mejor ensayo de vuelo para respaldar tu propuesta de valor ante inversores.</li>
                     <li><span class="text-mars-yellow">Campañas de Marketing:</span> Registra las acciones promocionales y adjunta enlaces a las creatividades para dejar constancia en el histórico de la corporación.</li>
+                    <li><span class="text-mars-yellow">Propuesta de Valor:</span> Redacta el manifiesto de la empresa. Es clave para atraer inversores y patrocinios.</li>
                     <li><span class="text-mars-yellow">Pitches:</span> Sube los enlaces o PDFs de las presentaciones para las defensas de Inglés (Fase I) y Lengua (Fase III).</li>
                 </ul>`;
                 break;
@@ -191,6 +208,7 @@ const ui = {
                 <ul class="list-disc pl-5 space-y-2 text-slate-300">
                     <li><span class="text-mars-yellow">AEE & Finanzas:</span> Visión global del gasto real de la clase, patrocinios y emisión de expedientes sancionadores.</li>
                     <li><span class="text-mars-yellow">Rúbricas:</span> Evalúa a las startups en tiempo real. La nota ponderada se calcula automáticamente.</li>
+                    <li><span class="text-mars-yellow">Filtrado por Aulas:</span> Usa el selector de Clases (A-F) para segmentar la vista en las actas y el archivo documental.</li>
                     <li><span class="text-mars-yellow">Ajustes (Control Granular):</span> Configura el plazo de entrega específico de tu materia. Si tienes rango de Coordinación, visualizarás el panel maestro con todos los plazos y parámetros globales.</li>
                 </ul>`;
                 break;
@@ -279,11 +297,11 @@ const ui = {
             if(miniLogo) miniLogo.classList.add('hidden');
         } else {
             const co = state.data.companies[state.user.coId];
-            if(balEl) balEl.innerText = `${co.balance.toFixed(2)} €v`;
-            if(infoEl) infoEl.innerText = `ENTITY: ${co.name.toUpperCase()} | ROLE: ${state.user.role.replace('_',' ')}`;
+            if(co && balEl) balEl.innerText = `${co.balance.toFixed(2)} €v`;
+            if(co && infoEl) infoEl.innerText = `ENTITY: ${co.name.toUpperCase()} | ROLE: ${state.user.role.replace('_',' ')}`;
             
             const countEl = document.getElementById('cart-count');
-            if(countEl) {
+            if(countEl && co) {
                 if (state.user.role === 'OPERACIONES_IA' || state.user.role === 'TECNICO') {
                     const pendingOps = (co.orders || []).filter(o => o.status === 'APROBADO_FINANZAS').length;
                     countEl.innerText = pendingOps;
@@ -293,7 +311,7 @@ const ui = {
                 }
             }
 
-            if(miniLogo) {
+            if(miniLogo && co) {
                 miniLogo.classList.remove('hidden');
                 miniLogo.innerHTML = co.logo ? `<img src="${co.logo}" class="w-full h-full object-cover">` : `<span class="text-[10px]">🚀</span>`;
             }
@@ -314,7 +332,9 @@ const ui = {
 
         document.querySelectorAll('.nav-tab').forEach(t => {
             t.classList.remove('tab-active', 'text-mars-cyan');
-            if(t.getAttribute('onclick').includes(`('${this.current}')`)) t.classList.add('tab-active', 'text-mars-cyan');
+            // BLINDAJE: Comprobar que el atributo onclick existe antes de llamar a includes
+            const oc = t.getAttribute('onclick');
+            if(oc && oc.includes(`('${this.current}')`)) t.classList.add('tab-active', 'text-mars-cyan');
         });
     },
     
