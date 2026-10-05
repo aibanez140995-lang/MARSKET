@@ -41,6 +41,10 @@ const auth = {
     },
 
     verify() {
+        // FIX CRÍTICO: Absorber el "ghost click" o double-tap de móviles
+        // Si el PIN está vacío (porque el primer clic ya lo procesó y lo borró), salimos silenciosamente.
+        if (!state.pin || state.pin.length === 0) return;
+
         const coId = document.getElementById('login-co').value;
         const roleRaw = document.getElementById('login-role').value;
         const roleNorm = this.normalizeStr(roleRaw);
@@ -57,17 +61,21 @@ const auth = {
             else this.fail();
         }
     },
-    fail() { alert("AUTH DENIED: PIN INCORRECTO"); this.clear(); },
+    
+    fail() { 
+        alert("AUTH DENIED: PIN INCORRECTO"); 
+        this.clear(); 
+    },
     
     login(coId, roleKey, admin, entityName) {
         state.user = { coId, role: roleKey, admin };
         localStorage.setItem(state.sessionKey, JSON.stringify(state.user));
-        state.pin = '';
+        state.pin = ''; // Esto es lo que vacía el PIN y activa la protección del ghost click arriba
         
         if(!admin) {
             const co = state.data.companies[coId];
             
-            // Red de seguridad para evitar el crash del Bug 1
+            // Red de seguridad para evitar el crash del Bug 1 (Mantenida de la v1.0.06)
             if (!co.loginStats) co.loginStats = { totalLogins: 0, roles: {} };
             if (!co.loginStats.roles) co.loginStats.roles = {};
 
@@ -79,8 +87,9 @@ const auth = {
         
         telemetry.startSession(entityName, roleKey);
         
-        document.getElementById('hud-header').classList.remove('hidden');
-        document.getElementById('hud-nav').classList.remove('hidden');
+        // Usamos optional chaining por seguridad extra al manipular el DOM global
+        document.getElementById('hud-header')?.classList.remove('hidden');
+        document.getElementById('hud-nav')?.classList.remove('hidden');
         this.buildNav(admin);
         
         if (admin) ui.navigate('admin');
