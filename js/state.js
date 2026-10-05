@@ -38,6 +38,7 @@ const state = {
             co.valueProposition = co.valueProposition || "";
             co.logo = co.logo || null;
             co.sponsorAwarded = co.sponsorAwarded || null;
+            co.marketingCampaigns = co.marketingCampaigns || [];
             
             // Role remapping to explicit 5 roles
             if(co.roles.QUIMICA || co.roles.AERODINAMICA || co.roles.IA) {
@@ -148,20 +149,3 @@ const state = {
         this.save();
     }
 };
-
-// --- MOTOR DE TELEMETRÍA ---
-const telemetry = {
-    startSession(entity, role) {
-        state.data.telemetry.totalLogins++;
-        state.sessionData = { sessionId: 'SESS-' + Date.now().toString().slice(-6), timestamp: new Date().toISOString(), entity, role, events: [] };
-        state.data.telemetry.sessions.unshift(state.sessionData);
-        if(state.data.telemetry.sessions.length > 100) state.data.telemetry.sessions.pop();
-        state.save();
-    },
-    log(action, details) {
-        if(!state.sessionData) return;
-        state.sessionData.events.push({ time: new Date().toLocaleTimeString(), action, details });
-        state.save();
-    }
-};
-if (typeof module !== 'undefined' && module.exports) { module.exports = { state }; }

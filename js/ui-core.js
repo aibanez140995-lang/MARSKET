@@ -64,6 +64,7 @@ const ui = {
                 <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400">
                     <li>Sube el <strong>Logotipo</strong> transparente y define un <strong>Eslogan</strong> pegadizo.</li>
                     <li>Redacta la <strong>Propuesta de Valor</strong>. Necesitamos convencer a los inversores para conseguir patrocinios Oro.</li>
+                    <li>Registra las <strong>Campañas de Marketing</strong>, detallando la estrategia promocional y enlazando las creatividades (Drive/Canva) en el histórico.</li>
                     <li>Prepara y sube las presentaciones para los <strong>Pitches de Oratoria</strong> (Inglés y Lengua).</li>
                 </ul>`; 
                 break;
@@ -81,7 +82,7 @@ const ui = {
                 <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400">
                     <li>Usa la pestaña <strong>Rúbricas & Entregas</strong> para calificar en tiempo real.</li>
                     <li>Revisa el <strong>Archivo Documental</strong> centralizado de todas las startups.</li>
-                    <li>Si eres Coordinador, gestiona los patrocinios, ajusta los plazos y aplica sanciones de la AEE si es necesario.</li>
+                    <li>En <strong>Ajustes</strong>, gestiona la fecha de entrega exclusiva de tu asignatura. La Coordinación mantiene el control global (patrocinios, plazos maestros y sanciones AEE).</li>
                 </ul>`; 
                 break;
         }
@@ -158,6 +159,7 @@ const ui = {
                 <ul class="list-disc pl-5 space-y-2 text-slate-300">
                     <li><span class="text-mars-yellow">Branding:</span> Sube un logo transparente (PNG/JPG < 1MB) y define el eslogan para personalizar tu HUD.</li>
                     <li><span class="text-mars-yellow">Propuesta de Valor:</span> Redacta el manifiesto de la empresa. Es clave para atraer inversores y patrocinios.</li>
+                    <li><span class="text-mars-yellow">Campañas de Marketing:</span> Registra las acciones promocionales y adjunta enlaces a las creatividades para dejar constancia en el histórico de la corporación.</li>
                     <li><span class="text-mars-yellow">Pitches:</span> Sube los enlaces o PDFs de las presentaciones para las defensas de Inglés (Fase I) y Lengua (Fase III).</li>
                 </ul>`;
                 break;
@@ -189,7 +191,7 @@ const ui = {
                 <ul class="list-disc pl-5 space-y-2 text-slate-300">
                     <li><span class="text-mars-yellow">AEE & Finanzas:</span> Visión global del gasto real de la clase, patrocinios y emisión de expedientes sancionadores.</li>
                     <li><span class="text-mars-yellow">Rúbricas:</span> Evalúa a las startups en tiempo real. La nota ponderada se calcula automáticamente.</li>
-                    <li><span class="text-mars-yellow">Ajustes:</span> Configura los plazos de entrega (deadlines) y fuerza la sincronización con la base de datos D1.</li>
+                    <li><span class="text-mars-yellow">Ajustes (Control Granular):</span> Configura el plazo de entrega específico de tu materia. Si tienes rango de Coordinación, visualizarás el panel maestro con todos los plazos y parámetros globales.</li>
                 </ul>`;
                 break;
             default:
@@ -328,7 +330,8 @@ const ui = {
             'TECNICO': ['market', 'tech', 'cart', 'orders', 'dossier'],
             'FINANZAS': ['finance', 'orders', 'dossier', 'market'],
             'MARKETING': ['brand', 'market', 'dossier'],
-            'OPERACIONES_IA': ['market', 'cart', 'ailog', 'dossier']
+            'OPERACIONES_IA': ['market', 'cart', 'ailog', 'dossier'],
+            'AUXILIAR': ['market', 'resolutions', 'dossier']
         };
 
         if (state.user.admin && !['admin', 'market', 'dossier'].includes(this.current)) {
