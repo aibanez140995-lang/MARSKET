@@ -17,6 +17,7 @@ Object.assign(ui, {
                 <button onclick="ui.adminTab='eval'; ui.render()" class="px-3 sm:px-4 py-2 text-[9px] font-bold uppercase ${this.adminTab==='eval'?'bg-mars-yellow text-black':'text-slate-400'} hover:text-white transition-colors">Rúbricas & Entregas</button>
                 <button onclick="ui.adminTab='startups'; ui.render()" class="px-3 sm:px-4 py-2 text-[9px] font-bold uppercase ${this.adminTab==='startups'?'bg-mars-yellow text-black':'text-slate-400'} hover:text-white transition-colors">Startups</button>
                 <button onclick="ui.adminTab='telemetry'; ui.render()" class="px-3 sm:px-4 py-2 text-[9px] font-bold uppercase ${this.adminTab==='telemetry'?'bg-mars-yellow text-black':'text-slate-400'} hover:text-white transition-colors">Telemetría</button>
+                ${isCoord ? `<button onclick="ui.adminTab='catalog'; ui.render()" class="px-3 sm:px-4 py-2 text-[9px] font-bold uppercase ${this.adminTab==='catalog'?'bg-mars-yellow text-black':'text-slate-400'} hover:text-white transition-colors">Catálogo</button>` : ''}
                 <button onclick="ui.adminTab='settings'; ui.render()" class="px-3 sm:px-4 py-2 text-[9px] font-bold uppercase ${this.adminTab==='settings'?'bg-mars-yellow text-black':'text-slate-400'} hover:text-white transition-colors">Ajustes</button>
                 ${isAlex ? `<button onclick="ui.adminTab='alexbox'; ui.render()" class="px-3 sm:px-4 py-2 text-[9px] font-bold uppercase ${this.adminTab==='alexbox'?'bg-mars-cyan text-black':'text-mars-cyan'} hover:text-white transition-colors border-l border-mars-cyan/30">Buzón Alex</button>` : ''}
             </div>
@@ -299,6 +300,37 @@ Object.assign(ui, {
                 matRows += `</tr>`;
             });
 
+            // Recopilar todos los reportes de inactividad
+            let allReports = [];
+            Object.keys(state.data.companies).forEach(cid => {
+                const co = state.data.companies[cid];
+                (co.inactivityReports || []).forEach(r => allReports.push({...r, cid, coName: co.name}));
+            });
+            allReports.sort((a,b) => b.id.localeCompare(a.id));
+
+            let reportsHtml = '';
+            if (allReports.length === 0) {
+                reportsHtml = '<p class="text-slate-600 text-xs italic">No hay reportes de inactividad activos.</p>';
+            } else {
+                reportsHtml = allReports.map(r => `
+                    <div class="bg-slate-900/50 border ${r.status === 'PENDIENTE' ? 'border-mars-magenta' : 'border-mars-green/50'} p-3 text-[10px] mb-3 transition-colors">
+                        <div class="flex justify-between items-center border-b border-slate-700 pb-2 mb-2">
+                            <span class="font-bold text-white uppercase">${r.coName}</span>
+                            <span class="text-[8px] text-slate-500">${r.date}</span>
+                        </div>
+                        <div class="flex justify-between mb-2">
+                            <span class="text-mars-magenta font-bold uppercase">Reportado: ${r.reportedDept}</span>
+                            <span class="text-slate-400 uppercase">Por: ${r.reportingRole.replace('_', ' ')}</span>
+                        </div>
+                        <p class="text-slate-300 italic bg-black p-2 border border-slate-800 mb-2">"${r.reason}"</p>
+                        <div class="flex justify-between items-center mt-2">
+                            <span class="text-[9px] font-bold uppercase ${r.status === 'PENDIENTE' ? 'text-mars-magenta animate-pulse' : 'text-mars-green'}">[${r.status}]</span>
+                            ${r.status === 'PENDIENTE' ? `<button onclick="ui.resolveInactivityReport('${r.cid}', '${r.id}')" class="bg-mars-magenta/20 text-mars-magenta border border-mars-magenta px-3 py-1 hover:bg-mars-magenta hover:text-white transition-colors">Marcar Resuelto</button>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            }
+
             adminHtml += `
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan text-center flex flex-col justify-center">
@@ -313,19 +345,71 @@ Object.assign(ui, {
                     </table>
                 </div>
             </div>
-            <div class="terminal-border bg-mars-card p-6 overflow-y-auto max-h-[400px]">
-                <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Registro Táctico de Sesiones (Últimas 100)</h3>
-                <div class="space-y-4">
-                    ${state.data.telemetry.sessions.map(sess => `
-                    <div class="border border-mars-border/50 bg-slate-900/30 p-3 text-[10px]">
-                        <div class="flex justify-between items-center border-b border-mars-border/30 pb-2 mb-2">
-                            <span class="text-mars-cyan font-bold uppercase">${sess.entity} | ${sess.role.replace('_',' ')}</span>
-                            <span class="text-[8px] text-slate-500 bg-black px-2 py-0.5">${sess.timestamp.replace('T',' ').slice(0,19)}</span>
-                        </div>
-                        <ul class="text-slate-300 space-y-1">
-                            ${sess.events.map(ev => `<li class="flex gap-2"><span class="text-mars-yellow shrink-0">[${ev.time}]</span><span class="font-bold text-white shrink-0">${ev.action}:</span><span class="text-slate-400 break-words">${ev.details}</span></li>`).join('') || '<li class="text-slate-600 italic">Sesión sin eventos clave.</li>'}
-                        </ul>
-                    </div>`).join('') || '<p class="text-slate-600 text-xs italic">No hay datos de telemetría.</p>'}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="terminal-border bg-mars-card p-6 overflow-y-auto max-h-[400px]">
+                    <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Registro Táctico de Sesiones (Últimas 100)</h3>
+                    <div class="space-y-4">
+                        ${state.data.telemetry.sessions.map(sess => `
+                        <div class="border border-mars-border/50 bg-slate-900/30 p-3 text-[10px]">
+                            <div class="flex justify-between items-center border-b border-mars-border/30 pb-2 mb-2">
+                                <span class="text-mars-cyan font-bold uppercase">${sess.entity} | ${sess.role.replace('_',' ')}</span>
+                                <span class="text-[8px] text-slate-500 bg-black px-2 py-0.5">${sess.timestamp.replace('T',' ').slice(0,19)}</span>
+                            </div>
+                            <ul class="text-slate-300 space-y-1">
+                                ${sess.events.map(ev => `<li class="flex gap-2"><span class="text-mars-yellow shrink-0">[${ev.time}]</span><span class="font-bold text-white shrink-0">${ev.action}:</span><span class="text-slate-400 break-words">${ev.details}</span></li>`).join('') || '<li class="text-slate-600 italic">Sesión sin eventos clave.</li>'}
+                            </ul>
+                        </div>`).join('') || '<p class="text-slate-600 text-xs italic">No hay datos de telemetría.</p>'}
+                    </div>
+                </div>
+                <div class="terminal-border bg-mars-card p-6 overflow-y-auto max-h-[400px] border-t-4 border-t-mars-magenta">
+                    <h3 class="font-orbitron text-mars-magenta text-xs mb-4 uppercase tracking-widest">Alertas HR: Reportes de Inactividad</h3>
+                    <div class="space-y-2">
+                        ${reportsHtml}
+                    </div>
+                </div>
+            </div>`;
+        }
+        else if(this.adminTab === 'catalog' && isCoord) {
+            adminHtml += `
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-1 terminal-border bg-mars-card p-6 h-fit border-t-4 border-t-mars-cyan">
+                    <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Añadir Nuevo Artículo</h3>
+                    <input type="text" id="new-cat-id" placeholder="ID (Ej: F06)" class="w-full bg-slate-900 border border-mars-border p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+                    <input type="text" id="new-cat-name" placeholder="Nombre completo" class="w-full bg-slate-900 border border-mars-border p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+                    <input type="number" id="new-cat-price" placeholder="Precio (€v)" class="w-full bg-slate-900 border border-mars-border p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+                    <input type="text" id="new-cat-unit" placeholder="Unidad (Ej: Unidad, Gramo)" class="w-full bg-slate-900 border border-mars-border p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+                    <select id="new-cat-category" class="w-full bg-slate-900 border border-mars-border p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+                        <option value="Fuselaje">Fuselaje</option>
+                        <option value="Propulsión">Propulsión</option>
+                        <option value="Aerodinámica">Aerodinámica</option>
+                        <option value="Sellado">Sellado</option>
+                        <option value="Externo">Externo</option>
+                    </select>
+                    <input type="text" id="new-cat-origin" placeholder="Origen (Ej: España)" class="w-full bg-slate-900 border border-mars-border p-2 text-xs text-white mb-4 outline-none focus:border-mars-cyan">
+                    <button onclick="ui.addCatalogItem()" class="w-full bg-mars-cyan text-black font-black py-3 text-[10px] uppercase tracking-widest hover:shadow-[0_0_10px_#00f0ff] transition-shadow">Añadir al Catálogo</button>
+                </div>
+                <div class="lg:col-span-2 terminal-border bg-mars-card p-6 overflow-x-auto border-t-4 border-t-mars-yellow">
+                    <h3 class="font-orbitron text-mars-yellow text-xs mb-4 uppercase tracking-widest">Gestión de Precios</h3>
+                    <table class="w-full text-left text-[9px] whitespace-nowrap">
+                        <thead class="text-slate-500 uppercase border-b border-mars-border">
+                            <tr><th class="py-2">ID</th><th>Nombre</th><th>Categoría</th><th>Precio (€v)</th><th>Acción</th></tr>
+                        </thead>
+                        <tbody>
+                            ${state.data.catalog.map(item => `
+                            <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
+                                <td class="py-2 text-slate-400 font-mono">${item.id}</td>
+                                <td class="py-2 font-bold text-white">${item.name}</td>
+                                <td class="py-2 text-slate-500">${item.category}</td>
+                                <td class="py-2">
+                                    <input type="number" id="price-${item.id}" value="${item.price}" class="w-20 bg-black border border-mars-border text-center text-mars-green font-bold p-1 outline-none focus:border-mars-yellow">
+                                </td>
+                                <td class="py-2">
+                                    <button onclick="ui.saveCatalogPrice('${item.id}')" class="bg-mars-yellow/20 text-mars-yellow px-3 py-1 font-bold hover:bg-mars-yellow hover:text-black transition-colors">Guardar</button>
+                                </td>
+                            </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
                 </div>
             </div>`;
         }
@@ -452,6 +536,47 @@ Object.assign(ui, {
             </div>`;
         }
         el.innerHTML = adminHtml;
+    },
+
+    // --- NUEVAS FUNCIONES DE CATÁLOGO (FASE 3) ---
+    saveCatalogPrice(id) {
+        const newPrice = parseFloat(document.getElementById(`price-${id}`).value);
+        if(isNaN(newPrice) || newPrice < 0) return alert("Precio inválido.");
+        const item = state.data.catalog.find(i => i.id === id);
+        if(item) {
+            item.price = newPrice;
+            state.save();
+            alert(`Precio actualizado para ${item.name}`);
+        }
+    },
+
+    addCatalogItem() {
+        const id = document.getElementById('new-cat-id').value.trim();
+        const name = document.getElementById('new-cat-name').value.trim();
+        const price = parseFloat(document.getElementById('new-cat-price').value);
+        const unit = document.getElementById('new-cat-unit').value.trim();
+        const category = document.getElementById('new-cat-category').value;
+        const origin = document.getElementById('new-cat-origin').value.trim();
+
+        if(!id || !name || isNaN(price) || !unit || !origin) return alert("Rellene todos los campos correctamente.");
+        if(state.data.catalog.find(i => i.id === id)) return alert("El ID ya existe en el catálogo.");
+
+        state.data.catalog.push({ id, name, price, unit, category, origin });
+        state.save();
+        alert("Artículo añadido al catálogo global.");
+        this.render();
+    },
+
+    // --- NUEVA FUNCIÓN DE REPORTES HR (FASE 4) ---
+    resolveInactivityReport(cid, rid) {
+        const co = state.data.companies[cid];
+        if (!co || !co.inactivityReports) return;
+        const rep = co.inactivityReports.find(r => r.id === rid);
+        if (rep) {
+            rep.status = 'RESUELTO';
+            state.save();
+            this.render();
+        }
     },
 
     // --- 2. GESTIÓN Y SANCIONES AEE ---
@@ -600,7 +725,7 @@ Object.assign(ui, {
         state.data.companies[cid] = { 
             name, balance: cap, logo: null, sponsorAwarded: null, valueProposition: "", slogan: "", classGroup,
             roles: { CEO:'1234', TECNICO:'1234', FINANZAS:'1234', MARKETING:'1234', OPERACIONES_IA:'1234' }, 
-            aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [],
+            aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [],
             loginStats: { totalLogins: 0, roles: { CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0} } },
             deliverables: { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null }
         };

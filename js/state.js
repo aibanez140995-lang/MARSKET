@@ -53,6 +53,9 @@ const state = {
             co.sponsorAwarded = co.sponsorAwarded || null;
             co.marketingCampaigns = co.marketingCampaigns || [];
             
+            // NUEVO: Inicialización del array de reportes de inactividad
+            co.inactivityReports = co.inactivityReports || [];
+            
             // Role remapping to explicit 5 roles
             if(co.roles.QUIMICA || co.roles.AERODINAMICA || co.roles.IA) {
                 const defaultPin = co.roles.CEO || '1234';
@@ -160,26 +163,5 @@ const state = {
         co.balance += delta;
         co.ledger.unshift({ id: 'TX-' + Math.random().toString(36).substr(2, 5).toUpperCase(), date: new Date().toLocaleString(), concept, dept, delta, final: co.balance });
         this.save();
-    }
-};
-
-// --- MOTOR DE TELEMETRÍA ---
-const telemetry = {
-    startSession(entity, role) {
-        // BLINDAJE: Asegurar inicialización de telemetría antes de registrar el evento
-        if (!state.data.telemetry) state.data.telemetry = { totalLogins: 0, sessions: [] };
-        if (!state.data.telemetry.sessions) state.data.telemetry.sessions = [];
-        if (isNaN(state.data.telemetry.totalLogins)) state.data.telemetry.totalLogins = 0;
-
-        state.data.telemetry.totalLogins++;
-        state.sessionData = { sessionId: 'SESS-' + Date.now().toString().slice(-6), timestamp: new Date().toISOString(), entity, role, events: [] };
-        state.data.telemetry.sessions.unshift(state.sessionData);
-        if(state.data.telemetry.sessions.length > 100) state.data.telemetry.sessions.pop();
-        state.save();
-    },
-    log(action, details) {
-        if(!state.sessionData) return;
-        state.sessionData.events.push({ time: new Date().toLocaleTimeString(), action, details });
-        state.save();
     }
 };

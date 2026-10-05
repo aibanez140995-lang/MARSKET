@@ -38,6 +38,7 @@ const ui = {
                     <li>Supervisa la <strong>Bóveda de Órdenes</strong>. Asegúrate de que Finanzas y Operaciones fluyan sin cuellos de botella.</li>
                     <li>Si hay peleas en el equipo, usa tu <strong>voto de calidad</strong> en la pestaña de Gobernanza.</li>
                     <li>Gestiona el <strong>Rol Observador (Auxiliar)</strong> para dar acceso de solo lectura a miembros adicionales del equipo.</li>
+                    <li>Emite <strong>Reportes de Inactividad</strong> (Alertas HR) desde Gobernanza si un departamento paraliza la misión.</li>
                 </ul>`; 
                 break;
             case 'TECNICO': 
@@ -48,6 +49,7 @@ const ui = {
                     <li>Registra cada ensayo en el <strong>Banco de Pruebas</strong>. Recuerda: buscamos la máxima eficiencia (E = Altura / Coste).</li>
                     <li>Selecciona los componentes definitivos en el <strong>Configurador de Prototipo (BOM)</strong> basándote en el histórico de compras.</li>
                     <li>Sube tu <strong>Informe Técnico</strong> a tiempo para que Física y Química te evalúe.</li>
+                    <li>Emite <strong>Reportes de Inactividad</strong> desde Gobernanza si otro departamento bloquea tu I+D.</li>
                 </ul>`; 
                 break;
             case 'FINANZAS': 
@@ -58,6 +60,7 @@ const ui = {
                     <li>Realiza <strong>Auditorías Parciales</strong> desmarcando ítems específicos de una orden si no consideras justificado todo el gasto.</li>
                     <li>Vigila el <strong>Ledger Inmutable</strong>. Cada céntimo virtual gastado afecta a la rentabilidad.</li>
                     <li>Prepara el <strong>Libro de Cuentas</strong> oficial para la evaluación de Economía.</li>
+                    <li>Emite <strong>Reportes de Inactividad</strong> desde Gobernanza si detectas bloqueos operativos.</li>
                 </ul>`; 
                 break;
             case 'MARKETING': 
@@ -69,6 +72,7 @@ const ui = {
                     <li>Consulta el panel de <strong>Inteligencia de Mercado</strong> para usar datos reales de I+D y eficiencia en tus pitches.</li>
                     <li>Registra las <strong>Campañas de Marketing</strong>, detallando la estrategia promocional y enlazando las creatividades (Drive/Canva) en el histórico.</li>
                     <li>Prepara y sube las presentaciones para los <strong>Pitches de Oratoria</strong> (Inglés y Lengua).</li>
+                    <li>Emite <strong>Reportes de Inactividad</strong> desde Gobernanza si necesitas escalar un bloqueo al Claustro.</li>
                 </ul>`; 
                 break;
             case 'OPERACIONES_IA': 
@@ -77,6 +81,7 @@ const ui = {
                 <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400">
                     <li>En la pestaña <strong>Logística</strong>, valida el ensamblaje de las compras aprobadas por Finanzas y anota lo que han costado en euros reales (€).</li>
                     <li>Vigila la <strong>Bitácora IA</strong>. Audita que nadie del equipo use ChatGPT o Claude sin verificar humanamente la información.</li>
+                    <li>Emite <strong>Reportes de Inactividad</strong> desde Gobernanza si el flujo logístico se detiene.</li>
                 </ul>`; 
                 break;
             case 'AUXILIAR': 
@@ -95,7 +100,8 @@ const ui = {
                     <li>Usa la pestaña <strong>Rúbricas & Entregas</strong> para calificar en tiempo real.</li>
                     <li>Filtra las actas y el archivo documental por <strong>Clases (A-F)</strong> para una evaluación más ágil.</li>
                     <li>Revisa el <strong>Archivo Documental</strong> centralizado de todas las startups.</li>
-                    <li>En <strong>Ajustes</strong>, gestiona la fecha de entrega exclusiva de tu asignatura. La Coordinación mantiene el control global (patrocinios, plazos maestros y sanciones AEE).</li>
+                    <li>Vigila las <strong>Alertas HR</strong> en Telemetría para mediar en reportes de inactividad de los alumnos.</li>
+                    <li>En <strong>Ajustes</strong>, gestiona la fecha de entrega exclusiva de tu asignatura. La Coordinación mantiene el control global (patrocinios, plazos maestros, catálogo y sanciones AEE).</li>
                 </ul>`; 
                 break;
         }
@@ -194,6 +200,7 @@ const ui = {
                     <li><span class="text-mars-yellow">Mociones:</span> Cualquier miembro puede proponer una moción para tomar decisiones de equipo.</li>
                     <li><span class="text-mars-yellow">Votaciones:</span> Todos deben votar a favor o en contra.</li>
                     <li><span class="text-mars-yellow">Voto de Calidad:</span> En caso de empate, el CEO tiene la responsabilidad de ejercer el voto de calidad para cerrar el acta.</li>
+                    <li><span class="text-mars-yellow">Alertas HR:</span> Usa el botón de Reporte de Inactividad para escalar al Claustro Docente cualquier bloqueo grave por inacción de un departamento.</li>
                 </ul>`;
                 break;
             case 'dossier':
@@ -209,6 +216,8 @@ const ui = {
                     <li><span class="text-mars-yellow">AEE & Finanzas:</span> Visión global del gasto real de la clase, patrocinios y emisión de expedientes sancionadores.</li>
                     <li><span class="text-mars-yellow">Rúbricas:</span> Evalúa a las startups en tiempo real. La nota ponderada se calcula automáticamente.</li>
                     <li><span class="text-mars-yellow">Filtrado por Aulas:</span> Usa el selector de Clases (A-F) para segmentar la vista en las actas y el archivo documental.</li>
+                    <li><span class="text-mars-yellow">Alertas HR:</span> En Telemetría, revisa y resuelve los reportes de inactividad emitidos por los alumnos.</li>
+                    <li><span class="text-mars-yellow">Catálogo:</span> (Solo Coordinación) Modifica precios para simular inflación o añade nuevos componentes al mercado global.</li>
                     <li><span class="text-mars-yellow">Ajustes (Control Granular):</span> Configura el plazo de entrega específico de tu materia. Si tienes rango de Coordinación, visualizarás el panel maestro con todos los plazos y parámetros globales.</li>
                 </ul>`;
                 break;
@@ -332,7 +341,6 @@ const ui = {
 
         document.querySelectorAll('.nav-tab').forEach(t => {
             t.classList.remove('tab-active', 'text-mars-cyan');
-            // BLINDAJE: Comprobar que el atributo onclick existe antes de llamar a includes
             const oc = t.getAttribute('onclick');
             if(oc && oc.includes(`('${this.current}')`)) t.classList.add('tab-active', 'text-mars-cyan');
         });

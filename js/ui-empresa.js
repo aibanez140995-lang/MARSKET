@@ -443,7 +443,7 @@ Object.assign(ui, {
             return 0;
         });
 
-        const isCEOOrAdmin = state.user.role === 'CEO' || state.user.admin;
+        const isAdmin = state.user && state.user.admin;
 
         wrapper.innerHTML = `
         ${ceoDashboard}
@@ -455,7 +455,7 @@ Object.assign(ui, {
         <div class="space-y-6">
             ${sortedOrders.map(order => {
                 let physicalCostsHtml = '';
-                if (isCEOOrAdmin && (order.status === 'EJECUTADO' || order.status === 'APROBADO_FINANZAS')) {
+                if (isAdmin && (order.status === 'EJECUTADO' || order.status === 'APROBADO_FINANZAS')) {
                     physicalCostsHtml = `
                     <div class="bg-black/50 p-4 border border-mars-border/50 text-[9px] overflow-x-auto w-full">
                         <span class="block text-mars-magenta font-bold uppercase mb-2 border-b border-mars-magenta/30 pb-1">Desglose Físico Verificado:</span>
@@ -647,17 +647,17 @@ Object.assign(ui, {
         }
 
         const isFinanzas = state.user.role === 'FINANZAS';
-        const isCEOOrAdmin = state.user.role === 'CEO' || state.user.admin;
+        const isAdmin = state.user && state.user.admin;
 
         let financeCards = `
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6">
             <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-green w-full"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Caja Virtual</p><p class="text-xl sm:text-2xl font-orbitron text-mars-green tracking-tighter">${co.balance.toFixed(2)} €v</p></div>
-            ${isCEOOrAdmin ? `<div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-magenta w-full"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Gasto Físico Auditado</p><p class="text-xl sm:text-2xl font-orbitron text-white tracking-tighter">${totalReal.toFixed(2)} €</p></div>` : ''}
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-cyan w-full ${!isCEOOrAdmin ? 'md:col-span-2' : ''}"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Transacciones Ledger</p><p class="text-xl sm:text-2xl font-orbitron text-mars-cyan tracking-tighter">${co.ledger.length}</p></div>
+            ${isAdmin ? `<div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-magenta w-full"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Gasto Físico Auditado</p><p class="text-xl sm:text-2xl font-orbitron text-white tracking-tighter">${totalReal.toFixed(2)} €</p></div>` : ''}
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-cyan w-full ${!isAdmin ? 'md:col-span-2' : ''}"><p class="text-[9px] text-slate-500 uppercase mb-1 font-bold">Transacciones Ledger</p><p class="text-xl sm:text-2xl font-orbitron text-mars-cyan tracking-tighter">${co.ledger.length}</p></div>
         </div>`;
 
         let executedOrdersHtml = '';
-        if (isFinanzas || isCEOOrAdmin) {
+        if (isFinanzas || isAdmin) {
             const executedOrders = (co.orders || []).filter(o => o.status === 'EJECUTADO');
             if (executedOrders.length > 0) {
                 executedOrdersHtml = `
@@ -672,7 +672,7 @@ Object.assign(ui, {
                             </div>
                             <div class="flex justify-between text-[9px] mb-2">
                                 <span class="text-mars-green">Virtual: ${eo.total.toFixed(2)} €v</span>
-                                <span class="text-mars-magenta">Físico: ${eo.realEurTotal !== undefined ? eo.realEurTotal.toFixed(2) + ' €' : 'N/A'}</span>
+                                ${isAdmin ? `<span class="text-mars-magenta">Físico: ${eo.realEurTotal !== undefined ? eo.realEurTotal.toFixed(2) + ' €' : 'N/A'}</span>` : ''}
                             </div>
                             <div class="text-[8px] text-slate-400 space-y-1">
                                 ${eo.items.map(i => `
@@ -680,7 +680,7 @@ Object.assign(ui, {
                                     <span class="truncate pr-2">- ${i.name} (x${i.qty})</span>
                                     <div class="flex gap-3 text-right shrink-0">
                                         <span class="text-mars-cyan">${i.price.toFixed(2)} €v</span>
-                                        <span>@ ${i.realShop || 'N/A'}: <span class="text-mars-magenta">${i.realEur !== '' ? parseFloat(i.realEur).toFixed(2)+' €' : '---'}</span></span>
+                                        ${isAdmin ? `<span>@ ${i.realShop || 'N/A'}: <span class="text-mars-magenta">${i.realEur !== '' ? parseFloat(i.realEur).toFixed(2)+' €' : '---'}</span></span>` : ''}
                                     </div>
                                 </div>`).join('')}
                             </div>
@@ -692,7 +692,7 @@ Object.assign(ui, {
         }
 
         let financeDetails = `
-        <div class="grid grid-cols-1 ${isCEOOrAdmin ? 'lg:grid-cols-2' : ''} gap-6 sm:gap-8">
+        <div class="grid grid-cols-1 ${isAdmin ? 'lg:grid-cols-2' : ''} gap-6 sm:gap-8">
             <div class="flex flex-col gap-6 w-full overflow-hidden">
                 <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden">
                     <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Ledger Histórico inmutable</h3>
@@ -708,7 +708,7 @@ Object.assign(ui, {
                 </div>
                 ${executedOrdersHtml}
             </div>
-            ${isCEOOrAdmin ? `
+            ${isAdmin ? `
             <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden h-fit">
                 <h3 class="font-orbitron text-mars-magenta text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Desglose Físico Componentes (€)</h3>
                 <div class="overflow-x-auto w-full">
@@ -723,7 +723,7 @@ Object.assign(ui, {
             </div>` : `
             <div class="terminal-border border-dashed border-mars-border p-8 text-center flex flex-col justify-center items-center h-fit">
                 <span class="text-3xl mb-3">🔒</span>
-                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Auditoría de gasto real (€) restringida a Dirección General (CEO) y Coordinación.</p>
+                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Auditoría de gasto real (€) restringida al Claustro Docente.</p>
             </div>
             `}
         </div>`;
@@ -1014,7 +1014,7 @@ Object.assign(ui, {
         }
     },
 
-    // --- 5. GOBERNANZA ---
+    // --- 5. GOBERNANZA E INACTIVIDAD ---
     viewResolutions(el) {
         const co = state.data.companies[state.user.coId];
         if(!co.votingMotions) co.votingMotions = [];
@@ -1023,11 +1023,15 @@ Object.assign(ui, {
         
         let headerActions = '';
         if (state.user.role !== 'AUXILIAR') {
-            headerActions = `<button onclick="ui.modalMotion()" class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-4 py-2 text-[10px] uppercase font-bold hover:bg-mars-yellow hover:text-black transition-all">Proponer Moción</button>`;
+            headerActions = `
+            <div class="flex gap-2">
+                <button onclick="ui.modalReportInactivity()" class="bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-1.5 text-[9px] uppercase font-bold hover:bg-mars-magenta hover:text-white transition-all">Reportar Inactividad</button>
+                <button onclick="ui.modalMotion()" class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-3 py-1.5 text-[9px] uppercase font-bold hover:bg-mars-yellow hover:text-black transition-all">Proponer Moción</button>
+            </div>`;
         }
 
         wrapper.innerHTML = `
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <h2 class="font-orbitron text-mars-yellow text-xl uppercase tracking-tighter">Gobernanza y Resoluciones</h2>
             ${headerActions}
         </div>
@@ -1070,6 +1074,48 @@ Object.assign(ui, {
             }).join('') || '<p class="text-slate-500 text-xs italic">No hay mociones registradas.</p>'}
         </div>`;
         el.appendChild(wrapper);
+    },
+
+    modalReportInactivity() {
+        const html = `
+            <p class="text-[10px] text-slate-400 mb-4">Usa este canal oficial para notificar al Claustro Docente si un departamento está bloqueando el progreso de la startup por inactividad.</p>
+            <select id="inactivity-dept" class="w-full bg-slate-900 border border-mars-magenta p-2 text-xs text-white mb-3 outline-none focus:border-mars-cyan">
+                <option value="">-- Selecciona el Departamento a Reportar --</option>
+                <option value="CEO">Dirección General (CEO)</option>
+                <option value="TECNICO">Dpto. Técnico (I+D)</option>
+                <option value="FINANZAS">Dpto. Financiero</option>
+                <option value="MARKETING">Dpto. Marketing</option>
+                <option value="OPERACIONES_IA">Dpto. Operaciones e IA</option>
+            </select>
+            <textarea id="inactivity-reason" placeholder="Describe detalladamente qué tareas no se están cumpliendo y cómo afecta al equipo..." class="w-full bg-slate-900 border border-mars-magenta p-2 text-xs text-white h-24 mb-2 outline-none focus:border-mars-cyan"></textarea>
+        `;
+        const actions = `<button onclick="ui.submitInactivityReport()" class="bg-mars-magenta text-white px-4 py-2 text-[10px] font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Enviar Reporte al Claustro</button>`;
+        this.showModal("Reporte de Inactividad (HR)", html, actions);
+    },
+
+    submitInactivityReport() {
+        const dept = document.getElementById('inactivity-dept').value;
+        const reason = document.getElementById('inactivity-reason').value.trim();
+        
+        if(!dept || !reason) return alert("Debes seleccionar un departamento y justificar el reporte.");
+        if(dept === state.user.role) return alert("No puedes reportarte a ti mismo.");
+        
+        const co = state.data.companies[state.user.coId];
+        if(!co.inactivityReports) co.inactivityReports = [];
+        
+        co.inactivityReports.unshift({
+            id: 'REP-' + Date.now(),
+            reportedDept: dept,
+            reportingRole: state.user.role,
+            reason: reason,
+            date: new Date().toLocaleString(),
+            status: 'PENDIENTE'
+        });
+        
+        telemetry.log("REPORTE HR", `Reportado departamento: ${dept}`);
+        state.save();
+        this.closeModal();
+        alert("Reporte enviado exitosamente al Claustro Docente.");
     },
 
     modalMotion() {
