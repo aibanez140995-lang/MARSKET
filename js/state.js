@@ -8,10 +8,10 @@ const state = {
     isCloudOnline: false, isSyncing: false, syncTimer: null,
 
     migrate(d) {
-        // 1. Curar datos críticos perdidos por corrupciones previas
-        if (!d.config) d.config = INITIAL_DATA.config;
-        if (!d.catalog || d.catalog.length === 0) d.catalog = INITIAL_DATA.catalog;
-        if (!d.companies) d.companies = INITIAL_DATA.companies;
+        // 1. Curar datos críticos perdidos por corrupciones previas (Copia profunda)
+        if (!d.config) d.config = JSON.parse(JSON.stringify(INITIAL_DATA.config));
+        if (!d.catalog || d.catalog.length === 0) d.catalog = JSON.parse(JSON.stringify(INITIAL_DATA.catalog));
+        if (!d.companies) d.companies = JSON.parse(JSON.stringify(INITIAL_DATA.companies));
         if (!d.telemetry) d.telemetry = { totalLogins: 0, sessions: [] };
         if (!d.telemetry.sessions) d.telemetry.sessions = [];
 
@@ -31,6 +31,12 @@ const state = {
 
         for(let k in d.companies) {
             let co = d.companies[k];
+            
+            // BLINDAJE CONTRA CRASHES SILENCIOSOS
+            co.roles = co.roles || { CEO:'1234', TECNICO:'1234', FINANZAS:'1234', MARKETING:'1234', OPERACIONES_IA:'1234' };
+            co.loginStats = co.loginStats || { totalLogins: 0, roles: {} };
+            co.loginStats.roles = co.loginStats.roles || {};
+
             co.classGroup = co.classGroup || 'A';
             co.deliverables = co.deliverables || { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null };
             co.flightTests = co.flightTests || [];

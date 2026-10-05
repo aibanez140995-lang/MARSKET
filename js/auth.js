@@ -66,6 +66,11 @@ const auth = {
         
         if(!admin) {
             const co = state.data.companies[coId];
+            
+            // Red de seguridad para evitar el crash del Bug 1
+            if (!co.loginStats) co.loginStats = { totalLogins: 0, roles: {} };
+            if (!co.loginStats.roles) co.loginStats.roles = {};
+
             co.loginStats.totalLogins++;
             if(!co.loginStats.roles[roleKey]) co.loginStats.roles[roleKey] = {count:0, lastLogin:null};
             co.loginStats.roles[roleKey].count++;

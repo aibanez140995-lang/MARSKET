@@ -85,6 +85,9 @@ Object.assign(ui, {
             </div>`;
         }
 
+        // FIX BUG: Asignar 'ALL' por defecto si marketFilter es undefined
+        const currentFilter = this.marketFilter || 'ALL';
+
         const visibleCatalog = state.data.catalog.filter(item => {
             let isAllowed = false;
             if (!item.exclusiveFor) isAllowed = true;
@@ -93,12 +96,12 @@ Object.assign(ui, {
 
             if (!isAllowed) return false;
             
-            if (this.marketFilter === 'ALL') return true;
-            return item.category.toUpperCase() === this.marketFilter.toUpperCase();
+            if (currentFilter === 'ALL') return true;
+            return item.category.toUpperCase() === currentFilter.toUpperCase();
         });
 
         const filterButtons = ['ALL', 'Fuselaje', 'Propulsión', 'Aerodinámica', 'Sellado', 'Externo'].map(cat => `
-            <button onclick="ui.setMarketFilter('${cat}')" class="px-3 py-1.5 text-[9px] font-bold uppercase border ${this.marketFilter === cat ? 'bg-mars-cyan text-black border-mars-cyan' : 'bg-transparent text-slate-400 border-mars-border hover:border-mars-cyan hover:text-mars-cyan'} transition-colors whitespace-nowrap">
+            <button onclick="ui.setMarketFilter('${cat}')" class="px-3 py-1.5 text-[9px] font-bold uppercase border ${currentFilter === cat ? 'bg-mars-cyan text-black border-mars-cyan' : 'bg-transparent text-slate-400 border-mars-border hover:border-mars-cyan hover:text-mars-cyan'} transition-colors whitespace-nowrap">
                 ${cat === 'ALL' ? 'TODOS' : cat}
             </button>
         `).join('');
