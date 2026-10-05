@@ -260,6 +260,12 @@ const ui = {
         if (state.user.admin) return '';
         const co = state.data.companies[state.user.coId];
         
+        // BLINDAJE: Si la empresa fue eliminada pero la sesión sigue activa, forzamos logout
+        if (!co) {
+            auth.logout();
+            return '';
+        }
+        
         let sponsorBadge = '';
         if(co.sponsorAwarded) {
             const color = co.sponsorAwarded==='ORO'?'text-[#ffd700] border-[#ffd700] bg-[#ffd700]/10':co.sponsorAwarded==='PLATA'?'text-[#c0c0c0] border-[#c0c0c0] bg-[#c0c0c0]/10':'text-[#cd7f32] border-[#cd7f32] bg-[#cd7f32]/10';
@@ -351,6 +357,12 @@ const ui = {
         if(!vp) return;
         vp.innerHTML = '';
         if(!state.user) { this.viewLogin(vp); return; }
+        
+        // BLINDAJE: Validar que la entidad existe (si es alumno y la empresa se borró)
+        if (!state.user.admin && !state.data.companies[state.user.coId]) {
+            auth.logout();
+            return;
+        }
         
         // Route protection
         const allowedRoutes = {

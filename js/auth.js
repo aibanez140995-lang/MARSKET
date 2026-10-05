@@ -77,6 +77,7 @@ const auth = {
         if(!admin) {
             const co = state.data.companies[coId];
             
+            // Red de seguridad para evitar el crash de loginStats
             if (!co.loginStats) co.loginStats = { totalLogins: 0, roles: {} };
             if (!co.loginStats.roles) co.loginStats.roles = {};
 
