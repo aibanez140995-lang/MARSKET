@@ -94,13 +94,36 @@ Object.assign(ui, {
 
     viewDossier(el) {
         if (!el || !state.user) return;
-        const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
+        
+        // FIX: Soporte para vista Docente del Dossier
+        let coId = state.user.coId;
+        if (state.user.admin) {
+            coId = this.dossierSelectedCo || Object.keys(state.data.companies)[0];
+        }
+        
+        const co = state.data.companies[coId];
+        if (!state.user.admin && !co) return auth.logout();
+        if (state.user.admin && !co) {
+            el.innerHTML = `<div class="p-6 text-center text-slate-500">No hay startups registradas.</div>`;
+            return;
+        }
         
         const tab = this.dossierTab || 'eval';
-        
         const wrapper = document.createElement('div');
+        
+        let adminSelector = '';
+        if (state.user.admin) {
+            adminSelector = `
+            <div class="mb-6 bg-slate-900 p-3 border border-mars-border flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <span class="text-mars-cyan font-bold text-[10px] uppercase">Viendo Dossier de:</span>
+                <select onchange="ui.dossierSelectedCo=this.value; ui.render()" class="bg-black border border-mars-cyan text-white text-xs p-2 outline-none w-full sm:w-auto">
+                    ${Object.keys(state.data.companies).map(k => `<option value="${k}" ${coId===k?'selected':''}>${state.data.companies[k].name}</option>`).join('')}
+                </select>
+            </div>`;
+        }
+        
         wrapper.innerHTML = `
+        ${adminSelector}
         <div class="flex gap-2 mb-6 border-b border-mars-border pb-2">
             <button onclick="ui.showDossierTab('eval')" class="px-4 py-2 text-[10px] font-bold uppercase ${tab==='eval'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">Evaluación Continua</button>
             <button onclick="ui.showDossierTab('docs')" class="px-4 py-2 text-[10px] font-bold uppercase ${tab==='docs'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">Archivo Documental</button>
@@ -108,7 +131,7 @@ Object.assign(ui, {
         <div id="dossier-content" class="w-full"></div>
         `;
         el.appendChild(wrapper);
-        this.renderDossierContent(tab);
+        this.renderDossierContent(tab, coId);
     },
 
     showDossierTab(tab) {
@@ -116,12 +139,14 @@ Object.assign(ui, {
         this.render();
     },
 
-    renderDossierContent(tab) {
+    renderDossierContent(tab, coId) {
         const container = document.getElementById('dossier-content');
         if (!container || !state.user) return; 
         
-        const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
+        const targetCoId = coId || state.user.coId;
+        const co = state.data.companies[targetCoId];
+        if (!state.user.admin && !co) return auth.logout();
+        if (!co) return;
         
         if(tab === 'eval') {
             const subjects = ['FYQ', 'ECO', 'LYE', 'LEN', 'MAT', 'ING'];

@@ -8,16 +8,17 @@ Object.assign(ui, {
     },
 
     viewMarket(el) {
-        if (!el || !state.user || state.user.admin) return; 
+        if (!el || !state.user) return; 
         
-        const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
+        // FIX: Permitir a los docentes ver el catálogo sin ser expulsados
+        const co = state.user.admin ? null : state.data.companies[state.user.coId];
+        if (!state.user.admin && !co) return auth.logout();
         
         const wrapper = document.createElement('div');
         let topSection = '';
         let techBanner = '';
         
-        if(state.user.role === 'TECNICO') {
+        if(!state.user.admin && state.user.role === 'TECNICO') {
             const docs = co.deliverables || {};
             co.cart = co.cart || []; // REGLA 1
             
@@ -50,7 +51,6 @@ Object.assign(ui, {
                 </div>`;
             }
 
-            // FASE 2 v1.0.10: Limpieza UI/UX - Eliminado el bloque de subida del Informe Técnico de esta vista.
             topSection = `
             ${techBanner}
             `;
@@ -61,6 +61,7 @@ Object.assign(ui, {
         const visibleCatalog = state.data.catalog.filter(item => {
             let isAllowed = false;
             if (!item.exclusiveFor) isAllowed = true;
+            else if (state.user.admin) isAllowed = true; // FIX: Docentes ven todo
             else if (state.user.coId === item.exclusiveFor) isAllowed = true;
 
             if (!isAllowed) return false;
@@ -78,7 +79,7 @@ Object.assign(ui, {
         ${topSection}
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">SUPERMARS-KET Oficial</h2>
-            ${state.user.role === 'TECNICO' ? `<button onclick="ui.modalCustom()" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-3 py-1.5 text-[9px] sm:text-[10px] uppercase font-bold hover:bg-mars-magenta hover:text-white transition-all whitespace-nowrap">Solicitar I+D</button>` : ``}
+            ${!state.user.admin && state.user.role === 'TECNICO' ? `<button onclick="ui.modalCustom()" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-3 py-1.5 text-[9px] sm:text-[10px] uppercase font-bold hover:bg-mars-magenta hover:text-white transition-all whitespace-nowrap">Solicitar I+D</button>` : ``}
         </div>
         <div class="flex flex-wrap gap-2 mb-6 pb-4 border-b border-mars-border">
             ${filterButtons}
@@ -86,7 +87,9 @@ Object.assign(ui, {
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             ${visibleCatalog.map(item => {
                 let buySection = '';
-                if(state.user.role !== 'AUXILIAR') {
+                if (state.user.admin) {
+                    buySection = `<p class="text-[8px] text-slate-500 uppercase mt-2 border-t border-slate-800 pt-2">Vista de solo lectura (Docente).</p>`;
+                } else if(state.user.role !== 'AUXILIAR') {
                     if (state.user.role === 'TECNICO') {
                         if (item.id === 'P01') {
                             buySection = `<div class="flex gap-1 mt-2"><button onclick="ui.techAddToCart('${item.id}', 10)" class="flex-1 bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-1 text-[9px] font-bold hover:bg-mars-cyan hover:text-black">+10g</button><button onclick="ui.techAddToCart('${item.id}', 25)" class="flex-1 bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-1 text-[9px] font-bold hover:bg-mars-cyan hover:text-black">+25g</button><button onclick="ui.techAddToCart('${item.id}', 50)" class="flex-1 bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-1 text-[9px] font-bold hover:bg-mars-cyan hover:text-black">+50g</button></div>`;
