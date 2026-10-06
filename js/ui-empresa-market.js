@@ -50,15 +50,10 @@ Object.assign(ui, {
                 </div>`;
             }
 
+            // FASE 2 v1.0.10: Limpieza UI/UX - Eliminado el bloque de subida del Informe Técnico de esta vista.
             topSection = `
             ${techBanner}
-            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan mb-6">
-                <h2 class="font-orbitron text-mars-cyan text-lg mb-2 uppercase tracking-tighter">Documentación Científico-Técnica</h2>
-                <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">Suba el Informe Técnico Oficial (Estequiometría, Leyes de Newton y Aerodinámica) en formato PDF o Enlace.</p>
-                ${state.data.config.guidelines.techReportNotes ? `<p class="text-[10px] text-mars-yellow mb-3 italic">Info: ${state.data.config.guidelines.techReportNotes}</p>` : ''}
-                ${state.data.config.guidelines.techReportDocUrl ? `<a href="${state.data.config.guidelines.techReportDocUrl}" target="_blank" class="block text-center border border-mars-cyan text-mars-cyan text-[10px] py-2 mb-4 font-bold uppercase hover:bg-mars-cyan hover:text-black">Descargar Guía Oficial FYQ</a>` : ''}
-                ${this.renderHybridUploadBox('Informe Técnico Oficial (PDF/Enlace)', 'Documento con cálculos estequiométricos y diseño aerodinámico.', 'technicalReport', docs.technicalReport)}
-            </div>`;
+            `;
         }
 
         const currentFilter = this.marketFilter || 'ALL';

@@ -7,9 +7,9 @@ Object.assign(ui, {
         let coOptions = Object.keys(state.data.companies).map(k => `<option value="${k}">${state.data.companies[k].name}</option>`).join('');
         el.innerHTML = `
         <div class="min-h-[75vh] flex items-center justify-center w-full px-4">
-            <div class="max-w-md w-full terminal-border bg-mars-card p-6 sm:p-8 glow-cyan animate-in fade-in zoom-in duration-300">
+            <div id="login-box" class="max-w-md w-full terminal-border bg-mars-card p-6 sm:p-8 glow-cyan animate-in fade-in zoom-in duration-300 transition-all">
                 <img src="/logo.png" alt="MARS-KET 2.0" class="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]" onerror="this.style.display='none'">
-                <h2 class="font-orbitron text-center text-mars-cyan text-lg sm:text-xl mb-6 tracking-widest uppercase font-black">Secure_Access</h2>
+                <h2 id="login-title" class="font-orbitron text-center text-mars-cyan text-lg sm:text-xl mb-6 tracking-widest uppercase font-black">Secure_Access</h2>
                 <select id="login-co" onchange="auth.updateRoleOptions()" class="w-full bg-slate-900 border border-mars-border p-3 text-sm mb-4 outline-none focus:border-mars-cyan text-white">
                     ${coOptions}
                     <option value="admin" class="text-mars-yellow font-bold">CLAUSTRO DOCENTE</option>
@@ -20,7 +20,7 @@ Object.assign(ui, {
                 <div class="flex justify-center gap-4 mb-8">
                     ${[1,2,3,4].map(() => `<div class="pin-dot w-3 h-3 rounded-full border border-mars-cyan transition-all"></div>`).join('')}
                 </div>
-                <div class="grid grid-cols-3 gap-2 max-w-[220px] mx-auto">
+                <div id="login-keypad" class="grid grid-cols-3 gap-2 max-w-[220px] mx-auto transition-all">
                     ${[1,2,3,4,5,6,7,8,9].map(n => `<button onclick="auth.press('${n}')" class="bg-slate-800 p-4 text-sm font-bold hover:bg-mars-cyan hover:text-mars-bg transition-all active:scale-95">${n}</button>`).join('')}
                     <button onclick="auth.clear()" class="bg-slate-800 p-4 text-mars-magenta text-xs font-bold hover:bg-mars-magenta hover:text-white transition-all active:scale-95">CLR</button>
                     <button onclick="auth.press('0')" class="bg-slate-800 p-4 text-sm font-bold hover:bg-mars-cyan hover:text-mars-bg transition-all active:scale-95">0</button>
@@ -29,6 +29,26 @@ Object.assign(ui, {
             </div>
         </div>`;
         setTimeout(() => auth.updateRoleOptions(), 50);
+    },
+
+    // FASE 3 v1.0.10: Animación de inmersión Cyberpunk
+    playLoginAnimation(role) {
+        const container = document.getElementById('login-box');
+        const title = document.getElementById('login-title');
+        const keypad = document.getElementById('login-keypad');
+        
+        if (container) {
+            container.classList.remove('glow-cyan', 'border-mars-border');
+            container.classList.add('shadow-[0_0_20px_#00ff66]', 'border-mars-green');
+        }
+        if (title) {
+            title.innerText = `ACCESS_GRANTED: ${role.replace('_', ' ')}`;
+            title.classList.remove('text-mars-cyan');
+            title.classList.add('text-mars-green', 'glitch-text');
+        }
+        if (keypad) {
+            keypad.classList.add('hidden');
+        }
     },
 
     renderNotifications() {

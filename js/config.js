@@ -1,6 +1,6 @@
 // js/config.js
 
-const APP_VERSION = "1.0.09";
+const APP_VERSION = "1.0.10";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 // FASE 1: Mapeo de Agencias Reguladoras (Sistema Sancionador)
@@ -25,6 +25,7 @@ const RUBRIC_CONFIG = {
 };
 
 const INITIAL_DATA = {
+    version: 1, // FASE 1 v1.0.10: Control de Concurrencia Optimista
     config: { 
         nextOrderId: 1000,
         deadlines: { 

@@ -8,6 +8,7 @@ const state = {
 
     migrate(d) {
         // REGLA 1: BLINDAJE DE ESTADO (Fallbacks)
+        d.version = d.version || 1; // FASE 1 v1.0.10: Versionado Optimista
         d.config = d.config || JSON.parse(JSON.stringify(INITIAL_DATA.config));
         d.catalog = d.catalog && d.catalog.length > 0 ? d.catalog : JSON.parse(JSON.stringify(INITIAL_DATA.catalog));
         d.companies = d.companies || JSON.parse(JSON.stringify(INITIAL_DATA.companies));
@@ -86,11 +87,52 @@ const state = {
         return d;
     },
 
+    // FASE 1 v1.0.10: Función Quirúrgica Anti-Colisiones
+    mergeData(serverData, localData) {
+        if (!serverData || !localData) return serverData || localData;
+        const merged = JSON.parse(JSON.stringify(serverData)); // Copia profunda de seguridad de la versión del servidor
+        
+        // Fusión segura de Arrays por ID para preservar aportaciones locales no sincronizadas
+        const mergeArrays = (arrServer, arrLocal) => {
+            const serverIds = new Set(arrServer.map(i => String(i.id)));
+            const missingInServer = arrLocal.filter(i => i.id && !serverIds.has(String(i.id)));
+            return [...missingInServer, ...arrServer];
+        };
+
+        if (localData.telemetry && localData.telemetry.sessions) {
+            merged.telemetry = merged.telemetry || { sessions: [] };
+            merged.telemetry.sessions = mergeArrays(merged.telemetry.sessions, localData.telemetry.sessions);
+            merged.telemetry.totalLogins = Math.max(merged.telemetry.totalLogins || 0, localData.telemetry.totalLogins || 0);
+        }
+        
+        if (localData.suggestionsToAlex) {
+            merged.suggestionsToAlex = mergeArrays(merged.suggestionsToAlex || [], localData.suggestionsToAlex);
+        }
+
+        for (let k in localData.companies) {
+            if (merged.companies[k] && localData.companies[k]) {
+                const sCo = merged.companies[k];
+                const lCo = localData.companies[k];
+                
+                const arraysToMerge = [
+                    'orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 
+                    'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 
+                    'sanctions', 'crisisAlerts', 'cart'
+                ];
+                
+                arraysToMerge.forEach(arrName => {
+                    sCo[arrName] = mergeArrays(sCo[arrName] || [], lCo[arrName] || []);
+                });
+            }
+        }
+        return merged;
+    },
+
     async init() {
         const saved = localStorage.getItem(this.storageKey);
         const raw = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(INITIAL_DATA));
         this.data = this.migrate(raw);
-        localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+        this.saveLocalOnly();
 
         const savedSession = localStorage.getItem(this.sessionKey);
         if (savedSession) {
@@ -128,8 +170,10 @@ const state = {
             if(res.ok) {
                 const json = await res.json();
                 if(json && json.status !== 'empty') {
-                    this.data = this.migrate(json);
-                    localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+                    // Fusión pasiva en bajada: Mezclar posibles datos locales offline con el servidor entrante
+                    this.data = this.mergeData(this.migrate(json), this.data);
+                    this.data.version = json.version || this.data.version;
+                    this.saveLocalOnly();
                     this.isCloudOnline = true;
                     ui.render();
                 } else if(json && json.status === 'empty') {
@@ -141,8 +185,12 @@ const state = {
         finally { this.isSyncing = false; if(this.user) ui.updateHUD(); }
     },
 
+    saveLocalOnly() {
+        localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+    },
+
     save() { 
-        localStorage.setItem(this.storageKey, JSON.stringify(this.data)); 
+        this.saveLocalOnly(); 
         if(this.user) ui.updateHUD(); 
         this.pushToCloud(true);
     },
@@ -155,11 +203,55 @@ const state = {
         }
         this.isSyncing = true;
         if(this.user) ui.updateHUD();
+        
         try {
-            const res = await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.data) });
-            this.isCloudOnline = res.ok;
-        } catch(err) { this.isCloudOnline = false; } 
-        finally { this.isSyncing = false; if(this.user) ui.updateHUD(); }
+            const payload = JSON.parse(JSON.stringify(this.data));
+            const res = await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            
+            // FASE 1 v1.0.10: Detección y Resolución de Colisiones de Concurrencia (Data Safety)
+            if (res.status === 409 || res.status === 412) {
+                console.warn("DATA SAFETY: Colisión detectada en Cloudflare D1. Fusionando estado de concurrencia optimista...");
+                const fetchRes = await fetch('/api/state');
+                
+                if (fetchRes.ok) {
+                    const serverData = await fetchRes.json();
+                    if (serverData && serverData.status !== 'empty') {
+                        // Mezcla Quirúrgica de arrays salvaguardando el trabajo local
+                        this.data = this.mergeData(serverData, this.data);
+                        this.data.version = serverData.version || (this.data.version + 1);
+                        this.saveLocalOnly();
+                        
+                        // Reintento silencioso de subida post-fusión
+                        await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.data) });
+                        
+                        // Notificamos al usuario de la intervención pasiva
+                        if (typeof ui.showModal === 'function' && document.getElementById('modal-overlay')) {
+                            ui.showModal(
+                                "🛡️ Data Safety Intercept", 
+                                "<p class='text-mars-green text-[10px] leading-relaxed'>El sistema ha detectado una subida simultánea de otro miembro de tu equipo. Para evitar pérdida de datos, <strong>se ha pausado el guardado, se ha fusionado tu actividad con la suya, y se ha subido con éxito el paquete unificado.</strong></p>", 
+                                ""
+                            );
+                        }
+                        ui.render();
+                    }
+                }
+                this.isCloudOnline = true;
+            } else if (res.ok) {
+                const json = await res.json().catch(() => null);
+                if (json && json.version) {
+                    this.data.version = json.version; // Actualizamos la versión local con la autorizada por el servidor
+                    this.saveLocalOnly();
+                }
+                this.isCloudOnline = true;
+            } else {
+                this.isCloudOnline = false;
+            }
+        } catch(err) { 
+            this.isCloudOnline = false; 
+        } finally { 
+            this.isSyncing = false; 
+            if(this.user) ui.updateHUD(); 
+        }
     },
 
     addToLedger(coId, concept, dept, delta) {

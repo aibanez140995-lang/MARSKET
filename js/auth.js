@@ -96,6 +96,18 @@ const auth = {
         
         telemetry.startSession(entityName, roleKey);
         
+        // FASE 3 v1.0.10: Disparar animación de inmersión antes de cargar el HUD
+        if (typeof ui.playLoginAnimation === 'function') {
+            ui.playLoginAnimation(roleKey);
+            setTimeout(() => {
+                this.completeLoginNavigation(admin, roleKey);
+            }, 1200);
+        } else {
+            this.completeLoginNavigation(admin, roleKey);
+        }
+    },
+
+    completeLoginNavigation(admin, roleKey) {
         document.getElementById('hud-header')?.classList.remove('hidden');
         document.getElementById('hud-nav')?.classList.remove('hidden');
         this.buildNav(admin);
@@ -113,9 +125,30 @@ const auth = {
     },
     
     logout() { 
+        // FASE 3 v1.0.10: Respuesta instantánea de interfaz (Performance)
+        const vp = document.getElementById('viewport');
+        const header = document.getElementById('hud-header');
+        const nav = document.getElementById('hud-nav');
+        const overlay = document.getElementById('modal-overlay');
+        
+        if (header) header.classList.add('hidden');
+        if (nav) nav.classList.add('hidden');
+        if (overlay) overlay.classList.add('hidden');
+        
+        if (vp) {
+            vp.innerHTML = `
+            <div class="min-h-[75vh] flex items-center justify-center w-full">
+                <div class="text-mars-magenta font-orbitron text-xl sm:text-2xl animate-pulse glitch-text tracking-widest font-black">SYSTEM_DISCONNECT...</div>
+            </div>`;
+        }
+        
+        // Purga en segundo plano
         localStorage.removeItem(state.sessionKey);
         sessionStorage.removeItem('hideWelcome');
-        location.reload(); 
+        
+        setTimeout(() => {
+            location.reload(); 
+        }, 600);
     },
     
     buildNav(isAdmin) {
@@ -142,11 +175,11 @@ const auth = {
             html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Órdenes CEO ${badgeHtml('badge-orders')}</button>`;
             html += `<button onclick="ui.navigate('finance')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Finanzas</button>`;
         } else if (role === 'TECNICO') {
+            // FASE 2 v1.0.10: Limpieza UI/UX - Eliminado botón redundante de Req. Material I+D
             html += `<button onclick="ui.navigate('tech')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">I+D y Pruebas</button>`;
             html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
             html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Órdenes I+D ${badgeHtml('badge-orders')}</button>`;
             html += `<button onclick="ui.navigate('cart')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Logística ${badgeHtml('badge-cart')}</button>`;
-            html += `<button onclick="ui.modalCustom()" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase text-mars-magenta hover:bg-mars-magenta/10 whitespace-nowrap">Req. Material I+D</button>`;
         } else if (role === 'FINANZAS') {
             html += `<button onclick="ui.navigate('finance')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Finanzas / Ledger</button>`;
             html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Órdenes de Compra ${badgeHtml('badge-orders')}</button>`;

@@ -50,7 +50,8 @@ Object.assign(ui, {
             const shop = document.getElementById(`cart-shop-${oid}-${i}`);
             
             if(!cb || !cb.checked) allValid = false;
-            if(!eur || eur.value === '' || parseFloat(eur.value) < 0) allValid = false;
+            // QA FIX: Añadida validación isNaN para evitar falsos positivos en el botón
+            if(!eur || eur.value === '' || isNaN(parseFloat(eur.value)) || parseFloat(eur.value) < 0) allValid = false;
             if(!shop || shop.value.trim() === '') allValid = false;
         }
         
@@ -170,6 +171,7 @@ Object.assign(ui, {
         
         co.orders = co.orders || [];
         co.realCosts = co.realCosts || [];
+        co.ledger = co.ledger || []; // REGLA 1
         
         const order = co.orders.find(o => String(o.id) === String(oid));
         if(!order) return alert("Orden no encontrada.");
@@ -201,21 +203,35 @@ Object.assign(ui, {
         if(!allChecked) return alert("Debe validar el ensamblaje y rellenar los costes reales de todos los componentes.");
         if(co.balance < order.total) return alert("Fondos virtuales insuficientes para ejecutar la compra.");
         
-        const conceptStr = `Adquisición Orden #${oid}: ${itemNames.join(', ')}`;
-        state.addToLedger(state.user.coId, conceptStr, 'OPERACIONES', -order.total);
+        // QA FIX: Bloque de Mutación Atómica. 
+        // Actualizamos todo en memoria ANTES de llamar a state.save() para evitar estados parciales corruptos.
         
+        // 1. Deducción de Balance y Ledger
+        const conceptStr = `Adquisición Orden #${oid}: ${itemNames.join(', ')}`;
+        co.balance -= order.total;
+        co.ledger.unshift({ 
+            id: 'TX-' + Math.random().toString(36).substr(2, 5).toUpperCase(), 
+            date: new Date().toLocaleString(), 
+            concept: conceptStr, 
+            dept: 'OPERACIONES', 
+            delta: -order.total, 
+            final: co.balance 
+        });
+        
+        // 2. Registro de Costes Reales
         order.items.forEach(i => { co.realCosts.unshift({ shop: i.realShop, item: i.name, eur: i.realEur }); });
         
+        // 3. Cambio de Estado de la Orden
         order.status = 'EJECUTADO';
         order.realEurTotal = realEurTotal;
         
+        // 4. Telemetría y Notificaciones
         telemetry.log("EJECUCIÓN COMPRA", `Orden #${oid} | Importe: ${order.total.toFixed(2)}€v | Real: ${realEurTotal.toFixed(2)}€`);
-        
         ui.pushNotification(state.user.coId, 'TECNICO', `Orden #${oid} ejecutada físicamente y asentada en Ledger.`, 'success');
         ui.pushNotification(state.user.coId, 'FINANZAS', `Orden #${oid} ejecutada. Gasto real: ${realEurTotal.toFixed(2)}€.`, 'info');
         
+        // 5. Guardado Único y Seguro (QA FIX: Eliminado el doble pushToCloud)
         state.save(); 
-        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         
         alert("Compra física confirmada y asentada en el Ledger.");
         this.render();
