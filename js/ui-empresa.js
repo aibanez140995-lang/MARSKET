@@ -37,6 +37,44 @@ Object.assign(ui, {
         this.render();
     },
 
+    // --- FASE 5: RENDERIZADO DE NOTIFICACIONES ---
+    renderNotifications() {
+        const co = state.data.companies[state.user.coId];
+        if (!co) return ''; // REGLA 1
+        co.notifications = co.notifications || [];
+        
+        const myNotifs = co.notifications.filter(n => n.role === state.user.role && !n.read);
+        if (myNotifs.length === 0) return '';
+        
+        return `<div class="mb-6 space-y-2 animate-in fade-in slide-in-from-top-4">
+            ${myNotifs.map(n => {
+                let colors = 'border-mars-cyan bg-mars-cyan/10 text-mars-cyan';
+                if (n.type === 'error') colors = 'border-mars-magenta bg-mars-magenta/10 text-mars-magenta';
+                if (n.type === 'success') colors = 'border-mars-green bg-mars-green/10 text-mars-green';
+                if (n.type === 'warning') colors = 'border-mars-yellow bg-mars-yellow/10 text-mars-yellow';
+                
+                return `
+                <div class="flex justify-between items-center p-3 border ${colors} shadow-sm">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-bold uppercase leading-tight">${n.message}</span>
+                        <span class="text-[8px] opacity-70 mt-1">${n.date}</span>
+                    </div>
+                    <button onclick="ui.dismissNotification('${n.id}')" class="px-3 py-1 font-black hover:text-white transition-colors text-xs">X</button>
+                </div>`;
+            }).join('')}
+        </div>`;
+    },
+
+    dismissNotification(id) {
+        const co = state.data.companies[state.user.coId];
+        if (!co) return; // REGLA 1
+        co.notifications = co.notifications || [];
+        const notif = co.notifications.find(n => n.id === id);
+        if (notif) notif.read = true;
+        state.save();
+        this.render();
+    },
+
     viewMarket(el) {
         if (!el || !state.user || state.user.admin) return; // REGLA 3 y 4
         
@@ -66,7 +104,8 @@ Object.assign(ui, {
 
                 techBanner = `
                 <div class="bg-mars-yellow/10 border border-mars-yellow p-4 mb-6">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                    ${ui.renderWorkflowTracker(['I+D (Solicita)', 'Finanzas (Audita)', 'Logística (Ejecuta)'], 0)}
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 mt-6">
                         <div>
                             <p class="text-mars-yellow font-bold uppercase text-xs sm:text-sm tracking-widest">Borrador de I+D: ${co.cart.length} componente(s)</p>
                             <p class="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Total acumulado: <span class="text-mars-green font-bold">${totalEurV} €v</span></p>
@@ -225,6 +264,9 @@ Object.assign(ui, {
         
         co.orders.unshift(newOrder);
         telemetry.log("REQUISICIÓN", `Enviada a Finanzas: ${total.toFixed(2)}€v`);
+        
+        // FASE 5: Notificación Push a Finanzas
+        ui.pushNotification(state.user.coId, 'FINANZAS', `Nueva orden de I+D #${newOrder.id} pendiente de aprobación presupuestaria.`, 'warning');
         
         co.cart = []; 
         state.save(); 
@@ -492,9 +534,14 @@ Object.assign(ui, {
         
         <div class="space-y-6">
             ${sortedOrders.map(order => {
+                // FASE 5: Workflow Tracker en Órdenes
+                const trackerIndex = order.status === 'PENDIENTE_FINANZAS' ? 0 : order.status === 'APROBADO_FINANZAS' ? 1 : order.status === 'EJECUTADO' ? 2 : 0;
+                
                 return `
                 <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 ${order.status === 'EJECUTADO' ? 'border-l-mars-cyan' : order.status === 'APROBADO_FINANZAS' ? 'border-l-mars-green' : order.status === 'DENEGADO' ? 'border-l-mars-magenta' : 'border-l-mars-yellow'} animate-in slide-in-from-bottom-4 duration-300">
-                    <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+                    ${order.status !== 'DENEGADO' ? ui.renderWorkflowTracker(['I+D (Solicita)', 'Finanzas (Audita)', 'Logística (Ejecuta)'], trackerIndex) : ''}
+                    
+                    <div class="flex justify-between items-start mb-4 flex-wrap gap-2 mt-4">
                         <div><span class="text-[9px] font-bold uppercase ${order.status === 'EJECUTADO' ? 'text-mars-cyan bg-mars-cyan/10' : order.status === 'APROBADO_FINANZAS' ? 'text-mars-green bg-mars-green/10' : order.status === 'DENEGADO' ? 'text-mars-magenta bg-mars-magenta/10' : 'text-mars-yellow bg-mars-yellow/10'} px-2 py-1 tracking-widest">[STATUS: ${order.status}]</span><h3 class="text-white font-orbitron mt-3 uppercase text-xs sm:text-sm">ORDER_TX: ${order.id}</h3></div>
                         <div class="text-left sm:text-right w-full sm:w-auto"><p class="text-mars-green font-black font-mono text-xl tracking-tighter">${order.total.toFixed(2)} €v</p><p class="text-[9px] text-slate-500 uppercase font-bold mt-1">${order.date}</p></div>
                     </div>
@@ -521,7 +568,6 @@ Object.assign(ui, {
         el.appendChild(wrapper);
     },
 
-    // --- FASE 3: ESPECIALIZACIÓN ROL AUXILIAR ---
     modalCreateAuxRole() {
         const co = state.data.companies[state.user.coId];
         if (!co) return; // REGLA 4
@@ -635,6 +681,10 @@ Object.assign(ui, {
 
         telemetry.log("APROBADO FINANZAS", `Orden #${oid} validada parcialmente. Nuevo total: ${newTotal.toFixed(2)}€v`);
         
+        // FASE 5: Notificaciones Cruzadas
+        ui.pushNotification(state.user.coId, 'OPERACIONES_IA', `Orden #${oid} aprobada por Finanzas. Pendiente de ejecución logística.`, 'info');
+        ui.pushNotification(state.user.coId, 'TECNICO', `Orden #${oid} aprobada por Finanzas.`, 'success');
+        
         state.save(); 
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         
@@ -669,6 +719,9 @@ Object.assign(ui, {
         o.denyReason = `[${state.user.role}] ${reason}`;
         
         telemetry.log("DENEGADO", `Orden #${oid} - Motivo: ${reason}`);
+        
+        // FASE 5: Notificación Push a Técnico
+        ui.pushNotification(state.user.coId, 'TECNICO', `Orden #${oid} denegada por Finanzas.`, 'error');
         
         state.save(); 
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
@@ -906,7 +959,8 @@ Object.assign(ui, {
 
                 html += `
                 <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border/50 pb-2 gap-3">
+                    ${ui.renderWorkflowTracker(['I+D (Solicita)', 'Finanzas (Audita)', 'Logística (Ejecuta)'], 1)}
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border/50 pb-2 gap-3 mt-4">
                         <h3 class="font-orbitron text-mars-cyan text-sm uppercase">ORDEN #${order.id}</h3>
                         <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
                             <span class="text-mars-green font-mono font-bold">${order.total.toFixed(2)} €v</span>
@@ -981,6 +1035,11 @@ Object.assign(ui, {
         order.realEurTotal = realEurTotal;
         
         telemetry.log("EJECUCIÓN COMPRA", `Orden #${oid} | Importe: ${order.total.toFixed(2)}€v | Real: ${realEurTotal.toFixed(2)}€`);
+        
+        // FASE 5: Notificaciones Cruzadas
+        ui.pushNotification(state.user.coId, 'TECNICO', `Orden #${oid} ejecutada físicamente y asentada en Ledger.`, 'success');
+        ui.pushNotification(state.user.coId, 'FINANZAS', `Orden #${oid} ejecutada. Gasto real: ${realEurTotal.toFixed(2)}€.`, 'info');
+        
         state.save(); 
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         
@@ -1009,7 +1068,8 @@ Object.assign(ui, {
                 <div class="space-y-4 overflow-y-auto max-h-[500px] pr-2 w-full">
                     ${pending.map(p => `
                     <div class="bg-slate-900/50 border border-mars-border p-4 text-[10px] w-full">
-                        <div class="flex justify-between mb-2 border-b border-mars-border/30 pb-2">
+                        ${ui.renderWorkflowTracker(['Emisor (Reporta)', 'Op. IA (Audita)'], 0)}
+                        <div class="flex justify-between mb-2 border-b border-mars-border/30 pb-2 mt-3">
                             <span class="text-mars-yellow font-bold uppercase tracking-widest">${p.tool}</span>
                             <span class="text-slate-500">${p.date}</span>
                         </div>
@@ -1029,7 +1089,8 @@ Object.assign(ui, {
                 <div class="space-y-4 overflow-y-auto max-h-[500px] pr-2 w-full">
                     ${approved.map(p => `
                     <div class="bg-slate-900/50 border border-blue-900/30 p-4 text-[10px] border-l-2 border-l-blue-500 w-full">
-                        <div class="flex justify-between mb-2 border-b border-slate-800 pb-2">
+                        ${ui.renderWorkflowTracker(['Emisor (Reporta)', 'Op. IA (Audita)'], 1)}
+                        <div class="flex justify-between mb-2 border-b border-slate-800 pb-2 mt-3">
                             <span class="text-blue-400 font-bold uppercase tracking-widest">${p.tool}</span>
                             <span class="text-slate-500">${p.date}</span>
                         </div>
@@ -1076,6 +1137,10 @@ Object.assign(ui, {
             id: 'AI-'+Date.now(), tool, task, prompt, verification,
             authorRole: state.user.role, date: new Date().toLocaleString(), status: 'PENDIENTE_VALIDACION'
         });
+        
+        // FASE 5: Notificación Push
+        ui.pushNotification(state.user.coId, 'OPERACIONES_IA', `Nuevo prompt IA pendiente de auditoría.`, 'warning');
+        
         state.save();
         this.closeModal();
         this.render();
@@ -1090,12 +1155,15 @@ Object.assign(ui, {
         const p = co.aiPrompts.find(x => x.id === id);
         if(p) {
             p.status = status;
+            
+            // FASE 5: Notificación Push
+            ui.pushNotification(state.user.coId, p.authorRole, `Tu prompt IA ha sido ${status}.`, status === 'APROBADO' ? 'success' : 'error');
+            
             state.save();
             this.render();
         }
     },
 
-    // --- FASE 3: GOBERNANZA E INACTIVIDAD DESCENTRALIZADA ---
     viewResolutions(el) {
         if (!el || !state.user) return;
         const co = state.data.companies[state.user.coId];
@@ -1105,7 +1173,6 @@ Object.assign(ui, {
         
         const wrapper = document.createElement('div');
         
-        // FASE 3: Todos los roles pueden proponer mociones y reportar inactividad
         let headerActions = `
         <div class="flex gap-2">
             <button onclick="ui.modalReportInactivity()" class="bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-1.5 text-[9px] uppercase font-bold hover:bg-mars-magenta hover:text-white transition-all">Reportar Inactividad</button>
@@ -1127,14 +1194,12 @@ Object.assign(ui, {
                 
                 let actions = '';
                 if(m.status === 'ABIERTA') {
-                    // FASE 3: Todos los roles pueden votar
                     if(!myVote) {
                         actions = `<div class="flex gap-2 mt-3"><button onclick="ui.voteMotion('${m.id}', 'A FAVOR')" class="bg-mars-green text-black px-3 py-1 text-[9px] font-bold uppercase hover:bg-white transition-colors">A Favor</button><button onclick="ui.voteMotion('${m.id}', 'EN CONTRA')" class="bg-mars-magenta text-white px-3 py-1 text-[9px] font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">En Contra</button></div>`;
                     } else {
                         actions = `<p class="text-[9px] text-mars-cyan mt-3 uppercase font-bold">Tu voto: ${myVote}</p>`;
                     }
 
-                    // Calcular el total de roles activos en la empresa para saber si todos han votado
                     const totalRoles = Object.keys(co.roles || {}).length;
 
                     if(state.user.role === 'CEO' && total >= totalRoles) {
@@ -1148,7 +1213,8 @@ Object.assign(ui, {
 
                 return `
                 <div class="terminal-border bg-mars-card p-4 border-l-4 ${m.status === 'ABIERTA' ? 'border-l-mars-yellow' : (m.result === 'APROBADA' ? 'border-l-mars-green' : 'border-l-mars-magenta')} w-full">
-                    <div class="flex justify-between mb-2"><h3 class="text-white font-bold uppercase text-xs">${m.title}</h3><span class="text-[8px] text-slate-500">${m.date}</span></div>
+                    ${ui.renderWorkflowTracker(['Propuesta', 'Votación', 'Cierre (Acta)'], m.status === 'ABIERTA' ? (total > 0 ? 1 : 0) : 2)}
+                    <div class="flex justify-between mb-2 mt-3"><h3 class="text-white font-bold uppercase text-xs">${m.title}</h3><span class="text-[8px] text-slate-500">${m.date}</span></div>
                     <p class="text-[10px] text-slate-400 mb-2">${m.desc}</p>
                     <div class="flex gap-4 text-[9px] text-slate-500 uppercase font-bold"><span>A Favor: <span class="text-mars-green">${y}</span></span><span>En Contra: <span class="text-mars-magenta">${n}</span></span></div>
                     ${actions}
@@ -1228,6 +1294,10 @@ Object.assign(ui, {
         co.votingMotions = co.votingMotions || [];
         
         co.votingMotions.unshift({ id: 'MOT-'+Date.now(), title, desc, authorRole: state.user.role, date: new Date().toLocaleString(), status: 'ABIERTA', votes: {} });
+        
+        // FASE 5: Notificación Push
+        ui.pushNotification(state.user.coId, 'CEO', `Nueva moción propuesta por ${state.user.role}.`, 'info');
+        
         state.save(); this.closeModal(); this.render();
     },
 
@@ -1255,11 +1325,16 @@ Object.assign(ui, {
             const votes = Object.values(m.votes || {});
             const y = votes.filter(v => v === 'A FAVOR').length;
             const n = votes.filter(v => v === 'EN CONTRA').length;
-            if(y > n) { m.result = 'APROBADA'; m.status = 'CERRADA'; state.save(); this.render(); }
-            else if(n > y) { m.result = 'RECHAZADA'; m.status = 'CERRADA'; state.save(); this.render(); }
+            if(y > n) { m.result = 'APROBADA'; m.status = 'CERRADA'; }
+            else if(n > y) { m.result = 'RECHAZADA'; m.status = 'CERRADA'; }
             else {
-                this.promptTieBreaker(id);
+                return this.promptTieBreaker(id);
             }
+            
+            // FASE 5: Notificación Push
+            ui.pushNotification(state.user.coId, m.authorRole, `Tu moción ha sido ${m.result}.`, m.result === 'APROBADA' ? 'success' : 'error');
+            
+            state.save(); this.render();
         }
     },
 
@@ -1285,6 +1360,10 @@ Object.assign(ui, {
         if(m) {
             m.result = result;
             m.status = 'CERRADA';
+            
+            // FASE 5: Notificación Push
+            ui.pushNotification(state.user.coId, m.authorRole, `Tu moción ha sido ${m.result} (Voto de Calidad).`, m.result === 'APROBADA' ? 'success' : 'error');
+            
             state.save();
             this.closeModal();
             this.render();

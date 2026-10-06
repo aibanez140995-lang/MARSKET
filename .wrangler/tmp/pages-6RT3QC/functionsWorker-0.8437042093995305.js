@@ -41,7 +41,7 @@ async function onRequestPost(context) {
 }
 __name(onRequestPost, "onRequestPost");
 
-// ../.wrangler/tmp/pages-DUWWNi/functionsRoutes-0.5815866857879213.mjs
+// ../.wrangler/tmp/pages-6RT3QC/functionsRoutes-0.014860723384453323.mjs
 var routes = [
   {
     routePath: "/api/state",
