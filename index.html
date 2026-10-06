@@ -71,7 +71,7 @@
                     <img src="/logo.png" alt="M2" class="w-8 h-8 object-contain drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]" onerror="this.style.display='none'">
                     <div class="flex flex-col">
                         <h1 class="font-orbitron font-black text-mars-cyan text-lg tracking-widest group-hover:text-white transition-colors leading-none">MARS-KET 2.0</h1>
-                        <span id="hud-version" class="text-[7px] text-mars-cyan uppercase tracking-widest mt-1">v1.0.05</span>
+                        <span id="hud-version" class="text-[7px] text-mars-cyan uppercase tracking-widest mt-1">v1.0.08</span>
                     </div>
                 </div>
 
@@ -149,8 +149,13 @@
     <!-- 4. Motor de Interfaz (Core) -->
     <script src="js/ui-core.js"></script>
 
-    <!-- 5. Vistas y Acciones de Empresa/Alumnos -->
-    <script src="js/ui-empresa.js"></script>
+    <!-- 5. Vistas y Acciones de Empresa/Alumnos (MODULARIZADO) -->
+    <script src="js/ui-empresa-core.js"></script>
+    <script src="js/ui-empresa-market.js"></script>
+    <script src="js/ui-empresa-tech.js"></script>
+    <script src="js/ui-empresa-finance.js"></script>
+    <script src="js/ui-empresa-ops.js"></script>
+    <script src="js/ui-empresa-gov-brand.js"></script>
 
     <!-- 6. Vistas y Acciones de Docentes -->
     <script src="js/ui-docente.js"></script>

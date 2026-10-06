@@ -1,7 +1,0 @@
-"Asignaturas","Contenidos","Porcentaje de la nota del proyecto","Porcentaje o valor de la asignatura","Porcentaje de representación en el proyecto"
-"Física y Química","Informe técnico (cada rol realiza una parte específica) y Presentación oral y coherencia","40% Informe técnico, 40% Prototipo / cohete, 20% Rol y presentación","+1 punto en el examen de evaluación","Decidido por la coordinación del proyecto"
-"Inglés","Exposición oral y Redacción de roles en inglés","70% Nota de expresión oral, 30% Redacciones","Expresión oral: prueba oral más. Redacciones: pruebas escritas a sumar a las del curso","Decidido por la coordinación del proyecto"
-"Liderazgo y Emprendimiento","Por definir","Por definir","Por definir","Decidido por la coordinación del proyecto"
-"Lengua","Por definir","Por definir","Por definir","Decidido por la coordinación del proyecto"
-"Matemáticas","Por definir","Por definir","Por definir","Decidido por la coordinación del proyecto"
-"Economía","Por definir","Por definir","Por definir","Decidido por la coordinación del proyecto"
