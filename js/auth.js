@@ -123,10 +123,12 @@ const auth = {
         if (!nav) return; // REGLA 3
         
         if (isAdmin) {
+            // FASE 1: Hotfix de Enrutamiento Docente (Botón Dossier restaurado)
             nav.innerHTML = `
-                <button onclick="ui.navigate('admin')" class="nav-tab tab-active px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase border-r border-mars-border text-mars-yellow whitespace-nowrap">Terminal Docente</button>
+                <button onclick="ui.adminTab='dash'; ui.navigate('admin')" class="nav-tab tab-active px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase border-r border-mars-border text-mars-yellow whitespace-nowrap">Terminal Docente</button>
                 <button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>
-                <button onclick="ui.navigate('dossier')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Dossier y Rúbricas</button>
+                <button onclick="ui.adminTab='eval'; ui.navigate('admin')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Rúbricas & Entregas</button>
+                <button onclick="ui.navigate('dossier')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Dossier Académico</button>
             `;
             return;
         }
@@ -134,25 +136,27 @@ const auth = {
         const role = state.user.role;
         let html = '';
         
+        const badgeHtml = (id) => `<span id="${id}" class="hidden ml-2 bg-mars-magenta text-white px-1.5 py-0.5 rounded-full text-[8px] animate-pulse shadow-[0_0_8px_#ff0055]">0</span>`;
+        
         if (role === 'CEO') {
-            html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Órdenes CEO (Bóveda)</button>`;
+            html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Órdenes CEO ${badgeHtml('badge-orders')}</button>`;
             html += `<button onclick="ui.navigate('finance')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Finanzas</button>`;
         } else if (role === 'TECNICO') {
             html += `<button onclick="ui.navigate('tech')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">I+D y Pruebas</button>`;
             html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
-            html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Órdenes I+D</button>`;
-            html += `<button onclick="ui.navigate('cart')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center gap-2 whitespace-nowrap">Logística <span id="cart-count" class="bg-mars-magenta text-white px-1.5 rounded-full text-[8px]">0</span></button>`;
+            html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Órdenes I+D ${badgeHtml('badge-orders')}</button>`;
+            html += `<button onclick="ui.navigate('cart')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Logística ${badgeHtml('badge-cart')}</button>`;
             html += `<button onclick="ui.modalCustom()" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase text-mars-magenta hover:bg-mars-magenta/10 whitespace-nowrap">Req. Material I+D</button>`;
         } else if (role === 'FINANZAS') {
             html += `<button onclick="ui.navigate('finance')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Finanzas / Ledger</button>`;
-            html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Órdenes de Compra</button>`;
+            html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Órdenes de Compra ${badgeHtml('badge-orders')}</button>`;
         } else if (role === 'MARKETING') {
             html += `<button onclick="ui.navigate('brand')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Centro de Marca</button>`;
             html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
         } else if (role === 'OPERACIONES_IA') {
-            html += `<button onclick="ui.navigate('cart')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center gap-2 whitespace-nowrap">Logística <span id="cart-count" class="bg-mars-magenta text-white px-1.5 rounded-full text-[8px]">0</span></button>`;
+            html += `<button onclick="ui.navigate('cart')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Logística ${badgeHtml('badge-cart')}</button>`;
             html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
-            html += `<button onclick="ui.navigate('ailog')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Buzón Bitácora IA</button>`;
+            html += `<button onclick="ui.navigate('ailog')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Buzón Bitácora IA ${badgeHtml('badge-ailog')}</button>`;
         } else if (role === 'AUXILIAR') {
             html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
         }
@@ -161,9 +165,7 @@ const auth = {
             html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
         }
         
-        // FASE 1: Gobernanza descentralizada para TODOS los roles
-        html += `<button onclick="ui.navigate('resolutions')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Gobernanza / Actas</button>`;
-        
+        html += `<button onclick="ui.navigate('resolutions')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Gobernanza / Actas ${badgeHtml('badge-resolutions')}</button>`;
         html += `<button onclick="ui.navigate('dossier')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Dossier / Notas</button>`;
         nav.innerHTML = html;
     }

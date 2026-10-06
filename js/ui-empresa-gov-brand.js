@@ -160,9 +160,15 @@ Object.assign(ui, {
         });
         
         telemetry.log("REPORTE HR", `Reportado departamento: ${dept}`);
+        
+        // FASE 3 (Req 4): Alerta Multicapa. Notificamos también al CEO de la startup.
+        if (state.user.role !== 'CEO') {
+            ui.pushNotification(state.user.coId, 'CEO', `⚠️ ALERTA HR: ${state.user.role} ha reportado inactividad en el departamento ${dept}.`, 'error');
+        }
+        
         state.save();
         this.closeModal();
-        alert("Reporte enviado exitosamente al Claustro Docente.");
+        alert("Reporte enviado exitosamente al Claustro Docente y a Dirección General.");
     },
 
     modalMotion() {

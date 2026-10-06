@@ -26,7 +26,6 @@ const state = {
             d.config.teachers.COORD_ALEX = { name: "Coordinación - Alex", pin: "0002", canSponsor: true };
         }
 
-        // FASE 1: Diversificación Comercial (Asegurar País de Origen)
         const countries = ['China', 'Alemania', 'España', 'Turquía', 'Marruecos', 'ESA / Francia', 'Polonia', 'Italia', 'Portugal', 'India', 'República Checa', 'Japón', 'EEUU', 'Reino Unido', 'Corea del Sur', 'Brasil'];
         d.catalog.forEach(item => {
             if (!item.origin) item.origin = countries[Math.floor(Math.random() * countries.length)];
@@ -35,7 +34,6 @@ const state = {
         for(let k in d.companies) {
             let co = d.companies[k];
             
-            // REGLA 1: BLINDAJE DE ESTADO
             co.roles = co.roles || { CEO:'1234', TECNICO:'1234', FINANZAS:'1234', MARKETING:'1234', OPERACIONES_IA:'1234' };
             co.loginStats = co.loginStats || { totalLogins: 0, roles: {} };
             co.loginStats.roles = co.loginStats.roles || {};
@@ -56,11 +54,13 @@ const state = {
             co.sponsorAwarded = co.sponsorAwarded || null;
             co.marketingCampaigns = co.marketingCampaigns || [];
             co.inactivityReports = co.inactivityReports || [];
-            
-            // FASE 1: Preparación para v1.0.08
             co.sponsorData = co.sponsorData || { name: null, logo: null };
             co.auxRoleDept = co.auxRoleDept || null;
             co.notifications = co.notifications || [];
+            
+            // FASE 1 (v1.0.09): Migración de nuevos arrays para Sanciones y Crisis
+            co.sanctions = co.sanctions || [];
+            co.crisisAlerts = co.crisisAlerts || [];
             
             if(co.roles.QUIMICA || co.roles.AERODINAMICA || co.roles.IA) {
                 const defaultPin = co.roles.CEO || '1234';

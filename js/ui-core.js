@@ -21,7 +21,6 @@ const ui = {
         if (metaTheme) metaTheme.setAttribute('content', '#000000');
     },
 
-    // --- FASE 4: MOTOR DE NOTIFICACIONES ---
     pushNotification(coId, targetRole, message, type = 'info') {
         const co = state.data.companies[coId];
         if (!co) return; // REGLA 1
@@ -36,21 +35,17 @@ const ui = {
             read: false
         });
         
-        // Mantener el historial limpio (máx 50 notificaciones por empresa)
         if (co.notifications.length > 50) co.notifications.pop();
         state.save();
     },
 
-    // --- FASE 4: MOTOR WORKFLOW TRACKER ---
     renderWorkflowTracker(steps, currentIndex) {
         if (!steps || !steps.length) return '';
         
         let html = `<div class="flex items-center justify-between w-full relative mb-6 mt-4 px-2 sm:px-4">`;
         
-        // Línea de fondo (gris)
         html += `<div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-800 z-0"></div>`;
         
-        // Línea activa (verde)
         const activeWidth = currentIndex > 0 ? (currentIndex / (steps.length - 1)) * 100 : 0;
         html += `<div class="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-mars-green z-0 transition-all duration-500" style="width: ${activeWidth}%"></div>`;
         
@@ -273,6 +268,43 @@ const ui = {
         </div>`;
     },
 
+    updateBadges() {
+        if (!state.user || state.user.admin) return; // REGLA 2
+        const co = state.data.companies[state.user.coId];
+        if (!co) return; // REGLA 4
+
+        const elRes = document.getElementById('badge-resolutions');
+        if (elRes) {
+            const pendingMotions = (co.votingMotions || []).filter(m => m.status === 'ABIERTA' && (!m.votes || !m.votes[state.user.role])).length;
+            if (pendingMotions > 0) { elRes.innerText = pendingMotions; elRes.classList.remove('hidden'); }
+            else { elRes.classList.add('hidden'); }
+        }
+
+        const elOrders = document.getElementById('badge-orders');
+        if (elOrders) {
+            let pendingOrders = 0;
+            if (state.user.role === 'FINANZAS') {
+                pendingOrders = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS').length;
+            }
+            if (pendingOrders > 0) { elOrders.innerText = pendingOrders; elOrders.classList.remove('hidden'); }
+            else { elOrders.classList.add('hidden'); }
+        }
+
+        const elCart = document.getElementById('badge-cart');
+        if (elCart) {
+            const pendingLogistics = (co.orders || []).filter(o => o.status === 'APROBADO_FINANZAS').length;
+            if (pendingLogistics > 0) { elCart.innerText = pendingLogistics; elCart.classList.remove('hidden'); }
+            else { elCart.classList.add('hidden'); }
+        }
+
+        const elAILog = document.getElementById('badge-ailog');
+        if (elAILog) {
+            const pendingAI = (co.aiPrompts || []).filter(p => p.status === 'PENDIENTE_VALIDACION').length;
+            if (pendingAI > 0) { elAILog.innerText = pendingAI; elAILog.classList.remove('hidden'); }
+            else { elAILog.classList.add('hidden'); }
+        }
+    },
+
     updateHUD() {
         if(!state.user) return;
         
@@ -293,17 +325,6 @@ const ui = {
             if(co && balEl) balEl.innerText = `${co.balance.toFixed(2)} €v`;
             if(co && infoEl) infoEl.innerText = `ENTITY: ${co.name.toUpperCase()} | ROLE: ${state.user.role.replace('_',' ')}`;
             
-            const countEl = document.getElementById('cart-count');
-            if(countEl && co) {
-                if (state.user.role === 'OPERACIONES_IA' || state.user.role === 'TECNICO') {
-                    const pendingOps = (co.orders || []).filter(o => o.status === 'APROBADO_FINANZAS').length;
-                    countEl.innerText = pendingOps;
-                    countEl.style.display = pendingOps > 0 ? 'inline-block' : 'none';
-                } else {
-                    countEl.style.display = 'none';
-                }
-            }
-
             if(miniLogo && co) {
                 miniLogo.classList.remove('hidden');
                 miniLogo.innerHTML = co.logo ? `<img src="${co.logo}" class="w-full h-full object-cover">` : `<span class="text-[10px]">🚀</span>`;
@@ -328,6 +349,8 @@ const ui = {
             const oc = t.getAttribute('onclick');
             if(oc && oc.includes(`('${this.current}')`)) t.classList.add('tab-active', 'text-mars-cyan');
         });
+
+        this.updateBadges();
     },
     
     render() {
@@ -352,6 +375,7 @@ const ui = {
             'AUXILIAR': ['market', 'resolutions', 'dossier']
         };
 
+        // FASE 1: Hotfix de Enrutamiento Docente (Permitir market y dossier)
         if (state.user.admin && !['admin', 'market', 'dossier'].includes(this.current)) {
             this.current = 'admin';
         } else if (!state.user.admin && !allowedRoutes[state.user.role].includes(this.current)) {
@@ -361,17 +385,19 @@ const ui = {
         this.updateHUD();
         const hero = this.generateHeroBanner();
         
+        const notifs = state.user.admin ? '' : (this.renderNotifications ? this.renderNotifications() : '');
+        
         switch(this.current) {
-            case 'market': vp.innerHTML = hero; this.viewMarket(vp); break;
-            case 'cart': vp.innerHTML = hero; this.viewCart(vp); break;
-            case 'orders': vp.innerHTML = hero; this.viewOrders(vp); break;
-            case 'finance': vp.innerHTML = hero; this.viewFinance(vp); break;
+            case 'market': vp.innerHTML = hero + notifs; this.viewMarket(vp); break;
+            case 'cart': vp.innerHTML = hero + notifs; this.viewCart(vp); break;
+            case 'orders': vp.innerHTML = hero + notifs; this.viewOrders(vp); break;
+            case 'finance': vp.innerHTML = hero + notifs; this.viewFinance(vp); break;
             case 'admin': this.viewAdmin(vp); break;
-            case 'dossier': vp.innerHTML = hero; this.viewDossier(vp); break;
-            case 'brand': vp.innerHTML = hero; this.viewBrand(vp); break;
-            case 'ailog': vp.innerHTML = hero; this.viewAILog(vp); break;
-            case 'tech': vp.innerHTML = hero; this.viewTech(vp); break;
-            case 'resolutions': vp.innerHTML = hero; this.viewResolutions(vp); break;
+            case 'dossier': vp.innerHTML = hero + notifs; this.viewDossier(vp); break;
+            case 'brand': vp.innerHTML = hero + notifs; this.viewBrand(vp); break;
+            case 'ailog': vp.innerHTML = hero + notifs; this.viewAILog(vp); break;
+            case 'tech': vp.innerHTML = hero + notifs; this.viewTech(vp); break;
+            case 'resolutions': vp.innerHTML = hero + notifs; this.viewResolutions(vp); break;
         }
     },
 

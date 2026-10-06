@@ -24,6 +24,29 @@ Object.assign(ui, {
         </div>`;
     },
 
+    // FASE 3 (Req 3): Emisión del Comunicado de Crisis por el CEO
+    issueCrisisCommunication(alertId) {
+        if (!state.user) return; // REGLA 2
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout(); // REGLA 4
+        
+        co.crisisAlerts = co.crisisAlerts || []; // REGLA 1
+        const alert = co.crisisAlerts.find(a => a.id === alertId);
+        
+        if (alert) {
+            alert.read = true;
+            const msg = `🚨 COMUNICADO DE CRISIS (CEO): Hemos sido sancionados por ${alert.agency} con ${alert.amount}€v. Motivo: ${alert.article}`;
+            
+            ['TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA'].forEach(role => {
+                ui.pushNotification(state.user.coId, role, msg, 'error');
+            });
+            
+            telemetry.log("GESTIÓN CRISIS", `CEO emitió comunicado por sanción de ${alert.amount}€v`);
+            state.save();
+            this.render();
+        }
+    },
+
     viewOrders(el) {
         if (!el || !state.user) return; // REGLA 2 y 3
         const co = state.data.companies[state.user.coId];
@@ -37,7 +60,48 @@ Object.assign(ui, {
         
         let ceoDashboard = '';
         if(role === 'CEO') {
+            // FASE 3 (Req 3): Banner de Crisis para el CEO
+            co.crisisAlerts = co.crisisAlerts || [];
+            const unreadCrisis = co.crisisAlerts.filter(a => !a.read);
+            let crisisHtml = '';
+            
+            if (unreadCrisis.length > 0) {
+                crisisHtml = unreadCrisis.map(alert => `
+                    <div class="bg-red-900/80 border-2 border-red-500 p-4 mb-6 animate-pulse shadow-[0_0_20px_rgba(255,0,0,0.5)]">
+                        <h3 class="text-white font-black text-lg uppercase mb-2">🚨 SANCIÓN CRÍTICA RECIBIDA</h3>
+                        <p class="text-red-200 text-[10px] mb-1"><strong>Organismo:</strong> ${alert.agency}</p>
+                        <p class="text-red-200 text-[10px] mb-1"><strong>Infracción:</strong> ${alert.article}</p>
+                        <p class="text-red-200 text-[10px] mb-3"><strong>Multa:</strong> ${alert.amount} €v</p>
+                        <button onclick="ui.issueCrisisCommunication('${alert.id}')" class="bg-red-600 text-white px-4 py-2 text-[10px] font-black uppercase hover:bg-white hover:text-red-600 transition-colors w-full sm:w-auto">Emitir Comunicado de Crisis a toda la empresa</button>
+                    </div>
+                `).join('');
+            }
+
+            // FASE 3 (Req 2): Ventanilla Legal en el Dashboard del CEO
+            let sanctionsHtml = '';
+            const sanctions = co.sanctions || [];
+            if (sanctions.length > 0) {
+                sanctionsHtml = `
+                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-red-600 mb-8">
+                    <h2 class="font-orbitron text-red-500 text-sm mb-4 uppercase tracking-tighter border-b border-red-900 pb-2">Ventanilla Legal: Historial de Sanciones</h2>
+                    <div class="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                        ${sanctions.map(s => `
+                            <div class="bg-red-900/20 border border-red-900 p-3">
+                                <div class="flex justify-between items-center border-b border-red-900/50 pb-2 mb-2">
+                                    <span class="text-red-400 font-bold text-[10px] uppercase">${s.agency}</span>
+                                    <span class="text-[8px] text-slate-500">${s.date}</span>
+                                </div>
+                                <p class="text-white text-[10px] font-bold mb-1">${s.article}</p>
+                                <p class="text-slate-400 text-[9px] italic mb-2">"${s.reason}"</p>
+                                <div class="text-right"><span class="text-mars-magenta font-mono font-bold">${s.amount} €v</span></div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            }
+
             ceoDashboard = `
+            ${crisisHtml}
             <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
                 <h2 class="font-orbitron text-mars-cyan text-sm uppercase tracking-tighter">Cronograma Maestro de Entregas</h2>
                 <button onclick="ui.modalCreateAuxRole()" class="bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-3 py-1.5 text-[9px] font-bold uppercase hover:bg-mars-cyan hover:text-black transition-colors whitespace-nowrap">Gestionar Rol Observador</button>
@@ -54,6 +118,7 @@ Object.assign(ui, {
                     ${this.renderDocBadge('Propuesta de Valor (LYE)', docs.valuePropDoc)}
                 </div>
             </div>
+            ${sanctionsHtml}
             `;
         }
 
@@ -302,6 +367,31 @@ Object.assign(ui, {
             }
         }
 
+        // FASE 3 (Req 2): Ventanilla Legal en el Dashboard de Finanzas
+        let sanctionsHtml = '';
+        const sanctions = co.sanctions || [];
+        if (sanctions.length > 0) {
+            sanctionsHtml = `
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden mt-6 border-t-4 border-t-red-600">
+                <h3 class="font-orbitron text-red-500 text-sm mb-4 uppercase tracking-tighter border-b border-red-900 pb-2">Ventanilla Legal: Historial de Sanciones</h3>
+                <div class="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                    ${sanctions.map(s => `
+                        <div class="bg-red-900/20 border border-red-900 p-3">
+                            <div class="flex justify-between items-center border-b border-red-900/50 pb-2 mb-2">
+                                <span class="text-red-400 font-bold text-[10px] uppercase">${s.agency}</span>
+                                <span class="text-[8px] text-slate-500">${s.date}</span>
+                            </div>
+                            <p class="text-white text-[10px] font-bold mb-1">${s.article}</p>
+                            <p class="text-slate-400 text-[9px] italic mb-2">"${s.reason}"</p>
+                            <div class="text-right">
+                                <span class="text-mars-magenta font-mono font-bold">${s.amount} €v</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>`;
+        }
+
         let financeDetails = `
         <div class="grid grid-cols-1 gap-6 sm:gap-8">
             <div class="flex flex-col gap-6 w-full overflow-hidden">
@@ -318,6 +408,7 @@ Object.assign(ui, {
                     </div>
                 </div>
                 ${executedOrdersHtml}
+                ${sanctionsHtml}
             </div>
         </div>`;
 

@@ -1,7 +1,19 @@
 // js/config.js
 
-const APP_VERSION = "1.0.08";
+const APP_VERSION = "1.0.09";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
+
+// FASE 1: Mapeo de Agencias Reguladoras (Sistema Sancionador)
+const REGULATORY_AGENCIES = {
+    FYQ: "Agencia Estatal de Seguridad Aérea (AESA)",
+    ECO: "Ministerio de Hacienda",
+    LYE: "Comisión Nacional de los Mercados y la Competencia (CNMC)",
+    LEN: "Ministerio de Justicia",
+    ING: "Asuntos Internos",
+    MAT: "Agencia Espacial Española (AEE)",
+    COORD_MARIO: "Tribunal Supremo de la AEE",
+    COORD_ALEX: "Tribunal Supremo de la AEE"
+};
 
 const RUBRIC_CONFIG = {
     FYQ: { name: "Física y Química", criteria: [{id: 'c1', name: 'Informe Científico Estequiometría', weight: 0.4}, {id: 'c2', name: 'Lanzamiento, Apogeo y Optimización', weight: 0.4}, {id: 'c3', name: 'Rol Técnico y Q&A', weight: 0.2}] },
