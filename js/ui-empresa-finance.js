@@ -54,6 +54,7 @@ Object.assign(ui, {
         const role = state.user.role;
         const docs = co.deliverables || {};
         co.orders = co.orders || []; // REGLA 1
+        co.marketingPackages = co.marketingPackages || []; // REGLA 1
         
         const wrapper = document.createElement('div');
         
@@ -122,7 +123,7 @@ Object.assign(ui, {
         let financeAlertHtml = '';
         if (role.includes('FINAN')) {
             const pendingTech = co.orders.filter(o => o.status === 'PENDIENTE_FINANZAS').length;
-            const pendingMkt = (co.marketingCampaigns || []).filter(c => c.status === 'PENDIENTE_FINANZAS').length;
+            const pendingMkt = co.marketingPackages.filter(p => p.status === 'PENDIENTE_FINANZAS').length;
             const pendingCount = pendingTech + pendingMkt;
             if (pendingCount > 0) {
                 financeAlertHtml = `
@@ -140,7 +141,7 @@ Object.assign(ui, {
 
         let mktSection = '';
         if (role === 'CEO' || role.includes('FINAN')) {
-            const sortedMkt = [...(co.marketingCampaigns || [])].filter(c => c.status).sort((a, b) => {
+            const sortedMkt = [...co.marketingPackages].sort((a, b) => {
                 if (a.status === 'PENDIENTE_FINANZAS' && b.status !== 'PENDIENTE_FINANZAS') return -1;
                 if (a.status !== 'PENDIENTE_FINANZAS' && b.status === 'PENDIENTE_FINANZAS') return 1;
                 return 0;
@@ -149,34 +150,34 @@ Object.assign(ui, {
             if (sortedMkt.length > 0) {
                 mktSection = `
                 <div class="flex justify-between items-center mb-6 mt-10 border-t border-mars-border pt-6">
-                    <h2 class="font-orbitron text-mars-magenta text-lg sm:text-xl uppercase tracking-tighter">Órdenes de Marketing</h2>
+                    <h2 class="font-orbitron text-mars-magenta text-lg sm:text-xl uppercase tracking-tighter">Contratos de Marketing</h2>
                 </div>
                 <div class="space-y-6">
-                    ${sortedMkt.map(camp => {
-                        const trackerIndex = camp.status === 'PENDIENTE_FINANZAS' ? 0 : camp.status === 'APROBADA' ? 2 : 0;
+                    ${sortedMkt.map(pkg => {
+                        const trackerIndex = pkg.status === 'PENDIENTE_FINANZAS' ? 0 : pkg.status === 'APROBADO' ? 2 : 0;
                         return `
-                        <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 ${camp.status === 'APROBADA' ? 'border-l-mars-green' : camp.status === 'DENEGADA' ? 'border-l-mars-magenta' : 'border-l-mars-yellow'} animate-in slide-in-from-bottom-4 duration-300">
-                            ${camp.status !== 'DENEGADA' ? ui.renderWorkflowTracker(['MKT (Solicita)', 'FIN (Audita)', 'Publicada'], trackerIndex) : ''}
+                        <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 ${pkg.status === 'APROBADO' ? 'border-l-mars-green' : pkg.status === 'DENEGADA' ? 'border-l-mars-magenta' : 'border-l-mars-yellow'} animate-in slide-in-from-bottom-4 duration-300">
+                            ${pkg.status !== 'DENEGADA' ? ui.renderWorkflowTracker(['MKT (Solicita)', 'FIN (Audita)', 'Activo'], trackerIndex) : ''}
                             
                             <div class="flex justify-between items-start mb-4 flex-wrap gap-2 mt-4">
-                                <div><span class="text-[9px] font-bold uppercase ${camp.status === 'APROBADA' ? 'text-mars-green bg-mars-green/10' : camp.status === 'DENEGADA' ? 'text-mars-magenta bg-mars-magenta/10' : 'text-mars-yellow bg-mars-yellow/10'} px-2 py-1 tracking-widest">[STATUS: ${camp.status}]</span><h3 class="text-white font-orbitron mt-3 uppercase text-xs sm:text-sm">MKT_TX: ${camp.id}</h3></div>
-                                <div class="text-left sm:text-right w-full sm:w-auto"><p class="text-mars-magenta font-black font-mono text-xl tracking-tighter">${camp.cost.toFixed(2)} €v</p><p class="text-[9px] text-slate-500 uppercase font-bold mt-1">${camp.date}</p></div>
+                                <div><span class="text-[9px] font-bold uppercase ${pkg.status === 'APROBADO' ? 'text-mars-green bg-mars-green/10' : pkg.status === 'DENEGADA' ? 'text-mars-magenta bg-mars-magenta/10' : 'text-mars-yellow bg-mars-yellow/10'} px-2 py-1 tracking-widest">[STATUS: ${pkg.status}]</span><h3 class="text-white font-orbitron mt-3 uppercase text-xs sm:text-sm">PKG_TX: ${pkg.id}</h3></div>
+                                <div class="text-left sm:text-right w-full sm:w-auto"><p class="text-mars-magenta font-black font-mono text-xl tracking-tighter">${pkg.cost.toFixed(2)} €v</p><p class="text-[9px] text-slate-500 uppercase font-bold mt-1">${pkg.date}</p></div>
                             </div>
                             
                             <div class="grid grid-cols-1 gap-4 mb-4">
                                 <div class="bg-black/50 p-4 border border-mars-border/50 text-[10px] w-full">
-                                    <span class="block text-mars-magenta font-bold uppercase mb-2 border-b border-mars-magenta/30 pb-1">Paquete: ${camp.pack}</span>
-                                    <p class="text-white font-bold mb-1">${camp.title}</p>
-                                    <p class="text-slate-300 italic leading-relaxed">"${camp.desc}"</p>
+                                    <span class="block text-mars-magenta font-bold uppercase mb-2 border-b border-mars-magenta/30 pb-1">Paquete Solicitado:</span>
+                                    <p class="text-white font-bold mb-1 text-sm">${pkg.name}</p>
+                                    <p class="text-slate-400 italic">Incluye un total de ${pkg.totalActions} acciones publicitarias.</p>
                                 </div>
                             </div>
                             
-                            ${camp.denyReason ? `<div class="bg-red-900/30 border border-red-500/50 p-3 text-[10px] text-red-200 mt-2 mb-4 w-full"><span class="font-bold">MOTIVO RECHAZO:</span> ${camp.denyReason}</div>` : ''}
+                            ${pkg.denyReason ? `<div class="bg-red-900/30 border border-red-500/50 p-3 text-[10px] text-red-200 mt-2 mb-4 w-full"><span class="font-bold">MOTIVO RECHAZO:</span> ${pkg.denyReason}</div>` : ''}
                             
-                            ${camp.status === 'PENDIENTE_FINANZAS' && role.includes('FINAN') ? `
+                            ${pkg.status === 'PENDIENTE_FINANZAS' && role.includes('FINAN') ? `
                             <div class="flex flex-col sm:flex-row gap-3 border-t border-mars-border pt-4">
-                                <button onclick="ui.approveMarketingCampaign('${camp.id}')" class="flex-grow bg-mars-green text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors shadow-[0_0_10px_rgba(0,255,102,0.4)]">Aprobar y Publicar Campaña</button>
-                                <button onclick="ui.promptDenyMarketingCampaign('${camp.id}')" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-6 py-3 text-[10px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-colors whitespace-nowrap">Denegar</button>
+                                <button onclick="ui.approveMarketingPackage('${pkg.id}')" class="flex-grow bg-mars-green text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors shadow-[0_0_10px_rgba(0,255,102,0.4)]">Aprobar Presupuesto</button>
+                                <button onclick="ui.promptDenyMarketingPackage('${pkg.id}')" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-6 py-3 text-[10px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-colors whitespace-nowrap">Denegar</button>
                             </div>` : ''}
                         </div>`;
                     }).join('')}
@@ -228,36 +229,36 @@ Object.assign(ui, {
         el.appendChild(wrapper);
     },
 
-    approveMarketingCampaign(id) {
+    approveMarketingPackage(id) {
         if (!state.user) return;
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
         
-        const camp = co.marketingCampaigns.find(c => c.id === id);
-        if(!camp) return;
+        const pkg = co.marketingPackages.find(p => p.id === id);
+        if(!pkg) return;
         
-        if(co.balance < camp.cost) return alert("Fondos insuficientes para aprobar esta campaña.");
+        if(co.balance < pkg.cost) return alert("Fondos insuficientes para aprobar este paquete.");
         
-        camp.status = 'APROBADA';
+        pkg.status = 'APROBADO';
         
-        const conceptStr = `Campaña Marketing: ${camp.pack}`;
-        state.addToLedger(state.user.coId, conceptStr, 'MARKETING', -camp.cost);
+        const conceptStr = `Contrato Agencia: ${pkg.name}`;
+        state.addToLedger(state.user.coId, conceptStr, 'MARKETING', -pkg.cost);
         
-        telemetry.log("APROBADO FINANZAS", `Campaña MKT ${id} validada. Coste: ${camp.cost}€v`);
-        ui.pushNotification(state.user.coId, 'MARKETING', `Tu campaña "${camp.title}" ha sido APROBADA y publicada.`, 'success');
+        telemetry.log("APROBADO FINANZAS", `Paquete MKT ${id} validado. Coste: ${pkg.cost}€v`);
+        ui.pushNotification(state.user.coId, 'MARKETING', `Tu solicitud para el "${pkg.name}" ha sido APROBADA. Ya puedes publicar acciones.`, 'success');
         
         state.save();
         this.render();
     },
 
-    promptDenyMarketingCampaign(id) {
+    promptDenyMarketingPackage(id) {
         if (!state.user) return;
         const html = `<input type="text" id="deny-mkt-reason" class="w-full bg-black border border-mars-magenta p-3 text-xs text-white" placeholder="Motivo del rechazo...">`;
-        const btn = `<button onclick="ui.finalizeDenyMarketingCampaign('${id}')" class="bg-mars-magenta text-white px-6 py-2 text-[10px] font-bold uppercase hover:bg-white hover:text-mars-magenta">Confirmar Denegación</button>`;
-        this.showModal("Denegar Campaña", html, btn);
+        const btn = `<button onclick="ui.finalizeDenyMarketingPackage('${id}')" class="bg-mars-magenta text-white px-6 py-2 text-[10px] font-bold uppercase hover:bg-white hover:text-mars-magenta">Confirmar Denegación</button>`;
+        this.showModal("Denegar Paquete", html, btn);
     },
 
-    finalizeDenyMarketingCampaign(id) {
+    finalizeDenyMarketingPackage(id) {
         if (!state.user) return;
         const reasonInput = document.getElementById('deny-mkt-reason');
         const reason = reasonInput ? reasonInput.value : '';
@@ -266,14 +267,14 @@ Object.assign(ui, {
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
         
-        const camp = co.marketingCampaigns.find(c => c.id === id);
-        if(!camp) return;
+        const pkg = co.marketingPackages.find(p => p.id === id);
+        if(!pkg) return;
         
-        camp.status = 'DENEGADA';
-        camp.denyReason = `[FINANZAS] ${reason}`;
+        pkg.status = 'DENEGADA';
+        pkg.denyReason = `[FINANZAS] ${reason}`;
         
-        telemetry.log("DENEGADO", `Campaña MKT ${id} - Motivo: ${reason}`);
-        ui.pushNotification(state.user.coId, 'MARKETING', `Tu campaña "${camp.title}" ha sido DENEGADA.`, 'error');
+        telemetry.log("DENEGADO", `Paquete MKT ${id} - Motivo: ${reason}`);
+        ui.pushNotification(state.user.coId, 'MARKETING', `Tu solicitud para el "${pkg.name}" ha sido DENEGADA.`, 'error');
         
         state.save();
         this.closeModal();
@@ -401,13 +402,14 @@ Object.assign(ui, {
         co.realCosts = co.realCosts || [];
         co.orders = co.orders || [];
         co.ledger = co.ledger || [];
+        co.marketingPackages = co.marketingPackages || []; // REGLA 1
         
         const totalReal = co.realCosts.reduce((s, i) => s + i.eur, 0);
         const wrapper = document.createElement('div');
         
         let pendingOrdersHtml = '';
         const pendingOrders = co.orders.filter(o => o.status === 'PENDIENTE_FINANZAS');
-        const pendingMkt = (co.marketingCampaigns || []).filter(c => c.status === 'PENDIENTE_FINANZAS');
+        const pendingMkt = co.marketingPackages.filter(p => p.status === 'PENDIENTE_FINANZAS');
         
         if ((pendingOrders.length > 0 || pendingMkt.length > 0) && state.user.role.includes('FINAN')) {
             pendingOrdersHtml = `
@@ -426,8 +428,8 @@ Object.assign(ui, {
                     ${pendingMkt.map(pm => `
                         <div class="bg-slate-900 border border-mars-magenta/50 p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div>
-                                <p class="text-white font-bold uppercase text-xs">Campaña MKT: ${pm.title}</p>
-                                <p class="text-[10px] text-slate-400 mt-1">Pack: ${pm.pack} | Total: <span class="text-mars-magenta font-mono">${pm.cost.toFixed(2)} €v</span></p>
+                                <p class="text-white font-bold uppercase text-xs">Paquete MKT: ${pm.name}</p>
+                                <p class="text-[10px] text-slate-400 mt-1">Acciones: ${pm.totalActions} | Total: <span class="text-mars-magenta font-mono">${pm.cost.toFixed(2)} €v</span></p>
                             </div>
                             <button onclick="ui.navigate('orders')" class="bg-mars-magenta text-white px-4 py-2 text-[10px] font-black uppercase hover:bg-white hover:text-mars-magenta transition-colors whitespace-nowrap">Revisar y Aprobar</button>
                         </div>

@@ -277,6 +277,7 @@ Object.assign(ui, {
         const docs = co.deliverables || {};
         co.flightTests = co.flightTests || [];
         co.orders = co.orders || [];
+        co.marketingPackages = co.marketingPackages || []; // REGLA 1
         co.marketingCampaigns = co.marketingCampaigns || []; // REGLA 1
         
         const wrapper = document.createElement('div');
@@ -303,26 +304,46 @@ Object.assign(ui, {
 
         const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + o.total, 0);
 
-        let campaignsHtml = co.marketingCampaigns.map(c => {
-            const isLegacy = !c.status;
-            const status = c.status || 'APROBADA';
-            const trackerIdx = status === 'PENDIENTE_FINANZAS' ? 0 : status === 'APROBADA' ? 2 : 0;
+        // Renderizado de Paquetes Contratados
+        let packagesHtml = co.marketingPackages.map(p => {
+            const trackerIdx = p.status === 'PENDIENTE_FINANZAS' ? 0 : p.status === 'APROBADO' ? 1 : 2;
+            const isAgotado = p.usedActions >= p.totalActions;
             
             return `
-            <div class="bg-black/50 border ${status === 'APROBADA' ? 'border-mars-green/50' : status === 'DENEGADA' ? 'border-mars-magenta/50' : 'border-mars-yellow/50'} p-3 mb-2">
-                ${!isLegacy && status !== 'DENEGADA' ? ui.renderWorkflowTracker(['MKT (Solicita)', 'FIN (Audita)', 'Publicada'], trackerIdx) : ''}
+            <div class="bg-black/50 border ${p.status === 'APROBADO' && !isAgotado ? 'border-mars-green/50' : p.status === 'DENEGADA' ? 'border-mars-magenta/50' : 'border-mars-yellow/50'} p-3 mb-2">
+                ${p.status !== 'DENEGADA' ? ui.renderWorkflowTracker(['MKT (Solicita)', 'FIN (Audita)', 'Activo'], trackerIdx) : ''}
                 <div class="flex justify-between items-center border-b border-mars-border/30 pb-2 mb-2 mt-2">
-                    <span class="text-mars-cyan font-bold uppercase text-[10px]">${c.title}</span>
-                    <span class="text-[8px] text-slate-500">${c.date}</span>
+                    <span class="text-mars-cyan font-bold uppercase text-[10px]">${p.name}</span>
+                    <span class="text-mars-magenta font-mono font-bold text-[10px]">${p.cost} €v</span>
                 </div>
-                ${c.pack ? `<p class="text-[9px] text-mars-yellow font-bold mb-1 uppercase">Pack: ${c.pack} (${c.cost} €v)</p>` : ''}
-                <p class="text-[9px] text-slate-300 italic mb-2">"${c.desc}"</p>
-                ${c.url ? `<a href="${c.url}" target="_blank" class="text-[9px] text-mars-cyan hover:underline">🔗 Ver Creatividad</a>` : ''}
-                ${status === 'PENDIENTE_FINANZAS' ? `<p class="text-[9px] text-mars-yellow font-bold mt-2 uppercase animate-pulse">Esperando aprobación de Finanzas...</p>` : ''}
-                ${status === 'DENEGADA' ? `<p class="text-[9px] text-mars-magenta font-bold mt-2 uppercase">DENEGADA: ${c.denyReason}</p>` : ''}
+                <div class="flex justify-between items-center text-[9px]">
+                    <span class="text-slate-400">Acciones: <span class="text-white font-bold">${p.usedActions} / ${p.totalActions}</span></span>
+                    ${p.status === 'PENDIENTE_FINANZAS' ? `<span class="text-mars-yellow font-bold uppercase animate-pulse">Esperando Finanzas...</span>` : ''}
+                    ${p.status === 'APROBADO' && !isAgotado ? `<span class="text-mars-green font-bold uppercase">ACTIVO</span>` : ''}
+                    ${p.status === 'APROBADO' && isAgotado ? `<span class="text-slate-500 font-bold uppercase">AGOTADO</span>` : ''}
+                    ${p.status === 'DENEGADA' ? `<span class="text-mars-magenta font-bold uppercase">DENEGADO</span>` : ''}
+                </div>
+                ${p.status === 'DENEGADA' ? `<p class="text-[9px] text-mars-magenta mt-2 italic">Motivo: ${p.denyReason}</p>` : ''}
             </div>
             `;
-        }).join('') || '<p class="text-slate-500 italic text-xs">No hay campañas registradas.</p>';
+        }).join('') || '<p class="text-slate-500 italic text-xs">No hay paquetes solicitados.</p>';
+
+        // Renderizado de Acciones Ejecutadas
+        let actionsHtml = co.marketingCampaigns.map(c => `
+            <div class="bg-slate-900 border border-mars-border/50 p-3 mb-2">
+                <div class="flex justify-between items-center border-b border-mars-border/30 pb-2 mb-2">
+                    <span class="text-white font-bold uppercase text-[10px]">${c.title}</span>
+                    <span class="text-[8px] text-slate-500">${c.date}</span>
+                </div>
+                <p class="text-[8px] text-mars-cyan font-bold mb-1 uppercase">Vía: ${c.pkgName || 'Campaña Legacy'}</p>
+                <p class="text-[9px] text-slate-300 italic mb-2">"${c.desc}"</p>
+                ${c.url ? `<a href="${c.url}" target="_blank" class="text-[9px] text-mars-yellow hover:underline">🔗 Ver Creatividad</a>` : ''}
+            </div>
+        `).join('') || '<p class="text-slate-500 italic text-xs">No hay acciones publicadas.</p>';
+
+        // Selector de paquetes activos para el formulario de nueva acción
+        const activePackages = co.marketingPackages.filter(p => p.status === 'APROBADO' && p.usedActions < p.totalActions);
+        let activePackagesOptions = activePackages.map(p => `<option value="${p.id}">${p.name} (${p.totalActions - p.usedActions} restantes)</option>`).join('');
 
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -372,24 +393,42 @@ Object.assign(ui, {
                 </div>
                 
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan w-full">
-                    <h2 class="font-orbitron text-mars-cyan text-lg mb-4 uppercase tracking-tighter">Campañas de Marketing</h2>
-                    <div class="space-y-4">
-                        <div class="bg-slate-900 p-4 border border-mars-border">
-                            <select id="mkt-camp-pack" class="w-full bg-black border border-mars-magenta p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
-                                <option value="">-- Selecciona un Paquete Publicitario --</option>
-                                <option value="Satélite|200">Pack 'Satélite' (200 €v) - 3 acciones online</option>
-                                <option value="Prensa Tradicional|300">Pack 'Prensa Tradicional' (300 €v) - 3 acciones escritas</option>
-                                <option value="Despegue Híbrido|400">Pack 'Despegue Híbrido' (400 €v) - 2 online / 2 escrito</option>
-                                <option value="Cobertura Supernova|550">Pack 'Cobertura Supernova' (550 €v) - 6 acciones multicanal</option>
-                            </select>
-                            <input type="text" id="mkt-camp-title" placeholder="Título de la campaña..." class="w-full bg-black border border-mars-border p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
-                            <textarea id="mkt-camp-desc" placeholder="Descripción de las acciones realizadas..." class="w-full bg-black border border-mars-border p-2 text-xs text-white h-20 mb-2 outline-none focus:border-mars-cyan"></textarea>
-                            <input type="text" id="mkt-camp-url" placeholder="URL a creatividades (Drive/Canva)..." class="w-full bg-black border border-mars-border p-2 text-xs text-white mb-3 outline-none focus:border-mars-cyan">
-                            <button onclick="ui.submitMarketingCampaign()" class="bg-mars-cyan text-black px-4 py-2 text-[10px] font-black uppercase hover:bg-white transition-colors w-full">Solicitar Campaña a Finanzas</button>
-                        </div>
-                        <div class="max-h-64 overflow-y-auto pr-2 space-y-2">
-                            ${campaignsHtml}
-                        </div>
+                    <h2 class="font-orbitron text-mars-cyan text-lg mb-4 uppercase tracking-tighter">Agencia de Medios (Paquetes)</h2>
+                    <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">Solicita presupuesto a Finanzas para contratar paquetes de difusión.</p>
+                    <div class="bg-slate-900 p-4 border border-mars-border mb-4">
+                        <select id="mkt-pkg-select" class="w-full bg-black border border-mars-cyan p-2 text-xs text-white mb-3 outline-none focus:border-mars-cyan">
+                            <option value="">-- Selecciona un Paquete Publicitario --</option>
+                            <option value="Pack Satélite|200|3">Pack 'Satélite' (200 €v) - 3 acciones online</option>
+                            <option value="Pack Prensa Tradicional|300|3">Pack 'Prensa Tradicional' (300 €v) - 3 acciones escritas</option>
+                            <option value="Pack Despegue Híbrido|400|4">Pack 'Despegue Híbrido' (400 €v) - 2 online / 2 escrito</option>
+                            <option value="Pack Cobertura Supernova|550|6">Pack 'Cobertura Supernova' (550 €v) - 6 acciones multicanal</option>
+                        </select>
+                        <button onclick="ui.submitMarketingPackage()" class="bg-mars-cyan text-black px-4 py-2 text-[10px] font-black uppercase hover:bg-white transition-colors w-full">Solicitar Paquete a Finanzas</button>
+                    </div>
+                    <div class="max-h-48 overflow-y-auto pr-2 space-y-2">
+                        ${packagesHtml}
+                    </div>
+                </div>
+
+                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-green w-full">
+                    <h2 class="font-orbitron text-mars-green text-lg mb-4 uppercase tracking-tighter">Ejecución de Campañas</h2>
+                    <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">Consume las acciones disponibles de tus paquetes activos.</p>
+                    
+                    ${activePackages.length > 0 ? `
+                    <div class="bg-slate-900 p-4 border border-mars-green mb-4">
+                        <select id="mkt-act-pkg" class="w-full bg-black border border-mars-green p-2 text-xs text-white mb-2 outline-none focus:border-mars-green">
+                            <option value="">-- Selecciona el Paquete a consumir --</option>
+                            ${activePackagesOptions}
+                        </select>
+                        <input type="text" id="mkt-act-title" placeholder="Título de la acción..." class="w-full bg-black border border-mars-border p-2 text-xs text-white mb-2 outline-none focus:border-mars-green">
+                        <textarea id="mkt-act-desc" placeholder="Descripción de la creatividad..." class="w-full bg-black border border-mars-border p-2 text-xs text-white h-20 mb-2 outline-none focus:border-mars-green"></textarea>
+                        <input type="text" id="mkt-act-url" placeholder="URL a creatividad (Drive/Canva)..." class="w-full bg-black border border-mars-border p-2 text-xs text-white mb-3 outline-none focus:border-mars-green">
+                        <button onclick="ui.submitMarketingAction()" class="bg-mars-green text-black px-4 py-2 text-[10px] font-black uppercase hover:bg-white transition-colors w-full">Publicar Acción</button>
+                    </div>
+                    ` : `<div class="bg-black border border-dashed border-slate-700 p-4 text-center mb-4"><p class="text-[10px] text-slate-500 uppercase">No tienes paquetes activos con saldo de acciones.</p></div>`}
+                    
+                    <div class="max-h-64 overflow-y-auto pr-2 space-y-2">
+                        ${actionsHtml}
                     </div>
                 </div>
             </div>
@@ -397,41 +436,77 @@ Object.assign(ui, {
         el.appendChild(wrapper);
     },
 
-    submitMarketingCampaign() {
+    submitMarketingPackage() {
         if (!state.user) return;
-        const elPack = document.getElementById('mkt-camp-pack');
-        const elTitle = document.getElementById('mkt-camp-title');
-        const elDesc = document.getElementById('mkt-camp-desc');
-        const elUrl = document.getElementById('mkt-camp-url');
-        if (!elPack || !elTitle || !elDesc || !elUrl) return; // REGLA 3
+        const elPkg = document.getElementById('mkt-pkg-select');
+        if (!elPkg) return; // REGLA 3
         
-        const packVal = elPack.value;
-        const title = elTitle.value;
-        const desc = elDesc.value;
-        const url = elUrl.value;
+        const pkgVal = elPkg.value;
+        if(!pkgVal) return alert("Debes seleccionar un paquete.");
         
-        if(!packVal || !title || !desc) return alert("El paquete, título y descripción son obligatorios.");
-        
-        const [packName, packCost] = packVal.split('|');
+        const [packName, packCost, packActions] = pkgVal.split('|');
         const cost = parseFloat(packCost);
+        const totalActions = parseInt(packActions);
 
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
-        co.marketingCampaigns = co.marketingCampaigns || [];
+        co.marketingPackages = co.marketingPackages || [];
         
-        co.marketingCampaigns.unshift({ 
-            id: 'MKT-'+Date.now(), 
-            pack: packName,
+        co.marketingPackages.unshift({ 
+            id: 'PKG-'+Date.now(), 
+            name: packName,
             cost: cost,
-            title, 
-            desc, 
-            url, 
+            totalActions: totalActions,
+            usedActions: 0,
             status: 'PENDIENTE_FINANZAS',
             date: new Date().toLocaleString() 
         });
         
-        telemetry.log("MARKETING", `Campaña solicitada: ${title} (${packName})`);
-        ui.pushNotification(state.user.coId, 'FINANZAS', `Nueva campaña de marketing pendiente de aprobación presupuestaria.`, 'warning');
+        telemetry.log("MARKETING", `Paquete solicitado: ${packName}`);
+        ui.pushNotification(state.user.coId, 'FINANZAS', `Nuevo paquete de marketing pendiente de aprobación presupuestaria.`, 'warning');
+        
+        state.save();
+        this.render();
+    },
+
+    submitMarketingAction() {
+        if (!state.user) return;
+        const elPkgId = document.getElementById('mkt-act-pkg');
+        const elTitle = document.getElementById('mkt-act-title');
+        const elDesc = document.getElementById('mkt-act-desc');
+        const elUrl = document.getElementById('mkt-act-url');
+        
+        if (!elPkgId || !elTitle || !elDesc || !elUrl) return; // REGLA 3
+        
+        const pkgId = elPkgId.value;
+        const title = elTitle.value;
+        const desc = elDesc.value;
+        const url = elUrl.value;
+        
+        if(!pkgId || !title || !desc) return alert("Debes seleccionar un paquete, título y descripción.");
+        
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout();
+        
+        co.marketingPackages = co.marketingPackages || [];
+        co.marketingCampaigns = co.marketingCampaigns || [];
+        
+        const pkg = co.marketingPackages.find(p => p.id === pkgId);
+        if (!pkg || pkg.usedActions >= pkg.totalActions) return alert("Paquete inválido o agotado.");
+        
+        pkg.usedActions++;
+        
+        co.marketingCampaigns.unshift({
+            id: 'ACT-'+Date.now(),
+            pkgId: pkg.id,
+            pkgName: pkg.name,
+            title: title,
+            desc: desc,
+            url: url,
+            date: new Date().toLocaleString()
+        });
+        
+        telemetry.log("MARKETING", `Acción publicada: ${title} (Vía ${pkg.name})`);
         
         state.save();
         this.render();

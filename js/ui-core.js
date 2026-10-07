@@ -285,7 +285,7 @@ const ui = {
             let pendingOrders = 0;
             if (state.user.role === 'FINANZAS') {
                 const pendingTech = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS').length;
-                const pendingMkt = (co.marketingCampaigns || []).filter(c => c.status === 'PENDIENTE_FINANZAS').length;
+                const pendingMkt = (co.marketingPackages || []).filter(p => p.status === 'PENDIENTE_FINANZAS').length;
                 pendingOrders = pendingTech + pendingMkt;
             } else if (state.user.role === 'TECNICO') {
                 pendingOrders = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS').length;
