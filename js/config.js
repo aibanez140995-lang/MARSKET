@@ -1,6 +1,6 @@
 // js/config.js
 
-const APP_VERSION = "1.0.10";
+const APP_VERSION = "1.0.11";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 // FASE 1: Mapeo de Agencias Reguladoras (Sistema Sancionador)
@@ -25,7 +25,7 @@ const RUBRIC_CONFIG = {
 };
 
 const INITIAL_DATA = {
-    version: 1, // FASE 1 v1.0.10: Control de Concurrencia Optimista
+    version: 1,
     config: { 
         nextOrderId: 1000,
         deadlines: { 
@@ -75,27 +75,30 @@ const INITIAL_DATA = {
     companies: {
         astra: { 
             name: "Astra Dynamics", balance: 1500, logo: null, sponsorAwarded: null, classGroup: 'A',
-            slogan: "", valueProposition: "", aiPrompts: [], executiveResolutions: [], 
-            flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [],
+            slogan: "", valueProposition: "", aiPrompts: [], decisionLog: [], executiveResolutions: [], 
+            flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], marketingPackages: [],
             roles: { CEO:'1111', TECNICO:'1111', FINANZAS:'1111', MARKETING:'1111', OPERACIONES_IA:'1111' }, 
             loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}},
-            deliverables: { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null }
+            fase1Registro: { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' },
+            deliverables: { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null }
         },
         orion: { 
             name: "Orion Labs", balance: 1500, logo: null, sponsorAwarded: null, classGroup: 'B',
-            slogan: "", valueProposition: "", aiPrompts: [], executiveResolutions: [], 
-            flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [],
+            slogan: "", valueProposition: "", aiPrompts: [], decisionLog: [], executiveResolutions: [], 
+            flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], marketingPackages: [],
             roles: { CEO:'2222', TECNICO:'2222', FINANZAS:'2222', MARKETING:'2222', OPERACIONES_IA:'2222' }, 
             loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}},
-            deliverables: { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null }
+            fase1Registro: { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' },
+            deliverables: { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null }
         },
         stellar: { 
             name: "Stellar Solutions", balance: 1500, logo: null, sponsorAwarded: null, classGroup: 'C',
-            slogan: "", valueProposition: "", aiPrompts: [], executiveResolutions: [], 
-            flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [],
+            slogan: "", valueProposition: "", aiPrompts: [], decisionLog: [], executiveResolutions: [], 
+            flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], marketingPackages: [],
             roles: { CEO:'3333', TECNICO:'3333', FINANZAS:'3333', MARKETING:'3333', OPERACIONES_IA:'3333' }, 
             loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}},
-            deliverables: { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null }
+            fase1Registro: { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' },
+            deliverables: { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null }
         }
     }
 };

@@ -1,5 +1,5 @@
 // js/ui-empresa-finance.js
-// --- MÓDULO FINANZAS: BÓVEDA DE ÓRDENES, LEDGER Y AUDITORÍA ---
+// --- MÓDULO FINANZAS: BÓVEDA DE ÓRDENES, LEDGER Y AUDITORÍA V2.0 ---
 
 Object.assign(ui, {
     renderDeadlinesBlock() {
@@ -55,6 +55,8 @@ Object.assign(ui, {
         const docs = co.deliverables || {};
         co.orders = co.orders || []; // REGLA 1
         co.marketingPackages = co.marketingPackages || []; // REGLA 1
+        co.fase1Registro = co.fase1Registro || { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' };
+        co.flightTests = co.flightTests || [];
         
         const wrapper = document.createElement('div');
         
@@ -120,10 +122,61 @@ Object.assign(ui, {
             `;
         }
 
+        // Lógica de Auditoría V2.0 (Desviaciones)
+        const presTeorico = parseFloat(co.fase1Registro.presupuestoTeorico) || 0;
+        const altTeorica = parseFloat(co.fase1Registro.alturaEstimada) || 0;
+        const bestFlight = co.flightTests.length > 0 ? [...co.flightTests].sort((a, b) => b.heightM - a.heightM)[0] : null;
+        const altReal = bestFlight ? bestFlight.heightM : 0;
+        const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + o.total, 0);
+        
+        const isCostDeviation = totalDevCost > presTeorico && presTeorico > 0;
+        const isHeightDeviation = altReal < altTeorica && altTeorica > 0 && altReal > 0;
+        const needsV2 = isCostDeviation || isHeightDeviation;
+        const justText = co.fase1Registro.justificacionV2;
+        const justStatus = co.fase1Registro.justificacionV2Status || 'PENDIENTE';
+
+        let v2AuditHtml = '';
+        if (needsV2 && justText && (role === 'CEO' || role.includes('FINAN'))) {
+            v2AuditHtml = `
+            <div class="terminal-border bg-mars-card p-6 border-t-4 ${justStatus === 'PENDIENTE' ? 'border-t-mars-yellow animate-pulse shadow-[0_0_15px_rgba(255,230,0,0.1)]' : justStatus === 'APROBADA' ? 'border-t-mars-green' : 'border-t-mars-magenta'} mb-8">
+                <h2 class="font-orbitron ${justStatus === 'PENDIENTE' ? 'text-mars-yellow' : justStatus === 'APROBADA' ? 'text-mars-green' : 'text-mars-magenta'} text-lg mb-4 uppercase tracking-tighter">Auditoría de Desviación (V2.0)</h2>
+                <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">El Dpto. Técnico ha registrado una desviación entre la hipótesis de la Fase I y los datos reales del Banco de Pruebas.</p>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="bg-black p-3 border ${isCostDeviation ? 'border-mars-magenta' : 'border-mars-border'}">
+                        <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Presupuesto: Teórico vs Real</p>
+                        <p class="text-sm font-mono ${isCostDeviation ? 'text-mars-magenta' : 'text-white'}">${presTeorico.toFixed(2)} €v <span class="text-slate-500">vs</span> ${totalDevCost.toFixed(2)} €v</p>
+                    </div>
+                    <div class="bg-black p-3 border ${isHeightDeviation ? 'border-mars-magenta' : 'border-mars-border'}">
+                        <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Altura: Estimada vs Real</p>
+                        <p class="text-sm font-mono ${isHeightDeviation ? 'text-mars-magenta' : 'text-white'}">${altTeorica.toFixed(1)} m <span class="text-slate-500">vs</span> ${altReal.toFixed(1)} m</p>
+                    </div>
+                </div>
+                
+                <div class="bg-slate-900 p-4 border border-mars-border mb-4">
+                    <span class="block text-mars-cyan font-bold uppercase mb-2 border-b border-mars-cyan/30 pb-1">Justificación Técnica (I+D):</span>
+                    <p class="text-slate-300 italic leading-relaxed">"${justText}"</p>
+                </div>
+
+                ${justStatus === 'DENEGADA' ? `<div class="bg-red-900/30 border border-red-500/50 p-3 text-[10px] text-red-200 mt-2 mb-4 w-full"><span class="font-bold">MOTIVO RECHAZO:</span> ${co.fase1Registro.justificacionV2DenyReason}</div>` : ''}
+
+                ${justStatus === 'PENDIENTE' && role.includes('FINAN') ? `
+                <div class="flex flex-col sm:flex-row gap-3 border-t border-mars-border pt-4">
+                    <button onclick="ui.approveV2Justification()" class="flex-grow bg-mars-green text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors shadow-[0_0_10px_rgba(0,255,102,0.4)]">Aprobar Justificación V2.0</button>
+                    <button onclick="ui.promptDenyV2Justification()" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-6 py-3 text-[10px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-colors whitespace-nowrap">Denegar</button>
+                </div>` : `
+                <div class="mt-2 text-[10px] font-bold uppercase ${justStatus === 'APROBADA' ? 'text-mars-green' : 'text-mars-magenta'}">
+                    ESTADO DE AUDITORÍA: ${justStatus}
+                </div>
+                `}
+            </div>
+            `;
+        }
+
         let financeAlertHtml = '';
         if (role.includes('FINAN')) {
             const pendingTech = co.orders.filter(o => o.status === 'PENDIENTE_FINANZAS').length;
-            const pendingMkt = co.marketingPackages.filter(p => p.status === 'PENDIENTE_FINANZAS').length;
+            const pendingMkt = (co.marketingPackages || []).filter(c => c.status === 'PENDIENTE_FINANZAS').length;
             const pendingCount = pendingTech + pendingMkt;
             if (pendingCount > 0) {
                 financeAlertHtml = `
@@ -141,7 +194,7 @@ Object.assign(ui, {
 
         let mktSection = '';
         if (role === 'CEO' || role.includes('FINAN')) {
-            const sortedMkt = [...co.marketingPackages].sort((a, b) => {
+            const sortedMkt = [...(co.marketingPackages || [])].sort((a, b) => {
                 if (a.status === 'PENDIENTE_FINANZAS' && b.status !== 'PENDIENTE_FINANZAS') return -1;
                 if (a.status !== 'PENDIENTE_FINANZAS' && b.status === 'PENDIENTE_FINANZAS') return 1;
                 return 0;
@@ -187,6 +240,7 @@ Object.assign(ui, {
 
         wrapper.innerHTML = `
         ${ceoDashboard}
+        ${v2AuditHtml}
         ${financeAlertHtml}
         <div class="flex justify-between items-center mb-6">
             <h2 class="font-orbitron text-mars-yellow text-lg sm:text-xl uppercase tracking-tighter">Bóveda de Autorización y Finanzas</h2>
@@ -227,6 +281,46 @@ Object.assign(ui, {
         ${mktSection}
         `;
         el.appendChild(wrapper);
+    },
+
+    approveV2Justification() {
+        if (!state.user) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout();
+        
+        co.fase1Registro.justificacionV2Status = 'APROBADA';
+        telemetry.log("AUDITORÍA V2.0", `Justificación de desviación aprobada por Finanzas.`);
+        ui.pushNotification(state.user.coId, 'TECNICO', `Tu justificación de desviación V2.0 ha sido APROBADA por Finanzas.`, 'success');
+        
+        state.save();
+        this.render();
+    },
+
+    promptDenyV2Justification() {
+        if (!state.user) return;
+        const html = `<input type="text" id="deny-v2-reason" class="w-full bg-black border border-mars-magenta p-3 text-xs text-white" placeholder="Motivo del rechazo...">`;
+        const btn = `<button onclick="ui.finalizeDenyV2Justification()" class="bg-mars-magenta text-white px-6 py-2 text-[10px] font-bold uppercase hover:bg-white hover:text-mars-magenta">Confirmar Denegación</button>`;
+        this.showModal("Denegar Justificación V2.0", html, btn);
+    },
+
+    finalizeDenyV2Justification() {
+        if (!state.user) return;
+        const reasonInput = document.getElementById('deny-v2-reason');
+        const reason = reasonInput ? reasonInput.value : '';
+        if(!reason) return alert("Especifique motivo.");
+        
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout();
+        
+        co.fase1Registro.justificacionV2Status = 'DENEGADA';
+        co.fase1Registro.justificacionV2DenyReason = `[FINANZAS] ${reason}`;
+        
+        telemetry.log("AUDITORÍA V2.0", `Justificación DENEGADA - Motivo: ${reason}`);
+        ui.pushNotification(state.user.coId, 'TECNICO', `Tu justificación de desviación V2.0 ha sido DENEGADA. Revisa el motivo.`, 'error');
+        
+        state.save();
+        this.closeModal();
+        this.render();
     },
 
     approveMarketingPackage(id) {

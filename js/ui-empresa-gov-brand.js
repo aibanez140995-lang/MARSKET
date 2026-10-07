@@ -275,34 +275,10 @@ Object.assign(ui, {
         if (!co) return auth.logout(); // REGLA 4
         
         const docs = co.deliverables || {};
-        co.flightTests = co.flightTests || [];
-        co.orders = co.orders || [];
         co.marketingPackages = co.marketingPackages || []; // REGLA 1
         co.marketingCampaigns = co.marketingCampaigns || []; // REGLA 1
         
         const wrapper = document.createElement('div');
-        
-        let bestFlightHtml = '<p class="text-slate-500 italic text-xs">Aún no hay ensayos de vuelo registrados por el Dpto. Técnico.</p>';
-        if (co.flightTests.length > 0) {
-            const bestFlight = [...co.flightTests].sort((a, b) => b.efficiency - a.efficiency)[0];
-            bestFlightHtml = `
-                <div class="bg-black p-3 border border-mars-border">
-                    <p class="text-[9px] text-mars-yellow uppercase font-bold mb-1">Mejor Ensayo Registrado</p>
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <p class="text-white font-bold text-xs">${bestFlight.bottle}</p>
-                            <p class="text-[9px] text-slate-400">Coste: ${bestFlight.costEurV.toFixed(2)} €v | Altura: ${bestFlight.heightM.toFixed(1)}m</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-[8px] text-slate-500 uppercase">Eficiencia (E)</p>
-                            <p class="text-mars-green font-mono font-bold text-lg">${bestFlight.efficiency.toFixed(3)}</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + o.total, 0);
 
         // Renderizado de Paquetes Contratados
         let packagesHtml = co.marketingPackages.map(p => {
@@ -347,6 +323,7 @@ Object.assign(ui, {
 
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- COLUMNA IZQUIERDA: Identidad, Manifiesto y Modelos de Negocio -->
             <div class="space-y-6 w-full overflow-hidden">
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-magenta w-full">
                     <h2 class="font-orbitron text-mars-magenta text-lg mb-4 uppercase tracking-tighter">Identidad Corporativa</h2>
@@ -358,18 +335,6 @@ Object.assign(ui, {
                     </div>
                     <input type="file" id="brand-logo-upload" class="hidden" accept="image/png, image/jpeg" onchange="ui.handleLogoUpload(event)">
                 </div>
-                
-                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-green w-full">
-                    <h2 class="font-orbitron text-mars-green text-lg mb-4 uppercase tracking-tighter">Inteligencia de Mercado y KPIs</h2>
-                    <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">Datos técnicos reales para fundamentar los pitches ante inversores.</p>
-                    <div class="space-y-4">
-                        <div class="bg-black p-3 border border-mars-border flex justify-between items-center">
-                            <span class="text-[9px] text-mars-cyan uppercase font-bold">Inversión Total I+D</span>
-                            <span class="text-mars-cyan font-mono font-bold text-base">${totalDevCost.toFixed(2)} €v</span>
-                        </div>
-                        ${bestFlightHtml}
-                    </div>
-                </div>
 
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan w-full">
                     <h2 class="font-orbitron text-mars-cyan text-lg mb-4 uppercase tracking-tighter">Manifiesto & Propuesta de Valor</h2>
@@ -380,15 +345,33 @@ Object.assign(ui, {
                         ${this.renderHybridUploadBox('Dossier Propuesta de Valor (PDF/URL)', 'Entregable oficial para Evaluación LYE.', 'valuePropDoc', docs.valuePropDoc)}
                     </div>
                 </div>
+
+                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-green w-full">
+                    <h2 class="font-orbitron text-mars-green text-lg mb-4 uppercase tracking-tighter">Modelos de Negocio (LyE)</h2>
+                    <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Documentación estratégica y operativa de la empresa.</p>
+                    <div class="space-y-6 w-full">
+                        ${this.renderHybridUploadBox('Business Model (Documento Escrito)', 'Documento formal con roles, funciones y estructura.', 'businessModel', docs.businessModel)}
+                        ${this.renderHybridUploadBox('Business Model Canvas', 'Lienzo estratégico del modelo de negocio.', 'canvas', docs.canvas)}
+                    </div>
+                </div>
             </div>
+
+            <!-- COLUMNA DERECHA: Dossier, Audiovisual y Agencia de Medios -->
             <div class="space-y-6 w-full overflow-hidden">
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow h-fit w-full overflow-hidden">
-                    <h2 class="font-orbitron text-mars-yellow text-lg mb-4 uppercase tracking-tighter">Entregas Oficiales de Oratoria & Pitch</h2>
-                    <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Cargue los documentos de presentación requeridos para las defensas de oratoria ante el claustro. Soporta archivos o enlaces directos de Canva/Drive.</p>
-                    
+                    <h2 class="font-orbitron text-mars-yellow text-lg mb-4 uppercase tracking-tighter">Dossier y Oratoria (Lengua)</h2>
+                    <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Documentos de presentación y textos argumentativos para inversores.</p>
                     <div class="space-y-6 w-full">
+                        ${this.renderHybridUploadBox('Dossier para Inversores', 'Texto argumentativo formal (Evaluación Lengua).', 'dossierInversores', docs.dossierInversores)}
                         ${this.renderHybridUploadBox('Presentación Fase I (Inglés - Micro-Pitch)', 'Evaluado por Liderazgo e Inglés.', 'presPhase1', docs.presPhase1)}
                         ${this.renderHybridUploadBox('Presentación Fase III (Castellano - Final)', 'Evaluado por Lengua Castellana.', 'presPhase3', docs.presPhase3)}
+                    </div>
+                </div>
+
+                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-magenta w-full">
+                    <h2 class="font-orbitron text-mars-magenta text-lg mb-4 uppercase tracking-tighter">Audiovisual (Marketing)</h2>
+                    <div class="space-y-6 w-full">
+                        ${this.renderHybridUploadBox('Vídeo Promocional V2.0', 'Resumen visual del proceso de I+D y capacidades del cohete.', 'videoPromo', docs.videoPromo)}
                     </div>
                 </div>
                 
@@ -572,7 +555,7 @@ Object.assign(ui, {
         
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
-        co.deliverables = co.deliverables || { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null };
+        co.deliverables = co.deliverables || { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null };
 
         if(file) {
             if (file.size > 2 * 1024 * 1024) return alert("El archivo supera el límite de 2MB. Envíe un enlace en su lugar.");

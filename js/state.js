@@ -8,7 +8,7 @@ const state = {
 
     migrate(d) {
         // REGLA 1: BLINDAJE DE ESTADO (Fallbacks)
-        d.version = d.version || 1; // FASE 1 v1.0.10: Versionado Optimista
+        d.version = d.version || 1; 
         d.config = d.config || JSON.parse(JSON.stringify(INITIAL_DATA.config));
         d.catalog = d.catalog && d.catalog.length > 0 ? d.catalog : JSON.parse(JSON.stringify(INITIAL_DATA.catalog));
         d.companies = d.companies || JSON.parse(JSON.stringify(INITIAL_DATA.companies));
@@ -40,7 +40,15 @@ const state = {
             co.loginStats.roles = co.loginStats.roles || {};
 
             co.classGroup = co.classGroup || 'A';
-            co.deliverables = co.deliverables || { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null };
+            
+            // FASE 1 v1.0.11: Ampliación de Entregables y Registros
+            co.deliverables = co.deliverables || {};
+            const defaultDocs = { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null };
+            co.deliverables = { ...defaultDocs, ...co.deliverables };
+            
+            co.fase1Registro = co.fase1Registro || { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' };
+            co.decisionLog = co.decisionLog || [];
+            
             co.flightTests = co.flightTests || [];
             co.votingMotions = co.votingMotions || [];
             co.aiPrompts = co.aiPrompts || [];
@@ -54,12 +62,11 @@ const state = {
             co.logo = co.logo || null;
             co.sponsorAwarded = co.sponsorAwarded || null;
             co.marketingCampaigns = co.marketingCampaigns || [];
+            co.marketingPackages = co.marketingPackages || [];
             co.inactivityReports = co.inactivityReports || [];
             co.sponsorData = co.sponsorData || { name: null, logo: null };
             co.auxRoleDept = co.auxRoleDept || null;
             co.notifications = co.notifications || [];
-            
-            // FASE 1 (v1.0.09): Migración de nuevos arrays para Sanciones y Crisis
             co.sanctions = co.sanctions || [];
             co.crisisAlerts = co.crisisAlerts || [];
             
@@ -87,12 +94,10 @@ const state = {
         return d;
     },
 
-    // FASE 1 v1.0.10: Función Quirúrgica Anti-Colisiones
     mergeData(serverData, localData) {
         if (!serverData || !localData) return serverData || localData;
-        const merged = JSON.parse(JSON.stringify(serverData)); // Copia profunda de seguridad de la versión del servidor
+        const merged = JSON.parse(JSON.stringify(serverData)); 
         
-        // Fusión segura de Arrays por ID para preservar aportaciones locales no sincronizadas
         const mergeArrays = (arrServer, arrLocal) => {
             const serverIds = new Set(arrServer.map(i => String(i.id)));
             const missingInServer = arrLocal.filter(i => i.id && !serverIds.has(String(i.id)));
@@ -116,8 +121,8 @@ const state = {
                 
                 const arraysToMerge = [
                     'orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 
-                    'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 
-                    'sanctions', 'crisisAlerts', 'cart'
+                    'aiPrompts', 'decisionLog', 'marketingCampaigns', 'marketingPackages', 
+                    'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'cart'
                 ];
                 
                 arraysToMerge.forEach(arrName => {
@@ -138,7 +143,6 @@ const state = {
         if (savedSession) {
             try {
                 const sessionUser = JSON.parse(savedSession);
-                // REGLA 4: Validación de Sesiones Huérfanas
                 const isValid = sessionUser.admin 
                     ? !!this.data.config.teachers[sessionUser.role]
                     : !!this.data.companies[sessionUser.coId];
@@ -170,7 +174,6 @@ const state = {
             if(res.ok) {
                 const json = await res.json();
                 if(json && json.status !== 'empty') {
-                    // Fusión pasiva en bajada: Mezclar posibles datos locales offline con el servidor entrante
                     this.data = this.mergeData(this.migrate(json), this.data);
                     this.data.version = json.version || this.data.version;
                     this.saveLocalOnly();
@@ -208,7 +211,6 @@ const state = {
             const payload = JSON.parse(JSON.stringify(this.data));
             const res = await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             
-            // FASE 1 v1.0.10: Detección y Resolución de Colisiones de Concurrencia (Data Safety)
             if (res.status === 409 || res.status === 412) {
                 console.warn("DATA SAFETY: Colisión detectada en Cloudflare D1. Fusionando estado de concurrencia optimista...");
                 const fetchRes = await fetch('/api/state');
@@ -216,15 +218,12 @@ const state = {
                 if (fetchRes.ok) {
                     const serverData = await fetchRes.json();
                     if (serverData && serverData.status !== 'empty') {
-                        // Mezcla Quirúrgica de arrays salvaguardando el trabajo local
                         this.data = this.mergeData(serverData, this.data);
                         this.data.version = serverData.version || (this.data.version + 1);
                         this.saveLocalOnly();
                         
-                        // Reintento silencioso de subida post-fusión
                         await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.data) });
                         
-                        // Notificamos al usuario de la intervención pasiva
                         if (typeof ui.showModal === 'function' && document.getElementById('modal-overlay')) {
                             ui.showModal(
                                 "🛡️ Data Safety Intercept", 
@@ -239,7 +238,7 @@ const state = {
             } else if (res.ok) {
                 const json = await res.json().catch(() => null);
                 if (json && json.version) {
-                    this.data.version = json.version; // Actualizamos la versión local con la autorizada por el servidor
+                    this.data.version = json.version; 
                     this.saveLocalOnly();
                 }
                 this.isCloudOnline = true;

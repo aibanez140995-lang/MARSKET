@@ -1,7 +1,14 @@
 // js/ui-empresa-ops.js
-// --- MÓDULO OPERACIONES E IA: LOGÍSTICA FÍSICA Y BITÁCORA IA ---
+// --- MÓDULO OPERACIONES E IA: LOGÍSTICA FÍSICA Y DIARIO DE DECISIONES ---
 
 Object.assign(ui, {
+    ailogTab: 'decisions',
+
+    showAilogTab(tab) {
+        this.ailogTab = tab;
+        this.render();
+    },
+
     updateOrderItem(oid, idx, field, value) {
         if (!state.user) return; // REGLA 2
         const co = state.data.companies[state.user.coId];
@@ -50,7 +57,6 @@ Object.assign(ui, {
             const shop = document.getElementById(`cart-shop-${oid}-${i}`);
             
             if(!cb || !cb.checked) allValid = false;
-            // QA FIX: Añadida validación isNaN para evitar falsos positivos en el botón
             if(!eur || eur.value === '' || isNaN(parseFloat(eur.value)) || parseFloat(eur.value) < 0) allValid = false;
             if(!shop || shop.value.trim() === '') allValid = false;
         }
@@ -203,10 +209,6 @@ Object.assign(ui, {
         if(!allChecked) return alert("Debe validar el ensamblaje y rellenar los costes reales de todos los componentes.");
         if(co.balance < order.total) return alert("Fondos virtuales insuficientes para ejecutar la compra.");
         
-        // QA FIX: Bloque de Mutación Atómica. 
-        // Actualizamos todo en memoria ANTES de llamar a state.save() para evitar estados parciales corruptos.
-        
-        // 1. Deducción de Balance y Ledger
         const conceptStr = `Adquisición Orden #${oid}: ${itemNames.join(', ')}`;
         co.balance -= order.total;
         co.ledger.unshift({ 
@@ -218,19 +220,15 @@ Object.assign(ui, {
             final: co.balance 
         });
         
-        // 2. Registro de Costes Reales
         order.items.forEach(i => { co.realCosts.unshift({ shop: i.realShop, item: i.name, eur: i.realEur }); });
         
-        // 3. Cambio de Estado de la Orden
         order.status = 'EJECUTADO';
         order.realEurTotal = realEurTotal;
         
-        // 4. Telemetría y Notificaciones
         telemetry.log("EJECUCIÓN COMPRA", `Orden #${oid} | Importe: ${order.total.toFixed(2)}€v | Real: ${realEurTotal.toFixed(2)}€`);
         ui.pushNotification(state.user.coId, 'TECNICO', `Orden #${oid} ejecutada físicamente y asentada en Ledger.`, 'success');
         ui.pushNotification(state.user.coId, 'FINANZAS', `Orden #${oid} ejecutada. Gasto real: ${realEurTotal.toFixed(2)}€.`, 'info');
         
-        // 5. Guardado Único y Seguro (QA FIX: Eliminado el doble pushToCloud)
         state.save(); 
         
         alert("Compra física confirmada y asentada en el Ledger.");
@@ -243,54 +241,143 @@ Object.assign(ui, {
         if (!co) return auth.logout(); // REGLA 4
         
         co.aiPrompts = co.aiPrompts || []; // REGLA 1
-        const pending = co.aiPrompts.filter(p => p.status === 'PENDIENTE_VALIDACION');
-        const approved = co.aiPrompts.filter(p => p.status === 'APROBADO');
+        co.decisionLog = co.decisionLog || []; // REGLA 1
+        
+        const pendingAI = co.aiPrompts.filter(p => p.status === 'PENDIENTE_VALIDACION');
+        const approvedAI = co.aiPrompts.filter(p => p.status === 'APROBADO');
         
         const wrapper = document.createElement('div');
-        wrapper.innerHTML = `
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="font-orbitron text-blue-400 text-xl uppercase tracking-tighter">Buzón y Bitácora de Inteligencia Artificial</h2>
-            <button onclick="ui.modalReportAI()" class="bg-blue-600/20 border border-blue-500 text-blue-400 px-4 py-2 text-[10px] uppercase font-bold hover:bg-blue-500 hover:text-white transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)]">Registrar Prompt Directo</button>
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow w-full overflow-hidden">
-                <h3 class="font-orbitron text-mars-yellow text-sm mb-4 uppercase tracking-widest border-b border-mars-border/50 pb-2">Prompts Pendientes de Auditoría</h3>
-                <div class="space-y-4 overflow-y-auto max-h-[500px] pr-2 w-full">
-                    ${pending.map(p => `
-                    <div class="bg-slate-900/50 border border-mars-border p-4 text-[10px] w-full">
-                        ${ui.renderWorkflowTracker(['Emisor (Reporta)', 'Op. IA (Audita)'], 0)}
-                        <div class="flex justify-between mb-2 border-b border-mars-border/30 pb-2 mt-3">
-                            <span class="text-mars-yellow font-bold uppercase tracking-widest">${p.tool}</span>
-                            <span class="text-slate-500">${p.date}</span>
-                        </div>
-                        <p class="text-white font-bold mb-1 uppercase">Tarea: ${p.task}</p>
-                        <p class="text-slate-400 mb-2 italic">Emisor: Rol ${p.authorRole.replace('_',' ')}</p>
-                        <div class="bg-black border border-mars-border/50 p-3 mb-2 w-full"><span class="text-blue-400 font-bold block mb-1">Prompt:</span><p class="text-slate-300">"${p.prompt}"</p></div>
-                        <div class="bg-black border border-mars-border/50 p-3 mb-3 w-full"><span class="text-mars-green font-bold block mb-1">Verificación Humana:</span><p class="text-slate-300">${p.verification}</p></div>
-                        <div class="flex flex-col sm:flex-row gap-2 w-full">
-                            <button onclick="ui.processAIPrompt('${p.id}', 'APROBADO')" class="flex-1 bg-mars-green text-black font-black py-2 uppercase hover:shadow-[0_0_10px_#00ff66] transition-all">Aprobar e Integrar</button>
-                            <button onclick="ui.processAIPrompt('${p.id}', 'DESCARTADO')" class="bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2 font-bold uppercase hover:bg-mars-magenta hover:text-white transition-all">Descartar</button>
-                        </div>
-                    </div>`).join('') || '<p class="text-slate-600 text-xs italic">Bandeja limpia. No hay reportes pendientes.</p>'}
-                </div>
-            </div>
-            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-blue-500 w-full overflow-hidden">
-                <h3 class="font-orbitron text-blue-400 text-sm mb-4 uppercase tracking-widest border-b border-mars-border/50 pb-2">Bitácora Oficial Aprobada</h3>
-                <div class="space-y-4 overflow-y-auto max-h-[500px] pr-2 w-full">
-                    ${approved.map(p => `
-                    <div class="bg-slate-900/50 border border-blue-900/30 p-4 text-[10px] border-l-2 border-l-blue-500 w-full">
-                        ${ui.renderWorkflowTracker(['Emisor (Reporta)', 'Op. IA (Audita)'], 1)}
-                        <div class="flex justify-between mb-2 border-b border-slate-800 pb-2 mt-3">
-                            <span class="text-blue-400 font-bold uppercase tracking-widest">${p.tool}</span>
-                            <span class="text-slate-500">${p.date}</span>
-                        </div>
-                        <p class="text-white font-bold mb-1 uppercase">Tarea: ${p.task}</p>
-                        <div class="text-slate-400 mt-2 bg-black p-2 border border-slate-800 w-full"><span class="text-mars-cyan font-bold block mb-1">Prompt Validado:</span>"${p.prompt}"</div>
-                    </div>`).join('') || '<p class="text-slate-600 text-xs italic">Aún no se han integrado prompts aprobados a la bitácora.</p>'}
-                </div>
-            </div>
+        
+        let tabsHtml = `
+        <div class="flex flex-wrap gap-2 mb-6 border-b border-mars-border pb-2">
+            <button onclick="ui.showAilogTab('decisions')" class="px-4 py-2 text-[10px] font-bold uppercase ${this.ailogTab==='decisions'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">Diario de Decisiones y Conflictos</button>
+            <button onclick="ui.showAilogTab('ai')" class="px-4 py-2 text-[10px] font-bold uppercase ${this.ailogTab==='ai'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">Auditoría de IA</button>
         </div>`;
+
+        let contentHtml = '';
+
+        if (this.ailogTab === 'decisions') {
+            contentHtml = `
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="font-orbitron text-mars-cyan text-xl uppercase tracking-tighter">Diario de Decisiones y Conflictos</h2>
+                <button onclick="ui.modalReportDecision()" class="bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-4 py-2 text-[10px] uppercase font-bold hover:bg-mars-cyan hover:text-black transition-all shadow-[0_0_10px_rgba(0,240,255,0.3)]">Registrar Hito</button>
+            </div>
+            <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Bitácora oficial para documentar decisiones estratégicas, resolución de conflictos internos y evolución del equipo (Evaluación LyE).</p>
+            
+            <div class="space-y-4">
+                ${co.decisionLog.map(d => `
+                <div class="terminal-border bg-mars-card p-4 border-l-4 ${d.type === 'CONFLICTO' ? 'border-l-mars-magenta' : 'border-l-mars-cyan'} w-full">
+                    <div class="flex justify-between mb-2 border-b border-mars-border/30 pb-2">
+                        <span class="${d.type === 'CONFLICTO' ? 'text-mars-magenta' : 'text-mars-cyan'} font-bold uppercase tracking-widest text-[10px]">${d.type}</span>
+                        <span class="text-slate-500 text-[9px]">${d.date}</span>
+                    </div>
+                    <p class="text-white font-bold mb-2 text-xs uppercase">${d.title}</p>
+                    <div class="bg-black p-3 border border-slate-800 mb-2">
+                        <span class="text-slate-500 text-[9px] uppercase font-bold block mb-1">Descripción / Contexto:</span>
+                        <p class="text-slate-300 text-[10px] italic">"${d.description}"</p>
+                    </div>
+                    <div class="bg-black p-3 border border-slate-800">
+                        <span class="text-mars-green text-[9px] uppercase font-bold block mb-1">Resolución / Impacto:</span>
+                        <p class="text-slate-300 text-[10px]">"${d.resolution}"</p>
+                    </div>
+                    <p class="text-right text-[8px] text-slate-500 uppercase mt-2">Registrado por: ${d.authorRole.replace('_', ' ')}</p>
+                </div>`).join('') || '<p class="text-slate-600 text-xs italic">El diario está vacío. Registra el primer hito del equipo.</p>'}
+            </div>`;
+        } else {
+            contentHtml = `
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="font-orbitron text-blue-400 text-xl uppercase tracking-tighter">Auditoría de Inteligencia Artificial</h2>
+                <button onclick="ui.modalReportAI()" class="bg-blue-600/20 border border-blue-500 text-blue-400 px-4 py-2 text-[10px] uppercase font-bold hover:bg-blue-500 hover:text-white transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)]">Registrar Prompt Directo</button>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow w-full overflow-hidden">
+                    <h3 class="font-orbitron text-mars-yellow text-sm mb-4 uppercase tracking-widest border-b border-mars-border/50 pb-2">Prompts Pendientes de Auditoría</h3>
+                    <div class="space-y-4 overflow-y-auto max-h-[500px] pr-2 w-full">
+                        ${pendingAI.map(p => `
+                        <div class="bg-slate-900/50 border border-mars-border p-4 text-[10px] w-full">
+                            ${ui.renderWorkflowTracker(['Emisor (Reporta)', 'Op. IA (Audita)'], 0)}
+                            <div class="flex justify-between mb-2 border-b border-mars-border/30 pb-2 mt-3">
+                                <span class="text-mars-yellow font-bold uppercase tracking-widest">${p.tool}</span>
+                                <span class="text-slate-500">${p.date}</span>
+                            </div>
+                            <p class="text-white font-bold mb-1 uppercase">Tarea: ${p.task}</p>
+                            <p class="text-slate-400 mb-2 italic">Emisor: Rol ${p.authorRole.replace('_',' ')}</p>
+                            <div class="bg-black border border-mars-border/50 p-3 mb-2 w-full"><span class="text-blue-400 font-bold block mb-1">Prompt:</span><p class="text-slate-300">"${p.prompt}"</p></div>
+                            <div class="bg-black border border-mars-border/50 p-3 mb-3 w-full"><span class="text-mars-green font-bold block mb-1">Verificación Humana:</span><p class="text-slate-300">${p.verification}</p></div>
+                            <div class="flex flex-col sm:flex-row gap-2 w-full">
+                                <button onclick="ui.processAIPrompt('${p.id}', 'APROBADO')" class="flex-1 bg-mars-green text-black font-black py-2 uppercase hover:shadow-[0_0_10px_#00ff66] transition-all">Aprobar e Integrar</button>
+                                <button onclick="ui.processAIPrompt('${p.id}', 'DESCARTADO')" class="bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2 font-bold uppercase hover:bg-mars-magenta hover:text-white transition-all">Descartar</button>
+                            </div>
+                        </div>`).join('') || '<p class="text-slate-600 text-xs italic">Bandeja limpia. No hay reportes pendientes.</p>'}
+                    </div>
+                </div>
+                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-blue-500 w-full overflow-hidden">
+                    <h3 class="font-orbitron text-blue-400 text-sm mb-4 uppercase tracking-widest border-b border-mars-border/50 pb-2">Bitácora Oficial Aprobada</h3>
+                    <div class="space-y-4 overflow-y-auto max-h-[500px] pr-2 w-full">
+                        ${approvedAI.map(p => `
+                        <div class="bg-slate-900/50 border border-blue-900/30 p-4 text-[10px] border-l-2 border-l-blue-500 w-full">
+                            ${ui.renderWorkflowTracker(['Emisor (Reporta)', 'Op. IA (Audita)'], 1)}
+                            <div class="flex justify-between mb-2 border-b border-slate-800 pb-2 mt-3">
+                                <span class="text-blue-400 font-bold uppercase tracking-widest">${p.tool}</span>
+                                <span class="text-slate-500">${p.date}</span>
+                            </div>
+                            <p class="text-white font-bold mb-1 uppercase">Tarea: ${p.task}</p>
+                            <div class="text-slate-400 mt-2 bg-black p-2 border border-slate-800 w-full"><span class="text-mars-cyan font-bold block mb-1">Prompt Validado:</span>"${p.prompt}"</div>
+                        </div>`).join('') || '<p class="text-slate-600 text-xs italic">Aún no se han integrado prompts aprobados a la bitácora.</p>'}
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        wrapper.innerHTML = tabsHtml + contentHtml;
         el.appendChild(wrapper);
+    },
+
+    modalReportDecision() {
+        if (!state.user) return;
+        const html = `
+            <select id="dec-type" class="w-full bg-slate-900 border border-mars-cyan p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan uppercase font-bold">
+                <option value="DECISIÓN ESTRATÉGICA">Decisión Estratégica</option>
+                <option value="CONFLICTO">Resolución de Conflicto</option>
+            </select>
+            <input type="text" id="dec-title" placeholder="Título del hito o conflicto..." class="w-full bg-slate-900 border border-mars-cyan p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+            <textarea id="dec-desc" placeholder="Describe el contexto o el problema surgido..." class="w-full bg-slate-900 border border-mars-cyan p-2 text-xs text-white h-20 mb-2 outline-none focus:border-mars-cyan"></textarea>
+            <textarea id="dec-res" placeholder="¿Qué decisión se tomó o cómo se resolvió el conflicto?" class="w-full bg-slate-900 border border-mars-cyan p-2 text-xs text-white h-20 mb-2 outline-none focus:border-mars-cyan"></textarea>
+        `;
+        const actions = `<button onclick="ui.submitDecision()" class="bg-mars-cyan text-black px-4 py-2 text-[10px] font-bold uppercase hover:bg-white transition-colors">Registrar en Diario</button>`;
+        this.showModal("Registrar Hito en el Diario", html, actions);
+    },
+
+    submitDecision() {
+        if (!state.user) return;
+        const elType = document.getElementById('dec-type');
+        const elTitle = document.getElementById('dec-title');
+        const elDesc = document.getElementById('dec-desc');
+        const elRes = document.getElementById('dec-res');
+        
+        if (!elType || !elTitle || !elDesc || !elRes) return; // REGLA 3
+        
+        const type = elType.value;
+        const title = elTitle.value;
+        const description = elDesc.value;
+        const resolution = elRes.value;
+        
+        if(!title || !description || !resolution) return alert("Todos los campos son obligatorios.");
+        
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout();
+        co.decisionLog = co.decisionLog || [];
+        
+        co.decisionLog.unshift({
+            id: 'DEC-'+Date.now(), type, title, description, resolution,
+            authorRole: state.user.role, date: new Date().toLocaleString()
+        });
+        
+        telemetry.log("DIARIO", `Hito registrado: ${title}`);
+        
+        state.save();
+        this.closeModal();
+        this.render();
     },
 
     modalReportAI() {

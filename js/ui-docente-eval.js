@@ -62,7 +62,16 @@ Object.assign(ui, {
                 <div class="overflow-x-auto w-full">
                     <table class="w-full text-left text-[9px] whitespace-nowrap min-w-max">
                         <thead class="text-slate-500 uppercase border-b border-mars-border">
-                            <tr><th class="py-3 pr-4">Empresa</th><th class="pr-4">Informe Téc (FYQ)</th><th class="pr-4">P. Fase I (ING/LYE)</th><th class="pr-4">P. Fase III (LEN)</th><th class="pr-4">Libro Finanzas (ECO)</th><th class="pr-4">Propuesta Valor</th><th>IA Prompts</th></tr>
+                            <tr>
+                                <th class="py-3 pr-4">Empresa</th>
+                                <th class="pr-4 text-mars-cyan">FYQ (Inf/Boc/Fot)</th>
+                                <th class="pr-4 text-mars-yellow">MAT (Gon/M1/M2/Cmp)</th>
+                                <th class="pr-4 text-mars-green">LYE (BM/Can/Val)</th>
+                                <th class="pr-4 text-mars-magenta">LEN (Dos/P3)</th>
+                                <th class="pr-4 text-blue-400">ING (P1)</th>
+                                <th class="pr-4 text-orange-400">ECO (Libro)</th>
+                                <th class="pr-4 text-purple-400">MKT (Vid)</th>
+                            </tr>
                         </thead>
                         <tbody>
                             ${Object.keys(state.data.companies)
@@ -70,21 +79,19 @@ Object.assign(ui, {
                                 .map(cid => {
                                 const co = state.data.companies[cid];
                                 const d = co.deliverables || {}; 
-                                const aiCount = (co.aiPrompts||[]).filter(p=>p.status==='APROBADO').length;
                                 
-                                const dLink = (doc) => doc ? `<a href="${doc.dataUrl}" target="_blank" download="${doc.type==='file'?doc.name:''}" class="bg-mars-cyan/10 text-mars-cyan border border-mars-cyan px-2 py-1 font-bold hover:bg-mars-cyan hover:text-black transition-colors block text-center">${doc.type==='link'?'🔗 ENLACE':'📁 ARCHIVO'}</a>` : `<span class="text-slate-600 border border-slate-700 px-2 py-1 block text-center">PENDIENTE</span>`;
-                                const vLink = co.valueProposition ? `<span class="text-mars-green font-bold bg-mars-green/10 border border-mars-green px-2 py-1 block text-center">✓ REDACTADA</span>` : `<span class="text-slate-600 border border-slate-700 px-2 py-1 block text-center">VACÍA</span>`;
-                                const aLink = aiCount > 0 ? `<span class="text-blue-400 font-bold bg-blue-500/10 border border-blue-500 px-2 py-1 block text-center">✓ ${aiCount} REGISTROS</span>` : `<span class="text-slate-600 border border-slate-700 px-2 py-1 block text-center">0 REGISTROS</span>`;
+                                const dLink = (doc, label) => doc ? `<a href="${doc.dataUrl}" target="_blank" download="${doc.type==='file'?doc.name:''}" class="text-white hover:text-mars-cyan underline decoration-dashed mr-2" title="${doc.name}">${label}</a>` : `<span class="text-slate-600 mr-2 line-through" title="Pendiente">${label}</span>`;
 
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
                                     <td class="py-3 font-orbitron text-white font-bold pr-4">${co.name} [${co.classGroup}]</td>
-                                    <td class="py-3 pr-4">${dLink(d.technicalReport)}</td>
-                                    <td class="py-3 pr-4">${dLink(d.presPhase1)}</td>
-                                    <td class="py-3 pr-4">${dLink(d.presPhase3)}</td>
-                                    <td class="py-3 pr-4">${dLink(d.financeBook)}</td>
-                                    <td class="py-3 pr-4">${vLink}</td>
-                                    <td class="py-3">${aLink}</td>
+                                    <td class="py-3 pr-4">${dLink(d.technicalReport, 'INF')} ${dLink(d.boceto, 'BOC')} ${dLink(d.fotoPrototipo, 'FOT')}</td>
+                                    <td class="py-3 pr-4">${dLink(d.mathGoniometro, 'GON')} ${dLink(d.mathMedicion1, 'M1')} ${dLink(d.mathMedicion2, 'M2')} ${dLink(d.mathComparativa, 'CMP')}</td>
+                                    <td class="py-3 pr-4">${dLink(d.businessModel, 'BM')} ${dLink(d.canvas, 'CAN')} ${dLink(d.valuePropDoc, 'VAL')}</td>
+                                    <td class="py-3 pr-4">${dLink(d.dossierInversores, 'DOS')} ${dLink(d.presPhase3, 'P3')}</td>
+                                    <td class="py-3 pr-4">${dLink(d.presPhase1, 'P1')}</td>
+                                    <td class="py-3 pr-4">${dLink(d.financeBook, 'LIB')}</td>
+                                    <td class="py-3 pr-4">${dLink(d.videoPromo, 'VID')}</td>
                                 </tr>`;
                             }).join('')}
                         </tbody>
@@ -112,20 +119,34 @@ Object.assign(ui, {
                 const docs = co.deliverables || {};
                 
                 let evidenceHtml = `<h4 class="font-orbitron text-mars-cyan text-xs uppercase mb-4 tracking-widest border-b border-mars-border pb-2">Evidencias Adjuntas</h4>`;
+                
                 if (activeSubject === 'FYQ') {
+                    evidenceHtml += this.renderDocBadge('Boceto / Diseño', docs.boceto);
+                    evidenceHtml += this.renderDocBadge('Foto Prototipo', docs.fotoPrototipo);
                     evidenceHtml += this.renderDocBadge('Informe Técnico (FYQ)', docs.technicalReport);
                     if(co.flightTests && co.flightTests.length>0) {
                         evidenceHtml += `<div class="mt-4"><span class="text-mars-yellow text-[9px] font-bold uppercase">Ensayos Vuelo:</span><div class="text-[9px] mt-1 space-y-1">`;
                         co.flightTests.forEach(f => evidenceHtml += `<p class="text-slate-300">H: ${f.heightM}m | E: ${f.efficiency.toFixed(2)}</p>`);
                         evidenceHtml += `</div></div>`;
                     }
+                } else if (activeSubject === 'MAT') {
+                    evidenceHtml += this.renderDocBadge('1. Goniómetro', docs.mathGoniometro);
+                    evidenceHtml += this.renderDocBadge('2. Medición Simple', docs.mathMedicion1);
+                    evidenceHtml += this.renderDocBadge('3. Medición Doble', docs.mathMedicion2);
+                    evidenceHtml += this.renderDocBadge('4. Comparativa', docs.mathComparativa);
                 } else if (activeSubject === 'ECO') {
                     evidenceHtml += this.renderDocBadge('Libro Cuentas Financiero', docs.financeBook);
-                } else if (activeSubject === 'LYE' || activeSubject === 'MARKETING' || activeSubject === 'LEN' || activeSubject === 'ING') {
+                } else if (activeSubject === 'LYE') {
+                    evidenceHtml += this.renderDocBadge('Business Model', docs.businessModel);
+                    evidenceHtml += this.renderDocBadge('BM Canvas', docs.canvas);
+                    evidenceHtml += this.renderDocBadge('Dossier Propuesta Valor', docs.valuePropDoc);
                     evidenceHtml += this.renderDocBadge('Micro-Pitch Fase I', docs.presPhase1);
-                    evidenceHtml += this.renderDocBadge('Pitch Final Fase III', docs.presPhase3);
-                    if(activeSubject === 'LYE') evidenceHtml += this.renderDocBadge('Dossier Propuesta Valor', docs.valuePropDoc);
                     evidenceHtml += `<div class="mt-4"><span class="text-mars-yellow text-[9px] font-bold uppercase">Texto Propuesta de Valor:</span><p class="text-[9px] text-slate-300 italic mt-1 bg-black p-3 border border-slate-800 leading-relaxed max-h-32 overflow-y-auto">"${co.valueProposition || 'La empresa aún no ha definido su propuesta de valor corporativa.'}"</p></div>`;
+                } else if (activeSubject === 'LEN') {
+                    evidenceHtml += this.renderDocBadge('Dossier Inversores', docs.dossierInversores);
+                    evidenceHtml += this.renderDocBadge('Pitch Final Fase III', docs.presPhase3);
+                } else if (activeSubject === 'ING') {
+                    evidenceHtml += this.renderDocBadge('Micro-Pitch Fase I', docs.presPhase1);
                 } else {
                     evidenceHtml += `<p class="text-[9px] text-slate-500 italic">No hay entregables documentales específicos enlazados a la vista rápida de esta rúbrica.</p>`;
                 }
