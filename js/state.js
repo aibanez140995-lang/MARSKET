@@ -18,6 +18,10 @@ const state = {
         d.suggestionsToAlex = d.suggestionsToAlex || [];
         d.pendingCustom = d.pendingCustom || [];
         
+        // FASE 1 v1.0.13: Arrays globales para el Mercado B2B
+        d.b2bMarket = d.b2bMarket || [];
+        d.b2bContracts = d.b2bContracts || [];
+        
         d.config.deadlines = d.config.deadlines || { techReport: "2026-11-15T23:59", presPhase1: "2026-10-30T23:59", presPhase3: "2026-12-05T23:59", financeBook: "2026-12-01T23:59", valuePropDoc: "2026-11-10T23:59" };
         d.config.guidelines = d.config.guidelines || { techReportDocUrl: "", techReportNotes: "" };
         
@@ -41,7 +45,6 @@ const state = {
 
             co.classGroup = co.classGroup || 'A';
             
-            // FASE 1 v1.0.12: Ampliación de Entregables y Registros (Añadido informePreliminar)
             co.deliverables = co.deliverables || {};
             const defaultDocs = { technicalReport: null, informePreliminar: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null };
             co.deliverables = { ...defaultDocs, ...co.deliverables };
@@ -69,6 +72,9 @@ const state = {
             co.notifications = co.notifications || [];
             co.sanctions = co.sanctions || [];
             co.crisisAlerts = co.crisisAlerts || [];
+            
+            // FASE 1 v1.0.13: Inventario Físico
+            co.inventory = co.inventory || [];
             
             if(co.roles.QUIMICA || co.roles.AERODINAMICA || co.roles.IA) {
                 const defaultPin = co.roles.CEO || '1234';
@@ -113,6 +119,14 @@ const state = {
         if (localData.suggestionsToAlex) {
             merged.suggestionsToAlex = mergeArrays(merged.suggestionsToAlex || [], localData.suggestionsToAlex);
         }
+        
+        // FASE 1 v1.0.13: Fusión de arrays globales B2B
+        if (localData.b2bMarket) {
+            merged.b2bMarket = mergeArrays(merged.b2bMarket || [], localData.b2bMarket);
+        }
+        if (localData.b2bContracts) {
+            merged.b2bContracts = mergeArrays(merged.b2bContracts || [], localData.b2bContracts);
+        }
 
         for (let k in localData.companies) {
             if (merged.companies[k] && localData.companies[k]) {
@@ -122,7 +136,8 @@ const state = {
                 const arraysToMerge = [
                     'orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 
                     'aiPrompts', 'decisionLog', 'marketingCampaigns', 'marketingPackages', 
-                    'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'cart'
+                    'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'cart',
+                    'inventory' // FASE 1 v1.0.13: Fusión de inventario
                 ];
                 
                 arraysToMerge.forEach(arrName => {

@@ -1,5 +1,5 @@
 // js/ui-empresa-tech.js
-// --- MÓDULO I+D: FASE I (TEORÍA), FASE II (PRÁCTICA) Y MATEMÁTICAS ---
+// --- MÓDULO I+D: FASE I, FASE II, MATEMÁTICAS E INVENTARIO B2B ---
 
 Object.assign(ui, {
     techTab: 'fase1',
@@ -19,6 +19,7 @@ Object.assign(ui, {
         co.bom = co.bom || [];
         co.flightTests = co.flightTests || [];
         co.orders = co.orders || [];
+        co.inventory = co.inventory || []; // FASE 2 v1.0.13: Inventario
         
         const wrapper = document.createElement('div');
         
@@ -27,7 +28,8 @@ Object.assign(ui, {
         <div class="flex flex-wrap gap-2 mb-6 border-b border-mars-border pb-2">
             <button onclick="ui.showTechTab('fase1')" class="px-4 py-2 text-[10px] font-bold uppercase ${this.techTab==='fase1'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">Fase I: Diseño Teórico</button>
             <button onclick="ui.showTechTab('fase2')" class="px-4 py-2 text-[10px] font-bold uppercase ${this.techTab==='fase2'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">Fase II: Pruebas y V2.0</button>
-            <button onclick="ui.showTechTab('math')" class="px-4 py-2 text-[10px] font-bold uppercase ${this.techTab==='math'?'bg-mars-yellow text-black':'text-slate-400 hover:text-white'} transition-colors">Matemáticas (Trigonometría)</button>
+            <button onclick="ui.showTechTab('math')" class="px-4 py-2 text-[10px] font-bold uppercase ${this.techTab==='math'?'bg-mars-yellow text-black':'text-slate-400 hover:text-white'} transition-colors">Matemáticas</button>
+            <button onclick="ui.showTechTab('inventory')" class="px-4 py-2 text-[10px] font-bold uppercase ${this.techTab==='inventory'?'bg-mars-green text-black':'text-slate-400 hover:text-white'} transition-colors shadow-[0_0_10px_rgba(0,255,102,0.2)]">Inventario y B2B</button>
         </div>`;
 
         let contentHtml = '';
@@ -103,7 +105,6 @@ Object.assign(ui, {
 
             const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + o.total, 0);
             
-            // Lógica de Comparativa (Teoría vs Práctica)
             const presTeorico = parseFloat(co.fase1Registro.presupuestoTeorico) || 0;
             const altTeorica = parseFloat(co.fase1Registro.alturaEstimada) || 0;
             const bestFlight = co.flightTests.length > 0 ? [...co.flightTests].sort((a, b) => b.heightM - a.heightM)[0] : null;
@@ -198,6 +199,53 @@ Object.assign(ui, {
                     ${this.renderHybridUploadBox('2. Informe Medición Simple', 'Datos empíricos con distancia conocida desde la base.', 'mathMedicion1', docs.mathMedicion1)}
                     ${this.renderHybridUploadBox('3. Informe Doble Medición', 'Datos empíricos con dos mediciones a distancia de separación conocida.', 'mathMedicion2', docs.mathMedicion2)}
                     ${this.renderHybridUploadBox('4. Informe Comparativo Final', 'Comparación de resultados y análisis de coherencia.', 'mathComparativa', docs.mathComparativa)}
+                </div>
+            </div>`;
+        }
+        // FASE 2 v1.0.13: Inventario y Mercado B2B
+        else if (this.techTab === 'inventory') {
+            let invHtml = co.inventory.map(item => {
+                let actions = '';
+                if (item.status === 'AVAILABLE') {
+                    actions = `
+                    <div class="flex gap-2 mt-3">
+                        <button onclick="ui.modalSellItem('${item.id}')" class="flex-1 bg-mars-cyan/20 border border-mars-cyan text-mars-cyan py-1.5 text-[9px] font-bold uppercase hover:bg-mars-cyan hover:text-black transition-colors">Vender B2B</button>
+                        ${!item.warrantyClaimed ? `<button onclick="ui.requestWarranty('${item.id}')" class="flex-1 bg-mars-yellow/20 border border-mars-yellow text-mars-yellow py-1.5 text-[9px] font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors">Garantía</button>` : `<span class="flex-1 text-center text-[8px] text-slate-500 border border-slate-700 py-1.5 uppercase">Garantía Usada</span>`}
+                    </div>`;
+                } else if (item.status === 'ON_SALE') {
+                    actions = `
+                    <div class="mt-3 bg-mars-magenta/10 border border-mars-magenta p-2 text-center">
+                        <p class="text-[9px] text-mars-magenta font-bold uppercase mb-2">En venta por ${item.salePrice} €v</p>
+                        <button onclick="ui.cancelSellItem('${item.id}')" class="w-full bg-mars-magenta text-white py-1 text-[9px] font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Cancelar Venta</button>
+                    </div>`;
+                } else if (item.status === 'SOLD') {
+                    actions = `<div class="mt-3 text-center border border-slate-700 py-1.5"><span class="text-[9px] text-slate-500 font-bold uppercase">Vendido / Traspasado</span></div>`;
+                }
+
+                return `
+                <div class="bg-black border ${item.status === 'ON_SALE' ? 'border-mars-magenta' : 'border-mars-border'} p-4 flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-[8px] text-slate-500 uppercase font-bold tracking-widest">${item.category}</span>
+                            <span class="text-[8px] text-slate-600">${item.id}</span>
+                        </div>
+                        <h3 class="font-orbitron text-white text-[11px] mb-1 leading-tight uppercase">${item.name}</h3>
+                        <p class="text-[8px] text-slate-400 uppercase">Adquirido: ${item.purchaseDate}</p>
+                    </div>
+                    ${actions}
+                </div>`;
+            }).join('') || '<p class="text-slate-500 italic text-xs col-span-full">El inventario físico está vacío. Ejecuta compras en Logística.</p>';
+
+            contentHtml = `
+            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-green">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-orbitron text-mars-green text-lg uppercase tracking-tighter">Inventario Corporativo Físico</h2>
+                    <span class="bg-mars-green/10 text-mars-green border border-mars-green px-3 py-1 font-bold text-[10px]">${co.inventory.filter(i => i.status !== 'SOLD').length} Activos</span>
+                </div>
+                <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Gestiona los componentes físicos de tu empresa. Puedes solicitar reposiciones por rotura (Garantía) o vender piezas que ya no necesites a otras startups en el Mercado B2B.</p>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    ${invHtml}
                 </div>
             </div>`;
         }
@@ -309,5 +357,109 @@ Object.assign(ui, {
         state.save();
         this.closeModal();
         alert("Solicitud enviada al claustro para su valoración.");
+    },
+
+    // FASE 2 v1.0.13: Lógica de Inventario y B2B
+    modalSellItem(invId) {
+        if (!state.user) return;
+        const html = `
+            <p class="text-[10px] text-slate-400 mb-4">Fija el precio de venta para este componente. Aparecerá en el SUPERMARS-KET de las demás startups.</p>
+            <input type="number" id="b2b-price" placeholder="Precio de venta (€v)..." class="w-full bg-black border border-mars-cyan p-3 text-xs text-white outline-none focus:border-mars-cyan mb-2" min="1">
+        `;
+        const actions = `<button onclick="ui.confirmSellItem('${invId}')" class="bg-mars-cyan text-black px-6 py-2 text-[10px] font-bold uppercase hover:bg-white transition-colors">Publicar en Mercado B2B</button>`;
+        this.showModal("Vender Componente", html, actions);
+    },
+
+    confirmSellItem(invId) {
+        if (!state.user) return;
+        const elPrice = document.getElementById('b2b-price');
+        if (!elPrice) return; // REGLA 3
+        
+        const price = parseFloat(elPrice.value);
+        if (isNaN(price) || price <= 0) return alert("Introduce un precio válido mayor que 0.");
+
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout();
+        
+        const item = co.inventory.find(i => i.id === invId);
+        if (!item || item.status !== 'AVAILABLE') return alert("El objeto no está disponible para la venta.");
+
+        item.status = 'ON_SALE';
+        item.salePrice = price;
+
+        state.data.b2bMarket = state.data.b2bMarket || [];
+        state.data.b2bMarket.unshift({
+            marketId: 'MKTB2B-' + Date.now(),
+            invId: item.id,
+            sellerCoId: state.user.coId,
+            sellerName: co.name,
+            itemName: item.name,
+            category: item.category,
+            price: price,
+            date: new Date().toLocaleDateString()
+        });
+
+        telemetry.log("MERCADO B2B", `Puesto a la venta: ${item.name} por ${price}€v`);
+        state.save();
+        this.closeModal();
+        this.render();
+    },
+
+    cancelSellItem(invId) {
+        if (!state.user) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout();
+        
+        const item = co.inventory.find(i => i.id === invId);
+        if (!item || item.status !== 'ON_SALE') return;
+
+        item.status = 'AVAILABLE';
+        item.salePrice = null;
+
+        state.data.b2bMarket = state.data.b2bMarket || [];
+        state.data.b2bMarket = state.data.b2bMarket.filter(m => m.invId !== invId);
+
+        telemetry.log("MERCADO B2B", `Venta cancelada: ${item.name}`);
+        state.save();
+        this.render();
+    },
+
+    requestWarranty(invId) {
+        if (!state.user) return;
+        if (!confirm("¿Estás seguro de solicitar la reposición por rotura? Esto generará una orden a coste 0€v para Logística y consumirá la garantía de esta pieza.")) return;
+
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout();
+        
+        const item = co.inventory.find(i => i.id === invId);
+        if (!item || item.warrantyClaimed) return alert("Garantía no disponible.");
+
+        item.warrantyClaimed = true;
+
+        co.orders = co.orders || [];
+        const newOrder = { 
+            id: state.data.config.nextOrderId++, 
+            items: [{
+                name: `[GARANTÍA] ${item.name}`, 
+                qty: 1, 
+                price: 0, 
+                category: item.category, 
+                realEur: 0, 
+                realShop: 'GARANTÍA'
+            }], 
+            total: 0, 
+            justification: `Reposición por rotura de la pieza ID: ${item.id}`, 
+            status: 'APROBADO_FINANZAS', // Salta finanzas porque es gratis
+            date: new Date().toLocaleString() 
+        };
+        
+        co.orders.unshift(newOrder);
+        
+        telemetry.log("GARANTÍA", `Reposición solicitada para: ${item.name}`);
+        ui.pushNotification(state.user.coId, 'OPERACIONES_IA', `Nueva solicitud de garantía pendiente de entrega física.`, 'warning');
+        
+        state.save();
+        this.render();
+        alert("Solicitud de garantía enviada a Logística.");
     }
 });

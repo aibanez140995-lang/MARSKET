@@ -1,6 +1,6 @@
 // js/config.js
 
-const APP_VERSION = "1.0.12";
+const APP_VERSION = "1.0.13";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 // FASE 1: Mapeo de Agencias Reguladoras (Sistema Sancionador)
@@ -85,6 +85,8 @@ const INITIAL_DATA = {
     },
     suggestionsToAlex: [],
     pendingCustom: [],
+    b2bMarket: [], // FASE 1 v1.0.13: Mercado global de segunda mano
+    b2bContracts: [], // FASE 1 v1.0.13: Registro global de contratos de traspaso
     telemetry: { totalLogins: 0, sessions: [] },
     catalog: [
         { id: 'F01', name: 'Botella PET 500ml', price: 97.0, unit: 'Unidad', category: 'Fuselaje', origin: 'China' },
@@ -113,27 +115,30 @@ const INITIAL_DATA = {
     ],
     companies: {
         astra: { 
-            name: "Astra Dynamics", balance: 1500, logo: null, sponsorAwarded: null, classGroup: 'A',
+            name: "Astra Dynamics", balance: 2400, logo: null, sponsorAwarded: null, classGroup: 'A',
             slogan: "", valueProposition: "", aiPrompts: [], decisionLog: [], executiveResolutions: [], 
             flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], marketingPackages: [],
+            inventory: [], // FASE 1 v1.0.13: Inventario Físico
             roles: { CEO:'1111', TECNICO:'1111', FINANZAS:'1111', MARKETING:'1111', OPERACIONES_IA:'1111' }, 
             loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}},
             fase1Registro: { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' },
             deliverables: { technicalReport: null, informePreliminar: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null }
         },
         orion: { 
-            name: "Orion Labs", balance: 1500, logo: null, sponsorAwarded: null, classGroup: 'B',
+            name: "Orion Labs", balance: 2400, logo: null, sponsorAwarded: null, classGroup: 'B',
             slogan: "", valueProposition: "", aiPrompts: [], decisionLog: [], executiveResolutions: [], 
             flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], marketingPackages: [],
+            inventory: [], // FASE 1 v1.0.13: Inventario Físico
             roles: { CEO:'2222', TECNICO:'2222', FINANZAS:'2222', MARKETING:'2222', OPERACIONES_IA:'2222' }, 
             loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}},
             fase1Registro: { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' },
             deliverables: { technicalReport: null, informePreliminar: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null }
         },
         stellar: { 
-            name: "Stellar Solutions", balance: 1500, logo: null, sponsorAwarded: null, classGroup: 'C',
+            name: "Stellar Solutions", balance: 2400, logo: null, sponsorAwarded: null, classGroup: 'C',
             slogan: "", valueProposition: "", aiPrompts: [], decisionLog: [], executiveResolutions: [], 
             flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], marketingPackages: [],
+            inventory: [], // FASE 1 v1.0.13: Inventario Físico
             roles: { CEO:'3333', TECNICO:'3333', FINANZAS:'3333', MARKETING:'3333', OPERACIONES_IA:'3333' }, 
             loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}},
             fase1Registro: { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' },

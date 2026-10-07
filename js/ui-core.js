@@ -180,16 +180,89 @@ const ui = {
         let title = `Manual Táctico: ${viewTitles[this.current] || 'General'}`;
         let content = `<div class="space-y-4 text-xs leading-relaxed font-mono">`;
         
-        if (this.current === 'resolutions') {
-            content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Gobernanza y Actas</p>
-            <ul class="list-disc pl-5 space-y-2 text-slate-300">
-                <li><span class="text-mars-yellow">Mociones:</span> Cualquier miembro (incluido Auxiliar) puede proponer y votar mociones.</li>
-                <li><span class="text-mars-yellow">Voto de Calidad:</span> En caso de empate, el CEO ejerce el voto de calidad para cerrar el acta.</li>
-                <li><span class="text-mars-yellow">Alertas HR:</span> Usa el botón de Reporte de Inactividad para escalar al Claustro Docente cualquier bloqueo grave.</li>
-            </ul>`;
-        } else {
-            content += `<p>Navega por las pestañas para ver la ayuda contextual de cada sección.</p>`;
+        switch(this.current) {
+            case 'market':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">SUPERMARS-KET Oficial</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Catálogo:</span> Aquí puedes ver todos los componentes disponibles para comprar.</li>
+                    <li><span class="text-mars-yellow">Segunda Mano:</span> Filtra por 'B2B' para comprar piezas usadas a otras startups.</li>
+                    <li><span class="text-mars-yellow">Peticiones:</span> Solo el Técnico puede añadir componentes al borrador y enviarlos a Finanzas.</li>
+                </ul>`;
+                break;
+            case 'tech':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">I+D y Banco de Pruebas</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Fase I:</span> Define tu presupuesto y altura teórica. Sube el boceto y la foto del prototipo.</li>
+                    <li><span class="text-mars-yellow">Fase II:</span> Registra los ensayos de vuelo. Si hay desviación con la Fase I, deberás justificar la Versión 2.0.</li>
+                    <li><span class="text-mars-yellow">Inventario:</span> Gestiona tus piezas físicas, solicita garantías o véndelas en el mercado B2B.</li>
+                </ul>`;
+                break;
+            case 'orders':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Bóveda de Órdenes</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Flujo:</span> Revisa el estado de las peticiones de I+D y los paquetes de Marketing.</li>
+                    <li><span class="text-mars-yellow">Aprobación:</span> Finanzas debe auditar y aprobar cada gasto antes de que pase a Logística.</li>
+                </ul>`;
+                break;
+            case 'finance':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Finanzas y Ledger</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Ledger:</span> Registro inmutable de todas las transacciones virtuales de la empresa.</li>
+                    <li><span class="text-mars-yellow">Auditoría V2.0:</span> Finanzas debe aprobar las justificaciones de desviación del Dpto. Técnico.</li>
+                    <li><span class="text-mars-yellow">Aduana B2B:</span> Revisa los contratos de compra/venta de segunda mano pendientes de firma docente.</li>
+                </ul>`;
+                break;
+            case 'cart':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Logística de Despliegue</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Ejecución:</span> Operaciones IA debe validar que las compras aprobadas han llegado físicamente.</li>
+                    <li><span class="text-mars-yellow">Coste Real:</span> Introduce el coste real en euros (€) y el proveedor físico.</li>
+                    <li><span class="text-mars-yellow">Inventario:</span> Al confirmar, las piezas pasan al inventario del Técnico.</li>
+                </ul>`;
+                break;
+            case 'brand':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Centro de Marca</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Identidad:</span> Sube el logo, eslogan y redacta la propuesta de valor.</li>
+                    <li><span class="text-mars-yellow">Paquetes MKT:</span> Solicita presupuesto a Finanzas para campañas publicitarias.</li>
+                    <li><span class="text-mars-yellow">Ejecución:</span> Consume las acciones de tus paquetes activos publicando creatividades.</li>
+                </ul>`;
+                break;
+            case 'ailog':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Diario y Bitácora IA</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Diario de Decisiones:</span> Registra hitos estratégicos y resolución de conflictos del equipo.</li>
+                    <li><span class="text-mars-yellow">Auditoría IA:</span> Reporta el uso de herramientas de IA. Operaciones IA debe validar cada prompt.</li>
+                </ul>`;
+                break;
+            case 'resolutions':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Gobernanza y Actas</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Mociones:</span> Cualquier miembro (incluido Auxiliar) puede proponer y votar mociones.</li>
+                    <li><span class="text-mars-yellow">Voto de Calidad:</span> En caso de empate, el CEO ejerce el voto de calidad para cerrar el acta.</li>
+                    <li><span class="text-mars-yellow">Alertas HR:</span> Usa el botón de Reporte de Inactividad para escalar al Claustro Docente cualquier bloqueo grave.</li>
+                </ul>`;
+                break;
+            case 'dossier':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Dossier Académico</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">Evaluación:</span> Consulta las notas y el feedback del profesorado en tiempo real.</li>
+                    <li><span class="text-mars-yellow">Archivo:</span> Acceso directo a todos los entregables oficiales subidos por la empresa.</li>
+                </ul>`;
+                break;
+            case 'admin':
+                content += `<p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Centro de Mando Docente</p>
+                <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                    <li><span class="text-mars-yellow">AEE & Finanzas:</span> Control económico, patrocinios, sanciones y aduana de contratos B2B.</li>
+                    <li><span class="text-mars-yellow">Rúbricas:</span> Evalúa a las startups y consulta el archivo documental central.</li>
+                    <li><span class="text-mars-yellow">Startups:</span> Crea empresas y gestiona los PINs de acceso de los alumnos.</li>
+                    <li><span class="text-mars-yellow">Alertas HR:</span> Media en los conflictos reportados por los alumnos.</li>
+                </ul>`;
+                break;
+            default:
+                content += `<p>Navega por las pestañas para ver la ayuda contextual de cada sección.</p>`;
         }
+        
         content += `</div>`;
         this.showModal(title, content, "");
     },

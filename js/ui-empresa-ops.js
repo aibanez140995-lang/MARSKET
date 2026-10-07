@@ -177,7 +177,8 @@ Object.assign(ui, {
         
         co.orders = co.orders || [];
         co.realCosts = co.realCosts || [];
-        co.ledger = co.ledger || []; // REGLA 1
+        co.ledger = co.ledger || []; 
+        co.inventory = co.inventory || []; // FASE 2 v1.0.13: Inventario
         
         const order = co.orders.find(o => String(o.id) === String(oid));
         if(!order) return alert("Orden no encontrada.");
@@ -209,6 +210,7 @@ Object.assign(ui, {
         if(!allChecked) return alert("Debe validar el ensamblaje y rellenar los costes reales de todos los componentes.");
         if(co.balance < order.total) return alert("Fondos virtuales insuficientes para ejecutar la compra.");
         
+        // 1. Deducción de Balance y Ledger
         const conceptStr = `Adquisición Orden #${oid}: ${itemNames.join(', ')}`;
         co.balance -= order.total;
         co.ledger.unshift({ 
@@ -220,18 +222,39 @@ Object.assign(ui, {
             final: co.balance 
         });
         
-        order.items.forEach(i => { co.realCosts.unshift({ shop: i.realShop, item: i.name, eur: i.realEur }); });
+        // 2. Registro de Costes Reales e Inventario Físico (FASE 2 v1.0.13)
+        order.items.forEach(i => { 
+            co.realCosts.unshift({ shop: i.realShop, item: i.name, eur: i.realEur }); 
+            
+            // Desglosar cantidades para el inventario individual
+            const unitPrice = i.price / i.qty;
+            for(let q=0; q<i.qty; q++) {
+                co.inventory.unshift({
+                    id: 'INV-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4).toUpperCase(),
+                    name: i.name,
+                    category: i.category || 'General',
+                    originalPrice: unitPrice,
+                    status: 'AVAILABLE', // AVAILABLE, ON_SALE
+                    salePrice: null,
+                    warrantyClaimed: false,
+                    purchaseDate: new Date().toLocaleDateString()
+                });
+            }
+        });
         
+        // 3. Cambio de Estado de la Orden
         order.status = 'EJECUTADO';
         order.realEurTotal = realEurTotal;
         
+        // 4. Telemetría y Notificaciones
         telemetry.log("EJECUCIÓN COMPRA", `Orden #${oid} | Importe: ${order.total.toFixed(2)}€v | Real: ${realEurTotal.toFixed(2)}€`);
-        ui.pushNotification(state.user.coId, 'TECNICO', `Orden #${oid} ejecutada físicamente y asentada en Ledger.`, 'success');
+        ui.pushNotification(state.user.coId, 'TECNICO', `Orden #${oid} ejecutada físicamente. Componentes añadidos al Inventario.`, 'success');
         ui.pushNotification(state.user.coId, 'FINANZAS', `Orden #${oid} ejecutada. Gasto real: ${realEurTotal.toFixed(2)}€.`, 'info');
         
+        // 5. Guardado Único y Seguro
         state.save(); 
         
-        alert("Compra física confirmada y asentada en el Ledger.");
+        alert("Compra física confirmada. Componentes transferidos al Inventario Corporativo.");
         this.render();
     },
 

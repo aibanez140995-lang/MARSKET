@@ -12,7 +12,33 @@ Object.assign(ui, {
         
         const canSponsor = state.data.config.teachers[state.user.role]?.canSponsor === true;
 
+        // FASE 4 v1.0.13: Panel de Aduana B2B para el Docente
+        const pendingB2B = (state.data.b2bContracts || []).filter(c => c.status === 'PENDIENTE_CLAUSTRO');
+        let pendingB2BHtml = '';
+        if (pendingB2B.length > 0) {
+            pendingB2BHtml = `
+            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan mb-8 animate-pulse shadow-[0_0_15px_rgba(0,240,255,0.1)]">
+                <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-widest border-b border-mars-border pb-2">Aduana B2B: Contratos Pendientes de Firma</h3>
+                <div class="space-y-4">
+                    ${pendingB2B.map(c => `
+                    <div class="bg-slate-900 border border-mars-cyan/50 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <p class="text-white font-bold uppercase text-xs">${c.itemName}</p>
+                            <p class="text-[10px] text-slate-400 mt-1">De: <span class="text-mars-yellow">${c.sellerName}</span> ➔ Para: <span class="text-mars-yellow">${c.buyerName}</span></p>
+                            <p class="text-[10px] text-mars-green font-mono mt-1">Importe: ${c.price.toFixed(2)} €v</p>
+                        </div>
+                        <div class="flex gap-2 w-full sm:w-auto">
+                            <button onclick="ui.approveB2BContract('${c.id}')" class="flex-1 sm:flex-none bg-mars-green text-black px-4 py-2 text-[10px] font-black uppercase hover:bg-white transition-colors">Aprobar Traspaso</button>
+                            <button onclick="ui.denyB2BContract('${c.id}')" class="flex-1 sm:flex-none bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2 text-[10px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-colors">Denegar</button>
+                        </div>
+                    </div>
+                    `).join('')}
+                </div>
+            </div>`;
+        }
+
         return `
+        ${pendingB2BHtml}
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
             <div class="lg:col-span-1 terminal-border bg-mars-card p-6 text-center border-t-4 border-t-mars-magenta flex flex-col justify-center">
                 <h3 class="font-orbitron text-mars-magenta text-xs mb-4 uppercase tracking-widest">Inversión FÍSICA CLASE</h3>
@@ -89,6 +115,67 @@ Object.assign(ui, {
         </div>`;
     },
 
+    // FASE 4 v1.0.13: Lógica de Aduana B2B
+    approveB2BContract(id) {
+        if (!state.user || !state.user.admin) return;
+        const contract = state.data.b2bContracts.find(c => c.id === id);
+        if (!contract) return;
+        
+        const buyer = state.data.companies[contract.buyerCoId];
+        const seller = state.data.companies[contract.sellerCoId];
+        
+        if (!buyer || !seller) return;
+        if (buyer.balance < contract.price) return alert("El comprador no tiene fondos suficientes para ejecutar el traspaso.");
+        
+        // 1. Mover dinero y registrar en Ledgers
+        buyer.balance -= contract.price;
+        buyer.ledger.unshift({ id: 'TX-'+Date.now(), date: new Date().toLocaleString(), concept: `Compra B2B: ${contract.itemName} a ${contract.sellerName}`, dept: 'FINANZAS', delta: -contract.price, final: buyer.balance });
+        
+        seller.balance += contract.price;
+        seller.ledger.unshift({ id: 'TX-'+(Date.now()+1), date: new Date().toLocaleString(), concept: `Venta B2B: ${contract.itemName} a ${contract.buyerName}`, dept: 'FINANZAS', delta: contract.price, final: seller.balance });
+        
+        // 2. Mover inventario físico
+        const itemIdx = seller.inventory.findIndex(i => i.id === contract.invId);
+        if (itemIdx !== -1) {
+            const item = seller.inventory.splice(itemIdx, 1)[0];
+            item.status = 'AVAILABLE';
+            item.salePrice = null;
+            buyer.inventory.unshift(item);
+        }
+        
+        // 3. Actualizar contrato y notificar
+        contract.status = 'APROBADO';
+        
+        ui.pushNotification(contract.buyerCoId, 'FINANZAS', `Contrato B2B Aprobado. Has adquirido ${contract.itemName}.`, 'success');
+        ui.pushNotification(contract.sellerCoId, 'FINANZAS', `Contrato B2B Aprobado. Has vendido ${contract.itemName} por ${contract.price}€v.`, 'success');
+        
+        state.save();
+        this.render();
+    },
+
+    denyB2BContract(id) {
+        if (!state.user || !state.user.admin) return;
+        const contract = state.data.b2bContracts.find(c => c.id === id);
+        if (!contract) return;
+        
+        const seller = state.data.companies[contract.sellerCoId];
+        if (seller) {
+            const item = seller.inventory.find(i => i.id === contract.invId);
+            if (item) {
+                item.status = 'AVAILABLE';
+                item.salePrice = null;
+            }
+        }
+        
+        contract.status = 'DENEGADO';
+        
+        ui.pushNotification(contract.buyerCoId, 'FINANZAS', `Contrato B2B Denegado por la Aduana Docente.`, 'error');
+        ui.pushNotification(contract.sellerCoId, 'FINANZAS', `Contrato B2B Denegado. El objeto vuelve a tu inventario.`, 'error');
+        
+        state.save();
+        this.render();
+    },
+
     renderAdminStartups() {
         const isCoord = state.user.role.startsWith('COORD');
         return `
@@ -96,7 +183,7 @@ Object.assign(ui, {
             <div class="xl:col-span-1 terminal-border bg-mars-card p-6 h-fit border-t-4 border-t-mars-cyan">
                 <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Crear Startup</h3>
                 <input type="text" id="new-co-name" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white mb-3 outline-none focus:border-mars-cyan" placeholder="Nombre Corporativo">
-                <input type="number" id="new-co-cap" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white mb-4 outline-none focus:border-mars-cyan" placeholder="Capital (€v)" value="1500">
+                <input type="number" id="new-co-cap" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white mb-4 outline-none focus:border-mars-cyan" placeholder="Capital (€v)" value="2400">
                 <select id="new-co-class" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white mb-4 outline-none focus:border-mars-cyan">
                     ${['A','B','C','D','E','F'].map(c => `<option value="${c}">Clase ${c}</option>`).join('')}
                 </select>
@@ -289,10 +376,11 @@ Object.assign(ui, {
         state.data.companies[cid] = { 
             name, balance: cap, logo: null, sponsorAwarded: null, sponsorData: {name: null, logo: null}, valueProposition: "", slogan: "", classGroup,
             roles: { CEO:'1234', TECNICO:'1234', FINANZAS:'1234', MARKETING:'1234', OPERACIONES_IA:'1234' }, 
-            aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [],
-            sanctions: [], crisisAlerts: [],
+            aiPrompts: [], decisionLog: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], marketingPackages: [], inactivityReports: [], notifications: [],
+            sanctions: [], crisisAlerts: [], inventory: [],
             loginStats: { totalLogins: 0, roles: { CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0} } },
-            deliverables: { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null }
+            fase1Registro: { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' },
+            deliverables: { technicalReport: null, informePreliminar: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null }
         };
         state.save(); this.render();
     },

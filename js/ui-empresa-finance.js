@@ -238,6 +238,46 @@ Object.assign(ui, {
             }
         }
 
+        // FASE 4 v1.0.13: Sección de Contratos B2B
+        let b2bSection = '';
+        const myB2B = (state.data.b2bContracts || []).filter(c => c.buyerCoId === state.user.coId || c.sellerCoId === state.user.coId);
+        if (myB2B.length > 0 && (role === 'CEO' || role.includes('FINAN'))) {
+            b2bSection = `
+            <div class="flex justify-between items-center mb-6 mt-10 border-t border-mars-border pt-6">
+                <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">Aduana: Contratos B2B</h2>
+            </div>
+            <div class="space-y-6">
+                ${myB2B.map(c => {
+                    const isBuyer = c.buyerCoId === state.user.coId;
+                    const roleText = isBuyer ? 'COMPRADOR' : 'VENDEDOR';
+                    const otherParty = isBuyer ? c.sellerName : c.buyerName;
+                    const trackerIndex = c.status === 'PENDIENTE_CLAUSTRO' ? 1 : c.status === 'APROBADO' ? 2 : 0;
+                    
+                    return `
+                    <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 ${c.status === 'APROBADO' ? 'border-l-mars-green' : c.status === 'DENEGADO' ? 'border-l-mars-magenta' : 'border-l-mars-cyan'} animate-in slide-in-from-bottom-4 duration-300">
+                        ${c.status !== 'DENEGADO' ? ui.renderWorkflowTracker(['Acuerdo', 'Aduana Docente', 'Ejecutado'], trackerIndex) : ''}
+                        
+                        <div class="flex justify-between items-start mb-4 flex-wrap gap-2 mt-4">
+                            <div>
+                                <span class="text-[9px] font-bold uppercase ${c.status === 'APROBADO' ? 'text-mars-green bg-mars-green/10' : c.status === 'DENEGADO' ? 'text-mars-magenta bg-mars-magenta/10' : 'text-mars-cyan bg-mars-cyan/10'} px-2 py-1 tracking-widest">[STATUS: ${c.status}]</span>
+                                <h3 class="text-white font-orbitron mt-3 uppercase text-xs sm:text-sm">B2B_TX: ${c.id}</h3>
+                            </div>
+                            <div class="text-left sm:text-right w-full sm:w-auto">
+                                <p class="${isBuyer ? 'text-mars-magenta' : 'text-mars-green'} font-black font-mono text-xl tracking-tighter">${isBuyer ? '-' : '+'}${c.price.toFixed(2)} €v</p>
+                                <p class="text-[9px] text-slate-500 uppercase font-bold mt-1">${c.date}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-black/50 p-4 border border-mars-border/50 text-[10px] w-full">
+                            <span class="block text-mars-cyan font-bold uppercase mb-2 border-b border-mars-cyan/30 pb-1">Detalles del Traspaso:</span>
+                            <p class="text-white font-bold mb-1 text-sm">${c.itemName}</p>
+                            <p class="text-slate-400 italic">Rol: <strong class="${isBuyer ? 'text-mars-magenta' : 'text-mars-green'}">${roleText}</strong> | Contraparte: <strong>${otherParty}</strong></p>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>`;
+        }
+
         wrapper.innerHTML = `
         ${ceoDashboard}
         ${v2AuditHtml}
@@ -279,6 +319,7 @@ Object.assign(ui, {
             }).join('') || '<p class="text-slate-600 italic text-sm">No hay peticiones de I+D en el histórico.</p>'}
         </div>
         ${mktSection}
+        ${b2bSection}
         `;
         el.appendChild(wrapper);
     },
@@ -597,6 +638,40 @@ Object.assign(ui, {
             </div>`;
         }
 
+        // FASE 4 v1.0.13: Sección de Contratos B2B en Finanzas
+        let b2bSection = '';
+        const myB2B = (state.data.b2bContracts || []).filter(c => c.buyerCoId === state.user.coId || c.sellerCoId === state.user.coId);
+        if (myB2B.length > 0 && (state.user.role === 'CEO' || state.user.role.includes('FINAN'))) {
+            b2bSection = `
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden mt-6 border-t-4 border-t-mars-cyan">
+                <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Aduana: Contratos B2B</h3>
+                <div class="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                    ${myB2B.map(c => {
+                        const isBuyer = c.buyerCoId === state.user.coId;
+                        const roleText = isBuyer ? 'COMPRADOR' : 'VENDEDOR';
+                        const otherParty = isBuyer ? c.sellerName : c.buyerName;
+                        
+                        return `
+                        <div class="bg-black/50 border ${c.status === 'APROBADO' ? 'border-mars-green/50' : c.status === 'DENEGADO' ? 'border-mars-magenta/50' : 'border-mars-cyan/50'} p-3">
+                            <div class="flex justify-between items-center border-b border-mars-border/30 pb-2 mb-2">
+                                <span class="text-white font-bold text-[10px] uppercase">B2B_TX: ${c.id}</span>
+                                <span class="text-[8px] text-slate-500">${c.date}</span>
+                            </div>
+                            <div class="flex justify-between text-[9px] mb-2">
+                                <span class="text-slate-400">Rol: <strong class="${isBuyer ? 'text-mars-magenta' : 'text-mars-green'}">${roleText}</strong></span>
+                                <span class="${isBuyer ? 'text-mars-magenta' : 'text-mars-green'} font-bold">${isBuyer ? '-' : '+'}${c.price.toFixed(2)} €v</span>
+                            </div>
+                            <p class="text-[10px] text-white mb-2">${c.itemName}</p>
+                            <p class="text-[8px] text-slate-400 italic mb-2">Contraparte: ${otherParty}</p>
+                            <div class="text-right">
+                                <span class="text-[9px] font-bold uppercase ${c.status === 'APROBADO' ? 'text-mars-green' : c.status === 'DENEGADO' ? 'text-mars-magenta' : 'text-mars-cyan'}">[STATUS: ${c.status}]</span>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>`;
+        }
+
         let financeDetails = `
         <div class="grid grid-cols-1 gap-6 sm:gap-8">
             <div class="flex flex-col gap-6 w-full overflow-hidden">
@@ -613,6 +688,7 @@ Object.assign(ui, {
                     </div>
                 </div>
                 ${executedOrdersHtml}
+                ${b2bSection}
                 ${sanctionsHtml}
             </div>
         </div>`;
