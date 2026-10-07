@@ -39,7 +39,7 @@ Object.assign(ui, {
                     <h2 class="font-orbitron text-mars-cyan text-lg mb-4 uppercase tracking-tighter">Hoja de Registro Preliminar</h2>
                     <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Define la hipótesis científica de tu cohete antes de realizar ninguna compra o lanzamiento real.</p>
                     
-                    <div class="space-y-4">
+                    <div class="space-y-4 mb-6">
                         <div>
                             <label class="text-[9px] text-mars-cyan uppercase font-bold block mb-1">Presupuesto Teórico Estimado (€v)</label>
                             <input type="number" id="fase1-presupuesto" value="${co.fase1Registro.presupuestoTeorico}" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white outline-none focus:border-mars-cyan" placeholder="Ej: 350.50">
@@ -49,6 +49,10 @@ Object.assign(ui, {
                             <input type="number" id="fase1-altura" value="${co.fase1Registro.alturaEstimada}" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white outline-none focus:border-mars-cyan" placeholder="Ej: 15.5">
                         </div>
                         <button onclick="ui.saveFase1Registro()" class="w-full bg-mars-cyan text-black font-black py-3 text-[10px] uppercase tracking-widest hover:shadow-[0_0_10px_#00f0ff] transition-shadow mt-2">Guardar Hipótesis</button>
+                    </div>
+                    
+                    <div class="border-t border-mars-border/50 pt-6 mt-2">
+                        ${this.renderHybridUploadBox('Informe Preliminar (FYQ)', 'Documento inicial con la hipótesis, presupuesto y diseño teórico.', 'informePreliminar', docs.informePreliminar)}
                     </div>
                 </div>
                 

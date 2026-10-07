@@ -1,6 +1,6 @@
 // js/config.js
 
-const APP_VERSION = "1.0.11";
+const APP_VERSION = "1.0.12";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 // FASE 1: Mapeo de Agencias Reguladoras (Sistema Sancionador)
@@ -15,13 +15,52 @@ const REGULATORY_AGENCIES = {
     COORD_ALEX: "Tribunal Supremo de la AEE"
 };
 
+// ACTUALIZACIÓN DE RÚBRICAS Y PORCENTAJES
 const RUBRIC_CONFIG = {
-    FYQ: { name: "Física y Química", criteria: [{id: 'c1', name: 'Informe Científico Estequiometría', weight: 0.4}, {id: 'c2', name: 'Lanzamiento, Apogeo y Optimización', weight: 0.4}, {id: 'c3', name: 'Rol Técnico y Q&A', weight: 0.2}] },
-    ECO: { name: "Economía", criteria: [{id: 'c1', name: 'Hojas de Cálculo y Trazabilidad', weight: 0.4}, {id: 'c2', name: 'Balances, ROI y Ledger', weight: 0.4}, {id: 'c3', name: 'Desempeño Rol Financiero', weight: 0.2}] },
-    LYE: { name: "Liderazgo y Emprend.", criteria: [{id: 'c1', name: 'Project Management y Plazos', weight: 0.4}, {id: 'c2', name: 'Business Plan e I+D', weight: 0.4}, {id: 'c3', name: 'Desempeño Equipo y Conflictos', weight: 0.2}] },
-    LEN: { name: "Lengua Castellana", criteria: [{id: 'c1', name: 'Pitch Final y Q&A (Oratoria)', weight: 0.8}, {id: 'c2', name: 'Estructura y Rigor del Dossier', weight: 0.2}] },
-    MAT: { name: "Matemáticas", criteria: [{id: 'c1', name: 'Trigonometría y Altitud', weight: 0.7}, {id: 'c2', name: 'Construcción Goniómetro', weight: 0.3}] },
-    ING: { name: "Inglés", criteria: [{id: 'c1', name: 'Presentación Prototipo (Micro-Pitch)', weight: 1.0}] }
+    FYQ: { 
+        name: "Física y Química", 
+        criteria: [
+            {id: 'c1', name: 'Informe técnico', weight: 0.5}, 
+            {id: 'c2', name: 'Prototipo / cohete', weight: 0.3}, 
+            {id: 'c3', name: 'Rol y Q&A (preguntas y respuestas)', weight: 0.2}
+        ] 
+    },
+    ECO: { 
+        name: "Economía", 
+        criteria: [
+            {id: 'c1', name: 'Criterios por definir (Pendiente)', weight: 1.0}
+        ] 
+    },
+    LYE: { 
+        name: "Liderazgo y Emprendimiento", 
+        criteria: [
+            {id: 'c1', name: 'Documentos escritos', weight: 0.8}, 
+            {id: 'c2', name: 'Presentaciones orales', weight: 0.2}
+        ] 
+    },
+    LEN: { 
+        name: "Lengua Castellana", 
+        criteria: [
+            {id: 'c1', name: 'Producción oral', weight: 0.5}, 
+            {id: 'c2', name: 'Producción escrita', weight: 0.5}
+        ] 
+    },
+    MAT: { 
+        name: "Matemáticas", 
+        criteria: [
+            {id: 'c1', name: 'Elaboración de goniómetro/s', weight: 0.25}, 
+            {id: 'c2', name: 'Informe técnico (Distancia conocida)', weight: 0.25},
+            {id: 'c3', name: 'Informe técnico (Dos mediciones)', weight: 0.25},
+            {id: 'c4', name: 'Informe técnico final (Comparativa)', weight: 0.25}
+        ] 
+    },
+    ING: { 
+        name: "Inglés", 
+        criteria: [
+            {id: 'c1', name: 'Nota de expresión oral', weight: 0.7},
+            {id: 'c2', name: 'Redacciones', weight: 0.3}
+        ] 
+    }
 };
 
 const INITIAL_DATA = {
@@ -80,7 +119,7 @@ const INITIAL_DATA = {
             roles: { CEO:'1111', TECNICO:'1111', FINANZAS:'1111', MARKETING:'1111', OPERACIONES_IA:'1111' }, 
             loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}},
             fase1Registro: { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' },
-            deliverables: { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null }
+            deliverables: { technicalReport: null, informePreliminar: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null }
         },
         orion: { 
             name: "Orion Labs", balance: 1500, logo: null, sponsorAwarded: null, classGroup: 'B',
@@ -89,7 +128,7 @@ const INITIAL_DATA = {
             roles: { CEO:'2222', TECNICO:'2222', FINANZAS:'2222', MARKETING:'2222', OPERACIONES_IA:'2222' }, 
             loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}},
             fase1Registro: { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' },
-            deliverables: { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null }
+            deliverables: { technicalReport: null, informePreliminar: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null }
         },
         stellar: { 
             name: "Stellar Solutions", balance: 1500, logo: null, sponsorAwarded: null, classGroup: 'C',
@@ -98,7 +137,7 @@ const INITIAL_DATA = {
             roles: { CEO:'3333', TECNICO:'3333', FINANZAS:'3333', MARKETING:'3333', OPERACIONES_IA:'3333' }, 
             loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}},
             fase1Registro: { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' },
-            deliverables: { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null }
+            deliverables: { technicalReport: null, informePreliminar: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null }
         }
     }
 };

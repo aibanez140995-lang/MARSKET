@@ -41,9 +41,9 @@ const state = {
 
             co.classGroup = co.classGroup || 'A';
             
-            // FASE 1 v1.0.11: Ampliación de Entregables y Registros
+            // FASE 1 v1.0.12: Ampliación de Entregables y Registros (Añadido informePreliminar)
             co.deliverables = co.deliverables || {};
-            const defaultDocs = { technicalReport: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null };
+            const defaultDocs = { technicalReport: null, informePreliminar: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null };
             co.deliverables = { ...defaultDocs, ...co.deliverables };
             
             co.fase1Registro = co.fase1Registro || { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' };

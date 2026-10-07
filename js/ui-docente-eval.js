@@ -64,7 +64,7 @@ Object.assign(ui, {
                         <thead class="text-slate-500 uppercase border-b border-mars-border">
                             <tr>
                                 <th class="py-3 pr-4">Empresa</th>
-                                <th class="pr-4 text-mars-cyan">FYQ (Inf/Boc/Fot)</th>
+                                <th class="pr-4 text-mars-cyan">FYQ (Pre/Inf/Boc/Fot)</th>
                                 <th class="pr-4 text-mars-yellow">MAT (Gon/M1/M2/Cmp)</th>
                                 <th class="pr-4 text-mars-green">LYE (BM/Can/Val)</th>
                                 <th class="pr-4 text-mars-magenta">LEN (Dos/P3)</th>
@@ -85,7 +85,7 @@ Object.assign(ui, {
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
                                     <td class="py-3 font-orbitron text-white font-bold pr-4">${co.name} [${co.classGroup}]</td>
-                                    <td class="py-3 pr-4">${dLink(d.technicalReport, 'INF')} ${dLink(d.boceto, 'BOC')} ${dLink(d.fotoPrototipo, 'FOT')}</td>
+                                    <td class="py-3 pr-4">${dLink(d.informePreliminar, 'PRE')} ${dLink(d.technicalReport, 'INF')} ${dLink(d.boceto, 'BOC')} ${dLink(d.fotoPrototipo, 'FOT')}</td>
                                     <td class="py-3 pr-4">${dLink(d.mathGoniometro, 'GON')} ${dLink(d.mathMedicion1, 'M1')} ${dLink(d.mathMedicion2, 'M2')} ${dLink(d.mathComparativa, 'CMP')}</td>
                                     <td class="py-3 pr-4">${dLink(d.businessModel, 'BM')} ${dLink(d.canvas, 'CAN')} ${dLink(d.valuePropDoc, 'VAL')}</td>
                                     <td class="py-3 pr-4">${dLink(d.dossierInversores, 'DOS')} ${dLink(d.presPhase3, 'P3')}</td>
@@ -121,9 +121,10 @@ Object.assign(ui, {
                 let evidenceHtml = `<h4 class="font-orbitron text-mars-cyan text-xs uppercase mb-4 tracking-widest border-b border-mars-border pb-2">Evidencias Adjuntas</h4>`;
                 
                 if (activeSubject === 'FYQ') {
+                    evidenceHtml += this.renderDocBadge('Informe Preliminar', docs.informePreliminar);
                     evidenceHtml += this.renderDocBadge('Boceto / Diseño', docs.boceto);
                     evidenceHtml += this.renderDocBadge('Foto Prototipo', docs.fotoPrototipo);
-                    evidenceHtml += this.renderDocBadge('Informe Técnico (FYQ)', docs.technicalReport);
+                    evidenceHtml += this.renderDocBadge('Informe Técnico Final', docs.technicalReport);
                     if(co.flightTests && co.flightTests.length>0) {
                         evidenceHtml += `<div class="mt-4"><span class="text-mars-yellow text-[9px] font-bold uppercase">Ensayos Vuelo:</span><div class="text-[9px] mt-1 space-y-1">`;
                         co.flightTests.forEach(f => evidenceHtml += `<p class="text-slate-300">H: ${f.heightM}m | E: ${f.efficiency.toFixed(2)}</p>`);
