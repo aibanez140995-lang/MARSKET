@@ -24,7 +24,6 @@ Object.assign(ui, {
         </div>`;
     },
 
-    // FASE 3 (Req 3): Emisión del Comunicado de Crisis por el CEO
     issueCrisisCommunication(alertId) {
         if (!state.user) return; // REGLA 2
         const co = state.data.companies[state.user.coId];
@@ -60,7 +59,6 @@ Object.assign(ui, {
         
         let ceoDashboard = '';
         if(role === 'CEO') {
-            // FASE 3 (Req 3): Banner de Crisis para el CEO
             co.crisisAlerts = co.crisisAlerts || [];
             const unreadCrisis = co.crisisAlerts.filter(a => !a.read);
             let crisisHtml = '';
@@ -77,7 +75,6 @@ Object.assign(ui, {
                 `).join('');
             }
 
-            // FASE 3 (Req 2): Ventanilla Legal en el Dashboard del CEO
             let sanctionsHtml = '';
             const sanctions = co.sanctions || [];
             if (sanctions.length > 0) {
@@ -124,7 +121,9 @@ Object.assign(ui, {
 
         let financeAlertHtml = '';
         if (role.includes('FINAN')) {
-            const pendingCount = co.orders.filter(o => o.status === 'PENDIENTE_FINANZAS').length;
+            const pendingTech = co.orders.filter(o => o.status === 'PENDIENTE_FINANZAS').length;
+            const pendingMkt = (co.marketingCampaigns || []).filter(c => c.status === 'PENDIENTE_FINANZAS').length;
+            const pendingCount = pendingTech + pendingMkt;
             if (pendingCount > 0) {
                 financeAlertHtml = `
                 <div class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow p-4 mb-6 animate-pulse shadow-[0_0_15px_rgba(255,230,0,0.3)]">
@@ -138,6 +137,52 @@ Object.assign(ui, {
             if (a.status !== 'PENDIENTE_FINANZAS' && b.status === 'PENDIENTE_FINANZAS') return 1;
             return 0;
         });
+
+        let mktSection = '';
+        if (role === 'CEO' || role.includes('FINAN')) {
+            const sortedMkt = [...(co.marketingCampaigns || [])].filter(c => c.status).sort((a, b) => {
+                if (a.status === 'PENDIENTE_FINANZAS' && b.status !== 'PENDIENTE_FINANZAS') return -1;
+                if (a.status !== 'PENDIENTE_FINANZAS' && b.status === 'PENDIENTE_FINANZAS') return 1;
+                return 0;
+            });
+
+            if (sortedMkt.length > 0) {
+                mktSection = `
+                <div class="flex justify-between items-center mb-6 mt-10 border-t border-mars-border pt-6">
+                    <h2 class="font-orbitron text-mars-magenta text-lg sm:text-xl uppercase tracking-tighter">Órdenes de Marketing</h2>
+                </div>
+                <div class="space-y-6">
+                    ${sortedMkt.map(camp => {
+                        const trackerIndex = camp.status === 'PENDIENTE_FINANZAS' ? 0 : camp.status === 'APROBADA' ? 2 : 0;
+                        return `
+                        <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 ${camp.status === 'APROBADA' ? 'border-l-mars-green' : camp.status === 'DENEGADA' ? 'border-l-mars-magenta' : 'border-l-mars-yellow'} animate-in slide-in-from-bottom-4 duration-300">
+                            ${camp.status !== 'DENEGADA' ? ui.renderWorkflowTracker(['MKT (Solicita)', 'FIN (Audita)', 'Publicada'], trackerIndex) : ''}
+                            
+                            <div class="flex justify-between items-start mb-4 flex-wrap gap-2 mt-4">
+                                <div><span class="text-[9px] font-bold uppercase ${camp.status === 'APROBADA' ? 'text-mars-green bg-mars-green/10' : camp.status === 'DENEGADA' ? 'text-mars-magenta bg-mars-magenta/10' : 'text-mars-yellow bg-mars-yellow/10'} px-2 py-1 tracking-widest">[STATUS: ${camp.status}]</span><h3 class="text-white font-orbitron mt-3 uppercase text-xs sm:text-sm">MKT_TX: ${camp.id}</h3></div>
+                                <div class="text-left sm:text-right w-full sm:w-auto"><p class="text-mars-magenta font-black font-mono text-xl tracking-tighter">${camp.cost.toFixed(2)} €v</p><p class="text-[9px] text-slate-500 uppercase font-bold mt-1">${camp.date}</p></div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 gap-4 mb-4">
+                                <div class="bg-black/50 p-4 border border-mars-border/50 text-[10px] w-full">
+                                    <span class="block text-mars-magenta font-bold uppercase mb-2 border-b border-mars-magenta/30 pb-1">Paquete: ${camp.pack}</span>
+                                    <p class="text-white font-bold mb-1">${camp.title}</p>
+                                    <p class="text-slate-300 italic leading-relaxed">"${camp.desc}"</p>
+                                </div>
+                            </div>
+                            
+                            ${camp.denyReason ? `<div class="bg-red-900/30 border border-red-500/50 p-3 text-[10px] text-red-200 mt-2 mb-4 w-full"><span class="font-bold">MOTIVO RECHAZO:</span> ${camp.denyReason}</div>` : ''}
+                            
+                            ${camp.status === 'PENDIENTE_FINANZAS' && role.includes('FINAN') ? `
+                            <div class="flex flex-col sm:flex-row gap-3 border-t border-mars-border pt-4">
+                                <button onclick="ui.approveMarketingCampaign('${camp.id}')" class="flex-grow bg-mars-green text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors shadow-[0_0_10px_rgba(0,255,102,0.4)]">Aprobar y Publicar Campaña</button>
+                                <button onclick="ui.promptDenyMarketingCampaign('${camp.id}')" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-6 py-3 text-[10px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-colors whitespace-nowrap">Denegar</button>
+                            </div>` : ''}
+                        </div>`;
+                    }).join('')}
+                </div>`;
+            }
+        }
 
         wrapper.innerHTML = `
         ${ceoDashboard}
@@ -176,9 +221,63 @@ Object.assign(ui, {
                         <button onclick="ui.navigate('cart')" class="flex-grow bg-mars-cyan text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors shadow-[0_0_10px_rgba(0,240,255,0.4)]">Ir a Logística para Ejecutar Compra</button>
                     </div>` : ''}
                 </div>`;
-            }).join('') || '<p class="text-slate-600 italic text-sm">No hay peticiones en el histórico.</p>'}
-        </div>`;
+            }).join('') || '<p class="text-slate-600 italic text-sm">No hay peticiones de I+D en el histórico.</p>'}
+        </div>
+        ${mktSection}
+        `;
         el.appendChild(wrapper);
+    },
+
+    approveMarketingCampaign(id) {
+        if (!state.user) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout();
+        
+        const camp = co.marketingCampaigns.find(c => c.id === id);
+        if(!camp) return;
+        
+        if(co.balance < camp.cost) return alert("Fondos insuficientes para aprobar esta campaña.");
+        
+        camp.status = 'APROBADA';
+        
+        const conceptStr = `Campaña Marketing: ${camp.pack}`;
+        state.addToLedger(state.user.coId, conceptStr, 'MARKETING', -camp.cost);
+        
+        telemetry.log("APROBADO FINANZAS", `Campaña MKT ${id} validada. Coste: ${camp.cost}€v`);
+        ui.pushNotification(state.user.coId, 'MARKETING', `Tu campaña "${camp.title}" ha sido APROBADA y publicada.`, 'success');
+        
+        state.save();
+        this.render();
+    },
+
+    promptDenyMarketingCampaign(id) {
+        if (!state.user) return;
+        const html = `<input type="text" id="deny-mkt-reason" class="w-full bg-black border border-mars-magenta p-3 text-xs text-white" placeholder="Motivo del rechazo...">`;
+        const btn = `<button onclick="ui.finalizeDenyMarketingCampaign('${id}')" class="bg-mars-magenta text-white px-6 py-2 text-[10px] font-bold uppercase hover:bg-white hover:text-mars-magenta">Confirmar Denegación</button>`;
+        this.showModal("Denegar Campaña", html, btn);
+    },
+
+    finalizeDenyMarketingCampaign(id) {
+        if (!state.user) return;
+        const reasonInput = document.getElementById('deny-mkt-reason');
+        const reason = reasonInput ? reasonInput.value : '';
+        if(!reason) return alert("Especifique motivo.");
+        
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout();
+        
+        const camp = co.marketingCampaigns.find(c => c.id === id);
+        if(!camp) return;
+        
+        camp.status = 'DENEGADA';
+        camp.denyReason = `[FINANZAS] ${reason}`;
+        
+        telemetry.log("DENEGADO", `Campaña MKT ${id} - Motivo: ${reason}`);
+        ui.pushNotification(state.user.coId, 'MARKETING', `Tu campaña "${camp.title}" ha sido DENEGADA.`, 'error');
+        
+        state.save();
+        this.closeModal();
+        this.render();
     },
 
     promptPartialApproveOrder(oid) {
@@ -308,7 +407,9 @@ Object.assign(ui, {
         
         let pendingOrdersHtml = '';
         const pendingOrders = co.orders.filter(o => o.status === 'PENDIENTE_FINANZAS');
-        if (pendingOrders.length > 0 && state.user.role.includes('FINAN')) {
+        const pendingMkt = (co.marketingCampaigns || []).filter(c => c.status === 'PENDIENTE_FINANZAS');
+        
+        if ((pendingOrders.length > 0 || pendingMkt.length > 0) && state.user.role.includes('FINAN')) {
             pendingOrdersHtml = `
             <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow mb-8 animate-in fade-in">
                 <h3 class="font-orbitron text-mars-yellow text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Órdenes Pendientes de Aprobación</h3>
@@ -316,10 +417,19 @@ Object.assign(ui, {
                     ${pendingOrders.map(po => `
                         <div class="bg-slate-900 border border-mars-yellow/50 p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div>
-                                <p class="text-white font-bold uppercase text-xs">Orden #${po.id}</p>
+                                <p class="text-white font-bold uppercase text-xs">Orden I+D #${po.id}</p>
                                 <p class="text-[10px] text-slate-400 mt-1">Total: <span class="text-mars-green font-mono">${po.total.toFixed(2)} €v</span></p>
                             </div>
                             <button onclick="ui.navigate('orders')" class="bg-mars-yellow text-black px-4 py-2 text-[10px] font-black uppercase hover:bg-white transition-colors whitespace-nowrap">Revisar y Aprobar</button>
+                        </div>
+                    `).join('')}
+                    ${pendingMkt.map(pm => `
+                        <div class="bg-slate-900 border border-mars-magenta/50 p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div>
+                                <p class="text-white font-bold uppercase text-xs">Campaña MKT: ${pm.title}</p>
+                                <p class="text-[10px] text-slate-400 mt-1">Pack: ${pm.pack} | Total: <span class="text-mars-magenta font-mono">${pm.cost.toFixed(2)} €v</span></p>
+                            </div>
+                            <button onclick="ui.navigate('orders')" class="bg-mars-magenta text-white px-4 py-2 text-[10px] font-black uppercase hover:bg-white hover:text-mars-magenta transition-colors whitespace-nowrap">Revisar y Aprobar</button>
                         </div>
                     `).join('')}
                 </div>
@@ -367,7 +477,6 @@ Object.assign(ui, {
             }
         }
 
-        // FASE 3 (Req 2): Ventanilla Legal en el Dashboard de Finanzas
         let sanctionsHtml = '';
         const sanctions = co.sanctions || [];
         if (sanctions.length > 0) {

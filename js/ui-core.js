@@ -102,7 +102,7 @@ const ui = {
                 content += `<p class="text-mars-cyan font-bold">¡Bienvenido, guardián de la caja virtual! 💰</p>
                 <p class="text-slate-300">Sin tu luz verde presupuestaria, aquí no se mueve ni un tornillo.</p>
                 <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400">
-                    <li>Revisa las peticiones del Técnico y <strong>audita</strong> el gasto.</li>
+                    <li>Revisa las peticiones del Técnico y de Marketing y <strong>audita</strong> el gasto.</li>
                     <li>Vigila el <strong>Ledger Inmutable</strong>.</li>
                     <li>Prepara el <strong>Libro de Cuentas</strong> oficial para ECO.</li>
                     <li>Propón mociones o reporta inactividad en <strong>Gobernanza</strong>.</li>
@@ -114,8 +114,8 @@ const ui = {
                 <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400">
                     <li>Sube el <strong>Logotipo</strong> y define un <strong>Eslogan</strong>.</li>
                     <li>Redacta la <strong>Propuesta de Valor</strong>.</li>
+                    <li>Solicita <strong>Paquetes Publicitarios</strong> a Finanzas para ganar visibilidad.</li>
                     <li>Prepara y sube las presentaciones para los <strong>Pitches de Oratoria</strong>.</li>
-                    <li>Propón mociones o reporta inactividad en <strong>Gobernanza</strong>.</li>
                 </ul>`; 
                 break;
             case 'OPERACIONES_IA': 
@@ -284,6 +284,10 @@ const ui = {
         if (elOrders) {
             let pendingOrders = 0;
             if (state.user.role === 'FINANZAS') {
+                const pendingTech = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS').length;
+                const pendingMkt = (co.marketingCampaigns || []).filter(c => c.status === 'PENDIENTE_FINANZAS').length;
+                pendingOrders = pendingTech + pendingMkt;
+            } else if (state.user.role === 'TECNICO') {
                 pendingOrders = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS').length;
             }
             if (pendingOrders > 0) { elOrders.innerText = pendingOrders; elOrders.classList.remove('hidden'); }

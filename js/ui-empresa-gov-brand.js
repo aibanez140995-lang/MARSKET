@@ -161,7 +161,6 @@ Object.assign(ui, {
         
         telemetry.log("REPORTE HR", `Reportado departamento: ${dept}`);
         
-        // FASE 3 (Req 4): Alerta Multicapa. Notificamos también al CEO de la startup.
         if (state.user.role !== 'CEO') {
             ui.pushNotification(state.user.coId, 'CEO', `⚠️ ALERTA HR: ${state.user.role} ha reportado inactividad en el departamento ${dept}.`, 'error');
         }
@@ -304,16 +303,26 @@ Object.assign(ui, {
 
         const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + o.total, 0);
 
-        let campaignsHtml = co.marketingCampaigns.map(c => `
-            <div class="bg-black/50 border border-mars-border/50 p-3 mb-2">
-                <div class="flex justify-between items-center border-b border-mars-border/30 pb-2 mb-2">
+        let campaignsHtml = co.marketingCampaigns.map(c => {
+            const isLegacy = !c.status;
+            const status = c.status || 'APROBADA';
+            const trackerIdx = status === 'PENDIENTE_FINANZAS' ? 0 : status === 'APROBADA' ? 2 : 0;
+            
+            return `
+            <div class="bg-black/50 border ${status === 'APROBADA' ? 'border-mars-green/50' : status === 'DENEGADA' ? 'border-mars-magenta/50' : 'border-mars-yellow/50'} p-3 mb-2">
+                ${!isLegacy && status !== 'DENEGADA' ? ui.renderWorkflowTracker(['MKT (Solicita)', 'FIN (Audita)', 'Publicada'], trackerIdx) : ''}
+                <div class="flex justify-between items-center border-b border-mars-border/30 pb-2 mb-2 mt-2">
                     <span class="text-mars-cyan font-bold uppercase text-[10px]">${c.title}</span>
                     <span class="text-[8px] text-slate-500">${c.date}</span>
                 </div>
+                ${c.pack ? `<p class="text-[9px] text-mars-yellow font-bold mb-1 uppercase">Pack: ${c.pack} (${c.cost} €v)</p>` : ''}
                 <p class="text-[9px] text-slate-300 italic mb-2">"${c.desc}"</p>
-                ${c.url ? `<a href="${c.url}" target="_blank" class="text-[9px] text-mars-yellow hover:underline">🔗 Ver Creatividad</a>` : ''}
+                ${c.url ? `<a href="${c.url}" target="_blank" class="text-[9px] text-mars-cyan hover:underline">🔗 Ver Creatividad</a>` : ''}
+                ${status === 'PENDIENTE_FINANZAS' ? `<p class="text-[9px] text-mars-yellow font-bold mt-2 uppercase animate-pulse">Esperando aprobación de Finanzas...</p>` : ''}
+                ${status === 'DENEGADA' ? `<p class="text-[9px] text-mars-magenta font-bold mt-2 uppercase">DENEGADA: ${c.denyReason}</p>` : ''}
             </div>
-        `).join('') || '<p class="text-slate-500 italic text-xs">No hay campañas registradas.</p>';
+            `;
+        }).join('') || '<p class="text-slate-500 italic text-xs">No hay campañas registradas.</p>';
 
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -366,10 +375,17 @@ Object.assign(ui, {
                     <h2 class="font-orbitron text-mars-cyan text-lg mb-4 uppercase tracking-tighter">Campañas de Marketing</h2>
                     <div class="space-y-4">
                         <div class="bg-slate-900 p-4 border border-mars-border">
+                            <select id="mkt-camp-pack" class="w-full bg-black border border-mars-magenta p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+                                <option value="">-- Selecciona un Paquete Publicitario --</option>
+                                <option value="Satélite|200">Pack 'Satélite' (200 €v) - 3 acciones online</option>
+                                <option value="Prensa Tradicional|300">Pack 'Prensa Tradicional' (300 €v) - 3 acciones escritas</option>
+                                <option value="Despegue Híbrido|400">Pack 'Despegue Híbrido' (400 €v) - 2 online / 2 escrito</option>
+                                <option value="Cobertura Supernova|550">Pack 'Cobertura Supernova' (550 €v) - 6 acciones multicanal</option>
+                            </select>
                             <input type="text" id="mkt-camp-title" placeholder="Título de la campaña..." class="w-full bg-black border border-mars-border p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
                             <textarea id="mkt-camp-desc" placeholder="Descripción de las acciones realizadas..." class="w-full bg-black border border-mars-border p-2 text-xs text-white h-20 mb-2 outline-none focus:border-mars-cyan"></textarea>
                             <input type="text" id="mkt-camp-url" placeholder="URL a creatividades (Drive/Canva)..." class="w-full bg-black border border-mars-border p-2 text-xs text-white mb-3 outline-none focus:border-mars-cyan">
-                            <button onclick="ui.submitMarketingCampaign()" class="bg-mars-cyan text-black px-4 py-2 text-[10px] font-black uppercase hover:bg-white transition-colors w-full">Registrar Campaña</button>
+                            <button onclick="ui.submitMarketingCampaign()" class="bg-mars-cyan text-black px-4 py-2 text-[10px] font-black uppercase hover:bg-white transition-colors w-full">Solicitar Campaña a Finanzas</button>
                         </div>
                         <div class="max-h-64 overflow-y-auto pr-2 space-y-2">
                             ${campaignsHtml}
@@ -383,22 +399,40 @@ Object.assign(ui, {
 
     submitMarketingCampaign() {
         if (!state.user) return;
+        const elPack = document.getElementById('mkt-camp-pack');
         const elTitle = document.getElementById('mkt-camp-title');
         const elDesc = document.getElementById('mkt-camp-desc');
         const elUrl = document.getElementById('mkt-camp-url');
-        if (!elTitle || !elDesc || !elUrl) return; // REGLA 3
+        if (!elPack || !elTitle || !elDesc || !elUrl) return; // REGLA 3
         
+        const packVal = elPack.value;
         const title = elTitle.value;
         const desc = elDesc.value;
         const url = elUrl.value;
         
-        if(!title || !desc) return alert("El título y la descripción son obligatorios.");
+        if(!packVal || !title || !desc) return alert("El paquete, título y descripción son obligatorios.");
+        
+        const [packName, packCost] = packVal.split('|');
+        const cost = parseFloat(packCost);
+
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
         co.marketingCampaigns = co.marketingCampaigns || [];
         
-        co.marketingCampaigns.unshift({ id: 'MKT-'+Date.now(), title, desc, url, date: new Date().toLocaleString() });
-        telemetry.log("MARKETING", `Campaña registrada: ${title}`);
+        co.marketingCampaigns.unshift({ 
+            id: 'MKT-'+Date.now(), 
+            pack: packName,
+            cost: cost,
+            title, 
+            desc, 
+            url, 
+            status: 'PENDIENTE_FINANZAS',
+            date: new Date().toLocaleString() 
+        });
+        
+        telemetry.log("MARKETING", `Campaña solicitada: ${title} (${packName})`);
+        ui.pushNotification(state.user.coId, 'FINANZAS', `Nueva campaña de marketing pendiente de aprobación presupuestaria.`, 'warning');
+        
         state.save();
         this.render();
     },
