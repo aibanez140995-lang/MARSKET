@@ -12,7 +12,6 @@ Object.assign(ui, {
         
         const canSponsor = state.data.config.teachers[state.user.role]?.canSponsor === true;
 
-        // FASE 4 v1.0.13: Panel de Aduana B2B para el Docente
         const pendingB2B = (state.data.b2bContracts || []).filter(c => c.status === 'PENDIENTE_CLAUSTRO');
         let pendingB2BHtml = '';
         if (pendingB2B.length > 0) {
@@ -33,6 +32,35 @@ Object.assign(ui, {
                         </div>
                     </div>
                     `).join('')}
+                </div>
+            </div>`;
+        }
+
+        // FIX: Añadido el Historial de Contratos B2B para que el profesor vea todo
+        let b2bHistoryHtml = '';
+        const allB2B = state.data.b2bContracts || [];
+        if (allB2B.length > 0) {
+            b2bHistoryHtml = `
+            <div class="terminal-border bg-mars-card p-6 w-full overflow-hidden mt-6 border-t-4 border-t-mars-cyan">
+                <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Historial de Contratos B2B (Aduana)</h3>
+                <div class="overflow-x-auto w-full">
+                    <table class="w-full text-left text-[10px] whitespace-nowrap min-w-max">
+                        <thead class="text-slate-500 uppercase border-b border-mars-border">
+                            <tr><th class="py-2 pr-4">ID / Fecha</th><th class="pr-4">Vendedor</th><th class="pr-4">Comprador</th><th class="pr-4">Artículo</th><th class="pr-4">Precio</th><th>Estado</th></tr>
+                        </thead>
+                        <tbody>
+                            ${allB2B.map(c => `
+                            <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
+                                <td class="py-2 pr-4 text-slate-400">${c.id}<br><span class="text-[8px]">${c.date}</span></td>
+                                <td class="py-2 pr-4 text-mars-yellow font-bold">${c.sellerName}</td>
+                                <td class="py-2 pr-4 text-mars-cyan font-bold">${c.buyerName}</td>
+                                <td class="py-2 pr-4 text-white">${c.itemName}</td>
+                                <td class="py-2 pr-4 font-mono text-mars-green">${c.price.toFixed(2)} €v</td>
+                                <td class="py-2 font-bold ${c.status === 'APROBADO' ? 'text-mars-green' : c.status === 'DENEGADO' ? 'text-mars-magenta' : 'text-mars-yellow'}">${c.status}</td>
+                            </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
                 </div>
             </div>`;
         }
@@ -99,7 +127,8 @@ Object.assign(ui, {
                 </div>
             </div>
         </div>
-        <div class="terminal-border bg-mars-card p-6">
+        ${b2bHistoryHtml}
+        <div class="terminal-border bg-mars-card p-6 mt-6">
             <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase">Solicitudes de Material Externo / I+D</h3>
             <div class="space-y-3">
                 ${(state.data.pendingCustom || []).map(p => `
@@ -115,7 +144,113 @@ Object.assign(ui, {
         </div>`;
     },
 
-    // FASE 4 v1.0.13: Lógica de Aduana B2B
+    // FIX: Restauradas las funciones de Patrocinio y Auditoría Virtual
+    modalAssignSponsor(cid) {
+        const co = state.data.companies[cid];
+        if (!co) return; // REGLA 4
+        
+        this._tempSponsorLogo = null; 
+        
+        const html = `
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[9px] text-mars-yellow uppercase font-bold block mb-1">Nivel de Patrocinio</label>
+                    <select id="sponsor-tier" class="w-full bg-slate-900 border border-mars-yellow/50 p-2 text-xs text-white uppercase outline-none focus:border-mars-yellow">
+                        <option value="ORO|500">ORO (+500 €v)</option>
+                        <option value="PLATA|400">PLATA (+400 €v)</option>
+                        <option value="BRONCE|250">BRONCE (+250 €v)</option>
+                        <option value="COBRE|150">COBRE (+150 €v)</option>
+                        <option value="COLABORADOR|100">COLABORADOR (+100 €v)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[9px] text-mars-yellow uppercase font-bold block mb-1">Nombre de la Marca / Entidad</label>
+                    <input type="text" id="sponsor-name" class="w-full bg-slate-900 border border-mars-yellow/50 p-2 text-xs text-white outline-none focus:border-mars-yellow" placeholder="Ej: SpaceX, NASA, Empresa Local...">
+                </div>
+                <div>
+                    <label class="text-[9px] text-mars-yellow uppercase font-bold block mb-1">Logotipo del Patrocinador (Opcional)</label>
+                    <input type="file" id="sponsor-logo-file" accept="image/png, image/jpeg" class="w-full text-[9px] text-slate-400 mb-2" onchange="ui.handleSponsorLogoUpload(event)">
+                    <div id="sponsor-logo-preview" class="h-12 w-auto bg-black border border-slate-700 flex items-center justify-center text-[8px] text-slate-500 italic">Sin logo</div>
+                </div>
+            </div>
+        `;
+        const actions = `<button onclick="ui.submitSponsor('${cid}')" class="bg-mars-yellow text-black px-6 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all">Asignar Patrocinio</button>`;
+        this.showModal(`Asignar Patrocinador a ${co.name}`, html, actions);
+    },
+
+    handleSponsorLogoUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) return alert("Solo PNG/JPG.");
+        if (file.size > 1024 * 1024) return alert("Máximo 1MB para el logo.");
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            this._tempSponsorLogo = ev.target.result;
+            const preview = document.getElementById('sponsor-logo-preview');
+            if (preview) preview.innerHTML = `<img src="${ev.target.result}" class="h-full object-contain">`;
+        };
+        reader.readAsDataURL(file);
+    },
+
+    submitSponsor(cid) {
+        const co = state.data.companies[cid];
+        if (!co) return; // REGLA 1 y 4
+        
+        const elTier = document.getElementById('sponsor-tier');
+        const elName = document.getElementById('sponsor-name');
+        if (!elTier || !elName) return; // REGLA 3
+        
+        const [tier, amountStr] = elTier.value.split('|');
+        const amount = parseFloat(amountStr);
+        const name = elName.value.trim() || 'Anónimo';
+        
+        co.sponsorAwarded = tier;
+        co.sponsorData = {
+            name: name,
+            logo: this._tempSponsorLogo
+        };
+        
+        const concept = `Patrocinio ${tier} - ${name}`;
+        state.addToLedger(cid, concept, 'DOCENTE', amount);
+        
+        this._tempSponsorLogo = null;
+        this.closeModal();
+        this.render();
+    },
+
+    modalVirtualSpend(cid) {
+        const co = state.data.companies[cid];
+        if (!co) return; // REGLA 1 y 4
+        
+        co.ledger = co.ledger || [];
+        const expenses = co.ledger.filter(l => l.delta < 0);
+        const total = expenses.reduce((s, l) => s + Math.abs(l.delta), 0);
+        
+        let html = `
+        <div class="mb-4 bg-slate-900 p-4 border border-mars-cyan flex justify-between items-center">
+            <span class="text-mars-cyan font-bold uppercase text-xs">Total Gasto Virtual Acumulado</span>
+            <span class="text-mars-cyan font-mono text-xl font-black">${total.toFixed(2)} €v</span>
+        </div>
+        <div class="max-h-64 overflow-y-auto pr-2">
+            <table class="w-full text-left text-[10px] whitespace-nowrap">
+                <thead class="text-slate-500 uppercase border-b border-mars-border sticky top-0 bg-mars-card">
+                    <tr><th class="py-2 pr-2">Fecha / ID</th><th class="pr-2">Concepto</th><th class="text-right">Importe (€v)</th></tr>
+                </thead>
+                <tbody>
+                    ${expenses.map(l => `
+                    <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
+                        <td class="py-2 pr-2 text-slate-400">${l.date.split(' ')[0]} <br><span class="text-[8px]">${l.id}</span></td>
+                        <td class="py-2 pr-2 text-white whitespace-normal min-w-[200px]">${l.concept}</td>
+                        <td class="py-2 text-right text-mars-magenta font-mono font-bold">${Math.abs(l.delta).toFixed(2)}</td>
+                    </tr>
+                    `).join('') || `<tr><td colspan="3" class="text-center py-4 text-slate-600 italic">No hay gastos registrados.</td></tr>`}
+                </tbody>
+            </table>
+        </div>
+        `;
+        this.showModal(`Auditoría de Gasto Virtual: ${co.name}`, html, "");
+    },
+
     approveB2BContract(id) {
         if (!state.user || !state.user.admin) return;
         const contract = state.data.b2bContracts.find(c => c.id === id);

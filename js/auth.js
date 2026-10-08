@@ -96,7 +96,6 @@ const auth = {
         
         telemetry.startSession(entityName, roleKey);
         
-        // FASE 3 v1.0.10: Disparar animación de inmersión antes de cargar el HUD
         if (typeof ui.playLoginAnimation === 'function') {
             ui.playLoginAnimation(roleKey);
             setTimeout(() => {
@@ -125,7 +124,6 @@ const auth = {
     },
     
     logout() { 
-        // FASE 3 v1.0.10: Respuesta instantánea de interfaz (Performance)
         const vp = document.getElementById('viewport');
         const header = document.getElementById('hud-header');
         const nav = document.getElementById('hud-nav');
@@ -142,7 +140,6 @@ const auth = {
             </div>`;
         }
         
-        // Purga en segundo plano
         localStorage.removeItem(state.sessionKey);
         sessionStorage.removeItem('hideWelcome');
         
@@ -156,7 +153,6 @@ const auth = {
         if (!nav) return; // REGLA 3
         
         if (isAdmin) {
-            // FASE 1: Hotfix de Enrutamiento Docente (Botón Dossier restaurado)
             nav.innerHTML = `
                 <button onclick="ui.adminTab='dash'; ui.navigate('admin')" class="nav-tab tab-active px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase border-r border-mars-border text-mars-yellow whitespace-nowrap">Terminal Docente</button>
                 <button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>
@@ -175,7 +171,6 @@ const auth = {
             html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Órdenes CEO ${badgeHtml('badge-orders')}</button>`;
             html += `<button onclick="ui.navigate('finance')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Finanzas</button>`;
         } else if (role === 'TECNICO') {
-            // FASE 2 v1.0.10: Limpieza UI/UX - Eliminado botón redundante de Req. Material I+D
             html += `<button onclick="ui.navigate('tech')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">I+D y Pruebas</button>`;
             html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
             html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Órdenes I+D ${badgeHtml('badge-orders')}</button>`;
@@ -213,16 +208,11 @@ const dev = {
         else { this.clickTimer = setTimeout(() => this.clickCount = 0, 400); }
     },
     open() {
+        // FIX: Eliminada la vulnerabilidad que mostraba los PINs en texto claro
         let html = `<h4 class="text-mars-magenta glitch-text font-bold mb-4">DEV_BACKDOOR_ACCESS_GRANTED [v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0'}]</h4>`;
         html += `<div class="bg-black border border-mars-magenta p-4 text-[10px] space-y-4 mb-4 font-mono">`;
-        html += `<div><p class="text-mars-cyan font-bold mb-2 border-b border-mars-cyan/30">PINs DOCENTES EN CLARO</p>`;
-        for(let k in state.data.config.teachers) { html += `<p>${state.data.config.teachers[k].name}: <span class="text-white">${state.data.config.teachers[k].pin}</span></p>`; }
-        html += `</div><div><p class="text-mars-yellow font-bold mb-2 border-b border-mars-yellow/30">PINs STARTUPS EN CLARO</p>`;
-        for(let c in state.data.companies) {
-            html += `<p class="mt-2 text-mars-green font-bold">${state.data.companies[c].name}</p>`;
-            for(let r in state.data.companies[c].roles) { html += `<span class="mr-3">${r}: <span class="text-white">${state.data.companies[c].roles[r]}</span></span>`; }
-        }
-        html += `</div></div>`;
+        html += `<p class="text-mars-cyan">Terminal de diagnóstico activada. Los códigos PIN han sido ocultados por seguridad.</p>`;
+        html += `</div>`;
         const actions = `<button onclick="dev.resetTeacherPins()" class="bg-mars-yellow text-black px-4 py-2 text-[9px] font-bold uppercase hover:bg-white">Reset Docentes</button><button onclick="dev.rootLogin()" class="bg-mars-magenta text-white px-4 py-2 text-[9px] font-bold uppercase hover:bg-white hover:text-mars-magenta">Login Root Bypass</button>`;
         ui.showModal("Terminal de Rescate", html, actions);
     },
