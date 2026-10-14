@@ -122,12 +122,14 @@ Object.assign(ui, {
             `;
         }
 
-        // Lógica de Auditoría V2.0 (Desviaciones)
+        // M-07: Lógica de Auditoría V2.0 unificada con compras de I+D + B2B
         const presTeorico = parseFloat(co.fase1Registro.presupuestoTeorico) || 0;
         const altTeorica = parseFloat(co.fase1Registro.alturaEstimada) || 0;
         const bestFlight = co.flightTests.length > 0 ? [...co.flightTests].sort((a, b) => b.heightM - a.heightM)[0] : null;
         const altReal = bestFlight ? bestFlight.heightM : 0;
-        const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + o.total, 0);
+        const totalDevCost = typeof this.getTotalDevSpend === 'function' 
+            ? this.getTotalDevSpend(co, state.user.coId) 
+            : co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + o.total, 0);
         
         const isCostDeviation = totalDevCost > presTeorico && presTeorico > 0;
         const isHeightDeviation = altReal < altTeorica && altTeorica > 0 && altReal > 0;
@@ -140,11 +142,11 @@ Object.assign(ui, {
             v2AuditHtml = `
             <div class="terminal-border bg-mars-card p-6 border-t-4 ${justStatus === 'PENDIENTE' ? 'border-t-mars-yellow animate-pulse shadow-[0_0_15px_rgba(255,230,0,0.1)]' : justStatus === 'APROBADA' ? 'border-t-mars-green' : 'border-t-mars-magenta'} mb-8">
                 <h2 class="font-orbitron ${justStatus === 'PENDIENTE' ? 'text-mars-yellow' : justStatus === 'APROBADA' ? 'text-mars-green' : 'text-mars-magenta'} text-lg mb-4 uppercase tracking-tighter">Auditoría de Desviación (V2.0)</h2>
-                <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">El Dpto. Técnico ha registrado una desviación entre la hipótesis de la Fase I y los datos reales del Banco de Pruebas.</p>
+                <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">El Dpto. Técnico ha registrado una desviación entre la hipótesis de la Fase I y los datos reales de desarrollo / Banco de Pruebas.</p>
                 
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div class="bg-black p-3 border ${isCostDeviation ? 'border-mars-magenta' : 'border-mars-border'}">
-                        <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Presupuesto: Teórico vs Real</p>
+                        <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Presupuesto I+D: Teórico vs Ejecutado</p>
                         <p class="text-sm font-mono ${isCostDeviation ? 'text-mars-magenta' : 'text-white'}">${presTeorico.toFixed(2)} €v <span class="text-slate-500">vs</span> ${totalDevCost.toFixed(2)} €v</p>
                     </div>
                     <div class="bg-black p-3 border ${isHeightDeviation ? 'border-mars-magenta' : 'border-mars-border'}">
@@ -238,7 +240,6 @@ Object.assign(ui, {
             }
         }
 
-        // FASE 4 v1.0.13: Sección de Contratos B2B
         let b2bSection = '';
         const myB2B = (state.data.b2bContracts || []).filter(c => c.buyerCoId === state.user.coId || c.sellerCoId === state.user.coId);
         if (myB2B.length > 0 && (role === 'CEO' || role.includes('FINAN'))) {
@@ -271,7 +272,7 @@ Object.assign(ui, {
                         <div class="bg-black/50 p-4 border border-mars-border/50 text-[10px] w-full">
                             <span class="block text-mars-cyan font-bold uppercase mb-2 border-b border-mars-cyan/30 pb-1">Detalles del Traspaso:</span>
                             <p class="text-white font-bold mb-1 text-sm">${c.itemName}</p>
-                            <p class="text-slate-400 italic">Rol: <strong class="${isBuyer ? 'text-mars-magenta' : 'text-mars-green'}">${roleText}</strong> | Contraparte: <strong>${otherParty}</strong></p>
+                            <p class="text-slate-400 italic">Rol: <strong class="${isBuyer ? 'text-mars-magenta' : 'text-mars-green'}">${roleText}</strong> \vert{} Contraparte: <strong>${otherParty}</strong></p>
                         </div>
                     </div>`;
                 }).join('')}
@@ -330,6 +331,7 @@ Object.assign(ui, {
         if (!co) return auth.logout();
         
         co.fase1Registro.justificacionV2Status = 'APROBADA';
+        co.fase1Registro.justificacionV2DenyReason = null;
         telemetry.log("AUDITORÍA V2.0", `Justificación de desviación aprobada por Finanzas.`);
         ui.pushNotification(state.user.coId, 'TECNICO', `Tu justificación de desviación V2.0 ha sido APROBADA por Finanzas.`, 'success');
         
@@ -357,7 +359,7 @@ Object.assign(ui, {
         co.fase1Registro.justificacionV2DenyReason = `[FINANZAS] ${reason}`;
         
         telemetry.log("AUDITORÍA V2.0", `Justificación DENEGADA - Motivo: ${reason}`);
-        ui.pushNotification(state.user.coId, 'TECNICO', `Tu justificación de desviación V2.0 ha sido DENEGADA. Revisa el motivo.`, 'error');
+        ui.pushNotification(state.user.coId, 'TECNICO', `Tu justificación de desviación V2.0 ha sido DENEGADA. Corrige el análisis y vuelve a enviarlo.`, 'error');
         
         state.save();
         this.closeModal();
@@ -538,19 +540,29 @@ Object.assign(ui, {
         co.orders = co.orders || [];
         co.ledger = co.ledger || [];
         co.marketingPackages = co.marketingPackages || []; // REGLA 1
+        co.fase1Registro = co.fase1Registro || { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' };
         
-        const totalReal = co.realCosts.reduce((s, i) => s + i.eur, 0);
         const wrapper = document.createElement('div');
         
         let pendingOrdersHtml = '';
         const pendingOrders = co.orders.filter(o => o.status === 'PENDIENTE_FINANZAS');
         const pendingMkt = co.marketingPackages.filter(p => p.status === 'PENDIENTE_FINANZAS');
+        const hasPendingV2 = co.fase1Registro.justificacionV2 && (co.fase1Registro.justificacionV2Status || 'PENDIENTE') === 'PENDIENTE';
         
-        if ((pendingOrders.length > 0 || pendingMkt.length > 0) && state.user.role.includes('FINAN')) {
+        if ((pendingOrders.length > 0 || pendingMkt.length > 0 || hasPendingV2) && state.user.role.includes('FINAN')) {
             pendingOrdersHtml = `
             <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow mb-8 animate-in fade-in">
-                <h3 class="font-orbitron text-mars-yellow text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Órdenes Pendientes de Aprobación</h3>
+                <h3 class="font-orbitron text-mars-yellow text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Bandeja de Auditoría Financiera</h3>
                 <div class="space-y-3">
+                    ${hasPendingV2 ? `
+                        <div class="bg-slate-900 border border-mars-cyan/50 p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div>
+                                <p class="text-mars-cyan font-bold uppercase text-xs">Auditoría de Desviación V2.0 (I+D)</p>
+                                <p class="text-[10px] text-slate-400 mt-1">Justificación técnica pendiente de revisión</p>
+                            </div>
+                            <button onclick="ui.navigate('orders')" class="bg-mars-cyan text-black px-4 py-2 text-[10px] font-black uppercase hover:bg-white transition-colors whitespace-nowrap">Auditar V2.0</button>
+                        </div>
+                    ` : ''}
                     ${pendingOrders.map(po => `
                         <div class="bg-slate-900 border border-mars-yellow/50 p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div>
@@ -638,7 +650,6 @@ Object.assign(ui, {
             </div>`;
         }
 
-        // FASE 4 v1.0.13: Sección de Contratos B2B en Finanzas
         let b2bSection = '';
         const myB2B = (state.data.b2bContracts || []).filter(c => c.buyerCoId === state.user.coId || c.sellerCoId === state.user.coId);
         if (myB2B.length > 0 && (state.user.role === 'CEO' || state.user.role.includes('FINAN'))) {
@@ -681,7 +692,7 @@ Object.assign(ui, {
                         <div class="overflow-y-auto max-h-[400px] text-[10px] pr-2 min-w-[300px]">
                             ${co.ledger.map(l => `
                             <div class="border-b border-mars-border/30 py-3 flex justify-between gap-4">
-                                <div class="flex-1"><p class="text-white font-bold leading-tight">${l.concept}</p><p class="text-[8px] text-slate-500 uppercase mt-1">${l.id} | ${l.date}</p></div>
+                                <div class="flex-1"><p class="text-white font-bold leading-tight">${l.concept}</p><p class="text-[8px] text-slate-500 uppercase mt-1">${l.id} \vert{}${l.date}</p></div>
                                 <div class="text-right shrink-0"><p class="font-mono font-bold text-sm ${l.delta > 0 ? 'text-mars-green' : 'text-mars-magenta'}">${l.delta > 0 ? '+' : ''}${l.delta.toFixed(2)}</p><p class="text-slate-500 text-[8px]">Bal: ${l.final.toFixed(2)}</p></div>
                             </div>`).join('') || '<p class="text-slate-600 italic">Registro inmutable vacío.</p>'}
                         </div>

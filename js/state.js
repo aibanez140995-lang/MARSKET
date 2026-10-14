@@ -4,11 +4,11 @@ const state = {
     data: {}, user: null, pin: '', sessionData: null,
     storageKey: 'marsket_v10_PWA',
     sessionKey: 'marsket_session_v1',
-    isCloudOnline: false, isSyncing: false, syncTimer: null,
+    isCloudOnline: false, isSyncing: false, syncTimer: null, clockTimer: null,
 
     migrate(d) {
         // REGLA 1: BLINDAJE DE ESTADO (Fallbacks)
-        d.version = d.version || 1; 
+        d.version = Number(d.version) || 1; 
         d.config = d.config || JSON.parse(JSON.stringify(INITIAL_DATA.config));
         d.catalog = d.catalog && d.catalog.length > 0 ? d.catalog : JSON.parse(JSON.stringify(INITIAL_DATA.catalog));
         d.companies = d.companies || JSON.parse(JSON.stringify(INITIAL_DATA.companies));
@@ -51,6 +51,7 @@ const state = {
             
             co.fase1Registro = co.fase1Registro || { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' };
             co.decisionLog = co.decisionLog || [];
+            co.bom = co.bom || [];
             
             co.flightTests = co.flightTests || [];
             co.votingMotions = co.votingMotions || [];
@@ -100,49 +101,119 @@ const state = {
         return d;
     },
 
+    // M-02: Motor de fusión optimista mejorado (Claves personalizadas, anti-zombis y estado escalar)
     mergeData(serverData, localData) {
         if (!serverData || !localData) return serverData || localData;
         const merged = JSON.parse(JSON.stringify(serverData)); 
-        
-        const mergeArrays = (arrServer, arrLocal) => {
-            const serverIds = new Set(arrServer.map(i => String(i.id)));
-            const missingInServer = arrLocal.filter(i => i.id && !serverIds.has(String(i.id)));
-            return [...missingInServer, ...arrServer];
+        const activeCoId = this.user && !this.user.admin ? this.user.coId : null;
+        const isAdminUser = this.user && this.user.admin;
+
+        // Fusión de arrays por clave única (id, marketId, sessionId)
+        const mergeArraysByKey = (arrServer = [], arrLocal = [], keyField = 'id', preferLocalUpdates = false) => {
+            const serverMap = new Map();
+            arrServer.forEach(item => {
+                if (item && item[keyField] !== undefined) serverMap.set(String(item[keyField]), item);
+            });
+
+            const missingInServer = [];
+            arrLocal.forEach(localItem => {
+                if (!localItem || localItem[keyField] === undefined) return;
+                const k = String(localItem[keyField]);
+                if (!serverMap.has(k)) {
+                    missingInServer.push(localItem);
+                } else if (preferLocalUpdates) {
+                    // Si el cliente activo modificó un ítem existente (ej: aprobar orden, votar moción), prevalece su estado actualizado
+                    serverMap.set(k, localItem);
+                }
+            });
+
+            return [...missingInServer, ...Array.from(serverMap.values())];
         };
 
+        // 1. Telemetría (usa 'sessionId') y Buzón Dev
         if (localData.telemetry && localData.telemetry.sessions) {
             merged.telemetry = merged.telemetry || { sessions: [] };
-            merged.telemetry.sessions = mergeArrays(merged.telemetry.sessions, localData.telemetry.sessions);
+            merged.telemetry.sessions = mergeArraysByKey(merged.telemetry.sessions, localData.telemetry.sessions, 'sessionId', true);
             merged.telemetry.totalLogins = Math.max(merged.telemetry.totalLogins || 0, localData.telemetry.totalLogins || 0);
         }
         
         if (localData.suggestionsToAlex) {
-            merged.suggestionsToAlex = mergeArrays(merged.suggestionsToAlex || [], localData.suggestionsToAlex);
-        }
-        
-        // FASE 1 v1.0.13: Fusión de arrays globales B2B
-        if (localData.b2bMarket) {
-            merged.b2bMarket = mergeArrays(merged.b2bMarket || [], localData.b2bMarket);
-        }
-        if (localData.b2bContracts) {
-            merged.b2bContracts = mergeArrays(merged.b2bContracts || [], localData.b2bContracts);
+            merged.suggestionsToAlex = mergeArraysByKey(merged.suggestionsToAlex || [], localData.suggestionsToAlex, 'id', false);
         }
 
+        if (localData.pendingCustom) {
+            merged.pendingCustom = mergeArraysByKey(merged.pendingCustom || [], localData.pendingCustom, 'id', isAdminUser);
+        }
+        
+        // 2. Contratos y Mercado B2B (Evitar resurrección de ítems ya comprados/retirados)
+        if (localData.b2bContracts) {
+            merged.b2bContracts = mergeArraysByKey(merged.b2bContracts || [], localData.b2bContracts, 'id', isAdminUser);
+        }
+        if (localData.b2bMarket) {
+            const contractedMarketIds = new Set((merged.b2bContracts || []).map(c => String(c.marketId)));
+            const rawMergedMarket = mergeArraysByKey(merged.b2bMarket || [], localData.b2bMarket, 'marketId', false);
+            // Filtrar cualquier ítem que ya tenga un contrato B2B iniciado o cuyo vendedor lo haya cancelado
+            merged.b2bMarket = rawMergedMarket.filter(m => !contractedMarketIds.has(String(m.marketId)));
+        }
+
+        // 3. Fusión de Empresas (Arrays + Propiedades Escalares)
         for (let k in localData.companies) {
+            if (!merged.companies[k] && isAdminUser) {
+                // Nueva startup creada por el docente localmente
+                merged.companies[k] = localData.companies[k];
+                continue;
+            }
             if (merged.companies[k] && localData.companies[k]) {
                 const sCo = merged.companies[k];
                 const lCo = localData.companies[k];
+                const isMyCompany = (activeCoId === k) || isAdminUser;
                 
-                const arraysToMerge = [
-                    'orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 
+                const keyedArrays = [
+                    'orders', 'ledger', 'flightTests', 'votingMotions', 
                     'aiPrompts', 'decisionLog', 'marketingCampaigns', 'marketingPackages', 
-                    'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'cart',
-                    'inventory' // FASE 1 v1.0.13: Fusión de inventario
+                    'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'inventory'
                 ];
                 
-                arraysToMerge.forEach(arrName => {
-                    sCo[arrName] = mergeArrays(sCo[arrName] || [], lCo[arrName] || []);
+                keyedArrays.forEach(arrName => {
+                    sCo[arrName] = mergeArraysByKey(sCo[arrName] || [], lCo[arrName] || [], 'id', isMyCompany);
                 });
+
+                // Arrays sin ID único ('cart' y 'realCosts'): prevalece el estado de la empresa activa para no resucitar carritos vaciados
+                if (activeCoId === k) {
+                    sCo.cart = lCo.cart || [];
+                    sCo.bom = lCo.bom || [];
+                    sCo.slogan = lCo.slogan || sCo.slogan;
+                    sCo.valueProposition = lCo.valueProposition || sCo.valueProposition;
+                    sCo.logo = lCo.logo || sCo.logo;
+                    sCo.fase1Registro = { ...(sCo.fase1Registro || {}), ...(lCo.fase1Registro || {}) };
+                }
+
+                // Costes reales: deduplicar por firma compuesta (shop + item + eur)
+                const rcMap = new Map();
+                [...(lCo.realCosts || []), ...(sCo.realCosts || [])].forEach(rc => {
+                    if (rc) rcMap.set(`${rc.shop}|${rc.item}|${rc.eur}`, rc);
+                });
+                sCo.realCosts = Array.from(rcMap.values());
+
+                // Entregables: conservar siempre el entregable más reciente o no nulo
+                sCo.deliverables = sCo.deliverables || {};
+                if (lCo.deliverables) {
+                    for (let docKey in lCo.deliverables) {
+                        if (lCo.deliverables[docKey] && (!sCo.deliverables[docKey] || activeCoId === k)) {
+                            sCo.deliverables[docKey] = lCo.deliverables[docKey];
+                        }
+                    }
+                }
+
+                // Calificaciones: si el usuario activo es docente, prevalecen sus calificaciones recién puestas
+                sCo.grades = isAdminUser 
+                    ? { ...(sCo.grades || {}), ...(lCo.grades || {}) }
+                    : { ...(lCo.grades || {}), ...(sCo.grades || {}) };
+
+                // Recalcular o sincronizar balance si pertenecemos a la empresa activa
+                if (isMyCompany && typeof lCo.balance === 'number') {
+                    sCo.balance = lCo.balance;
+                }
             }
         }
         return merged;
@@ -150,7 +221,12 @@ const state = {
 
     async init() {
         const saved = localStorage.getItem(this.storageKey);
-        const raw = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(INITIAL_DATA));
+        let raw;
+        try {
+            raw = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(INITIAL_DATA));
+        } catch (e) {
+            raw = JSON.parse(JSON.stringify(INITIAL_DATA));
+        }
         this.data = this.migrate(raw);
         this.saveLocalOnly();
 
@@ -176,7 +252,11 @@ const state = {
         }
         
         ui.render();
-        setInterval(() => { const el = document.getElementById('hud-clock'); if(el) el.innerText = `TIME: ${new Date().toLocaleTimeString()}`; }, 1000);
+        if (this.clockTimer) clearInterval(this.clockTimer);
+        this.clockTimer = setInterval(() => { 
+            const el = document.getElementById('hud-clock'); 
+            if(el) el.innerText = `TIME: ${new Date().toLocaleTimeString()}`; 
+        }, 1000);
         
         await this.fetchFromCloud();
     },
@@ -190,7 +270,7 @@ const state = {
                 const json = await res.json();
                 if(json && json.status !== 'empty') {
                     this.data = this.mergeData(this.migrate(json), this.data);
-                    this.data.version = json.version || this.data.version;
+                    this.data.version = Number(json.version) || this.data.version;
                     this.saveLocalOnly();
                     this.isCloudOnline = true;
                     ui.render();
@@ -203,8 +283,13 @@ const state = {
         finally { this.isSyncing = false; if(this.user) ui.updateHUD(); }
     },
 
+    // M-03: Blindaje contra QuotaExceededError en LocalStorage
     saveLocalOnly() {
-        localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+        try {
+            localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+        } catch (err) {
+            console.warn("STORAGE WARNING: Cuota de LocalStorage excedida. Operando en memoria y Cloudflare D1.", err);
+        }
     },
 
     save() { 
@@ -224,7 +309,11 @@ const state = {
         
         try {
             const payload = JSON.parse(JSON.stringify(this.data));
-            const res = await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const res = await fetch('/api/state', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(payload) 
+            });
             
             if (res.status === 409 || res.status === 412) {
                 console.warn("DATA SAFETY: Colisión detectada en Cloudflare D1. Fusionando estado de concurrencia optimista...");
@@ -233,12 +322,25 @@ const state = {
                 if (fetchRes.ok) {
                     const serverData = await fetchRes.json();
                     if (serverData && serverData.status !== 'empty') {
-                        this.data = this.mergeData(serverData, this.data);
-                        this.data.version = serverData.version || (this.data.version + 1);
+                        this.data = this.mergeData(this.migrate(serverData), this.data);
+                        this.data.version = Number(serverData.version) || (this.data.version + 1);
                         this.saveLocalOnly();
                         
-                        await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.data) });
+                        const retryPayload = { ...this.data, _resolvedConflict: true };
+                        const retryRes = await fetch('/api/state', { 
+                            method: 'POST', 
+                            headers: { 'Content-Type': 'application/json' }, 
+                            body: JSON.stringify(retryPayload) 
+                        });
                         
+                        if (retryRes.ok) {
+                            const retryJson = await retryRes.json().catch(() => null);
+                            if (retryJson && retryJson.version) {
+                                this.data.version = retryJson.version;
+                                this.saveLocalOnly();
+                            }
+                        }
+
                         if (typeof ui.showModal === 'function' && document.getElementById('modal-overlay')) {
                             ui.showModal(
                                 "🛡️ Data Safety Intercept", 

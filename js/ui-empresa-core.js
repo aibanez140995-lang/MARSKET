@@ -1,10 +1,9 @@
 // js/ui-empresa-core.js
-// --- MÓDULO CORE: LOGIN, NOTIFICACIONES Y DOSSIER ---
 
 Object.assign(ui, {
     viewLogin(el) {
-        if (!el) return; // REGLA 3: Manipulación segura del DOM
-        let coOptions = Object.keys(state.data.companies).map(k => `<option value="${k}">${state.data.companies[k].name}</option>`).join('');
+        if (!el) return; 
+        let coOptions = Object.keys(state.data.companies).map(k => `<option value="${k}">${ui.escapeHTML(state.data.companies[k].name)}</option>`).join('');
         el.innerHTML = `
         <div class="min-h-[75vh] flex items-center justify-center w-full px-4">
             <div id="login-box" class="max-w-md w-full terminal-border bg-mars-card p-6 sm:p-8 glow-cyan animate-in fade-in zoom-in duration-300 transition-all">
@@ -31,7 +30,6 @@ Object.assign(ui, {
         setTimeout(() => auth.updateRoleOptions(), 50);
     },
 
-    // FASE 3 v1.0.10: Animación de inmersión Cyberpunk
     playLoginAnimation(role) {
         const container = document.getElementById('login-box');
         const title = document.getElementById('login-title');
@@ -52,11 +50,11 @@ Object.assign(ui, {
     },
 
     renderNotifications() {
-        if (!state.user) return ''; // REGLA 2: Ghost clicks y sesión
+        if (!state.user) return ''; 
         const co = state.data.companies[state.user.coId];
-        if (!co) return ''; // REGLA 4: Sesión huérfana
+        if (!co) return ''; 
         
-        co.notifications = co.notifications || []; // REGLA 1: Blindaje
+        co.notifications = co.notifications || []; 
         
         const myNotifs = co.notifications.filter(n => n.role === state.user.role && !n.read);
         if (myNotifs.length === 0) return '';
@@ -71,7 +69,7 @@ Object.assign(ui, {
                 return `
                 <div class="flex justify-between items-center p-3 border ${colors} shadow-sm">
                     <div class="flex flex-col">
-                        <span class="text-[10px] font-bold uppercase leading-tight">${n.message}</span>
+                        <span class="text-[10px] font-bold uppercase leading-tight">${ui.escapeHTML(n.message)}</span>
                         <span class="text-[8px] opacity-70 mt-1">${n.date}</span>
                     </div>
                     <button onclick="ui.dismissNotification('${n.id}')" class="px-3 py-1 font-black hover:text-white transition-colors text-xs">X</button>
@@ -95,7 +93,6 @@ Object.assign(ui, {
     viewDossier(el) {
         if (!el || !state.user) return;
         
-        // FIX: Soporte para vista Docente del Dossier
         let coId = state.user.coId;
         if (state.user.admin) {
             coId = this.dossierSelectedCo || Object.keys(state.data.companies)[0];
@@ -117,7 +114,7 @@ Object.assign(ui, {
             <div class="mb-6 bg-slate-900 p-3 border border-mars-border flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 <span class="text-mars-cyan font-bold text-[10px] uppercase">Viendo Dossier de:</span>
                 <select onchange="ui.dossierSelectedCo=this.value; ui.render()" class="bg-black border border-mars-cyan text-white text-xs p-2 outline-none w-full sm:w-auto">
-                    ${Object.keys(state.data.companies).map(k => `<option value="${k}" ${coId===k?'selected':''}>${state.data.companies[k].name}</option>`).join('')}
+                    ${Object.keys(state.data.companies).map(k => `<option value="${k}" ${coId===k?'selected':''}>${ui.escapeHTML(state.data.companies[k].name)}</option>`).join('')}
                 </select>
             </div>`;
         }
@@ -169,22 +166,53 @@ Object.assign(ui, {
                             <span class="font-bold ${grade.scores[c.id] ? 'text-white' : 'text-slate-600'}">${grade.scores[c.id] || '-'}</span>
                         </div>`).join('')}
                     </div>
-                    ${grade.feedback ? `<div class="bg-black p-2 border border-slate-800 text-[9px] text-slate-300 italic w-full">"${grade.feedback}"</div>` : ''}
+                    ${grade.feedback ? `<div class="bg-black p-2 border border-slate-800 text-[9px] text-slate-300 italic w-full">"${ui.escapeHTML(grade.feedback)}"</div>` : ''}
                 </div>`;
             });
             html += `</div>`;
             container.innerHTML = html;
+        // M-09: Despliegue Matriz de los 16 Entregables Oficiales
         } else {
             const docs = co.deliverables || {};
             container.innerHTML = `
             <div class="terminal-border bg-mars-card p-6 w-full">
-                <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase">Archivo Documental</h3>
-                <div class="space-y-4 w-full">
-                    ${this.renderDocBadge('Informe Técnico (FYQ)', docs.technicalReport)}
-                    ${this.renderDocBadge('Libro de Cuentas (ECO)', docs.financeBook)}
-                    ${this.renderDocBadge('Micro-Pitch Fase I (ING/LYE)', docs.presPhase1)}
-                    ${this.renderDocBadge('Pitch Final Fase III (LEN)', docs.presPhase3)}
-                    ${this.renderDocBadge('Propuesta de Valor (LYE)', docs.valuePropDoc)}
+                <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-widest">Archivo Documental Completo</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                    <div>
+                        <h4 class="text-[10px] text-mars-cyan font-bold uppercase mb-2 border-b border-mars-cyan/50 pb-1 tracking-widest">Física y Química</h4>
+                        ${this.renderDocBadge('Informe Preliminar', docs.informePreliminar)}
+                        ${this.renderDocBadge('Boceto / Diseño', docs.boceto)}
+                        ${this.renderDocBadge('Foto Prototipo', docs.fotoPrototipo)}
+                        ${this.renderDocBadge('Informe Técnico Final', docs.technicalReport)}
+                    </div>
+                    <div>
+                        <h4 class="text-[10px] text-mars-yellow font-bold uppercase mb-2 border-b border-mars-yellow/50 pb-1 tracking-widest">Matemáticas</h4>
+                        ${this.renderDocBadge('1. Goniómetro', docs.mathGoniometro)}
+                        ${this.renderDocBadge('2. Medición Simple', docs.mathMedicion1)}
+                        ${this.renderDocBadge('3. Medición Doble', docs.mathMedicion2)}
+                        ${this.renderDocBadge('4. Comparativa Final', docs.mathComparativa)}
+                    </div>
+                    <div>
+                        <h4 class="text-[10px] text-mars-green font-bold uppercase mb-2 border-b border-mars-green/50 pb-1 tracking-widest">Liderazgo y Emprendimiento</h4>
+                        ${this.renderDocBadge('Business Model', docs.businessModel)}
+                        ${this.renderDocBadge('BM Canvas', docs.canvas)}
+                        ${this.renderDocBadge('Propuesta de Valor', docs.valuePropDoc)}
+                        ${this.renderDocBadge('Micro-Pitch Fase I', docs.presPhase1)}
+                    </div>
+                    <div>
+                        <h4 class="text-[10px] text-mars-magenta font-bold uppercase mb-2 border-b border-mars-magenta/50 pb-1 tracking-widest">Lengua Castellana e Inglés</h4>
+                        ${this.renderDocBadge('Dossier Inversores (LEN)', docs.dossierInversores)}
+                        ${this.renderDocBadge('Pitch Final Fase III (LEN)', docs.presPhase3)}
+                        ${this.renderDocBadge('Micro-Pitch Fase I (ING)', docs.presPhase1)}
+                    </div>
+                    <div>
+                        <h4 class="text-[10px] text-orange-400 font-bold uppercase mb-2 border-b border-orange-400/50 pb-1 tracking-widest">Economía</h4>
+                        ${this.renderDocBadge('Libro de Cuentas y Ledger', docs.financeBook)}
+                    </div>
+                    <div>
+                        <h4 class="text-[10px] text-purple-400 font-bold uppercase mb-2 border-b border-purple-400/50 pb-1 tracking-widest">Marketing Audiovisual</h4>
+                        ${this.renderDocBadge('Vídeo Promocional V2.0', docs.videoPromo)}
+                    </div>
                 </div>
             </div>`;
         }

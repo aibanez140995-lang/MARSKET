@@ -3,6 +3,42 @@
 const ui = {
     current: 'login', adminTab: 'dash', coordEvalView: 'ACTA', evalSelectedCo: '',
     
+    // M-08: Sanitización Anti-XSS
+    escapeHTML(str) {
+        if (typeof str !== 'string') return str;
+        return str.replace(/[&<>'"]/g, tag => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+        }[tag] || tag));
+    },
+
+    // M-03b: Compresor de imágenes en cliente (<30KB)
+    compressImage(file, maxSize = 256, quality = 0.7) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > maxSize) { height = Math.round(height *= maxSize / width); width = maxSize; }
+                    } else {
+                        if (height > maxSize) { width = Math.round(width *= maxSize / height); height = maxSize; }
+                    }
+
+                    canvas.width = width; canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', quality));
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    },
+
     navigate(view) { this.current = view; this.render(); },
     
     getDeadlineStatus(dateString) {
@@ -23,14 +59,14 @@ const ui = {
 
     pushNotification(coId, targetRole, message, type = 'info') {
         const co = state.data.companies[coId];
-        if (!co) return; // REGLA 1
+        if (!co) return; 
         
         co.notifications = co.notifications || [];
         co.notifications.unshift({
             id: 'NOTIF-' + Date.now(),
             role: targetRole,
             message: message,
-            type: type, // 'info', 'success', 'error', 'warning'
+            type: type, 
             date: new Date().toLocaleString(),
             read: false
         });
@@ -286,8 +322,8 @@ const ui = {
 
     submitSuggestion() {
         const elText = document.getElementById('sugg-text');
-        if(!elText) return; // REGLA 3
-        const text = elText.value;
+        if(!elText) return; 
+        const text = this.escapeHTML(elText.value);
         if(text.length < 5) return alert("Por favor, describe con más detalle.");
         let author = state.user ? `${state.user.role} (${state.user.admin ? 'DOCENTE' : state.data.companies[state.user.coId].name})` : 'ANÓNIMO';
         
@@ -302,7 +338,6 @@ const ui = {
         if (state.user.admin) return '';
         const co = state.data.companies[state.user.coId];
         
-        // REGLA 4: Validación de Sesiones Huérfanas
         if (!co) {
             auth.logout();
             return '';
@@ -312,13 +347,15 @@ const ui = {
         if(co.sponsorAwarded) {
             const color = co.sponsorAwarded==='ORO'?'text-[#ffd700] border-[#ffd700] bg-[#ffd700]/10':co.sponsorAwarded==='PLATA'?'text-[#c0c0c0] border-[#c0c0c0] bg-[#c0c0c0]/10':'text-[#cd7f32] border-[#cd7f32] bg-[#cd7f32]/10';
             
-            const spName = co.sponsorData?.name ? ` - ${co.sponsorData.name}` : '';
+            const spName = co.sponsorData?.name ? ` - ${this.escapeHTML(co.sponsorData.name)}` : '';
             const spLogo = co.sponsorData?.logo ? `<img src="${co.sponsorData.logo}" class="h-4 inline-block ml-2 rounded-sm object-contain">` : '';
             
             sponsorBadge = `<span class="${color} border px-2 py-1 font-black shadow-[0_0_10px_currentColor] flex items-center gap-1">[PATROCINIO ${co.sponsorAwarded}${spName}] ${spLogo}</span>`;
         }
 
         const imgHtml = co.logo ? `<img src="${co.logo}" class="w-full h-full object-cover">` : `<div class="flex flex-col items-center justify-center h-full bg-slate-900"><span class="text-2xl">🚀</span><span class="text-[5px] mt-1 text-slate-500 uppercase text-center leading-tight tracking-tighter">SIN LOGO</span></div>`;
+        const safeName = this.escapeHTML(co.name);
+        const safeSlogan = co.slogan ? this.escapeHTML(co.slogan) : '';
 
         return `
         <div class="terminal-border bg-mars-card p-4 mb-6 flex flex-col md:flex-row items-center md:items-start gap-4 sm:gap-6 relative overflow-hidden animate-in fade-in duration-500">
@@ -331,8 +368,8 @@ const ui = {
                 </div>
             </div>
             <div class="flex-grow text-center md:text-left flex flex-col justify-center mt-2 md:mt-0">
-                <h2 class="font-orbitron text-xl sm:text-2xl md:text-3xl font-black text-mars-cyan tracking-widest uppercase truncate pr-10 sm:pr-24 leading-none">${co.name}</h2>
-                ${co.slogan ? `<p class="font-orbitron text-mars-yellow text-[10px] mt-1 tracking-wider italic">"${co.slogan}"</p>` : ''}
+                <h2 class="font-orbitron text-xl sm:text-2xl md:text-3xl font-black text-mars-cyan tracking-widest uppercase truncate pr-10 sm:pr-24 leading-none">${safeName}</h2>
+                ${safeSlogan ? `<p class="font-orbitron text-mars-yellow text-[10px] mt-1 tracking-wider italic">"${safeSlogan}"</p>` : ''}
                 <div class="flex flex-wrap justify-center md:justify-start gap-2 mt-3 text-[8px] sm:text-[9px] font-bold uppercase tracking-widest">
                     <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-2 py-1 flex items-center">AUTH: ${state.user.role.replace('_',' ')}</span>
                     ${sponsorBadge}
@@ -342,9 +379,9 @@ const ui = {
     },
 
     updateBadges() {
-        if (!state.user || state.user.admin) return; // REGLA 2
+        if (!state.user || state.user.admin) return; 
         const co = state.data.companies[state.user.coId];
-        if (!co) return; // REGLA 4
+        if (!co) return; 
 
         const elRes = document.getElementById('badge-resolutions');
         if (elRes) {
@@ -400,7 +437,7 @@ const ui = {
         } else {
             const co = state.data.companies[state.user.coId];
             if(co && balEl) balEl.innerText = `${co.balance.toFixed(2)} €v`;
-            if(co && infoEl) infoEl.innerText = `ENTITY: ${co.name.toUpperCase()} | ROLE: ${state.user.role.replace('_',' ')}`;
+            if(co && infoEl) infoEl.innerText = `ENTITY: ${this.escapeHTML(co.name).toUpperCase()} | ROLE: ${state.user.role.replace('_',' ')}`;
             
             if(miniLogo && co) {
                 miniLogo.classList.remove('hidden');
@@ -432,12 +469,14 @@ const ui = {
     
     render() {
         const vp = document.getElementById('viewport');
-        if(!vp) return; // REGLA 3
+        if(!vp) return; 
+        
+        // M-08: Preservación de Scroll en cliente
+        const savedScrollY = window.scrollY;
         
         vp.innerHTML = '';
         if(!state.user) { this.viewLogin(vp); return; }
         
-        // REGLA 4: Validación de Sesiones Huérfanas
         if (!state.user.admin && !state.data.companies[state.user.coId]) {
             auth.logout();
             return;
@@ -452,11 +491,10 @@ const ui = {
             'AUXILIAR': ['market', 'resolutions', 'dossier']
         };
 
-        // FASE 1: Hotfix de Enrutamiento Docente (Permitir market y dossier)
         if (state.user.admin && !['admin', 'market', 'dossier'].includes(this.current)) {
             this.current = 'admin';
         } else if (!state.user.admin && !allowedRoutes[state.user.role].includes(this.current)) {
-            this.current = allowedRoutes[state.user.role][0]; // fallback
+            this.current = allowedRoutes[state.user.role][0]; 
         }
         
         this.updateHUD();
@@ -476,13 +514,16 @@ const ui = {
             case 'tech': vp.innerHTML = hero + notifs; this.viewTech(vp); break;
             case 'resolutions': vp.innerHTML = hero + notifs; this.viewResolutions(vp); break;
         }
+        
+        // M-08: Restaurar Scroll
+        requestAnimationFrame(() => window.scrollTo(0, savedScrollY));
     },
 
     renderDocBadge(title, docObj, short=false) {
         if(!docObj) return `<div class="bg-black/50 border border-mars-border border-dashed p-3 mb-2 flex justify-between items-center text-[9px] sm:text-[10px]"><span class="text-slate-500 font-bold uppercase">${title}</span><span class="text-mars-magenta font-black uppercase">[PENDIENTE]</span></div>`;
         return `<div class="bg-mars-cyan/5 border border-mars-cyan/50 p-3 mb-2 flex justify-between items-center text-[9px] sm:text-[10px]">
-                    <div class="overflow-hidden pr-2"><span class="text-mars-cyan font-bold uppercase block truncate">${title}</span><span class="text-[8px] text-slate-400 block truncate">${docObj.type === 'link' ? 'ENLACE' : docObj.name} | ${docObj.date.slice(0,10)}</span></div>
-                    <a href="${docObj.dataUrl}" target="_blank" download="${docObj.type==='file'?docObj.name:''}" class="bg-mars-cyan text-black px-2 sm:px-3 py-1 font-bold uppercase hover:bg-white transition-colors flex-shrink-0">${docObj.type === 'link' ? 'Abrir' : 'Descargar'}</a>
+                    <div class="overflow-hidden pr-2"><span class="text-mars-cyan font-bold uppercase block truncate">${title}</span><span class="text-[8px] text-slate-400 block truncate">${docObj.type === 'link' ? 'ENLACE' : this.escapeHTML(docObj.name)} | ${docObj.date.slice(0,10)}</span></div>
+                    <a href="${this.escapeHTML(docObj.dataUrl)}" target="_blank" download="${docObj.type==='file'?this.escapeHTML(docObj.name):''}" class="bg-mars-cyan text-black px-2 sm:px-3 py-1 font-bold uppercase hover:bg-white transition-colors flex-shrink-0">${docObj.type === 'link' ? 'Abrir' : 'Descargar'}</a>
                 </div>`;
     },
     

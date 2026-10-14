@@ -1,13 +1,12 @@
 // js/ui-empresa-gov-brand.js
-// --- MÓDULO GOBERNANZA Y MARCA: MOCIONES, HR, IDENTIDAD Y MARKETING ---
 
 Object.assign(ui, {
     modalCreateAuxRole() {
-        if (!state.user) return; // REGLA 2
+        if (!state.user) return; 
         const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout(); // REGLA 4
+        if (!co) return auth.logout(); 
         
-        co.roles = co.roles || {}; // REGLA 1
+        co.roles = co.roles || {}; 
         const currentPin = co.roles['AUXILIAR'] || 'No definido';
         const currentDept = co.auxRoleDept || 'No asignado';
         
@@ -34,7 +33,7 @@ Object.assign(ui, {
         if (!state.user) return;
         const elPin = document.getElementById('aux-pin-input');
         const elDept = document.getElementById('aux-dept-select');
-        if (!elPin || !elDept) return; // REGLA 3
+        if (!elPin || !elDept) return; 
         
         const pin = elPin.value;
         const dept = elDept.value;
@@ -57,11 +56,11 @@ Object.assign(ui, {
     },
 
     viewResolutions(el) {
-        if (!el || !state.user) return; // REGLA 2 y 3
+        if (!el || !state.user) return; 
         const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout(); // REGLA 4
+        if (!co) return auth.logout(); 
         
-        co.votingMotions = co.votingMotions || []; // REGLA 1
+        co.votingMotions = co.votingMotions || []; 
         
         const wrapper = document.createElement('div');
         
@@ -106,8 +105,8 @@ Object.assign(ui, {
                 return `
                 <div class="terminal-border bg-mars-card p-4 border-l-4 ${m.status === 'ABIERTA' ? 'border-l-mars-yellow' : (m.result === 'APROBADA' ? 'border-l-mars-green' : 'border-l-mars-magenta')} w-full">
                     ${ui.renderWorkflowTracker(['Propuesta', 'Votación', 'Cierre (Acta)'], m.status === 'ABIERTA' ? (total > 0 ? 1 : 0) : 2)}
-                    <div class="flex justify-between mb-2 mt-3"><h3 class="text-white font-bold uppercase text-xs">${m.title}</h3><span class="text-[8px] text-slate-500">${m.date}</span></div>
-                    <p class="text-[10px] text-slate-400 mb-2">${m.desc}</p>
+                    <div class="flex justify-between mb-2 mt-3"><h3 class="text-white font-bold uppercase text-xs">${ui.escapeHTML(m.title)}</h3><span class="text-[8px] text-slate-500">${m.date}</span></div>
+                    <p class="text-[10px] text-slate-400 mb-2">${ui.escapeHTML(m.desc)}</p>
                     <div class="flex gap-4 text-[9px] text-slate-500 uppercase font-bold"><span>A Favor: <span class="text-mars-green">${y}</span></span><span>En Contra: <span class="text-mars-magenta">${n}</span></span></div>
                     ${actions}
                 </div>`;
@@ -134,14 +133,15 @@ Object.assign(ui, {
         this.showModal("Reporte de Inactividad (HR)", html, actions);
     },
 
+    // M-08: Sanitización Anti-XSS
     submitInactivityReport() {
         if (!state.user) return;
         const elDept = document.getElementById('inactivity-dept');
         const elReason = document.getElementById('inactivity-reason');
-        if (!elDept || !elReason) return; // REGLA 3
+        if (!elDept || !elReason) return; 
         
         const dept = elDept.value;
-        const reason = elReason.value.trim();
+        const reason = ui.escapeHTML(elReason.value.trim());
         
         if(!dept || !reason) return alert("Debes seleccionar un departamento y justificar el reporte.");
         if(dept === state.user.role) return alert("No puedes reportarte a ti mismo.");
@@ -180,14 +180,15 @@ Object.assign(ui, {
         this.showModal("Proponer Moción de Gobernanza", html, actions);
     },
 
+    // M-08: Sanitización Anti-XSS
     submitMotion() {
         if (!state.user) return;
         const elTitle = document.getElementById('motion-title');
         const elDesc = document.getElementById('motion-desc');
-        if (!elTitle || !elDesc) return; // REGLA 3
+        if (!elTitle || !elDesc) return; 
         
-        const title = elTitle.value;
-        const desc = elDesc.value;
+        const title = ui.escapeHTML(elTitle.value);
+        const desc = ui.escapeHTML(elDesc.value);
         if(!title || !desc) return alert("Rellene todos los campos.");
         
         const co = state.data.companies[state.user.coId];
@@ -270,17 +271,16 @@ Object.assign(ui, {
     },
 
     viewBrand(el) {
-        if (!el || !state.user) return; // REGLA 2 y 3
+        if (!el || !state.user) return; 
         const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout(); // REGLA 4
+        if (!co) return auth.logout(); 
         
         const docs = co.deliverables || {};
-        co.marketingPackages = co.marketingPackages || []; // REGLA 1
-        co.marketingCampaigns = co.marketingCampaigns || []; // REGLA 1
+        co.marketingPackages = co.marketingPackages || []; 
+        co.marketingCampaigns = co.marketingCampaigns || []; 
         
         const wrapper = document.createElement('div');
 
-        // Renderizado de Paquetes Contratados
         let packagesHtml = co.marketingPackages.map(p => {
             const trackerIdx = p.status === 'PENDIENTE_FINANZAS' ? 0 : p.status === 'APROBADO' ? 1 : 2;
             const isAgotado = p.usedActions >= p.totalActions;
@@ -299,36 +299,33 @@ Object.assign(ui, {
                     ${p.status === 'APROBADO' && isAgotado ? `<span class="text-slate-500 font-bold uppercase">AGOTADO</span>` : ''}
                     ${p.status === 'DENEGADA' ? `<span class="text-mars-magenta font-bold uppercase">DENEGADO</span>` : ''}
                 </div>
-                ${p.status === 'DENEGADA' ? `<p class="text-[9px] text-mars-magenta mt-2 italic">Motivo: ${p.denyReason}</p>` : ''}
+                ${p.status === 'DENEGADA' ? `<p class="text-[9px] text-mars-magenta mt-2 italic">Motivo: ${ui.escapeHTML(p.denyReason)}</p>` : ''}
             </div>
             `;
         }).join('') || '<p class="text-slate-500 italic text-xs">No hay paquetes solicitados.</p>';
 
-        // Renderizado de Acciones Ejecutadas
         let actionsHtml = co.marketingCampaigns.map(c => `
             <div class="bg-slate-900 border border-mars-border/50 p-3 mb-2">
                 <div class="flex justify-between items-center border-b border-mars-border/30 pb-2 mb-2">
-                    <span class="text-white font-bold uppercase text-[10px]">${c.title}</span>
+                    <span class="text-white font-bold uppercase text-[10px]">${ui.escapeHTML(c.title)}</span>
                     <span class="text-[8px] text-slate-500">${c.date}</span>
                 </div>
                 <p class="text-[8px] text-mars-cyan font-bold mb-1 uppercase">Vía: ${c.pkgName || 'Campaña Legacy'}</p>
-                <p class="text-[9px] text-slate-300 italic mb-2">"${c.desc}"</p>
-                ${c.url ? `<a href="${c.url}" target="_blank" class="text-[9px] text-mars-yellow hover:underline">🔗 Ver Creatividad</a>` : ''}
+                <p class="text-[9px] text-slate-300 italic mb-2">"${ui.escapeHTML(c.desc)}"</p>
+                ${c.url ? `<a href="${ui.escapeHTML(c.url)}" target="_blank" class="text-[9px] text-mars-yellow hover:underline">🔗 Ver Creatividad</a>` : ''}
             </div>
         `).join('') || '<p class="text-slate-500 italic text-xs">No hay acciones publicadas.</p>';
 
-        // Selector de paquetes activos para el formulario de nueva acción
         const activePackages = co.marketingPackages.filter(p => p.status === 'APROBADO' && p.usedActions < p.totalActions);
         let activePackagesOptions = activePackages.map(p => `<option value="${p.id}">${p.name} (${p.totalActions - p.usedActions} restantes)</option>`).join('');
 
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- COLUMNA IZQUIERDA: Identidad, Manifiesto y Modelos de Negocio -->
             <div class="space-y-6 w-full overflow-hidden">
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-magenta w-full">
                     <h2 class="font-orbitron text-mars-magenta text-lg mb-4 uppercase tracking-tighter">Identidad Corporativa</h2>
-                    <input type="text" id="brand-slogan" value="${co.slogan||''}" placeholder="Eslogan corto corporativo..." class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-mars-yellow font-bold uppercase mb-4 focus:border-mars-magenta outline-none">
-                    <p class="text-[9px] text-slate-400 mb-4 uppercase">Suba el logotipo diseñado para la corporación en formato PNG o JPG con fondo transparente para su visualización en el panel HUD.</p>
+                    <input type="text" id="brand-slogan" value="${ui.escapeHTML(co.slogan||'')}" placeholder="Eslogan corto corporativo..." class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-mars-yellow font-bold uppercase mb-4 focus:border-mars-magenta outline-none">
+                    <p class="text-[9px] text-slate-400 mb-4 uppercase">Suba el logotipo diseñado para la corporación en formato PNG/JPG para su visualización en el panel HUD. Se comprimirá automáticamente.</p>
                     <div class="flex gap-2 w-full">
                         <button onclick="document.getElementById('brand-logo-upload').click()" class="bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-mars-magenta hover:text-white transition-all w-full">[ Cargar Imagen / Logo ]</button>
                         <button onclick="ui.saveSlogan()" class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-4 py-3 text-[10px] font-bold uppercase hover:bg-mars-yellow hover:text-black transition-all">Guardar</button>
@@ -339,7 +336,7 @@ Object.assign(ui, {
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan w-full">
                     <h2 class="font-orbitron text-mars-cyan text-lg mb-4 uppercase tracking-tighter">Manifiesto & Propuesta de Valor</h2>
                     <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">Redacte la misión, ventaja competitiva y pitch de atracción para inversores. Texto público en el Dossier Académico.</p>
-                    <textarea id="val-prop-text" class="w-full bg-slate-900 border border-mars-border p-4 text-xs text-white h-32 outline-none focus:border-mars-cyan mb-4 leading-relaxed" placeholder="Redacte la misión corporativa aquí...">${co.valueProposition || ''}</textarea>
+                    <textarea id="val-prop-text" class="w-full bg-slate-900 border border-mars-border p-4 text-xs text-white h-32 outline-none focus:border-mars-cyan mb-4 leading-relaxed" placeholder="Redacte la misión corporativa aquí...">${ui.escapeHTML(co.valueProposition || '')}</textarea>
                     <button onclick="ui.saveValueProposition()" class="bg-mars-cyan text-black px-6 py-3 text-[10px] font-black uppercase tracking-widest hover:shadow-[0_0_15px_#00f0ff] transition-all w-full">Guardar Propuesta de Valor</button>
                     <div class="mt-4 border-t border-slate-800 pt-4 w-full">
                         ${this.renderHybridUploadBox('Dossier Propuesta de Valor (PDF/URL)', 'Entregable oficial para Evaluación LYE.', 'valuePropDoc', docs.valuePropDoc)}
@@ -356,7 +353,6 @@ Object.assign(ui, {
                 </div>
             </div>
 
-            <!-- COLUMNA DERECHA: Dossier, Audiovisual y Agencia de Medios -->
             <div class="space-y-6 w-full overflow-hidden">
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow h-fit w-full overflow-hidden">
                     <h2 class="font-orbitron text-mars-yellow text-lg mb-4 uppercase tracking-tighter">Dossier y Oratoria (Lengua)</h2>
@@ -422,7 +418,7 @@ Object.assign(ui, {
     submitMarketingPackage() {
         if (!state.user) return;
         const elPkg = document.getElementById('mkt-pkg-select');
-        if (!elPkg) return; // REGLA 3
+        if (!elPkg) return; 
         
         const pkgVal = elPkg.value;
         if(!pkgVal) return alert("Debes seleccionar un paquete.");
@@ -452,6 +448,7 @@ Object.assign(ui, {
         this.render();
     },
 
+    // M-08: Sanitización Anti-XSS
     submitMarketingAction() {
         if (!state.user) return;
         const elPkgId = document.getElementById('mkt-act-pkg');
@@ -459,12 +456,12 @@ Object.assign(ui, {
         const elDesc = document.getElementById('mkt-act-desc');
         const elUrl = document.getElementById('mkt-act-url');
         
-        if (!elPkgId || !elTitle || !elDesc || !elUrl) return; // REGLA 3
+        if (!elPkgId || !elTitle || !elDesc || !elUrl) return; 
         
         const pkgId = elPkgId.value;
-        const title = elTitle.value;
-        const desc = elDesc.value;
-        const url = elUrl.value;
+        const title = ui.escapeHTML(elTitle.value);
+        const desc = ui.escapeHTML(elDesc.value);
+        const url = ui.escapeHTML(elUrl.value);
         
         if(!pkgId || !title || !desc) return alert("Debes seleccionar un paquete, título y descripción.");
         
@@ -495,61 +492,65 @@ Object.assign(ui, {
         this.render();
     },
 
+    // M-08: Sanitización Anti-XSS
     saveSlogan() {
         if (!state.user) return;
         const elSlogan = document.getElementById('brand-slogan');
-        if (!elSlogan) return; // REGLA 3
+        if (!elSlogan) return; 
         
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
         
-        co.slogan = elSlogan.value;
+        co.slogan = ui.escapeHTML(elSlogan.value);
         state.save();
         alert("Eslogan guardado.");
         this.render();
     },
 
+    // M-08: Sanitización Anti-XSS
     saveValueProposition() {
         if (!state.user) return;
         const elText = document.getElementById('val-prop-text');
-        if (!elText) return; // REGLA 3
+        if (!elText) return; 
         
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
         
-        co.valueProposition = elText.value;
+        co.valueProposition = ui.escapeHTML(elText.value);
         state.save();
         alert("Propuesta de valor guardada.");
         this.render();
     },
 
-    handleLogoUpload(e) {
+    // M-03b: Compresión del Logo corporativo
+    async handleLogoUpload(e) {
         if (!state.user) return;
         const file = e.target.files[0];
         if (!file) return;
         if (!file.type.startsWith('image/')) return alert("Solo PNG/JPG.");
-        if (file.size > 1024 * 1024) return alert("Máximo 1MB para el logo.");
-        const reader = new FileReader();
-        reader.onload = (ev) => {
+        
+        try {
+            const compressedBase64 = await ui.compressImage(file, 256, 0.8);
             const co = state.data.companies[state.user.coId];
             if (!co) return auth.logout();
-            co.logo = ev.target.result;
-            telemetry.log("BRANDING", "LOGO ACTUALIZADO");
+            co.logo = compressedBase64;
+            telemetry.log("BRANDING", "LOGO ACTUALIZADO (COMPRIMIDO)");
             state.save();
             this.render();
-            alert("Logotipo corporativo guardado.");
-        };
-        reader.readAsDataURL(file);
+            alert("Logotipo corporativo guardado y comprimido correctamente.");
+        } catch (err) {
+            alert("Error al procesar la imagen.");
+        }
     },
 
     handleDeliverableHybridSubmit(docType) {
         if (!state.user) return;
         const fileInput = document.getElementById(`upload-file-${docType}`);
         const urlInput = document.getElementById(`upload-url-${docType}`);
-        if (!fileInput || !urlInput) return; // REGLA 3
+        if (!fileInput || !urlInput) return; 
         
         const file = fileInput.files[0];
-        const url = urlInput.value;
+        const url = ui.escapeHTML(urlInput.value);
         
         if(!file && !url) return alert("Debe adjuntar un archivo o proporcionar un enlace (URL).");
         

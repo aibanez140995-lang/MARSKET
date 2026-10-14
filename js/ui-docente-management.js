@@ -1,12 +1,11 @@
 // js/ui-docente-management.js
-// --- MÓDULO DOCENTE: GESTIÓN, ECONOMÍA, HR Y CATÁLOGO ---
 
 Object.assign(ui, {
     renderAdminDash() {
         let globalReal = 0;
         for (let c in state.data.companies) {
             const co = state.data.companies[c];
-            co.realCosts = co.realCosts || []; // REGLA 1
+            co.realCosts = co.realCosts || []; 
             globalReal += co.realCosts.reduce((s, i) => s + i.eur, 0);
         }
         
@@ -36,7 +35,6 @@ Object.assign(ui, {
             </div>`;
         }
 
-        // FIX: Añadido el Historial de Contratos B2B para que el profesor vea todo
         let b2bHistoryHtml = '';
         const allB2B = state.data.b2bContracts || [];
         if (allB2B.length > 0) {
@@ -102,7 +100,7 @@ Object.assign(ui, {
                                 } else {
                                     if(c.sponsorAwarded) {
                                         const cl = c.sponsorAwarded==='ORO'?'text-[#ffd700] border-[#ffd700]':c.sponsorAwarded==='PLATA'?'text-[#c0c0c0] border-[#c0c0c0]':'text-[#cd7f32] border-[#cd7f32]';
-                                        let spName = c.sponsorData?.name ? ` - ${c.sponsorData.name}` : '';
+                                        let spName = c.sponsorData?.name ? ` - ${ui.escapeHTML(c.sponsorData.name)}` : '';
                                         let spLogo = c.sponsorData?.logo ? `<img src="${c.sponsorData.logo}" class="h-4 inline-block ml-2 rounded-sm object-contain bg-black/50 p-0.5">` : '';
                                         sponsorHtml = `<span class="${cl} font-bold text-[8px] uppercase border px-2 py-1 bg-black/50 flex items-center w-max gap-1">[PATROCINIO: ${c.sponsorAwarded}${spName}] ${spLogo}</span>`;
                                     } else {
@@ -133,7 +131,7 @@ Object.assign(ui, {
             <div class="space-y-3">
                 ${(state.data.pendingCustom || []).map(p => `
                 <div class="bg-slate-900 border border-mars-border p-3 flex justify-between items-center text-[10px] flex-wrap gap-2">
-                    <div class="flex-grow min-w-[200px]"><p class="text-mars-yellow font-bold uppercase">${state.data.companies[p.company]?.name || 'Desconocida'}</p><p class="text-white font-bold text-xs uppercase">${p.name}</p><p class="text-slate-400 italic">"${p.reason}"</p></div>
+                    <div class="flex-grow min-w-[200px]"><p class="text-mars-yellow font-bold uppercase">${state.data.companies[p.company]?.name || 'Desconocida'}</p><p class="text-white font-bold text-xs uppercase">${ui.escapeHTML(p.name)}</p><p class="text-slate-400 italic">"${ui.escapeHTML(p.reason)}"</p></div>
                     <div class="flex gap-2 items-center flex-shrink-0">
                         <input type="number" id="val-price-${p.id}" class="w-16 bg-black border border-mars-border p-2 text-mars-green text-center font-bold" placeholder="€v">
                         <button onclick="ui.teacherValidate('${p.id}', true)" class="bg-mars-green text-black px-4 py-2 font-black hover:bg-white transition-colors">OK</button>
@@ -144,10 +142,9 @@ Object.assign(ui, {
         </div>`;
     },
 
-    // FIX: Restauradas las funciones de Patrocinio y Auditoría Virtual
     modalAssignSponsor(cid) {
         const co = state.data.companies[cid];
-        if (!co) return; // REGLA 4
+        if (!co) return; 
         
         this._tempSponsorLogo = null; 
         
@@ -178,31 +175,32 @@ Object.assign(ui, {
         this.showModal(`Asignar Patrocinador a ${co.name}`, html, actions);
     },
 
-    handleSponsorLogoUpload(e) {
+    // M-03b: Compresión del Logo corporativo a 128px para aligerar la vista del claustro
+    async handleSponsorLogoUpload(e) {
         const file = e.target.files[0];
         if (!file) return;
         if (!file.type.startsWith('image/')) return alert("Solo PNG/JPG.");
-        if (file.size > 1024 * 1024) return alert("Máximo 1MB para el logo.");
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            this._tempSponsorLogo = ev.target.result;
+        
+        try {
+            this._tempSponsorLogo = await ui.compressImage(file, 128, 0.8);
             const preview = document.getElementById('sponsor-logo-preview');
-            if (preview) preview.innerHTML = `<img src="${ev.target.result}" class="h-full object-contain">`;
-        };
-        reader.readAsDataURL(file);
+            if (preview) preview.innerHTML = `<img src="${this._tempSponsorLogo}" class="h-full object-contain">`;
+        } catch (err) {
+            alert("Error al comprimir el logo del patrocinador.");
+        }
     },
 
     submitSponsor(cid) {
         const co = state.data.companies[cid];
-        if (!co) return; // REGLA 1 y 4
+        if (!co) return; 
         
         const elTier = document.getElementById('sponsor-tier');
         const elName = document.getElementById('sponsor-name');
-        if (!elTier || !elName) return; // REGLA 3
+        if (!elTier || !elName) return; 
         
         const [tier, amountStr] = elTier.value.split('|');
         const amount = parseFloat(amountStr);
-        const name = elName.value.trim() || 'Anónimo';
+        const name = ui.escapeHTML(elName.value.trim() || 'Anónimo');
         
         co.sponsorAwarded = tier;
         co.sponsorData = {
@@ -220,7 +218,7 @@ Object.assign(ui, {
 
     modalVirtualSpend(cid) {
         const co = state.data.companies[cid];
-        if (!co) return; // REGLA 1 y 4
+        if (!co) return; 
         
         co.ledger = co.ledger || [];
         const expenses = co.ledger.filter(l => l.delta < 0);
@@ -494,15 +492,13 @@ Object.assign(ui, {
         </div>`;
     },
 
-    // --- LÓGICA DE GESTIÓN ---
-
     createStartup() {
         const elName = document.getElementById('new-co-name');
         const elCap = document.getElementById('new-co-cap');
         const elClass = document.getElementById('new-co-class');
-        if (!elName || !elCap || !elClass) return; // REGLA 3
+        if (!elName || !elCap || !elClass) return; 
         
-        const name = elName.value;
+        const name = ui.escapeHTML(elName.value);
         const cap = parseFloat(elCap.value);
         const classGroup = elClass.value || 'A';
         
@@ -565,7 +561,7 @@ Object.assign(ui, {
 
     resolveInactivityReport(cid, rid) {
         const co = state.data.companies[cid];
-        if (!co || !co.inactivityReports) return; // REGLA 1
+        if (!co || !co.inactivityReports) return; 
         const rep = co.inactivityReports.find(r => r.id === rid);
         if (rep) {
             rep.status = 'RESUELTO';
@@ -576,7 +572,7 @@ Object.assign(ui, {
 
     saveCatalogPrice(id) {
         const elPrice = document.getElementById(`price-${id}`);
-        if (!elPrice) return; // REGLA 3
+        if (!elPrice) return; 
         const newPrice = parseFloat(elPrice.value);
         if(isNaN(newPrice) || newPrice < 0) return alert("Precio inválido.");
         const item = state.data.catalog.find(i => i.id === id);
@@ -595,7 +591,7 @@ Object.assign(ui, {
         const elCat = document.getElementById('new-cat-category');
         const elOrigin = document.getElementById('new-cat-origin');
 
-        if (!elId || !elName || !elPrice || !elUnit || !elCat || !elOrigin) return; // REGLA 3
+        if (!elId || !elName || !elPrice || !elUnit || !elCat || !elOrigin) return; 
 
         const id = elId.value.trim();
         const name = elName.value.trim();
@@ -622,7 +618,7 @@ Object.assign(ui, {
         
         if(ok) {
             const elPrice = document.getElementById(`val-price-${pid}`);
-            if (!elPrice) return; // REGLA 3
+            if (!elPrice) return; 
             const price = parseFloat(elPrice.value);
             if(!price) return alert("Falta precio €v.");
             
@@ -648,7 +644,7 @@ Object.assign(ui, {
 
     modalAEEFine(cid) {
         const co = state.data.companies[cid];
-        if (!co) return; // REGLA 4
+        if (!co) return; 
         
         const agency = REGULATORY_AGENCIES[state.user.role] || "Agencia Reguladora Central";
         
@@ -689,7 +685,7 @@ Object.assign(ui, {
         const elArticle = document.getElementById('aee-article');
         const elReason = document.getElementById('aee-reason');
         const elAmount = document.getElementById('aee-amount');
-        if (!elArticle || !elReason || !elAmount) return; // REGLA 3
+        if (!elArticle || !elReason || !elAmount) return; 
         
         const article = elArticle.value;
         const reason = elReason.value;

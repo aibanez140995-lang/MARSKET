@@ -9,6 +9,17 @@ Object.assign(ui, {
         this.render();
     },
 
+    // Helper M-07: Calcula el gasto total de Desarrollo e Investigación (Órdenes + Compras B2B)
+    getTotalDevSpend(co, coId) {
+        const ordersSpend = (co.orders || [])
+            .filter(o => o.status === 'EJECUTADO')
+            .reduce((sum, o) => sum + o.total, 0);
+        const b2bSpend = (state.data.b2bContracts || [])
+            .filter(c => c.buyerCoId === coId && c.status === 'APROBADO')
+            .reduce((sum, c) => sum + c.price, 0);
+        return ordersSpend + b2bSpend;
+    },
+
     viewTech(el) {
         if (!el || !state.user) return; // REGLA 2 y 3
         const co = state.data.companies[state.user.coId];
@@ -19,7 +30,7 @@ Object.assign(ui, {
         co.bom = co.bom || [];
         co.flightTests = co.flightTests || [];
         co.orders = co.orders || [];
-        co.inventory = co.inventory || []; // FASE 2 v1.0.13: Inventario
+        co.inventory = co.inventory || [];
         
         const wrapper = document.createElement('div');
         
@@ -39,11 +50,11 @@ Object.assign(ui, {
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan">
                     <h2 class="font-orbitron text-mars-cyan text-lg mb-4 uppercase tracking-tighter">Hoja de Registro Preliminar</h2>
-                    <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Define la hipótesis científica de tu cohete antes de realizar ninguna compra o lanzamiento real.</p>
+                    <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Define el presupuesto de desarrollo e investigación (I+D) y la hipótesis de altura de tu cohete antes de realizar compras o lanzamientos.</p>
                     
                     <div class="space-y-4 mb-6">
                         <div>
-                            <label class="text-[9px] text-mars-cyan uppercase font-bold block mb-1">Presupuesto Teórico Estimado (€v)</label>
+                            <label class="text-[9px] text-mars-cyan uppercase font-bold block mb-1">Presupuesto de Desarrollo Teórico Estimado (€v)</label>
                             <input type="number" id="fase1-presupuesto" value="${co.fase1Registro.presupuestoTeorico}" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white outline-none focus:border-mars-cyan" placeholder="Ej: 350.50">
                         </div>
                         <div>
@@ -79,31 +90,30 @@ Object.assign(ui, {
                 </tr>
             `).join('') || `<tr><td colspan="6" class="text-center py-4 text-slate-600 italic text-xs">No hay ensayos registrados.</td></tr>`;
 
-            let executedItems = [];
-            co.orders.filter(o => o.status === 'EJECUTADO').forEach(o => {
-                o.items.forEach(item => { executedItems.push({ ...item, orderId: o.id }); });
-            });
-
+            // M-07: Configurador BOM alimentado desde el Inventario Físico disponible (incluye B2B y mantiene valor de licencia en garantías)
+            const availableInventory = co.inventory.filter(i => i.status === 'AVAILABLE');
             let bomTotal = 0;
             let bomHtml = '';
-            if (executedItems.length === 0) {
-                bomHtml = `<p class="text-slate-500 italic text-xs">No hay componentes adquiridos y ejecutados para configurar el BOM.</p>`;
+
+            if (availableInventory.length === 0) {
+                bomHtml = `<p class="text-slate-500 italic text-xs">No hay componentes activos en el inventario físico. Ejecuta compras en Logística o adquiere piezas en B2B.</p>`;
             } else {
-                bomHtml = executedItems.map((item, idx) => {
-                    const isChecked = co.bom.includes(`${item.orderId}-${idx}`);
-                    if (isChecked) bomTotal += item.price;
+                bomHtml = availableInventory.map(item => {
+                    const isChecked = co.bom.includes(item.id);
+                    const unitCost = typeof item.originalPrice === 'number' ? item.originalPrice : 0;
+                    if (isChecked) bomTotal += unitCost;
                     return `
                     <div class="flex justify-between items-center bg-slate-900 p-2 border border-mars-border text-[10px] mb-1">
-                        <label class="flex items-center gap-2 text-white cursor-pointer flex-grow">
-                            <input type="checkbox" class="form-checkbox bg-black border-mars-cyan" ${isChecked ? 'checked' : ''} onchange="ui.toggleBomItem('${item.orderId}-${idx}', this.checked)">
-                            ${item.name} (x${item.qty})
+                        <label class="flex items-center gap-2 text-white cursor-pointer flex-grow pr-2">
+                            <input type="checkbox" class="form-checkbox bg-black border-mars-cyan" ${isChecked ? 'checked' : ''} onchange="ui.toggleBomItem('${item.id}', this.checked)">
+                            <span>${item.name}</span>
                         </label>
-                        <span class="text-mars-green font-mono">${item.price.toFixed(2)} €v</span>
+                        <span class="text-mars-green font-mono shrink-0">${unitCost.toFixed(2)} €v</span>
                     </div>`;
                 }).join('');
             }
 
-            const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + o.total, 0);
+            const totalDevCost = this.getTotalDevSpend(co, state.user.coId);
             
             const presTeorico = parseFloat(co.fase1Registro.presupuestoTeorico) || 0;
             const altTeorica = parseFloat(co.fase1Registro.alturaEstimada) || 0;
@@ -113,20 +123,21 @@ Object.assign(ui, {
             const isCostDeviation = totalDevCost > presTeorico && presTeorico > 0;
             const isHeightDeviation = altReal < altTeorica && altTeorica > 0 && altReal > 0;
             const needsV2 = isCostDeviation || isHeightDeviation;
+            const justStatus = co.fase1Registro.justificacionV2Status || 'PENDIENTE';
 
             contentHtml = `
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-1 space-y-6">
                     <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-magenta">
-                        <h2 class="font-orbitron text-mars-magenta text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Configurador de Prototipo (BOM)</h2>
-                        <p class="text-[9px] text-slate-400 mb-4 uppercase leading-relaxed">Selecciona los componentes del histórico de compras que forman parte del cohete definitivo.</p>
+                        <h2 class="font-orbitron text-mars-magenta text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Configurador de Prototipo (BOM Ventas)</h2>
+                        <p class="text-[9px] text-slate-400 mb-4 uppercase leading-relaxed">Selecciona las piezas de tu inventario que integran el cohete final para calcular el coste unitario de fabricación (base comercial de venta).</p>
                         <div class="flex justify-between items-center mb-4 bg-black p-3 border border-mars-border">
                             <div class="text-center">
-                                <p class="text-[8px] text-slate-500 uppercase font-bold">Coste Desarrollo</p>
+                                <p class="text-[8px] text-slate-500 uppercase font-bold">Gasto Desarrollo (I+D)</p>
                                 <p class="text-mars-cyan font-mono font-bold">${totalDevCost.toFixed(2)} €v</p>
                             </div>
                             <div class="text-center">
-                                <p class="text-[8px] text-slate-500 uppercase font-bold">Coste Prototipo (BOM)</p>
+                                <p class="text-[8px] text-slate-500 uppercase font-bold">Coste Prototipo (Ventas)</p>
                                 <p class="text-mars-green font-mono font-bold text-lg">${bomTotal.toFixed(2)} €v</p>
                             </div>
                         </div>
@@ -165,24 +176,28 @@ Object.assign(ui, {
                     </div>
 
                     <div class="terminal-border bg-mars-card p-6 border-t-4 ${needsV2 ? 'border-t-mars-magenta' : 'border-t-mars-green'}">
-                        <h2 class="font-orbitron ${needsV2 ? 'text-mars-magenta' : 'text-mars-green'} text-lg mb-4 uppercase tracking-tighter">Auditoría: Teoría vs Práctica</h2>
+                        <h2 class="font-orbitron ${needsV2 ? 'text-mars-magenta' : 'text-mars-green'} text-lg mb-4 uppercase tracking-tighter">Auditoría: Hipótesis vs Desarrollo Real</h2>
                         <div class="grid grid-cols-2 gap-4 mb-4">
                             <div class="bg-black p-3 border ${isCostDeviation ? 'border-mars-magenta' : 'border-mars-border'}">
-                                <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Presupuesto: Teórico vs Real</p>
+                                <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Presupuesto I+D: Teórico vs Ejecutado</p>
                                 <p class="text-sm font-mono ${isCostDeviation ? 'text-mars-magenta' : 'text-white'}">${presTeorico.toFixed(2)} €v <span class="text-slate-500">vs</span> ${totalDevCost.toFixed(2)} €v</p>
                             </div>
                             <div class="bg-black p-3 border ${isHeightDeviation ? 'border-mars-magenta' : 'border-mars-border'}">
-                                <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Altura: Estimada vs Real</p>
+                                <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Altura: Estimada vs Mejor Vuelo</p>
                                 <p class="text-sm font-mono ${isHeightDeviation ? 'text-mars-magenta' : 'text-white'}">${altTeorica.toFixed(1)} m <span class="text-slate-500">vs</span> ${altReal.toFixed(1)} m</p>
                             </div>
                         </div>
                         
                         <div class="bg-slate-900 p-4 border ${needsV2 ? 'border-mars-magenta' : 'border-mars-border'}">
-                            <p class="text-[10px] ${needsV2 ? 'text-mars-magenta font-bold' : 'text-mars-cyan'} uppercase mb-2">
-                                ${needsV2 ? '⚠️ DESVIACIÓN DETECTADA: Justificación de Nuevo Diseño (V2.0) Obligatoria.' : 'Análisis de Resultados y Mejoras (Opcional)'}
-                            </p>
+                            <div class="flex justify-between items-center mb-2">
+                                <p class="text-[10px] ${needsV2 ? 'text-mars-magenta font-bold' : 'text-mars-cyan'} uppercase">
+                                    ${needsV2 ? '⚠️ DESVIACIÓN DETECTADA: Justificación de Nuevo Diseño (V2.0) Obligatoria.' : 'Análisis de Resultados y Mejoras (Opcional)'}
+                                </p>
+                                ${co.fase1Registro.justificacionV2 ? `<span class="text-[9px] font-bold uppercase px-2 py-0.5 border ${justStatus==='APROBADA'?'border-mars-green text-mars-green':justStatus==='DENEGADA'?'border-mars-magenta text-mars-magenta':'border-mars-yellow text-mars-yellow'}">${justStatus}</span>` : ''}
+                            </div>
+                            ${justStatus === 'DENEGADA' && co.fase1Registro.justificacionV2DenyReason ? `<div class="bg-red-900/30 border border-red-500/50 p-2 text-[9px] text-red-200 mb-3"><span class="font-bold">RECHAZADO POR FINANZAS:</span> ${co.fase1Registro.justificacionV2DenyReason}</div>` : ''}
                             <textarea id="fase2-justificacion" class="w-full bg-black border ${needsV2 ? 'border-mars-magenta' : 'border-mars-border'} p-3 text-xs text-white h-24 outline-none focus:border-mars-cyan mb-3" placeholder="Explica por qué los datos reales no coinciden con la hipótesis y qué cambios de diseño o presupuesto se van a aplicar...">${co.fase1Registro.justificacionV2 || ''}</textarea>
-                            <button onclick="ui.saveJustificacionV2()" class="${needsV2 ? 'bg-mars-magenta text-white' : 'bg-mars-cyan text-black'} font-black py-2 px-6 text-[10px] uppercase tracking-widest hover:opacity-80 transition-opacity">Guardar Análisis V2.0</button>
+                            <button onclick="ui.saveJustificacionV2()" class="${needsV2 ? 'bg-mars-magenta text-white' : 'bg-mars-cyan text-black'} font-black py-2 px-6 text-[10px] uppercase tracking-widest hover:opacity-80 transition-opacity">Guardar y Enviar Análisis V2.0</button>
                         </div>
                     </div>
                 </div>
@@ -202,47 +217,72 @@ Object.assign(ui, {
                 </div>
             </div>`;
         }
-        // FASE 2 v1.0.13: Inventario y Mercado B2B
         else if (this.techTab === 'inventory') {
-            let invHtml = co.inventory.map(item => {
+            // Filtrar elementos siniestrados/reemplazados para mostrar primero los operativos
+            const visibleInventory = co.inventory.filter(i => i.status !== 'REPLACED');
+
+            let invHtml = visibleInventory.map(item => {
                 let actions = '';
+                let borderClass = 'border-mars-border';
+
                 if (item.status === 'AVAILABLE') {
+                    // M-04: Las licencias permiten reposición ilimitada si se rompe; además impedimos vender en B2B reemplazos gratuitos para evitar granjas de dinero
+                    const canSellB2B = !item.isWarrantyReplacement;
                     actions = `
                     <div class="flex gap-2 mt-3">
-                        <button onclick="ui.modalSellItem('${item.id}')" class="flex-1 bg-mars-cyan/20 border border-mars-cyan text-mars-cyan py-1.5 text-[9px] font-bold uppercase hover:bg-mars-cyan hover:text-black transition-colors">Vender B2B</button>
-                        ${!item.warrantyClaimed ? `<button onclick="ui.requestWarranty('${item.id}')" class="flex-1 bg-mars-yellow/20 border border-mars-yellow text-mars-yellow py-1.5 text-[9px] font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors">Garantía</button>` : `<span class="flex-1 text-center text-[8px] text-slate-500 border border-slate-700 py-1.5 uppercase">Garantía Usada</span>`}
+                        ${canSellB2B 
+                            ? `<button onclick="ui.modalSellItem('${item.id}')" class="flex-1 bg-mars-cyan/20 border border-mars-cyan text-mars-cyan py-1.5 text-[9px] font-bold uppercase hover:bg-mars-cyan hover:text-black transition-colors">Vender B2B</button>`
+                            : `<span class="flex-1 text-center text-[8px] text-slate-500 border border-slate-800 py-1.5 uppercase" title="Pieza reemplazada bajo licencia: no transferible a terceros">Licencia Intransferible</span>`
+                        }
+                        <button onclick="ui.requestWarranty('${item.id}')" class="flex-1 bg-mars-yellow/20 border border-mars-yellow text-mars-yellow py-1.5 text-[9px] font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors">Reemplazo (Rotura)</button>
                     </div>`;
                 } else if (item.status === 'ON_SALE') {
+                    borderClass = 'border-mars-magenta';
                     actions = `
                     <div class="mt-3 bg-mars-magenta/10 border border-mars-magenta p-2 text-center">
                         <p class="text-[9px] text-mars-magenta font-bold uppercase mb-2">En venta por ${item.salePrice} €v</p>
                         <button onclick="ui.cancelSellItem('${item.id}')" class="w-full bg-mars-magenta text-white py-1 text-[9px] font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Cancelar Venta</button>
                     </div>`;
+                } else if (item.status === 'PENDING_TRANSFER') {
+                    // M-05: Estado visual claro mientras espera la firma del docente en Aduana B2B
+                    borderClass = 'border-mars-cyan';
+                    actions = `
+                    <div class="mt-3 bg-mars-cyan/10 border border-mars-cyan p-2 text-center animate-pulse">
+                        <p class="text-[9px] text-mars-cyan font-bold uppercase">En Aduana Docente (Reservado)</p>
+                        <p class="text-[8px] text-slate-400 uppercase mt-0.5">Pendiente de firma de traspaso</p>
+                    </div>`;
                 } else if (item.status === 'SOLD') {
                     actions = `<div class="mt-3 text-center border border-slate-700 py-1.5"><span class="text-[9px] text-slate-500 font-bold uppercase">Vendido / Traspasado</span></div>`;
                 }
 
+                const unitCost = typeof item.originalPrice === 'number' ? item.originalPrice : 0;
+
                 return `
-                <div class="bg-black border ${item.status === 'ON_SALE' ? 'border-mars-magenta' : 'border-mars-border'} p-4 flex flex-col justify-between">
+                <div class="bg-black border ${borderClass} p-4 flex flex-col justify-between">
                     <div>
                         <div class="flex justify-between items-start mb-2">
                             <span class="text-[8px] text-slate-500 uppercase font-bold tracking-widest">${item.category}</span>
                             <span class="text-[8px] text-slate-600">${item.id}</span>
                         </div>
                         <h3 class="font-orbitron text-white text-[11px] mb-1 leading-tight uppercase">${item.name}</h3>
-                        <p class="text-[8px] text-slate-400 uppercase">Adquirido: ${item.purchaseDate}</p>
+                        <div class="flex justify-between text-[8px] text-slate-400 uppercase mt-1">
+                            <span>Adq: ${item.purchaseDate}</span>
+                            <span class="text-mars-green font-mono">Valor: ${unitCost.toFixed(2)} €v</span>
+                        </div>
                     </div>
                     ${actions}
                 </div>`;
             }).join('') || '<p class="text-slate-500 italic text-xs col-span-full">El inventario físico está vacío. Ejecuta compras en Logística.</p>';
 
+            const activeCount = co.inventory.filter(i => i.status === 'AVAILABLE').length;
+
             contentHtml = `
             <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-green">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="font-orbitron text-mars-green text-lg uppercase tracking-tighter">Inventario Corporativo Físico</h2>
-                    <span class="bg-mars-green/10 text-mars-green border border-mars-green px-3 py-1 font-bold text-[10px]">${co.inventory.filter(i => i.status !== 'SOLD').length} Activos</span>
+                    <span class="bg-mars-green/10 text-mars-green border border-mars-green px-3 py-1 font-bold text-[10px]">${activeCount} Disponibles</span>
                 </div>
-                <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Gestiona los componentes físicos de tu empresa. Puedes solicitar reposiciones por rotura (Garantía) o vender piezas que ya no necesites a otras startups en el Mercado B2B.</p>
+                <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Gestiona los componentes físicos de tu empresa. La compra de un componente otorga licencia de reemplazo gratuito en caso de rotura (vía Logística) o permite su venta de segunda mano en el Mercado B2B si no ha sufrido siniestro.</p>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     ${invHtml}
@@ -271,18 +311,27 @@ Object.assign(ui, {
         this.render();
     },
 
+    // M-06: Desbloqueo de reenvío a Finanzas tras corrección de Justificación V2.0
     saveJustificacionV2() {
         if (!state.user) return;
         const elJust = document.getElementById('fase2-justificacion');
         if (!elJust) return; // REGLA 3
         
+        const text = elJust.value.trim();
+        if (!text) return alert("Debes redactar el análisis o justificación antes de guardar.");
+
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
         
-        co.fase1Registro.justificacionV2 = elJust.value;
+        co.fase1Registro.justificacionV2 = text;
+        co.fase1Registro.justificacionV2Status = 'PENDIENTE';
+        co.fase1Registro.justificacionV2DenyReason = null;
+        
+        telemetry.log("I+D V2.0", "Justificación de desviación V2.0 enviada a auditoría de Finanzas.");
+        ui.pushNotification(state.user.coId, 'FINANZAS', 'El Dpto. Técnico ha enviado/actualizado la justificación de desviación V2.0 para su auditoría.', 'warning');
         
         state.save();
-        alert("Análisis y justificación V2.0 guardados.");
+        alert("Análisis y justificación V2.0 enviados a Finanzas para su validación.");
         this.render();
     },
 
@@ -359,7 +408,6 @@ Object.assign(ui, {
         alert("Solicitud enviada al claustro para su valoración.");
     },
 
-    // FASE 2 v1.0.13: Lógica de Inventario y B2B
     modalSellItem(invId) {
         if (!state.user) return;
         const html = `
@@ -382,10 +430,13 @@ Object.assign(ui, {
         if (!co) return auth.logout();
         
         const item = co.inventory.find(i => i.id === invId);
-        if (!item || item.status !== 'AVAILABLE') return alert("El objeto no está disponible para la venta.");
+        if (!item || item.status !== 'AVAILABLE' || item.isWarrantyReplacement) return alert("El objeto no está disponible para la venta en B2B.");
 
         item.status = 'ON_SALE';
         item.salePrice = price;
+
+        // Si estaba marcado en el BOM del prototipo, lo desmarcamos al ponerlo en venta
+        if (co.bom) co.bom = co.bom.filter(k => k !== invId);
 
         state.data.b2bMarket = state.data.b2bMarket || [];
         state.data.b2bMarket.unshift({
@@ -395,6 +446,7 @@ Object.assign(ui, {
             sellerName: co.name,
             itemName: item.name,
             category: item.category,
+            originalPrice: item.originalPrice,
             price: price,
             date: new Date().toLocaleDateString()
         });
@@ -424,42 +476,49 @@ Object.assign(ui, {
         this.render();
     },
 
+    // M-04: Garantía ilimitada por licencia de uso (retira la pieza rota para impedir su venta B2B y mantiene originalPrice)
     requestWarranty(invId) {
         if (!state.user) return;
-        if (!confirm("¿Estás seguro de solicitar la reposición por rotura? Esto generará una orden a coste 0€v para Logística y consumirá la garantía de esta pieza.")) return;
+        if (!confirm("¿Solicitar reemplazo gratuito por rotura bajo tu licencia de uso? La pieza dañada se retirará del inventario activo y se enviará una orden de reposición a coste 0€v a Logística.")) return;
 
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
         
         const item = co.inventory.find(i => i.id === invId);
-        if (!item || item.warrantyClaimed) return alert("Garantía no disponible.");
+        if (!item || item.status !== 'AVAILABLE') return alert("Esta pieza no está disponible en el inventario activo.");
 
-        item.warrantyClaimed = true;
+        // Retirar pieza rota del inventario activo y del BOM para que no se duplique ni se venda en B2B
+        item.status = 'REPLACED';
+        if (co.bom) co.bom = co.bom.filter(k => k !== invId);
+
+        const cleanName = item.name.replace(/^\[GARANTÍA\]\s*/i, '');
 
         co.orders = co.orders || [];
         const newOrder = { 
             id: state.data.config.nextOrderId++, 
             items: [{
-                name: `[GARANTÍA] ${item.name}`, 
+                name: `[GARANTÍA] ${cleanName}`, 
                 qty: 1, 
                 price: 0, 
+                originalPrice: item.originalPrice || 0, // Mantiene el valor de licencia para el BOM
+                isWarrantyReplacement: true,
                 category: item.category, 
                 realEur: 0, 
                 realShop: 'GARANTÍA'
             }], 
             total: 0, 
-            justification: `Reposición por rotura de la pieza ID: ${item.id}`, 
-            status: 'APROBADO_FINANZAS', // Salta finanzas porque es gratis
+            justification: `Reemplazo por rotura bajo licencia de uso (Pieza siniestrada ID: ${item.id})`, 
+            status: 'APROBADO_FINANZAS', // Salta finanzas porque el reemplazo virtual es gratuito (0 €v)
             date: new Date().toLocaleString() 
         };
         
         co.orders.unshift(newOrder);
         
-        telemetry.log("GARANTÍA", `Reposición solicitada para: ${item.name}`);
-        ui.pushNotification(state.user.coId, 'OPERACIONES_IA', `Nueva solicitud de garantía pendiente de entrega física.`, 'warning');
+        telemetry.log("GARANTÍA", `Reemplazo solicitado bajo licencia para: ${cleanName}`);
+        ui.pushNotification(state.user.coId, 'OPERACIONES_IA', `Nueva solicitud de reemplazo por garantía pendiente de validación física en Logística.`, 'warning');
         
         state.save();
         this.render();
-        alert("Solicitud de garantía enviada a Logística.");
+        alert("Pieza dañada dada de baja. Orden de reemplazo a 0€v enviada a Logística.");
     }
 });

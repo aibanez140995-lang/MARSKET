@@ -1,5 +1,4 @@
 // js/ui-empresa-ops.js
-// --- MÓDULO OPERACIONES E IA: LOGÍSTICA FÍSICA Y DIARIO DE DECISIONES ---
 
 Object.assign(ui, {
     ailogTab: 'decisions',
@@ -10,15 +9,15 @@ Object.assign(ui, {
     },
 
     updateOrderItem(oid, idx, field, value) {
-        if (!state.user) return; // REGLA 2
+        if (!state.user) return; 
         const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout(); // REGLA 4
+        if (!co) return auth.logout(); 
         
         co.orders = co.orders || [];
         const order = co.orders.find(o => String(o.id) === String(oid));
         if(!order || !order.items[idx]) return;
         
-        if(field === 'realEur') order.items[idx][field] = value ? parseFloat(value) : '';
+        if(field === 'realEur') order.items[idx][field] = value !== '' ? parseFloat(value) : '';
         else order.items[idx][field] = value;
     },
 
@@ -34,7 +33,7 @@ Object.assign(ui, {
         let totalR = 0;
         for(let i=0; i<order.items.length; i++) {
             const el = document.getElementById(`cart-eur-${oid}-${i}`);
-            if(el && el.value) totalR += parseFloat(el.value) || 0;
+            if(el && el.value !== '') totalR += parseFloat(el.value) || 0;
         }
         
         const display = document.getElementById(`dynamic-real-total-${oid}`);
@@ -62,7 +61,7 @@ Object.assign(ui, {
         }
         
         const btn = document.getElementById(`submit-order-btn-${oid}`);
-        if(btn) { // REGLA 3
+        if(btn) { 
             if(allValid) {
                 btn.disabled = false;
                 btn.className = "w-full sm:w-auto bg-mars-cyan text-mars-bg font-black px-6 py-3 text-[10px] uppercase tracking-widest hover:shadow-[0_0_15px_#00f0ff] transition-all cursor-pointer";
@@ -106,9 +105,9 @@ Object.assign(ui, {
     },
 
     viewCart(el) {
-        if (!el || !state.user) return; // REGLA 2 y 3
+        if (!el || !state.user) return; 
         const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout(); // REGLA 4
+        if (!co) return auth.logout(); 
         
         co.orders = co.orders || [];
         const approvedOrders = co.orders.filter(o => o.status === 'APROBADO_FINANZAS');
@@ -178,7 +177,7 @@ Object.assign(ui, {
         co.orders = co.orders || [];
         co.realCosts = co.realCosts || [];
         co.ledger = co.ledger || []; 
-        co.inventory = co.inventory || []; // FASE 2 v1.0.13: Inventario
+        co.inventory = co.inventory || [];
         
         const order = co.orders.find(o => String(o.id) === String(oid));
         if(!order) return alert("Orden no encontrada.");
@@ -192,7 +191,7 @@ Object.assign(ui, {
             const elEur = document.getElementById(`cart-eur-${oid}-${i}`);
             const elShop = document.getElementById(`cart-shop-${oid}-${i}`);
             
-            if (!cb || !elEur || !elShop) { allChecked = false; break; } // REGLA 3
+            if (!cb || !elEur || !elShop) { allChecked = false; break; } 
             
             const rEur = parseFloat(elEur.value);
             const rShop = elShop.value;
@@ -222,19 +221,22 @@ Object.assign(ui, {
             final: co.balance 
         });
         
-        // 2. Registro de Costes Reales e Inventario Físico (FASE 2 v1.0.13)
+        // 2. Registro de Costes Reales e Inventario Físico (M-04: Mantiene originalPrice de la licencia)
         order.items.forEach(i => { 
             co.realCosts.unshift({ shop: i.realShop, item: i.name, eur: i.realEur }); 
             
-            // Desglosar cantidades para el inventario individual
             const unitPrice = i.price / i.qty;
+            const licenseValue = typeof i.originalPrice === 'number' ? i.originalPrice : unitPrice;
+            const isWarranty = i.isWarrantyReplacement === true || String(i.name).startsWith('[GARANTÍA]');
+
             for(let q=0; q<i.qty; q++) {
                 co.inventory.unshift({
                     id: 'INV-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4).toUpperCase(),
                     name: i.name,
                     category: i.category || 'General',
-                    originalPrice: unitPrice,
-                    status: 'AVAILABLE', // AVAILABLE, ON_SALE
+                    originalPrice: licenseValue,
+                    isWarrantyReplacement: isWarranty,
+                    status: 'AVAILABLE',
                     salePrice: null,
                     warrantyClaimed: false,
                     purchaseDate: new Date().toLocaleDateString()
@@ -259,12 +261,12 @@ Object.assign(ui, {
     },
 
     viewAILog(el) {
-        if (!el || !state.user) return; // REGLA 2 y 3
+        if (!el || !state.user) return; 
         const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout(); // REGLA 4
+        if (!co) return auth.logout(); 
         
-        co.aiPrompts = co.aiPrompts || []; // REGLA 1
-        co.decisionLog = co.decisionLog || []; // REGLA 1
+        co.aiPrompts = co.aiPrompts || []; 
+        co.decisionLog = co.decisionLog || []; 
         
         const pendingAI = co.aiPrompts.filter(p => p.status === 'PENDIENTE_VALIDACION');
         const approvedAI = co.aiPrompts.filter(p => p.status === 'APROBADO');
@@ -294,14 +296,14 @@ Object.assign(ui, {
                         <span class="${d.type === 'CONFLICTO' ? 'text-mars-magenta' : 'text-mars-cyan'} font-bold uppercase tracking-widest text-[10px]">${d.type}</span>
                         <span class="text-slate-500 text-[9px]">${d.date}</span>
                     </div>
-                    <p class="text-white font-bold mb-2 text-xs uppercase">${d.title}</p>
+                    <p class="text-white font-bold mb-2 text-xs uppercase">${ui.escapeHTML(d.title)}</p>
                     <div class="bg-black p-3 border border-slate-800 mb-2">
                         <span class="text-slate-500 text-[9px] uppercase font-bold block mb-1">Descripción / Contexto:</span>
-                        <p class="text-slate-300 text-[10px] italic">"${d.description}"</p>
+                        <p class="text-slate-300 text-[10px] italic">"${ui.escapeHTML(d.description)}"</p>
                     </div>
                     <div class="bg-black p-3 border border-slate-800">
                         <span class="text-mars-green text-[9px] uppercase font-bold block mb-1">Resolución / Impacto:</span>
-                        <p class="text-slate-300 text-[10px]">"${d.resolution}"</p>
+                        <p class="text-slate-300 text-[10px]">"${ui.escapeHTML(d.resolution)}"</p>
                     </div>
                     <p class="text-right text-[8px] text-slate-500 uppercase mt-2">Registrado por: ${d.authorRole.replace('_', ' ')}</p>
                 </div>`).join('') || '<p class="text-slate-600 text-xs italic">El diario está vacío. Registra el primer hito del equipo.</p>'}
@@ -320,13 +322,13 @@ Object.assign(ui, {
                         <div class="bg-slate-900/50 border border-mars-border p-4 text-[10px] w-full">
                             ${ui.renderWorkflowTracker(['Emisor (Reporta)', 'Op. IA (Audita)'], 0)}
                             <div class="flex justify-between mb-2 border-b border-mars-border/30 pb-2 mt-3">
-                                <span class="text-mars-yellow font-bold uppercase tracking-widest">${p.tool}</span>
+                                <span class="text-mars-yellow font-bold uppercase tracking-widest">${ui.escapeHTML(p.tool)}</span>
                                 <span class="text-slate-500">${p.date}</span>
                             </div>
-                            <p class="text-white font-bold mb-1 uppercase">Tarea: ${p.task}</p>
+                            <p class="text-white font-bold mb-1 uppercase">Tarea: ${ui.escapeHTML(p.task)}</p>
                             <p class="text-slate-400 mb-2 italic">Emisor: Rol ${p.authorRole.replace('_',' ')}</p>
-                            <div class="bg-black border border-mars-border/50 p-3 mb-2 w-full"><span class="text-blue-400 font-bold block mb-1">Prompt:</span><p class="text-slate-300">"${p.prompt}"</p></div>
-                            <div class="bg-black border border-mars-border/50 p-3 mb-3 w-full"><span class="text-mars-green font-bold block mb-1">Verificación Humana:</span><p class="text-slate-300">${p.verification}</p></div>
+                            <div class="bg-black border border-mars-border/50 p-3 mb-2 w-full"><span class="text-blue-400 font-bold block mb-1">Prompt:</span><p class="text-slate-300">"${ui.escapeHTML(p.prompt)}"</p></div>
+                            <div class="bg-black border border-mars-border/50 p-3 mb-3 w-full"><span class="text-mars-green font-bold block mb-1">Verificación Humana:</span><p class="text-slate-300">${ui.escapeHTML(p.verification)}</p></div>
                             <div class="flex flex-col sm:flex-row gap-2 w-full">
                                 <button onclick="ui.processAIPrompt('${p.id}', 'APROBADO')" class="flex-1 bg-mars-green text-black font-black py-2 uppercase hover:shadow-[0_0_10px_#00ff66] transition-all">Aprobar e Integrar</button>
                                 <button onclick="ui.processAIPrompt('${p.id}', 'DESCARTADO')" class="bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2 font-bold uppercase hover:bg-mars-magenta hover:text-white transition-all">Descartar</button>
@@ -341,11 +343,11 @@ Object.assign(ui, {
                         <div class="bg-slate-900/50 border border-blue-900/30 p-4 text-[10px] border-l-2 border-l-blue-500 w-full">
                             ${ui.renderWorkflowTracker(['Emisor (Reporta)', 'Op. IA (Audita)'], 1)}
                             <div class="flex justify-between mb-2 border-b border-slate-800 pb-2 mt-3">
-                                <span class="text-blue-400 font-bold uppercase tracking-widest">${p.tool}</span>
+                                <span class="text-blue-400 font-bold uppercase tracking-widest">${ui.escapeHTML(p.tool)}</span>
                                 <span class="text-slate-500">${p.date}</span>
                             </div>
-                            <p class="text-white font-bold mb-1 uppercase">Tarea: ${p.task}</p>
-                            <div class="text-slate-400 mt-2 bg-black p-2 border border-slate-800 w-full"><span class="text-mars-cyan font-bold block mb-1">Prompt Validado:</span>"${p.prompt}"</div>
+                            <p class="text-white font-bold mb-1 uppercase">Tarea: ${ui.escapeHTML(p.task)}</p>
+                            <div class="text-slate-400 mt-2 bg-black p-2 border border-slate-800 w-full"><span class="text-mars-cyan font-bold block mb-1">Prompt Validado:</span>"${ui.escapeHTML(p.prompt)}"</div>
                         </div>`).join('') || '<p class="text-slate-600 text-xs italic">Aún no se han integrado prompts aprobados a la bitácora.</p>'}
                     </div>
                 </div>
@@ -371,6 +373,7 @@ Object.assign(ui, {
         this.showModal("Registrar Hito en el Diario", html, actions);
     },
 
+    // M-08: Sanitización Anti-XSS
     submitDecision() {
         if (!state.user) return;
         const elType = document.getElementById('dec-type');
@@ -378,12 +381,12 @@ Object.assign(ui, {
         const elDesc = document.getElementById('dec-desc');
         const elRes = document.getElementById('dec-res');
         
-        if (!elType || !elTitle || !elDesc || !elRes) return; // REGLA 3
+        if (!elType || !elTitle || !elDesc || !elRes) return; 
         
         const type = elType.value;
-        const title = elTitle.value;
-        const description = elDesc.value;
-        const resolution = elRes.value;
+        const title = ui.escapeHTML(elTitle.value);
+        const description = ui.escapeHTML(elDesc.value);
+        const resolution = ui.escapeHTML(elRes.value);
         
         if(!title || !description || !resolution) return alert("Todos los campos son obligatorios.");
         
@@ -415,6 +418,7 @@ Object.assign(ui, {
         this.showModal("Reportar Uso de IA", html, actions);
     },
 
+    // M-08: Sanitización Anti-XSS
     submitAIPrompt() {
         if (!state.user) return;
         const elTool = document.getElementById('ai-tool');
@@ -422,12 +426,12 @@ Object.assign(ui, {
         const elPrompt = document.getElementById('ai-prompt');
         const elVerif = document.getElementById('ai-verification');
         
-        if (!elTool || !elTask || !elPrompt || !elVerif) return; // REGLA 3
+        if (!elTool || !elTask || !elPrompt || !elVerif) return; 
         
-        const tool = elTool.value;
-        const task = elTask.value;
-        const prompt = elPrompt.value;
-        const verification = elVerif.value;
+        const tool = ui.escapeHTML(elTool.value);
+        const task = ui.escapeHTML(elTask.value);
+        const prompt = ui.escapeHTML(elPrompt.value);
+        const verification = ui.escapeHTML(elVerif.value);
         
         if(!tool || !task || !prompt || !verification) return alert("Todos los campos son obligatorios.");
         
