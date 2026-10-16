@@ -1,9 +1,9 @@
 // js/config.js
 
-const APP_VERSION = "1.0.13";
+const APP_VERSION = "1.0.14";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
-// FASE 1: Mapeo de Agencias Reguladoras (Sistema Sancionador)
+// Mapeo de Agencias Reguladoras (Sistema Sancionador)
 const REGULATORY_AGENCIES = {
     FYQ: "Agencia Estatal de Seguridad Aérea (AESA)",
     ECO: "Ministerio de Hacienda",
@@ -15,61 +15,63 @@ const REGULATORY_AGENCIES = {
     COORD_ALEX: "Tribunal Supremo de la AEE"
 };
 
-// ACTUALIZACIÓN DE RÚBRICAS Y PORCENTAJES
-const RUBRIC_CONFIG = {
-    FYQ: { 
-        name: "Física y Química", 
-        criteria: [
-            {id: 'c1', name: 'Informe técnico', weight: 0.5}, 
-            {id: 'c2', name: 'Prototipo / cohete', weight: 0.3}, 
-            {id: 'c3', name: 'Rol y Q&A (preguntas y respuestas)', weight: 0.2}
-        ] 
-    },
-    ECO: { 
-        name: "Economía", 
-        criteria: [
-            {id: 'c1', name: 'Criterios por definir (Pendiente)', weight: 1.0}
-        ] 
-    },
-    LYE: { 
-        name: "Liderazgo y Emprendimiento", 
-        criteria: [
-            {id: 'c1', name: 'Documentos escritos', weight: 0.8}, 
-            {id: 'c2', name: 'Presentaciones orales', weight: 0.2}
-        ] 
-    },
-    LEN: { 
-        name: "Lengua Castellana", 
-        criteria: [
-            {id: 'c1', name: 'Producción oral', weight: 0.5}, 
-            {id: 'c2', name: 'Producción escrita', weight: 0.5}
-        ] 
-    },
-    MAT: { 
-        name: "Matemáticas", 
-        criteria: [
-            {id: 'c1', name: 'Elaboración de goniómetro/s', weight: 0.25}, 
-            {id: 'c2', name: 'Informe técnico (Distancia conocida)', weight: 0.25},
-            {id: 'c3', name: 'Informe técnico (Dos mediciones)', weight: 0.25},
-            {id: 'c4', name: 'Informe técnico final (Comparativa)', weight: 0.25}
-        ] 
-    },
-    ING: { 
-        name: "Inglés", 
-        criteria: [
-            {id: 'c1', name: 'Nota de expresión oral', weight: 0.7},
-            {id: 'c2', name: 'Redacciones', weight: 0.3}
-        ] 
-    }
+// Ponderación Institucional Oficial (100%)
+const GLOBAL_WEIGHTS = {
+    FYQ: 0.25,
+    LYE: 0.40,
+    LEN: 0.15,
+    ECO: 0.10,
+    MAT: 0.05,
+    ING: 0.05
 };
+
+// Configuración de Rúbricas (Sincronizado con Nueva Tabla de Evaluación)
+const RUBRIC_CONFIG = {
+    FYQ: { name: "Física y Química", criteria: [{id: 'c1', name: 'Informe Técnico', weight: 0.50}, {id: 'c2', name: 'Prototipo / Cohete', weight: 0.30}, {id: 'c3', name: 'Rol Técnico y Q&A', weight: 0.20}] },
+    ECO: { name: "Economía", criteria: [{id: 'c1', name: 'Test Evaluación', weight: 0.20}, {id: 'c2', name: 'Presupuesto Inicial', weight: 0.20}, {id: 'c3', name: 'Cuenta Resultados', weight: 0.20}, {id: 'c4', name: 'Presupuesto Post-Prototipo', weight: 0.20}, {id: 'c5', name: 'Balance Situación', weight: 0.20}] },
+    LYE: { name: "Liderazgo y Emprend.", criteria: [{id: 'c1', name: 'Documentos Escritos', weight: 0.80}, {id: 'c2', name: 'Presentaciones Orales', weight: 0.20}] },
+    LEN: { name: "Lengua Castellana", criteria: [{id: 'c1', name: 'Producción Oral', weight: 0.50}, {id: 'c2', name: 'Producción Escrita', weight: 0.50}] },
+    MAT: { name: "Matemáticas", criteria: [{id: 'c1', name: 'Elaboración Goniómetro', weight: 0.25}, {id: 'c2', name: 'Informe Dist. Conocida', weight: 0.25}, {id: 'c3', name: 'Informe Dos Puntos', weight: 0.25}, {id: 'c4', name: 'Informe Final', weight: 0.25}] },
+    ING: { name: "Inglés", criteria: [{id: 'c1', name: 'Expresión Oral (Presentación)', weight: 0.70}, {id: 'c2', name: 'Redacciones', weight: 0.30}] }
+};
+
+// Catálogo de Paquetes de Marketing (Precios ajustados a 2400 €v)
+const MARKETING_PACKAGES = [
+    { id: 'MK-SAT', name: 'Pack Satélite', type: '100% Online', price: 200, actions: 3, desc: 'Alcance digital rápido (Redes sociales, Banners, Mailing).' },
+    { id: 'MK-TRA', name: 'Prensa Tradicional', type: '100% Físico', price: 300, actions: 3, desc: 'Impacto tangible (Diseño de pósters, flyers físicos, prensa).' },
+    { id: 'MK-HYB', name: 'Despegue Híbrido', type: 'Mixto Básico', price: 450, actions: 4, desc: 'Estrategia estándar (2 Acciones Online + 2 Físicas).' },
+    { id: 'MK-SUP', name: 'Cobertura Supernova', type: 'Premium', price: 750, actions: 6, desc: 'Saturación publicitaria máxima. Requiere fuerte justificación financiera.' }
+];
+
+// Novedades de Plataforma (Changelog Interactivo)
+const APP_CHANGELOG = [
+    {
+        version: "1.0.14",
+        date: "Octubre 2026",
+        title: "Sincronización Curricular, B2B y Expansión de Marketing",
+        highlights: [
+            { type: "NUEVO", text: "Ponderación del 100% en Acta Docente (FYQ 25%, LYE 40%, LEN 15%, ECO 10%, MAT 5%, ING 5%)." },
+            { type: "NUEVO", text: "Despliegue de los 17 casilleros documentales con soporte de entregas en Diciembre y Abril para LyE." },
+            { type: "NUEVO", text: "4 Paquetes Publicitarios de Marketing con auditoría presupuestaria de Finanzas." },
+            { type: "MEJORA", text: "Buzón de sugerencias (Buzón Alex) ahora cuenta con selector de categorías y filtro de privacidad." },
+            { type: "SISTEMA", text: "Infraestructura B2B lista en base de datos para la inminente habilitación del Mercado de Segunda Mano." }
+        ]
+    }
+];
 
 const INITIAL_DATA = {
     version: 1,
+    b2bMarket: [],
+    b2bContracts: [],
     config: { 
         nextOrderId: 1000,
         deadlines: { 
-            techReport: "2026-11-15T23:59", presPhase1: "2026-10-30T23:59", 
-            presPhase3: "2026-12-05T23:59", financeBook: "2026-12-01T23:59", valuePropDoc: "2026-11-10T23:59" 
+            techReport: "2026-11-15T23:59", 
+            brandIdentity_dec: "2026-12-10T23:59",
+            brandIdentity_apr: "2027-04-10T23:59",
+            businessModelDoc: "2026-11-20T23:59",
+            investorDossier: "2026-12-05T23:59",
+            balanceSheet: "2026-12-01T23:59" 
         },
         guidelines: { techReportDocUrl: "", techReportNotes: "Guía oficial redactada por FYQ." },
         teachers: {
@@ -85,8 +87,6 @@ const INITIAL_DATA = {
     },
     suggestionsToAlex: [],
     pendingCustom: [],
-    b2bMarket: [], // FASE 1 v1.0.13: Mercado global de segunda mano
-    b2bContracts: [], // FASE 1 v1.0.13: Registro global de contratos de traspaso
     telemetry: { totalLogins: 0, sessions: [] },
     catalog: [
         { id: 'F01', name: 'Botella PET 500ml', price: 97.0, unit: 'Unidad', category: 'Fuselaje', origin: 'China' },
@@ -116,33 +116,27 @@ const INITIAL_DATA = {
     companies: {
         astra: { 
             name: "Astra Dynamics", balance: 2400, logo: null, sponsorAwarded: null, classGroup: 'A',
-            slogan: "", valueProposition: "", aiPrompts: [], decisionLog: [], executiveResolutions: [], 
-            flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], marketingPackages: [],
-            inventory: [], // FASE 1 v1.0.13: Inventario Físico
+            slogan: "", valueProposition: "", aiPrompts: [], executiveResolutions: [], 
+            flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [],
             roles: { CEO:'1111', TECNICO:'1111', FINANZAS:'1111', MARKETING:'1111', OPERACIONES_IA:'1111' }, 
             loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}},
-            fase1Registro: { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' },
-            deliverables: { technicalReport: null, informePreliminar: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null }
+            deliverables: {}
         },
         orion: { 
             name: "Orion Labs", balance: 2400, logo: null, sponsorAwarded: null, classGroup: 'B',
-            slogan: "", valueProposition: "", aiPrompts: [], decisionLog: [], executiveResolutions: [], 
-            flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], marketingPackages: [],
-            inventory: [], // FASE 1 v1.0.13: Inventario Físico
+            slogan: "", valueProposition: "", aiPrompts: [], executiveResolutions: [], 
+            flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [],
             roles: { CEO:'2222', TECNICO:'2222', FINANZAS:'2222', MARKETING:'2222', OPERACIONES_IA:'2222' }, 
             loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}},
-            fase1Registro: { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' },
-            deliverables: { technicalReport: null, informePreliminar: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null }
+            deliverables: {}
         },
         stellar: { 
             name: "Stellar Solutions", balance: 2400, logo: null, sponsorAwarded: null, classGroup: 'C',
-            slogan: "", valueProposition: "", aiPrompts: [], decisionLog: [], executiveResolutions: [], 
-            flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], marketingPackages: [],
-            inventory: [], // FASE 1 v1.0.13: Inventario Físico
+            slogan: "", valueProposition: "", aiPrompts: [], executiveResolutions: [], 
+            flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [],
             roles: { CEO:'3333', TECNICO:'3333', FINANZAS:'3333', MARKETING:'3333', OPERACIONES_IA:'3333' }, 
             loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}},
-            fase1Registro: { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' },
-            deliverables: { technicalReport: null, informePreliminar: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null }
+            deliverables: {}
         }
     }
 };

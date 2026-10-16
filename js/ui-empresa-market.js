@@ -1,5 +1,5 @@
 // js/ui-empresa-market.js
-// --- MÓDULO MERCADO: CATÁLOGO, CARRITO TÉCNICO Y MERCADO B2B ---
+// --- MÓDULO MERCADO: CATÁLOGO OFICIAL Y MERCADO SECUNDARIO B2B ---
 
 Object.assign(ui, {
     setMarketFilter(cat) {
@@ -7,20 +7,58 @@ Object.assign(ui, {
         this.render();
     },
 
+    setMarketTab(tab) {
+        this.marketTab = tab;
+        this.render();
+    },
+
     viewMarket(el) {
         if (!el || !state.user) return; 
         
-        // FIX: Permitir a los docentes ver el catálogo sin ser expulsados
+        // Permitir a los docentes ver el catálogo y el mercado B2B sin ser expulsados
         const co = state.user.admin ? null : state.data.companies[state.user.coId];
         if (!state.user.admin && !co) return auth.logout();
         
+        const activeTab = this.marketTab || 'official';
         const wrapper = document.createElement('div');
+        
+        state.data.b2bMarket = state.data.b2bMarket || [];
+        state.data.b2bContracts = state.data.b2bContracts || [];
+        
+        const activeB2BCount = state.data.b2bMarket.length;
+        const pendingCustomsCount = state.data.b2bContracts.filter(c => c.status === 'PENDIENTE_ADUANA').length;
+
+        // Cabecera de navegación entre Catálogo Oficial y Mercado B2B
+        const tabsHtml = `
+        <div class="flex flex-wrap gap-2 mb-6 border-b border-mars-border pb-3 items-center justify-between">
+            <div class="flex gap-2">
+                <button onclick="ui.setMarketTab('official')" class="px-4 py-2 text-[10px] font-bold uppercase tracking-widest border transition-all ${activeTab === 'official' ? 'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]' : 'bg-mars-card text-slate-400 border-mars-border hover:text-white'}">
+                    🛒 Catálogo Oficial SUPERMARS-KET
+                </button>
+                <button onclick="ui.setMarketTab('b2b')" class="px-4 py-2 text-[10px] font-bold uppercase tracking-widest border transition-all flex items-center gap-2 ${activeTab === 'b2b' ? 'bg-mars-yellow text-black border-mars-yellow shadow-[0_0_10px_rgba(255,230,0,0.3)]' : 'bg-mars-card text-slate-400 border-mars-border hover:text-white'}">
+                    🤝 Mercado B2B Segunda Mano
+                    ${activeB2BCount > 0 ? `<span class="px-1.5 py-0.5 text-[8px] font-black rounded-full ${activeTab === 'b2b' ? 'bg-black text-mars-yellow' : 'bg-mars-yellow text-black'}">${activeB2BCount}</span>` : ''}
+                </button>
+            </div>
+            ${!state.user.admin && state.user.role === 'TECNICO' ? `
+            <div class="flex gap-2">
+                <button onclick="ui.navigate('tech')" class="bg-mars-green/10 border border-mars-green text-mars-green px-3 py-1.5 text-[9px] uppercase font-bold hover:bg-mars-green hover:text-black transition-all whitespace-nowrap">📦 Vender Pieza de mi Inventario</button>
+                <button onclick="ui.modalCustom()" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-3 py-1.5 text-[9px] uppercase font-bold hover:bg-mars-magenta hover:text-white transition-all whitespace-nowrap">✨ Solicitar Material I+D Externo</button>
+            </div>` : ''}
+        </div>`;
+
+        if (activeTab === 'b2b') {
+            wrapper.innerHTML = tabsHtml + this.renderB2BMarketView(co, pendingCustomsCount);
+            el.appendChild(wrapper);
+            return;
+        }
+
+        // --- VISTA CATÁLOGO OFICIAL ---
         let topSection = '';
         let techBanner = '';
         
-        if(!state.user.admin && state.user.role === 'TECNICO') {
-            const docs = co.deliverables || {};
-            co.cart = co.cart || []; // REGLA 1
+        if (!state.user.admin && state.user.role === 'TECNICO') {
+            co.cart = co.cart || [];
             
             if (co.cart.length > 0) {
                 const totalEurV = co.cart.reduce((s, i) => s + i.price, 0).toFixed(2);
@@ -51,69 +89,43 @@ Object.assign(ui, {
                 </div>`;
             }
 
-            topSection = `
-            ${techBanner}
-            `;
+            topSection = `${techBanner}`;
         }
 
         const currentFilter = this.marketFilter || 'ALL';
 
-        // FASE 3 v1.0.13: Añadido filtro B2B
-        const filterButtons = ['ALL', 'Fuselaje', 'Propulsión', 'Aerodinámica', 'Sellado', 'Externo', 'B2B'].map(cat => `
+        const visibleCatalog = state.data.catalog.filter(item => {
+            let isAllowed = false;
+            if (!item.exclusiveFor) isAllowed = true;
+            else if (state.user.admin) isAllowed = true;
+            else if (state.user.coId === item.exclusiveFor) isAllowed = true;
+
+            if (!isAllowed) return false;
+            if (currentFilter === 'ALL') return true;
+            return item.category.toUpperCase() === currentFilter.toUpperCase();
+        });
+
+        const filterButtons = ['ALL', 'Fuselaje', 'Propulsión', 'Aerodinámica', 'Sellado', 'Externo'].map(cat => `
             <button onclick="ui.setMarketFilter('${cat}')" class="px-3 py-1.5 text-[9px] font-bold uppercase border ${currentFilter === cat ? 'bg-mars-cyan text-black border-mars-cyan' : 'bg-transparent text-slate-400 border-mars-border hover:border-mars-cyan hover:text-mars-cyan'} transition-colors whitespace-nowrap">
-                ${cat === 'ALL' ? 'TODOS' : cat === 'B2B' ? 'SEGUNDA MANO' : cat}
+                ${cat === 'ALL' ? 'TODOS' : cat}
             </button>
         `).join('');
 
-        let itemsHtml = '';
-
-        if (currentFilter === 'B2B') {
-            // Renderizado del Mercado de Segunda Mano
-            const b2bItems = (state.data.b2bMarket || []).filter(m => state.user.admin || m.sellerCoId !== state.user.coId);
-            
-            itemsHtml = b2bItems.map(item => {
+        wrapper.innerHTML = `
+        ${tabsHtml}
+        ${topSection}
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+            <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">SUPERMARS-KET Oficial</h2>
+            <span class="text-[9px] text-slate-400 uppercase">Suministros certificados por la Agencia Espacial</span>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-6 pb-4 border-b border-mars-border">
+            ${filterButtons}
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            ${visibleCatalog.map(item => {
                 let buySection = '';
                 if (state.user.admin) {
-                    buySection = `<p class="text-[8px] text-slate-500 uppercase mt-2 border-t border-slate-800 pt-2">Vista de solo lectura (Docente).</p>`;
-                } else if (state.user.role !== 'AUXILIAR') {
-                    buySection = `<button onclick="ui.promptBuyB2B('${item.marketId}')" class="w-full mt-2 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-2 py-1 text-[9px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-all">Comprar (Firma Docente)</button>`;
-                } else {
-                    buySection = `<p class="text-[8px] text-slate-500 uppercase mt-2 border-t border-slate-800 pt-2">Solo lectura.</p>`;
-                }
-
-                return `
-                <div class="terminal-border bg-mars-card p-4 group hover:border-mars-magenta transition-all flex flex-col justify-between border-t-2 border-t-mars-magenta">
-                    <div>
-                        <div class="flex justify-between text-[8px] text-slate-500 mb-2 uppercase font-bold tracking-widest">
-                            <span class="text-mars-magenta">SEGUNDA MANO</span>
-                            <span class="text-mars-yellow">Unidad</span>
-                        </div>
-                        <h3 class="font-orbitron text-white text-[11px] mb-1 leading-tight uppercase">${item.itemName}</h3>
-                        <p class="text-[8px] text-slate-400 uppercase mb-2">Vendedor: ${item.sellerName}</p>
-                    </div>
-                    <div>
-                        <span class="text-mars-magenta font-black text-base font-mono tracking-tighter">${item.price.toFixed(2)} €v</span>
-                        ${buySection}
-                    </div>
-                </div>`;
-            }).join('') || '<p class="text-slate-500 italic text-sm col-span-full">No hay artículos de segunda mano disponibles en este momento.</p>';
-        } else {
-            // Renderizado del Catálogo Oficial
-            const visibleCatalog = state.data.catalog.filter(item => {
-                let isAllowed = false;
-                if (!item.exclusiveFor) isAllowed = true;
-                else if (state.user.admin) isAllowed = true;
-                else if (state.user.coId === item.exclusiveFor) isAllowed = true;
-
-                if (!isAllowed) return false;
-                if (currentFilter === 'ALL') return true;
-                return item.category.toUpperCase() === currentFilter.toUpperCase();
-            });
-
-            itemsHtml = visibleCatalog.map(item => {
-                let buySection = '';
-                if (state.user.admin) {
-                    buySection = `<p class="text-[8px] text-slate-500 uppercase mt-2 border-t border-slate-800 pt-2">Vista de solo lectura (Docente).</p>`;
+                    buySection = `<p class="text-[8px] text-slate-500 uppercase mt-2 border-t border-slate-800 pt-2">Vista de supervisión (Docente).</p>`;
                 } else if(state.user.role !== 'AUXILIAR') {
                     if (state.user.role === 'TECNICO') {
                         if (item.id === 'P01') {
@@ -139,26 +151,192 @@ Object.assign(ui, {
                         <p class="text-[8px] text-slate-400 uppercase mb-2">[🌍 ${item.origin || 'Desconocido'}]</p>
                     </div>
                     <div>
-                        <span class="text-mars-green font-black text-base font-mono tracking-tighter">${item.price.toFixed(2)} €v</span>
-                        ${buySection}
+                        <span class="text-mars-green font-black text-base font-mono tracking-tighter">${item.price.toFixed(2)} €v</span>${buySection}
                     </div>
                 </div>`;
-            }).join('') || '<p class="text-slate-500 italic text-sm col-span-full">No hay materiales en esta categoría.</p>';
-        }
-
-        wrapper.innerHTML = `
-        ${topSection}
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-            <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">SUPERMARS-KET Oficial</h2>
-            ${!state.user.admin && state.user.role === 'TECNICO' ? `<button onclick="ui.modalCustom()" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-3 py-1.5 text-[9px] sm:text-[10px] uppercase font-bold hover:bg-mars-magenta hover:text-white transition-all whitespace-nowrap">Solicitar I+D</button>` : ``}
-        </div>
-        <div class="flex flex-wrap gap-2 mb-6 pb-4 border-b border-mars-border">
-            ${filterButtons}
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            ${itemsHtml}
+            }).join('') || '<p class="text-slate-500 italic text-sm col-span-full">No hay materiales en esta categoría.</p>'}
         </div>`;
         el.appendChild(wrapper);
+    },
+
+    renderB2BMarketView(co, pendingCustomsCount) {
+        const listings = state.data.b2bMarket || [];
+        const contracts = state.data.b2bContracts || [];
+        const myCoId = state.user.admin ? 'ADMIN' : state.user.coId;
+
+        const relevantContracts = state.user.admin 
+            ? contracts 
+            : contracts.filter(c => c.sellerCoId === myCoId || c.buyerCoId === myCoId);
+
+        const listingsHtml = listings.map(lst => {
+            const isMine = lst.sellerCoId === myCoId;
+            const sellerName = state.data.companies[lst.sellerCoId]?.name || lst.sellerName || 'Startup';
+            
+            let actionBtn = '';
+            if (state.user.admin) {
+                actionBtn = `<span class="text-[8px] text-slate-500 uppercase block mt-2 pt-2 border-t border-slate-800">En venta por ${sellerName}</span>`;
+            } else if (isMine) {
+                if (state.user.role === 'TECNICO' || state.user.role === 'CEO') {
+                    actionBtn = `<button onclick="ui.cancelB2BListing('${lst.id}')" class="w-full mt-3 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta py-2 text-[9px] font-bold uppercase hover:bg-mars-magenta hover:text-white transition-all">Retirar Oferta</button>`;
+                } else {
+                    actionBtn = `<span class="text-[8px] text-mars-yellow uppercase block mt-2 pt-2 border-t border-slate-800">Oferta propia de tu Startup</span>`;
+                }
+            } else {
+                if (state.user.role === 'TECNICO' || state.user.role === 'FINANZAS' || state.user.role === 'CEO') {
+                    actionBtn = `<button onclick="ui.buyB2BItem('${lst.id}')" class="w-full mt-3 bg-mars-yellow text-black py-2 text-[9px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-[0_0_10px_rgba(255,230,0,0.3)]">Solicitar Compra B2B</button>`;
+                } else {
+                    actionBtn = `<span class="text-[8px] text-slate-500 uppercase block mt-2 pt-2 border-t border-slate-800">Solo Técnico/Finanzas/CEO pueden comprar</span>`;
+                }
+            }
+
+            return `
+            <div class="terminal-border bg-mars-card p-4 border-t-2 ${isMine ? 'border-t-mars-cyan' : 'border-t-mars-yellow'} flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center text-[8px] uppercase font-bold mb-2">
+                        <span class="bg-mars-yellow/10 text-mars-yellow border border-mars-yellow/40 px-1.5 py-0.5">VENDEDOR: ${sellerName}</span>
+                        <span class="text-slate-500">${lst.date}</span>
+                    </div>
+                    <h3 class="font-orbitron text-white text-xs font-bold uppercase mb-1">${lst.itemName} (x${lst.qty || 1})</h3>
+                    <p class="text-[9px] text-slate-400 italic mb-3 bg-black/50 p-2 border border-slate-800">"${lst.notes || 'Pieza en perfecto estado operativo.'}"</p>
+                </div>
+                <div>
+                    <div class="flex justify-between items-baseline">
+                        <span class="text-[8px] text-slate-500 uppercase font-bold">Precio Pactado:</span>
+                        <span class="text-mars-green font-mono font-black text-lg">${Number(lst.price).toFixed(2)} €v</span>
+                    </div>
+                    ${actionBtn}
+                </div>
+            </div>`;
+        }).join('') || `<div class="col-span-full terminal-border border-dashed p-8 text-center text-slate-500 text-xs italic">Actualmente no hay piezas de segunda mano publicadas en el mercado B2B. El Dpto. Técnico puede poner componentes a la venta desde su pestaña de Inventario Físico.</div>`;
+
+        const contractsHtml = relevantContracts.map(c => {
+            const sellerName = state.data.companies[c.sellerCoId]?.name || c.sellerName;
+            const buyerName = state.data.companies[c.buyerCoId]?.name || c.buyerName;
+            const stColor = c.status === 'APROBADO' ? 'text-mars-green border-mars-green bg-mars-green/10' : (c.status === 'RECHAZADO' ? 'text-mars-magenta border-mars-magenta bg-mars-magenta/10' : 'text-mars-yellow border-mars-yellow bg-mars-yellow/10 animate-pulse');
+            
+            return `
+            <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
+                <td class="py-3 pr-4 font-mono text-slate-400">${c.id}</td>
+                <td class="py-3 pr-4 font-bold text-white">${c.itemName} (x${c.qty || 1})</td>
+                <td class="py-3 pr-4 text-mars-cyan">${sellerName}</td>
+                <td class="py-3 pr-4 text-mars-yellow">${buyerName}</td>
+                <td class="py-3 pr-4 font-mono text-mars-green font-bold">${Number(c.price).toFixed(2)} €v</td>
+                <td class="py-3"><span class="px-2 py-0.5 text-[8px] font-black uppercase border ${stColor}">${c.status}</span></td>
+            </tr>`;
+        }).join('') || `<tr><td colspan="6" class="py-6 text-center text-slate-600 italic">No hay contratos B2B registrados para esta entidad.</td></tr>`;
+
+        return `
+        <div class="mb-6 bg-slate-900/90 border border-mars-yellow/40 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <h2 class="font-orbitron text-mars-yellow text-base sm:text-lg uppercase tracking-tighter">Mercado Secundario B2B & Aduana Aeroespacial</h2>
+                <p class="text-[10px] text-slate-300 mt-1 leading-relaxed">Compraventa de excedentes entre startups. Al comprar una pieza, el importe (€v) queda retenido en depósito hasta que la Coordinación Docente autoriza el traspaso en la Aduana B2B.</p>
+            </div>
+            ${state.user.admin ? `<button onclick="ui.adminTab='dash'; ui.navigate('admin')" class="bg-mars-yellow text-black px-4 py-2 text-[9px] font-black uppercase whitespace-nowrap hover:bg-white transition-all">Ir a Aduana Docente (${pendingCustomsCount})</button>` : ''}
+        </div>
+
+        <h3 class="font-orbitron text-mars-cyan text-xs uppercase tracking-widest mb-3">Ofertas Activas en el Mercado</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            ${listingsHtml}
+        </div>
+
+        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan">
+            <h3 class="font-orbitron text-mars-cyan text-xs uppercase tracking-widest mb-4 border-b border-mars-border pb-2">Registro de Contratos y Estado en Aduana B2B</h3>
+            <div class="overflow-x-auto w-full">
+                <table class="w-full text-left text-[10px] whitespace-nowrap min-w-max">
+                    <thead class="text-slate-500 uppercase border-b border-mars-border">
+                        <tr>
+                            <th class="py-2 pr-4">Contrato ID</th>
+                            <th class="py-2 pr-4">Componente</th>
+                            <th class="py-2 pr-4">Vendedor</th>
+                            <th class="py-2 pr-4">Comprador</th>
+                            <th class="py-2 pr-4">Importe</th>
+                            <th class="py-2">Estado Aduana</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${contractsHtml}
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+    },
+
+    buyB2BItem(listingId) {
+        if (!state.user || state.user.admin) return;
+        const buyerCoId = state.user.coId;
+        const buyerCo = state.data.companies[buyerCoId];
+        if (!buyerCo) return auth.logout();
+
+        state.data.b2bMarket = state.data.b2bMarket || [];
+        state.data.b2bContracts = state.data.b2bContracts || [];
+
+        const idx = state.data.b2bMarket.findIndex(l => l.id === listingId);
+        if (idx === -1) return alert("Esta oferta ya no está disponible.");
+
+        const listing = state.data.b2bMarket[idx];
+        if (listing.sellerCoId === buyerCoId) return alert("No puedes comprar una pieza de tu propia empresa.");
+
+        const price = parseFloat(listing.price);
+        if (buyerCo.balance < price) {
+            return alert(`Fondos virtuales insuficientes. Necesitas ${price.toFixed(2)} €v disponibles en caja.`);
+        }
+
+        if (!confirm(`¿Confirmas la compra de "${listing.itemName}" a ${listing.sellerName} por ${price.toFixed(2)} €v?\n\nEl importe quedará retenido en depósito hasta que la Aduana Docente apruebe el contrato.`)) return;
+
+        // Retención preventiva de fondos en el comprador (Escrow)
+        state.addToLedger(buyerCoId, `[DEPÓSITO ADUANA B2B] Compra pendiente: ${listing.itemName}`, 'FINANZAS', -price);
+
+        const contract = {
+            id: 'B2B-' + Date.now().toString().slice(-6),
+            listingId: listing.id,
+            sellerCoId: listing.sellerCoId,
+            sellerName: state.data.companies[listing.sellerCoId]?.name || listing.sellerName,
+            buyerCoId: buyerCoId,
+            buyerName: buyerCo.name,
+            itemName: listing.itemName,
+            category: listing.category || 'B2B',
+            qty: listing.qty || 1,
+            price: price,
+            sourceOrderKey: listing.sourceOrderKey || null,
+            date: new Date().toLocaleString(),
+            status: 'PENDIENTE_ADUANA'
+        };
+
+        state.data.b2bContracts.unshift(contract);
+        state.data.b2bMarket.splice(idx, 1);
+
+        ui.pushNotification(listing.sellerCoId, 'TECNICO', `La empresa ${buyerCo.name} ha solicitado comprar tu pieza "${listing.itemName}" por ${price.toFixed(2)} €v. Pendiente de Aduana Docente.`, 'info');
+        ui.pushNotification(listing.sellerCoId, 'FINANZAS', `Contrato B2B #${contract.id} iniciado con ${buyerCo.name} (+${price.toFixed(2)} €v pendientes de Aduana).`, 'info');
+        
+        telemetry.log("CONTRATO B2B", `${buyerCo.name} solicita compra de ${listing.itemName} a ${contract.sellerName} por ${price}€v`);
+        state.save();
+        alert(`✅ Contrato #${contract.id} registrado y enviado a la Aduana Docente.`);
+        this.render();
+    },
+
+    cancelB2BListing(listingId) {
+        if (!state.user || state.user.admin) return;
+        state.data.b2bMarket = state.data.b2bMarket || [];
+        const idx = state.data.b2bMarket.findIndex(l => l.id === listingId);
+        if (idx === -1) return;
+
+        const lst = state.data.b2bMarket[idx];
+        if (lst.sellerCoId !== state.user.coId) return alert("Solo la empresa propietaria puede retirar esta oferta.");
+
+        // Restaurar disponibilidad de la pieza en el inventario de la empresa
+        const co = state.data.companies[state.user.coId];
+        if (co && lst.sourceOrderKey && co.orders) {
+            const [ordId, itemIdx] = lst.sourceOrderKey.split('-');
+            const ord = co.orders.find(o => String(o.id) === String(ordId));
+            if (ord && ord.items && ord.items[Number(itemIdx)]) {
+                delete ord.items[Number(itemIdx)].b2bStatus;
+            }
+        }
+
+        state.data.b2bMarket.splice(idx, 1);
+        telemetry.log("B2B RETIRADO", `Oferta retirada: ${lst.itemName}`);
+        state.save();
+        this.render();
     },
 
     techAddToCart(id, qty = 1) {
@@ -248,70 +426,6 @@ Object.assign(ui, {
         
         this.closeModal();
         alert(`✅ Orden #${newOrder.id} transmitida con éxito a Finanzas.`);
-        this.render();
-    },
-
-    // FASE 3 v1.0.13: Lógica de Compra B2B
-    promptBuyB2B(marketId) {
-        if (!state.user) return;
-        const item = (state.data.b2bMarket || []).find(m => m.marketId === marketId);
-        if (!item) return;
-
-        const html = `
-            <p class="text-[10px] text-slate-400 mb-4">Estás a punto de iniciar un contrato de traspaso para adquirir <strong>${item.itemName}</strong> de la empresa <strong>${item.sellerName}</strong> por <strong class="text-mars-magenta">${item.price.toFixed(2)} €v</strong>.</p>
-            <p class="text-[10px] text-mars-yellow mb-4">⚠️ IMPORTANTE: Esta acción reservará el objeto y enviará un contrato a la Aduana Docente. La compra no será efectiva hasta que el profesor firme el traspaso.</p>
-        `;
-        const actions = `<button onclick="ui.confirmBuyB2B('${marketId}')" class="bg-mars-magenta text-white px-6 py-2 text-[10px] font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Firmar Intención de Compra</button>`;
-        this.showModal("Contrato de Traspaso B2B", html, actions);
-    },
-
-    confirmBuyB2B(marketId) {
-        if (!state.user) return;
-        const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
-
-        state.data.b2bMarket = state.data.b2bMarket || [];
-        const itemIdx = state.data.b2bMarket.findIndex(m => m.marketId === marketId);
-        if (itemIdx === -1) return alert("El artículo ya no está disponible.");
-
-        const item = state.data.b2bMarket[itemIdx];
-
-        if (co.balance < item.price) return alert("Fondos virtuales insuficientes para esta compra.");
-
-        // Bloquear el objeto en el inventario del vendedor
-        const sellerCo = state.data.companies[item.sellerCoId];
-        if (sellerCo && sellerCo.inventory) {
-            const invItem = sellerCo.inventory.find(i => i.id === item.invId);
-            if (invItem) invItem.status = 'PENDING_TRANSFER';
-        }
-
-        // Crear el contrato
-        state.data.b2bContracts = state.data.b2bContracts || [];
-        state.data.b2bContracts.unshift({
-            id: 'CTR-' + Date.now(),
-            marketId: item.marketId,
-            invId: item.invId,
-            sellerCoId: item.sellerCoId,
-            sellerName: item.sellerName,
-            buyerCoId: state.user.coId,
-            buyerName: co.name,
-            itemName: item.itemName,
-            category: item.category,
-            price: item.price,
-            status: 'PENDIENTE_CLAUSTRO',
-            date: new Date().toLocaleString()
-        });
-
-        // Retirar del mercado público
-        state.data.b2bMarket.splice(itemIdx, 1);
-
-        telemetry.log("MERCADO B2B", `Intención de compra firmada: ${item.itemName} a ${item.sellerName}`);
-        ui.pushNotification(item.sellerCoId, 'CEO', `La empresa ${co.name} ha firmado la compra de tu ${item.itemName}. Pendiente de Aduana Docente.`, 'info');
-        ui.pushNotification(state.user.coId, 'FINANZAS', `Contrato de compra por ${item.itemName} enviado a la Aduana Docente.`, 'info');
-
-        state.save();
-        this.closeModal();
-        alert("Contrato enviado a la Aduana Docente. Esperando firma del profesor.");
         this.render();
     }
 });

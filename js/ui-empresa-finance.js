@@ -1,15 +1,15 @@
 // js/ui-empresa-finance.js
-// --- MÓDULO FINANZAS: BÓVEDA DE ÓRDENES, LEDGER Y AUDITORÍA V2.0 ---
+// --- MÓDULO FINANZAS: BÓVEDA DE ÓRDENES, LEDGER, 4 BALANCE ECO Y MARKETING ---
 
 Object.assign(ui, {
     renderDeadlinesBlock() {
-        const dl = state.data.config.deadlines || {}; // REGLA 1
+        const dl = state.data.config.deadlines || {}; 
         return `
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             ${this.renderSingleDeadline('Pitch Fase I (Inglés)', dl.presPhase1)}
             ${this.renderSingleDeadline('Propuesta Valor (LYE)', dl.valuePropDoc)}
             ${this.renderSingleDeadline('Informe Técnico (FYQ)', dl.techReport)}
-            ${this.renderSingleDeadline('Libro Cuentas (ECO)', dl.financeBook)}
+            ${this.renderSingleDeadline('Balance de Situación (ECO)', dl.balanceSheet)}
             ${this.renderSingleDeadline('Pitch Fase III (LEN)', dl.presPhase3)}
         </div>`;
     },
@@ -25,11 +25,11 @@ Object.assign(ui, {
     },
 
     issueCrisisCommunication(alertId) {
-        if (!state.user) return; // REGLA 2
+        if (!state.user) return; 
         const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout(); // REGLA 4
+        if (!co) return auth.logout(); 
         
-        co.crisisAlerts = co.crisisAlerts || []; // REGLA 1
+        co.crisisAlerts = co.crisisAlerts || []; 
         const alert = co.crisisAlerts.find(a => a.id === alertId);
         
         if (alert) {
@@ -47,16 +47,14 @@ Object.assign(ui, {
     },
 
     viewOrders(el) {
-        if (!el || !state.user) return; // REGLA 2 y 3
+        if (!el || !state.user) return; 
         const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout(); // REGLA 4
+        if (!co) return auth.logout(); 
         
         const role = state.user.role;
         const docs = co.deliverables || {};
-        co.orders = co.orders || []; // REGLA 1
-        co.marketingPackages = co.marketingPackages || []; // REGLA 1
-        co.fase1Registro = co.fase1Registro || { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' };
-        co.flightTests = co.flightTests || [];
+        co.orders = co.orders || []; 
+        co.marketingCampaigns = co.marketingCampaigns || [];
         
         const wrapper = document.createElement('div');
         
@@ -111,79 +109,26 @@ Object.assign(ui, {
             <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan mb-8">
                 <h2 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Bóveda Documental Corporativa</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    ${this.renderDocBadge('Hoja Registro Preliminar (FYQ)', docs.preliminaryReport)}
                     ${this.renderDocBadge('Informe Técnico (FYQ)', docs.technicalReport)}
-                    ${this.renderDocBadge('Libro de Cuentas (ECO)', docs.financeBook)}
-                    ${this.renderDocBadge('Micro-Pitch Fase I (ING/LYE)', docs.presPhase1)}
-                    ${this.renderDocBadge('Pitch Final Fase III (LEN)', docs.presPhase3)}
-                    ${this.renderDocBadge('Propuesta de Valor (LYE)', docs.valuePropDoc)}
+                    ${this.renderDocBadge('Balance de Situación (ECO)', docs.balanceSheet)}
+                    ${this.renderDocBadge('Dossier de Inversores (LEN)', docs.investorDossier)}
                 </div>
             </div>
             ${sanctionsHtml}
             `;
         }
 
-        // Lógica de Auditoría V2.0 (Desviaciones)
-        const presTeorico = parseFloat(co.fase1Registro.presupuestoTeorico) || 0;
-        const altTeorica = parseFloat(co.fase1Registro.alturaEstimada) || 0;
-        const bestFlight = co.flightTests.length > 0 ? [...co.flightTests].sort((a, b) => b.heightM - a.heightM)[0] : null;
-        const altReal = bestFlight ? bestFlight.heightM : 0;
-        const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + o.total, 0);
-        
-        const isCostDeviation = totalDevCost > presTeorico && presTeorico > 0;
-        const isHeightDeviation = altReal < altTeorica && altTeorica > 0 && altReal > 0;
-        const needsV2 = isCostDeviation || isHeightDeviation;
-        const justText = co.fase1Registro.justificacionV2;
-        const justStatus = co.fase1Registro.justificacionV2Status || 'PENDIENTE';
-
-        let v2AuditHtml = '';
-        if (needsV2 && justText && (role === 'CEO' || role.includes('FINAN'))) {
-            v2AuditHtml = `
-            <div class="terminal-border bg-mars-card p-6 border-t-4 ${justStatus === 'PENDIENTE' ? 'border-t-mars-yellow animate-pulse shadow-[0_0_15px_rgba(255,230,0,0.1)]' : justStatus === 'APROBADA' ? 'border-t-mars-green' : 'border-t-mars-magenta'} mb-8">
-                <h2 class="font-orbitron ${justStatus === 'PENDIENTE' ? 'text-mars-yellow' : justStatus === 'APROBADA' ? 'text-mars-green' : 'text-mars-magenta'} text-lg mb-4 uppercase tracking-tighter">Auditoría de Desviación (V2.0)</h2>
-                <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">El Dpto. Técnico ha registrado una desviación entre la hipótesis de la Fase I y los datos reales del Banco de Pruebas.</p>
-                
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div class="bg-black p-3 border ${isCostDeviation ? 'border-mars-magenta' : 'border-mars-border'}">
-                        <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Presupuesto: Teórico vs Real</p>
-                        <p class="text-sm font-mono ${isCostDeviation ? 'text-mars-magenta' : 'text-white'}">${presTeorico.toFixed(2)} €v <span class="text-slate-500">vs</span> ${totalDevCost.toFixed(2)} €v</p>
-                    </div>
-                    <div class="bg-black p-3 border ${isHeightDeviation ? 'border-mars-magenta' : 'border-mars-border'}">
-                        <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Altura: Estimada vs Real</p>
-                        <p class="text-sm font-mono ${isHeightDeviation ? 'text-mars-magenta' : 'text-white'}">${altTeorica.toFixed(1)} m <span class="text-slate-500">vs</span> ${altReal.toFixed(1)} m</p>
-                    </div>
-                </div>
-                
-                <div class="bg-slate-900 p-4 border border-mars-border mb-4">
-                    <span class="block text-mars-cyan font-bold uppercase mb-2 border-b border-mars-cyan/30 pb-1">Justificación Técnica (I+D):</span>
-                    <p class="text-slate-300 italic leading-relaxed">"${justText}"</p>
-                </div>
-
-                ${justStatus === 'DENEGADA' ? `<div class="bg-red-900/30 border border-red-500/50 p-3 text-[10px] text-red-200 mt-2 mb-4 w-full"><span class="font-bold">MOTIVO RECHAZO:</span> ${co.fase1Registro.justificacionV2DenyReason}</div>` : ''}
-
-                ${justStatus === 'PENDIENTE' && role.includes('FINAN') ? `
-                <div class="flex flex-col sm:flex-row gap-3 border-t border-mars-border pt-4">
-                    <button onclick="ui.approveV2Justification()" class="flex-grow bg-mars-green text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors shadow-[0_0_10px_rgba(0,255,102,0.4)]">Aprobar Justificación V2.0</button>
-                    <button onclick="ui.promptDenyV2Justification()" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-6 py-3 text-[10px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-colors whitespace-nowrap">Denegar</button>
-                </div>` : `
-                <div class="mt-2 text-[10px] font-bold uppercase ${justStatus === 'APROBADA' ? 'text-mars-green' : 'text-mars-magenta'}">
-                    ESTADO DE AUDITORÍA: ${justStatus}
-                </div>
-                `}
-            </div>
-            `;
-        }
-
         let financeAlertHtml = '';
-        if (role.includes('FINAN')) {
-            const pendingTech = co.orders.filter(o => o.status === 'PENDIENTE_FINANZAS').length;
-            const pendingMkt = (co.marketingPackages || []).filter(c => c.status === 'PENDIENTE_FINANZAS').length;
-            const pendingCount = pendingTech + pendingMkt;
-            if (pendingCount > 0) {
-                financeAlertHtml = `
-                <div class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow p-4 mb-6 animate-pulse shadow-[0_0_15px_rgba(255,230,0,0.3)]">
-                    <p class="font-bold uppercase text-xs sm:text-sm text-center tracking-widest">⚠️ ATENCIÓN FINANZAS: Hay ${pendingCount} orden(es) esperando tu aprobación presupuestaria.</p>
-                </div>`;
-            }
+        pendingMarketingCount = co.marketingCampaigns.filter(m => m.status === 'PENDIENTE_FINANZAS').length;
+        pendingOrdersCount = co.orders.filter(o => o.status === 'PENDIENTE_FINANZAS').length;
+        const totalPendingFin = pendingMarketingCount + pendingOrdersCount;
+
+        if (role.includes('FINAN') && totalPendingFin > 0) {
+            financeAlertHtml = `
+            <div class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow p-4 mb-6 animate-pulse shadow-[0_0_15px_rgba(255,230,0,0.3)]">
+                <p class="font-bold uppercase text-xs sm:text-sm text-center tracking-widest">⚠️ ATENCIÓN FINANZAS: Hay ${totalPendingFin} solicitud(es) pendientes de aprobación presupuestaria (${pendingOrdersCount} I+D, ${pendingMarketingCount} Marketing).</p>
+            </div>`;
         }
 
         const sortedOrders = [...co.orders].sort((a, b) => {
@@ -192,98 +137,39 @@ Object.assign(ui, {
             return 0;
         });
 
-        let mktSection = '';
-        if (role === 'CEO' || role.includes('FINAN')) {
-            const sortedMkt = [...(co.marketingPackages || [])].sort((a, b) => {
-                if (a.status === 'PENDIENTE_FINANZAS' && b.status !== 'PENDIENTE_FINANZAS') return -1;
-                if (a.status !== 'PENDIENTE_FINANZAS' && b.status === 'PENDIENTE_FINANZAS') return 1;
-                return 0;
-            });
-
-            if (sortedMkt.length > 0) {
-                mktSection = `
-                <div class="flex justify-between items-center mb-6 mt-10 border-t border-mars-border pt-6">
-                    <h2 class="font-orbitron text-mars-magenta text-lg sm:text-xl uppercase tracking-tighter">Contratos de Marketing</h2>
-                </div>
-                <div class="space-y-6">
-                    ${sortedMkt.map(pkg => {
-                        const trackerIndex = pkg.status === 'PENDIENTE_FINANZAS' ? 0 : pkg.status === 'APROBADO' ? 2 : 0;
-                        return `
-                        <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 ${pkg.status === 'APROBADO' ? 'border-l-mars-green' : pkg.status === 'DENEGADA' ? 'border-l-mars-magenta' : 'border-l-mars-yellow'} animate-in slide-in-from-bottom-4 duration-300">
-                            ${pkg.status !== 'DENEGADA' ? ui.renderWorkflowTracker(['MKT (Solicita)', 'FIN (Audita)', 'Activo'], trackerIndex) : ''}
-                            
-                            <div class="flex justify-between items-start mb-4 flex-wrap gap-2 mt-4">
-                                <div><span class="text-[9px] font-bold uppercase ${pkg.status === 'APROBADO' ? 'text-mars-green bg-mars-green/10' : pkg.status === 'DENEGADA' ? 'text-mars-magenta bg-mars-magenta/10' : 'text-mars-yellow bg-mars-yellow/10'} px-2 py-1 tracking-widest">[STATUS: ${pkg.status}]</span><h3 class="text-white font-orbitron mt-3 uppercase text-xs sm:text-sm">PKG_TX: ${pkg.id}</h3></div>
-                                <div class="text-left sm:text-right w-full sm:w-auto"><p class="text-mars-magenta font-black font-mono text-xl tracking-tighter">${pkg.cost.toFixed(2)} €v</p><p class="text-[9px] text-slate-500 uppercase font-bold mt-1">${pkg.date}</p></div>
-                            </div>
-                            
-                            <div class="grid grid-cols-1 gap-4 mb-4">
-                                <div class="bg-black/50 p-4 border border-mars-border/50 text-[10px] w-full">
-                                    <span class="block text-mars-magenta font-bold uppercase mb-2 border-b border-mars-magenta/30 pb-1">Paquete Solicitado:</span>
-                                    <p class="text-white font-bold mb-1 text-sm">${pkg.name}</p>
-                                    <p class="text-slate-400 italic">Incluye un total de ${pkg.totalActions} acciones publicitarias.</p>
-                                </div>
-                            </div>
-                            
-                            ${pkg.denyReason ? `<div class="bg-red-900/30 border border-red-500/50 p-3 text-[10px] text-red-200 mt-2 mb-4 w-full"><span class="font-bold">MOTIVO RECHAZO:</span> ${pkg.denyReason}</div>` : ''}
-                            
-                            ${pkg.status === 'PENDIENTE_FINANZAS' && role.includes('FINAN') ? `
-                            <div class="flex flex-col sm:flex-row gap-3 border-t border-mars-border pt-4">
-                                <button onclick="ui.approveMarketingPackage('${pkg.id}')" class="flex-grow bg-mars-green text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-colors shadow-[0_0_10px_rgba(0,255,102,0.4)]">Aprobar Presupuesto</button>
-                                <button onclick="ui.promptDenyMarketingPackage('${pkg.id}')" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-6 py-3 text-[10px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-colors whitespace-nowrap">Denegar</button>
+        // Solicitudes de Marketing pendientes de Finanzas
+        let marketingOrdersHtml = '';
+        const pendingMktList = co.marketingCampaigns.filter(m => m.status === 'PENDIENTE_FINANZAS');
+        if (pendingMktList.length > 0) {
+            marketingOrdersHtml = `
+            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow mb-8">
+                <h3 class="font-orbitron text-mars-yellow text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Solicitudes de Paquetes Publicitarios (Marketing)</h3>
+                <div class="space-y-4">
+                    ${pendingMktList.map(mkt => `
+                    <div class="bg-slate-900 border border-mars-yellow p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <span class="bg-mars-yellow/10 text-mars-yellow border border-mars-yellow text-[8px] font-bold px-2 py-0.5 uppercase">PAQUETE MARKETING</span>
+                            <h4 class="text-white font-bold uppercase text-xs mt-1.5">${mkt.packageName} (${mkt.title})</h4>
+                            <p class="text-[10px] text-slate-400 mt-1 italic">"${mkt.desc}"</p>
+                        </div>
+                        <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                            <span class="text-mars-green font-mono font-black text-base">${Number(mkt.price).toFixed(2)} €v</span>${role.includes('FINAN') ? `
+                            <div class="flex gap-2">
+                                <button onclick="ui.approveMarketingOrder('${mkt.id}')" class="bg-mars-green text-black px-4 py-2 text-[9px] font-black uppercase hover:bg-white transition-colors">Aprobar Gasto</button>
+                                <button onclick="ui.denyMarketingOrder('${mkt.id}')" class="bg-mars-magenta text-white px-3 py-2 text-[9px] font-black uppercase hover:bg-white hover:text-mars-magenta transition-colors">Denegar</button>
                             </div>` : ''}
-                        </div>`;
-                    }).join('')}
-                </div>`;
-            }
-        }
-
-        // FASE 4 v1.0.13: Sección de Contratos B2B
-        let b2bSection = '';
-        const myB2B = (state.data.b2bContracts || []).filter(c => c.buyerCoId === state.user.coId || c.sellerCoId === state.user.coId);
-        if (myB2B.length > 0 && (role === 'CEO' || role.includes('FINAN'))) {
-            b2bSection = `
-            <div class="flex justify-between items-center mb-6 mt-10 border-t border-mars-border pt-6">
-                <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">Aduana: Contratos B2B</h2>
-            </div>
-            <div class="space-y-6">
-                ${myB2B.map(c => {
-                    const isBuyer = c.buyerCoId === state.user.coId;
-                    const roleText = isBuyer ? 'COMPRADOR' : 'VENDEDOR';
-                    const otherParty = isBuyer ? c.sellerName : c.buyerName;
-                    const trackerIndex = c.status === 'PENDIENTE_CLAUSTRO' ? 1 : c.status === 'APROBADO' ? 2 : 0;
-                    
-                    return `
-                    <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 ${c.status === 'APROBADO' ? 'border-l-mars-green' : c.status === 'DENEGADO' ? 'border-l-mars-magenta' : 'border-l-mars-cyan'} animate-in slide-in-from-bottom-4 duration-300">
-                        ${c.status !== 'DENEGADO' ? ui.renderWorkflowTracker(['Acuerdo', 'Aduana Docente', 'Ejecutado'], trackerIndex) : ''}
-                        
-                        <div class="flex justify-between items-start mb-4 flex-wrap gap-2 mt-4">
-                            <div>
-                                <span class="text-[9px] font-bold uppercase ${c.status === 'APROBADO' ? 'text-mars-green bg-mars-green/10' : c.status === 'DENEGADO' ? 'text-mars-magenta bg-mars-magenta/10' : 'text-mars-cyan bg-mars-cyan/10'} px-2 py-1 tracking-widest">[STATUS: ${c.status}]</span>
-                                <h3 class="text-white font-orbitron mt-3 uppercase text-xs sm:text-sm">B2B_TX: ${c.id}</h3>
-                            </div>
-                            <div class="text-left sm:text-right w-full sm:w-auto">
-                                <p class="${isBuyer ? 'text-mars-magenta' : 'text-mars-green'} font-black font-mono text-xl tracking-tighter">${isBuyer ? '-' : '+'}${c.price.toFixed(2)} €v</p>
-                                <p class="text-[9px] text-slate-500 uppercase font-bold mt-1">${c.date}</p>
-                            </div>
                         </div>
-                        
-                        <div class="bg-black/50 p-4 border border-mars-border/50 text-[10px] w-full">
-                            <span class="block text-mars-cyan font-bold uppercase mb-2 border-b border-mars-cyan/30 pb-1">Detalles del Traspaso:</span>
-                            <p class="text-white font-bold mb-1 text-sm">${c.itemName}</p>
-                            <p class="text-slate-400 italic">Rol: <strong class="${isBuyer ? 'text-mars-magenta' : 'text-mars-green'}">${roleText}</strong> | Contraparte: <strong>${otherParty}</strong></p>
-                        </div>
-                    </div>`;
-                }).join('')}
+                    </div>`).join('')}
+                </div>
             </div>`;
         }
 
         wrapper.innerHTML = `
         ${ceoDashboard}
-        ${v2AuditHtml}
         ${financeAlertHtml}
+        ${marketingOrdersHtml}
         <div class="flex justify-between items-center mb-6">
-            <h2 class="font-orbitron text-mars-yellow text-lg sm:text-xl uppercase tracking-tighter">Bóveda de Autorización y Finanzas</h2>
+            <h2 class="font-orbitron text-mars-yellow text-lg sm:text-xl uppercase tracking-tighter">Bóveda de Autorización de Compras I+D</h2>
         </div>
         
         <div class="space-y-6">
@@ -296,7 +182,7 @@ Object.assign(ui, {
                     
                     <div class="flex justify-between items-start mb-4 flex-wrap gap-2 mt-4">
                         <div><span class="text-[9px] font-bold uppercase ${order.status === 'EJECUTADO' ? 'text-mars-cyan bg-mars-cyan/10' : order.status === 'APROBADO_FINANZAS' ? 'text-mars-green bg-mars-green/10' : order.status === 'DENEGADO' ? 'text-mars-magenta bg-mars-magenta/10' : 'text-mars-yellow bg-mars-yellow/10'} px-2 py-1 tracking-widest">[STATUS: ${order.status}]</span><h3 class="text-white font-orbitron mt-3 uppercase text-xs sm:text-sm">ORDER_TX: ${order.id}</h3></div>
-                        <div class="text-left sm:text-right w-full sm:w-auto"><p class="text-mars-green font-black font-mono text-xl tracking-tighter">${order.total.toFixed(2)} €v</p><p class="text-[9px] text-slate-500 uppercase font-bold mt-1">${order.date}</p></div>
+                        <div class="text-left sm:text-right w-full sm:w-auto"><p class="text-mars-green font-black font-mono text-xl tracking-tighter">${Number(order.total).toFixed(2)} €v</p><p class="text-[9px] text-slate-500 uppercase font-bold mt-1">${order.date}</p></div>
                     </div>
                     
                     <div class="grid grid-cols-1 gap-4 mb-4">
@@ -317,102 +203,42 @@ Object.assign(ui, {
                     </div>` : ''}
                 </div>`;
             }).join('') || '<p class="text-slate-600 italic text-sm">No hay peticiones de I+D en el histórico.</p>'}
-        </div>
-        ${mktSection}
-        ${b2bSection}
-        `;
+        </div>`;
         el.appendChild(wrapper);
     },
 
-    approveV2Justification() {
+    approveMarketingOrder(mktId) {
         if (!state.user) return;
         const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
-        
-        co.fase1Registro.justificacionV2Status = 'APROBADA';
-        telemetry.log("AUDITORÍA V2.0", `Justificación de desviación aprobada por Finanzas.`);
-        ui.pushNotification(state.user.coId, 'TECNICO', `Tu justificación de desviación V2.0 ha sido APROBADA por Finanzas.`, 'success');
-        
+        if (!co || !co.marketingCampaigns) return;
+
+        const mkt = co.marketingCampaigns.find(m => String(m.id) === String(mktId));
+        if (!mkt) return alert("Campaña no localizada.");
+
+        const price = parseFloat(mkt.price);
+        if (co.balance < price) return alert(`Fondos insuficientes en caja para aprobar este paquete (${price} €v).`);
+
+        mkt.status = 'ACTIVO';
+        state.addToLedger(state.user.coId, `[PUBLICIDAD] Contratación ${mkt.packageName} (${mkt.title})`, 'FINANZAS', -price);
+
+        ui.pushNotification(state.user.coId, 'MARKETING', `¡Paquete publicitario ${mkt.packageName} aprobado por Finanzas! Ya puedes consumir tus acciones.`, 'success');
+        telemetry.log("MKT APROBADO", `Aprobado ${mkt.packageName} por ${price}€v`);
         state.save();
+        alert(`✅ Paquete ${mkt.packageName} aprobado y descontado del Ledger.`);
         this.render();
     },
 
-    promptDenyV2Justification() {
-        if (!state.user) return;
-        const html = `<input type="text" id="deny-v2-reason" class="w-full bg-black border border-mars-magenta p-3 text-xs text-white" placeholder="Motivo del rechazo...">`;
-        const btn = `<button onclick="ui.finalizeDenyV2Justification()" class="bg-mars-magenta text-white px-6 py-2 text-[10px] font-bold uppercase hover:bg-white hover:text-mars-magenta">Confirmar Denegación</button>`;
-        this.showModal("Denegar Justificación V2.0", html, btn);
-    },
-
-    finalizeDenyV2Justification() {
-        if (!state.user) return;
-        const reasonInput = document.getElementById('deny-v2-reason');
-        const reason = reasonInput ? reasonInput.value : '';
-        if(!reason) return alert("Especifique motivo.");
-        
-        const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
-        
-        co.fase1Registro.justificacionV2Status = 'DENEGADA';
-        co.fase1Registro.justificacionV2DenyReason = `[FINANZAS] ${reason}`;
-        
-        telemetry.log("AUDITORÍA V2.0", `Justificación DENEGADA - Motivo: ${reason}`);
-        ui.pushNotification(state.user.coId, 'TECNICO', `Tu justificación de desviación V2.0 ha sido DENEGADA. Revisa el motivo.`, 'error');
-        
-        state.save();
-        this.closeModal();
-        this.render();
-    },
-
-    approveMarketingPackage(id) {
+    denyMarketingOrder(mktId) {
         if (!state.user) return;
         const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
-        
-        const pkg = co.marketingPackages.find(p => p.id === id);
-        if(!pkg) return;
-        
-        if(co.balance < pkg.cost) return alert("Fondos insuficientes para aprobar este paquete.");
-        
-        pkg.status = 'APROBADO';
-        
-        const conceptStr = `Contrato Agencia: ${pkg.name}`;
-        state.addToLedger(state.user.coId, conceptStr, 'MARKETING', -pkg.cost);
-        
-        telemetry.log("APROBADO FINANZAS", `Paquete MKT ${id} validado. Coste: ${pkg.cost}€v`);
-        ui.pushNotification(state.user.coId, 'MARKETING', `Tu solicitud para el "${pkg.name}" ha sido APROBADA. Ya puedes publicar acciones.`, 'success');
-        
-        state.save();
-        this.render();
-    },
+        if (!co || !co.marketingCampaigns) return;
 
-    promptDenyMarketingPackage(id) {
-        if (!state.user) return;
-        const html = `<input type="text" id="deny-mkt-reason" class="w-full bg-black border border-mars-magenta p-3 text-xs text-white" placeholder="Motivo del rechazo...">`;
-        const btn = `<button onclick="ui.finalizeDenyMarketingPackage('${id}')" class="bg-mars-magenta text-white px-6 py-2 text-[10px] font-bold uppercase hover:bg-white hover:text-mars-magenta">Confirmar Denegación</button>`;
-        this.showModal("Denegar Paquete", html, btn);
-    },
+        const mkt = co.marketingCampaigns.find(m => String(m.id) === String(mktId));
+        if (!mkt) return;
 
-    finalizeDenyMarketingPackage(id) {
-        if (!state.user) return;
-        const reasonInput = document.getElementById('deny-mkt-reason');
-        const reason = reasonInput ? reasonInput.value : '';
-        if(!reason) return alert("Especifique motivo.");
-        
-        const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
-        
-        const pkg = co.marketingPackages.find(p => p.id === id);
-        if(!pkg) return;
-        
-        pkg.status = 'DENEGADA';
-        pkg.denyReason = `[FINANZAS] ${reason}`;
-        
-        telemetry.log("DENEGADO", `Paquete MKT ${id} - Motivo: ${reason}`);
-        ui.pushNotification(state.user.coId, 'MARKETING', `Tu solicitud para el "${pkg.name}" ha sido DENEGADA.`, 'error');
-        
+        mkt.status = 'DENEGADO';
+        ui.pushNotification(state.user.coId, 'MARKETING', `Tu solicitud del paquete ${mkt.packageName} ha sido denegada por Finanzas.`, 'error');
         state.save();
-        this.closeModal();
         this.render();
     },
 
@@ -431,7 +257,7 @@ Object.assign(ui, {
                     <input type="checkbox" id="approve-item-${idx}" class="form-checkbox bg-slate-900 border-mars-cyan" checked>
                     ${item.name} (x${item.qty})
                 </label>
-                <span class="text-mars-green font-mono text-[10px] shrink-0">${item.price.toFixed(2)} €v</span>
+                <span class="text-mars-green font-mono text-[10px] shrink-0">${Number(item.price).toFixed(2)} €v</span>
             </div>
         `).join('');
 
@@ -461,7 +287,7 @@ Object.assign(ui, {
             const cb = document.getElementById(`approve-item-${i}`);
             if(cb && cb.checked) {
                 approvedItems.push(order.items[i]);
-                newTotal += order.items[i].price;
+                newTotal += Number(order.items[i].price) || 0;
             }
         }
 
@@ -518,7 +344,6 @@ Object.assign(ui, {
         o.denyReason = `[${state.user.role}] ${reason}`;
         
         telemetry.log("DENEGADO", `Orden #${oid} - Motivo: ${reason}`);
-        
         ui.pushNotification(state.user.coId, 'TECNICO', `Orden #${oid} denegada por Finanzas.`, 'error');
         
         state.save(); 
@@ -537,36 +362,34 @@ Object.assign(ui, {
         co.realCosts = co.realCosts || [];
         co.orders = co.orders || [];
         co.ledger = co.ledger || [];
-        co.marketingPackages = co.marketingPackages || []; // REGLA 1
         
-        const totalReal = co.realCosts.reduce((s, i) => s + i.eur, 0);
         const wrapper = document.createElement('div');
         
         let pendingOrdersHtml = '';
         const pendingOrders = co.orders.filter(o => o.status === 'PENDIENTE_FINANZAS');
-        const pendingMkt = co.marketingPackages.filter(p => p.status === 'PENDIENTE_FINANZAS');
+        const pendingMkt = (co.marketingCampaigns || []).filter(m => m.status === 'PENDIENTE_FINANZAS');
         
         if ((pendingOrders.length > 0 || pendingMkt.length > 0) && state.user.role.includes('FINAN')) {
             pendingOrdersHtml = `
             <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow mb-8 animate-in fade-in">
-                <h3 class="font-orbitron text-mars-yellow text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Órdenes Pendientes de Aprobación</h3>
+                <h3 class="font-orbitron text-mars-yellow text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Solicitudes Pendientes de Auditoría Presupuestaria</h3>
                 <div class="space-y-3">
                     ${pendingOrders.map(po => `
                         <div class="bg-slate-900 border border-mars-yellow/50 p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div>
                                 <p class="text-white font-bold uppercase text-xs">Orden I+D #${po.id}</p>
-                                <p class="text-[10px] text-slate-400 mt-1">Total: <span class="text-mars-green font-mono">${po.total.toFixed(2)} €v</span></p>
+                                <p class="text-[10px] text-slate-400 mt-1">Total: <span class="text-mars-green font-mono">${Number(po.total).toFixed(2)} €v</span></p>
                             </div>
-                            <button onclick="ui.navigate('orders')" class="bg-mars-yellow text-black px-4 py-2 text-[10px] font-black uppercase hover:bg-white transition-colors whitespace-nowrap">Revisar y Aprobar</button>
+                            <button onclick="ui.navigate('orders')" class="bg-mars-yellow text-black px-4 py-2 text-[10px] font-black uppercase hover:bg-white transition-colors whitespace-nowrap">Revisar Órdenes I+D</button>
                         </div>
                     `).join('')}
                     ${pendingMkt.map(pm => `
-                        <div class="bg-slate-900 border border-mars-magenta/50 p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div class="bg-slate-900 border border-mars-yellow/50 p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div>
-                                <p class="text-white font-bold uppercase text-xs">Paquete MKT: ${pm.name}</p>
-                                <p class="text-[10px] text-slate-400 mt-1">Acciones: ${pm.totalActions} | Total: <span class="text-mars-magenta font-mono">${pm.cost.toFixed(2)} €v</span></p>
+                                <p class="text-white font-bold uppercase text-xs">Campaña Marketing: ${pm.packageName}</p>
+                                <p class="text-[10px] text-slate-400 mt-1">Coste: <span class="text-mars-green font-mono">${Number(pm.price).toFixed(2)} €v</span></p>
                             </div>
-                            <button onclick="ui.navigate('orders')" class="bg-mars-magenta text-white px-4 py-2 text-[10px] font-black uppercase hover:bg-white hover:text-mars-magenta transition-colors whitespace-nowrap">Revisar y Aprobar</button>
+                            <button onclick="ui.navigate('orders')" class="bg-mars-yellow text-black px-4 py-2 text-[10px] font-black uppercase hover:bg-white transition-colors whitespace-nowrap">Revisar Campañas MKT</button>
                         </div>
                     `).join('')}
                 </div>
@@ -587,7 +410,7 @@ Object.assign(ui, {
             if (executedOrders.length > 0) {
                 executedOrdersHtml = `
                 <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden mt-6">
-                    <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Historial de Órdenes Ejecutadas</h3>
+                    <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Historial de Órdenes de I+D Ejecutadas</h3>
                     <div class="space-y-4 max-h-[400px] overflow-y-auto pr-2">
                         ${executedOrders.map(eo => `
                         <div class="bg-black/50 border border-mars-border/50 p-3">
@@ -596,14 +419,14 @@ Object.assign(ui, {
                                 <span class="text-[8px] text-slate-500">${eo.date}</span>
                             </div>
                             <div class="flex justify-between text-[9px] mb-2">
-                                <span class="text-mars-green">Virtual: ${eo.total.toFixed(2)} €v</span>
+                                <span class="text-mars-green">Virtual: ${Number(eo.total).toFixed(2)} €v</span>
                             </div>
                             <div class="text-[8px] text-slate-400 space-y-1">
-                                ${eo.items.map(i => `
+                                ${(eo.items || []).map(i => `
                                 <div class="flex justify-between border-b border-slate-800/50 py-1">
                                     <span class="truncate pr-2">- ${i.name} (x${i.qty})</span>
                                     <div class="flex gap-3 text-right shrink-0">
-                                        <span class="text-mars-cyan">${i.price.toFixed(2)} €v</span>
+                                        <span class="text-mars-cyan">${Number(i.price).toFixed(2)} €v</span>
                                     </div>
                                 </div>`).join('')}
                             </div>
@@ -638,57 +461,22 @@ Object.assign(ui, {
             </div>`;
         }
 
-        // FASE 4 v1.0.13: Sección de Contratos B2B en Finanzas
-        let b2bSection = '';
-        const myB2B = (state.data.b2bContracts || []).filter(c => c.buyerCoId === state.user.coId || c.sellerCoId === state.user.coId);
-        if (myB2B.length > 0 && (state.user.role === 'CEO' || state.user.role.includes('FINAN'))) {
-            b2bSection = `
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden mt-6 border-t-4 border-t-mars-cyan">
-                <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Aduana: Contratos B2B</h3>
-                <div class="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                    ${myB2B.map(c => {
-                        const isBuyer = c.buyerCoId === state.user.coId;
-                        const roleText = isBuyer ? 'COMPRADOR' : 'VENDEDOR';
-                        const otherParty = isBuyer ? c.sellerName : c.buyerName;
-                        
-                        return `
-                        <div class="bg-black/50 border ${c.status === 'APROBADO' ? 'border-mars-green/50' : c.status === 'DENEGADO' ? 'border-mars-magenta/50' : 'border-mars-cyan/50'} p-3">
-                            <div class="flex justify-between items-center border-b border-mars-border/30 pb-2 mb-2">
-                                <span class="text-white font-bold text-[10px] uppercase">B2B_TX: ${c.id}</span>
-                                <span class="text-[8px] text-slate-500">${c.date}</span>
-                            </div>
-                            <div class="flex justify-between text-[9px] mb-2">
-                                <span class="text-slate-400">Rol: <strong class="${isBuyer ? 'text-mars-magenta' : 'text-mars-green'}">${roleText}</strong></span>
-                                <span class="${isBuyer ? 'text-mars-magenta' : 'text-mars-green'} font-bold">${isBuyer ? '-' : '+'}${c.price.toFixed(2)} €v</span>
-                            </div>
-                            <p class="text-[10px] text-white mb-2">${c.itemName}</p>
-                            <p class="text-[8px] text-slate-400 italic mb-2">Contraparte: ${otherParty}</p>
-                            <div class="text-right">
-                                <span class="text-[9px] font-bold uppercase ${c.status === 'APROBADO' ? 'text-mars-green' : c.status === 'DENEGADO' ? 'text-mars-magenta' : 'text-mars-cyan'}">[STATUS: ${c.status}]</span>
-                            </div>
-                        </div>`;
-                    }).join('')}
-                </div>
-            </div>`;
-        }
-
         let financeDetails = `
         <div class="grid grid-cols-1 gap-6 sm:gap-8">
             <div class="flex flex-col gap-6 w-full overflow-hidden">
                 <div class="terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden">
-                    <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Ledger Histórico inmutable</h3>
+                    <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Ledger Histórico Inmutable</h3>
                     <div class="overflow-x-auto w-full">
                         <div class="overflow-y-auto max-h-[400px] text-[10px] pr-2 min-w-[300px]">
                             ${co.ledger.map(l => `
                             <div class="border-b border-mars-border/30 py-3 flex justify-between gap-4">
-                                <div class="flex-1"><p class="text-white font-bold leading-tight">${l.concept}</p><p class="text-[8px] text-slate-500 uppercase mt-1">${l.id} | ${l.date}</p></div>
-                                <div class="text-right shrink-0"><p class="font-mono font-bold text-sm ${l.delta > 0 ? 'text-mars-green' : 'text-mars-magenta'}">${l.delta > 0 ? '+' : ''}${l.delta.toFixed(2)}</p><p class="text-slate-500 text-[8px]">Bal: ${l.final.toFixed(2)}</p></div>
+                                <div class="flex-1"><p class="text-white font-bold leading-tight">${l.concept}</p><p class="text-[8px] text-slate-500 uppercase mt-1">${l.id} \vert{}${l.date}</p></div>
+                                <div class="text-right shrink-0"><p class="font-mono font-bold text-sm ${l.delta > 0 ? 'text-mars-green' : 'text-mars-magenta'}">${l.delta > 0 ? '+' : ''}${Number(l.delta).toFixed(2)}</p><p class="text-slate-500 text-[8px]">Bal: ${Number(l.final).toFixed(2)}</p></div>
                             </div>`).join('') || '<p class="text-slate-600 italic">Registro inmutable vacío.</p>'}
                         </div>
                     </div>
                 </div>
                 ${executedOrdersHtml}
-                ${b2bSection}
                 ${sanctionsHtml}
             </div>
         </div>`;
@@ -698,7 +486,13 @@ Object.assign(ui, {
         
         ${isFinanzas ? `
         <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan mb-8">
-            ${this.renderHybridUploadBox('Libro de Cuentas y Balances (Excel/PDF/URL)', 'Entregable oficial para el área de Economía con el ROI y Ledger detallado.', 'financeBook', docs.financeBook)}
+            <h3 class="font-orbitron text-mars-cyan text-sm mb-2 uppercase">Entregables de Economía (10% Global)</h3>
+            <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Sube los cuatro documentos contables obligatorios para la evaluación de Economía.</p>
+            <div class="space-y-4">
+                ${this.renderHybridUploadBox('1. Presupuesto Inicial (20% ECO)', 'Estimación inicial de costes teóricos y liquidez de partida.', 'budgetInitial', docs.budgetInitial)}
+                ${this.renderHybridUploadBox('2. Cuenta de Resultados (20% ECO)', 'Ingresos, gastos acumulados y margen analítico del proyecto.', 'incomeStatement', docs.incomeStatement)}
+                ${this.renderHybridUploadBox('3. Presupuesto Post-Prototipo (20\% ECO)', 'Ajustes presupuestarios tras las pruebas reales de vuelo y V2.0.', 'budgetPostProto', docs.budgetPostProto)}${this.renderHybridUploadBox('4. Balance de Situación Simplificado (20% ECO)', 'Cuadre final de activos, pasivos y patrimonio neto corporativo.', 'balanceSheet', docs.balanceSheet)}
+            </div>
         </div>` : ''}
 
         ${pendingOrdersHtml}

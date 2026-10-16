@@ -1,289 +1,177 @@
 // js/ui-empresa-tech.js
-// --- MÓDULO I+D: FASE I, FASE II, MATEMÁTICAS E INVENTARIO B2B ---
+// --- MÓDULO I+D: BANCO DE PRUEBAS, BOM, MATEMÁTICAS E INVENTARIO B2B ---
 
 Object.assign(ui, {
-    techTab: 'fase1',
-
-    showTechTab(tab) {
-        this.techTab = tab;
+    setTechDocTab(tab) {
+        this.techDocTab = tab;
         this.render();
     },
 
     viewTech(el) {
-        if (!el || !state.user) return; // REGLA 2 y 3
+        if (!el || !state.user) return;
         const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout(); // REGLA 4
+        if (!co) return auth.logout();
         
         const docs = co.deliverables || {};
-        co.fase1Registro = co.fase1Registro || { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' };
         co.bom = co.bom || [];
         co.flightTests = co.flightTests || [];
         co.orders = co.orders || [];
-        co.inventory = co.inventory || []; // FASE 2 v1.0.13: Inventario
         
+        const activeDocTab = this.techDocTab || 'FYQ';
         const wrapper = document.createElement('div');
         
-        // Navegación de Sub-Pestañas
-        let tabsHtml = `
-        <div class="flex flex-wrap gap-2 mb-6 border-b border-mars-border pb-2">
-            <button onclick="ui.showTechTab('fase1')" class="px-4 py-2 text-[10px] font-bold uppercase ${this.techTab==='fase1'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">Fase I: Diseño Teórico</button>
-            <button onclick="ui.showTechTab('fase2')" class="px-4 py-2 text-[10px] font-bold uppercase ${this.techTab==='fase2'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">Fase II: Pruebas y V2.0</button>
-            <button onclick="ui.showTechTab('math')" class="px-4 py-2 text-[10px] font-bold uppercase ${this.techTab==='math'?'bg-mars-yellow text-black':'text-slate-400 hover:text-white'} transition-colors">Matemáticas</button>
-            <button onclick="ui.showTechTab('inventory')" class="px-4 py-2 text-[10px] font-bold uppercase ${this.techTab==='inventory'?'bg-mars-green text-black':'text-slate-400 hover:text-white'} transition-colors shadow-[0_0_10px_rgba(0,255,102,0.2)]">Inventario y B2B</button>
-        </div>`;
+        let ftHtml = co.flightTests.map(f => `
+            <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
+                <td class="py-2 text-slate-400 pr-2">${f.date}</td>
+                <td class="py-2 font-bold text-white pr-2">${f.bottle}</td>
+                <td class="py-2 text-mars-cyan pr-2">${f.naHCO3}g / ${f.vinegar}ml</td>
+                <td class="py-2 font-mono text-mars-magenta pr-2">${Number(f.costEurV).toFixed(2)}</td>
+                <td class="py-2 font-mono text-mars-green font-bold text-base pr-2">${Number(f.heightM).toFixed(1)}</td>
+                <td class="py-2 font-orbitron text-mars-yellow font-black">${Number(f.efficiency).toFixed(3)}</td>
+            </tr>
+        `).join('') || `<tr><td colspan="6" class="text-center py-4 text-slate-600 italic text-xs">No hay ensayos registrados.</td></tr>`;
 
-        let contentHtml = '';
-
-        if (this.techTab === 'fase1') {
-            contentHtml = `
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan">
-                    <h2 class="font-orbitron text-mars-cyan text-lg mb-4 uppercase tracking-tighter">Hoja de Registro Preliminar</h2>
-                    <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Define la hipótesis científica de tu cohete antes de realizar ninguna compra o lanzamiento real.</p>
-                    
-                    <div class="space-y-4 mb-6">
-                        <div>
-                            <label class="text-[9px] text-mars-cyan uppercase font-bold block mb-1">Presupuesto Teórico Estimado (€v)</label>
-                            <input type="number" id="fase1-presupuesto" value="${co.fase1Registro.presupuestoTeorico}" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white outline-none focus:border-mars-cyan" placeholder="Ej: 350.50">
-                        </div>
-                        <div>
-                            <label class="text-[9px] text-mars-cyan uppercase font-bold block mb-1">Altura Estimada (Metros)</label>
-                            <input type="number" id="fase1-altura" value="${co.fase1Registro.alturaEstimada}" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white outline-none focus:border-mars-cyan" placeholder="Ej: 15.5">
-                        </div>
-                        <button onclick="ui.saveFase1Registro()" class="w-full bg-mars-cyan text-black font-black py-3 text-[10px] uppercase tracking-widest hover:shadow-[0_0_10px_#00f0ff] transition-shadow mt-2">Guardar Hipótesis</button>
-                    </div>
-                    
-                    <div class="border-t border-mars-border/50 pt-6 mt-2">
-                        ${this.renderHybridUploadBox('Informe Preliminar (FYQ)', 'Documento inicial con la hipótesis, presupuesto y diseño teórico.', 'informePreliminar', docs.informePreliminar)}
-                    </div>
-                </div>
-                
-                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-magenta">
-                    <h2 class="font-orbitron text-mars-magenta text-lg mb-4 uppercase tracking-tighter">Evidencias Visuales (Pre-Vuelo)</h2>
-                    <div class="space-y-6">
-                        ${this.renderHybridUploadBox('Boceto / Diseño Conceptual', 'Sube el plano o esquema de tu cohete.', 'boceto', docs.boceto)}
-                        ${this.renderHybridUploadBox('Foto Prototipo Físico (Sin Combustible)', 'Sube una foto real del cohete montado antes de la prueba.', 'fotoPrototipo', docs.fotoPrototipo)}
-                    </div>
-                </div>
-            </div>`;
-        } 
-        else if (this.techTab === 'fase2') {
-            let ftHtml = co.flightTests.map(f => `
-                <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
-                    <td class="py-2 text-slate-400">${f.date}</td>
-                    <td class="py-2 font-bold text-white">${f.bottle}</td>
-                    <td class="py-2 text-mars-cyan">${f.naHCO3}g / ${f.vinegar}ml</td>
-                    <td class="py-2 font-mono text-mars-magenta">${f.costEurV.toFixed(2)}</td>
-                    <td class="py-2 font-mono text-mars-green font-bold text-base">${f.heightM.toFixed(1)}</td>
-                    <td class="py-2 font-orbitron text-mars-yellow font-black">${f.efficiency.toFixed(3)}</td>
-                </tr>
-            `).join('') || `<tr><td colspan="6" class="text-center py-4 text-slate-600 italic text-xs">No hay ensayos registrados.</td></tr>`;
-
-            let executedItems = [];
-            co.orders.filter(o => o.status === 'EJECUTADO').forEach(o => {
-                o.items.forEach(item => { executedItems.push({ ...item, orderId: o.id }); });
+        // Recopilación de inventario físico (órdenes ejecutadas)
+        let executedItems = [];
+        co.orders.filter(o => o.status === 'EJECUTADO').forEach(o => {
+            (o.items || []).forEach((item, idx) => {
+                executedItems.push({ ...item, orderId: o.id, itemIdx: idx, itemKey: `${o.id}-${idx}` });
             });
+        });
 
-            let bomTotal = 0;
-            let bomHtml = '';
-            if (executedItems.length === 0) {
-                bomHtml = `<p class="text-slate-500 italic text-xs">No hay componentes adquiridos y ejecutados para configurar el BOM.</p>`;
-            } else {
-                bomHtml = executedItems.map((item, idx) => {
-                    const isChecked = co.bom.includes(`${item.orderId}-${idx}`);
-                    if (isChecked) bomTotal += item.price;
-                    return `
-                    <div class="flex justify-between items-center bg-slate-900 p-2 border border-mars-border text-[10px] mb-1">
-                        <label class="flex items-center gap-2 text-white cursor-pointer flex-grow">
-                            <input type="checkbox" class="form-checkbox bg-black border-mars-cyan" ${isChecked ? 'checked' : ''} onchange="ui.toggleBomItem('${item.orderId}-${idx}', this.checked)">
-                            ${item.name} (x${item.qty})
-                        </label>
-                        <span class="text-mars-green font-mono">${item.price.toFixed(2)} €v</span>
-                    </div>`;
-                }).join('');
-            }
+        let bomTotal = 0;
+        let bomHtml = '';
 
-            const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + o.total, 0);
-            
-            const presTeorico = parseFloat(co.fase1Registro.presupuestoTeorico) || 0;
-            const altTeorica = parseFloat(co.fase1Registro.alturaEstimada) || 0;
-            const bestFlight = co.flightTests.length > 0 ? [...co.flightTests].sort((a, b) => b.heightM - a.heightM)[0] : null;
-            const altReal = bestFlight ? bestFlight.heightM : 0;
-            
-            const isCostDeviation = totalDevCost > presTeorico && presTeorico > 0;
-            const isHeightDeviation = altReal < altTeorica && altTeorica > 0 && altReal > 0;
-            const needsV2 = isCostDeviation || isHeightDeviation;
-
-            contentHtml = `
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-1 space-y-6">
-                    <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-magenta">
-                        <h2 class="font-orbitron text-mars-magenta text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Configurador de Prototipo (BOM)</h2>
-                        <p class="text-[9px] text-slate-400 mb-4 uppercase leading-relaxed">Selecciona los componentes del histórico de compras que forman parte del cohete definitivo.</p>
-                        <div class="flex justify-between items-center mb-4 bg-black p-3 border border-mars-border">
-                            <div class="text-center">
-                                <p class="text-[8px] text-slate-500 uppercase font-bold">Coste Desarrollo</p>
-                                <p class="text-mars-cyan font-mono font-bold">${totalDevCost.toFixed(2)} €v</p>
-                            </div>
-                            <div class="text-center">
-                                <p class="text-[8px] text-slate-500 uppercase font-bold">Coste Prototipo (BOM)</p>
-                                <p class="text-mars-green font-mono font-bold text-lg">${bomTotal.toFixed(2)} €v</p>
-                            </div>
-                        </div>
-                        <div class="max-h-48 overflow-y-auto pr-2">
-                            ${bomHtml}
-                        </div>
-                    </div>
-
-                    <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan">
-                        <h2 class="font-orbitron text-mars-cyan text-lg mb-2 uppercase tracking-tighter">Informe Técnico Final</h2>
-                        ${state.data.config.guidelines.techReportNotes ? `<p class="text-[10px] text-mars-yellow mb-3 italic">Info: ${state.data.config.guidelines.techReportNotes}</p>` : ''}
-                        ${state.data.config.guidelines.techReportDocUrl ? `<a href="${state.data.config.guidelines.techReportDocUrl}" target="_blank" class="block text-center border border-mars-cyan text-mars-cyan text-[10px] py-2 mb-4 font-bold uppercase hover:bg-mars-cyan hover:text-black">Descargar Guía Oficial FYQ</a>` : ''}
-                        ${this.renderHybridUploadBox('Informe Técnico Oficial (PDF/Enlace)', 'Documento con cálculos estequiométricos y diseño aerodinámico.', 'technicalReport', docs.technicalReport)}
-                    </div>
-                </div>
+        if (executedItems.length === 0) {
+            bomHtml = `<p class="text-slate-500 italic text-xs">No hay componentes adquiridos y ejecutados físicamente en inventario.</p>`;
+        } else {
+            bomHtml = executedItems.map(item => {
+                const isSold = item.b2bStatus === 'VENDIDO';
+                const isListed = item.b2bStatus === 'EN_VENTA';
+                const isChecked = !isSold && !isListed && co.bom.includes(item.itemKey);
                 
-                <div class="lg:col-span-2 space-y-6">
-                    <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow">
-                        <h2 class="font-orbitron text-mars-yellow text-lg mb-4 uppercase tracking-tighter">Banco de Pruebas de Vuelo</h2>
-                        <div class="bg-black border border-mars-border p-4 mb-6 grid grid-cols-2 md:grid-cols-3 gap-4 text-[10px]">
-                            <input type="text" id="ft-bottle" placeholder="Botella usada (Ej: 1.5L Lisa)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-yellow w-full">
-                            <input type="number" id="ft-nahco3" placeholder="NaHCO3 (g)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-cyan w-full" step="0.1">
-                            <input type="number" id="ft-vinegar" placeholder="Vinagre (ml)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-cyan w-full" step="1">
-                            <input type="number" id="ft-cost" placeholder="Coste Ensayo (€v)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-magenta w-full" step="0.1">
-                            <input type="number" id="ft-height" placeholder="Altura H (metros)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-green font-bold w-full" step="0.1">
-                            <button onclick="ui.submitFlightTest()" class="bg-mars-yellow text-black font-black uppercase tracking-widest hover:shadow-[0_0_10px_#ffe600] transition-all py-2 w-full">Registrar Vuelo</button>
-                        </div>
-                        <div class="overflow-x-auto w-full">
-                            <table class="w-full text-left text-[10px] whitespace-nowrap min-w-max">
-                                <thead class="text-slate-500 uppercase border-b border-mars-border">
-                                    <tr><th class="py-2">Fecha</th><th>Fuselaje</th><th>Mix (Sól/Líq)</th><th>Coste (€v)</th><th>H (m)</th><th class="text-mars-yellow">E = H/C</th></tr>
-                                </thead>
-                                <tbody>${ftHtml}</tbody>
-                            </table>
-                        </div>
-                    </div>
+                if (isChecked) bomTotal += Number(item.price) || 0;
 
-                    <div class="terminal-border bg-mars-card p-6 border-t-4 ${needsV2 ? 'border-t-mars-magenta' : 'border-t-mars-green'}">
-                        <h2 class="font-orbitron ${needsV2 ? 'text-mars-magenta' : 'text-mars-green'} text-lg mb-4 uppercase tracking-tighter">Auditoría: Teoría vs Práctica</h2>
-                        <div class="grid grid-cols-2 gap-4 mb-4">
-                            <div class="bg-black p-3 border ${isCostDeviation ? 'border-mars-magenta' : 'border-mars-border'}">
-                                <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Presupuesto: Teórico vs Real</p>
-                                <p class="text-sm font-mono ${isCostDeviation ? 'text-mars-magenta' : 'text-white'}">${presTeorico.toFixed(2)} €v <span class="text-slate-500">vs</span> ${totalDevCost.toFixed(2)} €v</p>
-                            </div>
-                            <div class="bg-black p-3 border ${isHeightDeviation ? 'border-mars-magenta' : 'border-mars-border'}">
-                                <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Altura: Estimada vs Real</p>
-                                <p class="text-sm font-mono ${isHeightDeviation ? 'text-mars-magenta' : 'text-white'}">${altTeorica.toFixed(1)} m <span class="text-slate-500">vs</span> ${altReal.toFixed(1)} m</p>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-slate-900 p-4 border ${needsV2 ? 'border-mars-magenta' : 'border-mars-border'}">
-                            <p class="text-[10px] ${needsV2 ? 'text-mars-magenta font-bold' : 'text-mars-cyan'} uppercase mb-2">
-                                ${needsV2 ? '⚠️ DESVIACIÓN DETECTADA: Justificación de Nuevo Diseño (V2.0) Obligatoria.' : 'Análisis de Resultados y Mejoras (Opcional)'}
-                            </p>
-                            <textarea id="fase2-justificacion" class="w-full bg-black border ${needsV2 ? 'border-mars-magenta' : 'border-mars-border'} p-3 text-xs text-white h-24 outline-none focus:border-mars-cyan mb-3" placeholder="Explica por qué los datos reales no coinciden con la hipótesis y qué cambios de diseño o presupuesto se van a aplicar...">${co.fase1Registro.justificacionV2 || ''}</textarea>
-                            <button onclick="ui.saveJustificacionV2()" class="${needsV2 ? 'bg-mars-magenta text-white' : 'bg-mars-cyan text-black'} font-black py-2 px-6 text-[10px] uppercase tracking-widest hover:opacity-80 transition-opacity">Guardar Análisis V2.0</button>
-                        </div>
-                    </div>
-                </div>
-            </div>`;
-        }
-        else if (this.techTab === 'math') {
-            contentHtml = `
-            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow">
-                <h2 class="font-orbitron text-mars-yellow text-lg mb-4 uppercase tracking-tighter">Laboratorio de Matemáticas (Trigonometría)</h2>
-                <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Sube aquí las evidencias de la fabricación del goniómetro y los informes de cálculo de altura mediante trigonometría.</p>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    ${this.renderHybridUploadBox('1. Fabricación del Goniómetro', 'Evidencia de la construcción del instrumento de medición.', 'mathGoniometro', docs.mathGoniometro)}
-                    ${this.renderHybridUploadBox('2. Informe Medición Simple', 'Datos empíricos con distancia conocida desde la base.', 'mathMedicion1', docs.mathMedicion1)}
-                    ${this.renderHybridUploadBox('3. Informe Doble Medición', 'Datos empíricos con dos mediciones a distancia de separación conocida.', 'mathMedicion2', docs.mathMedicion2)}
-                    ${this.renderHybridUploadBox('4. Informe Comparativo Final', 'Comparación de resultados y análisis de coherencia.', 'mathComparativa', docs.mathComparativa)}
-                </div>
-            </div>`;
-        }
-        // FASE 2 v1.0.13: Inventario y Mercado B2B
-        else if (this.techTab === 'inventory') {
-            let invHtml = co.inventory.map(item => {
-                let actions = '';
-                if (item.status === 'AVAILABLE') {
-                    actions = `
-                    <div class="flex gap-2 mt-3">
-                        <button onclick="ui.modalSellItem('${item.id}')" class="flex-1 bg-mars-cyan/20 border border-mars-cyan text-mars-cyan py-1.5 text-[9px] font-bold uppercase hover:bg-mars-cyan hover:text-black transition-colors">Vender B2B</button>
-                        ${!item.warrantyClaimed ? `<button onclick="ui.requestWarranty('${item.id}')" class="flex-1 bg-mars-yellow/20 border border-mars-yellow text-mars-yellow py-1.5 text-[9px] font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors">Garantía</button>` : `<span class="flex-1 text-center text-[8px] text-slate-500 border border-slate-700 py-1.5 uppercase">Garantía Usada</span>`}
-                    </div>`;
-                } else if (item.status === 'ON_SALE') {
-                    actions = `
-                    <div class="mt-3 bg-mars-magenta/10 border border-mars-magenta p-2 text-center">
-                        <p class="text-[9px] text-mars-magenta font-bold uppercase mb-2">En venta por ${item.salePrice} €v</p>
-                        <button onclick="ui.cancelSellItem('${item.id}')" class="w-full bg-mars-magenta text-white py-1 text-[9px] font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Cancelar Venta</button>
-                    </div>`;
-                } else if (item.status === 'SOLD') {
-                    actions = `<div class="mt-3 text-center border border-slate-700 py-1.5"><span class="text-[9px] text-slate-500 font-bold uppercase">Vendido / Traspasado</span></div>`;
+                let statusAction = '';
+                if (isSold) {
+                    statusAction = `<span class="text-[8px] bg-slate-800 text-slate-500 px-2 py-0.5 font-bold uppercase border border-slate-700">TRASPASADO B2B</span>`;
+                } else if (isListed) {
+                    statusAction = `<span class="text-[8px] bg-mars-yellow/20 text-mars-yellow px-2 py-0.5 font-bold uppercase border border-mars-yellow animate-pulse">EN OFERTA B2B</span>`;
+                } else {
+                    statusAction = `<button onclick="ui.modalSellB2B('${item.orderId}', ${item.itemIdx})" class="bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-2 py-0.5 text-[8px] font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors whitespace-nowrap" title="Poner en venta en el mercado secundario">[VENDER B2B]</button>`;
                 }
 
                 return `
-                <div class="bg-black border ${item.status === 'ON_SALE' ? 'border-mars-magenta' : 'border-mars-border'} p-4 flex flex-col justify-between">
-                    <div>
-                        <div class="flex justify-between items-start mb-2">
-                            <span class="text-[8px] text-slate-500 uppercase font-bold tracking-widest">${item.category}</span>
-                            <span class="text-[8px] text-slate-600">${item.id}</span>
-                        </div>
-                        <h3 class="font-orbitron text-white text-[11px] mb-1 leading-tight uppercase">${item.name}</h3>
-                        <p class="text-[8px] text-slate-400 uppercase">Adquirido: ${item.purchaseDate}</p>
+                <div class="flex justify-between items-center bg-slate-900 p-2 border ${isSold ? 'border-slate-800 opacity-50' : (isListed ? 'border-mars-yellow/50' : 'border-mars-border')} text-[10px] mb-1.5 gap-2">
+                    <label class="flex items-center gap-2 text-white ${isSold || isListed ? 'cursor-not-allowed line-through text-slate-500' : 'cursor-pointer'} flex-grow overflow-hidden">
+                        <input type="checkbox" class="form-checkbox bg-black border-mars-cyan shrink-0" ${isChecked ? 'checked' : ''} ${isSold || isListed ? 'disabled' : ''} onchange="ui.toggleBomItem('${item.itemKey}', this.checked)">
+                        <span class="truncate">${item.name} (x${item.qty})</span>
+                    </label>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="text-mars-green font-mono">${Number(item.price).toFixed(2)} €v</span>
+                        ${statusAction}
                     </div>
-                    ${actions}
-                </div>`;
-            }).join('') || '<p class="text-slate-500 italic text-xs col-span-full">El inventario físico está vacío. Ejecuta compras en Logística.</p>';
-
-            contentHtml = `
-            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-green">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="font-orbitron text-mars-green text-lg uppercase tracking-tighter">Inventario Corporativo Físico</h2>
-                    <span class="bg-mars-green/10 text-mars-green border border-mars-green px-3 py-1 font-bold text-[10px]">${co.inventory.filter(i => i.status !== 'SOLD').length} Activos</span>
                 </div>
-                <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Gestiona los componentes físicos de tu empresa. Puedes solicitar reposiciones por rotura (Garantía) o vender piezas que ya no necesites a otras startups en el Mercado B2B.</p>
-                
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    ${invHtml}
-                </div>
-            </div>`;
+                `;
+            }).join('');
         }
 
-        wrapper.innerHTML = tabsHtml + contentHtml;
+        const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+
+        // Contenido dinámico de Documentación (FYQ vs MAT)
+        let docSectionContent = '';
+        if (activeDocTab === 'FYQ') {
+            docSectionContent = `
+                <div class="mb-3">
+                    <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan text-[8px] font-black px-2 py-0.5 uppercase">Peso en Proyecto: 25% Global</span>
+                </div>
+                ${state.data.config.guidelines.techReportNotes ? `<p class="text-[10px] text-mars-yellow mb-3 italic">Info: ${state.data.config.guidelines.techReportNotes}</p>` : ''}
+                ${state.data.config.guidelines.techReportDocUrl ? `<a href="${state.data.config.guidelines.techReportDocUrl}" target="_blank" class="block text-center border border-mars-cyan text-mars-cyan text-[10px] py-2 mb-4 font-bold uppercase hover:bg-mars-cyan hover:text-black transition-colors">Descargar Guía Oficial FYQ</a>` : ''}
+                
+                ${this.renderHybridUploadBox('1. Hoja de Registro Preliminar (Fase I)', 'Presupuesto teórico, materiales del catálogo, altura estimada, boceto y foto del prototipo montado sin combustible.', 'preliminaryReport', docs.preliminaryReport)}
+                ${this.renderHybridUploadBox('2. Informe Técnico Exhaustivo (Fase II - 50% FYQ)', 'Marco químico estequiométrico, análisis físico-aerodinámico, balance definitivo y análisis de fallos V2.0.', 'technicalReport', docs.technicalReport)}
+            `;
+        } else {
+            docSectionContent = `
+                <div class="mb-3">
+                    <span class="bg-mars-yellow/10 border border-mars-yellow text-mars-yellow text-[8px] font-black px-2 py-0.5 uppercase">Peso en Proyecto: 5% Global (25% cada criterio)</span>
+                </div>
+                <p class="text-[9px] text-slate-400 mb-4 uppercase leading-relaxed">Entregables trigonométricos y constructivos para el departamento de Matemáticas.</p>
+                
+                ${this.renderHybridUploadBox('1. Elaboración de Goniómetro/s (25% MAT)', 'Fotografías, diseño constructivo y calibración del goniómetro o clinómetro casero.', 'goniometerEvidence', docs.goniometerEvidence)}
+                ${this.renderHybridUploadBox('2. Informe Empírico: Distancia Conocida (25% MAT)', 'Cálculo trigonométrico de apogeo con datos objetivos desde una distancia conocida a la base.', 'mathReportDist', docs.mathReportDist)}
+                ${this.renderHybridUploadBox('3. Informe Empírico: Dos Mediciones (25% MAT)', 'Cálculo de altitud mediante sistema de dos mediciones tomadas a una distancia de separación conocida.', 'mathReportTwoPoints', docs.mathReportTwoPoints)}
+                ${this.renderHybridUploadBox('4. Informe Técnico Final Comparativo (25% MAT)', 'Análisis de coherencia comparando resultados anteriores y parámetros adicionales.', 'mathReportFinal', docs.mathReportFinal)}
+            `;
+        }
+
+        wrapper.innerHTML = `
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Columna Izquierda: Entregables FYQ y MAT -->
+            <div class="lg:col-span-5 space-y-6">
+                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan">
+                    <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-3 flex-wrap gap-2">
+                        <h2 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter">Entregables Científicos</h2>
+                        <div class="flex gap-1 bg-black p-1 border border-mars-border">
+                            <button onclick="ui.setTechDocTab('FYQ')" class="px-3 py-1 text-[9px] font-bold uppercase transition-colors ${activeDocTab === 'FYQ' ? 'bg-mars-cyan text-black' : 'text-slate-400 hover:text-white'}">Física y Química</button>
+                            <button onclick="ui.setTechDocTab('MAT')" class="px-3 py-1 text-[9px] font-bold uppercase transition-colors ${activeDocTab === 'MAT' ? 'bg-mars-yellow text-black' : 'text-slate-400 hover:text-white'}">Matemáticas</button>
+                        </div>
+                    </div>
+                    <div class="max-h-[560px] overflow-y-auto pr-2">
+                        ${docSectionContent}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Banco de Pruebas e Inventario Físico / BOM -->
+            <div class="lg:col-span-7 space-y-6">
+                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow">
+                    <h2 class="font-orbitron text-mars-yellow text-base sm:text-lg mb-4 uppercase tracking-tighter">Banco de Pruebas de Vuelo (Fase II)</h2>
+                    <div class="bg-black border border-mars-border p-4 mb-6 grid grid-cols-2 md:grid-cols-3 gap-3 text-[10px]">
+                        <input type="text" id="ft-bottle" placeholder="Botella usada (Ej: 1.5L Lisa)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-yellow w-full">
+                        <input type="number" id="ft-nahco3" placeholder="NaHCO3 (g)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-cyan w-full" step="0.1">
+                        <input type="number" id="ft-vinegar" placeholder="Vinagre (ml)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-cyan w-full" step="1">
+                        <input type="number" id="ft-cost" placeholder="Coste Ensayo (€v)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-magenta w-full" step="0.1">
+                        <input type="number" id="ft-height" placeholder="Altura H (metros)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-green font-bold w-full" step="0.1">
+                        <button onclick="ui.submitFlightTest()" class="bg-mars-yellow text-black font-black uppercase tracking-widest hover:shadow-[0_0_10px_#ffe600] transition-all py-2 w-full">Registrar Vuelo</button>
+                    </div>
+                    <div class="overflow-x-auto w-full max-h-60 overflow-y-auto">
+                        <table class="w-full text-left text-[10px] whitespace-nowrap min-w-max">
+                            <thead class="text-slate-500 uppercase border-b border-mars-border sticky top-0 bg-mars-card">
+                                <tr><th class="py-2 pr-2">Fecha</th><th class="pr-2">Fuselaje</th><th class="pr-2">Mix (Sól/Líq)</th><th class="pr-2">Coste (€v)</th><th class="pr-2">H (m)</th><th class="text-mars-yellow">E = H/C</th></tr>
+                            </thead>
+                            <tbody>${ftHtml}</tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-magenta">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-2 gap-2">
+                        <div>
+                            <h2 class="font-orbitron text-mars-magenta text-sm sm:text-base uppercase tracking-tighter">Inventario Físico, BOM & Ventas B2B</h2>
+                            <p class="text-[9px] text-slate-400 uppercase mt-0.5">Marca las piezas que integran el cohete final o vende el excedente a otras empresas.</p>
+                        </div>
+                        <button onclick="ui.setMarketTab('b2b'); ui.navigate('market')" class="bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-3 py-1 text-[9px] font-bold uppercase hover:bg-mars-yellow hover:text-black transition-all whitespace-nowrap">Ver Mercado B2B</button>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4 bg-black p-3 border border-mars-border">
+                        <div class="text-center border-r border-slate-800">
+                            <p class="text-[8px] text-slate-500 uppercase font-bold">Inversión Total I+D Ejecutada</p>
+                            <p class="text-mars-cyan font-mono font-bold text-base">${totalDevCost.toFixed(2)} €v</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-[8px] text-slate-500 uppercase font-bold">Coste Prototipo Final (BOM)</p>
+                            <p class="text-mars-green font-mono font-bold text-lg">${bomTotal.toFixed(2)} €v</p>
+                        </div>
+                    </div>
+
+                    <div class="max-h-60 overflow-y-auto pr-2">
+                        ${bomHtml}
+                    </div>
+                </div>
+            </div>
+        </div>`;
         el.appendChild(wrapper);
-    },
-
-    saveFase1Registro() {
-        if (!state.user) return;
-        const elPres = document.getElementById('fase1-presupuesto');
-        const elAlt = document.getElementById('fase1-altura');
-        if (!elPres || !elAlt) return; // REGLA 3
-        
-        const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
-        
-        co.fase1Registro.presupuestoTeorico = elPres.value;
-        co.fase1Registro.alturaEstimada = elAlt.value;
-        
-        state.save();
-        alert("Hipótesis de la Fase I guardada correctamente.");
-        this.render();
-    },
-
-    saveJustificacionV2() {
-        if (!state.user) return;
-        const elJust = document.getElementById('fase2-justificacion');
-        if (!elJust) return; // REGLA 3
-        
-        const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
-        
-        co.fase1Registro.justificacionV2 = elJust.value;
-        
-        state.save();
-        alert("Análisis y justificación V2.0 guardados.");
-        this.render();
     },
 
     toggleBomItem(itemKey, isChecked) {
@@ -301,6 +189,79 @@ Object.assign(ui, {
         this.render();
     },
 
+    modalSellB2B(orderId, itemIdx) {
+        if (!state.user || state.user.admin) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co || !co.orders) return;
+
+        const ord = co.orders.find(o => String(o.id) === String(orderId));
+        if (!ord || !ord.items || !ord.items[itemIdx]) return alert("Componente no localizado en el inventario.");
+
+        const item = ord.items[itemIdx];
+        if (item.b2bStatus) return alert("Este componente ya está en proceso de venta o ha sido vendido.");
+
+        const html = `
+            <p class="text-[10px] text-slate-300 mb-4 leading-relaxed">Vas a publicar <strong>${item.name} (x${item.qty})</strong> en el Mercado Secundario B2B. El coste original de adquisición fue de <span class="text-mars-cyan font-bold">${Number(item.price).toFixed(2)} €v</span>.</p>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-[9px] text-mars-yellow uppercase font-bold block mb-1">Precio de Venta Solicitado (€v)</label>
+                    <input type="number" id="b2b-sell-price" value="${Number(item.price).toFixed(0)}" min="1" step="1" class="w-full bg-slate-900 border border-mars-yellow p-2.5 text-sm text-mars-green font-mono font-bold outline-none">
+                </div>
+                <div>
+                    <label class="text-[9px] text-mars-cyan uppercase font-bold block mb-1">Estado / Observaciones Técnicas</label>
+                    <input type="text" id="b2b-sell-notes" placeholder="Ej: Sin usar, excedente de diseño Fase I..." class="w-full bg-slate-900 border border-mars-border p-2.5 text-xs text-white outline-none focus:border-mars-cyan">
+                </div>
+            </div>
+        `;
+        const actions = `<button onclick="ui.confirmSellB2B('${orderId}', ${itemIdx})" class="bg-mars-yellow text-black px-5 py-2 text-[10px] font-black uppercase hover:bg-white transition-all">Publicar en Mercado B2B</button>`;
+        this.showModal("Poner Pieza en Venta (B2B)", html, actions);
+    },
+
+    confirmSellB2B(orderId, itemIdx) {
+        if (!state.user || state.user.admin) return;
+        const elPrice = document.getElementById('b2b-sell-price');
+        const elNotes = document.getElementById('b2b-sell-notes');
+        if (!elPrice) return;
+
+        const price = parseFloat(elPrice.value);
+        const notes = elNotes ? elNotes.value.trim() : '';
+
+        if (isNaN(price) || price <= 0) return alert("Introduce un precio en €v válido mayor que cero.");
+
+        const co = state.data.companies[state.user.coId];
+        if (!co || !co.orders) return;
+
+        const ord = co.orders.find(o => String(o.id) === String(orderId));
+        if (!ord || !ord.items || !ord.items[itemIdx]) return;
+
+        const item = ord.items[itemIdx];
+        const itemKey = `${orderId}-${itemIdx}`;
+
+        // Desmarcar del BOM si estaba incluido en el prototipo
+        co.bom = (co.bom || []).filter(k => k !== itemKey);
+        item.b2bStatus = 'EN_VENTA';
+
+        state.data.b2bMarket = state.data.b2bMarket || [];
+        state.data.b2bMarket.unshift({
+            id: 'LST-' + Date.now(),
+            sellerCoId: state.user.coId,
+            sellerName: co.name,
+            itemName: item.name,
+            category: item.category || 'Componente',
+            qty: item.qty || 1,
+            price: price,
+            notes: notes || 'Excedente de inventario I+D en perfecto estado.',
+            sourceOrderKey: itemKey,
+            date: new Date().toLocaleDateString()
+        });
+
+        telemetry.log("OFERTA B2B", `Publicado en B2B: ${item.name} por ${price}€v`);
+        state.save();
+        this.closeModal();
+        alert(`✅ Componente "${item.name}" publicado en el Mercado B2B por ${price.toFixed(2)} €v.`);
+        this.render();
+    },
+
     submitFlightTest() {
         if (!state.user) return;
         const elBottle = document.getElementById('ft-bottle');
@@ -311,7 +272,7 @@ Object.assign(ui, {
         
         if (!elBottle || !elNahco3 || !elVinegar || !elCost || !elHeight) return; 
 
-        const bottle = elBottle.value;
+        const bottle = elBottle.value.trim();
         const naHCO3 = parseFloat(elNahco3.value);
         const vinegar = parseFloat(elVinegar.value);
         const costEurV = parseFloat(elCost.value);
@@ -348,8 +309,8 @@ Object.assign(ui, {
         const elReason = document.getElementById('custom-reason');
         if (!elName || !elReason) return; 
         
-        const name = elName.value;
-        const reason = elReason.value;
+        const name = elName.value.trim();
+        const reason = elReason.value.trim();
         if(!name || !reason) return alert("Rellene todos los campos.");
         
         state.data.pendingCustom = state.data.pendingCustom || [];
@@ -357,109 +318,5 @@ Object.assign(ui, {
         state.save();
         this.closeModal();
         alert("Solicitud enviada al claustro para su valoración.");
-    },
-
-    // FASE 2 v1.0.13: Lógica de Inventario y B2B
-    modalSellItem(invId) {
-        if (!state.user) return;
-        const html = `
-            <p class="text-[10px] text-slate-400 mb-4">Fija el precio de venta para este componente. Aparecerá en el SUPERMARS-KET de las demás startups.</p>
-            <input type="number" id="b2b-price" placeholder="Precio de venta (€v)..." class="w-full bg-black border border-mars-cyan p-3 text-xs text-white outline-none focus:border-mars-cyan mb-2" min="1">
-        `;
-        const actions = `<button onclick="ui.confirmSellItem('${invId}')" class="bg-mars-cyan text-black px-6 py-2 text-[10px] font-bold uppercase hover:bg-white transition-colors">Publicar en Mercado B2B</button>`;
-        this.showModal("Vender Componente", html, actions);
-    },
-
-    confirmSellItem(invId) {
-        if (!state.user) return;
-        const elPrice = document.getElementById('b2b-price');
-        if (!elPrice) return; // REGLA 3
-        
-        const price = parseFloat(elPrice.value);
-        if (isNaN(price) || price <= 0) return alert("Introduce un precio válido mayor que 0.");
-
-        const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
-        
-        const item = co.inventory.find(i => i.id === invId);
-        if (!item || item.status !== 'AVAILABLE') return alert("El objeto no está disponible para la venta.");
-
-        item.status = 'ON_SALE';
-        item.salePrice = price;
-
-        state.data.b2bMarket = state.data.b2bMarket || [];
-        state.data.b2bMarket.unshift({
-            marketId: 'MKTB2B-' + Date.now(),
-            invId: item.id,
-            sellerCoId: state.user.coId,
-            sellerName: co.name,
-            itemName: item.name,
-            category: item.category,
-            price: price,
-            date: new Date().toLocaleDateString()
-        });
-
-        telemetry.log("MERCADO B2B", `Puesto a la venta: ${item.name} por ${price}€v`);
-        state.save();
-        this.closeModal();
-        this.render();
-    },
-
-    cancelSellItem(invId) {
-        if (!state.user) return;
-        const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
-        
-        const item = co.inventory.find(i => i.id === invId);
-        if (!item || item.status !== 'ON_SALE') return;
-
-        item.status = 'AVAILABLE';
-        item.salePrice = null;
-
-        state.data.b2bMarket = state.data.b2bMarket || [];
-        state.data.b2bMarket = state.data.b2bMarket.filter(m => m.invId !== invId);
-
-        telemetry.log("MERCADO B2B", `Venta cancelada: ${item.name}`);
-        state.save();
-        this.render();
-    },
-
-    requestWarranty(invId) {
-        if (!state.user) return;
-        if (!confirm("¿Estás seguro de solicitar la reposición por rotura? Esto generará una orden a coste 0€v para Logística y consumirá la garantía de esta pieza.")) return;
-
-        const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
-        
-        const item = co.inventory.find(i => i.id === invId);
-        if (!item || item.warrantyClaimed) return alert("Garantía no disponible.");
-
-        item.warrantyClaimed = true;
-
-        co.orders = co.orders || [];
-        const newOrder = { 
-            id: state.data.config.nextOrderId++, 
-            items: [{
-                name: `[GARANTÍA] ${item.name}`, 
-                qty: 1, 
-                price: 0, 
-                category: item.category, 
-                realEur: 0, 
-                realShop: 'GARANTÍA'
-            }], 
-            total: 0, 
-            justification: `Reposición por rotura de la pieza ID: ${item.id}`, 
-            status: 'APROBADO_FINANZAS', // Salta finanzas porque es gratis
-            date: new Date().toLocaleString() 
-        };
-        
-        co.orders.unshift(newOrder);
-        
-        telemetry.log("GARANTÍA", `Reposición solicitada para: ${item.name}`);
-        ui.pushNotification(state.user.coId, 'OPERACIONES_IA', `Nueva solicitud de garantía pendiente de entrega física.`, 'warning');
-        
-        state.save();
-        this.render();
-        alert("Solicitud de garantía enviada a Logística.");
     }
 });

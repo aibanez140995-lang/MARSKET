@@ -1,39 +1,57 @@
 // js/ui-docente-eval.js
-// --- MÓDULO DOCENTE: RÚBRICAS, ACTAS Y ARCHIVO DOCUMENTAL ---
+// --- MÓDULO DOCENTE: RÚBRICAS PONDERADAS (100%), ACTAS Y ARCHIVO DOCUMENTAL (17 ENTREGABLES) ---
 
 Object.assign(ui, {
     renderAdminEval() {
         const isCoord = state.user.role.startsWith('COORD');
         const activeSubject = isCoord ? (this.coordEvalView === 'ACTA' || this.coordEvalView === 'ARCHIVE' ? null : this.coordEvalView) : state.user.role;
+        const weights = typeof GLOBAL_WEIGHTS !== 'undefined' ? GLOBAL_WEIGHTS : { FYQ: 0.25, LYE: 0.40, LEN: 0.15, ECO: 0.10, MAT: 0.05, ING: 0.05 };
         
         let adminHtml = `<div class="mb-6 flex flex-wrap gap-4 items-center bg-slate-900 p-2 border border-mars-border">`;
         if(isCoord) {
             adminHtml += `
             <select onchange="ui.coordEvalView=this.value; ui.evalSelectedCo=''; ui.render()" class="bg-black border border-mars-cyan text-mars-cyan text-xs p-2 uppercase font-bold outline-none cursor-pointer">
-                <option value="ACTA" ${this.coordEvalView==='ACTA'?'selected':''}>📊 Acta General Calificaciones</option>
-                <option value="ARCHIVE" ${this.coordEvalView==='ARCHIVE'?'selected':''}>📁 Archivo Documental Central</option>
-                ${['FYQ','ECO','LYE','LEN','MAT','ING'].map(s => `<option value="${s}" ${this.coordEvalView===s?'selected':''}>Evaluar: ${RUBRIC_CONFIG[s].name}</option>`).join('')}
+                <option value="ACTA" ${this.coordEvalView==='ACTA'?'selected':''}>📊 Acta General Calificaciones (100% Ponderada)</option>
+                <option value="ARCHIVE" ${this.coordEvalView==='ARCHIVE'?'selected':''}>📁 Archivo Documental Central (17 Entregables)</option>
+                ${['FYQ','LYE','LEN','ECO','MAT','ING'].map(s => `<option value="${s}" ${this.coordEvalView===s?'selected':''}>Evaluar: ${RUBRIC_CONFIG[s].name} (${Math.round((weights[s]||0)*100)}%)</option>`).join('')}
             </select>
-            ${this.coordEvalView === 'ACTA' ? `<button onclick="ui.exportActaCSV()" class="bg-mars-green text-black px-4 py-2 text-[10px] font-black uppercase hover:bg-white transition-colors">Exportar Acta CSV</button>` : ''}
+            ${this.coordEvalView === 'ACTA' ? `<button onclick="ui.exportActaCSV()" class="bg-mars-green text-black px-4 py-2 text-[10px] font-black uppercase hover:bg-white transition-colors">Exportar Acta Ponderada CSV</button>` : ''}
             `;
         } else {
-            adminHtml += `<h3 class="font-orbitron text-mars-cyan text-sm uppercase px-4 py-2">Módulo Calificador: <span class="text-white">${RUBRIC_CONFIG[activeSubject].name}</span></h3>`;
+            const wPct = Math.round((weights[activeSubject] || 0) * 100);
+            adminHtml += `<h3 class="font-orbitron text-mars-cyan text-sm uppercase px-4 py-2">Módulo Calificador: <span class="text-white">${RUBRIC_CONFIG[activeSubject].name}</span> <span class="text-mars-yellow text-[10px] ml-2">[PESO PROYECTO: ${wPct}%]</span></h3>`;
         }
         
         adminHtml += `
             <select onchange="ui.evalClassFilter=this.value; ui.evalSelectedCo=''; ui.render()" class="bg-black border border-mars-yellow text-mars-yellow text-xs p-2 uppercase font-bold outline-none cursor-pointer ml-auto">
                 <option value="ALL" ${this.evalClassFilter==='ALL'?'selected':''}>Todas las Clases</option>
-                ${['A','B','C','D','E','F'].map(c => `<option value="${c}" ${this.evalClassFilter===c?'selected':''}>Clase ${c}</option>`).join('')}
+                ${['A','B','C','D','E','F'].map(c => `<option value="${c}" ${this.evalClassFilter===c?'selected':''}>Clase${c}</option>`).join('')}
             </select>
         </div>`;
 
         if(isCoord && this.coordEvalView === 'ACTA') {
             adminHtml += `
             <div class="terminal-border bg-mars-card p-6 w-full overflow-hidden">
+                <div class="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-mars-border pb-3 gap-2">
+                    <div>
+                        <h4 class="font-orbitron text-mars-yellow text-xs uppercase tracking-widest">Matriz Oficial de Calificaciones Ponderadas</h4>
+                        <p class="text-[9px] text-slate-400 uppercase mt-0.5">Fórmula: 25% FYQ + 40% LYE + 15% LEN + 10% ECO + 5% MAT + 5% ING</p>
+                    </div>
+                </div>
                 <div class="overflow-x-auto w-full">
                     <table class="w-full text-left text-[10px] whitespace-nowrap min-w-max">
                         <thead class="text-slate-500 uppercase border-b border-mars-border">
-                            <tr><th class="py-3 pr-4">Startups</th><th class="pr-3">FYQ</th><th class="pr-3">ECO</th><th class="pr-3">LYE</th><th class="pr-3">LEN</th><th class="pr-3">MAT</th><th class="pr-3">ING</th><th class="text-mars-yellow">Media Global</th></tr>
+                            <tr>
+                                <th class="py-3 pr-4">Startups</th>
+                                <th class="pr-3">FYQ <span class="text-mars-cyan">(25%)</span></th>
+                                <th class="pr-3">LYE <span class="text-mars-cyan">(40%)</span></th>
+                                <th class="pr-3">LEN <span class="text-mars-cyan">(15%)</span></th>
+                                <th class="pr-3">ECO <span class="text-mars-cyan">(10%)</span></th>
+                                <th class="pr-3">MAT <span class="text-mars-cyan">(5%)</span></th>
+                                <th class="pr-3">ING <span class="text-mars-cyan">(5%)</span></th>
+                                <th class="pr-3 text-slate-400">% Eval.</th>
+                                <th class="text-mars-yellow">Nota Global ( sobre 10 )</th>
+                            </tr>
                         </thead>
                         <tbody>
                             ${Object.keys(state.data.companies)
@@ -41,15 +59,29 @@ Object.assign(ui, {
                                 .map(cid => {
                                 const co = state.data.companies[cid];
                                 const g = co.grades || {}; 
-                                const vals = ['FYQ','ECO','LYE','LEN','MAT','ING'].map(s => g[s] ? g[s].final : null);
-                                const validVals = vals.filter(v => v !== null);
-                                const avg = validVals.length > 0 ? (validVals.reduce((a,b)=>a+b,0)/validVals.length).toFixed(2) : '-';
+                                const subOrder = ['FYQ','LYE','LEN','ECO','MAT','ING'];
+                                
+                                let weightedTotal = 0;
+                                let evaluatedWeight = 0;
+
+                                const cellsHtml = subOrder.map(s => {
+                                    const hasGrade = g[s] && g[s].final !== null && g[s].final !== undefined;
+                                    const val = hasGrade ? Number(g[s].final) : null;
+                                    if (val !== null) {
+                                        weightedTotal += val * (weights[s] || 0);
+                                        evaluatedWeight += (weights[s] || 0);
+                                    }
+                                    return `<td class="py-3 font-mono pr-3 ${val!==null?'text-mars-cyan font-bold':'text-slate-600'}">${val!==null ? val.toFixed(2) : '--'}</td>`;
+                                }).join('');
+
+                                const pctEval = Math.round(evaluatedWeight * 100);
+                                const finalDisplay = evaluatedWeight > 0 ? weightedTotal.toFixed(2) : '-';
                                 
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-mars-cyan/5">
-                                    <td class="py-3 font-orbitron text-white font-bold pr-4"><button onclick="ui.showCompanyLogins('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4">${co.name} [${co.classGroup}]</button></td>
-                                    ${vals.map(v => `<td class="py-3 font-mono pr-3 ${v!==null?'text-mars-cyan font-bold':'text-slate-600'}">${v!==null ? v.toFixed(2) : '--'}</td>`).join('')}
-                                    <td class="py-3 font-mono text-mars-yellow font-black text-sm">${avg}</td>
+                                    <td class="py-3 font-orbitron text-white font-bold pr-4"><button onclick="ui.showCompanyLogins('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4">${co.name} [${co.classGroup}]</button></td>${cellsHtml}
+                                    <td class="py-3 font-mono pr-3 text-[9px] ${pctEval === 100 ? 'text-mars-green font-bold' : 'text-slate-400'}">${pctEval}%</td>
+                                    <td class="py-3 font-mono text-mars-yellow font-black text-sm">${finalDisplay}</td>
                                 </tr>`;
                             }).join('')}
                         </tbody>
@@ -57,20 +89,41 @@ Object.assign(ui, {
                 </div>
             </div>`;
         } else if(isCoord && this.coordEvalView === 'ARCHIVE') {
+            const docCols = [
+                { key: 'preliminaryReport', label: 'FYQ 1: Prelim' },
+                { key: 'technicalReport', label: 'FYQ 2: Informe' },
+                { key: 'brandIdentity_dec', label: 'LYE 1A: Marca Dic' },
+                { key: 'brandIdentity_apr', label: 'LYE 1B: Marca Abr' },
+                { key: 'businessModelDoc', label: 'LYE 2: Bus. Model' },
+                { key: 'businessModelCanvas', label: 'LYE 3: Canvas' },
+                { key: 'decisionDiary_dec', label: 'LYE 4A: Diario Dic' },
+                { key: 'decisionDiary_apr', label: 'LYE 4B: Diario Abr' },
+                { key: 'investorDossier', label: 'LEN: Dossier Inv.' },
+                { key: 'budgetInitial', label: 'ECO 1: Pres. Ini' },
+                { key: 'incomeStatement', label: 'ECO 2: Cta. Res.' },
+                { key: 'budgetPostProto', label: 'ECO 3: Pres. Post' },
+                { key: 'balanceSheet', label: 'ECO 4: Balance' },
+                { key: 'goniometerEvidence', label: 'MAT 1: Gonióm.' },
+                { key: 'mathReportDist', label: 'MAT 2: Dist. Base' },
+                { key: 'mathReportTwoPoints', label: 'MAT 3: 2 Puntos' },
+                { key: 'mathReportFinal', label: 'MAT 4: Inf. Final' },
+                { key: 'oralPresentation', label: 'ING 1: Oral Pres.' },
+                { key: 'writtenEssays', label: 'ING 2: Redacc.' }
+            ];
+
             adminHtml += `
             <div class="terminal-border bg-mars-card p-6 w-full overflow-hidden">
-                <div class="overflow-x-auto w-full">
+                <div class="mb-4 border-b border-mars-border pb-2 flex justify-between items-center">
+                    <h4 class="font-orbitron text-mars-cyan text-xs uppercase tracking-widest">Auditoría del Archivo Documental Central (Desliza horizontalmente ➔)</h4>
+                </div>
+                <div class="overflow-x-auto w-full pb-2">
                     <table class="w-full text-left text-[9px] whitespace-nowrap min-w-max">
-                        <thead class="text-slate-500 uppercase border-b border-mars-border">
+                        <thead class="text-slate-400 uppercase border-b border-mars-border bg-slate-900/80">
                             <tr>
-                                <th class="py-3 pr-4">Empresa</th>
-                                <th class="pr-4 text-mars-cyan">FYQ (Pre/Inf/Boc/Fot)</th>
-                                <th class="pr-4 text-mars-yellow">MAT (Gon/M1/M2/Cmp)</th>
-                                <th class="pr-4 text-mars-green">LYE (BM/Can/Val)</th>
-                                <th class="pr-4 text-mars-magenta">LEN (Dos/P3)</th>
-                                <th class="pr-4 text-blue-400">ING (P1)</th>
-                                <th class="pr-4 text-orange-400">ECO (Libro)</th>
-                                <th class="pr-4 text-purple-400">MKT (Vid)</th>
+                                <th class="py-3 px-2 sticky left-0 bg-slate-900 z-10 border-r border-mars-border">Empresa</th>
+                                <th class="py-3 px-2 text-center">Progreso</th>
+                                ${docCols.map(col => `<th class="py-3 px-2 text-center">${col.label}</th>`).join('')}
+                                <th class="py-3 px-2 text-center">IA Prompts</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -79,19 +132,22 @@ Object.assign(ui, {
                                 .map(cid => {
                                 const co = state.data.companies[cid];
                                 const d = co.deliverables || {}; 
+                                const aiCount = (co.aiPrompts||[]).filter(p=>p.status==='APROBADO').length;
+                                const deliveredTotal = docCols.filter(col => !!d[col.key]).length;
                                 
-                                const dLink = (doc, label) => doc ? `<a href="${doc.dataUrl}" target="_blank" download="${doc.type==='file'?doc.name:''}" class="text-white hover:text-mars-cyan underline decoration-dashed mr-2" title="${doc.name}">${label}</a>` : `<span class="text-slate-600 mr-2 line-through" title="Pendiente">${label}</span>`;
+                                const dLink = (doc) => doc 
+                                    ? `<a href="${doc.dataUrl}" target="_blank" download="${doc.type==='file'?doc.name:''}" class="bg-mars-green/15 text-mars-green border border-mars-green px-2 py-1 font-bold hover:bg-mars-green hover:text-black transition-colors block text-center">${doc.type==='link'?'🔗 LINK':'📁 FILE'}</a>` 
+                                    : `<span class="text-slate-600 border border-slate-800 px-2 py-1 block text-center">--</span>`;
+                                
+                                const aLink = aiCount > 0 
+                                    ? `<span class="text-blue-400 font-bold bg-blue-500/10 border border-blue-500 px-2 py-1 block text-center">✓ ${aiCount}</span>` 
+                                    : `<span class="text-slate-600 border border-slate-800 px-2 py-1 block text-center">0</span>`;
 
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
-                                    <td class="py-3 font-orbitron text-white font-bold pr-4">${co.name} [${co.classGroup}]</td>
-                                    <td class="py-3 pr-4">${dLink(d.informePreliminar, 'PRE')} ${dLink(d.technicalReport, 'INF')} ${dLink(d.boceto, 'BOC')} ${dLink(d.fotoPrototipo, 'FOT')}</td>
-                                    <td class="py-3 pr-4">${dLink(d.mathGoniometro, 'GON')} ${dLink(d.mathMedicion1, 'M1')} ${dLink(d.mathMedicion2, 'M2')} ${dLink(d.mathComparativa, 'CMP')}</td>
-                                    <td class="py-3 pr-4">${dLink(d.businessModel, 'BM')} ${dLink(d.canvas, 'CAN')} ${dLink(d.valuePropDoc, 'VAL')}</td>
-                                    <td class="py-3 pr-4">${dLink(d.dossierInversores, 'DOS')} ${dLink(d.presPhase3, 'P3')}</td>
-                                    <td class="py-3 pr-4">${dLink(d.presPhase1, 'P1')}</td>
-                                    <td class="py-3 pr-4">${dLink(d.financeBook, 'LIB')}</td>
-                                    <td class="py-3 pr-4">${dLink(d.videoPromo, 'VID')}</td>
+                                    <td class="py-2.5 px-2 font-orbitron text-white font-bold sticky left-0 bg-mars-card z-10 border-r border-mars-border">${co.name} [${co.classGroup}]</td>
+                                    <td class="py-2.5 px-2 font-mono font-bold text-center text-mars-yellow">${deliveredTotal}/${docCols.length}</td>${docCols.map(col => `<td class="py-2.5 px-1.5">${dLink(d[col.key])}</td>`).join('')}
+                                    <td class="py-2.5 px-1.5">${aLink}</td>
                                 </tr>`;
                             }).join('')}
                         </tbody>
@@ -101,55 +157,58 @@ Object.assign(ui, {
 
         } else if(activeSubject) {
             const config = RUBRIC_CONFIG[activeSubject];
+            const subWeightPct = Math.round((weights[activeSubject] || 0) * 100);
             
             let selectCoHtml = `<select id="eval-co-select" onchange="ui.selectEvalCo(this.value)" class="w-full md:w-1/2 bg-slate-900 border border-mars-border text-white text-xs p-3 uppercase font-bold outline-none focus:border-mars-cyan mb-6">
                 <option value="">-- Seleccione Startup a Evaluar --</option>
                 ${Object.keys(state.data.companies)
                     .filter(cid => this.evalClassFilter === 'ALL' || state.data.companies[cid].classGroup === this.evalClassFilter)
-                    .map(cid => `<option value="${cid}" ${this.evalSelectedCo===cid?'selected':''}>${state.data.companies[cid].name} [${state.data.companies[cid].classGroup}]</option>`).join('')}
+                    .map(cid => `<option value="${cid}" ${this.evalSelectedCo===cid?'selected':''}>${state.data.companies[cid].name} [Clase${state.data.companies[cid].classGroup}]</option>`).join('')}
             </select>`;
 
             if(!this.evalSelectedCo) {
-                adminHtml += `<div class="terminal-border bg-mars-card p-6">${selectCoHtml}<p class="text-xs text-slate-500 italic">Esperando selección de objetivo...</p></div>`;
+                adminHtml += `<div class="terminal-border bg-mars-card p-6">${selectCoHtml}<p class="text-xs text-slate-500 italic">Esperando selección de startup objetivo...</p></div>`;
             } else {
                 const co = state.data.companies[this.evalSelectedCo];
                 if (!co) return ''; 
                 
-                const pastGrade = co.grades[activeSubject] || { scores: {}, feedback: '' };
+                const pastGrade = (co.grades && co.grades[activeSubject]) ? co.grades[activeSubject] : { scores: {}, feedback: '' };
                 const docs = co.deliverables || {};
                 
-                let evidenceHtml = `<h4 class="font-orbitron text-mars-cyan text-xs uppercase mb-4 tracking-widest border-b border-mars-border pb-2">Evidencias Adjuntas</h4>`;
+                let evidenceHtml = `<h4 class="font-orbitron text-mars-cyan text-xs uppercase mb-4 tracking-widest border-b border-mars-border pb-2">Evidencias Adjuntas (${activeSubject})</h4>`;
                 
                 if (activeSubject === 'FYQ') {
-                    evidenceHtml += this.renderDocBadge('Informe Preliminar', docs.informePreliminar);
-                    evidenceHtml += this.renderDocBadge('Boceto / Diseño', docs.boceto);
-                    evidenceHtml += this.renderDocBadge('Foto Prototipo', docs.fotoPrototipo);
-                    evidenceHtml += this.renderDocBadge('Informe Técnico Final', docs.technicalReport);
-                    if(co.flightTests && co.flightTests.length>0) {
-                        evidenceHtml += `<div class="mt-4"><span class="text-mars-yellow text-[9px] font-bold uppercase">Ensayos Vuelo:</span><div class="text-[9px] mt-1 space-y-1">`;
-                        co.flightTests.forEach(f => evidenceHtml += `<p class="text-slate-300">H: ${f.heightM}m | E: ${f.efficiency.toFixed(2)}</p>`);
+                    evidenceHtml += this.renderDocBadge('1. Hoja Registro Preliminar (Fase I)', docs.preliminaryReport);
+                    evidenceHtml += this.renderDocBadge('2. Informe Técnico Exhaustivo (Fase II)', docs.technicalReport);
+                    if(co.flightTests && co.flightTests.length > 0) {
+                        evidenceHtml += `<div class="mt-4 bg-black p-3 border border-slate-800"><span class="text-mars-yellow text-[9px] font-bold uppercase block mb-2">Ensayos en Banco de Pruebas:</span><div class="text-[9px] space-y-1 max-h-40 overflow-y-auto">`;
+                        co.flightTests.forEach(f => evidenceHtml += `<p class="text-slate-300 border-b border-slate-900 pb-1">${f.bottle} | H: <strong class="text-mars-green">${f.heightM}m</strong> | C: ${f.costEurV}€v | E: <strong class="text-mars-yellow">${Number(f.efficiency).toFixed(3)}</strong></p>`);
                         evidenceHtml += `</div></div>`;
                     }
-                } else if (activeSubject === 'MAT') {
-                    evidenceHtml += this.renderDocBadge('1. Goniómetro', docs.mathGoniometro);
-                    evidenceHtml += this.renderDocBadge('2. Medición Simple', docs.mathMedicion1);
-                    evidenceHtml += this.renderDocBadge('3. Medición Doble', docs.mathMedicion2);
-                    evidenceHtml += this.renderDocBadge('4. Comparativa', docs.mathComparativa);
                 } else if (activeSubject === 'ECO') {
-                    evidenceHtml += this.renderDocBadge('Libro Cuentas Financiero', docs.financeBook);
+                    evidenceHtml += `<p class="text-[9px] text-mars-yellow uppercase font-bold mb-2">Nota: El criterio 1 corresponde al Test Evaluativo (20%).</p>`;
+                    evidenceHtml += this.renderDocBadge('1. Presupuesto Inicial (20%)', docs.budgetInitial);
+                    evidenceHtml += this.renderDocBadge('2. Cuenta de Resultados (20%)', docs.incomeStatement);
+                    evidenceHtml += this.renderDocBadge('3. Presupuesto Post-Prototipo (20%)', docs.budgetPostProto);
+                    evidenceHtml += this.renderDocBadge('4. Balance de Situación (20%)', docs.balanceSheet);
                 } else if (activeSubject === 'LYE') {
-                    evidenceHtml += this.renderDocBadge('Business Model', docs.businessModel);
-                    evidenceHtml += this.renderDocBadge('BM Canvas', docs.canvas);
-                    evidenceHtml += this.renderDocBadge('Dossier Propuesta Valor', docs.valuePropDoc);
-                    evidenceHtml += this.renderDocBadge('Micro-Pitch Fase I', docs.presPhase1);
-                    evidenceHtml += `<div class="mt-4"><span class="text-mars-yellow text-[9px] font-bold uppercase">Texto Propuesta de Valor:</span><p class="text-[9px] text-slate-300 italic mt-1 bg-black p-3 border border-slate-800 leading-relaxed max-h-32 overflow-y-auto">"${co.valueProposition || 'La empresa aún no ha definido su propuesta de valor corporativa.'}"</p></div>`;
+                    evidenceHtml += this.renderDocBadge('1A. Identidad y Misión (Diciembre)', docs.brandIdentity_dec);
+                    evidenceHtml += this.renderDocBadge('1B. Identidad y Misión (Abril)', docs.brandIdentity_apr);
+                    evidenceHtml += this.renderDocBadge('2. Business Model Escrito', docs.businessModelDoc);
+                    evidenceHtml += this.renderDocBadge('3. Business Model Canvas', docs.businessModelCanvas);
+                    evidenceHtml += this.renderDocBadge('4A. Diario Decisiones e IA (Diciembre)', docs.decisionDiary_dec);
+                    evidenceHtml += this.renderDocBadge('4B. Diario Decisiones e IA (Abril)', docs.decisionDiary_apr);
+                    evidenceHtml += `<div class="mt-4"><span class="text-mars-yellow text-[9px] font-bold uppercase">Manifiesto / Propuesta de Valor:</span><p class="text-[9px] text-slate-300 italic mt-1 bg-black p-3 border border-slate-800 leading-relaxed max-h-28 overflow-y-auto">"${co.valueProposition || 'No redactada todavía.'}"</p></div>`;
                 } else if (activeSubject === 'LEN') {
-                    evidenceHtml += this.renderDocBadge('Dossier Inversores', docs.dossierInversores);
-                    evidenceHtml += this.renderDocBadge('Pitch Final Fase III', docs.presPhase3);
+                    evidenceHtml += this.renderDocBadge('1. Dossier para Inversores (Argumentativo)', docs.investorDossier);
+                } else if (activeSubject === 'MAT') {
+                    evidenceHtml += this.renderDocBadge('1. Elaboración de Goniómetro/s (25%)', docs.goniometerEvidence);
+                    evidenceHtml += this.renderDocBadge('2. Informe Distancia Conocida (25%)', docs.mathReportDist);
+                    evidenceHtml += this.renderDocBadge('3. Informe Dos Mediciones (25%)', docs.mathReportTwoPoints);
+                    evidenceHtml += this.renderDocBadge('4. Informe Técnico Final (25%)', docs.mathReportFinal);
                 } else if (activeSubject === 'ING') {
-                    evidenceHtml += this.renderDocBadge('Micro-Pitch Fase I', docs.presPhase1);
-                } else {
-                    evidenceHtml += `<p class="text-[9px] text-slate-500 italic">No hay entregables documentales específicos enlazados a la vista rápida de esta rúbrica.</p>`;
+                    evidenceHtml += this.renderDocBadge('1. Expresión Oral: Presentación (70%)', docs.oralPresentation);
+                    evidenceHtml += this.renderDocBadge('2. Redacciones Escritas (30%)', docs.writtenEssays);
                 }
 
                 adminHtml += `
@@ -157,22 +216,25 @@ Object.assign(ui, {
                     ${selectCoHtml}
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                         <div class="lg:col-span-2 space-y-4">
-                            <h4 class="font-orbitron text-mars-cyan text-xs uppercase mb-4 tracking-widest border-b border-mars-border pb-2">Criterios Oficiales (${activeSubject})</h4>
+                            <div class="flex justify-between items-center border-b border-mars-border pb-2 mb-4">
+                                <h4 class="font-orbitron text-mars-cyan text-xs uppercase tracking-widest">Criterios Oficiales (${activeSubject})</h4>
+                                <span class="text-[9px] bg-mars-yellow/10 text-mars-yellow border border-mars-yellow px-2 py-0.5 font-bold uppercase">Representación Global: ${subWeightPct}%</span>
+                            </div>
                             ${config.criteria.map(c => `
                             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 bg-slate-900/50 p-4 border border-mars-border hover:border-mars-cyan transition-colors">
                                 <div class="flex-grow pr-4">
                                     <p class="text-[10px] text-white font-bold uppercase leading-tight">${c.name}</p>
-                                    <span class="text-[8px] bg-mars-cyan text-black px-1.5 py-0.5 mt-2 inline-block font-bold">PESO: ${c.weight*100}%</span>
+                                    <span class="text-[8px] bg-mars-cyan text-black px-1.5 py-0.5 mt-2 inline-block font-bold">PESO EN ASIGNATURA: ${Math.round(c.weight*100)}%</span>
                                 </div>
-                                <input type="number" id="grade-${c.id}" min="0" max="10" step="0.1" value="${pastGrade.scores[c.id]||''}" oninput="ui.calcRealtimeGrade('${activeSubject}')" class="w-full sm:w-20 bg-black border border-mars-border text-center text-mars-cyan font-bold text-base p-2 outline-none focus:border-mars-cyan shrink-0" placeholder="0-10">
+                                <input type="number" id="grade-${c.id}" min="0" max="10" step="0.1" value="${pastGrade.scores && pastGrade.scores[c.id] !== undefined ? pastGrade.scores[c.id] : ''}" oninput="ui.calcRealtimeGrade('${activeSubject}')" class="w-full sm:w-24 bg-black border border-mars-border text-center text-mars-cyan font-bold text-base p-2 outline-none focus:border-mars-cyan shrink-0" placeholder="0-10">
                             </div>`).join('')}
                             
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                                <textarea id="eval-feedback" class="w-full bg-slate-900 border border-mars-border p-3 text-[10px] text-white h-full min-h-[100px] outline-none focus:border-mars-cyan leading-relaxed" placeholder="Observaciones cualitativas y feedback...">${pastGrade.feedback||''}</textarea>
+                                <textarea id="eval-feedback" class="w-full bg-slate-900 border border-mars-border p-3 text-[10px] text-white h-full min-h-[100px] outline-none focus:border-mars-cyan leading-relaxed" placeholder="Observaciones cualitativas y feedback para la startup...">${pastGrade.feedback||''}</textarea>
                                 <div class="flex flex-col">
                                     <div class="terminal-border border-dashed p-4 text-center mb-3 flex-grow bg-black flex flex-col justify-center">
-                                        <p class="text-[8px] text-slate-500 uppercase font-bold mb-1 tracking-widest">Nota Ponderada</p>
-                                        <p id="realtime-grade" class="text-5xl font-orbitron text-mars-green tracking-tighter">${pastGrade.final ? pastGrade.final.toFixed(2) : '0.00'}</p>
+                                        <p class="text-[8px] text-slate-500 uppercase font-bold mb-1 tracking-widest">Nota Materia (${activeSubject})</p>
+                                        <p id="realtime-grade" class="text-5xl font-orbitron text-mars-green tracking-tighter">${pastGrade.final !== undefined && pastGrade.final !== null ? Number(pastGrade.final).toFixed(2) : '0.00'}</p>
                                     </div>
                                     <button onclick="ui.saveGrade('${activeSubject}')" class="bg-mars-cyan text-black font-black py-4 text-[10px] uppercase tracking-widest hover:glow-cyan transition-all">[ REGISTRAR CALIFICACIÓN ]</button>
                                 </div>
@@ -213,9 +275,9 @@ Object.assign(ui, {
         if (!this.evalSelectedCo) return alert("Seleccione una startup primero.");
         const config = RUBRIC_CONFIG[subject];
         const co = state.data.companies[this.evalSelectedCo];
-        if (!co) return; // REGLA 1
+        if (!co) return;
         
-        co.grades = co.grades || {}; // REGLA 1
+        co.grades = co.grades || {};
         
         let scores = {};
         let total = 0;
@@ -226,8 +288,8 @@ Object.assign(ui, {
             if (el) {
                 const val = parseFloat(el.value);
                 if (isNaN(val)) allFilled = false;
-                scores[c.id] = val || 0;
-                total += (val || 0) * c.weight;
+                scores[c.id] = isNaN(val) ? 0 : val;
+                total += (isNaN(val) ? 0 : val) * c.weight;
             }
         });
         
@@ -236,24 +298,40 @@ Object.assign(ui, {
         }
         
         const elFeedback = document.getElementById('eval-feedback');
-        const feedback = elFeedback ? elFeedback.value : '';
+        const feedback = elFeedback ? elFeedback.value.trim() : '';
         co.grades[subject] = { scores, feedback, final: total };
         
         telemetry.log("EVALUACIÓN", `Nota ${subject} registrada a ${co.name}: ${total.toFixed(2)}`);
         state.save();
-        alert(`Calificación de ${subject} registrada correctamente: ${total.toFixed(2)}`);
+        alert(`✅ Calificación de ${subject} registrada para ${co.name}: ${total.toFixed(2)}`);
         this.render();
     },
 
     exportActaCSV() {
-        let csv = "Empresa,FYQ,ECO,LYE,LEN,MAT,ING,Media_Global\n";
+        const weights = typeof GLOBAL_WEIGHTS !== 'undefined' ? GLOBAL_WEIGHTS : { FYQ: 0.25, LYE: 0.40, LEN: 0.15, ECO: 0.10, MAT: 0.05, ING: 0.05 };
+        const subOrder = ['FYQ','LYE','LEN','ECO','MAT','ING'];
+        let csv = "Empresa,Clase,FYQ_25%,LYE_40%,LEN_15%,ECO_10%,MAT_5%,ING_5%,Peso_Evaluado_%,Nota_Global_Ponderada\n";
+        
         Object.values(state.data.companies).forEach(co => {
             const g = co.grades || {};
-            const vals = ['FYQ','ECO','LYE','LEN','MAT','ING'].map(s => g[s] ? g[s].final.toFixed(2) : '');
-            const numVals = vals.filter(v => v !== '').map(Number);
-            const avg = numVals.length > 0 ? (numVals.reduce((a,b)=>a+b,0)/numVals.length).toFixed(2) : '';
-            csv += `"${co.name}",${vals.join(',')},${avg}\n`;
+            let weightedTotal = 0;
+            let evaluatedWeight = 0;
+
+            const vals = subOrder.map(s => {
+                const hasGrade = g[s] && g[s].final !== null && g[s].final !== undefined;
+                if (hasGrade) {
+                    const num = Number(g[s].final);
+                    weightedTotal += num * (weights[s] || 0);
+                    evaluatedWeight += (weights[s] || 0);
+                    return num.toFixed(2);
+                }
+                return '';
+            });
+
+            const pctEval = Math.round(evaluatedWeight * 100);
+            const finalNote = evaluatedWeight > 0 ? weightedTotal.toFixed(2) : '';
+            csv += `"${co.name}","${co.classGroup || 'A'}",${vals.join(',')},${pctEval}%,${finalNote}\n`;
         });
-        this.downloadFile(csv, 'csv', 'marsket_acta_notas.csv');
+        this.downloadFile(csv, 'csv', 'marsket_acta_ponderada_oficial.csv');
     }
 });

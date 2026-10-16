@@ -1,5 +1,5 @@
 // js/ui-empresa-core.js
-// --- MÓDULO CORE: LOGIN, NOTIFICACIONES Y DOSSIER ---
+// --- MÓDULO CORE: LOGIN, NOTIFICACIONES Y DOSSIER ACADÉMICO (17 ENTREGABLES) ---
 
 Object.assign(ui, {
     viewLogin(el) {
@@ -31,7 +31,6 @@ Object.assign(ui, {
         setTimeout(() => auth.updateRoleOptions(), 50);
     },
 
-    // FASE 3 v1.0.10: Animación de inmersión Cyberpunk
     playLoginAnimation(role) {
         const container = document.getElementById('login-box');
         const title = document.getElementById('login-title');
@@ -95,7 +94,6 @@ Object.assign(ui, {
     viewDossier(el) {
         if (!el || !state.user) return;
         
-        // FIX: Soporte para vista Docente del Dossier
         let coId = state.user.coId;
         if (state.user.admin) {
             coId = this.dossierSelectedCo || Object.keys(state.data.companies)[0];
@@ -114,19 +112,22 @@ Object.assign(ui, {
         let adminSelector = '';
         if (state.user.admin) {
             adminSelector = `
-            <div class="mb-6 bg-slate-900 p-3 border border-mars-border flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <span class="text-mars-cyan font-bold text-[10px] uppercase">Viendo Dossier de:</span>
-                <select onchange="ui.dossierSelectedCo=this.value; ui.render()" class="bg-black border border-mars-cyan text-white text-xs p-2 outline-none w-full sm:w-auto">
-                    ${Object.keys(state.data.companies).map(k => `<option value="${k}" ${coId===k?'selected':''}>${state.data.companies[k].name}</option>`).join('')}
-                </select>
+            <div class="mb-6 bg-slate-900 p-3 border border-mars-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <span class="text-mars-cyan font-bold text-[10px] uppercase whitespace-nowrap">Inspeccionando Dossier de:</span>
+                    <select onchange="ui.dossierSelectedCo=this.value; ui.render()" class="bg-black border border-mars-cyan text-white text-xs p-2 outline-none w-full sm:w-auto font-bold uppercase">
+                        ${Object.keys(state.data.companies).map(k => `<option value="${k}" ${coId===k?'selected':''}>${state.data.companies[k].name} [Clase${state.data.companies[k].classGroup || 'A'}]</option>`).join('')}
+                    </select>
+                </div>
+                <span class="text-[9px] text-mars-yellow uppercase font-bold">Modo Supervisión Docente</span>
             </div>`;
         }
         
         wrapper.innerHTML = `
         ${adminSelector}
         <div class="flex gap-2 mb-6 border-b border-mars-border pb-2">
-            <button onclick="ui.showDossierTab('eval')" class="px-4 py-2 text-[10px] font-bold uppercase ${tab==='eval'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">Evaluación Continua</button>
-            <button onclick="ui.showDossierTab('docs')" class="px-4 py-2 text-[10px] font-bold uppercase ${tab==='docs'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">Archivo Documental</button>
+            <button onclick="ui.showDossierTab('eval')" class="px-4 py-2 text-[10px] font-bold uppercase ${tab==='eval'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">📊 Evaluación Continua (100%)</button>
+            <button onclick="ui.showDossierTab('docs')" class="px-4 py-2 text-[10px] font-bold uppercase ${tab==='docs'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">📁 Archivo Documental Oficial</button>
         </div>
         <div id="dossier-content" class="w-full"></div>
         `;
@@ -148,43 +149,154 @@ Object.assign(ui, {
         if (!state.user.admin && !co) return auth.logout();
         if (!co) return;
         
+        const weights = typeof GLOBAL_WEIGHTS !== 'undefined' ? GLOBAL_WEIGHTS : { FYQ: 0.25, LYE: 0.40, LEN: 0.15, ECO: 0.10, MAT: 0.05, ING: 0.05 };
+
         if(tab === 'eval') {
-            const subjects = ['FYQ', 'ECO', 'LYE', 'LEN', 'MAT', 'ING'];
-            let html = `<div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">`;
+            const subjects = ['FYQ', 'LYE', 'LEN', 'ECO', 'MAT', 'ING'];
+            
+            // Cálculo de Nota Global Ponderada
+            let weightedSum = 0;
+            let evaluatedWeightSum = 0;
+            
+            subjects.forEach(sub => {
+                const g = (co.grades && co.grades[sub]) ? co.grades[sub] : null;
+                const w = weights[sub] || 0;
+                if (g && g.final !== null && g.final !== undefined) {
+                    weightedSum += Number(g.final) * w;
+                    evaluatedWeightSum += w;
+                }
+            });
+
+            const hasAnyGrade = evaluatedWeightSum > 0;
+            const globalNoteDisplay = hasAnyGrade ? weightedSum.toFixed(2) : '--';
+            const progressPct = Math.round(evaluatedWeightSum * 100);
+
+            let html = `
+            <div class="terminal-border bg-mars-card p-5 mb-6 border-l-4 border-l-mars-yellow flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h3 class="font-orbitron text-mars-yellow text-sm uppercase tracking-widest font-black">Calificación Global Ponderada del Proyecto</h3>
+                    <p class="text-[9px] text-slate-400 uppercase mt-1">Fórmula Oficial: FYQ (25%) + LYE (40%) + LEN (15%) + ECO (10%) + MAT (5%) + ING (5%)</p>
+                </div>
+                <div class="flex items-center gap-4 bg-black px-4 py-2 border border-mars-border self-end sm:self-center">
+                    <div class="text-right">
+                        <span class="block text-[8px] text-slate-500 uppercase font-bold">Peso Evaluado: ${progressPct}%</span>
+                        <span class="text-[9px] text-mars-cyan font-bold uppercase">Nota Acumulada</span>
+                    </div>
+                    <span class="text-2xl sm:text-3xl font-orbitron font-black ${hasAnyGrade ? 'text-mars-green' : 'text-slate-600'}">${globalNoteDisplay}</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">`;
             
             subjects.forEach(sub => {
                 const config = RUBRIC_CONFIG[sub];
+                if (!config) return;
                 const grade = (co.grades && co.grades[sub]) ? co.grades[sub] : { scores: {}, feedback: '', final: null };
+                const subWeightPct = Math.round((weights[sub] || 0) * 100);
                 
                 html += `
-                <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-cyan w-full">
-                    <div class="flex justify-between items-center mb-3 border-b border-mars-border/50 pb-2">
-                        <h3 class="font-orbitron text-mars-cyan text-xs uppercase">${config.name}</h3>
-                        <span class="text-lg font-mono font-black ${grade.final !== null ? 'text-mars-green' : 'text-slate-600'}">${grade.final !== null ? grade.final.toFixed(2) : '--'}</span>
+                <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-cyan w-full flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-3 border-b border-mars-border/50 pb-2">
+                            <div>
+                                <h3 class="font-orbitron text-mars-cyan text-xs uppercase">${config.name}</h3>
+                                <span class="text-[8px] bg-mars-cyan/10 text-mars-cyan border border-mars-cyan/40 px-1.5 py-0.5 font-bold uppercase inline-block mt-1">Representación en Proyecto: ${subWeightPct}%</span>
+                            </div>
+                            <span class="text-xl font-mono font-black ${grade.final !== null && grade.final !== undefined ? 'text-mars-green' : 'text-slate-600'}">${grade.final !== null && grade.final !== undefined ? Number(grade.final).toFixed(2) : '--'}</span>
+                        </div>
+                        <div class="space-y-2 mb-3 w-full">
+                            ${config.criteria.map(c => `
+                            <div class="flex justify-between text-[9px] uppercase w-full border-b border-slate-800/60 pb-1">
+                                <span class="text-slate-400 pr-2">${c.name} (${Math.round(c.weight*100)}%)</span>
+                                <span class="font-mono font-bold shrink-0 ${grade.scores && grade.scores[c.id] !== undefined ? 'text-white' : 'text-slate-600'}">${grade.scores && grade.scores[c.id] !== undefined ? grade.scores[c.id] : '-'}</span>
+                            </div>`).join('')}
+                        </div>
                     </div>
-                    <div class="space-y-2 mb-3 w-full">
-                        ${config.criteria.map(c => `
-                        <div class="flex justify-between text-[9px] uppercase w-full">
-                            <span class="text-slate-400">${c.name} (${c.weight*100}%)</span>
-                            <span class="font-bold ${grade.scores[c.id] ? 'text-white' : 'text-slate-600'}">${grade.scores[c.id] || '-'}</span>
-                        </div>`).join('')}
-                    </div>
-                    ${grade.feedback ? `<div class="bg-black p-2 border border-slate-800 text-[9px] text-slate-300 italic w-full">"${grade.feedback}"</div>` : ''}
+                    ${grade.feedback ? `<div class="bg-black p-2.5 border border-slate-800 text-[9px] text-slate-300 italic w-full mt-2"><span class="text-mars-yellow font-bold not-italic block mb-0.5 uppercase text-[8px]">Feedback Docente:</span>"${grade.feedback}"</div>` : '<div class="text-[8px] text-slate-600 italic uppercase mt-2">Sin observaciones registradas todavía.</div>'}
                 </div>`;
             });
             html += `</div>`;
             container.innerHTML = html;
         } else {
             const docs = co.deliverables || {};
+            const allKeys = [
+                'preliminaryReport', 'technicalReport',
+                'brandIdentity_dec', 'brandIdentity_apr', 'businessModelDoc', 'businessModelCanvas', 'decisionDiary_dec', 'decisionDiary_apr',
+                'investorDossier',
+                'budgetInitial', 'incomeStatement', 'budgetPostProto', 'balanceSheet',
+                'goniometerEvidence', 'mathReportDist', 'mathReportTwoPoints', 'mathReportFinal',
+                'oralPresentation', 'writtenEssays'
+            ];
+            const deliveredCount = allKeys.filter(k => !!docs[k]).length;
+
             container.innerHTML = `
-            <div class="terminal-border bg-mars-card p-6 w-full">
-                <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase">Archivo Documental</h3>
-                <div class="space-y-4 w-full">
-                    ${this.renderDocBadge('Informe Técnico (FYQ)', docs.technicalReport)}
-                    ${this.renderDocBadge('Libro de Cuentas (ECO)', docs.financeBook)}
-                    ${this.renderDocBadge('Micro-Pitch Fase I (ING/LYE)', docs.presPhase1)}
-                    ${this.renderDocBadge('Pitch Final Fase III (LEN)', docs.presPhase3)}
-                    ${this.renderDocBadge('Propuesta de Valor (LYE)', docs.valuePropDoc)}
+            <div class="terminal-border bg-mars-card p-4 mb-6 border-l-4 border-l-mars-cyan flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                    <h3 class="font-orbitron text-mars-cyan text-sm uppercase">Estado del Repositorio Oficial de Entregables</h3>
+                    <p class="text-[9px] text-slate-400 uppercase mt-0.5">Auditoría centralizada de evidencias documentales por departamento curricular.</p>
+                </div>
+                <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-3 py-1.5 text-xs font-mono font-black uppercase">Entregados: ${deliveredCount} / ${allKeys.length}</span>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+                <!-- Física y Química -->
+                <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-cyan">
+                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
+                        <h4 class="font-orbitron text-mars-cyan text-xs uppercase">🧪 Física y Química (25%)</h4>
+                        <span class="text-[8px] text-slate-400 uppercase">Resp: Dpto. Técnico</span>
+                    </div>
+                    ${this.renderDocBadge('1. Hoja de Registro Preliminar (Fase I)', docs.preliminaryReport)}
+                    ${this.renderDocBadge('2. Informe Técnico Exhaustivo (Fase II)', docs.technicalReport)}
+                </div>
+
+                <!-- Economía -->
+                <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-green">
+                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
+                        <h4 class="font-orbitron text-mars-green text-xs uppercase">💰 Economía (10%)</h4>
+                        <span class="text-[8px] text-slate-400 uppercase">Resp: Dpto. Finanzas</span>
+                    </div>
+                    ${this.renderDocBadge('1. Presupuesto Inicial', docs.budgetInitial)}
+                    ${this.renderDocBadge('2. Cuenta de Resultados', docs.incomeStatement)}
+                    ${this.renderDocBadge('3. Presupuesto Post-Prototipo', docs.budgetPostProto)}
+                    ${this.renderDocBadge('4. Balance de Situación Simplificado', docs.balanceSheet)}
+                </div>
+
+                <!-- Liderazgo y Emprendimiento -->
+                <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-yellow lg:col-span-2">
+                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
+                        <h4 class="font-orbitron text-mars-yellow text-xs uppercase">🚀 Liderazgo y Emprendimiento (40%)</h4>
+                        <span class="text-[8px] text-slate-400 uppercase">Resp: Marketing / CEO / Operaciones IA</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                        ${this.renderDocBadge('1A. Identidad de Marca y Misión — DICIEMBRE', docs.brandIdentity_dec)}
+                        ${this.renderDocBadge('1B. Identidad de Marca y Misión — ABRIL', docs.brandIdentity_apr)}
+                        ${this.renderDocBadge('2. Business Model (Documento Escrito)', docs.businessModelDoc)}
+                        ${this.renderDocBadge('3. Business Model Canvas', docs.businessModelCanvas)}
+                        ${this.renderDocBadge('4A. Diario Decisiones, Conflictos e IA — DICIEMBRE', docs.decisionDiary_dec)}
+                        ${this.renderDocBadge('4B. Diario Decisiones, Conflictos e IA — ABRIL', docs.decisionDiary_apr)}
+                    </div>
+                </div>
+
+                <!-- Matemáticas -->
+                <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-yellow">
+                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
+                        <h4 class="font-orbitron text-mars-yellow text-xs uppercase">📐 Matemáticas (5%)</h4>
+                        <span class="text-[8px] text-slate-400 uppercase">Resp: Dpto. Técnico</span>
+                    </div>
+                    ${this.renderDocBadge('1. Elaboración de Goniómetro/s', docs.goniometerEvidence)}
+                    ${this.renderDocBadge('2. Informe: Distancia Conocida a Base', docs.mathReportDist)}
+                    ${this.renderDocBadge('3. Informe: Dos Mediciones Separadas', docs.mathReportTwoPoints)}
+                    ${this.renderDocBadge('4. Informe Técnico Final Comparativo', docs.mathReportFinal)}
+                </div>
+
+                <!-- Lengua Castellana e Inglés -->
+                <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-magenta">
+                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
+                        <h4 class="font-orbitron text-mars-magenta text-xs uppercase">🗣️ Lengua Castellana (15%) & Inglés (5%)</h4>
+                        <span class="text-[8px] text-slate-400 uppercase">Resp: Marketing / Equipo</span>
+                    </div>
+                    ${this.renderDocBadge('LEN: Dossier para Inversores (Texto Argumentativo)', docs.investorDossier)}
+                    ${this.renderDocBadge('ING: Expresión Oral (Presentación Prototipo)', docs.oralPresentation)}
+                    ${this.renderDocBadge('ING: Redacciones Escritas', docs.writtenEssays)}
                 </div>
             </div>`;
         }

@@ -7,7 +7,7 @@ const state = {
     isCloudOnline: false, isSyncing: false, syncTimer: null,
 
     migrate(d) {
-        // REGLA 1: BLINDAJE DE ESTADO (Fallbacks)
+        // BLINDAJE DE ESTADO: Garantizamos que la estructura JSON esté completa
         d.version = d.version || 1; 
         d.config = d.config || JSON.parse(JSON.stringify(INITIAL_DATA.config));
         d.catalog = d.catalog && d.catalog.length > 0 ? d.catalog : JSON.parse(JSON.stringify(INITIAL_DATA.catalog));
@@ -15,14 +15,13 @@ const state = {
         d.telemetry = d.telemetry || { totalLogins: 0, sessions: [] };
         d.telemetry.sessions = d.telemetry.sessions || [];
 
+        // Migración B2B y Sugerencias Categorizadas
         d.suggestionsToAlex = d.suggestionsToAlex || [];
         d.pendingCustom = d.pendingCustom || [];
-        
-        // FASE 1 v1.0.13: Arrays globales para el Mercado B2B
         d.b2bMarket = d.b2bMarket || [];
         d.b2bContracts = d.b2bContracts || [];
         
-        d.config.deadlines = d.config.deadlines || { techReport: "2026-11-15T23:59", presPhase1: "2026-10-30T23:59", presPhase3: "2026-12-05T23:59", financeBook: "2026-12-01T23:59", valuePropDoc: "2026-11-10T23:59" };
+        d.config.deadlines = d.config.deadlines || JSON.parse(JSON.stringify(INITIAL_DATA.config.deadlines));
         d.config.guidelines = d.config.guidelines || { techReportDocUrl: "", techReportNotes: "" };
         
         if(d.config.teachers.COORD) {
@@ -36,22 +35,38 @@ const state = {
             if (!item.origin) item.origin = countries[Math.floor(Math.random() * countries.length)];
         });
 
+        // Árbol Oficial de 17 Entregables (v1.0.14)
+        const defDocs = {
+            preliminaryReport: null, technicalReport: null,
+            brandIdentity_dec: null, brandIdentity_apr: null, businessModelDoc: null, businessModelCanvas: null, decisionDiary_dec: null, decisionDiary_apr: null,
+            investorDossier: null,
+            goniometerEvidence: null, mathReportDist: null, mathReportTwoPoints: null, mathReportFinal: null,
+            budgetInitial: null, incomeStatement: null, budgetPostProto: null, balanceSheet: null,
+            oralPresentation: null, writtenEssays: null
+        };
+
         for(let k in d.companies) {
             let co = d.companies[k];
             
             co.roles = co.roles || { CEO:'1234', TECNICO:'1234', FINANZAS:'1234', MARKETING:'1234', OPERACIONES_IA:'1234' };
             co.loginStats = co.loginStats || { totalLogins: 0, roles: {} };
             co.loginStats.roles = co.loginStats.roles || {};
-
             co.classGroup = co.classGroup || 'A';
             
+            // Migración Segura de Entregables (Retrocompatibilidad)
             co.deliverables = co.deliverables || {};
-            const defaultDocs = { technicalReport: null, informePreliminar: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null };
-            co.deliverables = { ...defaultDocs, ...co.deliverables };
             
-            co.fase1Registro = co.fase1Registro || { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' };
-            co.decisionLog = co.decisionLog || [];
+            // Portabilidad de archivos antiguos (si existían) a las nuevas claves
+            if (co.deliverables.financeBook && !co.deliverables.balanceSheet) co.deliverables.balanceSheet = co.deliverables.financeBook;
+            if (co.deliverables.presPhase1 && !co.deliverables.oralPresentation) co.deliverables.oralPresentation = co.deliverables.presPhase1;
             
+            // Inyectar slots vacíos obligatorios
+            for (let docKey in defDocs) {
+                if (co.deliverables[docKey] === undefined) {
+                    co.deliverables[docKey] = null;
+                }
+            }
+
             co.flightTests = co.flightTests || [];
             co.votingMotions = co.votingMotions || [];
             co.aiPrompts = co.aiPrompts || [];
@@ -65,16 +80,13 @@ const state = {
             co.logo = co.logo || null;
             co.sponsorAwarded = co.sponsorAwarded || null;
             co.marketingCampaigns = co.marketingCampaigns || [];
-            co.marketingPackages = co.marketingPackages || [];
             co.inactivityReports = co.inactivityReports || [];
             co.sponsorData = co.sponsorData || { name: null, logo: null };
             co.auxRoleDept = co.auxRoleDept || null;
             co.notifications = co.notifications || [];
+            
             co.sanctions = co.sanctions || [];
             co.crisisAlerts = co.crisisAlerts || [];
-            
-            // FASE 1 v1.0.13: Inventario Físico
-            co.inventory = co.inventory || [];
             
             if(co.roles.QUIMICA || co.roles.AERODINAMICA || co.roles.IA) {
                 const defaultPin = co.roles.CEO || '1234';
@@ -105,6 +117,8 @@ const state = {
         const merged = JSON.parse(JSON.stringify(serverData)); 
         
         const mergeArrays = (arrServer, arrLocal) => {
+            if (!arrServer) arrServer = [];
+            if (!arrLocal) arrLocal = [];
             const serverIds = new Set(arrServer.map(i => String(i.id)));
             const missingInServer = arrLocal.filter(i => i.id && !serverIds.has(String(i.id)));
             return [...missingInServer, ...arrServer];
@@ -116,17 +130,11 @@ const state = {
             merged.telemetry.totalLogins = Math.max(merged.telemetry.totalLogins || 0, localData.telemetry.totalLogins || 0);
         }
         
-        if (localData.suggestionsToAlex) {
-            merged.suggestionsToAlex = mergeArrays(merged.suggestionsToAlex || [], localData.suggestionsToAlex);
-        }
-        
-        // FASE 1 v1.0.13: Fusión de arrays globales B2B
-        if (localData.b2bMarket) {
-            merged.b2bMarket = mergeArrays(merged.b2bMarket || [], localData.b2bMarket);
-        }
-        if (localData.b2bContracts) {
-            merged.b2bContracts = mergeArrays(merged.b2bContracts || [], localData.b2bContracts);
-        }
+        // Fusión de Arrays Globales
+        merged.suggestionsToAlex = mergeArrays(merged.suggestionsToAlex, localData.suggestionsToAlex);
+        merged.pendingCustom = mergeArrays(merged.pendingCustom, localData.pendingCustom);
+        merged.b2bMarket = mergeArrays(merged.b2bMarket, localData.b2bMarket);
+        merged.b2bContracts = mergeArrays(merged.b2bContracts, localData.b2bContracts);
 
         for (let k in localData.companies) {
             if (merged.companies[k] && localData.companies[k]) {
@@ -135,13 +143,12 @@ const state = {
                 
                 const arraysToMerge = [
                     'orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 
-                    'aiPrompts', 'decisionLog', 'marketingCampaigns', 'marketingPackages', 
-                    'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'cart',
-                    'inventory' // FASE 1 v1.0.13: Fusión de inventario
+                    'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 
+                    'sanctions', 'crisisAlerts', 'cart'
                 ];
                 
                 arraysToMerge.forEach(arrName => {
-                    sCo[arrName] = mergeArrays(sCo[arrName] || [], lCo[arrName] || []);
+                    sCo[arrName] = mergeArrays(sCo[arrName], lCo[arrName]);
                 });
             }
         }
@@ -270,7 +277,7 @@ const state = {
 
     addToLedger(coId, concept, dept, delta) {
         const co = this.data.companies[coId];
-        if (!co) return; // REGLA 1
+        if (!co) return; 
         co.balance += delta;
         co.ledger.unshift({ id: 'TX-' + Math.random().toString(36).substr(2, 5).toUpperCase(), date: new Date().toLocaleString(), concept, dept, delta, final: co.balance });
         this.save();

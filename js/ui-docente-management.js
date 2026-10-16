@@ -1,72 +1,60 @@
 // js/ui-docente-management.js
-// --- MÓDULO DOCENTE: GESTIÓN, ECONOMÍA, HR Y CATÁLOGO ---
+// --- MÓDULO DOCENTE: GESTIÓN, ECONOMÍA, ADUANA B2B, HR Y CATÁLOGO ---
 
 Object.assign(ui, {
     renderAdminDash() {
         let globalReal = 0;
         for (let c in state.data.companies) {
             const co = state.data.companies[c];
-            co.realCosts = co.realCosts || []; // REGLA 1
-            globalReal += co.realCosts.reduce((s, i) => s + i.eur, 0);
+            co.realCosts = co.realCosts || [];
+            globalReal += co.realCosts.reduce((s, i) => s + (Number(i.eur) || 0), 0);
         }
         
+        const isCoord = state.user.role.startsWith('COORD');
         const canSponsor = state.data.config.teachers[state.user.role]?.canSponsor === true;
 
-        const pendingB2B = (state.data.b2bContracts || []).filter(c => c.status === 'PENDIENTE_CLAUSTRO');
-        let pendingB2BHtml = '';
-        if (pendingB2B.length > 0) {
-            pendingB2BHtml = `
-            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan mb-8 animate-pulse shadow-[0_0_15px_rgba(0,240,255,0.1)]">
-                <h3 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-widest border-b border-mars-border pb-2">Aduana B2B: Contratos Pendientes de Firma</h3>
-                <div class="space-y-4">
-                    ${pendingB2B.map(c => `
-                    <div class="bg-slate-900 border border-mars-cyan/50 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <div>
-                            <p class="text-white font-bold uppercase text-xs">${c.itemName}</p>
-                            <p class="text-[10px] text-slate-400 mt-1">De: <span class="text-mars-yellow">${c.sellerName}</span> ➔ Para: <span class="text-mars-yellow">${c.buyerName}</span></p>
-                            <p class="text-[10px] text-mars-green font-mono mt-1">Importe: ${c.price.toFixed(2)} €v</p>
-                        </div>
-                        <div class="flex gap-2 w-full sm:w-auto">
-                            <button onclick="ui.approveB2BContract('${c.id}')" class="flex-1 sm:flex-none bg-mars-green text-black px-4 py-2 text-[10px] font-black uppercase hover:bg-white transition-colors">Aprobar Traspaso</button>
-                            <button onclick="ui.denyB2BContract('${c.id}')" class="flex-1 sm:flex-none bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2 text-[10px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-colors">Denegar</button>
-                        </div>
-                    </div>
-                    `).join('')}
-                </div>
-            </div>`;
-        }
+        // Contratos B2B pendientes de Aduana
+        state.data.b2bContracts = state.data.b2bContracts || [];
+        const pendingB2B = state.data.b2bContracts.filter(c => c.status === 'PENDIENTE_ADUANA');
 
-        // FIX: Añadido el Historial de Contratos B2B para que el profesor vea todo
-        let b2bHistoryHtml = '';
-        const allB2B = state.data.b2bContracts || [];
-        if (allB2B.length > 0) {
-            b2bHistoryHtml = `
-            <div class="terminal-border bg-mars-card p-6 w-full overflow-hidden mt-6 border-t-4 border-t-mars-cyan">
-                <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Historial de Contratos B2B (Aduana)</h3>
-                <div class="overflow-x-auto w-full">
-                    <table class="w-full text-left text-[10px] whitespace-nowrap min-w-max">
-                        <thead class="text-slate-500 uppercase border-b border-mars-border">
-                            <tr><th class="py-2 pr-4">ID / Fecha</th><th class="pr-4">Vendedor</th><th class="pr-4">Comprador</th><th class="pr-4">Artículo</th><th class="pr-4">Precio</th><th>Estado</th></tr>
-                        </thead>
-                        <tbody>
-                            ${allB2B.map(c => `
-                            <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
-                                <td class="py-2 pr-4 text-slate-400">${c.id}<br><span class="text-[8px]">${c.date}</span></td>
-                                <td class="py-2 pr-4 text-mars-yellow font-bold">${c.sellerName}</td>
-                                <td class="py-2 pr-4 text-mars-cyan font-bold">${c.buyerName}</td>
-                                <td class="py-2 pr-4 text-white">${c.itemName}</td>
-                                <td class="py-2 pr-4 font-mono text-mars-green">${c.price.toFixed(2)} €v</td>
-                                <td class="py-2 font-bold ${c.status === 'APROBADO' ? 'text-mars-green' : c.status === 'DENEGADO' ? 'text-mars-magenta' : 'text-mars-yellow'}">${c.status}</td>
-                            </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
+        let b2bCustomsHtml = '';
+        if (isCoord) {
+            b2bCustomsHtml = `
+            <div class="terminal-border bg-mars-card p-6 mb-8 border-t-4 border-t-mars-yellow">
+                <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-2 flex-wrap gap-2">
+                    <div>
+                        <h3 class="font-orbitron text-mars-yellow text-xs sm:text-sm uppercase tracking-widest">🛃 Aduana Aeroespacial B2B (Control de Traspasos entre Startups)</h3>
+                        <p class="text-[9px] text-slate-400 uppercase mt-0.5">Autoriza o deniega las compraventas de segunda mano. El saldo del comprador ya se encuentra retenido en depósito.</p>
+                    </div>
+                    <span class="bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-3 py-1 text-[10px] font-black uppercase">${pendingB2B.length} Pendiente(s)</span>
+                </div>
+                <div class="space-y-3">
+                    ${pendingB2B.map(c => `
+                    <div class="bg-slate-900 border border-mars-yellow/60 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-[10px]">
+                        <div class="flex-grow">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="font-mono text-slate-400 font-bold">${c.id}</span>
+                                <span class="text-slate-600">|</span>
+                                <span class="text-slate-400">${c.date}</span>
+                            </div>
+                            <p class="text-white font-bold text-xs uppercase mb-1">${c.itemName} (x${c.qty || 1})</p>
+                            <p class="text-slate-300 uppercase text-[9px]">
+                                Vendedor: <strong class="text-mars-cyan">${c.sellerName}</strong> ➔ Comprador: <strong class="text-mars-yellow">${c.buyerName}</strong>
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end shrink-0 border-t sm:border-t-0 border-slate-800 pt-2 sm:pt-0">
+                            <span class="text-mars-green font-mono font-black text-base">${Number(c.price).toFixed(2)} €v</span>
+                            <div class="flex gap-2">
+                                <button onclick="ui.resolveB2BContract('${c.id}', true)" class="bg-mars-green text-black px-4 py-2 font-black uppercase text-[9px] hover:bg-white transition-colors">Aprobar Traspaso</button>
+                                <button onclick="ui.resolveB2BContract('${c.id}', false)" class="bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 font-black uppercase text-[9px] hover:bg-mars-magenta hover:text-white transition-colors">Rechazar</button>
+                            </div>
+                        </div>
+                    </div>`).join('') || '<p class="text-slate-600 text-xs italic">No hay contratos B2B retenidos en la Aduana en este momento.</p>'}
                 </div>
             </div>`;
         }
 
         return `
-        ${pendingB2BHtml}
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
             <div class="lg:col-span-1 terminal-border bg-mars-card p-6 text-center border-t-4 border-t-mars-magenta flex flex-col justify-center">
                 <h3 class="font-orbitron text-mars-magenta text-xs mb-4 uppercase tracking-widest">Inversión FÍSICA CLASE</h3>
@@ -93,18 +81,18 @@ Object.assign(ui, {
                                 c.realCosts = c.realCosts || []; 
                                 c.ledger = c.ledger || []; 
                                 
-                                const r = c.realCosts.reduce((s,i)=>s+i.eur,0);
-                                const virtualSpend = c.ledger.filter(l => l.delta < 0).reduce((s, l) => s + Math.abs(l.delta), 0);
+                                const r = c.realCosts.reduce((s,i)=>s+(Number(i.eur)||0),0);
+                                const virtualSpend = c.ledger.filter(l => l.delta < 0).reduce((s, l) => s + Math.abs(Number(l.delta)||0), 0);
                                 
                                 let sponsorHtml = '';
                                 if(canSponsor) {
-                                    sponsorHtml = `<button onclick="ui.modalAssignSponsor('${cid}')" class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-3 py-1 font-bold text-[9px] uppercase hover:bg-mars-yellow hover:text-black transition-all whitespace-nowrap">Asignar Patrocinio</button>`;
+                                    sponsorHtml = `<button onclick="ui.modalAssignSponsor('${cid}')" class="bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-3 py-1 font-bold text-[9px] uppercase hover:bg-mars-yellow hover:text-black transition-all whitespace-nowrap">${c.sponsorAwarded ? `[${c.sponsorAwarded}] Editar` : 'Asignar Patrocinio'}</button>`;
                                 } else {
                                     if(c.sponsorAwarded) {
                                         const cl = c.sponsorAwarded==='ORO'?'text-[#ffd700] border-[#ffd700]':c.sponsorAwarded==='PLATA'?'text-[#c0c0c0] border-[#c0c0c0]':'text-[#cd7f32] border-[#cd7f32]';
                                         let spName = c.sponsorData?.name ? ` - ${c.sponsorData.name}` : '';
                                         let spLogo = c.sponsorData?.logo ? `<img src="${c.sponsorData.logo}" class="h-4 inline-block ml-2 rounded-sm object-contain bg-black/50 p-0.5">` : '';
-                                        sponsorHtml = `<span class="${cl} font-bold text-[8px] uppercase border px-2 py-1 bg-black/50 flex items-center w-max gap-1">[PATROCINIO: ${c.sponsorAwarded}${spName}] ${spLogo}</span>`;
+                                        sponsorHtml = `<span class="${cl} font-bold text-[8px] uppercase border px-2 py-1 bg-black/50 flex items-center w-max gap-1">[PATROCINIO: ${c.sponsorAwarded}${spName}]${spLogo}</span>`;
                                     } else {
                                         sponsorHtml = `<span class="text-slate-600 font-bold text-[8px] uppercase border border-slate-700 px-2 py-1 bg-slate-900 block w-max">[SIN PATROCINIO]</span>`;
                                     }
@@ -112,9 +100,9 @@ Object.assign(ui, {
 
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
-                                    <td class="py-4 font-orbitron text-white font-bold pr-4"><button onclick="ui.showCompanyLogins('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4">${c.name}</button></td>
+                                    <td class="py-4 font-orbitron text-white font-bold pr-4"><button onclick="ui.showCompanyLogins('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4">${c.name} [${c.classGroup||'A'}]</button></td>
                                     <td class="py-4 font-mono pr-4"><span class="text-mars-green font-bold">${c.balance.toFixed(0)} €v</span></td>
-                                    <td class="py-4 font-mono pr-4"><button onclick="ui.modalVirtualSpend('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4" title="Ver desglose">${virtualSpend.toFixed(2)} €v</button></td>
+                                    <td class="py-4 font-mono pr-4"><button onclick="ui.modalVirtualSpend('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4" title="Ver desglose detallado">${virtualSpend.toFixed(2)} €v</button></td>
                                     <td class="py-4 font-mono pr-4"><span class="text-mars-magenta">${r.toFixed(2)} €</span></td>
                                     <td class="py-4 pr-4">${sponsorHtml}</td>
                                     <td class="py-4">
@@ -127,8 +115,8 @@ Object.assign(ui, {
                 </div>
             </div>
         </div>
-        ${b2bHistoryHtml}
-        <div class="terminal-border bg-mars-card p-6 mt-6">
+        ${b2bCustomsHtml}
+        <div class="terminal-border bg-mars-card p-6">
             <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase">Solicitudes de Material Externo / I+D</h3>
             <div class="space-y-3">
                 ${(state.data.pendingCustom || []).map(p => `
@@ -144,171 +132,198 @@ Object.assign(ui, {
         </div>`;
     },
 
-    // FIX: Restauradas las funciones de Patrocinio y Auditoría Virtual
-    modalAssignSponsor(cid) {
-        const co = state.data.companies[cid];
-        if (!co) return; // REGLA 4
+    resolveB2BContract(contractId, isApproved) {
+        if (!state.user || !state.user.role.startsWith('COORD')) return alert("Solo Coordinación puede operar la Aduana B2B.");
+        state.data.b2bContracts = state.data.b2bContracts || [];
         
-        this._tempSponsorLogo = null; 
-        
-        const html = `
-            <div class="space-y-4">
-                <div>
-                    <label class="text-[9px] text-mars-yellow uppercase font-bold block mb-1">Nivel de Patrocinio</label>
-                    <select id="sponsor-tier" class="w-full bg-slate-900 border border-mars-yellow/50 p-2 text-xs text-white uppercase outline-none focus:border-mars-yellow">
-                        <option value="ORO|500">ORO (+500 €v)</option>
-                        <option value="PLATA|400">PLATA (+400 €v)</option>
-                        <option value="BRONCE|250">BRONCE (+250 €v)</option>
-                        <option value="COBRE|150">COBRE (+150 €v)</option>
-                        <option value="COLABORADOR|100">COLABORADOR (+100 €v)</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="text-[9px] text-mars-yellow uppercase font-bold block mb-1">Nombre de la Marca / Entidad</label>
-                    <input type="text" id="sponsor-name" class="w-full bg-slate-900 border border-mars-yellow/50 p-2 text-xs text-white outline-none focus:border-mars-yellow" placeholder="Ej: SpaceX, NASA, Empresa Local...">
-                </div>
-                <div>
-                    <label class="text-[9px] text-mars-yellow uppercase font-bold block mb-1">Logotipo del Patrocinador (Opcional)</label>
-                    <input type="file" id="sponsor-logo-file" accept="image/png, image/jpeg" class="w-full text-[9px] text-slate-400 mb-2" onchange="ui.handleSponsorLogoUpload(event)">
-                    <div id="sponsor-logo-preview" class="h-12 w-auto bg-black border border-slate-700 flex items-center justify-center text-[8px] text-slate-500 italic">Sin logo</div>
-                </div>
-            </div>
-        `;
-        const actions = `<button onclick="ui.submitSponsor('${cid}')" class="bg-mars-yellow text-black px-6 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all">Asignar Patrocinio</button>`;
-        this.showModal(`Asignar Patrocinador a ${co.name}`, html, actions);
-    },
+        const c = state.data.b2bContracts.find(x => x.id === contractId);
+        if (!c || c.status !== 'PENDIENTE_ADUANA') return alert("Contrato no válido o ya procesado.");
 
-    handleSponsorLogoUpload(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        if (!file.type.startsWith('image/')) return alert("Solo PNG/JPG.");
-        if (file.size > 1024 * 1024) return alert("Máximo 1MB para el logo.");
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            this._tempSponsorLogo = ev.target.result;
-            const preview = document.getElementById('sponsor-logo-preview');
-            if (preview) preview.innerHTML = `<img src="${ev.target.result}" class="h-full object-contain">`;
-        };
-        reader.readAsDataURL(file);
-    },
+        const sellerCo = state.data.companies[c.sellerCoId];
+        const buyerCo = state.data.companies[c.buyerCoId];
+        const price = parseFloat(c.price) || 0;
 
-    submitSponsor(cid) {
-        const co = state.data.companies[cid];
-        if (!co) return; // REGLA 1 y 4
-        
-        const elTier = document.getElementById('sponsor-tier');
-        const elName = document.getElementById('sponsor-name');
-        if (!elTier || !elName) return; // REGLA 3
-        
-        const [tier, amountStr] = elTier.value.split('|');
-        const amount = parseFloat(amountStr);
-        const name = elName.value.trim() || 'Anónimo';
-        
-        co.sponsorAwarded = tier;
-        co.sponsorData = {
-            name: name,
-            logo: this._tempSponsorLogo
-        };
-        
-        const concept = `Patrocinio ${tier} - ${name}`;
-        state.addToLedger(cid, concept, 'DOCENTE', amount);
-        
-        this._tempSponsorLogo = null;
-        this.closeModal();
+        if (isApproved) {
+            c.status = 'APROBADO';
+
+            // 1. Abonar fondos al vendedor
+            if (sellerCo) {
+                state.addToLedger(c.sellerCoId, `[VENTA B2B APROBADA] Traspaso de ${c.itemName} a ${c.buyerName}`, 'ADUANA_B2B', price);
+                
+                // Marcar pieza original del vendedor como VENDIDO definitivamente
+                if (c.sourceOrderKey && sellerCo.orders) {
+                    const [ordId, itemIdx] = c.sourceOrderKey.split('-');
+                    const ord = sellerCo.orders.find(o => String(o.id) === String(ordId));
+                    if (ord && ord.items && ord.items[Number(itemIdx)]) {
+                        ord.items[Number(itemIdx)].b2bStatus = 'VENDIDO';
+                    }
+                }
+                ui.pushNotification(c.sellerCoId, 'TECNICO', `Aduana B2B aprobó la venta de "${c.itemName}". Se han ingresado +${price.toFixed(2)} €v.`, 'success');
+                ui.pushNotification(c.sellerCoId, 'FINANZAS', `Ingreso B2B de +${price.toFixed(2)} €v por venta a ${c.buyerName} asentado en Ledger.`, 'success');
+            }
+
+            // 2. Entregar pieza física en el inventario de órdenes ejecutadas del comprador
+            if (buyerCo) {
+                buyerCo.orders = buyerCo.orders || [];
+                buyerCo.orders.unshift({
+                    id: 'B2B-' + Date.now().toString().slice(-4),
+                    items: [{
+                        id: 'B2B-ITEM',
+                        name: `[B2B] ${c.itemName}`,
+                        qty: c.qty || 1,
+                        price: price,
+                        category: c.category || 'B2B',
+                        realEur: 0,
+                        realShop: `B2B (${c.sellerName})`
+                    }],
+                    total: price,
+                    justification: `Adquisición en Mercado Secundario B2B a ${c.sellerName} (Contrato #${c.id} validado por Aduana).`,
+                    status: 'EJECUTADO',
+                    date: new Date().toLocaleString()
+                });
+                ui.pushNotification(c.buyerCoId, 'TECNICO', `¡Aduana B2B autorizó tu compra! "${c.itemName}" ya está en tu Inventario Físico / BOM.`, 'success');
+            }
+
+            telemetry.log("ADUANA B2B", `Aprobado contrato #${c.id} (${c.itemName}) entre ${c.sellerName} y ${c.buyerName}`);
+            state.save();
+            alert(`✅ Traspaso B2B #${c.id} aprobado. Fondos liberados al vendedor y pieza entregada al comprador.`);
+        } else {
+            c.status = 'RECHAZADO';
+
+            // 1. Reembolsar el depósito retenido al comprador
+            if (buyerCo) {
+                state.addToLedger(c.buyerCoId, `[REEMBOLSO ADUANA B2B] Contrato rechazado: ${c.itemName}`, 'ADUANA_B2B', price);
+                ui.pushNotification(c.buyerCoId, 'FINANZAS', `La Aduana B2B rechazó el contrato #${c.id}. Se han reembolsado +${price.toFixed(2)} €v a vuestra caja.`, 'warning');
+                ui.pushNotification(c.buyerCoId, 'TECNICO', `Compra B2B de "${c.itemName}" denegada por la Aduana Docente.`, 'error');
+            }
+
+            // 2. Liberar la pieza en el inventario del vendedor
+            if (sellerCo && c.sourceOrderKey && sellerCo.orders) {
+                const [ordId, itemIdx] = c.sourceOrderKey.split('-');
+                const ord = sellerCo.orders.find(o => String(o.id) === String(ordId));
+                if (ord && ord.items && ord.items[Number(itemIdx)]) {
+                    delete ord.items[Number(itemIdx)].b2bStatus;
+                }
+                ui.pushNotification(c.sellerCoId, 'TECNICO', `La Aduana B2B denegó la venta de "${c.itemName}". La pieza vuelve a estar disponible en tu inventario.`, 'warning');
+            }
+
+            telemetry.log("ADUANA B2B", `Rechazado contrato #${c.id}`);
+            state.save();
+            alert(`❌ Contrato B2B #${c.id} rechazado. Fondos reembolsados al comprador y pieza devuelta al vendedor.`);
+        }
         this.render();
     },
 
     modalVirtualSpend(cid) {
         const co = state.data.companies[cid];
-        if (!co) return; // REGLA 1 y 4
-        
-        co.ledger = co.ledger || [];
-        const expenses = co.ledger.filter(l => l.delta < 0);
-        const total = expenses.reduce((s, l) => s + Math.abs(l.delta), 0);
-        
-        let html = `
-        <div class="mb-4 bg-slate-900 p-4 border border-mars-cyan flex justify-between items-center">
-            <span class="text-mars-cyan font-bold uppercase text-xs">Total Gasto Virtual Acumulado</span>
-            <span class="text-mars-cyan font-mono text-xl font-black">${total.toFixed(2)} €v</span>
-        </div>
-        <div class="max-h-64 overflow-y-auto pr-2">
-            <table class="w-full text-left text-[10px] whitespace-nowrap">
-                <thead class="text-slate-500 uppercase border-b border-mars-border sticky top-0 bg-mars-card">
-                    <tr><th class="py-2 pr-2">Fecha / ID</th><th class="pr-2">Concepto</th><th class="text-right">Importe (€v)</th></tr>
-                </thead>
-                <tbody>
-                    ${expenses.map(l => `
-                    <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
-                        <td class="py-2 pr-2 text-slate-400">${l.date.split(' ')[0]} <br><span class="text-[8px]">${l.id}</span></td>
-                        <td class="py-2 pr-2 text-white whitespace-normal min-w-[200px]">${l.concept}</td>
-                        <td class="py-2 text-right text-mars-magenta font-mono font-bold">${Math.abs(l.delta).toFixed(2)}</td>
-                    </tr>
-                    `).join('') || `<tr><td colspan="3" class="text-center py-4 text-slate-600 italic">No hay gastos registrados.</td></tr>`}
-                </tbody>
-            </table>
-        </div>
+        if (!co) return;
+        const expenses = (co.ledger || []).filter(l => l.delta < 0);
+        const total = expenses.reduce((s, l) => s + Math.abs(Number(l.delta) || 0), 0);
+
+        const rowsHtml = expenses.map(e => `
+            <tr class="border-b border-slate-800">
+                <td class="py-2 pr-2 text-slate-400 text-[9px]">${e.date}</td>
+                <td class="py-2 pr-2 text-white font-bold text-[10px]">${e.concept}</td>
+                <td class="py-2 pr-2 text-mars-cyan text-[9px] uppercase">${e.dept}</td>
+                <td class="py-2 text-right font-mono text-mars-magenta font-bold text-[10px]">${Number(e.delta).toFixed(2)} €v</td>
+            </tr>
+        `).join('') || `<tr><td colspan="4" class="py-4 text-center text-slate-500 italic">Esta startup no registra salidas de capital virtual.</td></tr>`;
+
+        const html = `
+            <div class="bg-slate-900 border border-mars-cyan p-3 mb-4 flex justify-between items-center">
+                <span class="text-[10px] text-slate-300 uppercase font-bold">Total Gasto Virtual Acumulado:</span>
+                <span class="text-lg font-orbitron text-mars-magenta font-black">-${total.toFixed(2)} €v</span>
+            </div>
+            <div class="max-h-72 overflow-y-auto pr-1">
+                <table class="w-full text-left">
+                    <thead class="text-[9px] text-slate-500 uppercase border-b border-mars-border">
+                        <tr><th class="py-1">Fecha</th><th>Concepto</th><th>Dpto</th><th class="text-right">Importe</th></tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            </div>
         `;
         this.showModal(`Auditoría de Gasto Virtual: ${co.name}`, html, "");
     },
 
-    approveB2BContract(id) {
-        if (!state.user || !state.user.admin) return;
-        const contract = state.data.b2bContracts.find(c => c.id === id);
-        if (!contract) return;
-        
-        const buyer = state.data.companies[contract.buyerCoId];
-        const seller = state.data.companies[contract.sellerCoId];
-        
-        if (!buyer || !seller) return;
-        if (buyer.balance < contract.price) return alert("El comprador no tiene fondos suficientes para ejecutar el traspaso.");
-        
-        // 1. Mover dinero y registrar en Ledgers
-        buyer.balance -= contract.price;
-        buyer.ledger.unshift({ id: 'TX-'+Date.now(), date: new Date().toLocaleString(), concept: `Compra B2B: ${contract.itemName} a ${contract.sellerName}`, dept: 'FINANZAS', delta: -contract.price, final: buyer.balance });
-        
-        seller.balance += contract.price;
-        seller.ledger.unshift({ id: 'TX-'+(Date.now()+1), date: new Date().toLocaleString(), concept: `Venta B2B: ${contract.itemName} a ${contract.buyerName}`, dept: 'FINANZAS', delta: contract.price, final: seller.balance });
-        
-        // 2. Mover inventario físico
-        const itemIdx = seller.inventory.findIndex(i => i.id === contract.invId);
-        if (itemIdx !== -1) {
-            const item = seller.inventory.splice(itemIdx, 1)[0];
-            item.status = 'AVAILABLE';
-            item.salePrice = null;
-            buyer.inventory.unshift(item);
-        }
-        
-        // 3. Actualizar contrato y notificar
-        contract.status = 'APROBADO';
-        
-        ui.pushNotification(contract.buyerCoId, 'FINANZAS', `Contrato B2B Aprobado. Has adquirido ${contract.itemName}.`, 'success');
-        ui.pushNotification(contract.sellerCoId, 'FINANZAS', `Contrato B2B Aprobado. Has vendido ${contract.itemName} por ${contract.price}€v.`, 'success');
-        
-        state.save();
-        this.render();
+    modalAssignSponsor(cid) {
+        const co = state.data.companies[cid];
+        if (!co) return;
+
+        const currentTier = co.sponsorAwarded || 'ORO';
+        const currentName = co.sponsorData?.name || '';
+
+        const html = `
+            <p class="text-[10px] text-slate-400 mb-4 uppercase leading-relaxed">Inyecta capital virtual de patrocinio (Fase I) y personaliza la marca patrocinadora que lucirá en el HUD de <strong>${co.name}</strong>.</p>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-[9px] text-mars-yellow uppercase font-bold block mb-1">Nivel de Patrocinio</label>
+                    <select id="sp-tier" onchange="const v=this.value; document.getElementById('sp-amount').value = (v==='ORO'?500:(v==='PLATA'?400:250));" class="w-full bg-slate-900 border border-mars-yellow p-2 text-xs text-white font-bold uppercase outline-none">
+                        <option value="ORO" ${currentTier==='ORO'?'selected':''}>🥇 Nivel ORO (+500 €v sugerido)</option>
+                        <option value="PLATA" ${currentTier==='PLATA'?'selected':''}>🥈 Nivel PLATA (+400 €v sugerido)</option>
+                        <option value="BRONCE" ${currentTier==='BRONCE'?'selected':''}>🥉 Nivel BRONCE (+250 €v sugerido)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[9px] text-mars-green uppercase font-bold block mb-1">Inyección Económica al Ledger (€v)</label>
+                    <input type="number" id="sp-amount" value="500" step="50" class="w-full bg-slate-900 border border-mars-border p-2 text-sm text-mars-green font-mono font-bold outline-none">
+                </div>
+                <div>
+                    <label class="text-[9px] text-mars-cyan uppercase font-bold block mb-1">Nombre de la Corporación Patrocinadora</label>
+                    <input type="text" id="sp-name" value="${currentName}" placeholder="Ej: SpaceX, PLD Space, Airbus..." class="w-full bg-slate-900 border border-mars-border p-2 text-xs text-white outline-none">
+                </div>
+                <div>
+                    <label class="text-[9px] text-mars-cyan uppercase font-bold block mb-1">Logotipo del Patrocinador (Opcional, PNG/JPG < 1MB)</label>
+                    <input type="file" id="sp-logo" accept="image/png, image/jpeg" class="text-[10px] text-slate-400 w-full">
+                </div>
+            </div>
+        `;
+        const actions = `<button onclick="ui.confirmAssignSponsor('${cid}')" class="bg-mars-yellow text-black px-5 py-2 text-[10px] font-black uppercase hover:bg-white transition-all">Conceder Patrocinio</button>`;
+        this.showModal(`Asignar Patrocinio: ${co.name}`, html, actions);
     },
 
-    denyB2BContract(id) {
-        if (!state.user || !state.user.admin) return;
-        const contract = state.data.b2bContracts.find(c => c.id === id);
-        if (!contract) return;
-        
-        const seller = state.data.companies[contract.sellerCoId];
-        if (seller) {
-            const item = seller.inventory.find(i => i.id === contract.invId);
-            if (item) {
-                item.status = 'AVAILABLE';
-                item.salePrice = null;
+    confirmAssignSponsor(cid) {
+        const co = state.data.companies[cid];
+        if (!co) return;
+
+        const elTier = document.getElementById('sp-tier');
+        const elAmount = document.getElementById('sp-amount');
+        const elName = document.getElementById('sp-name');
+        const elLogo = document.getElementById('sp-logo');
+        if (!elTier || !elAmount || !elName) return;
+
+        const tier = elTier.value;
+        const amount = parseFloat(elAmount.value) || 0;
+        const spName = elName.value.trim() || 'Inversor Institucional';
+        const file = elLogo && elLogo.files ? elLogo.files[0] : null;
+
+        const finalizeSponsor = (logoDataUrl) => {
+            co.sponsorAwarded = tier;
+            co.sponsorData = {
+                name: spName,
+                logo: logoDataUrl !== undefined ? logoDataUrl : (co.sponsorData?.logo || null)
+            };
+
+            if (amount !== 0) {
+                state.addToLedger(cid, `[PATROCINIO ${tier}] Inyección de capital por ${spName}`, 'DIRECCIÓN_AEE', amount);
             }
+
+            ui.pushNotification(cid, 'CEO', `¡Habéis obtenido el Patrocinio ${tier} de ${spName} (+${amount} €v)!`, 'success');
+            ui.pushNotification(cid, 'MARKETING', `Patrocinio ${tier} (${spName}) concedido y visible en vuestro HUD.`, 'success');
+            telemetry.log("PATROCINIO", `Concedido ${tier} (${amount}€v) a ${co.name}`);
+            state.save();
+            this.closeModal();
+            this.render();
+        };
+
+        if (file) {
+            if (file.size > 1024 * 1024) return alert("El logo del patrocinador no debe superar 1MB.");
+            const reader = new FileReader();
+            reader.onload = (ev) => finalizeSponsor(ev.target.result);
+            reader.readAsDataURL(file);
+        } else {
+            finalizeSponsor(undefined);
         }
-        
-        contract.status = 'DENEGADO';
-        
-        ui.pushNotification(contract.buyerCoId, 'FINANZAS', `Contrato B2B Denegado por la Aduana Docente.`, 'error');
-        ui.pushNotification(contract.sellerCoId, 'FINANZAS', `Contrato B2B Denegado. El objeto vuelve a tu inventario.`, 'error');
-        
-        state.save();
-        this.render();
     },
 
     renderAdminStartups() {
@@ -322,7 +337,7 @@ Object.assign(ui, {
                 <select id="new-co-class" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white mb-4 outline-none focus:border-mars-cyan">
                     ${['A','B','C','D','E','F'].map(c => `<option value="${c}">Clase ${c}</option>`).join('')}
                 </select>
-                <button onclick="ui.createStartup()" class="w-full bg-mars-cyan text-black font-black py-3 text-[10px] uppercase tracking-widest hover:shadow-[0_0_10px_#00f0ff] transition-shadow">Registrar</button>
+                <button onclick="ui.createStartup()" class="w-full bg-mars-cyan text-black font-black py-3 text-[10px] uppercase tracking-widest hover:shadow-[0_0_10px_#00f0ff] transition-shadow">Registrar (2400 €v)</button>
             </div>
             <div class="xl:col-span-3 terminal-border bg-mars-card p-6 w-full overflow-hidden border-t-4 border-t-mars-yellow">
                 <h3 class="font-orbitron text-mars-yellow text-xs mb-4 uppercase tracking-widest">Gestión de PINs de Acceso</h3>
@@ -336,8 +351,7 @@ Object.assign(ui, {
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
                                     <td class="py-3 font-orbitron text-white font-bold pr-4"><button onclick="ui.showCompanyLogins('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4">${co.name}</button></td>
-                                    <td class="py-3 text-mars-yellow font-bold pr-4">${co.classGroup}</td>
-                                    ${['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA'].map(rol => `
+                                    <td class="py-3 text-mars-yellow font-bold pr-4">${co.classGroup}</td>${['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA'].map(rol => `
                                     <td class="py-3 pr-2">
                                         ${isCoord ? `<input type="text" maxlength="4" value="${r[rol]||'1234'}" onchange="ui.updatePIN('${cid}', '${rol}', this.value)" class="w-10 bg-black border border-mars-border text-center text-mars-cyan font-bold p-1 outline-none focus:border-mars-yellow">` : `<span class="text-slate-500">****</span>`}
                                     </td>`).join('')}
@@ -390,7 +404,7 @@ Object.assign(ui, {
                 ${state.data.telemetry.sessions.map(sess => `
                 <div class="border border-mars-border/50 bg-slate-900/30 p-3 text-[10px]">
                     <div class="flex justify-between items-center border-b border-mars-border/30 pb-2 mb-2">
-                        <span class="text-mars-cyan font-bold uppercase">${sess.entity} | ${sess.role.replace('_',' ')}</span>
+                        <span class="text-mars-cyan font-bold uppercase">${sess.entity} \vert{}${sess.role.replace('_',' ')}</span>
                         <span class="text-[8px] text-slate-500 bg-black px-2 py-0.5">${sess.timestamp.replace('T',' ').slice(0,19)}</span>
                     </div>
                     <ul class="text-slate-300 space-y-1">
@@ -494,15 +508,13 @@ Object.assign(ui, {
         </div>`;
     },
 
-    // --- LÓGICA DE GESTIÓN ---
-
     createStartup() {
         const elName = document.getElementById('new-co-name');
         const elCap = document.getElementById('new-co-cap');
         const elClass = document.getElementById('new-co-class');
-        if (!elName || !elCap || !elClass) return; // REGLA 3
+        if (!elName || !elCap || !elClass) return;
         
-        const name = elName.value;
+        const name = elName.value.trim();
         const cap = parseFloat(elCap.value);
         const classGroup = elClass.value || 'A';
         
@@ -511,11 +523,17 @@ Object.assign(ui, {
         state.data.companies[cid] = { 
             name, balance: cap, logo: null, sponsorAwarded: null, sponsorData: {name: null, logo: null}, valueProposition: "", slogan: "", classGroup,
             roles: { CEO:'1234', TECNICO:'1234', FINANZAS:'1234', MARKETING:'1234', OPERACIONES_IA:'1234' }, 
-            aiPrompts: [], decisionLog: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], marketingPackages: [], inactivityReports: [], notifications: [],
-            sanctions: [], crisisAlerts: [], inventory: [],
+            aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [],
+            sanctions: [], crisisAlerts: [], bom: [],
             loginStats: { totalLogins: 0, roles: { CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0} } },
-            fase1Registro: { presupuestoTeorico: '', alturaEstimada: '', justificacionV2: '' },
-            deliverables: { technicalReport: null, informePreliminar: null, presPhase1: null, presPhase3: null, financeBook: null, valuePropDoc: null, boceto: null, fotoPrototipo: null, videoPromo: null, mathGoniometro: null, mathMedicion1: null, mathMedicion2: null, mathComparativa: null, businessModel: null, canvas: null, dossierInversores: null }
+            deliverables: {
+                preliminaryReport: null, technicalReport: null,
+                brandIdentity_dec: null, brandIdentity_apr: null, businessModelDoc: null, businessModelCanvas: null, decisionDiary_dec: null, decisionDiary_apr: null,
+                investorDossier: null,
+                goniometerEvidence: null, mathReportDist: null, mathReportTwoPoints: null, mathReportFinal: null,
+                budgetInitial: null, incomeStatement: null, budgetPostProto: null, balanceSheet: null,
+                oralPresentation: null, writtenEssays: null
+            }
         };
         state.save(); this.render();
     },
@@ -565,7 +583,7 @@ Object.assign(ui, {
 
     resolveInactivityReport(cid, rid) {
         const co = state.data.companies[cid];
-        if (!co || !co.inactivityReports) return; // REGLA 1
+        if (!co || !co.inactivityReports) return;
         const rep = co.inactivityReports.find(r => r.id === rid);
         if (rep) {
             rep.status = 'RESUELTO';
@@ -576,7 +594,7 @@ Object.assign(ui, {
 
     saveCatalogPrice(id) {
         const elPrice = document.getElementById(`price-${id}`);
-        if (!elPrice) return; // REGLA 3
+        if (!elPrice) return;
         const newPrice = parseFloat(elPrice.value);
         if(isNaN(newPrice) || newPrice < 0) return alert("Precio inválido.");
         const item = state.data.catalog.find(i => i.id === id);
@@ -595,7 +613,7 @@ Object.assign(ui, {
         const elCat = document.getElementById('new-cat-category');
         const elOrigin = document.getElementById('new-cat-origin');
 
-        if (!elId || !elName || !elPrice || !elUnit || !elCat || !elOrigin) return; // REGLA 3
+        if (!elId || !elName || !elPrice || !elUnit || !elCat || !elOrigin) return;
 
         const id = elId.value.trim();
         const name = elName.value.trim();
@@ -622,7 +640,7 @@ Object.assign(ui, {
         
         if(ok) {
             const elPrice = document.getElementById(`val-price-${pid}`);
-            if (!elPrice) return; // REGLA 3
+            if (!elPrice) return;
             const price = parseFloat(elPrice.value);
             if(!price) return alert("Falta precio €v.");
             
@@ -648,7 +666,7 @@ Object.assign(ui, {
 
     modalAEEFine(cid) {
         const co = state.data.companies[cid];
-        if (!co) return; // REGLA 4
+        if (!co) return;
         
         const agency = REGULATORY_AGENCIES[state.user.role] || "Agencia Reguladora Central";
         
@@ -689,10 +707,10 @@ Object.assign(ui, {
         const elArticle = document.getElementById('aee-article');
         const elReason = document.getElementById('aee-reason');
         const elAmount = document.getElementById('aee-amount');
-        if (!elArticle || !elReason || !elAmount) return; // REGLA 3
+        if (!elArticle || !elReason || !elAmount) return;
         
         const article = elArticle.value;
-        const reason = elReason.value;
+        const reason = elReason.value.trim();
         const amount = parseFloat(elAmount.value);
         if(!reason) return alert("El dictamen del inspector es obligatorio.");
         
@@ -714,11 +732,7 @@ Object.assign(ui, {
         };
         
         co.sanctions.unshift(sanctionObj);
-        
-        co.crisisAlerts.unshift({
-            ...sanctionObj,
-            read: false
-        });
+        co.crisisAlerts.unshift({ ...sanctionObj, read: false });
         
         const concept = `[MULTA] ${agency} - ${article}`;
         state.addToLedger(cid, concept, 'DOCENTE_AEE', amount);
