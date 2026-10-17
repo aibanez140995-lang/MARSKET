@@ -655,4 +655,4 @@ const ui = {
         const elOverlay = document.getElementById('modal-overlay');
         if(elOverlay) elOverlay.classList.add('hidden'); 
     }
-});
+};
