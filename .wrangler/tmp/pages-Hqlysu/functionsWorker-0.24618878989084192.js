@@ -25,11 +25,50 @@ async function onRequestGet(context) {
 __name(onRequestGet, "onRequestGet");
 async function onRequestPost(context) {
   try {
-    const body = await context.request.text();
+    const bodyText = await context.request.text();
+    let incomingData;
+    try {
+      incomingData = JSON.parse(bodyText);
+    } catch (parseErr) {
+      return new Response(JSON.stringify({ error: "Invalid JSON payload" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+    const currentRow = await context.env.DB.prepare(
+      "SELECT data FROM app_state WHERE id = 'master'"
+    ).first();
+    let nextVersion = 1;
+    if (currentRow && currentRow.data) {
+      try {
+        const serverData = JSON.parse(currentRow.data);
+        const serverVersion = Number(serverData.version) || 1;
+        const clientVersion = Number(incomingData.version) || 1;
+        if (clientVersion < serverVersion && !incomingData._resolvedConflict) {
+          return new Response(JSON.stringify({
+            error: "Version conflict detected",
+            serverVersion
+          }), {
+            status: 409,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+        nextVersion = Math.max(serverVersion, clientVersion) + 1;
+      } catch (e) {
+        nextVersion = (Number(incomingData.version) || 1) + 1;
+      }
+    }
+    delete incomingData._resolvedConflict;
+    incomingData.version = nextVersion;
+    const finalPayload = JSON.stringify(incomingData);
     await context.env.DB.prepare(
       "INSERT INTO app_state (id, data, updated_at) VALUES ('master', ?1, CURRENT_TIMESTAMP) ON CONFLICT(id) DO UPDATE SET data = ?1, updated_at = CURRENT_TIMESTAMP"
-    ).bind(body).run();
-    return new Response(JSON.stringify({ success: true, timestamp: Date.now() }), {
+    ).bind(finalPayload).run();
+    return new Response(JSON.stringify({
+      success: true,
+      version: nextVersion,
+      timestamp: Date.now()
+    }), {
       headers: { "Content-Type": "application/json" }
     });
   } catch (err) {
@@ -41,7 +80,7 @@ async function onRequestPost(context) {
 }
 __name(onRequestPost, "onRequestPost");
 
-// ../.wrangler/tmp/pages-b470Go/functionsRoutes-0.14261010952160635.mjs
+// ../.wrangler/tmp/pages-Hqlysu/functionsRoutes-0.38350345176277556.mjs
 var routes = [
   {
     routePath: "/api/state",
@@ -59,7 +98,7 @@ var routes = [
   }
 ];
 
-// ../../../../AppData/Local/npm-cache/_npx/32026684e21afda6/node_modules/path-to-regexp/dist.es2015/index.js
+// ../../../AppData/Local/npm-cache/_npx/32026684e21afda6/node_modules/path-to-regexp/dist.es2015/index.js
 function lexer(str) {
   var tokens = [];
   var i = 0;
@@ -385,7 +424,7 @@ function pathToRegexp(path, keys, options) {
 }
 __name(pathToRegexp, "pathToRegexp");
 
-// ../../../../AppData/Local/npm-cache/_npx/32026684e21afda6/node_modules/wrangler/templates/pages-template-worker.ts
+// ../../../AppData/Local/npm-cache/_npx/32026684e21afda6/node_modules/wrangler/templates/pages-template-worker.ts
 var escapeRegex = /[.+?^${}()|[\]\\]/g;
 function* executeRequest(request) {
   const requestPath = new URL(request.url).pathname;

@@ -1,16 +1,17 @@
 // js/ui-empresa-finance.js
-// --- MÓDULO FINANZAS: BÓVEDA DE ÓRDENES, LEDGER, 4 BALANCE ECO Y MARKETING ---
+// --- MÓDULO FINANZAS: BÓVEDA DE ÓRDENES, LEDGER, 4 BALANCES ECO (DRIVE) Y MARKETING (v1.0.15) ---
 
 Object.assign(ui, {
     renderDeadlinesBlock() {
         const dl = state.data.config.deadlines || {}; 
         return `
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            ${this.renderSingleDeadline('Pitch Fase I (Inglés)', dl.presPhase1)}
-            ${this.renderSingleDeadline('Propuesta Valor (LYE)', dl.valuePropDoc)}
             ${this.renderSingleDeadline('Informe Técnico (FYQ)', dl.techReport)}
-            ${this.renderSingleDeadline('Balance de Situación (ECO)', dl.balanceSheet)}
-            ${this.renderSingleDeadline('Pitch Fase III (LEN)', dl.presPhase3)}
+            ${this.renderSingleDeadline('Identidad Marca Dic. (LYE)', dl.brandIdentity_dec)}
+            ${this.renderSingleDeadline('Identidad Marca Abr. (LYE)', dl.brandIdentity_apr)}
+            ${this.renderSingleDeadline('Business Model (LYE)', dl.businessModelDoc)}
+            ${this.renderSingleDeadline('Dossier Inversores (LEN)', dl.investorDossier)}
+            ${this.renderSingleDeadline('Balance Situación (ECO)', dl.balanceSheet)}
         </div>`;
     },
 
@@ -107,12 +108,17 @@ Object.assign(ui, {
             ${this.renderDeadlinesBlock()}
             
             <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan mb-8">
-                <h2 class="font-orbitron text-mars-cyan text-sm mb-4 uppercase tracking-tighter border-b border-mars-border pb-2">Bóveda Documental Corporativa</h2>
+                <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-2">
+                    <h2 class="font-orbitron text-mars-cyan text-sm uppercase tracking-tighter">Resumen Ejecutivo de Entregas Clave</h2>
+                    <button onclick="ui.navigate('dossier')" class="text-[9px] text-mars-yellow uppercase font-bold hover:underline">Ver los 19 Entregables en Dossier ➔</button>
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     ${this.renderDocBadge('Hoja Registro Preliminar (FYQ)', docs.preliminaryReport)}
                     ${this.renderDocBadge('Informe Técnico (FYQ)', docs.technicalReport)}
+                    ${this.renderDocBadge('Business Model Escrito (LYE)', docs.businessModelDoc)}
                     ${this.renderDocBadge('Balance de Situación (ECO)', docs.balanceSheet)}
                     ${this.renderDocBadge('Dossier de Inversores (LEN)', docs.investorDossier)}
+                    ${this.renderDocBadge('Informe Final Comparativo (MAT)', docs.mathReportFinal)}
                 </div>
             </div>
             ${sanctionsHtml}
@@ -120,8 +126,8 @@ Object.assign(ui, {
         }
 
         let financeAlertHtml = '';
-        pendingMarketingCount = co.marketingCampaigns.filter(m => m.status === 'PENDIENTE_FINANZAS').length;
-        pendingOrdersCount = co.orders.filter(o => o.status === 'PENDIENTE_FINANZAS').length;
+        const pendingMarketingCount = co.marketingCampaigns.filter(m => m.status === 'PENDIENTE_FINANZAS').length;
+        const pendingOrdersCount = co.orders.filter(o => o.status === 'PENDIENTE_FINANZAS').length;
         const totalPendingFin = pendingMarketingCount + pendingOrdersCount;
 
         if (role.includes('FINAN') && totalPendingFin > 0) {
@@ -137,7 +143,6 @@ Object.assign(ui, {
             return 0;
         });
 
-        // Solicitudes de Marketing pendientes de Finanzas
         let marketingOrdersHtml = '';
         const pendingMktList = co.marketingCampaigns.filter(m => m.status === 'PENDIENTE_FINANZAS');
         if (pendingMktList.length > 0) {
@@ -328,10 +333,11 @@ Object.assign(ui, {
         let reason = forceReason;
         if (!reason) {
             const reasonInput = document.getElementById('deny-reason');
-            if(reasonInput) reason = reasonInput.value;
+            if(reasonInput) reason = reasonInput.value.trim();
         }
         
         if(!reason) return alert("Especifique motivo.");
+        if(this.hasForbiddenWords(reason)) return alert("⚠️ Filtro Léxico: Se ha detectado vocabulario inapropiado en el motivo de rechazo.");
         
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
@@ -486,12 +492,15 @@ Object.assign(ui, {
         
         ${isFinanzas ? `
         <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan mb-8">
-            <h3 class="font-orbitron text-mars-cyan text-sm mb-2 uppercase">Entregables de Economía (10% Global)</h3>
-            <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Sube los cuatro documentos contables obligatorios para la evaluación de Economía.</p>
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="font-orbitron text-mars-cyan text-sm uppercase">Entregables Oficiales de Economía (10% Global)</h3>
+                <span class="text-[8px] bg-mars-cyan/10 text-mars-cyan border border-mars-cyan px-2 py-0.5 font-bold uppercase">Solo Enlaces Drive / Sheets</span>
+            </div>
+            <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Proporciona los enlaces a la nube con permisos de lectura abiertos para los cuatro documentos contables obligatorios.</p>
             <div class="space-y-4">
-                ${this.renderHybridUploadBox('1. Presupuesto Inicial (20% ECO)', 'Estimación inicial de costes teóricos y liquidez de partida.', 'budgetInitial', docs.budgetInitial)}
-                ${this.renderHybridUploadBox('2. Cuenta de Resultados (20% ECO)', 'Ingresos, gastos acumulados y margen analítico del proyecto.', 'incomeStatement', docs.incomeStatement)}
-                ${this.renderHybridUploadBox('3. Presupuesto Post-Prototipo (20\% ECO)', 'Ajustes presupuestarios tras las pruebas reales de vuelo y V2.0.', 'budgetPostProto', docs.budgetPostProto)}${this.renderHybridUploadBox('4. Balance de Situación Simplificado (20% ECO)', 'Cuadre final de activos, pasivos y patrimonio neto corporativo.', 'balanceSheet', docs.balanceSheet)}
+                ${this.renderDriveLinkBox('1. Presupuesto Inicial (20% ECO)', 'Enlace Drive/Sheets a la estimación inicial de costes teóricos y liquidez de partida.', 'budgetInitial', docs.budgetInitial)}
+                ${this.renderDriveLinkBox('2. Cuenta de Resultados (20% ECO)', 'Enlace Drive/Sheets a los ingresos, gastos acumulados y margen analítico del proyecto.', 'incomeStatement', docs.incomeStatement)}
+                ${this.renderDriveLinkBox('3. Presupuesto Post-Prototipo (20\% ECO)', 'Enlace Drive/Sheets a los ajustes presupuestarios tras las pruebas reales de vuelo y V2.0.', 'budgetPostProto', docs.budgetPostProto)}${this.renderDriveLinkBox('4. Balance de Situación Simplificado (20% ECO)', 'Enlace Drive/Sheets al cuadre final de activos, pasivos y patrimonio neto corporativo.', 'balanceSheet', docs.balanceSheet)}
             </div>
         </div>` : ''}
 

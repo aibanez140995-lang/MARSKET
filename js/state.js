@@ -35,7 +35,7 @@ const state = {
             if (!item.origin) item.origin = countries[Math.floor(Math.random() * countries.length)];
         });
 
-        // Árbol Oficial de 17 Entregables (v1.0.14)
+        // Árbol Oficial de 19 Entregables (v1.0.15)
         const defDocs = {
             preliminaryReport: null, technicalReport: null,
             brandIdentity_dec: null, brandIdentity_apr: null, businessModelDoc: null, businessModelCanvas: null, decisionDiary_dec: null, decisionDiary_apr: null,
@@ -52,6 +52,9 @@ const state = {
             co.loginStats = co.loginStats || { totalLogins: 0, roles: {} };
             co.loginStats.roles = co.loginStats.roles || {};
             co.classGroup = co.classGroup || 'A';
+            
+            // Migración Defensiva de Moderación de Marca
+            co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
             
             // Migración Segura de Entregables (Retrocompatibilidad)
             co.deliverables = co.deliverables || {};
@@ -78,6 +81,7 @@ const state = {
             co.slogan = co.slogan || "";
             co.valueProposition = co.valueProposition || "";
             co.logo = co.logo || null;
+            co.bom = co.bom || [];
             co.sponsorAwarded = co.sponsorAwarded || null;
             co.marketingCampaigns = co.marketingCampaigns || [];
             co.inactivityReports = co.inactivityReports || [];
@@ -144,7 +148,7 @@ const state = {
                 const arraysToMerge = [
                     'orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 
                     'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 
-                    'sanctions', 'crisisAlerts', 'cart'
+                    'sanctions', 'crisisAlerts', 'cart', 'bom'
                 ];
                 
                 arraysToMerge.forEach(arrName => {

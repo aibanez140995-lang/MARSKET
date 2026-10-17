@@ -1,9 +1,9 @@
 // js/ui-empresa-core.js
-// --- MÓDULO CORE: LOGIN, NOTIFICACIONES Y DOSSIER ACADÉMICO (17 ENTREGABLES) ---
+// --- MÓDULO CORE: LOGIN, NOTIFICACIONES Y DOSSIER ACADÉMICO (19 ENTREGABLES) (v1.0.15) ---
 
 Object.assign(ui, {
     viewLogin(el) {
-        if (!el) return; // REGLA 3: Manipulación segura del DOM
+        if (!el) return;
         let coOptions = Object.keys(state.data.companies).map(k => `<option value="${k}">${state.data.companies[k].name}</option>`).join('');
         el.innerHTML = `
         <div class="min-h-[75vh] flex items-center justify-center w-full px-4">
@@ -51,12 +51,11 @@ Object.assign(ui, {
     },
 
     renderNotifications() {
-        if (!state.user) return ''; // REGLA 2: Ghost clicks y sesión
+        if (!state.user) return;
         const co = state.data.companies[state.user.coId];
-        if (!co) return ''; // REGLA 4: Sesión huérfana
+        if (!co) return;
         
-        co.notifications = co.notifications || []; // REGLA 1: Blindaje
-        
+        co.notifications = co.notifications || [];
         const myNotifs = co.notifications.filter(n => n.role === state.user.role && !n.read);
         if (myNotifs.length === 0) return '';
         
@@ -127,7 +126,7 @@ Object.assign(ui, {
         ${adminSelector}
         <div class="flex gap-2 mb-6 border-b border-mars-border pb-2">
             <button onclick="ui.showDossierTab('eval')" class="px-4 py-2 text-[10px] font-bold uppercase ${tab==='eval'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">📊 Evaluación Continua (100%)</button>
-            <button onclick="ui.showDossierTab('docs')" class="px-4 py-2 text-[10px] font-bold uppercase ${tab==='docs'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">📁 Archivo Documental Oficial</button>
+            <button onclick="ui.showDossierTab('docs')" class="px-4 py-2 text-[10px] font-bold uppercase ${tab==='docs'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">📁 Archivo Documental Oficial (19)</button>
         </div>
         <div id="dossier-content" class="w-full"></div>
         `;
@@ -154,7 +153,6 @@ Object.assign(ui, {
         if(tab === 'eval') {
             const subjects = ['FYQ', 'LYE', 'LEN', 'ECO', 'MAT', 'ING'];
             
-            // Cálculo de Nota Global Ponderada
             let weightedSum = 0;
             let evaluatedWeightSum = 0;
             
@@ -231,8 +229,8 @@ Object.assign(ui, {
             container.innerHTML = `
             <div class="terminal-border bg-mars-card p-4 mb-6 border-l-4 border-l-mars-cyan flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
-                    <h3 class="font-orbitron text-mars-cyan text-sm uppercase">Estado del Repositorio Oficial de Entregables</h3>
-                    <p class="text-[9px] text-slate-400 uppercase mt-0.5">Auditoría centralizada de evidencias documentales por departamento curricular.</p>
+                    <h3 class="font-orbitron text-mars-cyan text-sm uppercase">Estado del Repositorio Oficial de Entregables (Drive)</h3>
+                    <p class="text-[9px] text-slate-400 uppercase mt-0.5">Auditoría centralizada de enlaces externos por departamento curricular.</p>
                 </div>
                 <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-3 py-1.5 text-xs font-mono font-black uppercase">Entregados: ${deliveredCount} / ${allKeys.length}</span>
             </div>

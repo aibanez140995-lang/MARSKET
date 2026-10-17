@@ -5,6 +5,14 @@ const ui = {
     
     navigate(view) { this.current = view; this.render(); },
     
+    // Función de Saneamiento Global (Filtro Léxico)
+    hasForbiddenWords(text) {
+        if (!text) return false;
+        const words = typeof FORBIDDEN_WORDS !== 'undefined' ? FORBIDDEN_WORDS : [];
+        const lowerText = text.toLowerCase();
+        return words.some(w => lowerText.includes(w.toLowerCase()));
+    },
+
     getDeadlineStatus(dateString) {
         if(!dateString) return { text: "NO DEFINIDO", class: "bg-slate-800 text-slate-400" };
         const now = new Date();
@@ -30,7 +38,7 @@ const ui = {
             id: 'NOTIF-' + Date.now() + '-' + Math.random().toString(36).substr(2, 3),
             role: targetRole,
             message: message,
-            type: type, // 'info', 'success', 'error', 'warning'
+            type: type,
             date: new Date().toLocaleString(),
             read: false
         });
@@ -93,51 +101,51 @@ const ui = {
                 <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400 text-xs">
                     <li>Solicita componentes en el <strong>SUPERMARS-KET</strong> o comercia en el <strong>Mercado B2B</strong>.</li>
                     <li>Registra vuelos en el <strong>Banco de Pruebas</strong> y configura el prototipo (BOM).</li>
-                    <li>Sube la <strong>Hoja Preliminar</strong>, el <strong>Informe Técnico FYQ</strong> y los <strong>3 Informes de Matemáticas</strong>.</li>
+                    <li>Entrega enlaces Drive para la <strong>Hoja Preliminar</strong>, el <strong>Informe Técnico FYQ</strong> y los <strong>Informes Matemáticos</strong>.</li>
                 </ul>`; 
                 break;
             case 'FINANZAS': 
-                content += `<p class="text-mars-cyan font-bold">¡Bienvenido, guardián de los 2400 €v iniciales! 💰</p>
+                content += `<p class="text-mars-cyan font-bold">¡Bienvenido, guardián de la caja! 💰</p>
                 <p class="text-slate-300">Sin tu luz verde presupuestaria no se aprueba ni un tornillo ni un anuncio.</p>
                 <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400 text-xs">
                     <li>Audita y aprueba (total o parcialmente) las órdenes de <strong>I+D y Paquetes de Marketing</strong>.</li>
                     <li>Supervisa el <strong>Ledger Inmutable</strong> y las multas de la Ventanilla Legal.</li>
-                    <li>Entrega los <strong>4 documentos oficiales de Economía</strong> (Presupuestos, Cuenta Resultados y Balance).</li>
+                    <li>Sube enlaces Drive para los <strong>4 documentos oficiales de Economía</strong>.</li>
                 </ul>`; 
                 break;
             case 'MARKETING': 
                 content += `<p class="text-mars-cyan font-bold">¡Hola, estratega de marca y negocio! 🎨</p>
                 <p class="text-slate-300">Construye la identidad corporativa, el modelo de negocio y capta inversores.</p>
                 <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400 text-xs">
-                    <li>Contrata <strong>Paquetes Publicitarios</strong> (Satélite, Tradicional, Híbrido, Supernova) y ejecuta sus acciones.</li>
-                    <li>Gestiona las entregas duales (Diciembre y Abril) de <strong>Identidad de Marca y Diario de Decisiones (LyE)</strong>.</li>
-                    <li>Sube el <strong>Business Model</strong>, el <strong>Canvas</strong>, el <strong>Dossier de Inversores (Lengua)</strong> y <strong>Redacciones (Inglés)</strong>.</li>
+                    <li>Solicita a Coordinación la aprobación de tu <strong>Logo y Eslogan</strong>.</li>
+                    <li>Contrata <strong>Paquetes Publicitarios</strong> para ejecutar acciones.</li>
+                    <li>Sube los enlaces a los entregables de <strong>LyE, Lengua e Inglés</strong>.</li>
                 </ul>`; 
                 break;
             case 'OPERACIONES_IA': 
                 content += `<p class="text-mars-cyan font-bold">¡Saludos, responsable de logística y ética IA! 📦🤖</p>
                 <p class="text-slate-300">Conectas las compras virtuales con el taller real y auditas el uso de IA.</p>
                 <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400 text-xs">
-                    <li>Valida el ensamblaje físico de las órdenes aprobadas y registra el coste real (€).</li>
-                    <li>Audita la <strong>Bitácora IA</strong> verificando que cada prompt tenga validación humana.</li>
-                    <li>Coordina junto a Marketing la entrega del <strong>Diario de Decisiones e IA</strong> (Diciembre y Abril).</li>
+                    <li>Valida el ensamblaje físico de las órdenes y registra el coste real (€).</li>
+                    <li>Audita la <strong>Bitácora IA</strong> verificando validación humana.</li>
+                    <li>Coordina la entrega de enlaces de la <strong>Bitácora de Decisiones e IA</strong>.</li>
                 </ul>`; 
                 break;
             case 'AUXILIAR': 
                 content += `<p class="text-mars-cyan font-bold">¡Bienvenido, Observador vinculado! 👁️</p>
                 <p class="text-slate-300">Apoyas a tu departamento asignado y participas en las decisiones democráticas.</p>
                 <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400 text-xs">
-                    <li>Consulta en tiempo real el <strong>SUPERMARS-KET</strong> y los 17 entregables del <strong>Dossier</strong>.</li>
-                    <li>Vota y propón mociones activamente en la pestaña de <strong>Gobernanza</strong>.</li>
+                    <li>Consulta en tiempo real el <strong>SUPERMARS-KET</strong> y los entregables.</li>
+                    <li>Vota y propón mociones en Gobernanza.</li>
                 </ul>`; 
                 break;
             case 'DOCENTE': 
                 content += `<p class="text-mars-cyan font-bold">¡Bienvenido al Alto Mando, Inspector/a! 🎖️</p>
                 <p class="text-slate-300">El Centro de Mando Docente opera bajo la ponderación oficial del 100%.</p>
                 <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400 text-xs">
-                    <li>Califica mediante las nuevas rúbricas en <strong>Rúbricas & Entregas</strong> y audita los 17 entregables.</li>
-                    <li>Supervisa la <strong>Aduana B2B</strong> (Coordinación) para autorizar traspasos de piezas entre startups.</li>
-                    <li>Aplica sanciones mediante tu <strong>Agencia Reguladora Oficial</strong> y revisa el Buzón de Novedades.</li>
+                    <li>Califica mediante rúbricas y audita la matriz central de entregables.</li>
+                    <li>Coordinación supervisa la <strong>Aduana B2B</strong> y aprueba/rechaza <strong>Logos y Eslóganes</strong>.</li>
+                    <li>Aplica sanciones disciplinarias desde Ventanilla Legal.</li>
                 </ul>`; 
                 break;
         }
@@ -208,7 +216,7 @@ const ui = {
             'brand': 'Centro de Marca, LyE y Marketing',
             'ailog': 'Bitácora y Auditoría de IA',
             'resolutions': 'Gobernanza, Votaciones y Alertas HR',
-            'dossier': 'Dossier Académico (17 Entregables)',
+            'dossier': 'Dossier Académico (19 Entregables)',
             'admin': 'Centro de Mando Docente'
         };
 
@@ -221,17 +229,17 @@ const ui = {
                 <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Aprovisionamiento y Mercado Secundario B2B</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
                     <li><span class="text-mars-yellow font-bold">Catálogo Oficial:</span> El Rol Técnico añade componentes al borrador de I+D y los transmite a Finanzas con justificación obligatoria.</li>
-                    <li><span class="text-mars-yellow font-bold">Material Externo:</span> Si un material no existe en lista, el Técnico usa <em>"Solicitar I+D"</em> para que el Claustro le asigne precio en €v.</li>
-                    <li><span class="text-mars-yellow font-bold">Mercado B2B:</span> Permite comprar piezas sobrantes puestas a la venta por otras startups. Toda compra B2B queda retenida hasta que la Coordinación Docente la valida en la Aduana.</li>
+                    <li><span class="text-mars-yellow font-bold">Filtro Léxico:</span> El sistema auditará cualquier texto en busca de vocabulario prohibido o insultos.</li>
+                    <li><span class="text-mars-yellow font-bold">Mercado B2B:</span> Permite comprar piezas sobrantes puestas a la venta por otras startups. Toda compra B2B queda retenida hasta validación en Aduana.</li>
                 </ul>`;
                 break;
             case 'tech':
                 content += `
                 <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Ingeniería Aeroespacial, FYQ y Matemáticas</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">Entregables FYQ (25%):</span> Sube aquí la <em>Hoja de Registro Preliminar</em> (Fase I) y el <em>Informe Técnico Exhaustivo</em> (Fase II).</li>
-                    <li><span class="text-mars-yellow font-bold">Entregables MAT (5%):</span> Casilleros específicos para la evidencia del Goniómetro y los 3 informes trigonométricos (Distancia conocida, Dos mediciones e Informe Final).</li>
-                    <li><span class="text-mars-yellow font-bold">Banco de Pruebas y BOM:</span> Registra cada ensayo para calcular el KPI de eficiencia (E = Altura / Coste) y marca qué piezas compradas integran el prototipo final o ponlas en venta B2B.</li>
+                    <li><span class="text-mars-yellow font-bold">Políticas de Subida (v1.0.15):</span> <strong>Queda estrictamente prohibida la subida de archivos físicos.</strong> Todos los entregables deben ser enlaces a Google Drive, Canva, OneDrive, etc.</li>
+                    <li><span class="text-mars-yellow font-bold">Entregables FYQ (25%):</span> Sube el enlace de la <em>Hoja de Registro Preliminar</em> y el <em>Informe Técnico Exhaustivo</em>.</li>
+                    <li><span class="text-mars-yellow font-bold">Entregables MAT (5%):</span> Enlaces para el Goniómetro y los 3 informes trigonométricos.</li>
                 </ul>`;
                 break;
             case 'orders':
@@ -239,66 +247,61 @@ const ui = {
                 <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Bóveda de Autorización y Gestión de Crisis</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
                     <li><span class="text-mars-yellow font-bold">Cadena de Mando:</span> Muestra el progreso en tiempo real (Solicitado ➔ Auditado por Finanzas ➔ Ejecutado en Logística).</li>
-                    <li><span class="text-mars-yellow font-bold">Auditoría Parcial:</span> Finanzas puede desmarcar piezas individuales de un pedido si superan el presupuesto antes de aprobarlo.</li>
-                    <li><span class="text-mars-yellow font-bold">Protocolo de Crisis (CEO):</span> Ante una multa institucional, el CEO debe pulsar <em>"Emitir Comunicado de Crisis"</em> para alertar a todos los departamentos.</li>
+                    <li><span class="text-mars-yellow font-bold">Protocolo de Crisis:</span> Ante una multa institucional, el CEO emite el Comunicado de Crisis.</li>
                 </ul>`;
                 break;
             case 'finance':
                 content += `
                 <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Contabilidad Analítica y Economía (10%)</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">4 Entregables Oficiales ECO:</span> Casilleros independientes para subir <em>Presupuesto Inicial</em>, <em>Cuenta de Resultados</em>, <em>Presupuesto Post-Prototipo</em> y <em>Balance de Situación</em> (20% cada uno + 20% Test en aula).</li>
-                    <li><span class="text-mars-yellow font-bold">Ledger Inmutable:</span> Registro contable automático de cada compra de I+D, paquete de marketing, transacción B2B, patrocinio o multa.</li>
+                    <li><span class="text-mars-yellow font-bold">Entregables ECO:</span> Aporta enlaces web (Drive/Sheets) para el <em>Presupuesto Inicial</em>, <em>Cuenta de Resultados</em>, <em>Presupuesto Post-Prototipo</em> y <em>Balance</em>.</li>
+                    <li><span class="text-mars-yellow font-bold">Ledger Inmutable:</span> Registro contable automático de I+D, marketing, B2B y multas.</li>
                 </ul>`;
                 break;
             case 'cart':
                 content += `
                 <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Logística Física y Recepción de Suministros</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">Validación Real:</span> Las órdenes aprobadas por Finanzas llegan aquí. Operaciones IA debe marcar la casilla de ensamblaje, indicar el coste físico real en euros (€) y la tienda proveedora.</li>
-                    <li><span class="text-mars-yellow font-bold">Ejecución Contable:</span> Al pulsar <em>"Confirmar Compra Física"</em>, se descuenta el saldo virtual (€v) del Ledger y las piezas pasan al inventario técnico.</li>
+                    <li><span class="text-mars-yellow font-bold">Validación Real:</span> Operaciones IA valida el ensamblaje de órdenes aprobadas y registra coste real en €.</li>
                 </ul>`;
                 break;
             case 'brand':
                 content += `
                 <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Marketing, LyE (40%), Lengua (15%) e Inglés (5%)</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">Paquetes Publicitarios:</span> Marketing contrata uno de los 4 paquetes (Satélite 200€v, Tradicional 300€v, Híbrido 450€v, Supernova 750€v). Tras la aprobación de Finanzas, desbloquea acciones promocionales.</li>
-                    <li><span class="text-mars-yellow font-bold">Entregas Duales LyE:</span> Sube las versiones de <strong>Diciembre y Abril</strong> tanto de Identidad de Marca como del Diario de Decisiones/IA, además del Business Model y el Canvas.</li>
-                    <li><span class="text-mars-yellow font-bold">Comunicación:</span> Casilleros para el <em>Dossier de Inversores</em> (Lengua) y las presentaciones/redacciones en Inglés.</li>
+                    <li><span class="text-mars-yellow font-bold">Aprobación de Marca (v1.0.15):</span> Cuando configures tu logotipo y eslogan, el sistema los retendrá como "Pendiente". Coordinación debe aprobarlos antes de que sean visibles para el resto de la flota.</li>
+                    <li><span class="text-mars-yellow font-bold">Paquetes MKT:</span> Contrata acciones promocionales con cargo a Finanzas.</li>
+                    <li><span class="text-mars-yellow font-bold">Entregables (Enlaces Web):</span> Proporciona URLs para las 6 entregas de LyE (incluyendo duales de diciembre y abril), Lengua e Inglés.</li>
                 </ul>`;
                 break;
             case 'ailog':
                 content += `
                 <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Trazabilidad y Ética en Inteligencia Artificial</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">Registro de Prompts:</span> Todo miembro que utilice IA generativa debe pulsar <em>"[🤖 REPORTAR USO IA]"</em> detallando herramienta, prompt exacto y método de verificación humana.</li>
-                    <li><span class="text-mars-yellow font-bold">Auditoría Interna:</span> El Director de Operaciones e IA audita los reportes pendientes y los aprueba para integrarlos en la Bitácora Oficial del Dossier.</li>
+                    <li><span class="text-mars-yellow font-bold">Registro de Prompts:</span> Documenta en la Bitácora IA qué herramientas y prompts has usado. El filtro léxico está activo.</li>
                 </ul>`;
                 break;
             case 'resolutions':
                 content += `
                 <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Gobernanza Democrática y Alertas HR</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">Mociones:</span> Cualquier miembro (incluido Auxiliar) puede proponer y votar mociones vinculantes.</li>
-                    <li><span class="text-mars-yellow font-bold">Voto de Calidad:</span> En caso de empate, el CEO desbloquea y cierra el acta oficial.</li>
-                    <li><span class="text-mars-yellow font-bold">Alertas HR Multicapa:</span> Si un departamento bloquea el avance por inactividad, repórtalo aquí; la alerta llega simultáneamente al CEO y a la Coordinación Docente.</li>
+                    <li><span class="text-mars-yellow font-bold">Alertas HR y Mociones:</span> Utiliza el Buzón HR para reportar bloqueos o propone mociones al equipo. Recuerda: cualquier texto con insultos será rechazado por el sistema.</li>
                 </ul>`;
                 break;
             case 'dossier':
                 content += `
                 <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Dossier Académico y Ponderación Oficial</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">Evaluación Continua:</span> Consulta en tiempo real las calificaciones desglosadas y el feedback docente de las 6 asignaturas (FYQ 25%, LYE 40%, LEN 15%, ECO 10%, MAT 5%, ING 5%).</li>
-                    <li><span class="text-mars-yellow font-bold">Archivo Documental:</span> Verifica que los 17 entregables obligatorios figuren en estado entregado con enlace o archivo operativo.</li>
+                    <li><span class="text-mars-yellow font-bold">Evaluación Continua:</span> Consulta el desglose y la nota ponderada global en tiempo real.</li>
+                    <li><span class="text-mars-yellow font-bold">Archivo (19 Entregables):</span> Verifica que todos tus enlaces estén entregados.</li>
                 </ul>`;
                 break;
             case 'admin':
                 content += `
                 <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Terminal del Claustro y Coordinación</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">Acta Ponderada (100%):</span> Calcula automáticamente la nota global del proyecto aplicando el peso curricular exacto de cada materia.</li>
-                    <li><span class="text-mars-yellow font-bold">Aduana B2B y Sanciones:</span> Coordinación aprueba o rechaza las ventas de piezas entre startups; cada docente emite multas firmadas por su Agencia Reguladora.</li>
+                    <li><span class="text-mars-yellow font-bold">Acta Ponderada (100%):</span> Matriz automatizada de evaluación continua.</li>
+                    <li><span class="text-mars-yellow font-bold">Aduanas y Moderación:</span> Coordina traspasos de piezas B2B y aprueba o rechaza los eslóganes y logotipos propuestos por Marketing.</li>
                 </ul>`;
                 break;
         }
@@ -309,7 +312,6 @@ const ui = {
     modalSuggestion() {
         const allSuggs = state.data.suggestionsToAlex || [];
         
-        // Privacidad por Startup: Los alumnos solo ven los envíos de su propia empresa
         const myCoId = state.user ? (state.user.admin ? 'DOCENTE' : state.user.coId) : 'ANON';
         const filteredSuggs = allSuggs.filter(s => {
             if (state.user && state.user.admin) return s.coId === 'DOCENTE' || s.author.includes('DOCENTE');
@@ -336,7 +338,7 @@ const ui = {
         }).join('') || '<p class="text-slate-500 italic text-[10px]">No has enviado reportes desde esta entidad todavía.</p>';
 
         const html = `
-            <p class="text-[10px] text-slate-400 mb-3 uppercase leading-relaxed">¿Has detectado un fallo técnico (bug), tienes una idea de mejora o una duda normativa? Tu reporte es privado para tu startup y llega directo a Coordinación.</p>
+            <p class="text-[10px] text-slate-400 mb-3 uppercase leading-relaxed">¿Has detectado un fallo técnico (bug), tienes una idea o una duda normativa? El reporte es privado y pasa por filtro léxico antes de llegar a Coordinación.</p>
             <div class="mb-3">
                 <label class="text-[9px] text-mars-yellow font-bold uppercase block mb-1">Categoría del Reporte</label>
                 <select id="sugg-category" class="w-full bg-slate-900 border border-mars-yellow/50 p-2 text-xs text-white uppercase font-bold outline-none focus:border-mars-yellow">
@@ -345,9 +347,9 @@ const ui = {
                     <option value="REGLAS">⚖️ Consulta sobre Normativa / Rúbricas</option>
                 </select>
             </div>
-            <textarea id="sugg-text" class="w-full bg-slate-900 border border-mars-yellow/50 p-3 text-xs text-white h-24 focus:border-mars-yellow outline-none mb-4" placeholder="Describe con detalle qué ha ocurrido o en qué pestaña estabas..."></textarea>
+            <textarea id="sugg-text" class="w-full bg-slate-900 border border-mars-yellow/50 p-3 text-xs text-white h-24 focus:border-mars-yellow outline-none mb-4" placeholder="Describe el reporte... (El uso de lenguaje ofensivo bloqueará el envío)"></textarea>
             <div class="bg-black/60 border border-slate-800 p-3 max-h-44 overflow-y-auto">
-                <h4 class="text-mars-cyan text-[9px] uppercase font-bold mb-2 border-b border-slate-800 pb-1">Mis Envíos Recientes (Privado de tu Entidad)</h4>
+                <h4 class="text-mars-cyan text-[9px] uppercase font-bold mb-2 border-b border-slate-800 pb-1">Mis Envíos Recientes (Privado)</h4>
                 ${history}
             </div>
         `;
@@ -363,7 +365,8 @@ const ui = {
         const text = elText.value.trim();
         const category = elCat ? elCat.value : 'MEJORA';
         
-        if(text.length < 5) return alert("Por favor, describe tu reporte con más detalle (mínimo 5 caracteres).");
+        if(text.length < 5) return alert("Describe tu reporte con más detalle (mínimo 5 caracteres).");
+        if(this.hasForbiddenWords(text)) return alert("El sistema ha detectado vocabulario inapropiado. Por favor, mantén un tono profesional.");
         
         const isDocente = state.user && state.user.admin;
         const coId = state.user ? (isDocente ? 'DOCENTE' : state.user.coId) : 'ANON';
@@ -394,6 +397,8 @@ const ui = {
             auth.logout();
             return '';
         }
+
+        const isBrandPending = co.brandApproval && co.brandApproval.status === 'PENDIENTE';
         
         let sponsorBadge = '';
         if(co.sponsorAwarded) {
@@ -403,21 +408,35 @@ const ui = {
             sponsorBadge = `<span class="${color} border px-2 py-1 font-black shadow-[0_0_10px_currentColor] flex items-center gap-1">[PATROCINIO ${co.sponsorAwarded}${spName}] ${spLogo}</span>`;
         }
 
-        const imgHtml = co.logo ? `<img src="${co.logo}" class="w-full h-full object-cover">` : `<div class="flex flex-col items-center justify-center h-full bg-slate-900"><span class="text-2xl">🚀</span><span class="text-[5px] mt-1 text-slate-500 uppercase text-center leading-tight tracking-tighter">SIN LOGO</span></div>`;
+        let imgHtml = '';
+        if (isBrandPending) {
+            imgHtml = `<div class="flex flex-col items-center justify-center h-full bg-slate-900 border-2 border-mars-magenta animate-pulse"><span class="text-2xl">⏳</span></div>`;
+        } else if (co.logo) {
+            imgHtml = `<img src="${co.logo}" class="w-full h-full object-cover">`;
+        } else {
+            imgHtml = `<div class="flex flex-col items-center justify-center h-full bg-slate-900"><span class="text-2xl">🚀</span><span class="text-[5px] mt-1 text-slate-500 uppercase text-center leading-tight tracking-tighter">SIN LOGO</span></div>`;
+        }
+
+        let sloganHtml = '';
+        if (isBrandPending) {
+            sloganHtml = `<p class="font-orbitron text-mars-magenta font-bold text-[10px] mt-1 tracking-wider uppercase bg-mars-magenta/10 border border-mars-magenta px-2 py-0.5 inline-block animate-pulse">⚠️ MARCA EN REVISIÓN DOCENTE</p>`;
+        } else if (co.slogan) {
+            sloganHtml = `<p class="font-orbitron text-mars-yellow text-[10px] mt-1 tracking-wider italic">"${co.slogan}"</p>`;
+        }
 
         return `
         <div class="terminal-border bg-mars-card p-4 mb-6 flex flex-col md:flex-row items-center md:items-start gap-4 sm:gap-6 relative overflow-hidden animate-in fade-in duration-500">
             <div class="absolute top-2 right-2 flex gap-2">
                 <button onclick="ui.modalReportAI()" class="bg-blue-600/20 border border-blue-500 text-blue-400 px-2 sm:px-3 py-1.5 text-[8px] sm:text-[9px] font-bold uppercase hover:bg-blue-500 hover:text-white transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)]">[🤖 REPORTAR USO IA]</button>
             </div>
-            <div class="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 border-2 border-mars-cyan p-0.5 hex-clip bg-mars-bg shadow-neon-cyan mt-6 md:mt-0">
+            <div class="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 p-0.5 hex-clip bg-mars-bg mt-6 md:mt-0 ${isBrandPending ? 'border-2 border-mars-magenta shadow-[0_0_15px_rgba(255,0,85,0.4)]' : 'border-2 border-mars-cyan shadow-neon-cyan'}">
                 <div class="w-full h-full hex-clip overflow-hidden">
                     ${imgHtml}
                 </div>
             </div>
             <div class="flex-grow text-center md:text-left flex flex-col justify-center mt-2 md:mt-0">
                 <h2 class="font-orbitron text-xl sm:text-2xl md:text-3xl font-black text-mars-cyan tracking-widest uppercase truncate pr-10 sm:pr-24 leading-none">${co.name}</h2>
-                ${co.slogan ? `<p class="font-orbitron text-mars-yellow text-[10px] mt-1 tracking-wider italic">"${co.slogan}"</p>` : ''}
+                ${sloganHtml}
                 <div class="flex flex-wrap justify-center md:justify-start gap-2 mt-3 text-[8px] sm:text-[9px] font-bold uppercase tracking-widest">
                     <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-2 py-1 flex items-center">AUTH: ${state.user.role.replace('_',' ')}</span>
                     ${sponsorBadge}
@@ -487,7 +506,13 @@ const ui = {
             
             if(miniLogo && co) {
                 miniLogo.classList.remove('hidden');
-                miniLogo.innerHTML = co.logo ? `<img src="${co.logo}" class="w-full h-full object-cover">` : `<span class="text-[10px]">🚀</span>`;
+                let hudImgHtml = `<span class="text-[10px]">🚀</span>`;
+                if(co.brandApproval && co.brandApproval.status === 'PENDIENTE') {
+                    hudImgHtml = `<span class="text-[10px] text-mars-magenta animate-pulse">⏳</span>`;
+                } else if(co.logo) {
+                    hudImgHtml = `<img src="${co.logo}" class="w-full h-full object-cover">`;
+                }
+                miniLogo.innerHTML = hudImgHtml;
             }
         }
 
@@ -561,27 +586,57 @@ const ui = {
     renderDocBadge(title, docObj, short=false) {
         if(!docObj) return `<div class="bg-black/50 border border-mars-border border-dashed p-3 mb-2 flex justify-between items-center text-[9px] sm:text-[10px]"><span class="text-slate-500 font-bold uppercase">${title}</span><span class="text-mars-magenta font-black uppercase">[PENDIENTE]</span></div>`;
         return `<div class="bg-mars-cyan/5 border border-mars-cyan/50 p-3 mb-2 flex justify-between items-center text-[9px] sm:text-[10px]">
-                    <div class="overflow-hidden pr-2"><span class="text-mars-cyan font-bold uppercase block truncate">${title}</span><span class="text-[8px] text-slate-400 block truncate">${docObj.type === 'link' ? 'ENLACE' : docObj.name} | ${(docObj.date || '').slice(0,10)}</span></div>
-                    <a href="${docObj.dataUrl}" target="_blank" download="${docObj.type==='file'?docObj.name:''}" class="bg-mars-cyan text-black px-2 sm:px-3 py-1 font-bold uppercase hover:bg-white transition-colors flex-shrink-0">${docObj.type === 'link' ? 'Abrir' : 'Descargar'}</a>
+                    <div class="overflow-hidden pr-2"><span class="text-mars-cyan font-bold uppercase block truncate">${title}</span><span class="text-[8px] text-slate-400 block truncate">ENLACE DRIVE/CLOUD | ${(docObj.date || '').slice(0,10)}</span></div>
+                    <a href="${docObj.dataUrl}" target="_blank" class="bg-mars-cyan text-black px-3 py-1.5 font-bold uppercase hover:bg-white transition-colors flex-shrink-0">Abrir Enlace</a>
                 </div>`;
     },
     
-    renderHybridUploadBox(title, desc, docKey, currentDoc) {
+    // Sustituye a renderHybridUploadBox garantizando la Política de "Solo Enlaces Cloud"
+    renderDriveLinkBox(title, desc, docKey, currentDoc) {
         return `
         <div class="border-b border-slate-800 pb-4 mb-4 last:border-0 last:pb-0 last:mb-0">
             <h3 class="text-mars-cyan font-bold text-xs uppercase mb-1">${title}</h3>
             <p class="text-[9px] text-slate-400 mb-2 uppercase leading-tight">${desc}</p>
             ${this.renderDocBadge(title, currentDoc)}
             <div class="bg-slate-900 border border-slate-700 p-2 mt-2">
-                <p class="text-[8px] text-mars-yellow font-bold uppercase mb-2">Nueva Entrega (Archivo < 2MB O Enlace Nube)</p>
+                <p class="text-[8px] text-mars-yellow font-bold uppercase mb-2">Entregar Enlace (Google Drive, OneDrive, Canva...)</p>
                 <div class="flex flex-col sm:flex-row gap-2">
-                    <input type="file" id="upload-file-${docKey}" class="text-[9px] text-slate-400 w-full sm:w-auto">
-                    <span class="text-slate-500 text-[10px] flex items-center hidden sm:inline">-O-</span>
-                    <input type="text" id="upload-url-${docKey}" placeholder="Pegue Enlace GDrive/Canva" class="bg-black border border-slate-700 p-1.5 text-[9px] text-white flex-grow outline-none focus:border-mars-cyan">
-                    <button onclick="ui.handleDeliverableHybridSubmit('${docKey}')" class="bg-mars-cyan text-black font-bold uppercase text-[9px] px-3 py-1.5 hover:bg-white flex-shrink-0 w-full sm:w-auto">Entregar</button>
+                    <input type="url" id="upload-url-${docKey}" placeholder="https://..." class="bg-black border border-slate-700 p-1.5 text-[9px] text-white flex-grow outline-none focus:border-mars-cyan">
+                    <button onclick="ui.handleDeliverableLinkSubmit('${docKey}')" class="bg-mars-cyan text-black font-bold uppercase text-[9px] px-3 py-1.5 hover:bg-white flex-shrink-0 w-full sm:w-auto">Entregar Enlace</button>
                 </div>
             </div>
         </div>`;
+    },
+
+    // Sustituye a handleDeliverableHybridSubmit obligando a verificar que es una URL
+    handleDeliverableLinkSubmit(docType) {
+        if (!state.user) return;
+        const urlInput = document.getElementById(`upload-url-${docType}`);
+        if (!urlInput) return;
+        
+        const url = urlInput.value.trim();
+        
+        if(!url) return alert("Debe proporcionar un enlace válido (URL). La subida de archivos físicos está deshabilitada.");
+        if(!url.toLowerCase().startsWith('http://') && !url.toLowerCase().startsWith('https://')) {
+            return alert("Error de formato: El enlace debe comenzar con 'http://' o 'https://'");
+        }
+        
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout();
+        co.deliverables = co.deliverables || {};
+
+        co.deliverables[docType] = { 
+            type: 'link', 
+            name: 'Enlace a Nube Externa', 
+            date: new Date().toLocaleString(), 
+            size: 'URL', 
+            dataUrl: url 
+        };
+        
+        telemetry.log("ENTREGABLE", `Enlace subido a Drive: ${docType}`);
+        state.save(); 
+        this.render(); 
+        alert("✅ Enlace entregado y registrado en el Dossier Oficial.");
     },
 
     showModal(title, body, actions) {
@@ -600,4 +655,4 @@ const ui = {
         const elOverlay = document.getElementById('modal-overlay');
         if(elOverlay) elOverlay.classList.add('hidden'); 
     }
-};
+});

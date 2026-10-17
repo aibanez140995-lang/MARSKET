@@ -1,5 +1,5 @@
 // js/ui-docente-management.js
-// --- MÓDULO DOCENTE: GESTIÓN, ECONOMÍA, ADUANA B2B, HR Y CATÁLOGO ---
+// --- MÓDULO DOCENTE: GESTIÓN, ECONOMÍA, ADUANA B2B, ADUANA DE MARCA, HR Y CATÁLOGO (v1.0.15) ---
 
 Object.assign(ui, {
     renderAdminDash() {
@@ -16,14 +16,59 @@ Object.assign(ui, {
         // Contratos B2B pendientes de Aduana
         state.data.b2bContracts = state.data.b2bContracts || [];
         const pendingB2B = state.data.b2bContracts.filter(c => c.status === 'PENDIENTE_ADUANA');
+        
+        // Marcas corporativas pendientes de aprobación
+        const pendingBrands = Object.keys(state.data.companies).filter(cid => {
+            const co = state.data.companies[cid];
+            return co.brandApproval && co.brandApproval.status === 'PENDIENTE';
+        });
 
         let b2bCustomsHtml = '';
+        let brandCustomsHtml = '';
+
         if (isCoord) {
+            // PANEL 1: ADUANA DE IDENTIDAD CORPORATIVA
+            brandCustomsHtml = `
+            <div class="terminal-border bg-mars-card p-6 mb-6 border-t-4 border-t-mars-magenta">
+                <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-2 flex-wrap gap-2">
+                    <div>
+                        <h3 class="font-orbitron text-mars-magenta text-xs sm:text-sm uppercase tracking-widest">🛡️ Aduana de Identidad Corporativa (Logos y Eslóganes)</h3>
+                        <p class="text-[9px] text-slate-400 uppercase mt-0.5">Auditoría previa de la imagen de marca de las startups antes de su publicación en el HUD global.</p>
+                    </div>
+                    <span class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-3 py-1 text-[10px] font-black uppercase">${pendingBrands.length} Pendiente(s)</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    ${pendingBrands.map(cid => {
+                        const co = state.data.companies[cid];
+                        const logoPreview = co.brandApproval.pendingLogo ? `<img src="${co.brandApproval.pendingLogo}" class="w-16 h-16 object-contain border border-mars-border bg-black p-1">` : `<div class="w-16 h-16 border border-mars-border bg-slate-900 flex items-center justify-center text-[8px] text-slate-500 uppercase text-center">Sin Logo</div>`;
+                        return `
+                        <div class="bg-slate-900 border border-mars-magenta/50 p-4 flex flex-col gap-3">
+                            <div class="flex justify-between items-start border-b border-slate-800 pb-2">
+                                <h4 class="font-orbitron text-white font-bold text-xs uppercase">${co.name} [Clase${co.classGroup}]</h4>
+                                <span class="text-[8px] bg-mars-yellow/20 text-mars-yellow px-2 py-0.5 font-bold uppercase animate-pulse">En Revisión</span>
+                            </div>
+                            <div class="flex gap-4 items-center">
+                                ${logoPreview}
+                                <div class="flex-grow">
+                                    <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Eslogan Propuesto:</p>
+                                    <p class="text-mars-yellow italic text-[10px] bg-black p-2 border border-slate-800">"${co.brandApproval.pendingSlogan || 'No especificado'}"</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 mt-2">
+                                <button onclick="ui.resolveBrandApproval('${cid}')" class="flex-1 bg-mars-green text-black px-3 py-2 font-black uppercase text-[9px] hover:bg-white transition-colors">Aprobar Marca</button>
+                                <button onclick="ui.promptDenyBrand('${cid}')" class="flex-1 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 font-black uppercase text-[9px] hover:bg-mars-magenta hover:text-white transition-colors">Rechazar (Feedback)</button>
+                            </div>
+                        </div>`;
+                    }).join('') || '<p class="text-slate-600 text-xs italic col-span-full">No hay marcas pendientes de revisión.</p>'}
+                </div>
+            </div>`;
+
+            // PANEL 2: ADUANA B2B
             b2bCustomsHtml = `
             <div class="terminal-border bg-mars-card p-6 mb-8 border-t-4 border-t-mars-yellow">
                 <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-2 flex-wrap gap-2">
                     <div>
-                        <h3 class="font-orbitron text-mars-yellow text-xs sm:text-sm uppercase tracking-widest">🛃 Aduana Aeroespacial B2B (Control de Traspasos entre Startups)</h3>
+                        <h3 class="font-orbitron text-mars-yellow text-xs sm:text-sm uppercase tracking-widest">🛃 Aduana Aeroespacial B2B (Control de Traspasos)</h3>
                         <p class="text-[9px] text-slate-400 uppercase mt-0.5">Autoriza o deniega las compraventas de segunda mano. El saldo del comprador ya se encuentra retenido en depósito.</p>
                     </div>
                     <span class="bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-3 py-1 text-[10px] font-black uppercase">${pendingB2B.length} Pendiente(s)</span>
@@ -55,13 +100,13 @@ Object.assign(ui, {
         }
 
         return `
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
             <div class="lg:col-span-1 terminal-border bg-mars-card p-6 text-center border-t-4 border-t-mars-magenta flex flex-col justify-center">
                 <h3 class="font-orbitron text-mars-magenta text-xs mb-4 uppercase tracking-widest">Inversión FÍSICA CLASE</h3>
                 <p class="text-5xl font-orbitron text-white mb-2 tracking-tighter">${globalReal.toFixed(2)} €</p>
                 <p class="text-[9px] text-slate-500 uppercase font-bold">Impacto económico real total</p>
             </div>
-            <div class="lg:col-span-3 terminal-border bg-mars-card p-6 w-full overflow-hidden">
+            <div class="lg:col-span-3 terminal-border bg-mars-card p-6 w-full overflow-hidden border-t-4 border-t-mars-cyan">
                 <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Control Financiero, Patrocinios & Sanciones AEE</h3>
                 <div class="overflow-x-auto w-full">
                     <table class="w-full text-left text-[10px] whitespace-nowrap min-w-max">
@@ -115,9 +160,10 @@ Object.assign(ui, {
                 </div>
             </div>
         </div>
+        ${brandCustomsHtml}
         ${b2bCustomsHtml}
-        <div class="terminal-border bg-mars-card p-6">
-            <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase">Solicitudes de Material Externo / I+D</h3>
+        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-blue-500">
+            <h3 class="font-orbitron text-blue-400 text-xs mb-4 uppercase tracking-widest">Solicitudes de Material Externo / I+D</h3>
             <div class="space-y-3">
                 ${(state.data.pendingCustom || []).map(p => `
                 <div class="bg-slate-900 border border-mars-border p-3 flex justify-between items-center text-[10px] flex-wrap gap-2">
@@ -130,6 +176,54 @@ Object.assign(ui, {
                 </div>`).join('') || '<p class="text-slate-600 text-xs italic">Nada pendiente.</p>'}
             </div>
         </div>`;
+    },
+
+    promptDenyBrand(cid) {
+        const html = `<input type="text" id="deny-brand-reason" class="w-full bg-black border border-mars-magenta p-3 text-xs text-white outline-none focus:border-mars-magenta" placeholder="Motivo del rechazo (Filtro léxico, plagio, no apto...)...">`;
+        const btn = `<button onclick="ui.finalizeDenyBrand('${cid}')" class="bg-mars-magenta text-white px-6 py-2 text-[10px] font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Confirmar Rechazo</button>`;
+        this.showModal("Rechazar Identidad Corporativa", html, btn);
+    },
+
+    finalizeDenyBrand(cid) {
+        const el = document.getElementById('deny-brand-reason');
+        if(!el) return;
+        const reason = el.value.trim();
+        if(!reason) return alert("Debes especificar un motivo para el rechazo.");
+
+        const co = state.data.companies[cid];
+        if(!co || !co.brandApproval) return;
+
+        co.brandApproval.status = 'RECHAZADO';
+        co.brandApproval.feedback = reason;
+
+        telemetry.log("ADUANA MARCA", `Rechazada marca de ${co.name}. Motivo: ${reason}`);
+        ui.pushNotification(cid, 'MARKETING', `Tu propuesta de marca (Logo/Eslogan) ha sido RECHAZADA por Coordinación. Motivo: ${reason}`, 'error');
+        ui.pushNotification(cid, 'CEO', `Propuesta de identidad corporativa rechazada. Revisa el panel de Marketing.`, 'error');
+
+        state.save();
+        this.closeModal();
+        this.render();
+    },
+
+    resolveBrandApproval(cid) {
+        const co = state.data.companies[cid];
+        if(!co || !co.brandApproval) return;
+
+        if(co.brandApproval.pendingLogo) co.logo = co.brandApproval.pendingLogo;
+        if(co.brandApproval.pendingSlogan !== undefined) co.slogan = co.brandApproval.pendingSlogan;
+
+        co.brandApproval.status = 'APROBADO';
+        co.brandApproval.pendingLogo = null;
+        co.brandApproval.pendingSlogan = "";
+        co.brandApproval.feedback = "";
+
+        telemetry.log("ADUANA MARCA", `Aprobada marca corporativa de ${co.name}`);
+        ui.pushNotification(cid, 'MARKETING', `¡Enhorabuena! Tu logotipo y eslogan han sido APROBADOS por Coordinación y ya son públicos en el HUD.`, 'success');
+        ui.pushNotification(cid, 'CEO', `Identidad corporativa aprobada y visible para toda la flota.`, 'success');
+
+        state.save();
+        alert(`✅ Identidad corporativa de ${co.name} aprobada y publicada.`);
+        this.render();
     },
 
     resolveB2BContract(contractId, isApproved) {
@@ -146,11 +240,9 @@ Object.assign(ui, {
         if (isApproved) {
             c.status = 'APROBADO';
 
-            // 1. Abonar fondos al vendedor
             if (sellerCo) {
                 state.addToLedger(c.sellerCoId, `[VENTA B2B APROBADA] Traspaso de ${c.itemName} a ${c.buyerName}`, 'ADUANA_B2B', price);
                 
-                // Marcar pieza original del vendedor como VENDIDO definitivamente
                 if (c.sourceOrderKey && sellerCo.orders) {
                     const [ordId, itemIdx] = c.sourceOrderKey.split('-');
                     const ord = sellerCo.orders.find(o => String(o.id) === String(ordId));
@@ -158,11 +250,10 @@ Object.assign(ui, {
                         ord.items[Number(itemIdx)].b2bStatus = 'VENDIDO';
                     }
                 }
-                ui.pushNotification(c.sellerCoId, 'TECNICO', `Aduana B2B aprobó la venta de "${c.itemName}". Se han ingresado +${price.toFixed(2)} €v.`, 'success');
-                ui.pushNotification(c.sellerCoId, 'FINANZAS', `Ingreso B2B de +${price.toFixed(2)} €v por venta a ${c.buyerName} asentado en Ledger.`, 'success');
+                ui.pushNotification(c.sellerCoId, 'TECNICO', `Aduana B2B aprobó la venta de "${c.itemName}". Ingreso: +${price.toFixed(2)} €v.`, 'success');
+                ui.pushNotification(c.sellerCoId, 'FINANZAS', `Ingreso B2B de +${price.toFixed(2)} €v asentado en Ledger.`, 'success');
             }
 
-            // 2. Entregar pieza física en el inventario de órdenes ejecutadas del comprador
             if (buyerCo) {
                 buyerCo.orders = buyerCo.orders || [];
                 buyerCo.orders.unshift({
@@ -177,39 +268,37 @@ Object.assign(ui, {
                         realShop: `B2B (${c.sellerName})`
                     }],
                     total: price,
-                    justification: `Adquisición en Mercado Secundario B2B a ${c.sellerName} (Contrato #${c.id} validado por Aduana).`,
+                    justification: `Adquisición en Mercado Secundario B2B a ${c.sellerName} (Validado por Aduana).`,
                     status: 'EJECUTADO',
                     date: new Date().toLocaleString()
                 });
-                ui.pushNotification(c.buyerCoId, 'TECNICO', `¡Aduana B2B autorizó tu compra! "${c.itemName}" ya está en tu Inventario Físico / BOM.`, 'success');
+                ui.pushNotification(c.buyerCoId, 'TECNICO', `¡Aduana B2B autorizó tu compra! "${c.itemName}" está en tu Inventario Físico.`, 'success');
             }
 
             telemetry.log("ADUANA B2B", `Aprobado contrato #${c.id} (${c.itemName}) entre ${c.sellerName} y ${c.buyerName}`);
             state.save();
-            alert(`✅ Traspaso B2B #${c.id} aprobado. Fondos liberados al vendedor y pieza entregada al comprador.`);
+            alert(`✅ Traspaso B2B #${c.id} aprobado. Fondos liberados y pieza entregada.`);
         } else {
             c.status = 'RECHAZADO';
 
-            // 1. Reembolsar el depósito retenido al comprador
             if (buyerCo) {
                 state.addToLedger(c.buyerCoId, `[REEMBOLSO ADUANA B2B] Contrato rechazado: ${c.itemName}`, 'ADUANA_B2B', price);
-                ui.pushNotification(c.buyerCoId, 'FINANZAS', `La Aduana B2B rechazó el contrato #${c.id}. Se han reembolsado +${price.toFixed(2)} €v a vuestra caja.`, 'warning');
+                ui.pushNotification(c.buyerCoId, 'FINANZAS', `Aduana B2B rechazó el contrato #${c.id}. Reembolso: +${price.toFixed(2)} €v.`, 'warning');
                 ui.pushNotification(c.buyerCoId, 'TECNICO', `Compra B2B de "${c.itemName}" denegada por la Aduana Docente.`, 'error');
             }
 
-            // 2. Liberar la pieza en el inventario del vendedor
             if (sellerCo && c.sourceOrderKey && sellerCo.orders) {
                 const [ordId, itemIdx] = c.sourceOrderKey.split('-');
                 const ord = sellerCo.orders.find(o => String(o.id) === String(ordId));
                 if (ord && ord.items && ord.items[Number(itemIdx)]) {
                     delete ord.items[Number(itemIdx)].b2bStatus;
                 }
-                ui.pushNotification(c.sellerCoId, 'TECNICO', `La Aduana B2B denegó la venta de "${c.itemName}". La pieza vuelve a estar disponible en tu inventario.`, 'warning');
+                ui.pushNotification(c.sellerCoId, 'TECNICO', `La Aduana B2B denegó la venta de "${c.itemName}". Vuelve a estar en tu inventario.`, 'warning');
             }
 
             telemetry.log("ADUANA B2B", `Rechazado contrato #${c.id}`);
             state.save();
-            alert(`❌ Contrato B2B #${c.id} rechazado. Fondos reembolsados al comprador y pieza devuelta al vendedor.`);
+            alert(`❌ Contrato B2B #${c.id} rechazado. Fondos reembolsados y pieza devuelta.`);
         }
         this.render();
     },
@@ -522,6 +611,7 @@ Object.assign(ui, {
         const cid = 'co_' + Date.now();
         state.data.companies[cid] = { 
             name, balance: cap, logo: null, sponsorAwarded: null, sponsorData: {name: null, logo: null}, valueProposition: "", slogan: "", classGroup,
+            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" },
             roles: { CEO:'1234', TECNICO:'1234', FINANZAS:'1234', MARKETING:'1234', OPERACIONES_IA:'1234' }, 
             aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [],
             sanctions: [], crisisAlerts: [], bom: [],

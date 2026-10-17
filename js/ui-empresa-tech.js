@@ -1,5 +1,5 @@
 // js/ui-empresa-tech.js
-// --- MÓDULO I+D: BANCO DE PRUEBAS, BOM, MATEMÁTICAS E INVENTARIO B2B ---
+// --- MÓDULO I+D: BANCO DE PRUEBAS, BOM, MATEMÁTICAS E INVENTARIO B2B (v1.0.15) ---
 
 Object.assign(ui, {
     setTechDocTab(tab) {
@@ -78,40 +78,43 @@ Object.assign(ui, {
 
         const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + (Number(o.total) || 0), 0);
 
-        // Contenido dinámico de Documentación (FYQ vs MAT)
+        // Contenido dinámico de Documentación (FYQ vs MAT) exclusivamente mediante enlaces Drive/Cloud
         let docSectionContent = '';
         if (activeDocTab === 'FYQ') {
             docSectionContent = `
-                <div class="mb-3">
+                <div class="mb-3 flex justify-between items-center">
                     <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan text-[8px] font-black px-2 py-0.5 uppercase">Peso en Proyecto: 25% Global</span>
+                    <span class="text-[8px] text-slate-400 uppercase font-bold">Resp: Dpto. Técnico</span>
                 </div>
+                <p class="text-[9px] text-slate-400 mb-3 uppercase leading-relaxed">Sube únicamente enlaces de Google Drive, OneDrive o Canva con permisos de lectura abiertos.</p>
                 ${state.data.config.guidelines.techReportNotes ? `<p class="text-[10px] text-mars-yellow mb-3 italic">Info: ${state.data.config.guidelines.techReportNotes}</p>` : ''}
-                ${state.data.config.guidelines.techReportDocUrl ? `<a href="${state.data.config.guidelines.techReportDocUrl}" target="_blank" class="block text-center border border-mars-cyan text-mars-cyan text-[10px] py-2 mb-4 font-bold uppercase hover:bg-mars-cyan hover:text-black transition-colors">Descargar Guía Oficial FYQ</a>` : ''}
+                ${state.data.config.guidelines.techReportDocUrl ? `<a href="${state.data.config.guidelines.techReportDocUrl}" target="_blank" class="block text-center border border-mars-cyan text-mars-cyan text-[10px] py-2 mb-4 font-bold uppercase hover:bg-mars-cyan hover:text-black transition-colors">Abrir Guía Oficial FYQ</a>` : ''}
                 
-                ${this.renderHybridUploadBox('1. Hoja de Registro Preliminar (Fase I)', 'Presupuesto teórico, materiales del catálogo, altura estimada, boceto y foto del prototipo montado sin combustible.', 'preliminaryReport', docs.preliminaryReport)}
-                ${this.renderHybridUploadBox('2. Informe Técnico Exhaustivo (Fase II - 50% FYQ)', 'Marco químico estequiométrico, análisis físico-aerodinámico, balance definitivo y análisis de fallos V2.0.', 'technicalReport', docs.technicalReport)}
+                ${this.renderDriveLinkBox('1. Hoja de Registro Preliminar (Fase I)', 'Enlace Drive al presupuesto teórico, materiales del catálogo, altura estimada, boceto y foto del prototipo montado sin combustible.', 'preliminaryReport', docs.preliminaryReport)}
+                ${this.renderDriveLinkBox('2. Informe Técnico Exhaustivo (Fase II - 50% FYQ)', 'Enlace Drive al documento formal con marco químico estequiométrico, análisis físico-aerodinámico, balance definitivo y análisis V2.0.', 'technicalReport', docs.technicalReport)}
             `;
         } else {
             docSectionContent = `
-                <div class="mb-3">
+                <div class="mb-3 flex justify-between items-center">
                     <span class="bg-mars-yellow/10 border border-mars-yellow text-mars-yellow text-[8px] font-black px-2 py-0.5 uppercase">Peso en Proyecto: 5% Global (25% cada criterio)</span>
+                    <span class="text-[8px] text-slate-400 uppercase font-bold">Resp: Dpto. Técnico</span>
                 </div>
-                <p class="text-[9px] text-slate-400 mb-4 uppercase leading-relaxed">Entregables trigonométricos y constructivos para el departamento de Matemáticas.</p>
+                <p class="text-[9px] text-slate-400 mb-4 uppercase leading-relaxed">Entregables trigonométricos y constructivos para Matemáticas (Solo Enlaces Drive/Cloud).</p>
                 
-                ${this.renderHybridUploadBox('1. Elaboración de Goniómetro/s (25% MAT)', 'Fotografías, diseño constructivo y calibración del goniómetro o clinómetro casero.', 'goniometerEvidence', docs.goniometerEvidence)}
-                ${this.renderHybridUploadBox('2. Informe Empírico: Distancia Conocida (25% MAT)', 'Cálculo trigonométrico de apogeo con datos objetivos desde una distancia conocida a la base.', 'mathReportDist', docs.mathReportDist)}
-                ${this.renderHybridUploadBox('3. Informe Empírico: Dos Mediciones (25% MAT)', 'Cálculo de altitud mediante sistema de dos mediciones tomadas a una distancia de separación conocida.', 'mathReportTwoPoints', docs.mathReportTwoPoints)}
-                ${this.renderHybridUploadBox('4. Informe Técnico Final Comparativo (25% MAT)', 'Análisis de coherencia comparando resultados anteriores y parámetros adicionales.', 'mathReportFinal', docs.mathReportFinal)}
+                ${this.renderDriveLinkBox('1. Elaboración de Goniómetro/s (25% MAT)', 'Enlace a carpeta/documento Drive con fotografías, diseño constructivo y calibración del goniómetro casero.', 'goniometerEvidence', docs.goniometerEvidence)}
+                ${this.renderDriveLinkBox('2. Informe Empírico: Distancia Conocida (25% MAT)', 'Enlace Drive al cálculo trigonométrico de apogeo con datos objetivos desde una distancia conocida a la base.', 'mathReportDist', docs.mathReportDist)}
+                ${this.renderDriveLinkBox('3. Informe Empírico: Dos Mediciones (25% MAT)', 'Enlace Drive al cálculo de altitud mediante sistema de dos mediciones tomadas a una distancia de separación conocida.', 'mathReportTwoPoints', docs.mathReportTwoPoints)}
+                ${this.renderDriveLinkBox('4. Informe Técnico Final Comparativo (25% MAT)', 'Enlace Drive al análisis de coherencia comparando resultados anteriores y parámetros adicionales.', 'mathReportFinal', docs.mathReportFinal)}
             `;
         }
 
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <!-- Columna Izquierda: Entregables FYQ y MAT -->
+            <!-- Columna Izquierda: Entregables FYQ y MAT (Solo Enlaces) -->
             <div class="lg:col-span-5 space-y-6">
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan">
                     <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-3 flex-wrap gap-2">
-                        <h2 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter">Entregables Científicos</h2>
+                        <h2 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter">Entregables Científicos (Drive)</h2>
                         <div class="flex gap-1 bg-black p-1 border border-mars-border">
                             <button onclick="ui.setTechDocTab('FYQ')" class="px-3 py-1 text-[9px] font-bold uppercase transition-colors ${activeDocTab === 'FYQ' ? 'bg-mars-cyan text-black' : 'text-slate-400 hover:text-white'}">Física y Química</button>
                             <button onclick="ui.setTechDocTab('MAT')" class="px-3 py-1 text-[9px] font-bold uppercase transition-colors ${activeDocTab === 'MAT' ? 'bg-mars-yellow text-black' : 'text-slate-400 hover:text-white'}">Matemáticas</button>
@@ -227,6 +230,9 @@ Object.assign(ui, {
         const notes = elNotes ? elNotes.value.trim() : '';
 
         if (isNaN(price) || price <= 0) return alert("Introduce un precio en €v válido mayor que cero.");
+        if (this.hasForbiddenWords(notes)) {
+            return alert("⚠️ Filtro Léxico: Se ha detectado vocabulario inapropiado en las observaciones de venta.");
+        }
 
         const co = state.data.companies[state.user.coId];
         if (!co || !co.orders) return;
@@ -279,6 +285,7 @@ Object.assign(ui, {
         const heightM = parseFloat(elHeight.value);
 
         if(!bottle || isNaN(naHCO3) || isNaN(vinegar) || isNaN(costEurV) || isNaN(heightM)) return alert("Rellene todos los datos numéricos del ensayo.");
+        if(this.hasForbiddenWords(bottle)) return alert("⚠️ Filtro Léxico: Nombre de fuselaje no permitido.");
         if(costEurV <= 0) return alert("El coste no puede ser cero.");
 
         const efficiency = heightM / costEurV;
@@ -312,6 +319,9 @@ Object.assign(ui, {
         const name = elName.value.trim();
         const reason = elReason.value.trim();
         if(!name || !reason) return alert("Rellene todos los campos.");
+        if(this.hasForbiddenWords(name) || this.hasForbiddenWords(reason)) {
+            return alert("⚠️ Filtro Léxico: Se ha detectado vocabulario inapropiado en la solicitud.");
+        }
         
         state.data.pendingCustom = state.data.pendingCustom || [];
         state.data.pendingCustom.push({ id: Date.now(), company: state.user.coId, name, reason });

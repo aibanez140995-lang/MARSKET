@@ -1,6 +1,6 @@
 // js/config.js
 
-const APP_VERSION = "1.0.14";
+const APP_VERSION = "1.0.15";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 // Mapeo de Agencias Reguladoras (Sistema Sancionador)
@@ -43,18 +43,34 @@ const MARKETING_PACKAGES = [
     { id: 'MK-SUP', name: 'Cobertura Supernova', type: 'Premium', price: 750, actions: 6, desc: 'Saturación publicitaria máxima. Requiere fuerte justificación financiera.' }
 ];
 
+// Diccionario de Saneamiento y Moderación (Filtro Léxico)
+const FORBIDDEN_WORDS = [
+    'puta', 'puto', 'mierda', 'joder', 'cabron', 'cabrón', 'gilipollas', 
+    'polla', 'cojones', 'follar', 'hostia', 'maricon', 'maricón', 'zorra', 
+    'capullo', 'pendejo', 'idiota', 'subnormal', 'imbecil', 'imbécil', 
+    'hitler', 'nazi', 'pene', 'vagina', 'culo', 'teta', 'retrasado', 'retrasada'
+];
+
 // Novedades de Plataforma (Changelog Interactivo)
 const APP_CHANGELOG = [
+    {
+        version: "1.0.15",
+        date: "Octubre 2026",
+        title: "Política Cloud, Moderación de Marca y Filtros de Entorno Escolar",
+        highlights: [
+            { type: "SISTEMA", text: "Prohibición de subida de archivos físicos. Todos los entregables exigen estrictamente un enlace a Google Drive/OneDrive." },
+            { type: "NUEVO", text: "Aduana de Marca: Los logotipos y eslóganes requieren validación por parte de Coordinación Docente antes de ser públicos." },
+            { type: "NUEVO", text: "Filtro Léxico Automático que bloquea palabras malsonantes en formularios, nombres y mociones." },
+            { type: "MEJORA", text: "Auditoría exhaustiva del Dossier Académico con mapeo estricto de los 19 casilleros documentales." }
+        ]
+    },
     {
         version: "1.0.14",
         date: "Octubre 2026",
         title: "Sincronización Curricular, B2B y Expansión de Marketing",
         highlights: [
-            { type: "NUEVO", text: "Ponderación del 100% en Acta Docente (FYQ 25%, LYE 40%, LEN 15%, ECO 10%, MAT 5%, ING 5%)." },
-            { type: "NUEVO", text: "Despliegue de los 17 casilleros documentales con soporte de entregas en Diciembre y Abril para LyE." },
-            { type: "NUEVO", text: "4 Paquetes Publicitarios de Marketing con auditoría presupuestaria de Finanzas." },
-            { type: "MEJORA", text: "Buzón de sugerencias (Buzón Alex) ahora cuenta con selector de categorías y filtro de privacidad." },
-            { type: "SISTEMA", text: "Infraestructura B2B lista en base de datos para la inminente habilitación del Mercado de Segunda Mano." }
+            { type: "MEJORA", text: "Ponderación del 100% en Acta Docente y expansión a 19 casilleros (con LyE Diciembre/Abril)." },
+            { type: "NUEVO", text: "Mercado de Segunda Mano (B2B) y 4 Paquetes Publicitarios de Marketing." }
         ]
     }
 ];
@@ -115,25 +131,31 @@ const INITIAL_DATA = {
     ],
     companies: {
         astra: { 
-            name: "Astra Dynamics", balance: 2400, logo: null, sponsorAwarded: null, classGroup: 'A',
-            slogan: "", valueProposition: "", aiPrompts: [], executiveResolutions: [], 
-            flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [],
+            name: "Astra Dynamics", balance: 2400, classGroup: 'A',
+            logo: null, slogan: "", valueProposition: "",
+            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" },
+            sponsorAwarded: null, sponsorData: { name: null, logo: null },
+            aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
             roles: { CEO:'1111', TECNICO:'1111', FINANZAS:'1111', MARKETING:'1111', OPERACIONES_IA:'1111' }, 
             loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}},
             deliverables: {}
         },
         orion: { 
-            name: "Orion Labs", balance: 2400, logo: null, sponsorAwarded: null, classGroup: 'B',
-            slogan: "", valueProposition: "", aiPrompts: [], executiveResolutions: [], 
-            flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [],
+            name: "Orion Labs", balance: 2400, classGroup: 'B',
+            logo: null, slogan: "", valueProposition: "",
+            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" },
+            sponsorAwarded: null, sponsorData: { name: null, logo: null },
+            aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
             roles: { CEO:'2222', TECNICO:'2222', FINANZAS:'2222', MARKETING:'2222', OPERACIONES_IA:'2222' }, 
             loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}},
             deliverables: {}
         },
         stellar: { 
-            name: "Stellar Solutions", balance: 2400, logo: null, sponsorAwarded: null, classGroup: 'C',
-            slogan: "", valueProposition: "", aiPrompts: [], executiveResolutions: [], 
-            flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [],
+            name: "Stellar Solutions", balance: 2400, classGroup: 'C',
+            logo: null, slogan: "", valueProposition: "",
+            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" },
+            sponsorAwarded: null, sponsorData: { name: null, logo: null },
+            aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
             roles: { CEO:'3333', TECNICO:'3333', FINANZAS:'3333', MARKETING:'3333', OPERACIONES_IA:'3333' }, 
             loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}},
             deliverables: {}

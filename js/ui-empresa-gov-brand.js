@@ -1,5 +1,5 @@
 // js/ui-empresa-gov-brand.js
-// --- MÓDULO GOBERNANZA Y MARCA: MOCIONES, HR, LYE, COMUNICACIÓN Y PAQUETES MARKETING ---
+// --- MÓDULO GOBERNANZA Y MARCA: MOCIONES, HR, LYE, COMUNICACIÓN Y PAQUETES MARKETING (v1.0.15) ---
 
 Object.assign(ui, {
     setBrandDocTab(tab) {
@@ -149,6 +149,7 @@ Object.assign(ui, {
         
         if(!dept || !reason) return alert("Debes seleccionar un departamento y justificar el reporte.");
         if(dept === state.user.role) return alert("No puedes reportarte a ti mismo.");
+        if(this.hasForbiddenWords(reason)) return alert("⚠️ Filtro Léxico: Se ha detectado vocabulario inapropiado o insultos. Redacta el reporte con lenguaje académico.");
         
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
@@ -193,6 +194,9 @@ Object.assign(ui, {
         const title = elTitle.value.trim();
         const desc = elDesc.value.trim();
         if(!title || !desc) return alert("Rellene todos los campos.");
+        if(this.hasForbiddenWords(title) || this.hasForbiddenWords(desc)) {
+            return alert("⚠️ Filtro Léxico: No se permiten palabras malsonantes o insultos en las mociones oficiales.");
+        }
         
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
@@ -282,10 +286,34 @@ Object.assign(ui, {
         co.flightTests = co.flightTests || [];
         co.orders = co.orders || [];
         co.marketingCampaigns = co.marketingCampaigns || [];
+        co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
         
         const activeDocTab = this.brandDocTab || 'LYE';
         const wrapper = document.createElement('div');
         
+        // Banner de Estado de Aprobación de Marca (Coordinación)
+        let brandApprovalAlert = '';
+        if (co.brandApproval.status === 'PENDIENTE') {
+            brandApprovalAlert = `
+            <div class="bg-mars-yellow/15 border border-mars-yellow p-3 mb-4 text-[10px]">
+                <span class="text-mars-yellow font-black uppercase block mb-1">⏳ Identidad de Marca en Revisión por Coordinación</span>
+                <p class="text-slate-300 leading-tight">Tu propuesta de Eslogan o Logotipo ha sido enviada y está pendiente de validación docente antes de hacerse pública en el HUD.</p>
+                ${co.brandApproval.pendingSlogan ? `<p class="text-white mt-1.5"><strong>Eslogan propuesto:</strong> "${co.brandApproval.pendingSlogan}"</p>` : ''}
+            </div>`;
+        } else if (co.brandApproval.status === 'RECHAZADO') {
+            brandApprovalAlert = `
+            <div class="bg-mars-magenta/15 border border-mars-magenta p-3 mb-4 text-[10px]">
+                <span class="text-mars-magenta font-black uppercase block mb-1">❌ Propuesta de Marca Rechazada por Coordinación</span>
+                <p class="text-slate-300 leading-tight">Motivo: "${co.brandApproval.feedback || 'Incumplimiento de criterios corporativos.'}"</p>
+            </div>`;
+        } else {
+            brandApprovalAlert = `
+            <div class="bg-mars-green/10 border border-mars-green/40 p-2 mb-4 text-[9px] flex justify-between items-center">
+                <span class="text-mars-green font-bold uppercase">✓ Marca Oficial Verificada por Coordinación</span>
+                <span class="text-slate-400">Cambios nuevos requerirán re-aprobación</span>
+            </div>`;
+        }
+
         let bestFlightHtml = '<p class="text-slate-500 italic text-xs">Aún no hay ensayos de vuelo registrados por el Dpto. Técnico.</p>';
         if (co.flightTests.length > 0) {
             const bestFlight = [...co.flightTests].sort((a, b) => b.efficiency - a.efficiency)[0];
@@ -308,7 +336,6 @@ Object.assign(ui, {
 
         const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + (Number(o.total) || 0), 0);
 
-        // Paquetes de Marketing disponibles en config.js
         const mktPackages = typeof MARKETING_PACKAGES !== 'undefined' ? MARKETING_PACKAGES : [
             { id: 'MK-SAT', name: 'Pack Satélite', type: '100% Online', price: 200, actions: 3, desc: 'Alcance digital rápido (Redes sociales, Banners, Mailing).' },
             { id: 'MK-TRA', name: 'Prensa Tradicional', type: '100% Físico', price: 300, actions: 3, desc: 'Impacto tangible (Diseño de pósters, flyers físicos, prensa).' },
@@ -334,7 +361,6 @@ Object.assign(ui, {
         `).join('');
 
         let campaignsHtml = co.marketingCampaigns.map(c => {
-            // Retrocompatibilidad con campañas antiguas que no tenían paquetes
             const isLegacy = !c.packageId;
             if (isLegacy) {
                 return `
@@ -393,21 +419,21 @@ Object.assign(ui, {
             </div>`;
         }).join('') || '<p class="text-slate-500 italic text-xs">No hay paquetes ni campañas contratadas todavía.</p>';
 
-        // Selector de pestañas documentales: LYE (40%), LEN (15%), ING (5%)
+        // Selector de pestañas documentales con Política de Solo Enlaces Drive
         let docTabContent = '';
         if (activeDocTab === 'LYE') {
             docTabContent = `
                 <div class="mb-3 flex justify-between items-center">
                     <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan text-[8px] font-black px-2 py-0.5 uppercase">Peso en Proyecto: 40% Global (80% Escrito / 20% Oral)</span>
                 </div>
-                <p class="text-[9px] text-slate-400 mb-4 uppercase leading-relaxed">Entregables oficiales de Liderazgo y Emprendimiento. Incluye los casilleros duales de Diciembre y Abril.</p>
+                <p class="text-[9px] text-slate-400 mb-4 uppercase leading-relaxed">Entregables oficiales de Liderazgo y Emprendimiento (Solo Enlaces Drive/Canva).</p>
                 <div class="space-y-4">
-                    ${this.renderHybridUploadBox('1A. Identidad de Marca, Misión y Visión — DICIEMBRE', 'Nombre, Logo, Tagline, sector elegido y justificación (1ª Entrega).', 'brandIdentity_dec', docs.brandIdentity_dec)}
-                    ${this.renderHybridUploadBox('1B. Identidad de Marca, Misión y Visión — ABRIL', 'Revisión evolutiva de marca, misión y visión tras pruebas (2ª Entrega).', 'brandIdentity_apr', docs.brandIdentity_apr)}
-                    ${this.renderHybridUploadBox('2. Business Model (Documento Escrito)', 'Documento formal con portada, índice, integrantes del equipo, roles y funciones.', 'businessModelDoc', docs.businessModelDoc)}
-                    ${this.renderHybridUploadBox('3. Business Model Canvas', 'Lienzo estratégico del modelo de negocio de la startup aeroespacial.', 'businessModelCanvas', docs.businessModelCanvas)}
-                    ${this.renderHybridUploadBox('4A. Diario-Bitácora de Decisiones, Conflictos e IA — DICIEMBRE', 'Registro de gobernanza, mitigación de riesgos y uso ético de IA (1ª Entrega).', 'decisionDiary_dec', docs.decisionDiary_dec)}
-                    ${this.renderHybridUploadBox('4B. Diario-Bitácora de Decisiones, Conflictos e IA — ABRIL', 'Cierre de bitácora de decisiones operativas, conflictos e IA (2ª Entrega).', 'decisionDiary_apr', docs.decisionDiary_apr)}
+                    ${this.renderDriveLinkBox('1A. Identidad de Marca, Misión y Visión — DICIEMBRE', 'Nombre, Logo, Tagline, sector elegido y justificación (1ª Entrega). Resp: Marketing.', 'brandIdentity_dec', docs.brandIdentity_dec)}
+                    ${this.renderDriveLinkBox('1B. Identidad de Marca, Misión y Visión — ABRIL', 'Revisión evolutiva de marca, misión y visión tras pruebas (2ª Entrega). Resp: Marketing.', 'brandIdentity_apr', docs.brandIdentity_apr)}
+                    ${this.renderDriveLinkBox('2. Business Model (Documento Escrito)', 'Documento formal con portada, índice, integrantes del equipo, roles y funciones. Resp: Marketing/CEO.', 'businessModelDoc', docs.businessModelDoc)}
+                    ${this.renderDriveLinkBox('3. Business Model Canvas', 'Lienzo estratégico del modelo de negocio de la startup aeroespacial. Resp: Marketing.', 'businessModelCanvas', docs.businessModelCanvas)}
+                    ${this.renderDriveLinkBox('4A. Diario-Bitácora de Decisiones, Conflictos e IA — DICIEMBRE', 'Registro de gobernanza, mitigación de riesgos y uso ético de IA (1ª Entrega). Resp: Operaciones IA.', 'decisionDiary_dec', docs.decisionDiary_dec)}
+                    ${this.renderDriveLinkBox('4B. Diario-Bitácora de Decisiones, Conflictos e IA — ABRIL', 'Cierre de bitácora de decisiones operativas, conflictos e IA (2ª Entrega). Resp: Operaciones IA.', 'decisionDiary_apr', docs.decisionDiary_apr)}
                 </div>
             `;
         } else if (activeDocTab === 'LEN') {
@@ -415,9 +441,9 @@ Object.assign(ui, {
                 <div class="mb-3">
                     <span class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta text-[8px] font-black px-2 py-0.5 uppercase">Peso en Proyecto: 15% Global (50% Oral / 50% Escrito)</span>
                 </div>
-                <p class="text-[9px] text-slate-400 mb-4 uppercase leading-relaxed">Entregable oficial para la evaluación de Lengua Castellana y Literatura.</p>
+                <p class="text-[9px] text-slate-400 mb-4 uppercase leading-relaxed">Entregable oficial para Lengua Castellana (Solo Enlace Drive/Canva).</p>
                 <div class="space-y-4">
-                    ${this.renderHybridUploadBox('1. Dossier para Inversores (Texto Argumentativo)', 'Documento persuasivo y formal para captación de inversión y soporte de la defensa oral.', 'investorDossier', docs.investorDossier)}
+                    ${this.renderDriveLinkBox('1. Dossier para Inversores (Texto Argumentativo)', 'Documento persuasivo y formal para captación de inversión. Resp: Marketing / CEO.', 'investorDossier', docs.investorDossier)}
                 </div>
             `;
         } else {
@@ -425,25 +451,32 @@ Object.assign(ui, {
                 <div class="mb-3">
                     <span class="bg-mars-yellow/10 border border-mars-yellow text-mars-yellow text-[8px] font-black px-2 py-0.5 uppercase">Peso en Proyecto: 5% Global (70% Oral / 30% Redacciones)</span>
                 </div>
-                <p class="text-[9px] text-slate-400 mb-4 uppercase leading-relaxed">Entregables oficiales para la evaluación del departamento de Inglés.</p>
+                <p class="text-[9px] text-slate-400 mb-4 uppercase leading-relaxed">Entregables oficiales para el departamento de Inglés (Solo Enlaces Drive/Canva).</p>
                 <div class="space-y-4">
-                    ${this.renderHybridUploadBox('1. Expresión Oral: Presentación Prototipo (70% ING)', 'Soporte visual / slides de la presentación oral y financiación del prototipo en inglés.', 'oralPresentation', docs.oralPresentation)}
-                    ${this.renderHybridUploadBox('2. Redacciones Escritas en Inglés (30% ING)', 'Documentos escritos y ensayos técnicos/comerciales en lengua inglesa.', 'writtenEssays', docs.writtenEssays)}
+                    ${this.renderDriveLinkBox('1. Expresión Oral: Presentación Prototipo (70% ING)', 'Enlace a soporte visual / slides de la presentación oral en inglés.', 'oralPresentation', docs.oralPresentation)}
+                    ${this.renderDriveLinkBox('2. Redacciones Escritas en Inglés (30% ING)', 'Enlace a documentos escritos y ensayos técnicos/comerciales en lengua inglesa.', 'writtenEssays', docs.writtenEssays)}
                 </div>
             `;
         }
+
+        const displaySloganInput = co.brandApproval.status === 'PENDIENTE' && co.brandApproval.pendingSlogan 
+            ? co.brandApproval.pendingSlogan 
+            : (co.slogan || '');
 
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <!-- Columna Izquierda: Identidad, KPIs y Paquetes Publicitarios -->
             <div class="lg:col-span-6 space-y-6 w-full overflow-hidden">
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-magenta w-full">
-                    <h2 class="font-orbitron text-mars-magenta text-base sm:text-lg mb-4 uppercase tracking-tighter">Identidad Corporativa & Manifiesto</h2>
-                    <input type="text" id="brand-slogan" value="${co.slogan||''}" placeholder="Eslogan corto corporativo (Tagline)..." class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-mars-yellow font-bold uppercase mb-3 focus:border-mars-magenta outline-none">
+                    <h2 class="font-orbitron text-mars-magenta text-base sm:text-lg mb-2 uppercase tracking-tighter">Identidad Corporativa & Manifiesto</h2>
+                    ${brandApprovalAlert}
+                    <label class="text-[9px] text-slate-400 uppercase font-bold block mb-1">Eslogan Corporativo (Requiere Aprobación Docente)</label>
+                    <input type="text" id="brand-slogan" value="${displaySloganInput}" placeholder="Eslogan corto corporativo (Tagline)..." class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-mars-yellow font-bold uppercase mb-3 focus:border-mars-magenta outline-none">
+                    <label class="text-[9px] text-slate-400 uppercase font-bold block mb-1">Misión, Visión y Propuesta de Valor</label>
                     <textarea id="val-prop-text" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white h-24 outline-none focus:border-mars-cyan mb-3 leading-relaxed" placeholder="Redacte la misión, visión y propuesta de valor corporativa...">${co.valueProposition || ''}</textarea>
                     <div class="flex flex-col sm:flex-row gap-2 w-full">
-                        <button onclick="document.getElementById('brand-logo-upload').click()" class="bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest hover:bg-mars-magenta hover:text-white transition-all flex-1">[ Cargar Escudo / Logo ]</button>
-                        <button onclick="ui.saveBrandIdentityText()" class="bg-mars-cyan text-black px-4 py-2.5 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all flex-1">Guardar Eslogan y Misión</button>
+                        <button onclick="document.getElementById('brand-logo-upload').click()" class="bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest hover:bg-mars-magenta hover:text-white transition-all flex-1">[ Proponer Escudo / Logo ]</button>
+                        <button onclick="ui.saveBrandIdentityText()" class="bg-mars-cyan text-black px-4 py-2.5 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all flex-1">Enviar para Aprobación</button>
                     </div>
                     <input type="file" id="brand-logo-upload" class="hidden" accept="image/png, image/jpeg" onchange="ui.handleLogoUpload(event)">
                 </div>
@@ -453,7 +486,7 @@ Object.assign(ui, {
                         <h2 class="font-orbitron text-mars-yellow text-base sm:text-lg uppercase tracking-tighter">Contratación de Paquetes Publicitarios</h2>
                         <span class="text-[8px] bg-mars-yellow/10 text-mars-yellow border border-mars-yellow px-2 py-0.5 font-bold uppercase">Requiere Aprobación Finanzas</span>
                     </div>
-                    <p class="text-[9px] text-slate-400 mb-4 uppercase leading-relaxed">Selecciona un paquete para solicitar presupuesto a Finanzas. Una vez aprobado, podrás registrar tus acciones promocionales.</p>
+                    <p class="text-[9px] text-slate-400 mb-4 uppercase leading-relaxed">Selecciona un paquete para solicitar presupuesto a Finanzas. Una vez aprobado, podrás registrar tus acciones promocionales con enlaces Drive/Canva.</p>
                     
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
                         ${packagesGridHtml}
@@ -481,7 +514,7 @@ Object.assign(ui, {
             <div class="lg:col-span-6 space-y-6 w-full overflow-hidden">
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan h-fit w-full overflow-hidden">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-2">
-                        <h2 class="font-orbitron text-mars-cyan text-base uppercase tracking-tighter">Entregables Oficiales</h2>
+                        <h2 class="font-orbitron text-mars-cyan text-base uppercase tracking-tighter">Entregables Oficiales (Drive)</h2>
                         <div class="flex gap-1 bg-black p-1 border border-mars-border">
                             <button onclick="ui.setBrandDocTab('LYE')" class="px-2.5 py-1 text-[9px] font-bold uppercase transition-colors ${activeDocTab === 'LYE' ? 'bg-mars-cyan text-black' : 'text-slate-400 hover:text-white'}">LyE (40%)</button>
                             <button onclick="ui.setBrandDocTab('LEN')" class="px-2.5 py-1 text-[9px] font-bold uppercase transition-colors ${activeDocTab === 'LEN' ? 'bg-mars-magenta text-white' : 'text-slate-400 hover:text-white'}">Lengua (15%)</button>
@@ -539,6 +572,9 @@ Object.assign(ui, {
         const title = elTitle.value.trim();
         const desc = elDesc.value.trim();
         if (!title || !desc) return alert("Debes indicar un título de campaña y la justificación presupuestaria para Finanzas.");
+        if (this.hasForbiddenWords(title) || this.hasForbiddenWords(desc)) {
+            return alert("⚠️ Filtro Léxico: Se ha detectado vocabulario inapropiado en la solicitud.");
+        }
 
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
@@ -583,7 +619,7 @@ Object.assign(ui, {
             <div class="space-y-3">
                 <input type="text" id="mkt-act-title" placeholder="Título de la acción (Ej: Reel Instagram / Póster Pasillo)..." class="w-full bg-slate-900 border border-mars-border p-2.5 text-xs text-white outline-none focus:border-mars-cyan">
                 <textarea id="mkt-act-desc" placeholder="Descripción del impacto y contenido de la creatividad..." class="w-full bg-slate-900 border border-mars-border p-2.5 text-xs text-white h-20 outline-none focus:border-mars-cyan"></textarea>
-                <input type="text" id="mkt-act-url" placeholder="Enlace a la evidencia / diseño en Canva o Drive (https://...)" class="w-full bg-slate-900 border border-mars-border p-2.5 text-xs text-white outline-none focus:border-mars-cyan">
+                <input type="url" id="mkt-act-url" placeholder="Enlace obligatorio a la evidencia en Canva o Drive (https://...)" class="w-full bg-slate-900 border border-mars-border p-2.5 text-xs text-white outline-none focus:border-mars-cyan">
             </div>
         `;
         const actions = `<button onclick="ui.confirmConsumeMktAction('${camp.id}')" class="bg-mars-cyan text-black px-5 py-2 text-[10px] font-black uppercase hover:bg-white transition-all">Publicar Acción</button>`;
@@ -601,7 +637,13 @@ Object.assign(ui, {
         const desc = elDesc.value.trim();
         const url = elUrl.value.trim();
 
-        if (!title || !desc) return alert("El título y la descripción de la acción son obligatorios.");
+        if (!title || !desc || !url) return alert("El título, la descripción y el enlace (URL) de la acción son obligatorios.");
+        if (!url.toLowerCase().startsWith('http://') && !url.toLowerCase().startsWith('https://')) {
+            return alert("El enlace de la creatividad debe comenzar por http:// o https://");
+        }
+        if (this.hasForbiddenWords(title) || this.hasForbiddenWords(desc)) {
+            return alert("⚠️ Filtro Léxico: Se ha detectado vocabulario inapropiado.");
+        }
 
         const co = state.data.companies[state.user.coId];
         if (!co || !co.marketingCampaigns) return;
@@ -632,11 +674,28 @@ Object.assign(ui, {
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
         
-        if (elSlogan) co.slogan = elSlogan.value.trim();
-        if (elText) co.valueProposition = elText.value.trim();
+        const newSlogan = elSlogan ? elSlogan.value.trim() : '';
+        const newValProp = elText ? elText.value.trim() : '';
+
+        if (this.hasForbiddenWords(newSlogan) || this.hasForbiddenWords(newValProp)) {
+            return alert("⚠️ Filtro Léxico: Se ha detectado vocabulario inapropiado o no permitido en el Eslogan o Manifiesto.");
+        }
+
+        co.valueProposition = newValProp;
+        co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
+
+        // Si el eslogan cambia respecto al aprobado actualmente, pasa a revisión de Coordinación
+        if (newSlogan !== co.slogan) {
+            co.brandApproval.pendingSlogan = newSlogan;
+            co.brandApproval.status = 'PENDIENTE';
+            co.brandApproval.feedback = '';
+            telemetry.log("BRANDING", "ESLOGAN ENVIADO A REVISIÓN DOCENTE");
+            alert("⏳ Tu nuevo Eslogan se ha enviado a Coordinación para su validación previa. La Misión/Visión ha quedado guardada.");
+        } else {
+            alert("✅ Misión y Propuesta de Valor actualizadas.");
+        }
         
         state.save();
-        alert("✅ Eslogan y Manifiesto corporativo actualizados.");
         this.render();
     },
 
@@ -644,50 +703,25 @@ Object.assign(ui, {
         if (!state.user) return;
         const file = e.target.files[0];
         if (!file) return;
-        if (!file.type.startsWith('image/')) return alert("Solo PNG/JPG.");
-        if (file.size > 1024 * 1024) return alert("Máximo 1MB para el logo.");
+        if (!file.type.startsWith('image/')) return alert("Solo formatos de imagen PNG o JPG para el escudo corporativo.");
+        if (file.size > 1024 * 1024) return alert("Máximo 1MB para el logotipo.");
+        
         const reader = new FileReader();
         reader.onload = (ev) => {
             const co = state.data.companies[state.user.coId];
             if (!co) return auth.logout();
-            co.logo = ev.target.result;
-            telemetry.log("BRANDING", "LOGO ACTUALIZADO");
+            
+            co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
+            co.brandApproval.pendingLogo = ev.target.result;
+            if (!co.brandApproval.pendingSlogan) co.brandApproval.pendingSlogan = co.slogan || "";
+            co.brandApproval.status = 'PENDIENTE';
+            co.brandApproval.feedback = '';
+
+            telemetry.log("BRANDING", "PROPUESTA DE LOGO ENVIADA A COORDINACIÓN");
             state.save();
             this.render();
-            alert("Logotipo corporativo guardado.");
+            alert("⏳ Logotipo enviado a Coordinación Docente. Aparecerá en vuestro HUD en cuanto sea aprobado.");
         };
         reader.readAsDataURL(file);
-    },
-
-    handleDeliverableHybridSubmit(docType) {
-        if (!state.user) return;
-        const fileInput = document.getElementById(`upload-file-${docType}`);
-        const urlInput = document.getElementById(`upload-url-${docType}`);
-        if (!fileInput || !urlInput) return;
-        
-        const file = fileInput.files[0];
-        const url = urlInput.value.trim();
-        
-        if(!file && !url) return alert("Debe adjuntar un archivo o proporcionar un enlace (URL).");
-        
-        const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
-        co.deliverables = co.deliverables || {};
-
-        if(file) {
-            if (file.size > 2 * 1024 * 1024) return alert("El archivo supera el límite de 2MB. Envíe un enlace en su lugar.");
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                co.deliverables[docType] = { type: 'file', name: file.name, date: new Date().toLocaleString(), size: (file.size / 1024).toFixed(1) + ' KB', dataUrl: ev.target.result };
-                telemetry.log("ENTREGABLE", `Archivo subido: ${docType} (${file.name})`);
-                state.save(); this.render(); alert("✅ Documento entregado y registrado en el Dossier.");
-            };
-            reader.readAsDataURL(file);
-        } else if(url) {
-            if(!url.startsWith('http')) return alert("La URL debe comenzar con http:// o https://");
-            co.deliverables[docType] = { type: 'link', name: 'Enlace a Nube Externa', date: new Date().toLocaleString(), size: 'URL', dataUrl: url };
-            telemetry.log("ENTREGABLE", `Enlace subido: ${docType}`);
-            state.save(); this.render(); alert("✅ Enlace entregado y registrado en el Dossier.");
-        }
     }
 });

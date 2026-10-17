@@ -1,5 +1,5 @@
 // js/ui-docente-eval.js
-// --- MÓDULO DOCENTE: RÚBRICAS PONDERADAS (100%), ACTAS Y ARCHIVO DOCUMENTAL (17 ENTREGABLES) ---
+// --- MÓDULO DOCENTE: RÚBRICAS PONDERADAS (100%), ACTAS Y ARCHIVO DOCUMENTAL (19 ENTREGABLES) (v1.0.15) ---
 
 Object.assign(ui, {
     renderAdminEval() {
@@ -12,7 +12,7 @@ Object.assign(ui, {
             adminHtml += `
             <select onchange="ui.coordEvalView=this.value; ui.evalSelectedCo=''; ui.render()" class="bg-black border border-mars-cyan text-mars-cyan text-xs p-2 uppercase font-bold outline-none cursor-pointer">
                 <option value="ACTA" ${this.coordEvalView==='ACTA'?'selected':''}>📊 Acta General Calificaciones (100% Ponderada)</option>
-                <option value="ARCHIVE" ${this.coordEvalView==='ARCHIVE'?'selected':''}>📁 Archivo Documental Central (17 Entregables)</option>
+                <option value="ARCHIVE" ${this.coordEvalView==='ARCHIVE'?'selected':''}>📁 Archivo Documental Central (19 Enlaces)</option>
                 ${['FYQ','LYE','LEN','ECO','MAT','ING'].map(s => `<option value="${s}" ${this.coordEvalView===s?'selected':''}>Evaluar: ${RUBRIC_CONFIG[s].name} (${Math.round((weights[s]||0)*100)}%)</option>`).join('')}
             </select>
             ${this.coordEvalView === 'ACTA' ? `<button onclick="ui.exportActaCSV()" class="bg-mars-green text-black px-4 py-2 text-[10px] font-black uppercase hover:bg-white transition-colors">Exportar Acta Ponderada CSV</button>` : ''}
@@ -114,7 +114,10 @@ Object.assign(ui, {
             adminHtml += `
             <div class="terminal-border bg-mars-card p-6 w-full overflow-hidden">
                 <div class="mb-4 border-b border-mars-border pb-2 flex justify-between items-center">
-                    <h4 class="font-orbitron text-mars-cyan text-xs uppercase tracking-widest">Auditoría del Archivo Documental Central (Desliza horizontalmente ➔)</h4>
+                    <div>
+                        <h4 class="font-orbitron text-mars-cyan text-xs uppercase tracking-widest">Auditoría del Archivo Documental Central (19 Entregables)</h4>
+                        <p class="text-[9px] text-slate-400 uppercase mt-0.5">Control de subida de enlaces en Drive/Canva (Desliza horizontalmente ➔)</p>
+                    </div>
                 </div>
                 <div class="overflow-x-auto w-full pb-2">
                     <table class="w-full text-left text-[9px] whitespace-nowrap min-w-max">
@@ -136,7 +139,7 @@ Object.assign(ui, {
                                 const deliveredTotal = docCols.filter(col => !!d[col.key]).length;
                                 
                                 const dLink = (doc) => doc 
-                                    ? `<a href="${doc.dataUrl}" target="_blank" download="${doc.type==='file'?doc.name:''}" class="bg-mars-green/15 text-mars-green border border-mars-green px-2 py-1 font-bold hover:bg-mars-green hover:text-black transition-colors block text-center">${doc.type==='link'?'🔗 LINK':'📁 FILE'}</a>` 
+                                    ? `<a href="${doc.dataUrl}" target="_blank" class="bg-mars-green/15 text-mars-green border border-mars-green px-2 py-1 font-bold hover:bg-mars-green hover:text-black transition-colors block text-center">${doc.type==='link'?'🔗 LINK':'📁 FILE'}</a>` 
                                     : `<span class="text-slate-600 border border-slate-800 px-2 py-1 block text-center">--</span>`;
                                 
                                 const aLink = aiCount > 0 
