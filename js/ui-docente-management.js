@@ -34,7 +34,7 @@ Object.assign(ui, {
 
         const incidents = (state.data.securityIncidents || []).filter(i => !i.resolved);
 
-        // 1. MONITOR DE ALERTAS LÉXICAS (Nombres en amarillo, Insultos en rojo)
+        // 1. MONITOR DE ALERTAS LÉXICAS
         let incidentsHtml = '';
         if (incidents.length > 0 && isCoord) {
             incidentsHtml = `
@@ -73,7 +73,7 @@ Object.assign(ui, {
             </div>`;
         }
 
-        // 2. REGISTRO MERCANTIL (Solicitudes de Cambio de Nombre del CEO)
+        // 2. REGISTRO MERCANTIL
         let nameCustomsHtml = '';
         if (isCoord && pendingNameChanges.length > 0) {
             nameCustomsHtml = `
@@ -301,7 +301,6 @@ Object.assign(ui, {
         </div>`;
     },
 
-    // --- RESTAURACIÓN COMPLETA DEL LLAVERO MAESTRO, STARTUPS Y CRONOGRAMA DE 19 ENTREGABLES ---
     renderAdminStartups() {
         const isCoord = state.user && state.user.role.startsWith('COORD');
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
@@ -336,7 +335,6 @@ Object.assign(ui, {
             </div>`;
         }
 
-        // Llavero Maestro de Startups (Códigos de Acceso y PINs por Rol)
         const rolesList = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'];
         const companiesCards = Object.keys(state.data.companies).map(cid => {
             const co = state.data.companies[cid];
@@ -380,7 +378,6 @@ Object.assign(ui, {
             </div>`;
         }).join('');
 
-        // Configuración del Cronograma Maestro (19 Plazos) y PINs del Claustro (Solo Coordinación)
         let coordSettingsHtml = '';
         if (isCoord) {
             const deadlinesInputs = defs.map(d => {
@@ -755,10 +752,10 @@ Object.assign(ui, {
         const co = state.data.companies[cid];
         if (!co) return;
         const html = `
-            <p class="text-[10px] text-slate-400 mb-4 leading-relaxed uppercase">Modifica la denominación social oficial de esta startup. El identificador interno, historial contable y rúbricas se mantendrán intactos.</p>
+            <p class="text-[10px] text-slate-400 mb-4 leading-relaxed uppercase">Modifica la denominación social oficial de esta startup forzosamente. El historial contable y rúbricas se mantendrán intactos.</p>
             <input type="text" id="rename-startup-input" value="${co.name}" class="w-full bg-black border border-mars-yellow p-3 text-xs text-mars-yellow font-orbitron font-bold uppercase outline-none focus:border-white">
         `;
-        const actions = `<button onclick="ui.finalizeRenameStartup('${cid}')" class="bg-mars-yellow text-black px-6 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all">Confirmar Cambio</button>`;
+        const actions = `<button onclick="ui.finalizeRenameStartup('${cid}')" class="bg-mars-yellow text-black px-6 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all">Forzar Cambio</button>`;
         this.showModal(`Renombrar: ${co.name}`, html, actions);
     },
 
@@ -768,16 +765,13 @@ Object.assign(ui, {
         const newName = el.value.trim();
         if (newName.length < 3) return alert("El nombre debe tener al menos 3 caracteres.");
         
-        if (ui.hasForbiddenWords(newName, 'Edición Nombre Empresa')) return;
-
         const co = state.data.companies[cid];
         if (!co) return;
-
         const oldName = co.name;
         co.name = newName;
         
         telemetry.log("GOBERNANZA", `Empresa renombrada de ${oldName} a ${newName}`);
-        ui.pushNotification(cid, 'CEO', `Coordinación ha actualizado la denominación social a "${newName}".`, 'success');
+        ui.pushNotification(cid, 'CEO', `Coordinación ha forzado el cambio de denominación social a "${newName}".`, 'warning');
         state.save();
         this.closeModal();
         this.render();
@@ -877,7 +871,6 @@ Object.assign(ui, {
         this.render();
     },
 
-    // --- RESTAURACIÓN COMPLETA DE TELEMETRÍA ---
     renderAdminTelemetry() {
         const tel = state.data.telemetry || { totalLogins: 0, sessions: [] };
         const sessions = Array.isArray(tel.sessions) ? tel.sessions : [];
@@ -913,7 +906,6 @@ Object.assign(ui, {
         </div>`;
     },
 
-    // --- RESTAURACIÓN COMPLETA DE ALERTAS HR Y BUZÓN DE DESARROLLO ---
     renderAdminHR() {
         let hrReports = [];
         for (let cid in state.data.companies) {
@@ -982,7 +974,6 @@ Object.assign(ui, {
         }
     },
 
-    // --- RESTAURACIÓN COMPLETA DEL GESTOR DE CATÁLOGO I+D ---
     renderAdminCatalog() {
         const cat = Array.isArray(state.data.catalog) ? state.data.catalog : [];
         const rows = cat.map((item, idx) => `
@@ -1145,8 +1136,8 @@ Object.assign(ui, {
         const co = state.data.companies[cid];
         if (!co) return;
         
-        co.sanctions = co.sanctions || [];
-        co.crisisAlerts = co.crisisAlerts || [];
+        co.sanctions = Array.isArray(co.sanctions) ? co.sanctions : [];
+        co.crisisAlerts = Array.isArray(co.crisisAlerts) ? co.crisisAlerts : [];
         
         const sanctionObj = {
             id: 'SANC-' + Date.now(),
