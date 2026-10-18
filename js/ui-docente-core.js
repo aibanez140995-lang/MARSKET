@@ -1,5 +1,5 @@
 // js/ui-docente-core.js
-// --- MÓDULO DOCENTE: ENRUTADOR, TABS Y CENTRO DE SEGURIDAD/BACKUPS (v1.0.17) ---
+// --- MÓDULO DOCENTE: ENRUTADOR SEGURO, TABS Y CENTRO DE SEGURIDAD (v1.0.18) ---
 
 Object.assign(ui, {
     viewAdmin(el) {
@@ -14,17 +14,19 @@ Object.assign(ui, {
             <button onclick="ui.adminTab='dash'; ui.render()" class="px-4 py-2 text-[10px] font-bold uppercase transition-colors whitespace-nowrap ${tab==='dash'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'}">🚀 Startups & PINs</button>
             <button onclick="ui.adminTab='eval'; ui.render()" class="px-4 py-2 text-[10px] font-bold uppercase transition-colors whitespace-nowrap ${tab==='eval'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'}">📊 Rúbricas & Dossier</button>
             <button onclick="ui.adminTab='telemetry'; ui.render()" class="px-4 py-2 text-[10px] font-bold uppercase transition-colors whitespace-nowrap ${tab==='telemetry'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'}">📡 Telemetría</button>
-            ${isCoord ? `<button onclick="ui.adminTab='hr'; ui.render()" class="px-4 py-2 text-[10px] font-bold uppercase transition-colors whitespace-nowrap ${tab==='hr'?'bg-mars-magenta text-white':'text-slate-400 hover:text-white'}">🚨 Alertas HR & Dev</button>` : ''}
+            ${isCoord ? `<button onclick="ui.adminTab='hr'; ui.render()" class="px-4 py-2 text-[10px] font-bold uppercase transition-colors whitespace-nowrap ${tab==='hr'?'bg-mars-magenta text-white':'text-slate-400 hover:text-white'}">🚨 Alertas HR</button>` : ''}
             ${isCoord ? `<button onclick="ui.adminTab='catalog'; ui.render()" class="px-4 py-2 text-[10px] font-bold uppercase transition-colors whitespace-nowrap ${tab==='catalog'?'bg-mars-yellow text-black':'text-slate-400 hover:text-white'}">🛒 Catálogo I+D</button>` : ''}
             ${isCoord ? `<button onclick="ui.adminTab='backups'; ui.render()" class="px-4 py-2 text-[10px] font-bold uppercase transition-colors whitespace-nowrap ${tab==='backups'?'bg-blue-500 text-white':'text-slate-400 hover:text-white'}">💾 Backups & D1</button>` : ''}
         </div>`;
 
         wrapper.innerHTML = tabsHtml;
-
         const content = document.createElement('div');
+        
+        // Bloque Try-Catch protector para asegurar que si falla una pestaña, el sistema siga en pie
         try {
             if (tab === 'dash') {
-                content.innerHTML = this.renderAdminDash() + (typeof this.renderAdminStartups === 'function' ? this.renderAdminStartups() : '');
+                content.innerHTML = (typeof this.renderAdminDash === 'function' ? this.renderAdminDash() : '<p>Error: renderAdminDash no definido</p>') 
+                                  + (typeof this.renderAdminStartups === 'function' ? this.renderAdminStartups() : '');
             } else if (tab === 'eval' && typeof this.renderAdminEval === 'function') {
                 content.innerHTML = this.renderAdminEval();
             } else if (tab === 'telemetry' && typeof this.renderAdminTelemetry === 'function') {
@@ -35,18 +37,19 @@ Object.assign(ui, {
                 content.innerHTML = this.renderAdminCatalog();
             } else if (tab === 'backups' && isCoord && typeof this.renderAdminBackups === 'function') {
                 content.innerHTML = this.renderAdminBackups();
-            } else if (tab === 'settings' && isCoord && typeof this.renderAdminStartups === 'function') {
-                content.innerHTML = this.renderAdminStartups();
+            } else {
+                content.innerHTML = '<div class="p-6 text-center text-slate-500">Módulo en construcción o cargando...</div>';
             }
         } catch (err) {
-            console.error("Error renderizando pestaña docente:", err);
-            content.innerHTML = `<div class="terminal-border bg-red-950/30 border-red-500 p-4 text-xs text-red-400">Error al renderizar vista docente: ${err.message}</div>`;
+            console.error("Error crítico renderizando pestaña docente:", err);
+            content.innerHTML = `<div class="terminal-border bg-red-950/30 border-red-500 p-4 text-xs text-red-400"><strong>⚠️ Error Interno al Renderizar Vista Docente:</strong><br>${err.message}<br><br>Borra la caché del navegador pulsando Ctrl+F5.</div>`;
         }
         
         wrapper.appendChild(content);
         el.appendChild(wrapper);
     },
 
+    // --- PANEL DOCENTE DE COPIAS DE SEGURIDAD Y ROLLBACK ---
     renderAdminBackups() {
         return `
         <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-blue-500 mb-6">
@@ -58,6 +61,7 @@ Object.assign(ui, {
             </div>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Backup Local -->
                 <div class="bg-slate-900 border border-slate-700 p-4 flex flex-col justify-between">
                     <div>
                         <h4 class="text-white font-bold text-xs uppercase mb-2 text-center border-b border-slate-700 pb-2">1. Backup Manual Local</h4>
@@ -66,6 +70,7 @@ Object.assign(ui, {
                     <button onclick="ui.downloadStateJSON()" class="w-full bg-slate-800 text-slate-300 border border-slate-600 font-black py-3 text-[10px] uppercase tracking-widest hover:bg-white hover:text-black transition-all">Descargar JSON</button>
                 </div>
 
+                <!-- Backup Cloudflare Diario -->
                 <div class="bg-slate-900 border border-blue-500/50 p-4 flex flex-col justify-between relative overflow-hidden">
                     <div class="absolute top-0 right-0 bg-blue-500 text-white text-[7px] font-black px-2 py-0.5 uppercase">Sobreescribible</div>
                     <div>
@@ -75,6 +80,7 @@ Object.assign(ui, {
                     <button onclick="ui.forceCloudBackup('daily')" class="w-full bg-blue-600/20 text-blue-400 border border-blue-500 font-black py-3 text-[10px] uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all">Generar Backup Diario</button>
                 </div>
 
+                <!-- Backup Cloudflare Semanal -->
                 <div class="bg-slate-900 border border-mars-yellow/50 p-4 flex flex-col justify-between relative overflow-hidden">
                     <div class="absolute top-0 right-0 bg-mars-yellow text-black text-[7px] font-black px-2 py-0.5 uppercase">Inmutable</div>
                     <div>
@@ -129,7 +135,7 @@ Object.assign(ui, {
 
     restoreStateFromJSON() {
         const fileInput = document.getElementById('restore-json-file');
-        if (!fileInput || !fileInput.files.length) return alert("Selecciona un archivo JSON válido primero.");
+        if (!fileInput.files.length) return alert("Selecciona un archivo JSON válido primero.");
         if (!confirm("⚠ CUIDADO: Vas a SOBREESCRIBIR toda la base de datos de MARS-KET con los datos de este archivo. Esta acción no se puede deshacer. ¿Proceder?")) return;
 
         const reader = new FileReader();
@@ -138,8 +144,8 @@ Object.assign(ui, {
                 const parsedData = JSON.parse(e.target.result);
                 if (!parsedData.companies || !parsedData.config) throw new Error("El archivo JSON no tiene la estructura válida de MARS-KET.");
                 
-                state.data = state.migrate(parsedData);
-                state.data.version = (Number(state.data.version) || 1) + 50;
+                state.data = parsedData;
+                state.data.version = (state.data.version || 1) + 1; // Forzamos incremento de versión para que D1 lo acepte como prioritario
                 state.saveLocalOnly();
                 
                 await fetch('/api/state', {
@@ -149,7 +155,7 @@ Object.assign(ui, {
                 });
                 
                 alert("✅ Restauración completada. La base de datos D1 y el almacenamiento local han vuelto al estado del backup.");
-                location.reload();
+                location.reload(true);
             } catch(err) {
                 alert("❌ Error al leer o restaurar el archivo JSON: " + err.message);
             }

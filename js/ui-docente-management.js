@@ -1,5 +1,5 @@
 // js/ui-docente-management.js
-// --- MÓDULO DOCENTE COMPLETO: DASHBOARD, LLAVERO MAESTRO, 19 PLAZOS, TELEMETRÍA, HR Y CATÁLOGO (v1.0.17) ---
+// --- MÓDULO DOCENTE COMPLETO: DASHBOARD, LLAVERO MAESTRO, 19 PLAZOS, TELEMETRÍA, HR Y CATÁLOGO (v1.0.18) ---
 
 Object.assign(ui, {
     renderAdminDash() {
@@ -301,6 +301,7 @@ Object.assign(ui, {
         </div>`;
     },
 
+    // --- RESTAURACIÓN COMPLETA DEL LLAVERO MAESTRO, STARTUPS Y CRONOGRAMA DE 19 ENTREGABLES ---
     renderAdminStartups() {
         const isCoord = state.user && state.user.role.startsWith('COORD');
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
