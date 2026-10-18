@@ -47,7 +47,7 @@ Object.assign(ui, {
                 <label for="aux-pin-input" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">PIN Propuesto (4 dígitos)</label>
                 <input type="text" id="aux-pin-input" maxlength="4" value="${this.escapeHTML(req.pin || '')}" placeholder="Ej: 5555" class="w-full min-h-[44px] bg-black border border-mars-border p-3 text-center text-white font-bold tracking-widest outline-none focus:border-mars-cyan mb-3">
                 <label for="aux-dept-select" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Departamento Vinculado</label>
-                <select id="aux-dept-select" class="w-full min-h-[44px] bg-black border border-mars-border p-3 text-xs text-white uppercase outline-none focus:border-mars-cyan">
+                <select id="aux-dept-select" class="w-full min-h-[44px] bg-black border border-mars-border p-3 text-base sm:text-xs text-white uppercase outline-none focus:border-mars-cyan">
                     <option value="">-- Selecciona Departamento Vinculado --</option>
                     <option value="CEO" ${req.dept==='CEO'?'selected':''}>Dirección General (CEO)</option>
                     <option value="TECNICO" ${req.dept==='TECNICO'?'selected':''}>Dpto. Técnico (I+D)</option>
@@ -199,9 +199,9 @@ Object.assign(ui, {
         const html = `
             <p class="text-xs text-slate-300 mb-4 leading-relaxed uppercase">La modificación de la razón social debe ser evaluada por Coordinación. El historial contable y el código de la empresa permanecerán intactos.</p>
             <label for="req-new-name" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Nueva Denominación Propuesta</label>
-            <input type="text" id="req-new-name" placeholder="Ej: Astra Aerospace, Horizon Tech..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-3 text-xs text-white font-orbitron uppercase outline-none focus:border-mars-yellow mb-3">
+            <input type="text" id="req-new-name" placeholder="Ej: Astra Aerospace, Horizon Tech..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-3 text-base sm:text-xs text-white font-orbitron uppercase outline-none focus:border-mars-yellow mb-3">
             <label for="req-name-reason" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Justificación del Cambio</label>
-            <textarea id="req-name-reason" placeholder="Motivo del pivotaje o reorientación de marca..." class="w-full bg-slate-900 border border-slate-700 p-3 text-xs text-white h-24 outline-none focus:border-mars-yellow"></textarea>
+            <textarea id="req-name-reason" placeholder="Motivo del pivotaje o reorientación de marca..." class="w-full bg-slate-900 border border-slate-700 p-3 text-base sm:text-xs text-white h-24 outline-none focus:border-mars-yellow"></textarea>
         `;
         const actions = `<button type="button" onclick="ui.submitNameChangeRequest()" class="min-h-[44px] bg-mars-yellow text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all">Transmitir a Coordinación</button>`;
         this.showModal("Solicitud Oficial de Renombramiento", html, actions);
@@ -218,7 +218,7 @@ Object.assign(ui, {
         if (newName.length < 3) return this.notify("La denominación propuesta es demasiado corta.", "warning");
         if (reason.length < 5) return this.notify("Debes justificar el motivo del cambio.", "warning");
 
-        if (ui.hasForbiddenWords && ui.hasForbiddenWords(newName + " " + reason, 'Registro Mercantil (Nombre)')) return;
+        if (ui.hasForbiddenWords && ui.hasForbiddenWords(newName + " " + reason, 'Registro Mercantil (Nombre)', elName)) return;
 
         const co = state.data.companies[state.user.coId];
         co.nameChangeRequest = {
@@ -239,7 +239,7 @@ Object.assign(ui, {
         const html = `
             <p class="text-xs text-slate-300 mb-4 leading-relaxed">Usa este canal oficial para notificar al Claustro Docente si un departamento está bloqueando el progreso de la startup por inactividad.</p>
             <label for="inactivity-dept" class="text-xs text-mars-magenta uppercase font-bold block mb-1.5">Departamento a Reportar</label>
-            <select id="inactivity-dept" class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-xs text-white mb-3 outline-none focus:border-mars-cyan">
+            <select id="inactivity-dept" class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white mb-3 outline-none focus:border-mars-cyan">
                 <option value="">-- Selecciona el Departamento a Reportar --</option>
                 <option value="CEO">Dirección General (CEO)</option>
                 <option value="TECNICO">Dpto. Técnico (I+D)</option>
@@ -248,7 +248,7 @@ Object.assign(ui, {
                 <option value="OPERACIONES_IA">Dpto. Operaciones e IA</option>
             </select>
             <label for="inactivity-reason" class="text-xs text-mars-magenta uppercase font-bold block mb-1.5">Descripción de la Inactividad</label>
-            <textarea id="inactivity-reason" placeholder="Describe detalladamente qué tareas no se están cumpliendo y cómo afecta al equipo..." class="w-full bg-slate-900 border border-mars-magenta p-2.5 text-xs text-white h-24 mb-2 outline-none focus:border-mars-cyan"></textarea>
+            <textarea id="inactivity-reason" placeholder="Describe detalladamente qué tareas no se están cumpliendo y cómo afecta al equipo..." class="w-full bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white h-24 mb-2 outline-none focus:border-mars-cyan"></textarea>
         `;
         const actions = `<button type="button" onclick="ui.submitInactivityReport()" class="min-h-[44px] bg-mars-magenta text-white px-5 py-2.5 text-xs font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Enviar Reporte al Claustro</button>`;
         this.showModal("Reporte de Inactividad (HR)", html, actions);
@@ -265,7 +265,7 @@ Object.assign(ui, {
         
         if(!dept || !reason) return this.notify("Debes seleccionar un departamento y justificar el reporte.", "warning");
         if(dept === state.user.role) return this.notify("No puedes reportarte a ti mismo.", "warning");
-        if(ui.hasForbiddenWords && ui.hasForbiddenWords(reason, 'Reporte Inactividad HR')) return;
+        if(ui.hasForbiddenWords && ui.hasForbiddenWords(reason, 'Reporte Inactividad HR', elReason)) return;
         
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
@@ -293,9 +293,9 @@ Object.assign(ui, {
         if (!state.user) return;
         const html = `
             <label for="motion-title" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Título de la Moción</label>
-            <input type="text" id="motion-title" placeholder="Título de la moción..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-xs text-white mb-3 outline-none focus:border-mars-yellow">
+            <input type="text" id="motion-title" placeholder="Título de la moción..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white mb-3 outline-none focus:border-mars-yellow">
             <label for="motion-desc" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Descripción y Justificación</label>
-            <textarea id="motion-desc" placeholder="Descripción y justificación..." class="w-full bg-slate-900 border border-mars-yellow p-2.5 text-xs text-white h-24 mb-2 outline-none focus:border-mars-yellow"></textarea>
+            <textarea id="motion-desc" placeholder="Descripción y justificación..." class="w-full bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white h-24 mb-2 outline-none focus:border-mars-yellow"></textarea>
         `;
         const actions = `<button type="button" onclick="ui.submitMotion()" class="min-h-[44px] bg-mars-yellow text-black px-5 py-2.5 text-xs font-bold uppercase hover:bg-white transition-colors">Registrar Moción</button>`;
         this.showModal("Proponer Moción de Gobernanza", html, actions);
@@ -580,9 +580,9 @@ Object.assign(ui, {
                     <h2 class="font-orbitron text-mars-magenta text-base sm:text-lg mb-2 uppercase tracking-tighter">Identidad Corporativa & Manifiesto</h2>
                     ${brandApprovalAlert}
                     <label for="brand-slogan" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Eslogan Corporativo (Requiere Aprobación Docente)</label>
-                    <input type="text" id="brand-slogan" value="${this.escapeHTML(displaySloganInput)}" placeholder="Eslogan corto corporativo (Tagline)..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-3 text-xs text-mars-yellow font-bold uppercase mb-3 focus:border-mars-magenta outline-none">
+                    <input type="text" id="brand-slogan" value="${this.escapeHTML(displaySloganInput)}" placeholder="Eslogan corto corporativo (Tagline)..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-mars-yellow font-bold uppercase mb-3 focus:border-mars-magenta outline-none">
                     <label for="val-prop-text" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Misión, Visión y Propuesta de Valor</label>
-                    <textarea id="val-prop-text" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white h-24 outline-none focus:border-mars-cyan mb-3 leading-relaxed" placeholder="Redacte la misión, visión y propuesta de valor corporativa...">${this.escapeHTML(co.valueProposition || '')}</textarea>
+                    <textarea id="val-prop-text" class="w-full bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-white h-24 outline-none focus:border-mars-cyan mb-3 leading-relaxed" placeholder="Redacte la misión, visión y propuesta de valor corporativa...">${this.escapeHTML(co.valueProposition || '')}</textarea>
                     <div class="flex flex-col sm:flex-row gap-2 w-full">
                         <button type="button" onclick="document.getElementById('brand-logo-upload').click()" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-mars-magenta hover:text-white transition-all flex-1">[ Proponer Escudo / Logo ]</button>
                         <button type="button" onclick="ui.saveBrandIdentityText()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all flex-1">Enviar para Aprobación</button>
@@ -656,11 +656,11 @@ Object.assign(ui, {
             <div class="space-y-3">
                 <div>
                     <label for="mkt-req-title" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Nombre de la Campaña General</label>
-                    <input type="text" id="mkt-req-title" placeholder="Ej: Campaña Lanzamiento Fase I..." class="w-full min-h-[44px] bg-black border border-mars-border p-2.5 text-xs text-white outline-none focus:border-mars-cyan">
+                    <input type="text" id="mkt-req-title" placeholder="Ej: Campaña Lanzamiento Fase I..." class="w-full min-h-[44px] bg-black border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan">
                 </div>
                 <div>
                     <label for="mkt-req-desc" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Justificación de Retorno de Inversión (Para Finanzas)</label>
-                    <textarea id="mkt-req-desc" placeholder="Explica a Finanzas por qué merece la pena invertir ${Number(pkg.price)} €v en este paquete..." class="w-full bg-black border border-mars-border p-2.5 text-xs text-white h-24 outline-none focus:border-mars-cyan"></textarea>
+                    <textarea id="mkt-req-desc" placeholder="Explica a Finanzas por qué merece la pena invertir ${Number(pkg.price)} €v en este paquete..." class="w-full bg-black border border-mars-border p-2.5 text-base sm:text-xs text-white h-24 outline-none focus:border-mars-cyan"></textarea>
                 </div>
             </div>
         `;
@@ -681,7 +681,7 @@ Object.assign(ui, {
         const title = this.cleanInput(elTitle.value);
         const desc = this.cleanInput(elDesc.value);
         if (!title || !desc) return this.notify("Debes indicar un título de campaña y la justificación presupuestaria para Finanzas.", "warning");
-        if (ui.hasForbiddenWords && (ui.hasForbiddenWords(title, 'Título Paquete Marketing') || ui.hasForbiddenWords(desc, 'Justificación Paquete Marketing'))) {
+        if (ui.hasForbiddenWords && (ui.hasForbiddenWords(title, 'Título Paquete Marketing', elTitle) || ui.hasForbiddenWords(desc, 'Justificación Paquete Marketing', elDesc))) {
             return;
         }
 
@@ -727,15 +727,15 @@ Object.assign(ui, {
             <div class="space-y-3">
                 <div>
                     <label for="mkt-act-title" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Título de la Acción</label>
-                    <input type="text" id="mkt-act-title" placeholder="Título de la acción (Ej: Reel Instagram / Póster Pasillo)..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-xs text-white outline-none focus:border-mars-cyan">
+                    <input type="text" id="mkt-act-title" placeholder="Título de la acción (Ej: Reel Instagram / Póster Pasillo)..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan">
                 </div>
                 <div>
                     <label for="mkt-act-desc" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Descripción de la Creatividad</label>
-                    <textarea id="mkt-act-desc" placeholder="Descripción del impacto y contenido de la creatividad..." class="w-full bg-slate-900 border border-mars-border p-2.5 text-xs text-white h-20 outline-none focus:border-mars-cyan"></textarea>
+                    <textarea id="mkt-act-desc" placeholder="Descripción del impacto y contenido de la creatividad..." class="w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white h-20 outline-none focus:border-mars-cyan"></textarea>
                 </div>
                 <div>
                     <label for="mkt-act-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Enlace a Evidencia (Canva / Drive)</label>
-                    <input type="url" id="mkt-act-url" placeholder="Enlace obligatorio a la evidencia en Canva o Drive (https://...)" class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-xs text-white outline-none focus:border-mars-cyan">
+                    <input type="url" id="mkt-act-url" placeholder="Enlace obligatorio a la evidencia en Canva o Drive (https://...)" class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan">
                 </div>
             </div>
         `;
@@ -758,7 +758,7 @@ Object.assign(ui, {
         if (!url.toLowerCase().startsWith('http://') && !url.toLowerCase().startsWith('https://')) {
             return this.notify("El enlace de la creatividad debe comenzar por http:// o https://", "error");
         }
-        if (ui.hasForbiddenWords && (ui.hasForbiddenWords(title, 'Acción Publicitaria Marketing') || ui.hasForbiddenWords(desc, 'Descripción Acción Marketing'))) {
+        if (ui.hasForbiddenWords && (ui.hasForbiddenWords(title, 'Acción Publicitaria Marketing', elTitle) || ui.hasForbiddenWords(desc, 'Descripción Acción Marketing', elDesc))) {
             return;
         }
 
@@ -794,7 +794,7 @@ Object.assign(ui, {
         const newSlogan = elSlogan ? this.cleanInput(elSlogan.value) : '';
         const newValProp = elText ? this.cleanInput(elText.value) : '';
 
-        if (ui.hasForbiddenWords && (ui.hasForbiddenWords(newSlogan, 'Eslogan Corporativo') || ui.hasForbiddenWords(newValProp, 'Misión y Visión Corporativa'))) {
+        if (ui.hasForbiddenWords && (ui.hasForbiddenWords(newSlogan, 'Eslogan Corporativo', elSlogan) || ui.hasForbiddenWords(newValProp, 'Misión y Visión Corporativa', elText))) {
             return;
         }
 

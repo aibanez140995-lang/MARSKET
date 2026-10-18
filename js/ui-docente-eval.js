@@ -237,7 +237,7 @@ Object.assign(ui, {
                             </div>`).join('')}
                             
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                                <textarea id="eval-feedback" aria-label="Observaciones cualitativas y feedback" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white h-full min-h-[100px] outline-none focus:border-mars-cyan leading-relaxed" placeholder="Observaciones cualitativas y feedback para la startup...">${this.escapeHTML(pastGrade.feedback||'')}</textarea>
+                                <textarea id="eval-feedback" aria-label="Observaciones cualitativas y feedback" class="w-full bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-white h-full min-h-[100px] outline-none focus:border-mars-cyan leading-relaxed" placeholder="Observaciones cualitativas y feedback para la startup...">${this.escapeHTML(pastGrade.feedback||'')}</textarea>
                                 <div class="flex flex-col">
                                     <div class="terminal-border border-dashed p-4 text-center mb-3 flex-grow bg-black flex flex-col justify-center">
                                         <p class="text-xs text-slate-300 uppercase font-bold mb-1 tracking-widest">Nota Materia (${this.escapeHTML(activeSubject)})</p>

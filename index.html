@@ -120,6 +120,35 @@
             outline: 2px solid #00f0ff !important;
             outline-offset: 2px !important;
         }
+        button, [role="button"], [role="tab"], input, select, textarea, a {
+            touch-action: manipulation;
+        }
+        @media (max-width: 639px) {
+            input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]),
+            select,
+            textarea {
+                font-size: 16px !important;
+            }
+        }
+        button:active:not(:disabled), [role="button"]:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+        .input-lopd-error {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5) !important;
+            animation: lopdPulse 1.2s ease-in-out infinite;
+        }
+        @keyframes lopdPulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.55); border-color: #ef4444; }
+            50% { box-shadow: 0 0 18px rgba(239, 68, 68, 0.9); border-color: #f87171; }
+        }
+        @keyframes hudDrawerSlideUp {
+            from { opacity: 0; transform: translateY(100%); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .drawer-slide-up {
+            animation: hudDrawerSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
         @media (prefers-reduced-motion: reduce) {
             *, ::before, ::after {
                 animation-duration: 0.01ms !important;
@@ -232,6 +261,18 @@
                     [ 🔄 REINTENTAR ENLACE D1 ]
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- DRAWER INFERIOR TÁCTIL / BOTTOM-SHEET HUD (v1.0.19 MÓDULO B) -->
+    <div id="hud-drawer-overlay" role="dialog" aria-modal="true" aria-labelledby="hud-drawer-title" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 hidden" onclick="if(event.target===this) ui.closeDrawer()">
+        <div id="hud-drawer-sheet" class="terminal-border bg-slate-950/90 backdrop-blur-md w-full max-w-2xl max-h-[85vh] flex flex-col border-t-2 sm:border-2 border-mars-cyan shadow-[0_-10px_30px_rgba(0,240,255,0.2)] drawer-slide-up p-4 sm:p-6">
+            <div class="w-12 h-1.5 bg-mars-cyan/40 rounded-full mx-auto mb-3 sm:hidden" aria-hidden="true"></div>
+            <div class="flex justify-between items-center gap-3 border-b border-mars-border pb-2.5 mb-3">
+                <h3 id="hud-drawer-title" class="font-orbitron font-black text-xs sm:text-sm text-mars-cyan uppercase tracking-wider truncate">INSPECCIÓN TÁCTICA</h3>
+                <button type="button" onclick="ui.closeDrawer()" aria-label="Cerrar panel de inspección" class="min-h-[44px] min-w-[44px] bg-slate-900 border border-slate-700 text-slate-200 hover:text-white hover:border-mars-cyan text-xs font-black px-3 py-1.5 uppercase">✕ CERRAR</button>
+            </div>
+            <div id="hud-drawer-body" class="overflow-y-auto pr-1 space-y-3 text-xs font-mono text-slate-200 flex-grow leading-relaxed"></div>
         </div>
     </div>
 

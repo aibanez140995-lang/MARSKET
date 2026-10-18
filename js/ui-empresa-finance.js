@@ -9,6 +9,11 @@ Object.assign(ui, {
         this.render();
     },
 
+    toggleCronograma() {
+        this.cronogramaExpanded = !this.cronogramaExpanded;
+        this.render();
+    },
+
     viewOrders(el) {
         if (!el || !state.user) return;
         const co = state.data.companies[state.user.coId];
@@ -123,21 +128,33 @@ Object.assign(ui, {
                 ${subjectNavButtons}
             </div>
 
-            <!-- Cuadrícula Responsiva de 19 Plazos -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            <!-- Cuadrícula Responsiva de 19 Plazos (colapsable en móvil, v1.0.19 Módulo B) -->
+            <button type="button" aria-expanded="${!!this.cronogramaExpanded}" onclick="ui.toggleCronograma()" class="sm:hidden w-full min-h-[44px] mb-3 bg-slate-900 border border-mars-yellow/60 text-mars-yellow font-black uppercase text-xs py-2 px-3">
+                ${this.cronogramaExpanded ? '▲ PLEGAR PLAZOS' : `▼ DESPLEGAR ${filteredDefs.length} PLAZOS`}
+            </button>
+            <div class="${this.cronogramaExpanded ? 'grid' : 'hidden sm:grid'} grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                 ${deadlineCardsHtml}
             </div>
         </div>`;
 
         // 3. BÓVEDA DE ÓRDENES Y AUTORIZACIÓN FINANCIERA (I+D Y MARKETING)
+        // v1.0.19 Módulo B: pestañas de estado + paginación compacta (5 por vista)
         let ordersListHtml = '';
-        const allOrders = [...co.orders];
+        const ordersTab = this.ordersFilterTab || 'EN_PROCESO';
+        const tabStatusMatch = (st) => {
+            if (ordersTab === 'EN_PROCESO') return st === 'PENDIENTE_FINANZAS' || st === 'APROBADO_FINANZAS';
+            if (ordersTab === 'COMPLETADAS') return st === 'EJECUTADO';
+            return true; // HISTORIAL
+        };
+        const allOrders = [...co.orders].filter(o => tabStatusMatch(o.status)).reverse();
+        const visibleLimit = this.ordersVisibleCount || 5;
+        let hiddenOrdersCount = 0;
 
-        if (allOrders.length === 0 && co.marketingCampaigns.length === 0) {
+        if (co.orders.length === 0 && co.marketingCampaigns.length === 0) {
             ordersListHtml = `<div class="terminal-border border-dashed p-8 text-center text-slate-300 italic text-xs">No hay órdenes de I+D ni campañas de Marketing tramitadas.</div>`;
         } else {
             // Órdenes de Componentes I+D
-            const idOrdersHtml = allOrders.map(order => {
+            const idOrdersHtmlList = allOrders.map(order => {
                 const st = order.status;
                 const isPending = st === 'PENDIENTE_FINANZAS';
                 const isApproved = st === 'APROBADO_FINANZAS';
@@ -175,8 +192,8 @@ Object.assign(ui, {
                             <span class="block text-xs text-slate-300 font-mono">${this.escapeHTML(order.date)}</span>
                         </div>
                     </div>
-                    <p class="text-slate-200 italic mb-2 break-words">Justificación Técnica: "${this.escapeHTML(order.justification || 'Sin justificación')}"</p>
-                    <div class="space-y-1.5 mb-2 bg-black/60 p-2.5 border border-slate-800">
+                    <p class="hidden sm:block text-slate-200 italic mb-2 break-words">Justificación Técnica: "${this.escapeHTML(order.justification || 'Sin justificación')}"</p>
+                    <div class="hidden sm:block space-y-1.5 mb-2 bg-black/60 p-2.5 border border-slate-800">
                         ${(order.items || []).map(it => `
                             <div class="flex justify-between text-xs text-slate-300 gap-2">
                                 <span class="break-words">${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
@@ -184,12 +201,13 @@ Object.assign(ui, {
                             </div>
                         `).join('')}
                     </div>
+                    <button type="button" onclick="ui.inspectOrderDrawer('${this.escapeHTML(co.id || state.user.coId)}', '${this.escapeHTML(order.id)}', false)" class="sm:hidden w-full min-h-[44px] bg-slate-950 border border-mars-cyan/60 text-mars-cyan font-black uppercase text-xs py-2 px-3 hover:bg-mars-cyan hover:text-black transition-all">[ 🔍 INSPECCIONAR ORDEN (${(order.items || []).length} partidas) ]</button>
                     ${finActions}
                 </div>`;
-            }).join('');
+            });
 
-            // Solicitudes de Paquetes de Marketing pendientes de Finanzas
-            const mktPendingHtml = co.marketingCampaigns.filter(c => c.status === 'PENDIENTE_FINANZAS').map(camp => {
+            // Solicitudes de Paquetes de Marketing pendientes de Finanzas (solo En Proceso / Historial)
+            const mktPendingHtmlList = (ordersTab === 'COMPLETADAS' ? [] : co.marketingCampaigns.filter(c => c.status === 'PENDIENTE_FINANZAS')).map(camp => {
                 const campPrice = !isNaN(Number(camp.price)) ? Number(camp.price) : (!isNaN(Number(camp.cost)) ? Number(camp.cost) : 0);
                 const campPkg = camp.packageName || camp.type || 'Campaña Publicitaria';
                 const campTitle = camp.title || camp.type || 'Acción Comercial';
@@ -207,7 +225,8 @@ Object.assign(ui, {
                         </div>
                     </div>
                     <p class="text-slate-200 italic mb-1 break-words"><strong class="text-mars-cyan">Campaña:</strong> "${this.escapeHTML(campTitle)}"</p>
-                    <p class="text-slate-300 italic mb-2 break-words"><strong class="text-mars-yellow">Justificación ROI:</strong> "${this.escapeHTML(campDesc)}"</p>
+                    <p class="hidden sm:block text-slate-300 italic mb-2 break-words"><strong class="text-mars-yellow">Justificación ROI:</strong> "${this.escapeHTML(campDesc)}"</p>
+                    <button type="button" onclick="ui.inspectMktCampDrawer('${this.escapeHTML(camp.id)}')" class="sm:hidden w-full min-h-[44px] mb-2 bg-slate-950 border border-mars-yellow/60 text-mars-yellow font-black uppercase text-xs py-2 px-3">[ 🔍 VER JUSTIFICACIÓN ROI ]</button>
                     ${isFinanzas ? `
                     <div class="flex flex-col sm:flex-row gap-2 mt-3 pt-2 border-t border-slate-800">
                         <button type="button" onclick="ui.approveMktCamp('${this.escapeHTML(camp.id)}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1">Aprobar Paquete MKT</button>
@@ -215,10 +234,23 @@ Object.assign(ui, {
                     </div>` : `<p class="text-xs text-slate-300 uppercase italic">Esperando validación presupuestaria de Finanzas.</p>`}
                 </div>
             `;
-            }).join('');
+            });
 
-            ordersListHtml = mktPendingHtml + idOrdersHtml;
+            const combined = [...mktPendingHtmlList, ...idOrdersHtmlList];
+            hiddenOrdersCount = Math.max(0, combined.length - visibleLimit);
+            ordersListHtml = combined.length === 0
+                ? `<div class="terminal-border border-dashed p-6 text-center text-slate-300 italic text-xs uppercase">Sin órdenes en esta vista.</div>`
+                : combined.slice(0, visibleLimit).join('');
+            if (hiddenOrdersCount > 0) {
+                ordersListHtml += `<button type="button" onclick="ui.loadMoreOrders()" class="w-full min-h-[44px] bg-slate-950 border border-mars-cyan text-mars-cyan font-black uppercase text-xs py-2.5 px-4 tracking-widest hover:bg-mars-cyan hover:text-black transition-all">[ VER MÁS TELÉMETRO (+${hiddenOrdersCount}) ]</button>`;
+            }
         }
+
+        const ordersTabsHtml = [
+            { id: 'EN_PROCESO', label: 'En Proceso' },
+            { id: 'COMPLETADAS', label: 'Completadas' },
+            { id: 'HISTORIAL', label: 'Historial' }
+        ].map(t => `<button type="button" role="tab" aria-selected="${ordersTab === t.id}" onclick="ui.setOrdersFilterTab('${t.id}')" class="min-h-[44px] flex-1 px-3 py-2 text-xs font-bold uppercase transition-colors ${ordersTab === t.id ? 'bg-mars-cyan text-black' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800'}">${t.label}</button>`).join('');
 
         const bovedaSection = `
         <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
@@ -227,6 +259,9 @@ Object.assign(ui, {
                     <h3 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter font-black">Bóveda de Órdenes y Adquisiciones</h3>
                     <p class="text-xs text-slate-300 uppercase mt-1">Control de flujo presupuestario: Solicitud de I+D y Paquetes de Marketing.</p>
                 </div>
+            </div>
+            <div role="tablist" aria-label="Filtrar órdenes por estado" class="flex gap-2 mb-4">
+                ${ordersTabsHtml}
             </div>
             <div class="space-y-3">
                 ${ordersListHtml}
@@ -322,7 +357,7 @@ Object.assign(ui, {
         const html = `
             <p class="text-xs text-slate-300 mb-3 leading-relaxed">Como CEO, redacta un Comunicado Oficial de Mitigación de Crisis dirigido a la Agencia Reguladora y a toda la startup.</p>
             <label for="crisis-response-text" class="text-xs text-red-400 font-bold uppercase block mb-1.5">Comunicado de Mitigación</label>
-            <textarea id="crisis-response-text" placeholder="Explica las medidas correctivas que adoptará la startup para corregir la infracción y evitar nuevas sanciones..." class="w-full bg-slate-900 border border-red-500 p-3 text-xs text-white h-28 outline-none focus:border-red-400 mb-3"></textarea>
+            <textarea id="crisis-response-text" placeholder="Explica las medidas correctivas que adoptará la startup para corregir la infracción y evitar nuevas sanciones..." class="w-full bg-slate-900 border border-red-500 p-3 text-base sm:text-xs text-white h-28 outline-none focus:border-red-400 mb-3"></textarea>
         `;
         const actions = `<button type="button" onclick="ui.submitCrisisAction()" class="min-h-[44px] bg-red-700 text-white font-black px-6 py-2.5 text-xs uppercase tracking-wider hover:bg-white hover:text-red-700 transition-all border border-red-500">Publicar Comunicado</button>`;
         this.showModal("Gabinete de Crisis AEE (Dirección General)", html, actions);
@@ -335,7 +370,7 @@ Object.assign(ui, {
         const text = this.cleanInput(elText.value);
         if (text.length < 10) return this.notify("El comunicado de mitigación debe ser formal y detallado (mínimo 10 caracteres).", "warning");
 
-        if (this.hasForbiddenWords(text, 'Comunicado Crisis CEO')) {
+        if (this.hasForbiddenWords(text, 'Comunicado Crisis CEO', elText)) {
             return;
         }
 

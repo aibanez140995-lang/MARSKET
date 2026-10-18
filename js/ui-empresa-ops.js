@@ -34,8 +34,8 @@ Object.assign(ui, {
                                 <span class="break-words">${this.escapeHTML(item.name)} (x${Number(item.qty)||1}) - <span class="text-mars-cyan font-mono">${Number(item.price).toFixed(2)} €v</span></span>
                             </label>
                             <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                                <input type="number" id="real-eur-${this.escapeHTML(order.id)}-${idx}" aria-label="Coste real en euros de ${this.escapeHTML(item.name)}" placeholder="Coste Real (€)" step="0.01" class="min-h-[44px] bg-black border border-mars-magenta p-2.5 text-xs text-white w-full sm:w-32 outline-none focus:border-mars-cyan">
-                                <input type="text" id="real-shop-${this.escapeHTML(order.id)}-${idx}" aria-label="Tienda de compra de ${this.escapeHTML(item.name)}" placeholder="Tienda (Ej: Bazar)" class="min-h-[44px] bg-black border border-slate-700 p-2.5 text-xs text-white w-full sm:w-40 outline-none focus:border-mars-cyan">
+                                <input type="number" id="real-eur-${this.escapeHTML(order.id)}-${idx}" aria-label="Coste real en euros de ${this.escapeHTML(item.name)}" placeholder="Coste Real (€)" step="0.01" class="min-h-[44px] bg-black border border-mars-magenta p-2.5 text-base sm:text-xs text-white w-full sm:w-32 outline-none focus:border-mars-cyan">
+                                <input type="text" id="real-shop-${this.escapeHTML(order.id)}-${idx}" aria-label="Tienda de compra de ${this.escapeHTML(item.name)}" placeholder="Tienda (Ej: Bazar)" class="min-h-[44px] bg-black border border-slate-700 p-2.5 text-base sm:text-xs text-white w-full sm:w-40 outline-none focus:border-mars-cyan">
                             </div>
                         </div>
                     `).join('')}
@@ -80,7 +80,7 @@ Object.assign(ui, {
                     return this.notify(`Falta indicar el coste real (€) o la tienda para: ${order.items[i].name}`, "warning");
                 }
                 // FASE 2: Auditar el texto de la tienda con el filtro léxico
-                if(this.hasForbiddenWords(valShop, 'Registro Comercio I+D')) {
+                if(this.hasForbiddenWords(valShop, 'Registro Comercio I+D', shopInput)) {
                     return;
                 }
                 order.items[i].realEur = valEur;
@@ -190,11 +190,11 @@ Object.assign(ui, {
         const html = `
             <p class="text-xs text-slate-300 mb-3 leading-relaxed">Todo uso de IA generativa debe ser declarado y verificado por un humano antes de incluirse en el proyecto.</p>
             <label for="ai-tool" class="text-xs text-blue-400 font-bold uppercase block mb-1">Herramienta IA</label>
-            <input type="text" id="ai-tool" placeholder="Herramienta IA (Ej: ChatGPT, Claude, Gemini)..." class="w-full min-h-[44px] bg-slate-900 border border-blue-500/50 p-2.5 text-xs text-white mb-3 outline-none focus:border-blue-400">
+            <input type="text" id="ai-tool" placeholder="Herramienta IA (Ej: ChatGPT, Claude, Gemini)..." class="w-full min-h-[44px] bg-slate-900 border border-blue-500/50 p-2.5 text-base sm:text-xs text-white mb-3 outline-none focus:border-blue-400">
             <label for="ai-prompt" class="text-xs text-blue-400 font-bold uppercase block mb-1">Prompt Utilizado</label>
-            <textarea id="ai-prompt" placeholder="Copia o resume el Prompt utilizado..." class="w-full bg-slate-900 border border-blue-500/50 p-2.5 text-xs text-white h-20 mb-3 outline-none focus:border-blue-400"></textarea>
+            <textarea id="ai-prompt" placeholder="Copia o resume el Prompt utilizado..." class="w-full bg-slate-900 border border-blue-500/50 p-2.5 text-base sm:text-xs text-white h-20 mb-3 outline-none focus:border-blue-400"></textarea>
             <label for="ai-verify" class="text-xs text-blue-400 font-bold uppercase block mb-1">Verificación y Cambios Humanos</label>
-            <textarea id="ai-verify" placeholder="¿Cómo has verificado que la respuesta de la IA es correcta y qué cambios humanos has aplicado?..." class="w-full bg-slate-900 border border-blue-500/50 p-2.5 text-xs text-white h-20 mb-2 outline-none focus:border-blue-400"></textarea>
+            <textarea id="ai-verify" placeholder="¿Cómo has verificado que la respuesta de la IA es correcta y qué cambios humanos has aplicado?..." class="w-full bg-slate-900 border border-blue-500/50 p-2.5 text-base sm:text-xs text-white h-20 mb-2 outline-none focus:border-blue-400"></textarea>
         `;
         const actions = `<button type="button" onclick="ui.submitReportAI()" class="min-h-[44px] bg-blue-600 text-white px-5 py-2.5 text-xs font-bold uppercase hover:bg-blue-500 transition-colors">Enviar a Operaciones IA</button>`;
         this.showModal("Declaración de Uso de IA", html, actions);
@@ -213,7 +213,7 @@ Object.assign(ui, {
         
         if(!tool || !prompt || !verification) return this.notify("Completa todos los campos de trazabilidad IA.", "warning");
         // FASE 2: Auditar textos IA con el filtro léxico
-        if(this.hasForbiddenWords(tool, 'Herramienta IA') || this.hasForbiddenWords(prompt, 'Prompt IA') || this.hasForbiddenWords(verification, 'Verificación IA')) {
+        if(this.hasForbiddenWords(tool, 'Herramienta IA', elTool) || this.hasForbiddenWords(prompt, 'Prompt IA', elPrompt) || this.hasForbiddenWords(verification, 'Verificación IA', elVerify)) {
             return;
         }
         

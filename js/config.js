@@ -107,17 +107,67 @@ const FORBIDDEN_WORDS = [
     'mario', 'alex', 'alejandro', 'coordinador', 'director', 'profe', 'profesor'
 ];
 
+// MÓDULO C (v1.0.19): Diccionarios LOPD Multiculturales y Lista Blanca Aeroespacial Contextual
+const LOPD_FIRST_NAMES = [
+    // Nombres de pila frecuentes en España
+    'juana', 'maria', 'alejandro', 'pedro', 'lucia', 'carlos', 'sofia', 'mario', 'alex',
+    'pablo', 'mateo', 'hugo', 'martin', 'daniel', 'alvaro', 'adrian', 'david', 'diego',
+    'javier', 'manuel', 'antonio', 'jose', 'francisco', 'juan', 'carmen', 'ana', 'laura',
+    'elena', 'paula', 'marta', 'sara', 'claudia', 'alba', 'irene', 'noa', 'valeria',
+    'daniela', 'julia', 'marcos', 'ivan', 'jorge', 'ruben', 'sergio', 'miguel', 'angel',
+    'raquel', 'beatriz', 'rocio', 'patricia', 'andrea', 'natalia', 'alicia', 'clara',
+    'nuria', 'silvia', 'cristina', 'monica', 'ines', ' Marina', 'gonzalo', 'rodrigo',
+    'nicolas', 'samuel', 'leo', 'izan', 'enzo', 'gael', 'bruno', 'oliver', 'thiago',
+    // Nombres multiculturales comunes en aulas diversas
+    'john', 'mohammed', 'mohamed', 'muhammad', 'yan', 'fatima', 'ahmed', 'ali', 'omar',
+    'youssef', 'amina', 'zainab', 'hassan', 'ibrahim', 'wei', 'chen', 'li', 'michael',
+    'james', 'robert', 'william', 'richard', 'thomas', 'sarah', 'emily', 'jessica',
+    'bogdan', 'andrei', 'mihai', 'tarik', 'khalid', 'hamza', 'ayoub', 'salma', 'nour',
+    'malak', 'karim', 'mustapha', 'rachid', 'bilal', 'anas', 'soufiane', 'ilyas', 'rayan'
+].map(s => s.trim().toLowerCase());
+
+const LOPD_SURNAMES = [
+    // Apellidos más frecuentes en España e internacionales
+    'garcia', 'gonzalez', 'rodriguez', 'fernandez', 'lopez', 'martinez', 'sanchez', 'perez',
+    'gomez', 'jimenez', 'ruiz', 'hernandez', 'diaz', 'moreno', 'alvarez', 'munoz', 'romero',
+    'alonso', 'gutierrez', 'navarro', 'torres', 'dominguez', 'vazquez', 'ramos', 'gil',
+    'ramirez', 'serrano', 'molina', 'morales', 'suarez', 'ortega', 'delgado', 'castro',
+    'ortiz', 'rubio', 'marin', 'sanz', 'nunez', 'iglesias', 'medina', 'garrido', 'cortes',
+    'castillo', 'santos', 'lozano', 'guerrero', 'cano', 'prieto', 'mendez', 'calvo', 'vidal',
+    'herrera', 'marquez', 'pena', 'cabrera', 'carrasco', 'diez', 'caballero', 'reyes',
+    'nieto', 'aguilar', 'pascual', 'herrero', 'santana', 'lorenzo', 'hidalgo', 'montero',
+    'ibanez', 'gimenez', 'ferrer', 'duran', 'vicente', 'benitez', 'mora', 'santiago', 'arias',
+    'vargas', 'carmona', 'crespo', 'pastor', 'soto', 'saez', 'velasco', 'soler', 'moya',
+    'esteban', 'parra', 'bravo', 'gallardo', 'rojas',
+    // Apellidos internacionales frecuentes en aula
+    'smith', 'johnson', 'williams', 'brown', 'jones', 'miller', 'davis', 'wilson', 'anderson',
+    'taylor', 'moore', 'wang', 'zhang', 'liu', 'singh', 'kumar', 'khan', 'patel', 'ivanov',
+    'popescu', 'silva', 'ferreira', 'pereira', 'oliveira', 'costa', 'smirnov', 'muller',
+    'schmidt', 'rossi', 'dupont',
+    // Apellidos homónimos con términos técnicos (protegidos en solitario por AEROSPACE_WHITELIST)
+    'luna', 'marte', 'roca', 'franco', 'sierra', 'corona', 'cruz', 'blanco', 'polo', 'vega',
+    'sol', 'leon', 'roman', 'campos', 'fuentes', 'flores'
+];
+
+const AEROSPACE_WHITELIST = [
+    'luna', 'marte', 'roca', 'franco', 'sierra', 'corona', 'cruz', 'blanco', 'polo', 'vega',
+    'sol', 'carbon', 'silicio', 'leon', 'roman', 'campos', 'fuentes', 'flores', 'monte',
+    'estrella', 'celeste', 'aurora', 'orion', 'astra', 'apolo', 'ares',
+    'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
+];
+
 // FASE 6: Changelog Oficial consolidado para la versión 1.0.19
 const APP_CHANGELOG = [
     {
         version: "1.0.19",
         date: "Octubre 2026",
-        title: "Persistencia Atómica D1, Fin del Rebote de PIN, Revocación en Caliente y Contención Offline",
+        title: "Persistencia Atómica D1, UX Móvil Awwwards, Blindaje LOPD Contextual y Pasarela Docente SHA-256",
         highlights: [
             { type: "SISTEMA", text: "Persistencia Atómica D1 y Fin del Rebote de PIN: Guardado inmediato sin debounce en credenciales (state.updatePin, state.updateTeacherPin, state.updateCompanyCode) con resolución LWW por authUpdatedAt." },
-            { type: "NUEVO", text: "Revocación en Caliente de Sesiones Zombi: Heartbeat adaptativo cada 12s y verificación de huella criptográfica (authToken) que expulsa al instante sesiones con credenciales modificadas sin afectar al Coordinador activo." },
-            { type: "NUEVO", text: "Protocolo de Contención Offline Estricta: Bloqueo táctico de seguridad ante caídas de red frente a /api/state con desbloqueo verificado al recuperar conexión." },
-            { type: "MEJORA", text: "Bienvenida Dinámica por Rol y Accesibilidad HUD: Estado vivo del aula, recordatorio de custodia de PINs, plazos en curso y Service Worker v1.0.19 con estrategia híbrida Network-First / Cache-First." }
+            { type: "NUEVO", text: "Pasarela Docente Oculta Zero-Knowledge (Módulo D): Activación táctil mediante doble clic/tap en el logo (#marsket-logo) con verificación criptográfica Web Crypto SHA-256 (auth.verifyMasterCode) sin código maestro en texto plano." },
+            { type: "MEJORA", text: "Erradicación de Auto-Zoom Móvil y Descongestión Visual (Módulos A y B): Inputs a 16px con touch-action: manipulation, acordeones de hitos (Milestone Collapsible), Drawer inferior táctil (ui.openDrawer) y paginación en Bóveda de Órdenes." },
+            { type: "NUEVO", text: "Filtro Centralizado Anti-Impropios y LOPD No Destructivo (Módulo C): Validación ui.validateSafeText(text) con normalización leetspeak, nombres y apellidos multiculturales, lista blanca aeroespacial contextual y retención del texto con resaltado neón rojo." },
+            { type: "NUEVO", text: "Revocación en Caliente y Contención Offline Estricta: Heartbeat adaptativo (12s) con huella authToken y bloqueo preventivo ante caídas de red frente a /api/state." }
         ]
     },
     {

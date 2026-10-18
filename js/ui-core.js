@@ -1,8 +1,12 @@
 // js/ui-core.js
-// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.0.18) ---
+// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.0.19) ---
 
 const ui = {
     current: 'login', adminTab: 'dash', coordEvalView: 'ACTA', evalSelectedCo: '', evalClassFilter: 'ALL',
+    activeMilestoneGroup: 'ACTIVE',
+    ordersFilterTab: 'EN_PROCESO',
+    ordersVisibleCount: 5,
+    currentSubView: null,
     _lastFocusedElement: null,
     _toastTimer: null,
 
@@ -25,7 +29,7 @@ const ui = {
     notify(message, type = 'info') {
         const cleanMsg = String(message || '').replace(/[\u200B-\u200D\uFEFF]/g, '');
         let tone = type;
-        if (cleanMsg.startsWith('❌') || cleanMsg.startsWith('🚨') || cleanMsg.toLowerCase().includes('error') || cleanMsg.toLowerCase().includes('incorrecto') || cleanMsg.toLowerCase().includes('insuficientes') || cleanMsg.toLowerCase().includes('denegad') || cleanMsg.toLowerCase().includes('rechazad')) {
+        if (cleanMsg.startsWith('❌') || cleanMsg.startsWith('🚨') || cleanMsg.includes('ALERTA LOPD') || cleanMsg.toLowerCase().includes('error') || cleanMsg.toLowerCase().includes('incorrecto') || cleanMsg.toLowerCase().includes('insuficientes') || cleanMsg.toLowerCase().includes('denegad') || cleanMsg.toLowerCase().includes('rechazad')) {
             tone = 'error';
         } else if (cleanMsg.startsWith('⚠️') || cleanMsg.startsWith('⏳') || cleanMsg.startsWith('⚠')) {
             tone = 'warning';
@@ -111,40 +115,203 @@ const ui = {
         }
     },
 
-    navigate(view) { this.current = view; this.render(); },
-    
-    checkLexicon(text, context = 'Actividad General') {
-        if (!text) return { pass: true };
-        const words = typeof FORBIDDEN_WORDS !== 'undefined' ? FORBIDDEN_WORDS : [];
-        
-        let normalizedInput = String(text)
-            .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    navigate(view) {
+        this.current = view;
+        this.currentSubView = null;
+        this.render();
+    },
+
+    setSubView(subView) {
+        this.currentSubView = subView || null;
+        this.render();
+    },
+
+    toggleMilestoneAccordion(groupId) {
+        this.activeMilestoneGroup = (this.activeMilestoneGroup === groupId) ? 'NONE' : groupId;
+        this.render();
+    },
+
+    setOrdersFilterTab(tab) {
+        this.ordersFilterTab = tab || 'EN_PROCESO';
+        this.ordersVisibleCount = 5;
+        this.render();
+    },
+
+    loadMoreOrders() {
+        this.ordersVisibleCount = (this.ordersVisibleCount || 5) + 5;
+        this.render();
+    },
+
+    openDrawer(title, bodyHtml) {
+        this._lastFocusedElement = document.activeElement;
+        const overlay = document.getElementById('hud-drawer-overlay');
+        const titleEl = document.getElementById('hud-drawer-title');
+        const bodyEl = document.getElementById('hud-drawer-body');
+        if (!overlay || !titleEl || !bodyEl) return;
+        titleEl.innerText = title || 'INSPECCIÓN TÁCTICA';
+        bodyEl.innerHTML = bodyHtml || '';
+        overlay.classList.remove('hidden');
+        setTimeout(() => {
+            const firstBtn = overlay.querySelector('button:not([disabled]), a[href], input:not([disabled])');
+            if (firstBtn) firstBtn.focus();
+        }, 40);
+    },
+
+    closeDrawer() {
+        const overlay = document.getElementById('hud-drawer-overlay');
+        if (overlay) overlay.classList.add('hidden');
+        if (this._lastFocusedElement && typeof this._lastFocusedElement.focus === 'function') {
+            this._lastFocusedElement.focus();
+        }
+    },
+
+    // MÓDULO C (v1.0.19): Validador Centralizado Anti-Impropios y LOPD Contextual No Destructivo
+    validateSafeText(text) {
+        if (!text || !String(text).trim()) {
+            return { valid: true, reason: '', matches: [] };
+        }
+
+        const rawStr = String(text).replace(/[\u200B-\u200D\uFEFF]/g, '');
+        const normalizeBase = (s) => s
             .toLowerCase()
             .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-            .replace(/[4@]/g, 'a').replace(/3/g, 'e')
-            .replace(/[1!|]/g, 'i').replace(/0/g, 'o').replace(/[5$]/g, 's')
-            .replace(/[^a-z0-9\s]/g, '')
-            .replace(/(.)\1+/g, '$1');
+            .replace(/[@4]/g, 'a')
+            .replace(/3/g, 'e')
+            .replace(/[1!|]/g, 'i')
+            .replace(/0/g, 'o')
+            .replace(/[5$]/g, 's');
 
-        const isNameList = ['mario', 'alex', 'alejandro', 'coordinador', 'director', 'profe', 'profesor'];
-        const profanityList = words.filter(w => !isNameList.includes(w.toLowerCase()));
+        const baseClean = normalizeBase(rawStr).replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+        const collapsedClean = baseClean.replace(/(.)\1+/g, '$1');
 
-        for (let name of isNameList) {
-            const regex = new RegExp(`\\b${name}\\b`, 'i');
-            if (regex.test(normalizedInput)) {
-                this.recordSecurityIncident('NAME', text, context, name);
-                return { pass: false, type: 'NAME', word: name };
+        const words = typeof FORBIDDEN_WORDS !== 'undefined' ? FORBIDDEN_WORDS : [];
+        const roleAliases = ['mario', 'alex', 'alejandro', 'coordinador', 'director', 'profe', 'profesor'];
+        const profanityList = words.filter(w => !roleAliases.includes(w.toLowerCase()));
+
+        const firstNames = new Set(typeof LOPD_FIRST_NAMES !== 'undefined' ? LOPD_FIRST_NAMES : ['juana', 'maria', 'alejandro', 'pedro', 'lucia', 'carlos', 'sofia', 'mario', 'alex', 'john', 'mohammed', 'yan', 'fatima']);
+        const surnames = new Set(typeof LOPD_SURNAMES !== 'undefined' ? LOPD_SURNAMES : ['garcia', 'gonzalez', 'rodriguez', 'fernandez', 'lopez', 'martinez', 'sanchez', 'perez', 'gomez', 'smith']);
+        const whitelist = new Set(typeof AEROSPACE_WHITELIST !== 'undefined' ? AEROSPACE_WHITELIST : ['luna', 'marte', 'roca', 'franco', 'sierra', 'corona', 'cruz', 'blanco', 'polo', 'vega', 'sol', 'carbon', 'silicio']);
+
+        const matches = [];
+        let violationType = null;
+
+        // 1. Comprobación de lenguaje soez / impropio
+        for (const bad of profanityList) {
+            const normBad = normalizeBase(bad).replace(/(.)\1+/g, '$1');
+            const wordBoundaryRx = new RegExp(`\\b${normBad}\\b`, 'i');
+            if (wordBoundaryRx.test(collapsedClean) || collapsedClean.includes(normBad)) {
+                matches.push(bad);
+                violationType = 'PROFANITY';
             }
         }
 
-        for (let bad of profanityList) {
-            const normBad = bad.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/(.)\1+/g, '$1');
-            if (normalizedInput.includes(normBad)) {
-                this.recordSecurityIncident('PROFANITY', text, context, bad);
-                return { pass: false, type: 'PROFANITY', word: bad };
+        if (matches.length > 0) {
+            return {
+                valid: false,
+                type: 'PROFANITY',
+                reason: "ALERTA LOPD // Texto no autorizado detectado: Modifique los nombres personales o términos señalados para continuar.",
+                matches: Array.from(new Set(matches))
+            };
+        }
+
+        // 2. Tokenización y análisis contextual LOPD (Nombres, Apellidos y Lista Blanca Aeroespacial)
+        const rawTokens = baseClean.split(' ').filter(Boolean);
+        const isUnambiguousPersonalToken = (tok) => {
+            if (!tok || whitelist.has(tok)) return false;
+            const tokCollapsed = tok.replace(/(.)\1+/g, '$1');
+            const tokVtoU = tokCollapsed.replace(/v/g, 'u');
+            if (whitelist.has(tokCollapsed)) return false;
+            return firstNames.has(tok) || surnames.has(tok) || roleAliases.includes(tok) ||
+                   firstNames.has(tokCollapsed) || surnames.has(tokCollapsed) || roleAliases.includes(tokCollapsed) ||
+                   firstNames.has(tokVtoU) || surnames.has(tokVtoU);
+        };
+
+        for (let i = 0; i < rawTokens.length; i++) {
+            const tok = rawTokens[i];
+            const tokCollapsed = tok.replace(/(.)\1+/g, '$1');
+            const tokVtoU = tokCollapsed.replace(/v/g, 'u');
+
+            if (whitelist.has(tok) || whitelist.has(tokCollapsed)) {
+                // Es un término aeroespacial/científico en Lista Blanca (ej. luna, roca, sierra, marte...).
+                // Solo se bloquea si va precedido o seguido inmediatamente por un nombre/apellido personal no técnico.
+                const prevTok = i > 0 ? rawTokens[i - 1] : null;
+                const nextTok = i < rawTokens.length - 1 ? rawTokens[i + 1] : null;
+                if (isUnambiguousPersonalToken(prevTok) || isUnambiguousPersonalToken(nextTok)) {
+                    matches.push(tok);
+                    violationType = 'NAME';
+                }
+                continue;
+            }
+
+            if (isUnambiguousPersonalToken(tok)) {
+                const matchedLabel = firstNames.has(tokVtoU) || surnames.has(tokVtoU) ? tokVtoU : tokCollapsed;
+                matches.push(matchedLabel);
+                violationType = 'NAME';
             }
         }
 
+        // 3. Patrón estructural de firma personal explícita ("hecho por X", "autor: X")
+        const signatureRx = /\b(?:hecho por|autor|autora|firmado por|alumno|alumna)\s+([a-z]{3,})/i;
+        const sigMatch = baseClean.match(signatureRx);
+        if (sigMatch && sigMatch[1] && !whitelist.has(sigMatch[1])) {
+            matches.push(sigMatch[1]);
+            violationType = 'NAME';
+        }
+
+        if (matches.length > 0) {
+            return {
+                valid: false,
+                type: violationType || 'NAME',
+                reason: "ALERTA LOPD // Texto no autorizado detectado: Modifique los nombres personales o términos señalados para continuar.",
+                matches: Array.from(new Set(matches))
+            };
+        }
+
+        return { valid: true, reason: '', matches: [] };
+    },
+
+    highlightInvalidField(rawText, targetEl = null) {
+        let field = null;
+        if (targetEl && typeof targetEl === 'string') {
+            field = document.getElementById(targetEl);
+        } else if (targetEl && targetEl.nodeType === 1) {
+            field = targetEl;
+        }
+        if (!field && document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+            field = document.activeElement;
+        }
+        if (!field && rawText) {
+            const cleanNeedle = this.cleanInput(rawText);
+            const candidates = Array.from(document.querySelectorAll('input[type="text"], input[type="url"], input:not([type]), textarea'));
+            field = candidates.find(el => el.offsetParent !== null && this.cleanInput(el.value) === cleanNeedle) ||
+                    candidates.find(el => this.cleanInput(el.value) === cleanNeedle) ||
+                    candidates.find(el => el. value && el.value.includes(cleanNeedle));
+        }
+        if (field) {
+            field.classList.add('input-lopd-error', 'border-red-500', 'shadow-[0_0_10px_rgba(239,68,68,0.5)]');
+            field.setAttribute('aria-invalid', 'true');
+            if (!field._lopdListenerAttached) {
+                field._lopdListenerAttached = true;
+                field.addEventListener('input', () => {
+                    const recheck = this.validateSafeText(field.value);
+                    if (recheck.valid) {
+                        field.classList.remove('input-lopd-error', 'border-red-500', 'shadow-[0_0_10px_rgba(239,68,68,0.5)]');
+                        field.removeAttribute('aria-invalid');
+                    }
+                });
+            }
+            try { field.focus(); } catch (e) {}
+        }
+    },
+
+    checkLexicon(text, context = 'Actividad General') {
+        const res = this.validateSafeText(text);
+        if (!res.valid) {
+            const matchedWord = res.matches[0] || 'termino';
+            const sev = res.type === 'PROFANITY' ? 'PROFANITY' : 'NAME';
+            this.recordSecurityIncident(sev, text, context, matchedWord);
+            return { pass: false, type: sev, word: matchedWord, reason: res.reason, matches: res.matches };
+        }
         return { pass: true };
     },
 
@@ -166,15 +333,12 @@ const ui = {
         state.save();
     },
 
-    hasForbiddenWords(text, context = 'Actividad General') {
+    hasForbiddenWords(text, context = 'Actividad General', targetEl = null) {
         const check = this.checkLexicon(text, context);
         if (!check.pass) {
-            if (check.type === 'NAME') {
-                this.notify(`⚠️ AVISO LÉXICO: Se ha detectado la mención de un nombre propio ("${check.word}"). Utiliza únicamente términos departamentales o institucionales. La incidencia ha sido registrada.`, 'warning');
-            } else {
-                this.notify("🚨 INFRACCIÓN DISCIPLINARIA: Acción bloqueada por contener lenguaje soez o inapropiado. Se ha generado un expediente disciplinario directo en Coordinación.", 'error');
-            }
-            return true; 
+            this.highlightInvalidField(text, targetEl);
+            this.notify(`ALERTA LOPD // Texto no autorizado detectado: Modifique los nombres personales o términos señalados para continuar. (${check.word})`, 'error');
+            return true;
         }
         return false;
     },
@@ -198,16 +362,19 @@ const ui = {
             document.addEventListener('keydown', (e) => {
                 const modalOverlay = document.getElementById('modal-overlay');
                 const onboardingOverlay = document.getElementById('onboarding-overlay');
+                const drawerOverlay = document.getElementById('hud-drawer-overlay');
                 const isModalOpen = modalOverlay && !modalOverlay.classList.contains('hidden');
                 const isOnboardingOpen = onboardingOverlay && !onboardingOverlay.classList.contains('hidden');
+                const isDrawerOpen = drawerOverlay && !drawerOverlay.classList.contains('hidden');
 
                 if (e.key === 'Escape') {
+                    if (isDrawerOpen) { e.preventDefault(); this.closeDrawer(); return; }
                     if (isModalOpen) { e.preventDefault(); this.closeModal(); return; }
                     if (isOnboardingOpen) { e.preventDefault(); this.closeOnboarding(); return; }
                 }
 
-                if (e.key === 'Tab' && (isModalOpen || isOnboardingOpen)) {
-                    const activeOverlay = isModalOpen ? modalOverlay : onboardingOverlay;
+                if (e.key === 'Tab' && (isModalOpen || isOnboardingOpen || isDrawerOpen)) {
+                    const activeOverlay = isDrawerOpen ? drawerOverlay : (isModalOpen ? modalOverlay : onboardingOverlay);
                     const focusable = Array.from(activeOverlay.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')).filter(el => el.offsetParent !== null);
                     if (focusable.length > 0) {
                         const first = focusable[0];
@@ -223,7 +390,7 @@ const ui = {
                 }
 
                 // Physical keyboard support for PIN keypad on Login Step 2
-                if (!state.user && typeof auth !== 'undefined' && auth.verifiedCoId && !isModalOpen && !isOnboardingOpen) {
+                if (!state.user && typeof auth !== 'undefined' && auth.verifiedCoId && !isModalOpen && !isOnboardingOpen && !isDrawerOpen) {
                     const activeTag = document.activeElement ? document.activeElement.tagName : '';
                     if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA') {
                         if (/^[0-9]$/.test(e.key)) {
@@ -477,8 +644,9 @@ const ui = {
 
         content += `
         ${dynamicStatusHtml}
-        <div class="bg-slate-900 border border-slate-700 p-3 text-xs text-slate-300 uppercase mt-2">
-            🛡️ <strong class="text-mars-yellow">Norma de Seguridad Activa:</strong> Todos los formularios están protegidos por el Filtro Léxico Universal. Queda prohibido introducir nombres propios o lenguaje ofensivo.
+        <div class="bg-slate-900 border border-slate-700 p-3 text-xs text-slate-300 uppercase mt-2 space-y-1">
+            <p>🛡️ <strong class="text-mars-yellow">Norma de Seguridad y LOPD Activa (v1.0.19):</strong> Todos los formularios cuentan con validación LOPD contextual no destructiva (<code class="text-mars-cyan">ui.validateSafeText</code>). Los nombres personales o términos indebidos se señalan con borde neón rojo sin borrar el texto.</p>
+            <p>📱 <strong class="text-mars-cyan">Ergonomía Táctil y Bóveda Descongestionada:</strong> Entradas tipográficas a 16px (anti-zoom móvil), acordeones por hitos con detalle en Drawer táctil y pasarela docente oculta Web Crypto SHA-256.</p>
         </div>
         </div>`;
 
@@ -557,14 +725,15 @@ const ui = {
             </div>
             <ul class="list-disc pl-5 space-y-2">
                 <li><strong class="text-mars-yellow">Flujo de Compras (I+D → Finanzas → Logística):</strong> El Dpto. Técnico añade piezas al borrador, Finanzas autoriza el presupuesto en la Bóveda de Órdenes y Operaciones ejecuta el ensamblaje físico registrando el coste real en taller.</li>
-                <li><strong class="text-mars-cyan">Repositorio Oficial (19 Entregables):</strong> Todos los informes se entregan mediante enlaces externos verificables (Google Drive, OneDrive, Canva) con permisos de lectura abiertos.</li>
+                <li><strong class="text-mars-cyan">Repositorio Oficial (19 Entregables):</strong> Todos los informes se entregan mediante enlaces externos verificables (Google Drive, OneDrive, Canva) con permisos de lectura abiertos y acordeones por fase.</li>
                 <li><strong class="text-mars-green">Gobernanza y Auditoría IA:</strong> Todo uso de IA generativa debe registrarse en la Bitácora IA con verificación humana explícita.</li>
             </ul>
             <div class="bg-slate-950 border border-slate-800 p-3 space-y-1.5">
-                <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">Arquitectura de Seguridad y Persistencia v1.0.19:</p>
+                <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">Arquitectura de Seguridad, UX Móvil y Persistencia v1.0.19:</p>
                 <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">await state.updatePin(coId, role, newPin)</code> / <code class="text-mars-cyan">state.updateTeacherPin</code> / <code class="text-mars-cyan">state.updateCompanyCode</code>: Persistencia atómica directa contra Cloudflare D1 sin debounce ni rebote de PIN.</p>
-                <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">state.getAuthToken(userObj)</code> &amp; <code class="text-mars-cyan">state.verifySessionIntegrity(serverData)</code>: Huella criptográfica y heartbeat adaptativo (12s) con revocación inmediata de sesiones zombi.</p>
-                <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">ui.showModal</code>, <code class="text-mars-cyan">ui.confirmModal</code> y <code class="text-mars-cyan">ui.escapeHTML</code>: Diálogos HUD accesibles con trampa de foco y sanitización XSS estricta.</p>
+                <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">ui.validateSafeText(text)</code> &amp; <code class="text-mars-cyan">ui.hasForbiddenWords</code>: Filtro LOPD multicultural y lista blanca aeroespacial contextual no destructiva (retiene el texto y resalta en rojo neón).</p>
+                <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">ui.openDrawer(title, html)</code> / <code class="text-mars-cyan">ui.toggleMilestoneAccordion</code>: Descongestión móvil con acordeones por fase y paneles deslizantes inferiores (Bottom-Sheet HUD).</p>
+                <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">auth.verifyMasterCode()</code> &amp; <code class="text-mars-cyan">state.verifySessionIntegrity(serverData)</code>: Pasarela docente oculta con hash Web Crypto SHA-256 (Zero-Knowledge) y revocación en caliente de sesiones zombi.</p>
             </div>
             <div class="pt-2">
                 <button type="button" onclick="ui.closeModal(); sessionStorage.removeItem('hideWelcome'); ui.showWelcomeModal();" class="w-full bg-mars-yellow text-black font-black py-2.5 px-4 text-xs uppercase tracking-widest hover:bg-white transition-all min-h-[44px]">Ver Manual Completo de mi Rol</button>
@@ -604,14 +773,14 @@ const ui = {
             <p class="text-xs text-slate-300 mb-3 uppercase leading-relaxed">¿Has detectado un fallo técnico (bug), tienes una idea o una duda normativa? El reporte es privado y pasa por filtro léxico antes de llegar a Coordinación.</p>
             <div class="mb-3">
                 <label for="sugg-category" class="text-xs text-mars-yellow font-bold uppercase block mb-1">Categoría del Reporte</label>
-                <select id="sugg-category" class="w-full bg-slate-900 border border-mars-yellow/50 p-2.5 text-xs text-white uppercase font-bold outline-none focus:border-mars-yellow min-h-[44px]">
+                <select id="sugg-category" class="w-full bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-xs text-white uppercase font-bold outline-none focus:border-mars-yellow min-h-[44px]">
                     <option value="BUG">🐛 Bug / Error Técnico en la App</option>
                     <option value="MEJORA">💡 Sugerencia de Mejora / Idea</option>
                     <option value="REGLAS">⚖️ Consulta sobre Normativa / Rúbricas</option>
                 </select>
             </div>
             <label for="sugg-text" class="sr-only">Descripción del reporte</label>
-            <textarea id="sugg-text" class="w-full bg-slate-900 border border-mars-yellow/50 p-3 text-xs text-white h-24 focus:border-mars-yellow outline-none mb-4" placeholder="Describe el reporte... (El uso de lenguaje ofensivo o nombres propios bloqueará el envío)"></textarea>
+            <textarea id="sugg-text" class="w-full bg-slate-900 border border-mars-yellow/50 p-3 text-base sm:text-xs text-white h-24 focus:border-mars-yellow outline-none mb-4" placeholder="Describe el reporte... (El uso de lenguaje ofensivo o nombres propios bloqueará el envío)"></textarea>
             <div class="bg-black/60 border border-slate-800 p-3 max-h-44 overflow-y-auto">
                 <h4 class="text-mars-cyan text-xs uppercase font-bold mb-2 border-b border-slate-800 pb-1">Mis Envíos Recientes (Privado)</h4>
                 ${history}
@@ -628,7 +797,7 @@ const ui = {
         const text = this.cleanInput(elText.value);
         const category = elCat ? elCat.value : 'MEJORA';
         if(text.length < 5) return this.notify("Describe tu reporte con más detalle (mínimo 5 caracteres).", "warning");
-        if(this.hasForbiddenWords(text, 'Buzón de Sugerencias')) return;
+        if(this.hasForbiddenWords(text, 'Buzón de Sugerencias', elText)) return;
         
         const isDocente = state.user && state.user.admin;
         const coId = state.user ? (isDocente ? 'DOCENTE' : state.user.coId) : 'ANON';
@@ -867,15 +1036,17 @@ const ui = {
     },
     
     renderDriveLinkBox(title, desc, docKey, currentDoc) {
+        const currentNote = currentDoc && currentDoc.note ? this.escapeHTML(currentDoc.note) : '';
         return `
         <div class="border-b border-slate-800 pb-4 mb-4 last:border-0 last:pb-0 last:mb-0">
             <h3 class="text-mars-cyan font-bold text-xs sm:text-sm uppercase mb-1">${this.escapeHTML(title)}</h3>
             <p class="text-xs text-slate-300 mb-2 uppercase leading-relaxed">${this.escapeHTML(desc)}</p>
             ${this.renderDocBadge(title, currentDoc)}
-            <div class="bg-slate-900 border border-slate-700 p-3 mt-2">
-                <label for="upload-url-${docKey}" class="text-xs text-mars-yellow font-bold uppercase block mb-2">Entregar Enlace (Google Drive, OneDrive, Canva...)</label>
+            <div class="bg-slate-900 border border-slate-700 p-3 mt-2 space-y-2">
+                <label for="upload-url-${docKey}" class="text-xs text-mars-yellow font-bold uppercase block">Entregar Enlace (Google Drive, OneDrive, Canva...)</label>
+                <input type="text" id="upload-desc-${docKey}" value="${currentNote}" placeholder="Nota / Descripción técnica de la entrega (opcional, sin nombres propios LOPD)..." class="w-full bg-black border border-slate-600 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan min-h-[44px]">
                 <div class="flex flex-col sm:flex-row gap-2">
-                    <input type="url" id="upload-url-${docKey}" placeholder="https://..." class="bg-black border border-slate-600 p-2.5 text-xs text-white flex-grow outline-none focus:border-mars-cyan min-h-[44px]">
+                    <input type="url" id="upload-url-${docKey}" placeholder="https://..." class="bg-black border border-slate-600 p-2.5 text-base sm:text-xs text-white flex-grow outline-none focus:border-mars-cyan min-h-[44px]">
                     <button type="button" onclick="ui.handleDeliverableLinkSubmit('${docKey}')" class="bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white flex-shrink-0 w-full sm:w-auto min-h-[44px]">Entregar Enlace</button>
                 </div>
             </div>
@@ -885,9 +1056,14 @@ const ui = {
     handleDeliverableLinkSubmit(docType) {
         if (!state.user) return;
         const urlInput = document.getElementById(`upload-url-${docType}`);
+        const descInput = document.getElementById(`upload-desc-${docType}`);
         if (!urlInput) return;
         
         const url = this.cleanInput(urlInput.value);
+        const note = descInput ? this.cleanInput(descInput.value) : '';
+        if (note && this.hasForbiddenWords(note, `Descripción de Entregable (${docType})`, descInput)) return;
+        if (this.hasForbiddenWords(url, `Enlace de Entregable (${docType})`, urlInput)) return;
+
         if(!url) return this.notify("Debe proporcionar un enlace válido (URL). La subida de archivos físicos está deshabilitada.", "warning");
         if(!url.toLowerCase().startsWith('http://') && !url.toLowerCase().startsWith('https://')) {
             return this.notify("Error de formato: El enlace debe comenzar con 'http://' o 'https://'", "error");
@@ -898,13 +1074,125 @@ const ui = {
         co.deliverables = co.deliverables || {};
 
         co.deliverables[docType] = { 
-            type: 'link', name: 'Enlace a Nube Externa', date: new Date().toLocaleString(), size: 'URL', dataUrl: url 
+            type: 'link', name: 'Enlace a Nube Externa', note: note || '', date: new Date().toLocaleString(), size: 'URL', dataUrl: url 
         };
         
         telemetry.log("ENTREGABLE", `Enlace subido a Drive: ${docType}`);
         state.save(); 
         this.render(); 
         this.notify("✅ Enlace entregado y registrado en el Dossier Oficial.", "success");
+    },
+
+    inspectDeliverableDrawer(coId, docKey) {
+        const co = state.data.companies?.[coId];
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const def = defs.find(d => d.key === docKey);
+        if (!co || !def) return;
+        const doc = co.deliverables?.[docKey];
+        const dlDate = (state.data.config?.deadlines && state.data.config.deadlines[def.key]) ? state.data.config.deadlines[def.key] : def.defaultDate;
+        const dlBadge = this.getDeadlineStatus(dlDate);
+        const rubric = (typeof RUBRIC_CONFIG !== 'undefined' && RUBRIC_CONFIG[def.subject]) ? RUBRIC_CONFIG[def.subject] : null;
+        const criteriaHtml = rubric && rubric.criteria ? rubric.criteria.map(c => `
+            <li class="flex justify-between items-center py-1 border-b border-slate-800/80 last:border-0">
+                <span class="text-slate-200">${this.escapeHTML(c.name)}</span>
+                <span class="text-mars-cyan font-bold">${Math.round(c.weight * 100)}%</span>
+            </li>
+        `).join('') : '';
+
+        const bodyHtml = `
+            <div class="space-y-3">
+                <div class="bg-slate-900 border border-slate-700 p-3 space-y-1.5">
+                    <div class="flex justify-between items-center gap-2 flex-wrap">
+                        <span class="text-xs font-black px-2 py-0.5 border border-mars-cyan text-mars-cyan uppercase">${this.escapeHTML(def.subject)} • ${this.escapeHTML(def.weight)}</span>
+                        <span class="text-xs font-black px-2 py-0.5 uppercase ${dlBadge.class}">${this.escapeHTML(dlBadge.text)}</span>
+                    </div>
+                    <p class="text-white font-bold uppercase text-xs sm:text-sm pt-1">${this.escapeHTML(def.name)}</p>
+                    <p class="text-slate-300 text-xs uppercase">Departamento Responsable: <strong class="text-mars-yellow">${this.escapeHTML(def.role.replace('_',' '))}</strong> | Límite: <strong>${this.escapeHTML(dlDate.replace('T', ' '))}</strong></p>
+                </div>
+                <div class="bg-black/70 border border-slate-800 p-3">
+                    <p class="text-mars-yellow font-bold uppercase text-xs mb-2 border-b border-slate-800 pb-1">Estado de Entrega Cloud</p>
+                    ${doc ? `
+                        <p class="text-mars-green font-bold uppercase text-xs mb-1">✓ ENTREGADO (${this.escapeHTML(doc.date || '')})</p>
+                        ${doc.note ? `<p class="text-slate-200 italic text-xs mb-2">"${this.escapeHTML(doc.note)}"</p>` : ''}
+                        <a href="${this.escapeHTML(doc.dataUrl)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] w-full bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2.5 flex items-center justify-center hover:bg-white transition-all">🔗 ABRIR DOCUMENTO EN NUBE EXTERNA</a>
+                    ` : `<p class="text-mars-magenta font-bold uppercase text-xs">⚠️ PENDIENTE DE ENTREGA POR ${this.escapeHTML(def.role.replace('_',' '))}</p>`}
+                </div>
+                ${criteriaHtml ? `
+                <div class="bg-slate-900/80 border border-slate-800 p-3">
+                    <p class="text-mars-cyan font-bold uppercase text-xs mb-1.5 border-b border-slate-800 pb-1">Rúbrica Oficial de ${this.escapeHTML(rubric.name)}</p>
+                    <ul class="space-y-1 text-xs">${criteriaHtml}</ul>
+                </div>` : ''}
+            </div>
+        `;
+        this.openDrawer(`INSPECCIÓN DE HITO // ${def.shortName || def.name}`, bodyHtml);
+    },
+
+    inspectOrderDrawer(coId, orderId, isMkt = false) {
+        const co = state.data.companies?.[coId];
+        if (!co) return;
+        const list = isMkt ? (co.marketingCampaigns || []) : (co.orders || []);
+        const ord = list.find(o => String(o.id) === String(orderId));
+        if (!ord) return;
+
+        const itemsHtml = isMkt
+            ? `<li class="py-1 text-mars-magenta font-bold">Campaña Publicitaria: ${this.escapeHTML(ord.packName)} (${this.escapeHTML(ord.packType)})</li>`
+            : (ord.items || []).map(i => `<li class="flex justify-between py-1 border-b border-slate-800/80 last:border-0"><span>${i.qty}x ${this.escapeHTML(i.name)} <span class="text-slate-400">(${this.escapeHTML(i.id)})</span></span><span class="text-mars-yellow font-bold">${(i.price * i.qty).toFixed(2)} €v</span></li>`).join('');
+
+        const bodyHtml = `
+            <div class="space-y-3">
+                <div class="flex justify-between items-center bg-slate-900 border border-slate-700 p-3">
+                    <div>
+                        <span class="text-white font-orbitron font-black text-sm block">${this.escapeHTML(ord.id)}</span>
+                        <span class="text-slate-300 text-xs uppercase">${this.escapeHTML(ord.date || '')}</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-mars-yellow font-orbitron font-black text-base block">-${Number(ord.total || ord.price || 0).toFixed(2)} €v</span>
+                        <span class="text-xs font-bold uppercase text-mars-cyan">[${this.escapeHTML((ord.status || '').replace('_',' '))}]</span>
+                    </div>
+                </div>
+                <div class="bg-black/70 border border-slate-800 p-3">
+                    <p class="text-mars-cyan font-bold uppercase text-xs mb-1.5 border-b border-slate-800 pb-1">Desglose de Partidas</p>
+                    <ul class="space-y-1 text-xs">${itemsHtml}</ul>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 p-3">
+                    <p class="text-mars-yellow font-bold uppercase text-xs mb-1">Memoria / Justificación Técnica Registrada</p>
+                    <p class="text-slate-200 italic text-xs break-words">"${this.escapeHTML(ord.justification || ord.reason || ord.desc || 'Sin memoria adjunta')}"</p>
+                    ${ord.realStore ? `<p class="text-mars-green text-xs font-bold uppercase mt-2 pt-2 border-t border-slate-800">Comercio Real: ${this.escapeHTML(ord.realStore)} | Coste Físico: ${Number(ord.realCost || 0).toFixed(2)} €</p>` : ''}
+                </div>
+            </div>
+        `;
+        this.openDrawer(`AUDITORÍA DE ORDEN // ${ord.id}`, bodyHtml);
+    },
+
+    inspectRubricDrawer(coId, sub) {
+        const co = state.data.companies?.[coId];
+        const config = (typeof RUBRIC_CONFIG !== 'undefined') ? RUBRIC_CONFIG[sub] : null;
+        if (!co || !config) return;
+        const grade = (co.grades && co.grades[sub]) ? co.grades[sub] : { scores: {}, feedback: '', final: null };
+        const rows = config.criteria.map(c => `
+            <div class="flex justify-between text-xs uppercase border-b border-slate-800/80 pb-1.5 gap-2">
+                <span class="text-slate-300">${this.escapeHTML(c.name)} (${Math.round(c.weight * 100)}%)</span>
+                <span class="font-mono font-bold ${grade.scores && grade.scores[c.id] !== undefined ? 'text-white' : 'text-slate-400'}">${grade.scores && grade.scores[c.id] !== undefined ? this.escapeHTML(grade.scores[c.id]) : '-'}</span>
+            </div>`).join('');
+        const fb = grade.feedback ? `<div class="bg-black p-3 border border-slate-700 text-xs text-slate-200 italic mt-2 break-words"><span class="text-mars-yellow font-bold not-italic block mb-1 uppercase text-xs">Feedback Docente:</span>"${this.escapeHTML(grade.feedback)}"</div>` : '';
+        this.openDrawer(`RÚBRICA // ${config.name}`, `<div class="space-y-2">${rows}${fb}</div>`);
+    },
+
+    inspectMktCampDrawer(campId) {
+        if (!state.user) return;
+        const co = state.data.companies?.[state.user.coId];
+        const camp = (co?.marketingCampaigns || []).find(c => String(c.id) === String(campId));
+        if (!camp) return;
+        const pkg = camp.packageName || camp.type || 'Campaña Publicitaria';
+        const body = `
+            <div class="space-y-3">
+                <p class="text-white font-bold uppercase text-xs">${this.escapeHTML(camp.title || camp.type || 'Acción Comercial')}</p>
+                <div class="bg-slate-900 border border-slate-800 p-3">
+                    <p class="text-mars-yellow font-bold uppercase text-xs mb-1">Justificación ROI</p>
+                    <p class="text-slate-200 italic text-xs break-words">"${this.escapeHTML(camp.desc || 'Solicitud de inversión publicitaria')}"</p>
+                </div>
+            </div>`;
+        this.openDrawer(`JUSTIFICACIÓN ROI // ${pkg}`, body);
     },
 
     showModal(title, body, actions) {

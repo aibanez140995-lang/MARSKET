@@ -180,7 +180,7 @@ Object.assign(ui, {
             <span class="text-lg font-orbitron font-black text-mars-cyan">${total.toFixed(2)} €v</span>
         </div>
         <label for="checkout-justification" class="text-xs text-mars-cyan font-bold uppercase block mb-1.5">Justificación Técnica para Finanzas</label>
-        <textarea id="checkout-justification" placeholder="Redacta la justificación técnica para el Departamento Financiero... (Obligatorio para que aprueben el gasto)" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white h-24 outline-none focus:border-mars-cyan mb-2"></textarea>
+        <textarea id="checkout-justification" placeholder="Redacta la justificación técnica para el Departamento Financiero... (Obligatorio para que aprueben el gasto)" class="w-full bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-white h-24 outline-none focus:border-mars-cyan mb-2"></textarea>
         `;
         
         const actions = `<button type="button" onclick="ui.confirmCart(${total})" class="min-h-[44px] bg-mars-cyan text-black px-5 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all w-full sm:w-auto">Transmitir a Finanzas</button>`;
@@ -194,7 +194,7 @@ Object.assign(ui, {
         if(just.length < 5) return this.notify("La justificación técnica es demasiado corta (mínimo 5 caracteres).", "warning");
 
         // FASE 4: Guardián Léxico Universal en Carrito
-        if(ui.hasForbiddenWords(just, 'Justificación Carrito I+D')) return;
+        if(ui.hasForbiddenWords(just, 'Justificación Carrito I+D', elJust)) return;
 
         const co = state.data.companies[state.user.coId];
         if (!co) return;
@@ -235,9 +235,9 @@ Object.assign(ui, {
                 <span class="text-slate-300 line-through shrink-0">${Number(item.price).toFixed(2)} €v (Base)</span>
             </div>
             <label for="b2b-price" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Precio de Venta Propuesto (€v)</label>
-            <input type="number" id="b2b-price" value="${(item.price * 0.8).toFixed(2)}" step="0.5" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-sm text-mars-green font-mono font-bold mb-3 outline-none focus:border-mars-yellow">
+            <input type="number" id="b2b-price" value="${(item.price * 0.8).toFixed(2)}" step="0.5" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold mb-3 outline-none focus:border-mars-yellow">
             <label for="b2b-obs" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Observaciones Técnicas</label>
-            <textarea id="b2b-obs" placeholder="Observaciones técnicas de la pieza (estado, uso previo...)" class="w-full bg-slate-900 border border-mars-border p-2.5 text-xs text-white h-20 outline-none focus:border-mars-yellow"></textarea>
+            <textarea id="b2b-obs" placeholder="Observaciones técnicas de la pieza (estado, uso previo...)" class="w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white h-20 outline-none focus:border-mars-yellow"></textarea>
         `;
         const actions = `<button type="button" onclick="ui.confirmPublishB2B('${this.escapeHTML(orderId)}', ${Number(itemIndex)})" class="min-h-[44px] bg-mars-yellow text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all w-full sm:w-auto">Publicar Oferta B2B</button>`;
         this.showModal("Venta en Mercado Secundario", html, actions);
@@ -250,7 +250,7 @@ Object.assign(ui, {
         const obs = elObs ? this.cleanInput(elObs.value) : '';
 
         // FASE 4: Guardián Léxico Universal en Venta B2B
-        if (obs && ui.hasForbiddenWords(obs, 'Mercado B2B (Venta)')) return;
+        if (obs && ui.hasForbiddenWords(obs, 'Mercado B2B (Venta)', elObs)) return;
 
         const co = state.data.companies[state.user.coId];
         const ord = co.orders.find(o => String(o.id) === String(orderId));

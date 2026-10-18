@@ -40,9 +40,21 @@ export async function onRequest(context) {
 
         if (request.method === 'POST') {
             const payload = await request.json();
-            
+
+            // MÓDULO D (v1.0.19): Verificación de código maestro docente en servidor contra env.TEACHER_MASTER_CODE
+            if (payload.action === 'verify_teacher_master') {
+                if (!env.TEACHER_MASTER_CODE) {
+                    return new Response(JSON.stringify({ verified: true, mode: 'client_sha256' }), { headers });
+                }
+                const isAuthorized = String(payload.code || '') === String(env.TEACHER_MASTER_CODE);
+                return new Response(JSON.stringify({ verified: isAuthorized }), { status: isAuthorized ? 200 : 403, headers });
+            }
+
             // FASE 5: Acción manual de backup interceptada desde el Panel Docente
             if (payload.action === 'force_backup') {
+                if (env.TEACHER_MASTER_CODE && payload.teacherMasterCode && payload.teacherMasterCode !== env.TEACHER_MASTER_CODE) {
+                    return new Response(JSON.stringify({ error: 'Autorización maestra docente inválida' }), { status: 403, headers });
+                }
                 const { results } = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = 'current'").all();
                 if (results && results.length > 0) {
                     const currentData = results[0].data;

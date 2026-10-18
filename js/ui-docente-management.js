@@ -277,7 +277,7 @@ Object.assign(ui, {
                             </div>
                             <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end flex-wrap">
                                 <label for="approve-aux-pin-${this.escapeHTML(cid)}" class="text-xs text-slate-300 uppercase font-bold">PIN:</label>
-                                <input type="text" id="approve-aux-pin-${this.escapeHTML(cid)}" maxlength="4" value="${this.escapeHTML(req.pin || '5555')}" class="min-h-[44px] w-20 bg-black border border-mars-cyan text-center text-mars-green font-mono font-bold p-1.5 outline-none">
+                                <input type="text" id="approve-aux-pin-${this.escapeHTML(cid)}" maxlength="4" value="${this.escapeHTML(req.pin || '5555')}" class="min-h-[44px] w-20 bg-black border border-mars-cyan text-center text-mars-green font-mono font-bold text-base sm:text-xs p-1.5 outline-none">
                                 <button onclick="ui.resolveAuxRoleRequest('${this.escapeHTML(cid)}', true)" class="min-h-[44px] bg-mars-green text-black px-4 py-2 font-black uppercase text-xs hover:bg-white transition-colors">Aprobar y Activar</button>
                                 <button onclick="ui.resolveAuxRoleRequest('${this.escapeHTML(cid)}', false)" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 font-black uppercase text-xs hover:bg-mars-magenta hover:text-white transition-colors">Denegar</button>
                             </div>
@@ -300,7 +300,7 @@ Object.assign(ui, {
                         <span class="text-xs font-black uppercase px-2 py-0.5 bg-mars-cyan/10 text-mars-cyan border border-mars-cyan/40">${this.escapeHTML(d.subject)} • ${this.escapeHTML(d.weight)}</span>
                         <label for="dl-master-${this.escapeHTML(d.key)}" class="text-xs text-white font-bold uppercase block mt-1.5 mb-2 leading-snug">${this.escapeHTML(d.name)}</label>
                     </div>
-                    <input type="datetime-local" id="dl-master-${this.escapeHTML(d.key)}" value="${this.escapeHTML(val)}" onchange="ui.updateDeadline('${this.escapeHTML(d.key)}', this.value)" class="min-h-[44px] w-full bg-black border border-slate-700 p-2 text-xs text-mars-yellow font-mono outline-none focus:border-mars-yellow">
+                    <input type="datetime-local" id="dl-master-${this.escapeHTML(d.key)}" value="${this.escapeHTML(val)}" onchange="ui.updateDeadline('${this.escapeHTML(d.key)}', this.value)" class="min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-mars-yellow font-mono outline-none focus:border-mars-yellow">
                 </div>`;
             }).join('');
 
@@ -312,7 +312,7 @@ Object.assign(ui, {
                         <span class="text-xs text-mars-cyan font-bold uppercase block">${this.escapeHTML(tk)}</span>
                         <label for="teacher-pin-${this.escapeHTML(tk)}" class="text-xs text-white font-bold uppercase">${this.escapeHTML(t.name)}</label>
                     </div>
-                    <input type="text" id="teacher-pin-${this.escapeHTML(tk)}" value="${this.escapeHTML(t.pin)}" maxlength="4" onchange="ui.updateTeacherPin('${this.escapeHTML(tk)}', this.value)" class="min-h-[44px] w-20 bg-black border border-mars-cyan text-center text-mars-cyan font-mono font-bold text-xs p-1.5">
+                    <input type="text" id="teacher-pin-${this.escapeHTML(tk)}" value="${this.escapeHTML(t.pin)}" maxlength="4" onchange="ui.updateTeacherPin('${this.escapeHTML(tk)}', this.value)" class="min-h-[44px] w-20 bg-black border border-mars-cyan text-center text-mars-cyan font-mono font-bold text-base sm:text-xs p-1.5">
                 </div>`;
             }).join('');
 
@@ -341,11 +341,11 @@ Object.assign(ui, {
             <div class="xl:col-span-1 terminal-border bg-mars-card p-6 h-fit border-t-4 border-t-mars-cyan">
                 <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Crear Startup</h3>
                 <label for="new-co-name" class="text-xs text-slate-300 uppercase font-bold block mb-1">Nombre Corporativo</label>
-                <input type="text" id="new-co-name" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-3 text-xs text-white mb-3 outline-none focus:border-mars-cyan" placeholder="Nombre Corporativo">
+                <input type="text" id="new-co-name" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-white mb-3 outline-none focus:border-mars-cyan" placeholder="Nombre Corporativo">
                 <label for="new-co-cap" class="text-xs text-slate-300 uppercase font-bold block mb-1">Capital Inicial (€v)</label>
-                <input type="number" id="new-co-cap" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-3 text-xs text-white mb-3 outline-none focus:border-mars-cyan" placeholder="Capital (€v)" value="2400">
+                <input type="number" id="new-co-cap" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-white mb-3 outline-none focus:border-mars-cyan" placeholder="Capital (€v)" value="2400">
                 <label for="new-co-class" class="text-xs text-slate-300 uppercase font-bold block mb-1">Grupo de Clase</label>
-                <select id="new-co-class" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-3 text-xs text-white mb-4 outline-none focus:border-mars-cyan">
+                <select id="new-co-class" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-white mb-4 outline-none focus:border-mars-cyan">
                     ${['A','B','C','D','E','F'].map(c => `<option value="${c}">Clase ${c}</option>`).join('')}
                 </select>
                 <button onclick="ui.createStartup()" class="min-h-[44px] w-full bg-mars-cyan text-black font-black py-3 text-xs uppercase tracking-widest hover:shadow-[0_0_10px_#00f0ff] transition-shadow">Registrar (2400 €v)</button>
@@ -387,7 +387,7 @@ Object.assign(ui, {
                                     <td class="py-3 pr-3">
                                         ${isCoord ? `
                                         <div class="flex items-center gap-1">
-                                            <input type="text" id="co-code-input-${this.escapeHTML(cid)}" aria-label="Código de empresa ${this.escapeHTML(co.name)}" maxlength="10" value="${this.escapeHTML(coCode)}" onchange="ui.updateCompanyCode('${this.escapeHTML(cid)}', this.value)" class="min-h-[44px] w-24 bg-black border border-mars-yellow text-center text-mars-yellow font-mono font-black p-1 outline-none uppercase disabled:opacity-50">
+                                            <input type="text" id="co-code-input-${this.escapeHTML(cid)}" aria-label="Código de empresa ${this.escapeHTML(co.name)}" maxlength="10" value="${this.escapeHTML(coCode)}" onchange="ui.updateCompanyCode('${this.escapeHTML(cid)}', this.value)" class="min-h-[44px] w-24 bg-black border border-mars-yellow text-center text-mars-yellow font-mono font-black text-base sm:text-xs p-1 outline-none uppercase disabled:opacity-50">
                                             <button id="co-code-regen-${this.escapeHTML(cid)}" onclick="ui.regenerateCompanyCode('${this.escapeHTML(cid)}')" aria-label="Regenerar código aleatorio" title="Regenerar código aleatorio" class="min-h-[44px] min-w-[44px] bg-slate-800 text-slate-200 px-2 py-1 hover:bg-mars-yellow hover:text-black transition-colors flex items-center justify-center disabled:opacity-50">🔄</button>
                                         </div>` : `<span class="text-slate-300 font-mono">***-****</span>`}
                                     </td>
@@ -395,13 +395,13 @@ Object.assign(ui, {
                                         const pinVal = state.getRolePin(co, rol) || '1234';
                                         return `
                                         <td class="py-3 pr-2">
-                                            ${isCoord ? `<input type="text" id="pin-input-${this.escapeHTML(cid)}-${rol}" aria-label="PIN ${rol} de ${this.escapeHTML(co.name)}" maxlength="4" value="${this.escapeHTML(pinVal)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', '${rol}', this.value)" class="min-h-[44px] w-14 bg-black border border-mars-border text-center text-mars-cyan font-bold p-1 outline-none focus:border-mars-yellow disabled:opacity-50">` : `<span class="text-slate-300">****</span>`}
+                                            ${isCoord ? `<input type="text" id="pin-input-${this.escapeHTML(cid)}-${rol}" aria-label="PIN ${rol} de ${this.escapeHTML(co.name)}" maxlength="4" value="${this.escapeHTML(pinVal)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', '${rol}', this.value)" class="min-h-[44px] w-14 bg-black border border-mars-border text-center text-mars-cyan font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">` : `<span class="text-slate-300">****</span>`}
                                         </td>`;
                                     }).join('')}
                                     <td class="py-3 pr-3">
                                         ${isCoord ? `
                                         <div class="flex items-center gap-1">
-                                            <input type="text" id="pin-input-${this.escapeHTML(cid)}-AUXILIAR" aria-label="PIN AUXILIAR de ${this.escapeHTML(co.name)}" maxlength="4" placeholder="----" value="${this.escapeHTML(auxPin)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', 'AUXILIAR', this.value)" class="min-h-[44px] w-14 bg-black border ${auxPin ? 'border-mars-green text-mars-green' : 'border-slate-700 text-slate-400'} text-center font-bold p-1 outline-none focus:border-mars-yellow disabled:opacity-50">
+                                            <input type="text" id="pin-input-${this.escapeHTML(cid)}-AUXILIAR" aria-label="PIN AUXILIAR de ${this.escapeHTML(co.name)}" maxlength="4" placeholder="----" value="${this.escapeHTML(auxPin)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', 'AUXILIAR', this.value)" class="min-h-[44px] w-14 bg-black border ${auxPin ? 'border-mars-green text-mars-green' : 'border-slate-700 text-slate-400'} text-center font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">
                                             <span class="text-xs text-slate-300 uppercase">[${this.escapeHTML(auxDept)}]</span>
                                         </div>` : `<span class="text-slate-300">****</span>`}
                                     </td>
@@ -670,15 +670,15 @@ Object.assign(ui, {
             <div class="lg:col-span-1 terminal-border bg-mars-card p-6 h-fit border-t-4 border-t-mars-cyan">
                 <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Añadir Nuevo Artículo</h3>
                 <label for="new-cat-id" class="text-xs text-slate-300 uppercase font-bold block mb-1">ID Artículo</label>
-                <input type="text" id="new-cat-id" placeholder="ID (Ej: F06)" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+                <input type="text" id="new-cat-id" placeholder="ID (Ej: F06)" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white mb-2 outline-none focus:border-mars-cyan">
                 <label for="new-cat-name" class="text-xs text-slate-300 uppercase font-bold block mb-1">Nombre Completo</label>
-                <input type="text" id="new-cat-name" placeholder="Nombre completo" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+                <input type="text" id="new-cat-name" placeholder="Nombre completo" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white mb-2 outline-none focus:border-mars-cyan">
                 <label for="new-cat-price" class="text-xs text-slate-300 uppercase font-bold block mb-1">Precio (€v)</label>
-                <input type="number" id="new-cat-price" placeholder="Precio (€v)" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+                <input type="number" id="new-cat-price" placeholder="Precio (€v)" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white mb-2 outline-none focus:border-mars-cyan">
                 <label for="new-cat-unit" class="text-xs text-slate-300 uppercase font-bold block mb-1">Unidad de Medida</label>
-                <input type="text" id="new-cat-unit" placeholder="Unidad (Ej: Unidad, Gramo)" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+                <input type="text" id="new-cat-unit" placeholder="Unidad (Ej: Unidad, Gramo)" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white mb-2 outline-none focus:border-mars-cyan">
                 <label for="new-cat-category" class="text-xs text-slate-300 uppercase font-bold block mb-1">Categoría</label>
-                <select id="new-cat-category" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+                <select id="new-cat-category" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white mb-2 outline-none focus:border-mars-cyan">
                     <option value="Fuselaje">Fuselaje</option>
                     <option value="Propulsión">Propulsión</option>
                     <option value="Aerodinámica">Aerodinámica</option>
@@ -686,7 +686,7 @@ Object.assign(ui, {
                     <option value="Externo">Externo</option>
                 </select>
                 <label for="new-cat-origin" class="text-xs text-slate-300 uppercase font-bold block mb-1">Origen</label>
-                <input type="text" id="new-cat-origin" placeholder="Origen (Ej: España)" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-xs text-white mb-4 outline-none focus:border-mars-cyan">
+                <input type="text" id="new-cat-origin" placeholder="Origen (Ej: España)" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white mb-4 outline-none focus:border-mars-cyan">
                 <button onclick="ui.addCatalogItem()" class="min-h-[44px] w-full bg-mars-cyan text-black font-black py-3 text-xs uppercase tracking-widest hover:shadow-[0_0_10px_#00f0ff] transition-shadow">Añadir al Catálogo</button>
             </div>
             <div class="lg:col-span-2 terminal-border bg-mars-card p-6 w-full overflow-hidden border-t-4 border-t-mars-yellow">
@@ -831,7 +831,7 @@ Object.assign(ui, {
         const classGroup = elClass.value || 'A';
         
         if(!name || isNaN(cap)) return this.notify("Datos inválidos.", "warning");
-        if(ui.hasForbiddenWords(name, 'Creación Startup')) return this.notify("Nombre corporativo no permitido por el filtro léxico.", "error");
+        if(ui.hasForbiddenWords(name, 'Creación Startup', elName)) return;
 
         const cid = 'co_' + Date.now();
         const generatedCode = state.generateCompanyCode(name);
@@ -935,7 +935,7 @@ Object.assign(ui, {
     },
 
     promptDenyBrand(cid) {
-        const html = `<label for="deny-brand-reason" class="text-xs text-slate-300 uppercase font-bold block mb-2">Motivo del rechazo</label><input type="text" id="deny-brand-reason" class="min-h-[44px] w-full bg-black border border-mars-magenta p-3 text-xs text-white outline-none focus:border-mars-magenta" placeholder="Motivo del rechazo (Filtro léxico, plagio, no apto...)...">`;
+        const html = `<label for="deny-brand-reason" class="text-xs text-slate-300 uppercase font-bold block mb-2">Motivo del rechazo</label><input type="text" id="deny-brand-reason" class="min-h-[44px] w-full bg-black border border-mars-magenta p-3 text-base sm:text-xs text-white outline-none focus:border-mars-magenta" placeholder="Motivo del rechazo (Filtro léxico, plagio, no apto...)...">`;
         const btn = `<button onclick="ui.finalizeDenyBrand('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-mars-magenta text-white px-6 py-2 text-xs font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Confirmar Rechazo</button>`;
         this.showModal("Rechazar Identidad Corporativa", html, btn);
     },
@@ -1109,7 +1109,7 @@ Object.assign(ui, {
                 </div>
                 <div>
                     <label for="sp-name" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Nombre de la Corporación Patrocinadora</label>
-                    <input type="text" id="sp-name" value="${this.escapeHTML(currentName)}" placeholder="Ej: SpaceX, PLD Space..." class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-xs text-white outline-none">
+                    <input type="text" id="sp-name" value="${this.escapeHTML(currentName)}" placeholder="Ej: SpaceX, PLD Space..." class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none">
                 </div>
                 <div>
                     <label for="sp-logo" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Logotipo del Patrocinador (Opcional, PNG/JPG &lt; 1MB)</label>
@@ -1164,7 +1164,7 @@ Object.assign(ui, {
         const html = `
             <p class="text-xs text-slate-300 mb-4 leading-relaxed uppercase">Modifica la denominación social oficial de esta startup forzosamente. El historial contable y rúbricas se mantendrán intactos.</p>
             <label for="rename-startup-input" class="text-xs text-mars-yellow uppercase font-bold block mb-1">Nueva Denominación Social</label>
-            <input type="text" id="rename-startup-input" value="${this.escapeHTML(co.name)}" class="min-h-[44px] w-full bg-black border border-mars-yellow p-3 text-xs text-mars-yellow font-orbitron font-bold uppercase outline-none focus:border-white">
+            <input type="text" id="rename-startup-input" value="${this.escapeHTML(co.name)}" class="min-h-[44px] w-full bg-black border border-mars-yellow p-3 text-base sm:text-xs text-mars-yellow font-orbitron font-bold uppercase outline-none focus:border-white">
         `;
         const actions = `<button onclick="ui.finalizeRenameStartup('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-mars-yellow text-black px-6 py-2 text-xs font-black uppercase tracking-widest hover:bg-white transition-all">Forzar Cambio</button>`;
         this.showModal(`Renombrar: ${this.escapeHTML(co.name)}`, html, actions);
@@ -1176,7 +1176,7 @@ Object.assign(ui, {
         const newName = this.cleanInput(el.value);
         if (newName.length < 3) return this.notify("El nombre debe tener al menos 3 caracteres.", "warning");
         
-        if (ui.hasForbiddenWords && ui.hasForbiddenWords(newName, 'Edición Nombre Empresa')) return;
+        if (ui.hasForbiddenWords && ui.hasForbiddenWords(newName, 'Edición Nombre Empresa', el)) return;
 
         const co = state.data.companies[cid];
         if (!co) return;
@@ -1230,7 +1230,7 @@ Object.assign(ui, {
                 </div>
                 <div>
                     <label for="aee-reason" class="text-xs text-mars-magenta uppercase font-bold block mb-1">Dictamen del Inspector</label>
-                    <textarea id="aee-reason" class="w-full bg-slate-900 border border-mars-magenta/50 p-2.5 text-xs text-white h-20 outline-none focus:border-mars-magenta" placeholder="Describa el motivo específico de la sanción..."></textarea>
+                    <textarea id="aee-reason" class="w-full bg-slate-900 border border-mars-magenta/50 p-2.5 text-base sm:text-xs text-white h-20 outline-none focus:border-mars-magenta" placeholder="Describa el motivo específico de la sanción..."></textarea>
                 </div>
                 <div>
                     <label for="aee-amount" class="text-xs text-mars-magenta uppercase font-bold block mb-1">Cuantía de la Multa</label>

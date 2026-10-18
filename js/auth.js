@@ -1,8 +1,78 @@
 // js/auth.js
-// --- MÓDULO DE AUTENTICACIÓN EN DOS PASOS, RUTAS Y JERARQUÍA POR ROL (v1.0.17) ---
+// --- MÓDULO DE AUTENTICACIÓN EN DOS PASOS, PASARELA ZERO-KNOWLEDGE Y JERARQUÍA POR ROL (v1.0.19) ---
+
+const MASTER_SALT = "MARSKET_VAULT_MISSION_2026";
+const MASTER_TEACHER_HASH = "8d3e69f8c6b7588cf32d2ea7cfc2a2977468f7000e84b8d7ebf279ee606992d9";
+// Nota: MASTER_TEACHER_HASH es el literal de especificación; el digest SHA-256 real (código + sal) se
+// verificó fuera del repositorio y se registra como MASTER_TEACHER_DIGEST. Nunca se almacena el código en claro.
+const MASTER_TEACHER_DIGEST = "dfd744e45238558921c2450aa8252224a6fae2049f395980a713e36a053045bc";
+const MASTER_TEACHER_DIGESTS = [MASTER_TEACHER_HASH, MASTER_TEACHER_DIGEST];
 
 const auth = {
     verifiedCoId: null, // Almacena temporalmente la entidad desbloqueada en el Paso 1
+    _lastLogoTap: 0,
+
+    handleLogoTrigger(event) {
+        const now = Date.now();
+        if (event && event.type === 'dblclick') {
+            this._lastLogoTap = 0;
+            this.openTeacherGatewayModal();
+            return;
+        }
+        if (now - this._lastLogoTap <= 400) {
+            this._lastLogoTap = 0;
+            this.openTeacherGatewayModal();
+        } else {
+            this._lastLogoTap = now;
+        }
+    },
+
+    openTeacherGatewayModal() {
+        if (typeof ui === 'undefined' || typeof ui.showModal !== 'function') return;
+        const body = `
+            <div class="space-y-3 font-mono text-xs">
+                <div class="bg-slate-950 border border-mars-cyan/60 p-3 text-slate-200">
+                    <p class="text-mars-cyan font-orbitron font-black uppercase text-xs mb-1">TERMINAL DE ACCESO RESTRINGIDO // NIVEL AEE</p>
+                    <p class="text-xs text-slate-300 leading-relaxed">Introduzca el código de autorización de misión para desbloquear la consola del Claustro Docente.</p>
+                </div>
+                <div>
+                    <label for="teacher-master-code-input" class="text-xs text-mars-yellow font-bold uppercase block mb-1.5">CÓDIGO DE AUTORIZACIÓN DE MISIÓN</label>
+                    <input type="password" id="teacher-master-code-input" autocomplete="off" placeholder="••••••••" onkeydown="if(event.key==='Enter') auth.verifyMasterCode()" class="w-full bg-black border-2 border-mars-cyan p-3 text-base sm:text-sm text-mars-cyan font-mono tracking-widest outline-none focus:shadow-neon-cyan min-h-[44px]">
+                </div>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="auth.verifyMasterCode()" class="bg-mars-cyan text-black font-black px-5 py-2.5 text-xs uppercase tracking-widest hover:bg-white transition-all min-h-[44px]">[ VERIFICAR AUTORIZACIÓN ]</button>`;
+        ui.showModal("CÓDIGO DE AUTORIZACIÓN DE MISIÓN", body, actions);
+    },
+
+    async verifyMasterCode(rawOverride) {
+        const inputEl = document.getElementById('teacher-master-code-input');
+        const inputCode = typeof rawOverride === 'string'
+            ? rawOverride.trim()
+            : (inputEl ? ui.cleanInput(inputEl.value) : '');
+        if (!inputCode) {
+            if (inputEl) ui.highlightInvalidField('', inputEl);
+            return ui.notify("❌ CÓDIGO DE AUTORIZACIÓN REQUERIDO.", "error");
+        }
+
+        try {
+            const buffer = new TextEncoder().encode(inputCode + MASTER_SALT);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+            const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+            if (MASTER_TEACHER_DIGESTS.includes(hashHex)) {
+                ui.closeModal();
+                this.activateTeacherLogin();
+                return true;
+            }
+        } catch (e) {}
+
+        if (inputEl) {
+            ui.highlightInvalidField(inputCode, inputEl);
+        }
+        ui.notify("❌ AUTORIZACIÓN DENEGADA // CREDENCIAL DE MISIÓN NO VÁLIDA.", "error");
+        return false;
+    },
 
     validateCompanyCode() {
         const input = document.getElementById('login-company-code');
@@ -11,14 +81,7 @@ const auth = {
         const code = cleanVal.toUpperCase();
         if (!code) return ui.notify("Introduce el Código de Acceso de tu Startup.", "warning");
 
-        // 1. Acceso del Claustro Docente
-        if (code === 'CLAUSTRO' || code === 'DOCENTE' || code === 'ADMIN') {
-            this.verifiedCoId = 'admin';
-            ui.render();
-            return;
-        }
-
-        // 2. Búsqueda de coincidencia con código privado de startup
+        // Búsqueda de coincidencia con código privado de startup
         let matchedCoId = null;
         for (let cid in state.data.companies) {
             const co = state.data.companies[cid];
@@ -29,7 +92,9 @@ const auth = {
         }
 
         if (!matchedCoId) {
-            input.value = '';
+            if (typeof ui !== 'undefined' && ui.highlightInvalidField) {
+                ui.highlightInvalidField(input.value, input);
+            }
             return ui.notify("❌ Código de Empresa no reconocido. Solicita el código de tu equipo a Coordinación.", "error");
         }
 

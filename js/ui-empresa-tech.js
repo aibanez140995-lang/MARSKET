@@ -138,23 +138,23 @@ Object.assign(ui, {
                     <div class="bg-black border border-mars-border p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                         <div>
                             <label for="ft-bottle" class="text-xs text-slate-300 uppercase block mb-1">Fuselaje / Botella</label>
-                            <input type="text" id="ft-bottle" placeholder="Ej: 1.5L Lisa" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-white outline-none focus:border-mars-yellow w-full">
+                            <input type="text" id="ft-bottle" placeholder="Ej: 1.5L Lisa" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow w-full">
                         </div>
                         <div>
                             <label for="ft-nahco3" class="text-xs text-slate-300 uppercase block mb-1">NaHCO3 (g)</label>
-                            <input type="number" id="ft-nahco3" placeholder="NaHCO3 (g)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-white outline-none focus:border-mars-cyan w-full" step="0.1">
+                            <input type="number" id="ft-nahco3" placeholder="NaHCO3 (g)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan w-full" step="0.1">
                         </div>
                         <div>
                             <label for="ft-vinegar" class="text-xs text-slate-300 uppercase block mb-1">Vinagre (ml)</label>
-                            <input type="number" id="ft-vinegar" placeholder="Vinagre (ml)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-white outline-none focus:border-mars-cyan w-full" step="1">
+                            <input type="number" id="ft-vinegar" placeholder="Vinagre (ml)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan w-full" step="1">
                         </div>
                         <div>
                             <label for="ft-cost" class="text-xs text-slate-300 uppercase block mb-1">Coste Ensayo (€v)</label>
-                            <input type="number" id="ft-cost" placeholder="Coste (€v)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-white outline-none focus:border-mars-magenta w-full" step="0.1">
+                            <input type="number" id="ft-cost" placeholder="Coste (€v)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-magenta w-full" step="0.1">
                         </div>
                         <div>
                             <label for="ft-height-mm" class="text-xs text-slate-300 uppercase block mb-1">Altura H (mm)</label>
-                            <input type="number" id="ft-height-mm" placeholder="Altura H (mm)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-white outline-none focus:border-mars-green font-bold w-full" step="1">
+                            <input type="number" id="ft-height-mm" placeholder="Altura H (mm)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-green font-bold w-full" step="1">
                         </div>
                         <div class="flex items-end">
                             <button type="button" onclick="ui.submitFlightTest()" class="min-h-[44px] bg-mars-yellow text-black font-black uppercase tracking-wider hover:bg-white transition-all py-2.5 px-3 w-full">Registrar Vuelo</button>
@@ -230,11 +230,11 @@ Object.assign(ui, {
             <div class="space-y-3">
                 <div>
                     <label for="b2b-sell-price" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Precio de Venta Solicitado (€v)</label>
-                    <input type="number" id="b2b-sell-price" value="${Number(item.price).toFixed(0)}" min="1" step="1" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-sm text-mars-green font-mono font-bold outline-none">
+                    <input type="number" id="b2b-sell-price" value="${Number(item.price).toFixed(0)}" min="1" step="1" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold outline-none">
                 </div>
                 <div>
                     <label for="b2b-sell-notes" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Estado / Observaciones Técnicas</label>
-                    <input type="text" id="b2b-sell-notes" placeholder="Ej: Sin usar, excedente de diseño Fase I..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-xs text-white outline-none focus:border-mars-cyan">
+                    <input type="text" id="b2b-sell-notes" placeholder="Ej: Sin usar, excedente de diseño Fase I..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan">
                 </div>
             </div>
         `;
@@ -252,7 +252,7 @@ Object.assign(ui, {
         const notes = elNotes ? this.cleanInput(elNotes.value) : '';
 
         if (isNaN(price) || price <= 0) return this.notify("Introduce un precio en €v válido mayor que cero.", "warning");
-        if (this.hasForbiddenWords(notes)) {
+        if (this.hasForbiddenWords(notes, 'Mercado B2B (Notas)', elNotes)) {
             return;
         }
 
@@ -308,7 +308,7 @@ Object.assign(ui, {
         const heightMm = parseFloat(elHeightMm.value); // <--- v1.0.16: Se registra en milímetros
 
         if(!bottle || isNaN(naHCO3) || isNaN(vinegar) || isNaN(costEurV) || isNaN(heightMm)) return this.notify("Rellene todos los datos numéricos del ensayo.", "warning");
-        if(this.hasForbiddenWords(bottle)) return;
+        if(this.hasForbiddenWords(bottle, 'Banco de Pruebas (Fuselaje)', elBottle)) return;
         if(costEurV <= 0) return this.notify("El coste no puede ser cero.", "warning");
 
         // Eficiencia: Milímetros por cada € virtual gastado
@@ -329,9 +329,9 @@ Object.assign(ui, {
         if (!state.user) return;
         const html = `
             <label for="custom-name" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Nombre del Componente</label>
-            <input type="text" id="custom-name" placeholder="Nombre del componente..." class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-xs text-white mb-3 outline-none focus:border-mars-cyan">
+            <input type="text" id="custom-name" placeholder="Nombre del componente..." class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white mb-3 outline-none focus:border-mars-cyan">
             <label for="custom-reason" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Justificación Técnica</label>
-            <textarea id="custom-reason" placeholder="Justificación técnica..." class="w-full bg-slate-900 border border-mars-magenta p-2.5 text-xs text-white h-24 mb-2 outline-none focus:border-mars-cyan"></textarea>
+            <textarea id="custom-reason" placeholder="Justificación técnica..." class="w-full bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white h-24 mb-2 outline-none focus:border-mars-cyan"></textarea>
         `;
         const actions = `<button type="button" onclick="ui.submitCustom()" class="min-h-[44px] bg-mars-magenta text-white px-5 py-2.5 text-xs font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Enviar a Claustro</button>`;
         this.showModal("Solicitar I+D Especial", html, actions);
@@ -346,7 +346,7 @@ Object.assign(ui, {
         const name = this.cleanInput(elName.value);
         const reason = this.cleanInput(elReason.value);
         if(!name || !reason) return this.notify("Rellene todos los campos.", "warning");
-        if(this.hasForbiddenWords(name) || this.hasForbiddenWords(reason)) {
+        if(this.hasForbiddenWords(name, 'I+D Especial (Nombre)', elName) || this.hasForbiddenWords(reason, 'I+D Especial (Justificación)', elReason)) {
             return;
         }
         

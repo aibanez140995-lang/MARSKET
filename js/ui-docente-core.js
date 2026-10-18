@@ -108,19 +108,19 @@ Object.assign(ui, {
                     </div>
                     <div>
                         <label for="dl-brandIdentity_apr" class="text-xs text-slate-300 uppercase font-bold block mb-1">Identidad de Marca - Abril (LYE)</label>
-                        <input type="datetime-local" id="dl-brandIdentity_apr" value="${this.escapeHTML(dl.brandIdentity_apr || '')}" class="min-h-[44px] w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none">
+                        <input type="datetime-local" id="dl-brandIdentity_apr" value="${this.escapeHTML(dl.brandIdentity_apr || '')}" class="min-h-[44px] w-full bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none">
                     </div>
                     <div>
                         <label for="dl-businessModelDoc" class="text-xs text-slate-300 uppercase font-bold block mb-1">Business Model Escrito (LYE)</label>
-                        <input type="datetime-local" id="dl-businessModelDoc" value="${this.escapeHTML(dl.businessModelDoc || '')}" class="min-h-[44px] w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none">
+                        <input type="datetime-local" id="dl-businessModelDoc" value="${this.escapeHTML(dl.businessModelDoc || '')}" class="min-h-[44px] w-full bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none">
                     </div>
                     <div>
                         <label for="dl-investorDossier" class="text-xs text-slate-300 uppercase font-bold block mb-1">Dossier para Inversores (Lengua)</label>
-                        <input type="datetime-local" id="dl-investorDossier" value="${this.escapeHTML(dl.investorDossier || '')}" class="min-h-[44px] w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none">
+                        <input type="datetime-local" id="dl-investorDossier" value="${this.escapeHTML(dl.investorDossier || '')}" class="min-h-[44px] w-full bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none">
                     </div>
                     <div>
                         <label for="dl-balanceSheet" class="text-xs text-slate-300 uppercase font-bold block mb-1">Balance de Situación (Economía)</label>
-                        <input type="datetime-local" id="dl-balanceSheet" value="${this.escapeHTML(dl.balanceSheet || '')}" class="min-h-[44px] w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none">
+                        <input type="datetime-local" id="dl-balanceSheet" value="${this.escapeHTML(dl.balanceSheet || '')}" class="min-h-[44px] w-full bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none">
                     </div>
                     <button onclick="ui.saveDeadlines()" class="min-h-[44px] w-full bg-mars-cyan text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-all mt-4">Actualizar Plazos Oficiales</button>
                     <p class="text-xs text-slate-300 mt-2">* Para editar los 19 plazos completos, ve a la pestaña "Startups & PINs".</p>
