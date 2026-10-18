@@ -107,6 +107,10 @@
         .zoom-in {
             animation: marsZoomIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
+        .break-words {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
         :focus-visible {
             outline: 2px solid #00f0ff !important;
             outline-offset: 2px !important;
@@ -121,10 +125,10 @@
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between selection:bg-mars-cyan selection:text-black">
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-mars-cyan selection:text-black">
 
     <!-- CONTENEDOR PRINCIPAL -->
-    <div class="max-w-7xl mx-auto w-full p-2 sm:p-4 flex-grow flex flex-col">
+    <div class="max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden p-2 sm:p-4 flex-grow flex flex-col">
         
         <!-- HEADER HUD (FASE 1 v1.0.17: LÍNEA ÚNICA RESPONSIVA COMPACTA) -->
         <header id="hud-header" class="hidden terminal-border bg-mars-card/95 backdrop-blur-md p-3 sm:p-4 mb-3 sm:mb-4 border-b-2 border-b-mars-cyan sticky top-0 z-40">
@@ -175,7 +179,7 @@
         </nav>
 
         <!-- VIEWPORT PRINCIPAL DINÁMICO -->
-        <main id="viewport" class="w-full flex-grow flex flex-col justify-start"></main>
+        <main id="viewport" class="w-full min-w-0 overflow-x-hidden flex-grow flex flex-col justify-start"></main>
 
     </div>
 
