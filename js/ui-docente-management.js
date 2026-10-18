@@ -1,25 +1,24 @@
 // js/ui-docente-management.js
-// --- MÓDULO DOCENTE COMPLETO: DASHBOARD, LLAVERO MAESTRO, 19 PLAZOS, TELEMETRÍA, HR Y CATÁLOGO (v1.0.18) ---
+// --- MÓDULO DOCENTE: GESTIÓN, LLAVERO MAESTRO, ADUANAS Y REGISTRO MERCANTIL (v1.0.17) ---
 
 Object.assign(ui, {
     renderAdminDash() {
         let globalReal = 0;
         for (let c in state.data.companies) {
             const co = state.data.companies[c];
-            if (!co) continue;
-            co.realCosts = Array.isArray(co.realCosts) ? co.realCosts : [];
+            co.realCosts = co.realCosts || [];
             globalReal += co.realCosts.reduce((s, i) => s + (Number(i.eur) || 0), 0);
         }
         
-        const isCoord = state.user && state.user.role.startsWith('COORD');
+        const isCoord = state.user.role.startsWith('COORD');
         const canSponsor = state.data.config.teachers[state.user.role]?.canSponsor === true;
 
-        state.data.b2bContracts = Array.isArray(state.data.b2bContracts) ? state.data.b2bContracts : [];
+        state.data.b2bContracts = state.data.b2bContracts || [];
         const pendingB2B = state.data.b2bContracts.filter(c => c.status === 'PENDIENTE_ADUANA');
         
         const pendingBrands = Object.keys(state.data.companies).filter(cid => {
             const co = state.data.companies[cid];
-            return co && co.brandApproval && co.brandApproval.status === 'PENDIENTE';
+            return co.brandApproval && co.brandApproval.status === 'PENDIENTE';
         });
 
         const pendingNameChanges = Object.keys(state.data.companies).filter(cid => {
@@ -27,45 +26,39 @@ Object.assign(ui, {
             return co && co.nameChangeRequest && co.nameChangeRequest.status === 'PENDIENTE';
         });
 
-        const pendingAuxRequests = Object.keys(state.data.companies).filter(cid => {
-            const co = state.data.companies[cid];
-            return co && co.auxRoleRequest && co.auxRoleRequest.status === 'PENDIENTE';
-        });
-
         const incidents = (state.data.securityIncidents || []).filter(i => !i.resolved);
 
-        // 1. MONITOR DE ALERTAS LÉXICAS
         let incidentsHtml = '';
         if (incidents.length > 0 && isCoord) {
             incidentsHtml = `
-            <div class="terminal-border bg-black p-4 sm:p-6 mb-6 shadow-lg relative overflow-hidden border-t-4 border-t-red-600">
-                <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-2 flex-wrap gap-2">
+            <div class="terminal-border bg-red-900/20 p-6 mb-6 border-t-4 border-t-red-600 animate-pulse shadow-[0_0_15px_rgba(255,0,0,0.2)]">
+                <div class="flex justify-between items-center mb-4 border-b border-red-900/50 pb-2 flex-wrap gap-2">
                     <div>
-                        <h3 class="font-orbitron text-white text-xs sm:text-sm uppercase tracking-widest">🚨 Monitor de Alertas Léxicas</h3>
-                        <p class="text-[9px] text-slate-400 uppercase mt-0.5">Filtro de seguridad: Intercepciones de Nombres Propios o Lenguaje Soez.</p>
+                        <h3 class="font-orbitron text-red-500 text-xs sm:text-sm uppercase tracking-widest">🚨 Alertas Disciplinarias (Filtro Léxico)</h3>
+                        <p class="text-[9px] text-red-300 uppercase mt-0.5">El sistema ha bloqueado intentos de uso de lenguaje prohibido (nombres o insultos).</p>
                     </div>
-                    <span class="bg-red-600 text-white px-3 py-1 text-[10px] font-black uppercase">${incidents.length} Registros Activos</span>
+                    <span class="bg-red-600 text-white px-3 py-1 text-[10px] font-black uppercase">${incidents.length} Infracciones</span>
                 </div>
                 <div class="space-y-3 max-h-80 overflow-y-auto pr-2">
                     ${incidents.map(inc => {
                         const coName = state.data.companies[inc.coId]?.name || 'Desconocida';
                         const isName = inc.severity === 'NAME';
-                        const colors = isName ? 'border-mars-yellow bg-mars-yellow/5' : 'border-red-800 bg-red-900/20';
+                        const colors = isName ? 'border-mars-yellow bg-mars-yellow/5' : 'border-red-800 bg-black';
                         const titleColor = isName ? 'text-mars-yellow' : 'text-red-500';
                         const label = isName ? '⚠️ AVISO LÉXICO (USO NOMBRE PROPIO)' : '🚨 INFRACCIÓN GRAVE (LENGUAJE SOEZ)';
 
                         return `
-                        <div class="border ${colors} p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-[10px]">
+                        <div class="${colors} p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-[10px]">
                             <div>
                                 <span class="${titleColor} font-bold uppercase text-[9px]">${label}</span><br>
-                                <span class="text-white font-bold uppercase mt-1 inline-block">${coName} (${(inc.role||'').replace('_',' ')})</span>
-                                <span class="text-slate-500 ml-2 font-mono">${inc.date}</span>
-                                <p class="text-white mt-1">Contexto Operativo: <span class="text-mars-cyan">${inc.context}</span></p>
+                                <span class="text-white font-bold uppercase mt-1 inline-block">${coName} (${inc.role})</span>
+                                <span class="text-slate-500 ml-2">${inc.date}</span>
+                                <p class="text-white mt-1">Contexto: <span class="text-mars-yellow">${inc.context}</span></p>
                                 <p class="text-slate-400 italic mt-1">Texto bloqueado: "${inc.text}"</p>
                             </div>
-                            <div class="flex gap-2 shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
-                                ${!isName ? `<button onclick="ui.modalAEEFine('${inc.coId}')" class="bg-red-800 text-white px-3 py-2 font-black uppercase text-[9px] hover:bg-red-600 transition-colors border border-red-500 shadow-[0_0_8px_red] w-full sm:w-auto">Sancionar (AEE)</button>` : ''}
-                                <button onclick="ui.resolveSecurityIncident('${inc.id}')" class="bg-slate-800 text-slate-300 px-3 py-2 font-black uppercase text-[9px] hover:bg-white hover:text-black transition-colors w-full sm:w-auto">Archivar</button>
+                            <div class="flex gap-2 shrink-0">
+                                ${!isName ? `<button onclick="ui.modalAEEFine('${inc.coId}')" class="bg-red-800 text-white px-3 py-2 font-black uppercase text-[9px] hover:bg-red-600 transition-colors border border-red-500 shadow-[0_0_8px_red]">Abrir Sanción AEE</button>` : ''}
+                                <button onclick="ui.resolveSecurityIncident('${inc.id}')" class="bg-slate-800 text-slate-300 px-3 py-2 font-black uppercase text-[9px] hover:bg-white hover:text-black transition-colors">Archivar</button>
                             </div>
                         </div>`;
                     }).join('')}
@@ -73,7 +66,6 @@ Object.assign(ui, {
             </div>`;
         }
 
-        // 2. REGISTRO MERCANTIL
         let nameCustomsHtml = '';
         if (isCoord && pendingNameChanges.length > 0) {
             nameCustomsHtml = `
@@ -99,42 +91,6 @@ Object.assign(ui, {
                             <div class="flex gap-2">
                                 <button onclick="ui.resolveNameChangeRequest('${cid}', true)" class="flex-1 bg-mars-green text-black px-3 py-2 font-black uppercase text-[9px] hover:bg-white transition-colors">Autorizar</button>
                                 <button onclick="ui.resolveNameChangeRequest('${cid}', false)" class="flex-1 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 font-black uppercase text-[9px] hover:bg-mars-magenta hover:text-white transition-colors">Denegar</button>
-                            </div>
-                        </div>`;
-                    }).join('')}
-                </div>
-            </div>`;
-        }
-
-        // 3. SOLICITUDES DE ROL OBSERVADOR (AUXILIAR)
-        let auxRequestsHtml = '';
-        if (isCoord && pendingAuxRequests.length > 0) {
-            auxRequestsHtml = `
-            <div class="terminal-border bg-mars-card p-6 mb-6 border-t-4 border-t-mars-cyan">
-                <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-2 flex-wrap gap-2">
-                    <div>
-                        <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase tracking-widest">👁️ Solicitudes de Alta: Rol Observador (Auxiliar)</h3>
-                        <p class="text-[9px] text-slate-400 uppercase mt-0.5">Peticiones de los CEOs para activar un 6º puesto vinculado a un departamento.</p>
-                    </div>
-                    <span class="bg-mars-cyan text-black px-3 py-1 text-[10px] font-black uppercase">${pendingAuxRequests.length} Pendiente(s)</span>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    ${pendingAuxRequests.map(cid => {
-                        const co = state.data.companies[cid];
-                        const req = co.auxRoleRequest;
-                        return `
-                        <div class="bg-slate-900 border border-mars-cyan/50 p-4 flex flex-col gap-3 text-[10px]">
-                            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                                <span class="font-orbitron text-white font-bold uppercase text-xs">${co.name}</span>
-                                <span class="text-mars-cyan font-bold uppercase">Dpto: ${req.dept}</span>
-                            </div>
-                            <div class="flex items-center justify-between gap-2">
-                                <label class="text-[9px] text-slate-400 uppercase font-bold">PIN Propuesto (4 dígitos):</label>
-                                <input type="text" id="approve-aux-pin-${cid}" value="${req.pin || '1234'}" maxlength="4" class="w-20 bg-black border border-mars-cyan text-center text-mars-cyan font-mono font-bold p-1.5">
-                            </div>
-                            <div class="flex gap-2 mt-1">
-                                <button onclick="ui.resolveAuxRoleRequest('${cid}', true)" class="flex-1 bg-mars-green text-black px-3 py-2 font-black uppercase text-[9px] hover:bg-white transition-colors">Aprobar Rol Auxiliar</button>
-                                <button onclick="ui.resolveAuxRoleRequest('${cid}', false)" class="flex-1 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 font-black uppercase text-[9px] hover:bg-mars-magenta hover:text-white transition-colors">Denegar</button>
                             </div>
                         </div>`;
                     }).join('')}
@@ -174,7 +130,7 @@ Object.assign(ui, {
                             </div>
                             <div class="flex gap-2 mt-2">
                                 <button onclick="ui.resolveBrandApproval('${cid}')" class="flex-1 bg-mars-green text-black px-3 py-2 font-black uppercase text-[9px] hover:bg-white transition-colors">Aprobar Marca</button>
-                                <button onclick="ui.promptDenyBrand('${cid}')" class="flex-1 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 font-black uppercase text-[9px] hover:bg-mars-magenta hover:text-white transition-colors">Rechazar</button>
+                                <button onclick="ui.promptDenyBrand('${cid}')" class="flex-1 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 font-black uppercase text-[9px] hover:bg-mars-magenta hover:text-white transition-colors">Rechazar (Feedback)</button>
                             </div>
                         </div>`;
                     }).join('') || '<p class="text-slate-600 text-xs italic col-span-full">No hay marcas pendientes de revisión.</p>'}
@@ -219,7 +175,6 @@ Object.assign(ui, {
         return `
         ${incidentsHtml}
         ${nameCustomsHtml}
-        ${auxRequestsHtml}
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
             <div class="lg:col-span-1 terminal-border bg-mars-card p-6 text-center border-t-4 border-t-mars-magenta flex flex-col justify-center">
                 <h3 class="font-orbitron text-mars-magenta text-xs mb-4 uppercase tracking-widest">Inversión FÍSICA CLASE</h3>
@@ -243,10 +198,9 @@ Object.assign(ui, {
                         <tbody>
                             ${Object.keys(state.data.companies).map(cid => {
                                 const c = state.data.companies[cid];
-                                if (!c) return '';
-                                c.realCosts = Array.isArray(c.realCosts) ? c.realCosts : []; 
-                                c.ledger = Array.isArray(c.ledger) ? c.ledger : []; 
-                                const bal = Number(c.balance) || 0;
+                                c.realCosts = c.realCosts || []; 
+                                c.ledger = c.ledger || []; 
+                                
                                 const r = c.realCosts.reduce((s,i)=>s+(Number(i.eur)||0),0);
                                 const virtualSpend = c.ledger.filter(l => l.delta < 0).reduce((s, l) => s + Math.abs(Number(l.delta)||0), 0);
                                 
@@ -267,9 +221,10 @@ Object.assign(ui, {
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
                                     <td class="py-4 font-orbitron text-white font-bold pr-4 flex items-center gap-2">
-                                        <button onclick="ui.showCompanyLogins('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4">${c.name} [${c.classGroup\vert{}\vert{}'A'}]</button>${isCoord ? `<button onclick="ui.promptRenameStartup('${cid}')" title="Renombrar Denominación Social" class="bg-slate-800 text-slate-300 px-1.5 py-0.5 text-[8px] hover:bg-mars-yellow hover:text-black transition-colors rounded-sm">✏️</button>` : ''}
+                                        <button onclick="ui.showCompanyLogins('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4">${c.name} [${c.classGroup||'A'}]</button>
+                                        ${isCoord ? `<button onclick="ui.promptRenameStartup('${cid}')" title="Renombrar Denominación Social" class="bg-slate-800 text-slate-300 px-1.5 py-0.5 text-[8px] hover:bg-mars-yellow hover:text-black transition-colors rounded-sm">✏️</button>` : ''}
                                     </td>
-                                    <td class="py-4 font-mono pr-4"><span class="text-mars-green font-bold">${bal.toFixed(0)} €v</span></td>
+                                    <td class="py-4 font-mono pr-4"><span class="text-mars-green font-bold">${c.balance.toFixed(0)} €v</span></td>
                                     <td class="py-4 font-mono pr-4"><button onclick="ui.modalVirtualSpend('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4" title="Ver desglose detallado">${virtualSpend.toFixed(2)} €v</button></td>
                                     <td class="py-4 font-mono pr-4"><span class="text-mars-magenta">${r.toFixed(2)} €</span></td>
                                     <td class="py-4 pr-4">${sponsorHtml}</td>
@@ -284,100 +239,53 @@ Object.assign(ui, {
             </div>
         </div>
         ${brandCustomsHtml}
-        ${b2bCustomsHtml}
-        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-blue-500 mb-6">
-            <h3 class="font-orbitron text-blue-400 text-xs mb-4 uppercase tracking-widest">Solicitudes de Material Externo / I+D</h3>
-            <div class="space-y-3">
-                ${(state.data.pendingCustom || []).map(p => `
-                <div class="bg-slate-900 border border-mars-border p-3 flex justify-between items-center text-[10px] flex-wrap gap-2">
-                    <div class="flex-grow min-w-[200px]"><p class="text-mars-yellow font-bold uppercase">${state.data.companies[p.company]?.name || 'Desconocida'}</p><p class="text-white font-bold text-xs uppercase">${p.name}</p><p class="text-slate-400 italic">"${p.reason}"</p></div>
-                    <div class="flex gap-2 items-center flex-shrink-0">
-                        <input type="number" id="val-price-${p.id}" class="w-16 bg-black border border-mars-border p-2 text-mars-green text-center font-bold" placeholder="€v">
-                        <button onclick="ui.teacherValidate('${p.id}', true)" class="bg-mars-green text-black px-4 py-2 font-black hover:bg-white transition-colors">OK</button>
-                        <button onclick="ui.teacherValidate('${p.id}', false)" class="text-mars-magenta font-bold px-3 py-2 border border-mars-magenta hover:bg-mars-magenta hover:text-white transition-colors">X</button>
-                    </div>
-                </div>`).join('') || '<p class="text-slate-600 text-xs italic">Nada pendiente.</p>'}
-            </div>
-        </div>`;
+        ${b2bCustomsHtml}`;
     },
 
-    // --- RESTAURACIÓN COMPLETA DEL LLAVERO MAESTRO, STARTUPS Y CRONOGRAMA DE 19 ENTREGABLES ---
     renderAdminStartups() {
-        const isCoord = state.user && state.user.role.startsWith('COORD');
-        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
-        const dl = state.data.config.deadlines || {};
+        const isCoord = state.user.role.startsWith('COORD');
+        
+        const pendingAuxCoIds = Object.keys(state.data.companies).filter(cid => {
+            const co = state.data.companies[cid];
+            return co.auxRoleRequest && co.auxRoleRequest.status === 'PENDIENTE';
+        });
 
-        let createCompanyHtml = '';
-        if (isCoord) {
-            createCompanyHtml = `
+        let auxRequestsHtml = '';
+        if (isCoord && pendingAuxCoIds.length > 0) {
+            auxRequestsHtml = `
             <div class="terminal-border bg-mars-card p-6 mb-6 border-t-4 border-t-mars-green">
-                <h3 class="font-orbitron text-mars-green text-xs sm:text-sm uppercase tracking-widest mb-4 border-b border-mars-border pb-2">➕ Constituir Nueva Startup Aeroespacial</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
-                    <div class="sm:col-span-2">
-                        <label class="text-[9px] text-slate-400 uppercase font-bold block mb-1">Denominación Social</label>
-                        <input type="text" id="new-co-name" placeholder="Ej: Nova Propulsion..." class="w-full bg-slate-900 border border-mars-border p-2.5 text-xs text-white font-orbitron uppercase outline-none focus:border-mars-green">
-                    </div>
+                <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-2 flex-wrap gap-2">
                     <div>
-                        <label class="text-[9px] text-slate-400 uppercase font-bold block mb-1">Capital Inicial (€v)</label>
-                        <input type="number" id="new-co-cap" value="2400" step="100" class="w-full bg-slate-900 border border-mars-border p-2.5 text-xs text-mars-green font-mono font-bold outline-none">
+                        <h3 class="font-orbitron text-mars-green text-xs sm:text-sm uppercase tracking-widest">👁️ Solicitudes de Alta de Rol Auxiliar (Observador)</h3>
+                        <p class="text-[9px] text-slate-400 uppercase mt-0.5">Autoriza las solicitudes de los CEOs y asigna o confirma el PIN de 4 dígitos para el miembro auxiliar.</p>
                     </div>
-                    <div class="flex gap-2">
-                        <div class="w-20">
-                            <label class="text-[9px] text-slate-400 uppercase font-bold block mb-1">Grupo</label>
-                            <select id="new-co-class" class="w-full bg-slate-900 border border-mars-border p-2.5 text-xs text-white font-bold uppercase outline-none">
-                                <option value="A">A</option>
-                                <option value="B">B</option>
-                                <option value="C">C</option>
-                            </select>
-                        </div>
-                        <button onclick="ui.createStartup()" class="flex-grow bg-mars-green text-black font-black px-4 py-2.5 text-[10px] uppercase tracking-widest hover:bg-white transition-all">Crear Startup</button>
-                    </div>
+                    <span class="bg-mars-green/10 border border-mars-green text-mars-green px-3 py-1 text-[10px] font-black uppercase">${pendingAuxCoIds.length} Pendiente(s)</span>
+                </div>
+                <div class="space-y-3">
+                    ${pendingAuxCoIds.map(cid => {
+                        const co = state.data.companies[cid];
+                        const req = co.auxRoleRequest;
+                        return `
+                        <div class="bg-slate-900 border border-mars-green/50 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-[10px]">
+                            <div>
+                                <span class="font-orbitron text-white font-bold text-xs uppercase">${co.name} [Clase${co.classGroup}]</span>
+                                <span class="text-slate-500 ml-2">${req.date || ''}</span>
+                                <p class="text-slate-300 uppercase mt-1">Departamento Vinculado Solicitado: <strong class="text-mars-cyan">${req.dept}</strong></p>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+                                <label class="text-[9px] text-slate-400 uppercase font-bold">PIN:</label>
+                                <input type="text" id="approve-aux-pin-${cid}" maxlength="4" value="${req.pin || '5555'}" class="w-16 bg-black border border-mars-cyan text-center text-mars-green font-mono font-bold p-1.5 outline-none">
+                                <button onclick="ui.resolveAuxRoleRequest('${cid}', true)" class="bg-mars-green text-black px-4 py-2 font-black uppercase text-[9px] hover:bg-white transition-colors">Aprobar y Activar</button>
+                                <button onclick="ui.resolveAuxRoleRequest('${cid}', false)" class="bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 font-black uppercase text-[9px] hover:bg-mars-magenta hover:text-white transition-colors">Denegar</button>
+                            </div>
+                        </div>`;
+                    }).join('')}
                 </div>
             </div>`;
         }
 
-        const rolesList = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'];
-        const companiesCards = Object.keys(state.data.companies).map(cid => {
-            const co = state.data.companies[cid];
-            if (!co) return '';
-            const plainCode = state.getCompanyCode(co);
-
-            const pinsGrid = rolesList.map(r => {
-                const currentPin = state.getRolePin(co, r);
-                return `
-                <div class="bg-black/80 border border-slate-800 p-2 flex flex-col">
-                    <span class="text-[8px] text-slate-400 font-bold uppercase truncate mb-1">${r.replace('_',' ')}</span>
-                    ${isCoord 
-                        ? `<input type="text" value="${currentPin}" maxlength="4" placeholder="----" onchange="ui.updatePIN('${cid}', '${r}', this.value)" class="bg-slate-900 border border-slate-700 text-center text-mars-cyan font-mono font-bold text-xs py-1 outline-none focus:border-mars-cyan">`
-                        : `<span class="font-mono text-mars-cyan font-bold text-xs text-center py-1">${currentPin || 'INACTIVO'}</span>`
-                    }
-                </div>`;
-            }).join('');
-
-            return `
-            <div class="bg-slate-900 border border-mars-border p-4 flex flex-col justify-between">
-                <div>
-                    <div class="flex justify-between items-center border-b border-slate-800 pb-2 mb-3 flex-wrap gap-2">
-                        <div class="flex items-center gap-2">
-                            <span class="bg-mars-cyan/20 border border-mars-cyan text-mars-cyan text-[9px] font-black px-2 py-0.5 uppercase">Grupo ${co.classGroup || 'A'}</span>
-                            <h4 class="font-orbitron text-white font-bold text-xs sm:text-sm uppercase">${co.name}</h4>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-[9px] text-slate-400 uppercase font-bold">Código Acceso:</span>
-                            ${isCoord 
-                                ? `<input type="text" value="${plainCode}" onchange="ui.updateCompanyCode('${cid}', this.value)" class="w-24 bg-black border border-mars-yellow text-mars-yellow font-mono font-black text-xs text-center py-0.5 uppercase">
-                                   <button onclick="ui.regenerateCompanyCode('${cid}')" title="Generar nuevo código" class="bg-slate-800 text-slate-300 px-2 py-0.5 text-[9px] hover:bg-mars-yellow hover:text-black">🔄</button>`
-                                : `<span class="bg-black border border-mars-yellow text-mars-yellow font-mono font-black text-xs px-2 py-0.5">${plainCode}</span>`
-                            }
-                            ${isCoord ? `<button onclick="if(confirm('¿Eliminar definitivamente la startup ${co.name}?')) ui.deleteStartup('${cid}')" class="bg-red-950/60 border border-red-600 text-red-400 px-2 py-0.5 text-[9px] font-bold uppercase hover:bg-red-600 hover:text-white ml-2">🗑️</button>` : ''}
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                        ${pinsGrid}
-                    </div>
-                </div>
-            </div>`;
-        }).join('');
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const dl = state.data.config.deadlines || {};
 
         let coordSettingsHtml = '';
         if (isCoord) {
@@ -425,92 +333,486 @@ Object.assign(ui, {
         }
 
         return `
-        ${createCompanyHtml}
-        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan">
-            <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-2">
-                <div>
-                    <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase tracking-widest">🔑 Llavero Maestro de Startups (Códigos de Empresa y PINs)</h3>
-                    <p class="text-[9px] text-slate-400 uppercase mt-0.5">Credenciales ofuscadas en tránsito. Deja vacío el PIN de AUXILIAR para desactivar dicho puesto.</p>
-                </div>
+        ${auxRequestsHtml}
+        <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+            <div class="xl:col-span-1 terminal-border bg-mars-card p-6 h-fit border-t-4 border-t-mars-cyan">
+                <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Crear Startup</h3>
+                <input type="text" id="new-co-name" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white mb-3 outline-none focus:border-mars-cyan" placeholder="Nombre Corporativo">
+                <input type="number" id="new-co-cap" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white mb-4 outline-none focus:border-mars-cyan" placeholder="Capital (€v)" value="2400">
+                <select id="new-co-class" class="w-full bg-slate-900 border border-mars-border p-3 text-xs text-white mb-4 outline-none focus:border-mars-cyan">
+                    ${['A','B','C','D','E','F'].map(c => `<option value="${c}">Clase ${c}</option>`).join('')}
+                </select>
+                <button onclick="ui.createStartup()" class="w-full bg-mars-cyan text-black font-black py-3 text-[10px] uppercase tracking-widest hover:shadow-[0_0_10px_#00f0ff] transition-shadow">Registrar (2400 €v)</button>
             </div>
-            <div class="space-y-4">
-                ${companiesCards}
+            <div class="xl:col-span-3 terminal-border bg-mars-card p-6 w-full overflow-hidden border-t-4 border-t-mars-yellow">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                    <div>
+                        <h3 class="font-orbitron text-mars-yellow text-xs uppercase tracking-widest">🔑 Llavero Maestro: Códigos de Empresa y PINs</h3>
+                        <p class="text-[8px] text-slate-400 uppercase mt-0.5">Credenciales desencriptadas para soporte directo al alumnado en el aula.</p>
+                    </div>
+                    ${isCoord ? `<button onclick="ui.exportCredentialsCSV()" class="bg-mars-yellow text-black px-3 py-1.5 text-[9px] font-black uppercase hover:bg-white transition-colors shrink-0">[📥 Exportar Llavero CSV]</button>` : ''}
+                </div>
+                <div class="overflow-x-auto w-full">
+                    <table class="w-full text-left text-[9px] whitespace-nowrap min-w-max">
+                        <thead class="text-slate-500 uppercase border-b border-mars-border">
+                            <tr>
+                                <th class="py-2 pr-3">Empresa</th>
+                                <th class="pr-2">Clase</th>
+                                <th class="pr-3 text-mars-yellow">Código Empresa</th>
+                                <th class="pr-2">CEO</th>
+                                <th class="pr-2">TEC</th>
+                                <th class="pr-2">FIN</th>
+                                <th class="pr-2">MKT</th>
+                                <th class="pr-2">OP_IA</th>
+                                <th class="pr-3 text-mars-green">AUX (DPTO)</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${Object.keys(state.data.companies).map(cid => {
+                                const co = state.data.companies[cid];
+                                const coCode = state.getCompanyCode(co);
+                                const auxPin = state.getRolePin(co, 'AUXILIAR');
+                                const auxDept = co.auxRoleDept || '--';
+                                return `
+                                <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
+                                    <td class="py-3 font-orbitron text-white font-bold pr-3"><button onclick="ui.showCompanyLogins('${cid}')" class="text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4">${co.name}</button></td>
+                                    <td class="py-3 text-mars-yellow font-bold pr-2">${co.classGroup}</td>
+                                    <td class="py-3 pr-3">
+                                        ${isCoord ? `
+                                        <div class="flex items-center gap-1">
+                                            <input type="text" maxlength="10" value="${coCode}" onchange="ui.updateCompanyCode('${cid}', this.value)" class="w-20 bg-black border border-mars-yellow text-center text-mars-yellow font-mono font-black p-1 outline-none uppercase">
+                                            <button onclick="ui.regenerateCompanyCode('${cid}')" title="Regenerar código aleatorio" class="bg-slate-800 text-slate-300 px-1.5 py-1 hover:bg-mars-yellow hover:text-black transition-colors">🔄</button>
+                                        </div>` : `<span class="text-slate-500 font-mono">***-****</span>`}
+                                    </td>
+                                    ${['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA'].map(rol => {
+                                        const pinVal = state.getRolePin(co, rol) || '1234';
+                                        return `
+                                        <td class="py-3 pr-2">
+                                            ${isCoord ? `<input type="text" maxlength="4" value="${pinVal}" onchange="ui.updatePIN('${cid}', '${rol}', this.value)" class="w-10 bg-black border border-mars-border text-center text-mars-cyan font-bold p-1 outline-none focus:border-mars-yellow">` : `<span class="text-slate-500">****</span>`}
+                                        </td>`;
+                                    }).join('')}
+                                    <td class="py-3 pr-3">
+                                        ${isCoord ? `
+                                        <div class="flex items-center gap-1">
+                                            <input type="text" maxlength="4" placeholder="----" value="${auxPin}" onchange="ui.updatePIN('${cid}', 'AUXILIAR', this.value)" class="w-10 bg-black border ${auxPin ? 'border-mars-green text-mars-green' : 'border-slate-800 text-slate-600'} text-center font-bold p-1 outline-none focus:border-mars-yellow">
+                                            <span class="text-[8px] text-slate-400 uppercase">[${auxDept}]</span>
+                                        </div>` : `<span class="text-slate-500">****</span>`}
+                                    </td>
+                                    <td class="py-3">${isCoord ? `<button onclick="if(confirm('¿Borrar startup irreversiblemente?')) ui.deleteStartup('${cid}')" class="text-mars-magenta font-bold hover:underline">Eliminar</button>` : `<span class="text-slate-600">Bloqueado</span>`}</td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                ${isCoord ? `<p class="text-[8px] text-slate-500 mt-4 uppercase">* El alumno debe introducir primero el <strong>Código de Empresa</strong> y después el <strong>PIN de 4 dígitos</strong> de su rol. Todas las claves se almacenan cifradas en el navegador.</p>` : `<p class="text-[8px] text-mars-magenta mt-4 uppercase">Solo Coordinación puede visualizar/modificar el Llavero Maestro o eliminar startups.</p>`}
             </div>
         </div>
         ${coordSettingsHtml}`;
     },
 
-    updateDeadline(key, val) {
+    updateCompanyCode(cid, newCode) {
         if (!state.user || !state.user.role.startsWith('COORD')) return;
-        state.data.config.deadlines = state.data.config.deadlines || {};
-        state.data.config.deadlines[key] = val;
-        state.save();
-    },
-
-    updateTeacherPin(roleKey, newPin) {
-        if (!state.user || !state.user.role.startsWith('COORD')) return;
-        const clean = (newPin || '').trim();
-        if (!/^\d{4}$/.test(clean)) return alert("El PIN docente debe tener 4 dígitos numéricos.");
-        if (state.data.config.teachers && state.data.config.teachers[roleKey]) {
-            state.data.config.teachers[roleKey].pin = clean;
-            state.save();
-            alert(`✅ PIN de ${state.data.config.teachers[roleKey].name} actualizado.`);
-        }
-    },
-
-    teacherValidate(pid, isApproved) {
-        state.data.pendingCustom = state.data.pendingCustom || [];
-        const idx = state.data.pendingCustom.findIndex(p => String(p.id) === String(pid));
-        if (idx === -1) return;
-        const req = state.data.pendingCustom[idx];
-
-        if (isApproved) {
-            const priceEl = document.getElementById(`val-price-${pid}`);
-            const price = priceEl ? parseFloat(priceEl.value) : 50;
-            if (isNaN(price) || price <= 0) return alert("Introduce un precio válido en €v para valorar el componente externo.");
-
-            const co = state.data.companies[req.company];
-            if (co) {
-                co.cart = co.cart || [];
-                co.cart.push({
-                    id: 'CUST-' + Date.now().toString().slice(-3),
-                    name: `[I+D EXT] ${req.name}`,
-                    price: price,
-                    unit: 'Unidad',
-                    category: 'I+D Externo',
-                    origin: 'Especial',
-                    qty: 1
-                });
-                ui.pushNotification(req.company, 'TECNICO', `Material externo "${req.name}" aprobado y añadido a tu borrador de carrito por ${price} €v.`, 'success');
-            }
-        } else {
-            ui.pushNotification(req.company, 'TECNICO', `Solicitud de material externo "${req.name}" denegada por el Claustro.`, 'error');
-        }
-
-        state.data.pendingCustom.splice(idx, 1);
+        const clean = (newCode || '').trim().toUpperCase();
+        if (clean.length < 4) return alert("Código demasiado corto.");
+        const co = state.data.companies[cid];
+        if (!co) return;
+        state.setCompanyCode(co, clean);
         state.save();
         this.render();
     },
 
-    resolveNameChangeRequest(cid, isApproved) {
+    regenerateCompanyCode(cid) {
         if (!state.user || !state.user.role.startsWith('COORD')) return;
         const co = state.data.companies[cid];
-        if (!co || !co.nameChangeRequest || co.nameChangeRequest.status !== 'PENDIENTE') return;
-
-        if (isApproved) {
-            const oldName = co.name;
-            co.name = co.nameChangeRequest.proposedName;
-            telemetry.log("GOBERNANZA", `Docente aprobó cambio de nombre de ${oldName} a ${co.name}`);
-            ui.pushNotification(cid, 'CEO', `¡El Registro Mercantil ha aprobado vuestra nueva denominación social: "${co.name}"!`, 'success');
-            alert(`✅ La empresa ${oldName} ahora se llama ${co.name}.`);
-        } else {
-            ui.pushNotification(cid, 'CEO', `El Registro Mercantil ha RECHAZADO la solicitud de cambio a "${co.nameChangeRequest.proposedName}".`, 'error');
-            alert(`❌ Solicitud de renombramiento denegada.`);
-        }
-        
-        co.nameChangeRequest.status = isApproved ? 'APROBADO' : 'RECHAZADO';
+        if (!co) return;
+        const newCode = state.generateCompanyCode(co.name);
+        state.setCompanyCode(co, newCode);
         state.save();
         this.render();
+    },
+
+    exportCredentialsCSV() {
+        if (!state.user || !state.user.role.startsWith('COORD')) return;
+        let csv = "Empresa,Clase,Codigo_Empresa,PIN_CEO,PIN_TECNICO,PIN_FINANZAS,PIN_MARKETING,PIN_OPERACIONES_IA,PIN_AUXILIAR,DPTO_AUXILIAR\n";
+        Object.values(state.data.companies).forEach(co => {
+            const code = state.getCompanyCode(co);
+            const pCeo = state.getRolePin(co, 'CEO') || '';
+            const pTec = state.getRolePin(co, 'TECNICO') || '';
+            const pFin = state.getRolePin(co, 'FINANZAS') || '';
+            const pMkt = state.getRolePin(co, 'MARKETING') || '';
+            const pOps = state.getRolePin(co, 'OPERACIONES_IA') || '';
+            const pAux = state.getRolePin(co, 'AUXILIAR') || 'INACTIVO';
+            const dAux = co.auxRoleDept || 'N/A';
+            csv += `"${co.name}","${co.classGroup || 'A'}","${code}","${pCeo}","${pTec}","${pFin}","${pMkt}","${pOps}","${pAux}","${dAux}"\n`;
+        });
+        this.downloadFile(csv, 'csv', 'marsket_llavero_credenciales_empresas.csv');
+    },
+
+    resolveAuxRoleRequest(cid, isApproved) {
+        if (!state.user || !state.user.role.startsWith('COORD')) return alert("Solo Coordinación puede autorizar el Rol Auxiliar.");
+        const co = state.data.companies[cid];
+        if (!co || !co.auxRoleRequest) return;
+
+        if (isApproved) {
+            const pinInput = document.getElementById(`approve-aux-pin-${cid}`);
+            const finalPin = pinInput ? pinInput.value.trim() : co.auxRoleRequest.pin;
+            if (!/^\d{4}$/.test(finalPin)) return alert("El PIN debe tener exactamente 4 dígitos numéricos.");
+
+            state.setRolePin(co, 'AUXILIAR', finalPin);
+            co.auxRoleDept = co.auxRoleRequest.dept;
+            co.auxRoleRequest.status = 'APROBADO';
+            co.auxRoleRequest.pin = finalPin;
+
+            ui.pushNotification(cid, 'CEO', `Coordinación ha APROBADO el Rol Auxiliar vinculado a ${co.auxRoleDept}. PIN de acceso activado: ${finalPin}`, 'success');
+            state.save();
+            alert(`✅ Rol Auxiliar activado en ${co.name} con PIN ${finalPin}.`);
+        } else {
+            co.auxRoleRequest.status = 'RECHAZADO';
+            ui.pushNotification(cid, 'CEO', `Tu solicitud de alta para el Rol Auxiliar ha sido DENEGADA por Coordinación.`, 'error');
+            state.save();
+            alert(`❌ Solicitud de Rol Auxiliar denegada para ${co.name}.`);
+        }
+        this.render();
+    },
+
+    renderAdminTelemetry() {
+        let matRows = '';
+        Object.keys(state.data.companies).forEach(cid => {
+            const co = state.data.companies[cid];
+            const s = co.loginStats || { totalLogins:0, roles:{} }; 
+            matRows += `<tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
+                <td class="py-3 font-orbitron text-white font-bold pr-4">${co.name}</td>
+                <td class="py-3 font-mono text-mars-cyan font-bold pr-4 text-center border-r border-mars-border/50">${s.totalLogins}</td>`;
+            ['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA'].forEach(r => {
+                const count = s.roles[r]?.count || 0;
+                const color = count > 4 ? 'text-mars-green' : (count > 0 ? 'text-mars-yellow' : 'text-mars-magenta animate-pulse');
+                matRows += `<td class="py-3 font-mono ${color} text-center font-bold px-2">${count}</td>`;
+            });
+            matRows += `</tr>`;
+        });
+
+        return `
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan text-center flex flex-col justify-center">
+                <p class="text-5xl font-orbitron text-mars-cyan">${state.data.telemetry.totalLogins}</p>
+                <p class="text-[9px] text-slate-500 uppercase mt-2 font-bold tracking-widest">Logins Globales</p>
+            </div>
+            <div class="md:col-span-3 terminal-border bg-mars-card p-6 w-full overflow-hidden">
+                <h3 class="font-orbitron text-mars-yellow text-xs mb-4 uppercase tracking-widest">Matriz de Conexiones por Departamento</h3>
+                <div class="overflow-x-auto w-full">
+                    <table class="w-full text-left text-[9px] whitespace-nowrap min-w-max">
+                        <thead class="text-slate-500 uppercase border-b border-mars-border"><tr><th class="py-2 pr-4">Startup</th><th class="pr-4 text-center border-r border-mars-border/50">Total</th><th class="text-center px-2">CEO</th><th class="text-center px-2">TEC</th><th class="text-center px-2">FIN</th><th class="text-center px-2">MKT</th><th class="text-center px-2">OP_IA</th></tr></thead>
+                        <tbody>${matRows}</tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="terminal-border bg-mars-card p-6 overflow-y-auto max-h-[400px]">
+            <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Registro Táctico de Sesiones (Últimas 100)</h3>
+            <div class="space-y-4">
+                ${state.data.telemetry.sessions.map(sess => `
+                <div class="border border-mars-border/50 bg-slate-900/30 p-3 text-[10px]">
+                    <div class="flex justify-between items-center border-b border-mars-border/30 pb-2 mb-2">
+                        <span class="text-mars-cyan font-bold uppercase">${sess.entity} \vert{}${sess.role.replace('_',' ')}</span>
+                        <span class="text-[8px] text-slate-500 bg-black px-2 py-0.5">${sess.timestamp.replace('T',' ').slice(0,19)}</span>
+                    </div>
+                    <ul class="text-slate-300 space-y-1">
+                        ${sess.events.map(ev => `<li class="flex gap-2"><span class="text-mars-yellow shrink-0">[${ev.time}]</span><span class="font-bold text-white shrink-0">${ev.action}:</span><span class="text-slate-400 break-words">${ev.details}</span></li>`).join('') || '<li class="text-slate-600 italic">Sesión sin eventos clave.</li>'}
+                    </ul>
+                </div>`).join('') || '<p class="text-slate-600 text-xs italic">No hay datos de telemetría.</p>'}
+            </div>
+        </div>`;
+    },
+
+    renderAdminHR() {
+        let allReports = [];
+        Object.keys(state.data.companies).forEach(cid => {
+            const co = state.data.companies[cid];
+            (co.inactivityReports || []).forEach(r => allReports.push({...r, cid, coName: co.name}));
+        });
+        allReports.sort((a,b) => b.id.localeCompare(a.id));
+
+        let pendingHR = allReports.filter(r => r.status === 'PENDIENTE').length;
+
+        let reportsHtml = '';
+        if (allReports.length === 0) {
+            reportsHtml = '<p class="text-slate-600 text-xs italic">No hay reportes de inactividad activos en toda la flota.</p>';
+        } else {
+            reportsHtml = allReports.map(r => `
+                <div class="bg-slate-900/50 border ${r.status === 'PENDIENTE' ? 'border-mars-magenta' : 'border-mars-green/50'} p-4 text-[10px] mb-4 transition-colors w-full">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-700 pb-2 mb-3 gap-2">
+                        <span class="font-bold text-white uppercase text-sm">${r.coName}</span>
+                        <span class="text-[9px] text-slate-500 bg-black px-2 py-1">${r.date}</span>
+                    </div>
+                    <div class="flex flex-col sm:flex-row justify-between mb-3 gap-2 bg-black/50 p-2 border border-mars-border/30">
+                        <span class="text-mars-magenta font-bold uppercase">🚨 Reportado: ${r.reportedDept}</span>
+                        <span class="text-slate-400 uppercase">Emisor: ${r.reportingRole.replace('_', ' ')}</span>
+                    </div>
+                    <p class="text-slate-300 italic bg-black p-3 border border-slate-800 mb-3 leading-relaxed">"${r.reason}"</p>
+                    <div class="flex justify-between items-center mt-2 border-t border-slate-800 pt-3">
+                        <span class="text-[10px] font-bold uppercase ${r.status === 'PENDIENTE' ? 'text-mars-magenta animate-pulse' : 'text-mars-green'}">[ESTADO: ${r.status}]</span>
+                        ${r.status === 'PENDIENTE' ? `<button onclick="ui.resolveInactivityReport('${r.cid}', '${r.id}')" class="bg-mars-magenta/20 text-mars-magenta border border-mars-magenta px-4 py-2 font-bold uppercase hover:bg-mars-magenta hover:text-white transition-colors">Marcar Resuelto por Claustro</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        return `
+        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-magenta">
+            <div class="flex justify-between items-center mb-6 border-b border-mars-border/50 pb-4">
+                <h3 class="font-orbitron text-mars-magenta text-lg uppercase tracking-widest">Gestión de Alertas HR (Recursos Humanos)</h3>
+                <span class="bg-mars-magenta/10 text-mars-magenta border border-mars-magenta px-3 py-1 font-bold text-[10px]">${pendingHR} Pendientes</span>
+            </div>
+            <p class="text-[10px] text-slate-400 mb-6 uppercase leading-relaxed">Panel centralizado para la mediación de conflictos interdepartamentales y bloqueos operativos reportados por los alumnos.</p>
+            <div class="space-y-2">
+                ${reportsHtml}
+            </div>
+        </div>`;
+    },
+
+    resolveHRReport(cid, repId) {
+        const co = state.data.companies[cid];
+        if (!co || !Array.isArray(co.inactivityReports)) return;
+        const rep = co.inactivityReports.find(r => r.id === repId);
+        if (rep) {
+            rep.status = 'RESUELTO';
+            state.save();
+            this.render();
+        }
+    },
+
+    renderAdminCatalog() {
+        const cat = Array.isArray(state.data.catalog) ? state.data.catalog : [];
+        const rows = cat.map((item, idx) => `
+            <tr class="border-b border-slate-800 text-[10px]">
+                <td class="py-2 pr-2 font-mono text-slate-400">${item.id}</td>
+                <td class="py-2 pr-2 text-white font-bold uppercase">${item.name}</td>
+                <td class="py-2 pr-2 text-mars-cyan uppercase">${item.category}</td>
+                <td class="py-2 pr-2 text-slate-400">${item.unit} (${item.origin || '--'})</td>
+                <td class="py-2 pr-2">
+                    <input type="number" value="${item.price}" step="0.5" onchange="ui.updateCatalogPrice(${idx}, this.value)" class="w-20 bg-black border border-mars-green text-mars-green font-mono font-bold text-center p-1">
+                </td>
+                <td class="py-2 text-right">
+                    <button onclick="ui.deleteCatalogItem(${idx})" class="text-mars-magenta font-bold px-2 py-1 border border-mars-magenta hover:bg-mars-magenta hover:text-white">X</button>
+                </td>
+            </tr>
+        `).join('');
+
+        return `
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-1 terminal-border bg-mars-card p-6 h-fit border-t-4 border-t-mars-cyan">
+                <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Añadir Nuevo Artículo</h3>
+                <input type="text" id="new-cat-id" placeholder="ID (Ej: F06)" class="w-full bg-slate-900 border border-mars-border p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+                <input type="text" id="new-cat-name" placeholder="Nombre completo" class="w-full bg-slate-900 border border-mars-border p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+                <input type="number" id="new-cat-price" placeholder="Precio (€v)" class="w-full bg-slate-900 border border-mars-border p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+                <input type="text" id="new-cat-unit" placeholder="Unidad (Ej: Unidad, Gramo)" class="w-full bg-slate-900 border border-mars-border p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+                <select id="new-cat-category" class="w-full bg-slate-900 border border-mars-border p-2 text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+                    <option value="Fuselaje">Fuselaje</option>
+                    <option value="Propulsión">Propulsión</option>
+                    <option value="Aerodinámica">Aerodinámica</option>
+                    <option value="Sellado">Sellado</option>
+                    <option value="Externo">Externo</option>
+                </select>
+                <input type="text" id="new-cat-origin" placeholder="Origen (Ej: España)" class="w-full bg-slate-900 border border-mars-border p-2 text-xs text-white mb-4 outline-none focus:border-mars-cyan">
+                <button onclick="ui.addCatalogItem()" class="w-full bg-mars-cyan text-black font-black py-3 text-[10px] uppercase tracking-widest hover:shadow-[0_0_10px_#00f0ff] transition-shadow">Añadir al Catálogo</button>
+            </div>
+            <div class="lg:col-span-2 terminal-border bg-mars-card p-6 w-full overflow-hidden border-t-4 border-t-mars-yellow">
+                <h3 class="font-orbitron text-mars-yellow text-xs mb-4 uppercase tracking-widest">Gestión de Precios</h3>
+                <div class="overflow-x-auto w-full">
+                    <table class="w-full text-left text-[9px] whitespace-nowrap min-w-max">
+                        <thead class="text-slate-500 uppercase border-b border-mars-border">
+                            <tr><th class="py-2 pr-4">ID</th><th class="pr-4">Nombre</th><th class="pr-4">Categoría</th><th class="pr-4">Precio (€v)</th><th>Acción</th></tr>
+                        </thead>
+                        <tbody>
+                            ${state.data.catalog.map(item => `
+                            <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
+                                <td class="py-2 text-slate-400 font-mono pr-4">${item.id}</td>
+                                <td class="py-2 font-bold text-white pr-4">${item.name}</td>
+                                <td class="py-2 text-slate-500 pr-4">${item.category}</td>
+                                <td class="py-2 pr-4">
+                                    <input type="number" id="price-${item.id}" value="${item.price}" class="w-20 bg-black border border-mars-border text-center text-mars-green font-bold p-1 outline-none focus:border-mars-yellow">
+                                </td>
+                                <td class="py-2">
+                                    <button onclick="ui.saveCatalogPrice('${item.id}')" class="bg-mars-yellow/20 text-mars-yellow px-3 py-1 font-bold hover:bg-mars-yellow hover:text-black transition-colors">Guardar</button>
+                                </td>
+                            </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-blue-500 mt-6">
+            <h3 class="font-orbitron text-blue-400 text-xs mb-4 uppercase tracking-widest">Solicitudes de Material Externo / I+D</h3>
+            <div class="space-y-3">
+                ${(state.data.pendingCustom || []).map(p => `
+                <div class="bg-slate-900 border border-mars-border p-3 flex justify-between items-center text-[10px] flex-wrap gap-2">
+                    <div class="flex-grow min-w-[200px]"><p class="text-mars-yellow font-bold uppercase">${state.data.companies[p.company]?.name || 'Desconocida'}</p><p class="text-white font-bold text-xs uppercase">${p.name}</p><p class="text-slate-400 italic">"${p.reason}"</p></div>
+                    <div class="flex gap-2 items-center flex-shrink-0">
+                        <input type="number" id="val-price-${p.id}" class="w-16 bg-black border border-mars-border p-2 text-mars-green text-center font-bold" placeholder="€v">
+                        <button onclick="ui.teacherValidate('${p.id}', true)" class="bg-mars-green text-black px-4 py-2 font-black hover:bg-white transition-colors">OK</button>
+                        <button onclick="ui.teacherValidate('${p.id}', false)" class="text-mars-magenta font-bold px-3 py-2 border border-mars-magenta hover:bg-mars-magenta hover:text-white transition-colors">X</button>
+                    </div>
+                </div>`).join('') || '<p class="text-slate-600 text-xs italic">Nada pendiente.</p>'}
+            </div>
+        </div>`;
+    },
+
+    updateCatalogPrice(idx, val) {
+        const p = parseFloat(val);
+        if (isNaN(p) || p < 0) return;
+        if (state.data.catalog && state.data.catalog[idx]) {
+            state.data.catalog[idx].price = p;
+            state.save();
+        }
+    },
+
+    deleteCatalogItem(idx) {
+        if (!state.data.catalog) return;
+        state.data.catalog.splice(idx, 1);
+        state.save();
+        this.render();
+    },
+
+    addCatalogItem() {
+        const elId = document.getElementById('new-cat-id');
+        const elName = document.getElementById('new-cat-name');
+        const elPrice = document.getElementById('new-cat-price');
+        const elUnit = document.getElementById('new-cat-unit');
+        const elCat = document.getElementById('new-cat-category');
+        const elOrigin = document.getElementById('new-cat-origin');
+
+        if (!elId || !elName || !elPrice || !elUnit || !elCat || !elOrigin) return;
+
+        const id = elId.value.trim().toUpperCase() || ('X' + Math.floor(10+Math.random()*89));
+        const name = elName.value.trim();
+        const price = parseFloat(elPrice.value);
+        const unit = elUnit.value.trim();
+        const category = elCat.value;
+        const origin = elOrigin.value.trim();
+
+        if(!id || !name || isNaN(price) || !unit || !origin) return alert("Rellene todos los campos correctamente.");
+        if(state.data.catalog.find(i => i.id === id)) return alert("El ID ya existe en el catálogo.");
+
+        state.data.catalog.push({ id, name, price, unit, category, origin });
+        state.save();
+        alert("Artículo añadido al catálogo global.");
+        this.render();
+    },
+
+    teacherValidate(pid, ok) {
+        const reqIdx = state.data.pendingCustom.findIndex(p => p.id == pid);
+        if (reqIdx === -1) return;
+        
+        const req = state.data.pendingCustom[reqIdx];
+        const coId = req.company;
+        
+        if(ok) {
+            const elPrice = document.getElementById(`val-price-${pid}`);
+            if (!elPrice) return;
+            const price = parseFloat(elPrice.value);
+            if(!price) return alert("Falta precio €v.");
+            
+            state.data.catalog.unshift({ 
+                id: 'CUST-' + pid, 
+                name: `[ESP] ${req.name}`, 
+                price: price, 
+                unit: 'Especial', 
+                category: 'Externo',
+                origin: 'I+D Local',
+                exclusiveFor: coId
+            });
+            
+            ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial "${req.name}" ha sido APROBADA e integrada al catálogo por ${price} €v.`, 'success');
+        } else {
+            ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial "${req.name}" ha sido DENEGADA por el Claustro.`, 'error');
+        }
+        
+        state.data.pendingCustom.splice(reqIdx, 1); 
+        state.save(); 
+        this.render();
+    },
+
+    createStartup() {
+        const elName = document.getElementById('new-co-name');
+        const elCap = document.getElementById('new-co-cap');
+        const elClass = document.getElementById('new-co-class');
+        if (!elName || !elCap || !elClass) return;
+        
+        const name = elName.value.trim();
+        const cap = parseFloat(elCap.value);
+        const classGroup = elClass.value || 'A';
+        
+        if(!name || isNaN(cap)) return alert("Datos inválidos.");
+        if(ui.hasForbiddenWords(name, 'Creación Startup')) return alert("Nombre corporativo no permitido por el filtro léxico.");
+
+        const cid = 'co_' + Date.now();
+        const generatedCode = state.generateCompanyCode(name);
+
+        const newCo = { 
+            name, balance: cap, logo: null, sponsorAwarded: null, sponsorData: {name: null, logo: null}, valueProposition: "", slogan: "", classGroup,
+            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" },
+            auxRoleRequest: { status: 'INACTIVO', dept: '', pin: '' },
+            roles: {}, authVault: { code: '', roles: {} },
+            aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
+            loginStats: { totalLogins: 0, roles: { CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0} } },
+            deliverables: {}
+        };
+
+        state.setCompanyCode(newCo, generatedCode);
+        ['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA'].forEach(r => state.setRolePin(newCo, r, '1234'));
+
+        state.data.companies[cid] = newCo;
+        state.save(); 
+        alert(`✅ Startup "${name}" creada.\n🔑 Código Privado de Empresa: ${generatedCode}`);
+        this.render();
+    },
+
+    deleteStartup(cid) { 
+        delete state.data.companies[cid]; 
+        state.save(); 
+        this.render(); 
+    },
+
+    updatePIN(coId, role, val) { 
+        if(!state.user.role.startsWith('COORD')) return alert("Solo Coordinación puede modificar PINs.");
+        const clean = (val || '').trim();
+        if (role === 'AUXILIAR' && clean === '') {
+            const co = state.data.companies[coId];
+            if (co) { state.setRolePin(co, 'AUXILIAR', ''); state.save(); this.render(); }
+            return;
+        }
+        if(!/^\d{4}$/.test(clean)) return alert("El PIN debe tener exactamente 4 dígitos numéricos."); 
+        const co = state.data.companies[coId];
+        if (co) { state.setRolePin(co, role, clean); state.save(); }
+    },
+
+    showCompanyLogins(cid) {
+        const co = state.data.companies[cid];
+        if (!co) return;
+        const s = co.loginStats || { totalLogins: 0, roles: {} };
+        
+        let html = `
+        <div class="space-y-4">
+            <div class="bg-slate-900 p-4 border border-mars-cyan text-center">
+                <p class="text-[10px] text-slate-400 uppercase font-bold mb-1">Total Conexiones</p>
+                <p class="text-3xl font-orbitron text-mars-cyan">${s.totalLogins}</p>
+            </div>
+            <table class="w-full text-left text-xs whitespace-nowrap">
+                <thead class="text-slate-500 uppercase border-b border-mars-border">
+                    <tr><th class="py-2">Rol</th><th class="text-right">Logins</th></tr>
+                </thead>
+                <tbody>
+                    ${['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA','AUXILIAR'].map(r => `
+                    <tr class="border-b border-mars-border/30">
+                        <td class="py-2 font-bold text-white">${r}</td>
+                        <td class="py-2 text-right font-mono text-mars-yellow">${s.roles[r]?.count || 0}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>
+        </div>`;
+        this.showModal(`Auditoría Conexiones: ${co.name}`, html, "");
     },
 
     resolveSecurityIncident(id) {
@@ -541,7 +843,6 @@ Object.assign(ui, {
         co.brandApproval.status = 'RECHAZADO';
         co.brandApproval.feedback = reason;
 
-        telemetry.log("ADUANA MARCA", `Rechazada marca de ${co.name}. Motivo: ${reason}`);
         ui.pushNotification(cid, 'MARKETING', `Tu propuesta de marca (Logo/Eslogan) ha sido RECHAZADA por Coordinación. Motivo: ${reason}`, 'error');
         ui.pushNotification(cid, 'CEO', `Propuesta de identidad corporativa rechazada. Revisa el panel de Marketing.`, 'error');
 
@@ -562,7 +863,6 @@ Object.assign(ui, {
         co.brandApproval.pendingSlogan = "";
         co.brandApproval.feedback = "";
 
-        telemetry.log("ADUANA MARCA", `Aprobada marca corporativa de ${co.name}`);
         ui.pushNotification(cid, 'MARKETING', `¡Enhorabuena! Tu logotipo y eslogan han sido APROBADOS por Coordinación y ya son públicos en el HUD.`, 'success');
         ui.pushNotification(cid, 'CEO', `Identidad corporativa aprobada y visible para toda la flota.`, 'success');
 
@@ -766,336 +1066,47 @@ Object.assign(ui, {
         const newName = el.value.trim();
         if (newName.length < 3) return alert("El nombre debe tener al menos 3 caracteres.");
         
+        if (ui.hasForbiddenWords && ui.hasForbiddenWords(newName, 'Edición Nombre Empresa')) return;
+
         const co = state.data.companies[cid];
         if (!co) return;
         const oldName = co.name;
         co.name = newName;
         
-        telemetry.log("GOBERNANZA", `Empresa renombrada de ${oldName} a ${newName}`);
         ui.pushNotification(cid, 'CEO', `Coordinación ha forzado el cambio de denominación social a "${newName}".`, 'warning');
         state.save();
         this.closeModal();
         this.render();
     },
 
-    updateCompanyCode(cid, newCode) {
-        if (!state.user || !state.user.role.startsWith('COORD')) return;
-        const clean = (newCode || '').trim().toUpperCase();
-        if (clean.length < 4) return alert("Código demasiado corto.");
-        const co = state.data.companies[cid];
-        if (!co) return;
-        state.setCompanyCode(co, clean);
-        state.save();
-        this.render();
-    },
-
-    regenerateCompanyCode(cid) {
+    resolveNameChangeRequest(cid, isApproved) {
         if (!state.user || !state.user.role.startsWith('COORD')) return;
         const co = state.data.companies[cid];
-        if (!co) return;
-        const newCode = state.generateCompanyCode(co.name);
-        state.setCompanyCode(co, newCode);
-        state.save();
-        this.render();
-    },
-
-    updatePIN(coId, role, val) { 
-        if(!state.user.role.startsWith('COORD')) return;
-        const clean = (val || '').trim();
-        if (role === 'AUXILIAR' && clean === '') {
-            const co = state.data.companies[coId];
-            if (co) { state.setRolePin(co, 'AUXILIAR', ''); state.save(); this.render(); }
-            return;
-        }
-        if(!/^\d{4}$/.test(clean)) return alert("El PIN debe tener 4 dígitos."); 
-        const co = state.data.companies[coId];
-        if (co) { state.setRolePin(co, role, clean); state.save(); }
-    },
-
-    showCompanyLogins(cid) {
-        const co = state.data.companies[cid];
-        if (!co) return;
-        const s = co.loginStats || { totalLogins: 0, roles: {} };
-        
-        let html = `
-        <div class="space-y-4">
-            <div class="bg-slate-900 p-4 border border-mars-cyan text-center">
-                <p class="text-[10px] text-slate-400 uppercase font-bold mb-1">Total Conexiones</p>
-                <p class="text-3xl font-orbitron text-mars-cyan">${s.totalLogins || 0}</p>
-            </div>
-            <table class="w-full text-left text-xs whitespace-nowrap">
-                <thead class="text-slate-500 uppercase border-b border-mars-border">
-                    <tr><th class="py-2">Rol</th><th class="text-right">Logins</th></tr>
-                </thead>
-                <tbody>
-                    ${['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA','AUXILIAR'].map(r => `
-                    <tr class="border-b border-mars-border/30">
-                        <td class="py-2 font-bold text-white">${r}</td>
-                        <td class="py-2 text-right font-mono text-mars-yellow">${s.roles?.[r]?.count || 0}</td>
-                    </tr>`).join('')}
-                </tbody>
-            </table>
-        </div>`;
-        this.showModal(`Auditoría Conexiones: ${co.name}`, html, "");
-    },
-
-    deleteStartup(cid) { 
-        delete state.data.companies[cid]; 
-        state.save(); 
-        this.render(); 
-    },
-
-    resolveAuxRoleRequest(cid, isApproved) {
-        if (!state.user || !state.user.role.startsWith('COORD')) return;
-        const co = state.data.companies[cid];
-        if (!co || !co.auxRoleRequest) return;
+        if (!co || !co.nameChangeRequest || co.nameChangeRequest.status !== 'PENDIENTE') return;
 
         if (isApproved) {
-            const pinInput = document.getElementById(`approve-aux-pin-${cid}`);
-            const finalPin = pinInput ? pinInput.value.trim() : co.auxRoleRequest.pin;
-            if (!/^\d{4}$/.test(finalPin)) return alert("El PIN debe tener 4 dígitos numéricos.");
-
-            state.setRolePin(co, 'AUXILIAR', finalPin);
-            co.auxRoleDept = co.auxRoleRequest.dept;
-            co.auxRoleRequest.status = 'APROBADO';
-            co.auxRoleRequest.pin = finalPin;
-
-            ui.pushNotification(cid, 'CEO', `Rol Auxiliar APROBADO (${co.auxRoleDept}). PIN: ${finalPin}`, 'success');
-            state.save();
-            alert(`✅ Rol Auxiliar activado en ${co.name}.`);
+            const oldName = co.name;
+            co.name = co.nameChangeRequest.proposedName;
+            ui.pushNotification(cid, 'CEO', `¡El Registro Mercantil ha aprobado vuestra nueva denominación social: "${co.name}"!`, 'success');
+            alert(`✅ La empresa ${oldName} ahora se llama ${co.name}.`);
         } else {
-            co.auxRoleRequest.status = 'RECHAZADO';
-            ui.pushNotification(cid, 'CEO', `Solicitud Rol Auxiliar DENEGADA.`, 'error');
-            state.save();
-            alert(`❌ Solicitud de Rol Auxiliar denegada.`);
+            ui.pushNotification(cid, 'CEO', `El Registro Mercantil ha RECHAZADO la solicitud de cambio a "${co.nameChangeRequest.proposedName}".`, 'error');
+            alert(`❌ Solicitud de renombramiento denegada.`);
         }
-        this.render();
-    },
-
-    renderAdminTelemetry() {
-        const tel = state.data.telemetry || { totalLogins: 0, sessions: [] };
-        const sessions = Array.isArray(tel.sessions) ? tel.sessions : [];
-
-        const rows = sessions.slice(0, 60).map(s => {
-            const evs = Array.isArray(s.events) ? s.events : [];
-            const evHtml = evs.map(e => `<span class="inline-block bg-black border border-slate-800 px-1.5 py-0.5 text-[8px] mr-1 mb-1 text-slate-300"><strong class="text-mars-cyan">${e.action}:</strong> ${e.details} (${e.time})</span>`).join('') || '<span class="text-slate-600 italic text-[8px]">Sin eventos registrados</span>';
-            return `
-            <div class="bg-slate-900 border border-slate-800 p-3 text-[10px]">
-                <div class="flex justify-between items-center border-b border-slate-800 pb-1.5 mb-2 flex-wrap gap-2">
-                    <div>
-                        <span class="text-mars-yellow font-bold uppercase">${s.entity || 'ENTIDAD'}</span>
-                        <span class="text-white font-bold uppercase ml-2">[${s.role || 'ROL'}]</span>
-                    </div>
-                    <span class="text-[8px] text-slate-400 font-mono">${s.sessionId || ''} • ${(s.timestamp||'').replace('T',' ').slice(0,19)}</span>
-                </div>
-                <div class="flex flex-wrap">${evHtml}</div>
-            </div>`;
-        }).join('') || '<p class="text-slate-500 italic text-xs">No hay sesiones registradas en la telemetría.</p>';
-
-        return `
-        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan">
-            <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-2">
-                <div>
-                    <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase tracking-widest">📡 Registro de Telemetría y Auditoría de Sesiones</h3>
-                    <p class="text-[9px] text-slate-400 uppercase mt-0.5">Trazabilidad de accesos y acciones operativas en vivo.</p>
-                </div>
-                <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-3 py-1 text-[10px] font-black uppercase">Total Logins: ${tel.totalLogins || 0}</span>
-            </div>
-            <div class="space-y-2 max-h-[65vh] overflow-y-auto pr-1">
-                ${rows}
-            </div>
-        </div>`;
-    },
-
-    renderAdminHR() {
-        let hrReports = [];
-        for (let cid in state.data.companies) {
-            const co = state.data.companies[cid];
-            if (!co || !Array.isArray(co.inactivityReports)) continue;
-            co.inactivityReports.forEach(r => {
-                hrReports.push({ ...r, coId: cid, coName: co.name });
-            });
-        }
-
-        const hrHtml = hrReports.map(r => `
-            <div class="bg-slate-900 border border-mars-magenta/50 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-[10px]">
-                <div>
-                    <span class="text-mars-magenta font-black uppercase text-[9px]">[${r.status || 'ACTIVO'}] ${r.coName}</span>
-                    <p class="text-white font-bold uppercase mt-1">Denunciante: ${r.authorRole} ➔ Reportado: <span class="text-mars-yellow">${r.targetRole}</span></p>
-                    <p class="text-slate-300 italic mt-1">"${r.reason}"</p>
-                    <span class="text-[8px] text-slate-500 font-mono block mt-1">${r.date}</span>
-                </div>
-                <button onclick="ui.resolveHRReport('${r.coId}', '${r.id}')" class="bg-mars-green text-black font-black px-3 py-2 text-[9px] uppercase hover:bg-white transition-colors shrink-0">Marcar Resuelto</button>
-            </div>
-        `).join('') || '<p class="text-slate-500 italic text-xs">No hay expedientes de inactividad abiertos.</p>';
-
-        const suggs = Array.isArray(state.data.suggestionsToAlex) ? state.data.suggestionsToAlex : [];
-        const suggsHtml = suggs.map(s => `
-            <div class="bg-slate-900 border border-slate-800 p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-[10px]">
-                <div>
-                    <span class="text-mars-yellow font-bold uppercase text-[9px]">[${s.category || 'MEJORA'}] ${s.author}</span>
-                    <span class="text-slate-500 font-mono text-[8px] ml-2">${s.date}</span>
-                    <p class="text-slate-200 italic mt-1">"${s.text}"</p>
-                </div>
-                <select onchange="ui.updateSuggestionStatus('${s.id}', this.value)" class="bg-black border border-mars-cyan text-mars-cyan text-[9px] font-bold uppercase p-1.5 outline-none">
-                    <option value="RECIBIDO" ${s.status==='RECIBIDO'?'selected':''}>RECIBIDO</option>
-                    <option value="EN_REVISION" ${s.status==='EN_REVISION'?'selected':''}>EN REVISIÓN</option>
-                    <option value="IMPLEMENTADO" ${s.status==='IMPLEMENTADO'?'selected':''}>IMPLEMENTADO</option>
-                </select>
-            </div>
-        `).join('') || '<p class="text-slate-500 italic text-xs">No hay reportes en el Buzón de Desarrollo.</p>';
-
-        return `
-        <div class="space-y-6">
-            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-magenta">
-                <h3 class="font-orbitron text-mars-magenta text-xs sm:text-sm uppercase tracking-widest mb-4 border-b border-mars-border pb-2">🚨 Expedientes de Inactividad (Recursos Humanos)</h3>
-                <div class="space-y-3">${hrHtml}</div>
-            </div>
-            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow">
-                <h3 class="font-orbitron text-mars-yellow text-xs sm:text-sm uppercase tracking-widest mb-4 border-b border-mars-border pb-2">💡 Buzón Directo de Desarrollo y Sugerencias</h3>
-                <div class="space-y-2 max-h-96 overflow-y-auto pr-1">${suggsHtml}</div>
-            </div>
-        </div>`;
-    },
-
-    resolveHRReport(cid, repId) {
-        const co = state.data.companies[cid];
-        if (!co || !Array.isArray(co.inactivityReports)) return;
-        co.inactivityReports = co.inactivityReports.filter(r => r.id !== repId);
-        state.save();
-        this.render();
-    },
-
-    updateSuggestionStatus(sugId, newStatus) {
-        const s = (state.data.suggestionsToAlex || []).find(x => x.id === sugId);
-        if (s) {
-            s.status = newStatus;
-            state.save();
-            this.render();
-        }
-    },
-
-    renderAdminCatalog() {
-        const cat = Array.isArray(state.data.catalog) ? state.data.catalog : [];
-        const rows = cat.map((item, idx) => `
-            <tr class="border-b border-slate-800 text-[10px]">
-                <td class="py-2 pr-2 font-mono text-slate-400">${item.id}</td>
-                <td class="py-2 pr-2 text-white font-bold uppercase">${item.name}</td>
-                <td class="py-2 pr-2 text-mars-cyan uppercase">${item.category}</td>
-                <td class="py-2 pr-2 text-slate-400">${item.unit} (${item.origin || '--'})</td>
-                <td class="py-2 pr-2">
-                    <input type="number" value="${item.price}" step="0.5" onchange="ui.updateCatalogPrice(${idx}, this.value)" class="w-20 bg-black border border-mars-green text-mars-green font-mono font-bold text-center p-1">
-                </td>
-                <td class="py-2 text-right">
-                    <button onclick="ui.deleteCatalogItem(${idx})" class="text-mars-magenta font-bold px-2 py-1 border border-mars-magenta hover:bg-mars-magenta hover:text-white">X</button>
-                </td>
-            </tr>
-        `).join('');
-
-        return `
-        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow mb-6">
-            <h3 class="font-orbitron text-mars-yellow text-xs sm:text-sm uppercase tracking-widest mb-4 border-b border-mars-border pb-2">➕ Añadir Suministro al Catálogo Oficial (B2C)</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
-                <div>
-                    <label class="text-[8px] text-slate-400 uppercase font-bold block mb-1">ID (Ej: F03)</label>
-                    <input type="text" id="cat-new-id" class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white uppercase">
-                </div>
-                <div class="sm:col-span-2">
-                    <label class="text-[8px] text-slate-400 uppercase font-bold block mb-1">Nombre del Componente</label>
-                    <input type="text" id="cat-new-name" class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white">
-                </div>
-                <div>
-                    <label class="text-[8px] text-slate-400 uppercase font-bold block mb-1">Precio (€v)</label>
-                    <input type="number" id="cat-new-price" value="25" step="1" class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-mars-green font-mono font-bold">
-                </div>
-                <button onclick="ui.addCatalogItem()" class="bg-mars-yellow text-black font-black py-2 px-4 text-[10px] uppercase tracking-widest hover:bg-white transition-all">Añadir Pieza</button>
-            </div>
-        </div>
-
-        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan">
-            <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase tracking-widest mb-4 border-b border-mars-border pb-2">🛒 Suministros Activos en SUPERMARS-KET</h3>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left whitespace-nowrap">
-                    <thead class="text-[9px] text-slate-500 uppercase border-b border-mars-border">
-                        <tr><th class="py-2">ID</th><th>Componente</th><th>Categoría</th><th>Medida / Origen</th><th>Precio (€v)</th><th class="text-right">Acción</th></tr>
-                    </thead>
-                    <tbody>${rows}</tbody>
-                </table>
-            </div>
-        </div>`;
-    },
-
-    updateCatalogPrice(idx, val) {
-        const p = parseFloat(val);
-        if (isNaN(p) || p < 0) return;
-        if (state.data.catalog && state.data.catalog[idx]) {
-            state.data.catalog[idx].price = p;
-            state.save();
-        }
-    },
-
-    deleteCatalogItem(idx) {
-        if (!state.data.catalog) return;
-        state.data.catalog.splice(idx, 1);
-        state.save();
-        this.render();
-    },
-
-    addCatalogItem() {
-        const id = document.getElementById('cat-new-id')?.value.trim().toUpperCase() || ('X' + Math.floor(10+Math.random()*89));
-        const name = document.getElementById('cat-new-name')?.value.trim();
-        const price = parseFloat(document.getElementById('cat-new-price')?.value);
-        if (!name || isNaN(price)) return alert("Completa nombre y precio válido.");
-
-        state.data.catalog = state.data.catalog || [];
-        state.data.catalog.push({ id, name, price, unit: 'Unidad', category: 'General', origin: 'ESA / Francia' });
-        state.save();
-        this.render();
-    },
-
-    createStartup() {
-        const elName = document.getElementById('new-co-name');
-        const elCap = document.getElementById('new-co-cap');
-        const elClass = document.getElementById('new-co-class');
-        if (!elName || !elCap || !elClass) return;
         
-        const name = elName.value.trim();
-        const cap = parseFloat(elCap.value);
-        const classGroup = elClass.value || 'A';
-        
-        if(!name || isNaN(cap)) return alert("Datos inválidos.");
-        if(ui.hasForbiddenWords(name, 'Creación Startup')) return;
-
-        const cid = 'co_' + Date.now();
-        const generatedCode = state.generateCompanyCode(name);
-
-        const newCo = { 
-            name, balance: cap, logo: null, sponsorAwarded: null, sponsorData: {name: null, logo: null}, valueProposition: "", slogan: "", classGroup,
-            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" },
-            auxRoleRequest: { status: 'INACTIVO', dept: '', pin: '' },
-            roles: {}, authVault: { code: '', roles: {} },
-            aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
-            loginStats: { totalLogins: 0, roles: { CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0} } },
-            deliverables: {}
-        };
-
-        state.setCompanyCode(newCo, generatedCode);
-        ['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA'].forEach(r => state.setRolePin(newCo, r, '1234'));
-
-        state.data.companies[cid] = newCo;
-        state.save(); 
-        alert(`✅ Startup "${name}" creada.\n🔑 Código Empresa: ${generatedCode}`);
+        co.nameChangeRequest.status = isApproved ? 'APROBADO' : 'RECHAZADO';
+        state.save();
         this.render();
     },
 
     modalAEEFine(cid) {
         const co = state.data.companies[cid];
         if (!co) return;
-        const agency = REGULATORY_AGENCIES[state.user.role] || "Agencia Reguladora";
+        const agency = REGULATORY_AGENCIES[state.user.role] || "Agencia Reguladora Central";
         const html = `
             <div class="space-y-4">
                 <div class="bg-mars-magenta/10 border border-mars-magenta p-3 text-center mb-4">
-                    <p class="text-[9px] text-mars-magenta uppercase font-bold tracking-widest">Organismo Sancionador</p>
+                    <p class="text-[9px] text-mars-magenta uppercase font-bold tracking-widest">Organismo Sancionador Competente</p>
                     <p class="text-white font-bold text-xs uppercase mt-1">${agency}</p>
                 </div>
                 <div>
@@ -1105,11 +1116,12 @@ Object.assign(ui, {
                         <option value="Art. 12: Incumplimiento de cronograma y plazos oficiales">Art. 12: Incumplimiento Plazos</option>
                         <option value="Art. 18: Inconsistencia o defecto en justificación técnica/química">Art. 18: Defecto Técnico</option>
                         <option value="Art. 24: Anomalía en balance o trazabilidad contable">Art. 24: Anomalía Contable</option>
+                        <option value="Art. 31: Falta de rigor en protocolo de seguridad de vuelo">Art. 31: Brecha Seguridad Vuelo</option>
                     </select>
                 </div>
                 <div>
                     <label class="text-[9px] text-mars-magenta uppercase font-bold block mb-1">Dictamen del Inspector</label>
-                    <textarea id="aee-reason" class="w-full bg-slate-900 border border-mars-magenta/50 p-2 text-xs text-white h-20 outline-none focus:border-mars-magenta"></textarea>
+                    <textarea id="aee-reason" class="w-full bg-slate-900 border border-mars-magenta/50 p-2 text-xs text-white h-20 outline-none focus:border-mars-magenta" placeholder="Describa el motivo específico de la sanción..."></textarea>
                 </div>
                 <div>
                     <label class="text-[9px] text-mars-magenta uppercase font-bold block mb-1">Cuantía de la Multa</label>
@@ -1131,29 +1143,35 @@ Object.assign(ui, {
         const elAmount = document.getElementById('aee-amount');
         if (!elArticle || !elReason || !elAmount) return;
         
+        const article = elArticle.value;
         const reason = elReason.value.trim();
-        if(!reason) return alert("Dictamen obligatorio.");
+        const amount = parseFloat(elAmount.value);
+        if(!reason) return alert("El dictamen del inspector es obligatorio.");
         
         const co = state.data.companies[cid];
         if (!co) return;
         
-        co.sanctions = Array.isArray(co.sanctions) ? co.sanctions : [];
-        co.crisisAlerts = Array.isArray(co.crisisAlerts) ? co.crisisAlerts : [];
+        const agency = REGULATORY_AGENCIES[state.user.role] || "Agencia Reguladora Central";
+        
+        co.sanctions = co.sanctions || [];
+        co.crisisAlerts = co.crisisAlerts || [];
         
         const sanctionObj = {
             id: 'SANC-' + Date.now(),
             date: new Date().toLocaleString(),
-            agency: REGULATORY_AGENCIES[state.user.role] || "AEE",
-            article: elArticle.value,
+            agency: agency,
+            article: article,
             reason: reason,
-            amount: parseFloat(elAmount.value)
+            amount: amount
         };
         
         co.sanctions.unshift(sanctionObj);
         co.crisisAlerts.unshift({ ...sanctionObj, read: false });
         
-        state.addToLedger(cid, `[MULTA] ${sanctionObj.agency} - ${sanctionObj.article}`, 'DOCENTE_AEE', sanctionObj.amount);
-        ui.pushNotification(cid, 'CEO', `NUEVA SANCIÓN RECIBIDA (${sanctionObj.amount} €v). Revisa Gobernanza urgente.`, 'error');
+        const concept = `[MULTA] ${agency} - ${article}`;
+        state.addToLedger(cid, concept, 'DOCENTE_AEE', amount);
+        
+        ui.pushNotification(cid, 'CEO', `NUEVA SANCIÓN RECIBIDA (${amount} €v). Revisa la Ventanilla Legal urgentemente.`, 'error');
         
         this.closeModal();
         this.render();
