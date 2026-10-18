@@ -1,5 +1,5 @@
 // js/state.js
-// --- GESTIÓN DE ESTADO, MIGRACIÓN (19 PLAZOS LWW), CIFRADO Y PERSISTENCIA (v1.0.17) ---
+// --- GESTIÓN DE ESTADO, MIGRACIÓN (19 PLAZOS LWW), CIFRADO Y PERSISTENCIA AISLADA (v1.0.17) ---
 
 const state = {
     data: {}, user: null, pin: '', sessionData: null,
@@ -8,7 +8,6 @@ const state = {
     isCloudOnline: false, isSyncing: false, syncTimer: null,
     _vaultKey: 'MARS_AEE_2026_SECRET_KEY',
 
-    // Motor de Ofuscación Simétrica
     encodeSecret(str) {
         if (!str) return '';
         const s = String(str);
@@ -81,21 +80,21 @@ const state = {
     },
 
     migrate(d) {
-        d.version = d.version || 1; 
+        d = d || {};
+        d.version = Number(d.version) || 1; 
         d.lastUpdated = d.lastUpdated || Date.now();
         d.config = d.config || JSON.parse(JSON.stringify(INITIAL_DATA.config));
         d.catalog = d.catalog && d.catalog.length > 0 ? d.catalog : JSON.parse(JSON.stringify(INITIAL_DATA.catalog));
         d.companies = d.companies || JSON.parse(JSON.stringify(INITIAL_DATA.companies));
         d.telemetry = d.telemetry || { totalLogins: 0, sessions: [] };
-        d.telemetry.sessions = d.telemetry.sessions || [];
+        d.telemetry.sessions = Array.isArray(d.telemetry.sessions) ? d.telemetry.sessions : [];
 
-        d.suggestionsToAlex = d.suggestionsToAlex || [];
-        d.pendingCustom = d.pendingCustom || [];
-        d.b2bMarket = d.b2bMarket || [];
-        d.b2bContracts = d.b2bContracts || [];
-        d.securityIncidents = d.securityIncidents || [];
+        d.suggestionsToAlex = Array.isArray(d.suggestionsToAlex) ? d.suggestionsToAlex : [];
+        d.pendingCustom = Array.isArray(d.pendingCustom) ? d.pendingCustom : [];
+        d.b2bMarket = Array.isArray(d.b2bMarket) ? d.b2bMarket : [];
+        d.b2bContracts = Array.isArray(d.b2bContracts) ? d.b2bContracts : [];
+        d.securityIncidents = Array.isArray(d.securityIncidents) ? d.securityIncidents : [];
         
-        // FASE 3: Migración e inicialización de los 19 plazos de entrega
         d.config.deadlines = d.config.deadlines || {};
         if (typeof DELIVERABLES_DEF !== 'undefined') {
             DELIVERABLES_DEF.forEach(def => {
@@ -112,6 +111,7 @@ const state = {
         }
 
         d.config.guidelines = d.config.guidelines || { techReportDocUrl: "", techReportNotes: "" };
+        d.config.teachers = d.config.teachers || JSON.parse(JSON.stringify(INITIAL_DATA.config.teachers));
         
         if(d.config.teachers.COORD) {
             delete d.config.teachers.COORD;
@@ -137,7 +137,10 @@ const state = {
 
         for(let k in d.companies) {
             let co = d.companies[k];
+            if (!co) continue;
             
+            co.name = co.name || k.toUpperCase();
+            co.balance = !isNaN(Number(co.balance)) ? Number(co.balance) : 2400;
             co.updatedAt = co.updatedAt || Date.now();
             co.roles = co.roles || { CEO:'1234', TECNICO:'1234', FINANZAS:'1234', MARKETING:'1234', OPERACIONES_IA:'1234' };
             
@@ -182,26 +185,26 @@ const state = {
                 if (co.deliverables[docKey] === undefined) co.deliverables[docKey] = null;
             }
 
-            co.flightTests = co.flightTests || [];
-            co.votingMotions = co.votingMotions || [];
-            co.aiPrompts = co.aiPrompts || [];
-            co.ledger = co.ledger || [];
-            co.realCosts = co.realCosts || [];
-            co.cart = co.cart || [];
-            co.orders = co.orders || [];
+            co.flightTests = Array.isArray(co.flightTests) ? co.flightTests : [];
+            co.votingMotions = Array.isArray(co.votingMotions) ? co.votingMotions : [];
+            co.aiPrompts = Array.isArray(co.aiPrompts) ? co.aiPrompts : [];
+            co.ledger = Array.isArray(co.ledger) ? co.ledger : [];
+            co.realCosts = Array.isArray(co.realCosts) ? co.realCosts : [];
+            co.cart = Array.isArray(co.cart) ? co.cart : [];
+            co.orders = Array.isArray(co.orders) ? co.orders : [];
             co.grades = co.grades || {};
             co.slogan = co.slogan || "";
             co.valueProposition = co.valueProposition || "";
             co.logo = co.logo || null;
-            co.bom = co.bom || [];
+            co.bom = Array.isArray(co.bom) ? co.bom : [];
             co.sponsorAwarded = co.sponsorAwarded || null;
-            co.marketingCampaigns = co.marketingCampaigns || [];
-            co.inactivityReports = co.inactivityReports || [];
+            co.marketingCampaigns = Array.isArray(co.marketingCampaigns) ? co.marketingCampaigns : [];
+            co.inactivityReports = Array.isArray(co.inactivityReports) ? co.inactivityReports : [];
             co.sponsorData = co.sponsorData || { name: null, logo: null };
             co.auxRoleDept = co.auxRoleDept || null;
-            co.notifications = co.notifications || [];
-            co.sanctions = co.sanctions || [];
-            co.crisisAlerts = co.crisisAlerts || [];
+            co.notifications = Array.isArray(co.notifications) ? co.notifications : [];
+            co.sanctions = Array.isArray(co.sanctions) ? co.sanctions : [];
+            co.crisisAlerts = Array.isArray(co.crisisAlerts) ? co.crisisAlerts : [];
         }
         return d;
     },
@@ -224,10 +227,10 @@ const state = {
                     merged.companies[k] = JSON.parse(JSON.stringify(lCo));
                 } else {
                     const mergeArrays = (arrServer, arrLocal) => {
-                        if (!arrServer) arrServer = [];
-                        if (!arrLocal) arrLocal = [];
+                        if (!Array.isArray(arrServer)) arrServer = [];
+                        if (!Array.isArray(arrLocal)) arrLocal = [];
                         const serverIds = new Set(arrServer.map(i => String(i.id)));
-                        const missingInServer = arrLocal.filter(i => i.id && !serverIds.has(String(i.id)));
+                        const missingInServer = arrLocal.filter(i => i && i.id && !serverIds.has(String(i.id)));
                         return [...missingInServer, ...arrServer];
                     };
 
@@ -242,9 +245,10 @@ const state = {
         }
         
         const mergeArraysGlobal = (arrS, arrL) => {
-            if(!arrS) arrS = []; if(!arrL) arrL = [];
-            const ids = new Set(arrS.map(i => String(i.id || i.sessionId)));
-            const missing = arrL.filter(i => (i.id || i.sessionId) && !ids.has(String(i.id || i.sessionId)));
+            if(!Array.isArray(arrS)) arrS = [];
+            if(!Array.isArray(arrL)) arrL = [];
+            const ids = new Set(arrS.map(i => String(i?.id || i?.sessionId)));
+            const missing = arrL.filter(i => i && (i.id || i.sessionId) && !ids.has(String(i.id || i.sessionId)));
             return [...missing, ...arrS];
         };
 
@@ -299,7 +303,11 @@ const state = {
             }
         }
         
-        if (typeof ui !== 'undefined' && typeof ui.render === 'function') ui.render();
+        try {
+            if (typeof ui !== 'undefined' && typeof ui.render === 'function') ui.render();
+        } catch (renderErr) {
+            console.error("Error en renderizado inicial:", renderErr);
+        }
         
         setInterval(() => { 
             const el = document.getElementById('hud-clock'); 
@@ -312,25 +320,42 @@ const state = {
     async fetchFromCloud() {
         this.isSyncing = true;
         if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD();
+        let shouldRender = false;
+
         try {
             const res = await fetch('/api/state');
             if(res.ok) {
                 const json = await res.json();
                 if(json && json.status !== 'empty') {
                     localStorage.setItem('marsket_emergency_snapshot', JSON.stringify(this.data));
-                    
                     this.data = this.mergeData(this.migrate(json), this.data);
                     this.data.version = json.version || this.data.version;
                     this.saveLocalOnly();
                     this.isCloudOnline = true;
-                    if (typeof ui !== 'undefined' && ui.render) ui.render();
+                    shouldRender = true;
                 } else if(json && json.status === 'empty') {
                     this.isCloudOnline = true;
                     await this.pushToCloud(false);
                 }
-            } else this.isCloudOnline = false;
-        } catch(err) { this.isCloudOnline = false; } 
-        finally { this.isSyncing = false; if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); }
+            } else {
+                this.isCloudOnline = false;
+            }
+        } catch(err) { 
+            console.error("Error de red en fetchFromCloud:", err);
+            this.isCloudOnline = false; 
+        } finally { 
+            this.isSyncing = false; 
+            if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); 
+        }
+
+        // Renderizado separado del bloque de red para que nunca tumbe la conexión D1
+        if (shouldRender && typeof ui !== 'undefined' && ui.render) {
+            try {
+                ui.render();
+            } catch (uiErr) {
+                console.error("Excepción visual en ui.render():", uiErr);
+            }
+        }
     },
 
     saveLocalOnly() {
@@ -362,18 +387,23 @@ const state = {
             const res = await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             
             if (res.status === 409 || res.status === 412) {
-                console.warn("DATA SAFETY: Colisión detectada en Cloudflare D1. Fusionando estado LWW optimista...");
                 const fetchRes = await fetch('/api/state');
-                
                 if (fetchRes.ok) {
                     const serverData = await fetchRes.json();
                     if (serverData && serverData.status !== 'empty') {
                         this.data = this.mergeData(this.migrate(serverData), this.data);
-                        this.data.version = serverData.version || (this.data.version + 1);
+                        this.data.version = Number(serverData.version || this.data.version) + 1;
                         this.saveLocalOnly();
                         
-                        await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.data) });
-                        if (typeof ui !== 'undefined' && ui.render) ui.render();
+                        const retryRes = await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.data) });
+                        if (retryRes.ok) {
+                            const retryJson = await retryRes.json().catch(() => null);
+                            if (retryJson && retryJson.version) {
+                                this.data.version = retryJson.version;
+                                this.saveLocalOnly();
+                            }
+                        }
+                        try { if (typeof ui !== 'undefined' && ui.render) ui.render(); } catch(e) {}
                     }
                 }
                 this.isCloudOnline = true;
@@ -388,6 +418,7 @@ const state = {
                 this.isCloudOnline = false;
             }
         } catch(err) { 
+            console.error("Error de red en pushToCloud:", err);
             this.isCloudOnline = false; 
         } finally { 
             this.isSyncing = false; 
@@ -398,9 +429,10 @@ const state = {
     addToLedger(coId, concept, dept, delta) {
         const co = this.data.companies[coId];
         if (!co) return; 
-        co.balance += delta;
+        co.balance = (Number(co.balance) || 0) + Number(delta);
         co.updatedAt = Date.now();
-        co.ledger.unshift({ id: 'TX-' + Math.random().toString(36).substr(2, 5).toUpperCase(), date: new Date().toLocaleString(), concept, dept, delta, final: co.balance });
+        co.ledger = co.ledger || [];
+        co.ledger.unshift({ id: 'TX-' + Math.random().toString(36).substr(2, 5).toUpperCase(), date: new Date().toLocaleString(), concept, dept, delta: Number(delta), final: co.balance });
         this.save();
     }
 };
@@ -408,7 +440,7 @@ const state = {
 const telemetry = {
     startSession(entity, role) {
         if (!state.data.telemetry) state.data.telemetry = { totalLogins: 0, sessions: [] };
-        if (!state.data.telemetry.sessions) state.data.telemetry.sessions = [];
+        if (!Array.isArray(state.data.telemetry.sessions)) state.data.telemetry.sessions = [];
         if (isNaN(state.data.telemetry.totalLogins)) state.data.telemetry.totalLogins = 0;
 
         state.data.telemetry.totalLogins++;
@@ -419,6 +451,7 @@ const telemetry = {
     },
     log(action, details) {
         if(!state.sessionData) return;
+        state.sessionData.events = state.sessionData.events || [];
         state.sessionData.events.push({ time: new Date().toLocaleTimeString(), action, details });
         state.save();
     }
