@@ -1,11 +1,12 @@
 // js/state.js
-// --- GESTIÓN DE ESTADO, MIGRACIÓN (19 PLAZOS LWW), CIFRADO Y PERSISTENCIA AISLADA (v1.0.17) ---
+// --- GESTIÓN DE ESTADO, MIGRACIÓN (19 PLAZOS LWW), CIFRADO Y PERSISTENCIA ATÓMICA (v1.0.19) ---
 
 const state = {
-    data: {}, user: null, pin: '', sessionData: null,
+    data: {}, user: null, currentUser: null, pin: '', sessionData: null,
     storageKey: 'marsket_v10_PWA',
     sessionKey: 'marsket_session_v1',
-    isCloudOnline: false, isSyncing: false, syncTimer: null,
+    isCloudOnline: false, isSyncing: false, syncTimer: null, heartbeatTimer: null,
+    consecutiveNetworkFailures: 0, isOfflineContained: false, _listenersAttached: false,
     _vaultKey: 'MARS_AEE_2026_SECRET_KEY',
 
     encodeSecret(str) {
@@ -46,12 +47,17 @@ const state = {
         return co.accessCode || '';
     },
 
-    setCompanyCode(co, newCode) {
+    setCompanyCode(co, newCode, touchTimestamp = true) {
         if (!co) return;
         const clean = String(newCode).trim().toUpperCase();
         co.authVault = co.authVault || { code: '', roles: {} };
         co.authVault.code = this.encodeSecret(clean);
-        delete co.accessCode; 
+        delete co.accessCode;
+        if (touchTimestamp) {
+            const now = Date.now();
+            co.updatedAt = now;
+            co.authUpdatedAt = now;
+        }
     },
 
     getRolePin(co, role) {
@@ -65,7 +71,7 @@ const state = {
         return '';
     },
 
-    setRolePin(co, role, newPin) {
+    setRolePin(co, role, newPin, touchTimestamp = true) {
         if (!co) return;
         co.authVault = co.authVault || { code: '', roles: {} };
         co.authVault.roles = co.authVault.roles || {};
@@ -77,6 +83,29 @@ const state = {
             co.authVault.roles[role] = this.encodeSecret(String(newPin).trim());
             co.roles[role] = 'PROTECTED'; 
         }
+        if (touchTimestamp) {
+            const now = Date.now();
+            co.updatedAt = now;
+            co.authUpdatedAt = now;
+        }
+    },
+
+    getAuthToken(userObj, dataRoot = this.data) {
+        if (!userObj || !dataRoot) return '';
+        if (userObj.admin) {
+            const t = dataRoot.config?.teachers?.[userObj.role];
+            if (!t) return '';
+            const raw = `T|${userObj.role}|${t.pin || ''}|${t.pinUpdatedAt || 0}`;
+            return this.encodeSecret(raw);
+        }
+        const co = dataRoot.companies?.[userObj.coId];
+        if (!co) return '';
+        const code = this.getCompanyCode(co);
+        const pin = this.getRolePin(co, userObj.role);
+        if (!pin) return '';
+        const auxDept = userObj.role === 'AUXILIAR' ? (co.auxRoleDept || '') : '';
+        const raw = `S|${userObj.coId}|${userObj.role}|${code}|${pin}|${auxDept}|${co.authUpdatedAt || 0}`;
+        return this.encodeSecret(raw);
     },
 
     migrate(d) {
@@ -142,6 +171,7 @@ const state = {
             co.name = co.name || k.toUpperCase();
             co.balance = !isNaN(Number(co.balance)) ? Number(co.balance) : 2400;
             co.updatedAt = co.updatedAt || Date.now();
+            co.authUpdatedAt = Number(co.authUpdatedAt) || 0;
             co.roles = co.roles || { CEO:'1234', TECNICO:'1234', FINANZAS:'1234', MARKETING:'1234', OPERACIONES_IA:'1234' };
             
             if(co.roles.QUIMICA || co.roles.AERODINAMICA || co.roles.IA) {
@@ -162,15 +192,15 @@ const state = {
             if (!currentPlainCode) {
                 currentPlainCode = defaultCodes[k] || this.generateCompanyCode(co.name);
             }
-            this.setCompanyCode(co, currentPlainCode);
+            this.setCompanyCode(co, currentPlainCode, false);
 
             const baseRoles = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'];
             baseRoles.forEach(r => {
                 const existingPin = this.getRolePin(co, r);
                 if (existingPin && existingPin !== 'PROTECTED') {
-                    this.setRolePin(co, r, existingPin);
+                    this.setRolePin(co, r, existingPin, false);
                 } else if (!existingPin && r !== 'AUXILIAR') {
-                    this.setRolePin(co, r, '1234');
+                    this.setRolePin(co, r, '1234', false);
                 }
             });
 
@@ -221,6 +251,30 @@ const state = {
         if (!localData) return serverData;
 
         const merged = JSON.parse(JSON.stringify(serverData)); 
+
+        // Resolución LWW para configuración y PINs docentes (evita rebote de PIN en el Claustro)
+        if (localData.config) {
+            merged.config = merged.config || {};
+            if ((localData.config.updatedAt || 0) > (serverData.config?.updatedAt || 0)) {
+                merged.config.deadlines = JSON.parse(JSON.stringify(localData.config.deadlines || merged.config.deadlines || {}));
+                merged.config.guidelines = JSON.parse(JSON.stringify(localData.config.guidelines || merged.config.guidelines || {}));
+                merged.config.updatedAt = localData.config.updatedAt;
+            }
+            if (localData.config.teachers) {
+                merged.config.teachers = merged.config.teachers || {};
+                for (let tk in localData.config.teachers) {
+                    const lT = localData.config.teachers[tk];
+                    const sT = merged.config.teachers[tk];
+                    if (sT && lT) {
+                        if ((lT.pinUpdatedAt || 0) > (sT.pinUpdatedAt || 0)) {
+                            merged.config.teachers[tk] = JSON.parse(JSON.stringify(lT));
+                        }
+                    } else if (lT && !sT) {
+                        merged.config.teachers[tk] = JSON.parse(JSON.stringify(lT));
+                    }
+                }
+            }
+        }
         
         for (let k in localData.companies) {
             const sCo = merged.companies[k];
@@ -229,10 +283,26 @@ const state = {
             if (sCo && lCo) {
                 const sTime = sCo.updatedAt || 0;
                 const lTime = lCo.updatedAt || 0;
+                const sAuthTime = sCo.authUpdatedAt || 0;
+                const lAuthTime = lCo.authUpdatedAt || 0;
                 
                 if (lTime > sTime) {
                     merged.companies[k] = JSON.parse(JSON.stringify(lCo));
+                    if (sAuthTime > lAuthTime) {
+                        merged.companies[k].authVault = JSON.parse(JSON.stringify(sCo.authVault));
+                        merged.companies[k].roles = JSON.parse(JSON.stringify(sCo.roles));
+                        merged.companies[k].auxRoleDept = sCo.auxRoleDept;
+                        merged.companies[k].auxRoleRequest = JSON.parse(JSON.stringify(sCo.auxRoleRequest));
+                        merged.companies[k].authUpdatedAt = sAuthTime;
+                    }
                 } else {
+                    if (lAuthTime > sAuthTime) {
+                        sCo.authVault = JSON.parse(JSON.stringify(lCo.authVault));
+                        sCo.roles = JSON.parse(JSON.stringify(lCo.roles));
+                        sCo.auxRoleDept = lCo.auxRoleDept;
+                        sCo.auxRoleRequest = JSON.parse(JSON.stringify(lCo.auxRoleRequest));
+                        sCo.authUpdatedAt = lAuthTime;
+                    }
                     const mergeArrays = (arrServer, arrLocal) => {
                         if (!Array.isArray(arrServer)) arrServer = [];
                         if (!Array.isArray(arrLocal)) arrLocal = [];
@@ -246,7 +316,7 @@ const state = {
                         sCo[arrName] = mergeArrays(sCo[arrName], lCo[arrName]);
                     });
                 }
-            } else if (lCo && !sCo) {
+            } else if (lCo && !sCo && !localData._deletedCompanies?.[k]) {
                 merged.companies[k] = lCo;
             }
         }
@@ -274,6 +344,114 @@ const state = {
         return merged;
     },
 
+    verifySessionIntegrity(serverOrMergedData = this.data) {
+        if (!this.user) return true;
+        const expectedToken = this.getAuthToken(this.user, serverOrMergedData);
+        const currentToken = this.user.authToken || '';
+        const isEntityValid = this.user.admin
+            ? !!(serverOrMergedData?.config?.teachers?.[this.user.role])
+            : !!(serverOrMergedData?.companies?.[this.user.coId] && this.getRolePin(serverOrMergedData.companies[this.user.coId], this.user.role));
+
+        if (!isEntityValid || !expectedToken || (currentToken && currentToken !== expectedToken)) {
+            clearTimeout(this.syncTimer);
+            this.user = null;
+            this.currentUser = null;
+            this.pin = '';
+            if (typeof auth !== 'undefined') auth.verifiedCoId = null;
+            try { localStorage.removeItem(this.sessionKey); } catch(e) {}
+            try { sessionStorage.clear(); } catch(e) {}
+            document.getElementById('hud-header')?.classList.add('hidden');
+            document.getElementById('hud-nav')?.classList.add('hidden');
+            if (typeof ui !== 'undefined') {
+                ui.current = 'login';
+                if (typeof ui.renderLogin === 'function') ui.renderLogin();
+                else if (typeof ui.render === 'function') ui.render();
+                if (typeof ui.showModal === 'function') {
+                    ui.showModal(
+                        "ALERTA DE SEGURIDAD // SESIÓN REVOCADA",
+                        `<p class="text-xs sm:text-sm text-mars-magenta font-bold leading-relaxed">Sesión finalizada: Las credenciales de acceso han sido modificadas por coordinación.</p>`,
+                        ""
+                    );
+                }
+            }
+            return false;
+        }
+        return true;
+    },
+
+    setOfflineContainment(active) {
+        this.isOfflineContained = !!active;
+        if (typeof ui !== 'undefined' && typeof ui.setOfflineContainment === 'function') {
+            ui.setOfflineContainment(this.isOfflineContained);
+        }
+    },
+
+    async updatePin(coId, role, newPin) {
+        const co = this.data.companies?.[coId];
+        if (!co) return false;
+        clearTimeout(this.syncTimer);
+        const clean = String(newPin || '').trim();
+        this.setRolePin(co, role, clean, true);
+        if (role === 'AUXILIAR' && co.auxRoleRequest) {
+            co.auxRoleRequest.pin = clean;
+            if (!clean) co.auxRoleRequest.status = 'INACTIVO';
+        }
+        this.data.lastUpdated = Date.now();
+
+        if (this.user && !this.user.admin && this.user.coId === coId && this.user.role === role) {
+            const refreshed = { ...this.user, authToken: this.getAuthToken(this.user, this.data) };
+            this.user = Object.freeze(refreshed);
+            this.currentUser = this.user;
+            try { localStorage.setItem(this.sessionKey, JSON.stringify(refreshed)); } catch(e) {}
+        }
+
+        this.saveLocalOnly();
+        const ok = await this.pushToCloud(false);
+        return ok;
+    },
+
+    async updateTeacherPin(teacherKey, newPin) {
+        const t = this.data.config?.teachers?.[teacherKey];
+        if (!t) return false;
+        clearTimeout(this.syncTimer);
+        const now = Date.now();
+        t.pin = String(newPin || '').trim();
+        t.pinUpdatedAt = now;
+        this.data.config.updatedAt = now;
+        this.data.lastUpdated = now;
+
+        // Blindaje del Coordinador Activo: si edita su propio PIN, refresca su authToken en el mismo ciclo
+        if (this.user && this.user.admin && this.user.role === teacherKey) {
+            const refreshed = { ...this.user, authToken: this.getAuthToken(this.user, this.data) };
+            this.user = Object.freeze(refreshed);
+            this.currentUser = this.user;
+            try { localStorage.setItem(this.sessionKey, JSON.stringify(refreshed)); } catch(e) {}
+        }
+
+        this.saveLocalOnly();
+        const ok = await this.pushToCloud(false);
+        return ok;
+    },
+
+    async updateCompanyCode(coId, newCode) {
+        const co = this.data.companies?.[coId];
+        if (!co) return false;
+        clearTimeout(this.syncTimer);
+        this.setCompanyCode(co, newCode, true);
+        this.data.lastUpdated = Date.now();
+
+        if (this.user && !this.user.admin && this.user.coId === coId) {
+            const refreshed = { ...this.user, authToken: this.getAuthToken(this.user, this.data) };
+            this.user = Object.freeze(refreshed);
+            this.currentUser = this.user;
+            try { localStorage.setItem(this.sessionKey, JSON.stringify(refreshed)); } catch(e) {}
+        }
+
+        this.saveLocalOnly();
+        const ok = await this.pushToCloud(false);
+        return ok;
+    },
+
     async init() {
         try {
             const saved = localStorage.getItem(this.storageKey);
@@ -294,7 +472,12 @@ const state = {
                     : !!(this.data.companies && this.data.companies[sessionUser.coId]));
 
                 if (isValid) {
+                    if (!sessionUser.authToken) {
+                        sessionUser.authToken = this.getAuthToken(sessionUser, this.data);
+                        localStorage.setItem(this.sessionKey, JSON.stringify(sessionUser));
+                    }
                     this.user = Object.freeze(sessionUser);
+                    this.currentUser = this.user;
                     document.getElementById('hud-header')?.classList.remove('hidden');
                     document.getElementById('hud-nav')?.classList.remove('hidden');
                     if (typeof auth !== 'undefined' && typeof auth.buildNav === 'function') {
@@ -302,10 +485,12 @@ const state = {
                     }
                 } else {
                     this.user = null;
+                    this.currentUser = null;
                     localStorage.removeItem(this.sessionKey);
                 }
             } catch(e) {
                 this.user = null;
+                this.currentUser = null;
                 localStorage.removeItem(this.sessionKey);
             }
         }
@@ -320,6 +505,40 @@ const state = {
             const el = document.getElementById('hud-clock'); 
             if(el) el.innerText = `TIME: ${new Date().toLocaleTimeString()}`; 
         }, 1000);
+
+        if (!this._listenersAttached) {
+            this._listenersAttached = true;
+            if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+            this.heartbeatTimer = setInterval(() => {
+                if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+                    this.fetchFromCloud();
+                }
+            }, 12000);
+
+            if (typeof document !== 'undefined') {
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') {
+                        this.fetchFromCloud();
+                    }
+                });
+            }
+
+            if (typeof window !== 'undefined') {
+                window.addEventListener('offline', () => {
+                    this.isCloudOnline = false;
+                    this.consecutiveNetworkFailures = Math.max(this.consecutiveNetworkFailures, 1);
+                    this.setOfflineContainment(true);
+                    try { if (this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
+                });
+
+                window.addEventListener('online', async () => {
+                    const ok = await this.fetchFromCloud();
+                    if (ok && this.verifySessionIntegrity(this.data)) {
+                        this.setOfflineContainment(false);
+                    }
+                });
+            }
+        }
         
         await this.fetchFromCloud();
     },
@@ -328,28 +547,48 @@ const state = {
         this.isSyncing = true;
         try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
         let shouldRender = false;
+        let networkOk = false;
 
         try {
-            const res = await fetch('/api/state');
+            const res = await fetch('/api/state', { cache: 'no-store' });
             if(res.ok) {
                 const json = await res.json();
+                networkOk = true;
+                this.consecutiveNetworkFailures = 0;
                 if(json && json.status !== 'empty') {
                     try { localStorage.setItem('marsket_emergency_snapshot', JSON.stringify(this.data)); } catch(e) {}
-                    this.data = this.mergeData(this.migrate(json), this.data);
+                    const merged = this.mergeData(this.migrate(json), this.data);
+                    this.data = merged;
                     this.data.version = json.version || this.data.version;
                     this.saveLocalOnly();
                     this.isCloudOnline = true;
-                    shouldRender = true;
+
+                    const sessionValid = this.verifySessionIntegrity(this.data);
+                    if (sessionValid && this.isOfflineContained) {
+                        this.setOfflineContainment(false);
+                    }
+                    shouldRender = sessionValid;
                 } else if(json && json.status === 'empty') {
                     this.isCloudOnline = true;
+                    if (this.verifySessionIntegrity(this.data) && this.isOfflineContained) {
+                        this.setOfflineContainment(false);
+                    }
                     await this.pushToCloud(false);
                 }
             } else {
                 this.isCloudOnline = false;
+                this.consecutiveNetworkFailures++;
+                if (this.consecutiveNetworkFailures >= 2 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+                    this.setOfflineContainment(true);
+                }
             }
         } catch(err) { 
             console.error("Error de red en fetchFromCloud:", err);
-            this.isCloudOnline = false; 
+            this.isCloudOnline = false;
+            this.consecutiveNetworkFailures++;
+            if (this.consecutiveNetworkFailures >= 2 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+                this.setOfflineContainment(true);
+            }
         } finally { 
             this.isSyncing = false; 
             try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
@@ -358,11 +597,18 @@ const state = {
         // Renderizado separado del bloque de red para que nunca tumbe la conexión D1
         if (shouldRender && typeof ui !== 'undefined' && ui.render) {
             try {
-                ui.render();
+                const activeEl = typeof document !== 'undefined' ? document.activeElement : null;
+                const isEditingInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
+                if (!isEditingInput) {
+                    ui.render();
+                } else if (ui.updateHUD) {
+                    ui.updateHUD();
+                }
             } catch (uiErr) {
                 console.error("Excepción visual aislada en ui.render():", uiErr);
             }
         }
+        return networkOk;
     },
 
     saveLocalOnly() {
@@ -385,25 +631,35 @@ const state = {
     },
 
     async pushToCloud(debounced = false) {
+        if (!this.verifySessionIntegrity(this.data)) {
+            return false;
+        }
         if(debounced) {
             clearTimeout(this.syncTimer);
             this.syncTimer = setTimeout(() => this.pushToCloud(false), 800);
-            return;
+            return true;
         }
         this.isSyncing = true;
         try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
         let shouldRenderConflict = false;
+        let pushSuccess = false;
         
         try {
             const payload = JSON.parse(JSON.stringify(this.data));
             const res = await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             
             if (res.status === 409 || res.status === 412) {
-                const fetchRes = await fetch('/api/state');
+                const fetchRes = await fetch('/api/state', { cache: 'no-store' });
                 if (fetchRes.ok) {
                     const serverData = await fetchRes.json();
                     if (serverData && serverData.status !== 'empty') {
-                        this.data = this.mergeData(this.migrate(serverData), this.data);
+                        const migratedServer = this.migrate(serverData);
+                        if (!this.verifySessionIntegrity(migratedServer)) {
+                            this.data = migratedServer;
+                            this.saveLocalOnly();
+                            return false;
+                        }
+                        this.data = this.mergeData(migratedServer, this.data);
                         this.data.version = Number(serverData.version || this.data.version) + 1;
                         this.saveLocalOnly();
                         
@@ -414,11 +670,16 @@ const state = {
                                 this.data.version = retryJson.version;
                                 this.saveLocalOnly();
                             }
+                            pushSuccess = true;
                         }
                         shouldRenderConflict = true;
                     }
                 }
-                this.isCloudOnline = true;
+                this.isCloudOnline = pushSuccess;
+                if (pushSuccess) {
+                    this.consecutiveNetworkFailures = 0;
+                    if (this.isOfflineContained) this.setOfflineContainment(false);
+                }
             } else if (res.ok) {
                 const json = await res.json().catch(() => null);
                 if (json && json.version) {
@@ -426,12 +687,23 @@ const state = {
                     this.saveLocalOnly();
                 }
                 this.isCloudOnline = true;
+                this.consecutiveNetworkFailures = 0;
+                if (this.isOfflineContained) this.setOfflineContainment(false);
+                pushSuccess = true;
             } else {
                 this.isCloudOnline = false;
+                this.consecutiveNetworkFailures++;
+                if (this.consecutiveNetworkFailures >= 2 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+                    this.setOfflineContainment(true);
+                }
             }
         } catch(err) { 
             console.error("Error de red en pushToCloud:", err);
-            this.isCloudOnline = false; 
+            this.isCloudOnline = false;
+            this.consecutiveNetworkFailures++;
+            if (this.consecutiveNetworkFailures >= 2 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+                this.setOfflineContainment(true);
+            }
         } finally { 
             this.isSyncing = false; 
             try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
@@ -440,6 +712,7 @@ const state = {
         if (shouldRenderConflict && typeof ui !== 'undefined' && ui.render) {
             try { ui.render(); } catch(uiErr) { console.error("Excepción visual aislada tras reconciliación:", uiErr); }
         }
+        return pushSuccess;
     },
 
     addToLedger(coId, concept, dept, delta) {

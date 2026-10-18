@@ -136,9 +136,11 @@ const auth = {
     },
 
     completeLogin(userObj, entityName, roleName) {
-        state.user = Object.freeze(userObj);
+        const sessionPayload = { ...userObj, authToken: state.getAuthToken(userObj) };
+        state.user = Object.freeze(sessionPayload);
+        state.currentUser = state.user;
         state.pin = '';
-        localStorage.setItem(state.sessionKey, JSON.stringify(userObj));
+        localStorage.setItem(state.sessionKey, JSON.stringify(sessionPayload));
 
         if (typeof ui.playLoginAnimation === 'function') {
             ui.playLoginAnimation(roleName);
@@ -249,9 +251,11 @@ const auth = {
 
     logout() {
         state.user = null;
+        state.currentUser = null;
         state.pin = '';
         this.verifiedCoId = null;
         localStorage.removeItem(state.sessionKey);
+        try { sessionStorage.clear(); } catch(e) {}
         document.getElementById('hud-header')?.classList.add('hidden');
         document.getElementById('hud-nav')?.classList.add('hidden');
         ui.current = 'login';

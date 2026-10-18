@@ -1,23 +1,23 @@
-// sw.js — MARS-KET 2.0 Service Worker (Caché estática versionada v1.0.18, excluyendo /api/state)
-const CACHE_NAME = 'marsket-static-v1.0.18';
+// sw.js — MARS-KET 2.0 Service Worker (Caché estática versionada v1.0.19, excluyendo /api/state)
+const CACHE_NAME = 'marsket-static-v1.0.19';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/logo.png',
-  '/manifest.json',
-  '/js/config.js?v=1.0.18',
-  '/js/state.js?v=1.0.18',
-  '/js/auth.js?v=1.0.18',
-  '/js/ui-core.js?v=1.0.18',
-  '/js/ui-empresa-core.js?v=1.0.18',
-  '/js/ui-empresa-market.js?v=1.0.18',
-  '/js/ui-empresa-tech.js?v=1.0.18',
-  '/js/ui-empresa-finance.js?v=1.0.18',
-  '/js/ui-empresa-ops.js?v=1.0.18',
-  '/js/ui-empresa-gov-brand.js?v=1.0.18',
-  '/js/ui-docente-core.js?v=1.0.18',
-  '/js/ui-docente-eval.js?v=1.0.18',
-  '/js/ui-docente-management.js?v=1.0.18'
+  '/manifest.json?v=1.0.19',
+  '/js/config.js?v=1.0.19',
+  '/js/state.js?v=1.0.19',
+  '/js/auth.js?v=1.0.19',
+  '/js/ui-core.js?v=1.0.19',
+  '/js/ui-empresa-core.js?v=1.0.19',
+  '/js/ui-empresa-market.js?v=1.0.19',
+  '/js/ui-empresa-tech.js?v=1.0.19',
+  '/js/ui-empresa-finance.js?v=1.0.19',
+  '/js/ui-empresa-ops.js?v=1.0.19',
+  '/js/ui-empresa-gov-brand.js?v=1.0.19',
+  '/js/ui-docente-core.js?v=1.0.19',
+  '/js/ui-docente-eval.js?v=1.0.19',
+  '/js/ui-docente-management.js?v=1.0.19'
 ];
 
 self.addEventListener('install', (event) => {
@@ -48,15 +48,41 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  const isHTMLNavigation =
+    event.request.mode === 'navigate' ||
+    (event.request.headers.get('accept') || '').includes('text/html') ||
+    url.pathname === '/' ||
+    url.pathname.endsWith('/index.html');
+
+  if (isHTMLNavigation) {
+    // Network-First para documentos HTML
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200 && url.origin === self.location.origin) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request).then((res) => res || caches.match('/index.html')))
+    );
+    return;
+  }
+
+  // Cache-First con actualización en segundo plano para assets estáticos versionados
   event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && url.origin === self.location.origin) {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-        }
-        return networkResponse;
-      })
-      .catch(() => caches.match(event.request))
+    caches.match(event.request).then((cachedResponse) => {
+      const fetchPromise = fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200 && url.origin === self.location.origin) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          }
+          return networkResponse;
+        })
+        .catch(() => cachedResponse);
+      return cachedResponse || fetchPromise;
+    })
   );
 });

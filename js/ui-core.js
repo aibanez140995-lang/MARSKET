@@ -78,6 +78,39 @@ const ui = {
         if (typeof fn === 'function') fn();
     },
 
+    confirmModal(title, message, onConfirm, confirmLabel = 'Confirmar Operación', isDanger = false) {
+        return new Promise((resolve) => {
+            this.confirmAction(title, message, () => {
+                if (typeof onConfirm === 'function') onConfirm();
+                resolve(true);
+            }, confirmLabel, isDanger);
+        });
+    },
+
+    renderLogin() {
+        this.current = 'login';
+        this.render();
+    },
+
+    setOfflineContainment(isOffline) {
+        const overlay = document.getElementById('hud-offline-containment');
+        const mainContainer = document.querySelector('body > div');
+        if (!overlay) return;
+        if (isOffline) {
+            overlay.classList.remove('hidden');
+            if (mainContainer) {
+                mainContainer.setAttribute('inert', '');
+                mainContainer.classList.add('pointer-events-none', 'select-none');
+            }
+        } else {
+            overlay.classList.add('hidden');
+            if (mainContainer) {
+                mainContainer.removeAttribute('inert');
+                mainContainer.classList.remove('pointer-events-none', 'select-none');
+            }
+        }
+    },
+
     navigate(view) { this.current = view; this.render(); },
     
     checkLexicon(text, context = 'Actividad General') {
@@ -373,7 +406,77 @@ const ui = {
                 </div>`; 
                 break;
         }
+        let dynamicStatusHtml = '';
+        if (role === 'DOCENTE') {
+            const totalCos = Object.keys(state.data.companies || {}).length;
+            const pendingB2BCount = (state.data.b2bContracts || []).filter(c => c.status === 'PENDIENTE_ADUANA').length;
+            const pendingBrandsCount = Object.values(state.data.companies || {}).filter(c => c.brandApproval && c.brandApproval.status === 'PENDIENTE').length;
+            const pendingNamesCount = Object.values(state.data.companies || {}).filter(c => c.nameChangeRequest && c.nameChangeRequest.status === 'PENDIENTE').length;
+            const totalCustoms = pendingB2BCount + pendingBrandsCount + pendingNamesCount;
+            const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+            const dlMap = state.data.config?.deadlines || {};
+            const now = new Date();
+            const upcomingCount = defs.filter(d => new Date(dlMap[d.key] || d.defaultDate) >= now).length;
+            const d1StatusText = state.isCloudOnline ? 'SINCRONIZADO EN VIVO (HTTP 200)' : 'MODO CONTENCIÓN / LOCAL';
+            const d1StatusColor = state.isCloudOnline ? 'text-mars-green border-mars-green/60 bg-mars-green/10' : 'text-mars-yellow border-mars-yellow/60 bg-mars-yellow/10';
+
+            dynamicStatusHtml = `
+            <div class="bg-slate-950 border border-mars-cyan/60 p-3.5 space-y-2.5 mt-2">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-1.5 flex-wrap gap-2">
+                    <span class="text-xs font-orbitron font-black text-mars-cyan uppercase tracking-wider">📡 Telemetría en Vivo del Aula (v1.0.19)</span>
+                    <span class="text-xs font-bold uppercase px-2 py-0.5 border ${d1StatusColor}">[D1: ${d1StatusText}]</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div class="bg-slate-900 border border-slate-800 p-2">
+                        <span class="block text-mars-cyan font-orbitron font-black text-base">${totalCos}</span>
+                        <span class="text-slate-300 uppercase">Startups Activas</span>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 p-2">
+                        <span class="block text-mars-magenta font-orbitron font-black text-base">${totalCustoms}</span>
+                        <span class="text-slate-300 uppercase">Aduanas / Mercantil</span>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 p-2">
+                        <span class="block text-mars-yellow font-orbitron font-black text-base">${upcomingCount}/${defs.length}</span>
+                        <span class="text-slate-300 uppercase">Plazos Vigentes</span>
+                    </div>
+                </div>
+                <div class="pt-1">
+                    <button type="button" onclick="ui.closeOnboarding(); ui.adminTab='startups'; ui.navigate('admin');" class="min-h-[44px] w-full bg-mars-cyan/20 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-black uppercase text-xs py-2 px-3 tracking-wider transition-all">
+                        [ 🔑 ACCESO DIRECTO AL LLAVERO MAESTRO (STARTUPS &amp; PINs) ]
+                    </button>
+                </div>
+            </div>`;
+        } else if (state.user && !state.user.admin) {
+            const co = state.data.companies?.[state.user.coId];
+            const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+            const effectiveRole = role === 'AUXILIAR' ? (co?.auxRoleDept || 'CEO') : role;
+            const roleDefs = effectiveRole === 'CEO' ? defs : defs.filter(d => d.role === effectiveRole);
+            const pendingDocs = roleDefs.filter(d => !co?.deliverables?.[d.key]);
+            const nextPending = pendingDocs[0];
+            const dlDate = nextPending ? (state.data.config?.deadlines?.[nextPending.key] || nextPending.defaultDate) : null;
+            const dlBadge = dlDate ? this.getDeadlineStatus(dlDate) : null;
+
+            dynamicStatusHtml = `
+            <div class="bg-slate-950 border border-mars-cyan/60 p-3.5 space-y-2 mt-2 text-xs">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-1.5 flex-wrap gap-1">
+                    <span class="font-orbitron font-black text-mars-cyan uppercase">🔐 Estado Operativo y Custodia de Credenciales</span>
+                    <span class="text-mars-green font-bold uppercase">[TOKEN ACTIVO v1.0.19]</span>
+                </div>
+                <p class="text-slate-200 leading-relaxed">
+                    <strong>Custodia de PIN:</strong> Tu sesión está protegida mediante huella criptográfica (<code class="text-mars-cyan">authToken</code>). Si Coordinación modifica el PIN de tu puesto o el código de empresa, esta terminal cerrará la sesión en caliente de forma inmediata.
+                </p>
+                <div class="bg-slate-900 border border-slate-800 p-2.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                        <span class="text-mars-yellow font-bold uppercase block">Entregables Pendientes (${this.escapeHTML(effectiveRole)}): ${pendingDocs.length} de ${roleDefs.length}</span>
+                        <span class="text-slate-300">${nextPending ? `Próximo hito: ${this.escapeHTML(nextPending.shortName || nextPending.name)}` : '¡Todos los entregables de tu departamento están registrados!'}</span>
+                    </div>
+                    ${dlBadge ? `<span class="px-2 py-1 font-black uppercase text-xs shrink-0 ${dlBadge.class}">${this.escapeHTML(dlBadge.text)}</span>` : ''}
+                </div>
+            </div>`;
+        }
+
         content += `
+        ${dynamicStatusHtml}
         <div class="bg-slate-900 border border-slate-700 p-3 text-xs text-slate-300 uppercase mt-2">
             🛡️ <strong class="text-mars-yellow">Norma de Seguridad Activa:</strong> Todos los formularios están protegidos por el Filtro Léxico Universal. Queda prohibido introducir nombres propios o lenguaje ofensivo.
         </div>
@@ -449,7 +552,7 @@ const ui = {
         const html = `
         <div class="space-y-4 font-mono text-xs leading-relaxed text-slate-200">
             <div class="bg-mars-cyan/10 border border-mars-cyan p-3">
-                <p class="text-mars-cyan font-black uppercase text-xs">Manual Táctico MARS-KET 2.0</p>
+                <p class="text-mars-cyan font-black uppercase text-xs">Manual Táctico MARS-KET 2.0 (v1.0.19)</p>
                 <p class="mt-1">Plataforma oficial de simulación aeroespacial interdisciplinar (AEE / ESA). Cada rol dispone de atribuciones y pestañas priorizadas según su responsabilidad diaria.</p>
             </div>
             <ul class="list-disc pl-5 space-y-2">
@@ -457,6 +560,12 @@ const ui = {
                 <li><strong class="text-mars-cyan">Repositorio Oficial (19 Entregables):</strong> Todos los informes se entregan mediante enlaces externos verificables (Google Drive, OneDrive, Canva) con permisos de lectura abiertos.</li>
                 <li><strong class="text-mars-green">Gobernanza y Auditoría IA:</strong> Todo uso de IA generativa debe registrarse en la Bitácora IA con verificación humana explícita.</li>
             </ul>
+            <div class="bg-slate-950 border border-slate-800 p-3 space-y-1.5">
+                <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">Arquitectura de Seguridad y Persistencia v1.0.19:</p>
+                <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">await state.updatePin(coId, role, newPin)</code> / <code class="text-mars-cyan">state.updateTeacherPin</code> / <code class="text-mars-cyan">state.updateCompanyCode</code>: Persistencia atómica directa contra Cloudflare D1 sin debounce ni rebote de PIN.</p>
+                <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">state.getAuthToken(userObj)</code> &amp; <code class="text-mars-cyan">state.verifySessionIntegrity(serverData)</code>: Huella criptográfica y heartbeat adaptativo (12s) con revocación inmediata de sesiones zombi.</p>
+                <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">ui.showModal</code>, <code class="text-mars-cyan">ui.confirmModal</code> y <code class="text-mars-cyan">ui.escapeHTML</code>: Diálogos HUD accesibles con trampa de foco y sanitización XSS estricta.</p>
+            </div>
             <div class="pt-2">
                 <button type="button" onclick="ui.closeModal(); sessionStorage.removeItem('hideWelcome'); ui.showWelcomeModal();" class="w-full bg-mars-yellow text-black font-black py-2.5 px-4 text-xs uppercase tracking-widest hover:bg-white transition-all min-h-[44px]">Ver Manual Completo de mi Rol</button>
             </div>

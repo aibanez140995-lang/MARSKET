@@ -387,21 +387,21 @@ Object.assign(ui, {
                                     <td class="py-3 pr-3">
                                         ${isCoord ? `
                                         <div class="flex items-center gap-1">
-                                            <input type="text" aria-label="Código de empresa ${this.escapeHTML(co.name)}" maxlength="10" value="${this.escapeHTML(coCode)}" onchange="ui.updateCompanyCode('${this.escapeHTML(cid)}', this.value)" class="min-h-[44px] w-24 bg-black border border-mars-yellow text-center text-mars-yellow font-mono font-black p-1 outline-none uppercase">
-                                            <button onclick="ui.regenerateCompanyCode('${this.escapeHTML(cid)}')" aria-label="Regenerar código aleatorio" title="Regenerar código aleatorio" class="min-h-[44px] min-w-[44px] bg-slate-800 text-slate-200 px-2 py-1 hover:bg-mars-yellow hover:text-black transition-colors flex items-center justify-center">🔄</button>
+                                            <input type="text" id="co-code-input-${this.escapeHTML(cid)}" aria-label="Código de empresa ${this.escapeHTML(co.name)}" maxlength="10" value="${this.escapeHTML(coCode)}" onchange="ui.updateCompanyCode('${this.escapeHTML(cid)}', this.value)" class="min-h-[44px] w-24 bg-black border border-mars-yellow text-center text-mars-yellow font-mono font-black p-1 outline-none uppercase disabled:opacity-50">
+                                            <button id="co-code-regen-${this.escapeHTML(cid)}" onclick="ui.regenerateCompanyCode('${this.escapeHTML(cid)}')" aria-label="Regenerar código aleatorio" title="Regenerar código aleatorio" class="min-h-[44px] min-w-[44px] bg-slate-800 text-slate-200 px-2 py-1 hover:bg-mars-yellow hover:text-black transition-colors flex items-center justify-center disabled:opacity-50">🔄</button>
                                         </div>` : `<span class="text-slate-300 font-mono">***-****</span>`}
                                     </td>
                                     ${['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA'].map(rol => {
                                         const pinVal = state.getRolePin(co, rol) || '1234';
                                         return `
                                         <td class="py-3 pr-2">
-                                            ${isCoord ? `<input type="text" aria-label="PIN ${rol} de ${this.escapeHTML(co.name)}" maxlength="4" value="${this.escapeHTML(pinVal)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', '${rol}', this.value)" class="min-h-[44px] w-14 bg-black border border-mars-border text-center text-mars-cyan font-bold p-1 outline-none focus:border-mars-yellow">` : `<span class="text-slate-300">****</span>`}
+                                            ${isCoord ? `<input type="text" id="pin-input-${this.escapeHTML(cid)}-${rol}" aria-label="PIN ${rol} de ${this.escapeHTML(co.name)}" maxlength="4" value="${this.escapeHTML(pinVal)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', '${rol}', this.value)" class="min-h-[44px] w-14 bg-black border border-mars-border text-center text-mars-cyan font-bold p-1 outline-none focus:border-mars-yellow disabled:opacity-50">` : `<span class="text-slate-300">****</span>`}
                                         </td>`;
                                     }).join('')}
                                     <td class="py-3 pr-3">
                                         ${isCoord ? `
                                         <div class="flex items-center gap-1">
-                                            <input type="text" aria-label="PIN AUXILIAR de ${this.escapeHTML(co.name)}" maxlength="4" placeholder="----" value="${this.escapeHTML(auxPin)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', 'AUXILIAR', this.value)" class="min-h-[44px] w-14 bg-black border ${auxPin ? 'border-mars-green text-mars-green' : 'border-slate-700 text-slate-400'} text-center font-bold p-1 outline-none focus:border-mars-yellow">
+                                            <input type="text" id="pin-input-${this.escapeHTML(cid)}-AUXILIAR" aria-label="PIN AUXILIAR de ${this.escapeHTML(co.name)}" maxlength="4" placeholder="----" value="${this.escapeHTML(auxPin)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', 'AUXILIAR', this.value)" class="min-h-[44px] w-14 bg-black border ${auxPin ? 'border-mars-green text-mars-green' : 'border-slate-700 text-slate-400'} text-center font-bold p-1 outline-none focus:border-mars-yellow disabled:opacity-50">
                                             <span class="text-xs text-slate-300 uppercase">[${this.escapeHTML(auxDept)}]</span>
                                         </div>` : `<span class="text-slate-300">****</span>`}
                                     </td>
@@ -421,40 +421,70 @@ Object.assign(ui, {
         if (!state.user || !state.user.role.startsWith('COORD')) return;
         state.data.config.deadlines = state.data.config.deadlines || {};
         state.data.config.deadlines[key] = val;
+        state.data.config.updatedAt = Date.now();
         state.save();
         this.notify("Plazo actualizado en el Cronograma Maestro.", "success");
     },
 
-    updateTeacherPin(tk, val) {
+    async updateTeacherPin(tk, val) {
         if (!state.user || !state.user.role.startsWith('COORD')) return;
         const clean = this.cleanInput(val);
         if (!/^\d{4}$/.test(clean)) return this.notify("El PIN docente debe tener exactamente 4 dígitos numéricos.", "error");
         if (state.data.config.teachers && state.data.config.teachers[tk]) {
-            state.data.config.teachers[tk].pin = clean;
-            state.save();
-            this.notify(`PIN actualizado para ${tk}.`, "success");
+            const inputEl = document.getElementById(`teacher-pin-${tk}`);
+            if (inputEl) inputEl.disabled = true;
+            try {
+                const ok = await state.updateTeacherPin(tk, clean);
+                if (ok) {
+                    this.notify(`✅ PIN actualizado y sincronizado en D1 para ${tk}.`, "success");
+                } else {
+                    this.notify(`⚠️ PIN de ${tk} guardado localmente; pendiente de sincronización D1.`, "warning");
+                }
+            } finally {
+                if (inputEl) inputEl.disabled = false;
+            }
         }
     },
 
-    updateCompanyCode(cid, newCode) {
+    async updateCompanyCode(cid, newCode) {
         if (!state.user || !state.user.role.startsWith('COORD')) return;
         const clean = this.cleanInput(newCode).toUpperCase();
         if (clean.length < 4) return this.notify("Código demasiado corto.", "warning");
         const co = state.data.companies[cid];
         if (!co) return;
-        state.setCompanyCode(co, clean);
-        state.save();
-        this.render();
+        const inputEl = document.getElementById(`co-code-input-${cid}`);
+        if (inputEl) inputEl.disabled = true;
+        try {
+            const ok = await state.updateCompanyCode(cid, clean);
+            this.render();
+            if (ok) {
+                this.notify(`✅ Código de empresa actualizado a ${clean} y sincronizado en D1.`, "success");
+            } else {
+                this.notify(`⚠️ Código ${clean} guardado localmente; pendiente de sincronización D1.`, "warning");
+            }
+        } finally {
+            if (inputEl) inputEl.disabled = false;
+        }
     },
 
-    regenerateCompanyCode(cid) {
+    async regenerateCompanyCode(cid) {
         if (!state.user || !state.user.role.startsWith('COORD')) return;
         const co = state.data.companies[cid];
         if (!co) return;
         const newCode = state.generateCompanyCode(co.name);
-        state.setCompanyCode(co, newCode);
-        state.save();
-        this.render();
+        const btnEl = document.getElementById(`co-code-regen-${cid}`);
+        if (btnEl) btnEl.disabled = true;
+        try {
+            const ok = await state.updateCompanyCode(cid, newCode);
+            this.render();
+            if (ok) {
+                this.notify(`✅ Nuevo código ${newCode} generado y sincronizado en D1.`, "success");
+            } else {
+                this.notify(`⚠️ Código ${newCode} generado localmente; pendiente de D1.`, "warning");
+            }
+        } finally {
+            if (btnEl) btnEl.disabled = false;
+        }
     },
 
     exportCredentialsCSV() {
@@ -474,7 +504,7 @@ Object.assign(ui, {
         this.downloadFile(csv, 'csv', 'marsket_llavero_credenciales_empresas.csv');
     },
 
-    resolveAuxRoleRequest(cid, isApproved) {
+    async resolveAuxRoleRequest(cid, isApproved) {
         if (!state.user || !state.user.role.startsWith('COORD')) return this.notify("Solo Coordinación puede autorizar el Rol Auxiliar.", "error");
         const co = state.data.companies[cid];
         if (!co || !co.auxRoleRequest) return;
@@ -484,18 +514,18 @@ Object.assign(ui, {
             const finalPin = pinInput ? this.cleanInput(pinInput.value) : co.auxRoleRequest.pin;
             if (!/^\d{4}$/.test(finalPin)) return this.notify("El PIN debe tener exactamente 4 dígitos numéricos.", "error");
 
-            state.setRolePin(co, 'AUXILIAR', finalPin);
+            if (pinInput) pinInput.disabled = true;
             co.auxRoleDept = co.auxRoleRequest.dept;
             co.auxRoleRequest.status = 'APROBADO';
             co.auxRoleRequest.pin = finalPin;
 
             ui.pushNotification(cid, 'CEO', `Coordinación ha APROBADO el Rol Auxiliar vinculado a ${co.auxRoleDept}. PIN de acceso activado: ${finalPin}`, 'success');
-            state.save();
-            this.notify(`Rol Auxiliar activado en ${co.name} con PIN ${finalPin}.`, "success");
+            await state.updatePin(cid, 'AUXILIAR', finalPin);
+            this.notify(`✅ Rol Auxiliar activado en ${co.name} con PIN ${finalPin}.`, "success");
         } else {
             co.auxRoleRequest.status = 'RECHAZADO';
             ui.pushNotification(cid, 'CEO', `Tu solicitud de alta para el Rol Auxiliar ha sido DENEGADA por Coordinación.`, 'error');
-            state.save();
+            await state.updatePin(cid, 'AUXILIAR', '');
             this.notify(`Solicitud de Rol Auxiliar denegada para ${co.name}.`, "warning");
         }
         this.render();
@@ -831,17 +861,40 @@ Object.assign(ui, {
         this.render(); 
     },
 
-    updatePIN(coId, role, val) { 
-        if(!state.user.role.startsWith('COORD')) return this.notify("Solo Coordinación puede modificar PINs.", "error");
+    async updatePIN(coId, role, val) { 
+        if(!state.user || !state.user.role.startsWith('COORD')) return this.notify("Solo Coordinación puede modificar PINs.", "error");
         const clean = this.cleanInput(val);
+        const inputEl = document.getElementById(`pin-input-${coId}-${role}`);
         if (role === 'AUXILIAR' && clean === '') {
             const co = state.data.companies[coId];
-            if (co) { state.setRolePin(co, 'AUXILIAR', ''); state.save(); this.render(); }
+            if (co) {
+                if (inputEl) inputEl.disabled = true;
+                try {
+                    const ok = await state.updatePin(coId, 'AUXILIAR', '');
+                    this.render();
+                    if (ok) this.notify(`✅ Rol Auxiliar desactivado en ${co.name} y sincronizado en D1.`, "success");
+                    else this.notify(`⚠️ Rol Auxiliar desactivado localmente en ${co.name}.`, "warning");
+                } finally {
+                    if (inputEl) inputEl.disabled = false;
+                }
+            }
             return;
         }
         if(!/^\d{4}$/.test(clean)) return this.notify("El PIN debe tener exactamente 4 dígitos numéricos.", "error"); 
         const co = state.data.companies[coId];
-        if (co) { state.setRolePin(co, role, clean); state.save(); }
+        if (co) {
+            if (inputEl) inputEl.disabled = true;
+            try {
+                const ok = await state.updatePin(coId, role, clean);
+                if (ok) {
+                    this.notify(`✅ PIN de ${role} (${co.name}) actualizado a ${clean} y sincronizado en D1.`, "success");
+                } else {
+                    this.notify(`⚠️ PIN de ${role} (${co.name}) guardado localmente; pendiente de D1.`, "warning");
+                }
+            } finally {
+                if (inputEl) inputEl.disabled = false;
+            }
+        }
     },
 
     showCompanyLogins(cid) {

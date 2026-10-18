@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.0.18) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.0.19) ---
 
-const APP_VERSION = "1.0.18";
+const APP_VERSION = "1.0.19";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const REGULATORY_AGENCIES = {
@@ -107,8 +107,19 @@ const FORBIDDEN_WORDS = [
     'mario', 'alex', 'alejandro', 'coordinador', 'director', 'profe', 'profesor'
 ];
 
-// FASE 6: Changelog Oficial consolidado para la versión 1.0.18
+// FASE 6: Changelog Oficial consolidado para la versión 1.0.19
 const APP_CHANGELOG = [
+    {
+        version: "1.0.19",
+        date: "Octubre 2026",
+        title: "Persistencia Atómica D1, Fin del Rebote de PIN, Revocación en Caliente y Contención Offline",
+        highlights: [
+            { type: "SISTEMA", text: "Persistencia Atómica D1 y Fin del Rebote de PIN: Guardado inmediato sin debounce en credenciales (state.updatePin, state.updateTeacherPin, state.updateCompanyCode) con resolución LWW por authUpdatedAt." },
+            { type: "NUEVO", text: "Revocación en Caliente de Sesiones Zombi: Heartbeat adaptativo cada 12s y verificación de huella criptográfica (authToken) que expulsa al instante sesiones con credenciales modificadas sin afectar al Coordinador activo." },
+            { type: "NUEVO", text: "Protocolo de Contención Offline Estricta: Bloqueo táctico de seguridad ante caídas de red frente a /api/state con desbloqueo verificado al recuperar conexión." },
+            { type: "MEJORA", text: "Bienvenida Dinámica por Rol y Accesibilidad HUD: Estado vivo del aula, recordatorio de custodia de PINs, plazos en curso y Service Worker v1.0.19 con estrategia híbrida Network-First / Cache-First." }
+        ]
+    },
     {
         version: "1.0.18",
         date: "Octubre 2026",
