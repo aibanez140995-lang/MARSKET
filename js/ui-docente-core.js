@@ -79,12 +79,12 @@ Object.assign(ui, {
                         <span class="text-white font-bold uppercase break-words">${this.escapeHTML(sugg.author)}</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <select aria-label="Estado de sugerencia" onchange="ui.updateSuggestionStatus('${this.escapeHTML(sugg.id)}', this.value)" class="min-h-[40px] bg-black border border-slate-700 text-white p-1.5 text-xs uppercase font-bold outline-none">
+                        <select aria-label="Estado de sugerencia" onchange="ui.updateSuggestionStatus('${this.escapeHTML(sugg.id)}', this.value)" class="min-h-[44px] bg-black border border-slate-700 text-white p-1.5 text-xs uppercase font-bold outline-none">
                             <option value="RECIBIDO" ${status==='RECIBIDO'?'selected':''}>Recibido</option>
                             <option value="EN_REVISION" ${status==='EN_REVISION'?'selected':''}>En Revisión</option>
                             <option value="IMPLEMENTADO" ${status==='IMPLEMENTADO'?'selected':''}>Implementado</option>
                         </select>
-                        <button onclick="ui.deleteSuggestion('${this.escapeHTML(sugg.id)}')" aria-label="Eliminar sugerencia" class="min-h-[40px] min-w-[40px] text-mars-magenta hover:text-white font-bold px-2 border border-mars-magenta/40">X</button>
+                        <button onclick="ui.deleteSuggestion('${this.escapeHTML(sugg.id)}')" aria-label="Eliminar sugerencia" class="min-h-[44px] min-w-[44px] text-mars-magenta hover:text-white font-bold px-2 border border-mars-magenta/40">X</button>
                     </div>
                 </div>
                 <p class="text-slate-200 italic mb-2 bg-black/50 p-2 border border-slate-800 break-words">"${this.escapeHTML(sugg.text)}"</p>
@@ -99,8 +99,8 @@ Object.assign(ui, {
                 <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Configuración Granular de Plazos (Resumen)</h3>
                 <div class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
                     <div>
-                        <label for="dl-techReport" class="text-xs text-slate-300 uppercase font-bold block mb-1">Informe Técnico (FYQ)</label>
-                        <input type="datetime-local" id="dl-techReport" value="${this.escapeHTML(dl.techReport || '')}" class="min-h-[44px] w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none">
+                        <label for="dl-technicalReport" class="text-xs text-slate-300 uppercase font-bold block mb-1">Informe Técnico (FYQ)</label>
+                        <input type="datetime-local" id="dl-technicalReport" value="${this.escapeHTML(dl.technicalReport || dl.techReport || '')}" class="min-h-[44px] w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none">
                     </div>
                     <div>
                         <label for="dl-brandIdentity_dec" class="text-xs text-slate-300 uppercase font-bold block mb-1">Identidad de Marca - Diciembre (LYE)</label>
@@ -153,25 +153,26 @@ Object.assign(ui, {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bg-slate-900 border border-slate-700 p-4 flex flex-col justify-between">
                     <div>
+                        <div class="flex justify-end mb-2"><span class="bg-slate-700 text-slate-200 text-xs font-black px-2 py-0.5 uppercase">Descarga Local</span></div>
                         <h4 class="text-white font-bold text-xs uppercase mb-2 text-center border-b border-slate-700 pb-2">1. Backup Manual Local</h4>
                         <p class="text-xs text-slate-300 text-center mb-4 leading-relaxed">Descarga el estado de todas las empresas en un archivo JSON seguro en tu ordenador.</p>
                     </div>
                     <button onclick="ui.downloadStateJSON()" class="min-h-[44px] w-full bg-slate-800 text-slate-200 border border-slate-600 font-black py-3 text-xs uppercase tracking-widest hover:bg-white hover:text-black transition-all">Descargar JSON</button>
                 </div>
 
-                <div class="bg-slate-900 border border-blue-500/50 p-4 flex flex-col justify-between relative overflow-hidden">
-                    <div class="absolute top-0 right-0 bg-blue-500 text-white text-xs font-black px-2 py-0.5 uppercase">Sobreescribible</div>
+                <div class="bg-slate-900 border border-blue-500/50 p-4 flex flex-col justify-between">
                     <div>
-                        <h4 class="text-blue-400 font-bold text-xs uppercase mb-2 text-center border-b border-blue-500/50 pb-2 pt-3">2. Snapshot Diario (Cloud)</h4>
+                        <div class="flex justify-end mb-2"><span class="bg-blue-500 text-white text-xs font-black px-2 py-0.5 uppercase">Sobreescribible</span></div>
+                        <h4 class="text-blue-400 font-bold text-xs uppercase mb-2 text-center border-b border-blue-500/50 pb-2">2. Snapshot Diario (Cloud)</h4>
                         <p class="text-xs text-slate-300 text-center mb-4 leading-relaxed">Fuerza un volcado del estado actual en el slot diario de la base de datos D1. Reemplaza el de ayer.</p>
                     </div>
                     <button onclick="ui.forceCloudBackup('daily')" class="min-h-[44px] w-full bg-blue-600/20 text-blue-400 border border-blue-500 font-black py-3 text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all">Generar Backup Diario</button>
                 </div>
 
-                <div class="bg-slate-900 border border-mars-yellow/50 p-4 flex flex-col justify-between relative overflow-hidden">
-                    <div class="absolute top-0 right-0 bg-mars-yellow text-black text-xs font-black px-2 py-0.5 uppercase">Inmutable</div>
+                <div class="bg-slate-900 border border-mars-yellow/50 p-4 flex flex-col justify-between">
                     <div>
-                        <h4 class="text-mars-yellow font-bold text-xs uppercase mb-2 text-center border-b border-mars-yellow/50 pb-2 pt-3">3. Archivo Semanal (Cloud)</h4>
+                        <div class="flex justify-end mb-2"><span class="bg-mars-yellow text-black text-xs font-black px-2 py-0.5 uppercase">Inmutable</span></div>
+                        <h4 class="text-mars-yellow font-bold text-xs uppercase mb-2 text-center border-b border-mars-yellow/50 pb-2">3. Archivo Semanal (Cloud)</h4>
                         <p class="text-xs text-slate-300 text-center mb-4 leading-relaxed">Genera un snapshot inmutable fechado. Ideal para cerrar trimestres o hitos de evaluación.</p>
                     </div>
                     <button onclick="ui.forceCloudBackup('weekly')" class="min-h-[44px] w-full bg-mars-yellow/20 text-mars-yellow border border-mars-yellow font-black py-3 text-xs uppercase tracking-widest hover:bg-mars-yellow hover:text-black transition-all">Crear Archivo Semanal</button>
@@ -192,7 +193,7 @@ Object.assign(ui, {
     },
 
     saveDeadlines() {
-        const fields = ['techReport', 'brandIdentity_dec', 'brandIdentity_apr', 'businessModelDoc', 'investorDossier', 'balanceSheet'];
+        const fields = ['technicalReport', 'brandIdentity_dec', 'brandIdentity_apr', 'businessModelDoc', 'investorDossier', 'balanceSheet'];
         state.data.config.deadlines = state.data.config.deadlines || {};
         
         fields.forEach(f => {

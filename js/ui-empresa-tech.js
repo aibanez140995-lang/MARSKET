@@ -21,16 +21,20 @@ Object.assign(ui, {
         const wrapper = document.createElement('div');
         
         let ftHtml = co.flightTests.map(f => {
-            // Retrocompatibilidad: Si el vuelo se guardó en metros, lo pasa a mm para mostrarlo
-            const h_mm = f.heightMm !== undefined ? f.heightMm : (f.heightM * 1000);
+            // Retrocompatibilidad: Si el vuelo se guardó en metros o con claves heredadas, normaliza sin producir NaN
+            const h_mm = !isNaN(Number(f.heightMm)) ? Number(f.heightMm) : (!isNaN(Number(f.heightM)) ? Number(f.heightM) * 1000 : 0);
+            const naVal = !isNaN(Number(f.naHCO3)) ? Number(f.naHCO3) : (!isNaN(Number(f.nahco3)) ? Number(f.nahco3) : (!isNaN(Number(f.weightG)) ? Number(f.weightG) : 0));
+            const vinVal = !isNaN(Number(f.vinegar)) ? Number(f.vinegar) : (!isNaN(Number(f.waterMl)) ? Number(f.waterMl) : 0);
+            const costVal = !isNaN(Number(f.costEurV)) ? Number(f.costEurV) : 0;
+            const effVal = !isNaN(Number(f.efficiency)) ? Number(f.efficiency) : (costVal > 0 ? h_mm / costVal : 0);
             return `
             <tr class="border-b border-mars-border/40 hover:bg-slate-900/50">
-                <td class="py-2.5 text-slate-300 pr-3">${this.escapeHTML(f.date)}</td>
-                <td class="py-2.5 font-bold text-white pr-3">${this.escapeHTML(f.bottle)}</td>
-                <td class="py-2.5 text-mars-cyan pr-3">${Number(f.naHCO3)}g / ${Number(f.vinegar)}ml</td>
-                <td class="py-2.5 font-mono text-mars-magenta pr-3">${Number(f.costEurV).toFixed(2)}</td>
-                <td class="py-2.5 font-mono text-mars-green font-bold text-sm sm:text-base pr-3">${Number(h_mm).toFixed(0)}</td>
-                <td class="py-2.5 font-orbitron text-mars-yellow font-black">${Number(f.efficiency).toFixed(2)}</td>
+                <td class="py-2.5 text-slate-300 pr-3">${this.escapeHTML(f.date || '--')}</td>
+                <td class="py-2.5 font-bold text-white pr-3">${this.escapeHTML(f.bottle || 'Prototipo')}</td>
+                <td class="py-2.5 text-mars-cyan pr-3">${naVal}g / ${vinVal}ml</td>
+                <td class="py-2.5 font-mono text-mars-magenta pr-3">${costVal.toFixed(2)}</td>
+                <td class="py-2.5 font-mono text-mars-green font-bold text-sm sm:text-base pr-3">${h_mm.toFixed(0)}</td>
+                <td class="py-2.5 font-orbitron text-mars-yellow font-black">${effVal.toFixed(2)}</td>
             </tr>`;
         }).join('') || `<tr><td colspan="6" class="text-center py-4 text-slate-300 italic text-xs">No hay ensayos registrados.</td></tr>`;
 

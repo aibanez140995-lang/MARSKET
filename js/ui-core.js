@@ -53,7 +53,7 @@ const ui = {
         toast.className = `pointer-events-auto terminal-border border-l-4 ${borderColors[tone] || borderColors.info} p-3.5 text-xs font-mono flex items-start justify-between gap-3 animate-in fade-in duration-200`;
         toast.innerHTML = `
             <div class="leading-relaxed text-white break-words flex-grow">${this.escapeHTML(cleanMsg)}</div>
-            <button type="button" aria-label="Cerrar aviso" class="text-slate-300 hover:text-white font-black px-2 py-1 min-w-[32px] min-h-[32px] flex items-center justify-center shrink-0 border border-slate-700 bg-black/60" onclick="this.parentElement.remove()">✕</button>
+            <button type="button" aria-label="Cerrar aviso" class="text-slate-300 hover:text-white font-black px-2 py-1 min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 border border-slate-700 bg-black/60" onclick="this.parentElement.remove()">✕</button>
         `;
         container.appendChild(toast);
         setTimeout(() => {
@@ -659,15 +659,21 @@ const ui = {
 
         if(cloudEl) {
             if(state.isSyncing) {
-                cloudEl.className = 'text-xs font-bold uppercase tracking-wider px-2.5 py-1 border border-mars-cyan text-mars-cyan bg-mars-cyan/10 animate-pulse whitespace-nowrap';
+                cloudEl.className = 'text-xs font-bold uppercase tracking-normal sm:tracking-wider px-2 sm:px-2.5 py-1 border border-mars-cyan text-mars-cyan bg-mars-cyan/10 animate-pulse whitespace-nowrap';
                 cloudEl.innerText = '[CLOUD: SYNCING]';
             } else if(state.isCloudOnline) {
-                cloudEl.className = 'text-xs font-bold uppercase tracking-wider px-2.5 py-1 border border-mars-green/60 text-mars-green bg-mars-green/10 whitespace-nowrap';
+                cloudEl.className = 'text-xs font-bold uppercase tracking-normal sm:tracking-wider px-2 sm:px-2.5 py-1 border border-mars-green/60 text-mars-green bg-mars-green/10 whitespace-nowrap';
                 cloudEl.innerText = '[D1: SYNCED]';
             } else {
-                cloudEl.className = 'text-xs font-bold uppercase tracking-wider px-2.5 py-1 border border-mars-yellow/60 text-mars-yellow bg-slate-900 whitespace-nowrap';
+                cloudEl.className = 'text-xs font-bold uppercase tracking-normal sm:tracking-wider px-2 sm:px-2.5 py-1 border border-mars-yellow/60 text-mars-yellow bg-slate-900 whitespace-nowrap';
                 cloudEl.innerText = '[LOCAL ONLY]';
             }
+        }
+
+        document.getElementById('hud-header')?.classList.remove('hidden');
+        document.getElementById('hud-nav')?.classList.remove('hidden');
+        if (typeof auth !== 'undefined' && typeof auth.buildNav === 'function') {
+            auth.buildNav(!!state.user.admin);
         }
 
         document.querySelectorAll('.nav-tab').forEach(t => {

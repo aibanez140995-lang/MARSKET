@@ -181,17 +181,20 @@ Object.assign(ui, {
                 <p class="text-5xl font-orbitron text-white mb-2 tracking-tighter">${globalReal.toFixed(2)} €</p>
                 <p class="text-xs text-slate-300 uppercase font-bold">Impacto económico real total</p>
             </div>
-            <div class="lg:col-span-3 terminal-border bg-mars-card p-6 w-full overflow-hidden border-t-4 border-t-mars-cyan">
-                <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Control Financiero, Patrocinios & Sanciones AEE</h3>
-                <div class="overflow-x-auto w-full">
+            <div class="lg:col-span-3 terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden border-t-4 border-t-mars-cyan">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                    <h3 class="font-orbitron text-mars-cyan text-xs uppercase tracking-widest">Control Financiero, Patrocinios & Sanciones AEE</h3>
+                    <span class="text-xs text-slate-300 uppercase sm:hidden">Desliza ➔</span>
+                </div>
+                <div class="overflow-x-auto w-full pb-1">
                     <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
                         <thead class="text-slate-300 uppercase border-b border-mars-border">
                             <tr>
-                                <th class="py-3 pr-4">Empresa</th>
-                                <th class="pr-4">Bal(€v)</th>
-                                <th class="pr-4">Gasto Virtual</th>
-                                <th class="pr-4">Gasto Físico</th>
-                                <th class="pr-4">Patrocinio Fase I</th>
+                                <th class="py-3 pr-2.5 sm:pr-4">Empresa</th>
+                                <th class="pr-2.5 sm:pr-4">Bal(€v)</th>
+                                <th class="pr-2.5 sm:pr-4">Gasto(€v)</th>
+                                <th class="pr-2.5 sm:pr-4">Físico(€)</th>
+                                <th class="pr-2.5 sm:pr-4">Patrocinio Fase I</th>
                                 <th>Sanciones AEE</th>
                             </tr>
                         </thead>
@@ -206,7 +209,7 @@ Object.assign(ui, {
                                 
                                 let sponsorHtml = '';
                                 if(canSponsor) {
-                                    sponsorHtml = `<button onclick="ui.modalAssignSponsor('${this.escapeHTML(cid)}')" class="min-h-[40px] bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-3 py-1.5 font-bold text-xs uppercase hover:bg-mars-yellow hover:text-black transition-all whitespace-nowrap">${c.sponsorAwarded ? `[${this.escapeHTML(c.sponsorAwarded)}] Editar` : 'Asignar Patrocinio'}</button>`;
+                                    sponsorHtml = `<button onclick="ui.modalAssignSponsor('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-3 py-1.5 font-bold text-xs uppercase hover:bg-mars-yellow hover:text-black transition-all whitespace-nowrap">${c.sponsorAwarded ? `[${this.escapeHTML(c.sponsorAwarded)}] Editar` : 'Asignar Patrocinio'}</button>`;
                                 } else {
                                     if(c.sponsorAwarded) {
                                         const cl = c.sponsorAwarded==='ORO'?'text-[#ffd700] border-[#ffd700]':c.sponsorAwarded==='PLATA'?'text-[#c0c0c0] border-[#c0c0c0]':'text-[#cd7f32] border-[#cd7f32]';
@@ -220,16 +223,16 @@ Object.assign(ui, {
 
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
-                                    <td class="py-3 font-orbitron text-white font-bold pr-4 flex items-center gap-2">
-                                        <button onclick="ui.showCompanyLogins('${this.escapeHTML(cid)}')" class="min-h-[36px] text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 max-w-[240px] truncate" title="${this.escapeHTML(c.name)}">${this.escapeHTML(c.name)} [${this.escapeHTML(c.classGroup||'A')}]</button>
-                                        ${isCoord ? `<button onclick="ui.promptRenameStartup('${this.escapeHTML(cid)}')" aria-label="Renombrar Denominación Social" title="Renombrar Denominación Social" class="min-h-[36px] min-w-[36px] bg-slate-800 text-slate-200 px-2 py-1 text-xs hover:bg-mars-yellow hover:text-black transition-colors rounded-sm">✏️</button>` : ''}
+                                    <td class="py-3 font-orbitron text-white font-bold pr-2.5 sm:pr-4 flex items-center gap-1.5 sm:gap-2">
+                                        <button onclick="ui.showCompanyLogins('${this.escapeHTML(cid)}')" class="min-h-[44px] text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 max-w-[130px] sm:max-w-[240px] truncate inline-flex items-center" title="${this.escapeHTML(c.name)}">${this.escapeHTML(c.name)} [${this.escapeHTML(c.classGroup||'A')}]</button>
+                                        ${isCoord ? `<button onclick="ui.promptRenameStartup('${this.escapeHTML(cid)}')" aria-label="Renombrar Denominación Social" title="Renombrar Denominación Social" class="min-h-[44px] min-w-[44px] bg-slate-800 text-slate-200 px-2 py-1 text-xs hover:bg-mars-yellow hover:text-black transition-colors rounded-sm flex items-center justify-center shrink-0">✏️</button>` : ''}
                                     </td>
-                                    <td class="py-3 font-mono pr-4"><span class="text-mars-green font-bold">${c.balance.toFixed(0)} €v</span></td>
-                                    <td class="py-3 font-mono pr-4"><button onclick="ui.modalVirtualSpend('${this.escapeHTML(cid)}')" class="min-h-[36px] text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4" title="Ver desglose detallado">${virtualSpend.toFixed(2)} €v</button></td>
-                                    <td class="py-3 font-mono pr-4"><span class="text-mars-magenta">${r.toFixed(2)} €</span></td>
-                                    <td class="py-3 pr-4">${sponsorHtml}</td>
+                                    <td class="py-3 font-mono pr-2.5 sm:pr-4"><span class="text-mars-green font-bold">${c.balance.toFixed(0)} €v</span></td>
+                                    <td class="py-3 font-mono pr-2.5 sm:pr-4"><button onclick="ui.modalVirtualSpend('${this.escapeHTML(cid)}')" class="min-h-[44px] text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 inline-flex items-center" title="Ver desglose detallado">${virtualSpend.toFixed(2)} €v</button></td>
+                                    <td class="py-3 font-mono pr-2.5 sm:pr-4"><span class="text-mars-magenta">${r.toFixed(2)} €</span></td>
+                                    <td class="py-3 pr-2.5 sm:pr-4">${sponsorHtml}</td>
                                     <td class="py-3">
-                                        <button onclick="ui.modalAEEFine('${this.escapeHTML(cid)}')" class="min-h-[40px] bg-red-900/30 border border-red-500 text-red-400 px-3 py-1.5 font-bold text-xs uppercase hover:bg-red-500 hover:text-white transition-all shadow-[0_0_5px_red] whitespace-nowrap">Expediente Sancionador</button>
+                                        <button onclick="ui.modalAEEFine('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-red-900/30 border border-red-500 text-red-400 px-3 py-1.5 font-bold text-xs uppercase hover:bg-red-500 hover:text-white transition-all shadow-[0_0_5px_red] whitespace-nowrap">Expediente Sancionador</button>
                                     </td>
                                 </tr>`;
                             }).join('')}
@@ -379,30 +382,30 @@ Object.assign(ui, {
                                 const auxDept = co.auxRoleDept || '--';
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
-                                    <td class="py-3 font-orbitron text-white font-bold pr-3"><button onclick="ui.showCompanyLogins('${this.escapeHTML(cid)}')" class="min-h-[36px] text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 max-w-[200px] truncate" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)}</button></td>
+                                    <td class="py-3 font-orbitron text-white font-bold pr-3"><button onclick="ui.showCompanyLogins('${this.escapeHTML(cid)}')" class="min-h-[44px] text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 max-w-[200px] truncate inline-flex items-center" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)}</button></td>
                                     <td class="py-3 text-mars-yellow font-bold pr-2">${this.escapeHTML(co.classGroup)}</td>
                                     <td class="py-3 pr-3">
                                         ${isCoord ? `
                                         <div class="flex items-center gap-1">
-                                            <input type="text" aria-label="Código de empresa ${this.escapeHTML(co.name)}" maxlength="10" value="${this.escapeHTML(coCode)}" onchange="ui.updateCompanyCode('${this.escapeHTML(cid)}', this.value)" class="min-h-[38px] w-24 bg-black border border-mars-yellow text-center text-mars-yellow font-mono font-black p-1 outline-none uppercase">
-                                            <button onclick="ui.regenerateCompanyCode('${this.escapeHTML(cid)}')" aria-label="Regenerar código aleatorio" title="Regenerar código aleatorio" class="min-h-[38px] min-w-[38px] bg-slate-800 text-slate-200 px-2 py-1 hover:bg-mars-yellow hover:text-black transition-colors">🔄</button>
+                                            <input type="text" aria-label="Código de empresa ${this.escapeHTML(co.name)}" maxlength="10" value="${this.escapeHTML(coCode)}" onchange="ui.updateCompanyCode('${this.escapeHTML(cid)}', this.value)" class="min-h-[44px] w-24 bg-black border border-mars-yellow text-center text-mars-yellow font-mono font-black p-1 outline-none uppercase">
+                                            <button onclick="ui.regenerateCompanyCode('${this.escapeHTML(cid)}')" aria-label="Regenerar código aleatorio" title="Regenerar código aleatorio" class="min-h-[44px] min-w-[44px] bg-slate-800 text-slate-200 px-2 py-1 hover:bg-mars-yellow hover:text-black transition-colors flex items-center justify-center">🔄</button>
                                         </div>` : `<span class="text-slate-300 font-mono">***-****</span>`}
                                     </td>
                                     ${['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA'].map(rol => {
                                         const pinVal = state.getRolePin(co, rol) || '1234';
                                         return `
                                         <td class="py-3 pr-2">
-                                            ${isCoord ? `<input type="text" aria-label="PIN ${rol} de ${this.escapeHTML(co.name)}" maxlength="4" value="${this.escapeHTML(pinVal)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', '${rol}', this.value)" class="min-h-[38px] w-14 bg-black border border-mars-border text-center text-mars-cyan font-bold p-1 outline-none focus:border-mars-yellow">` : `<span class="text-slate-300">****</span>`}
+                                            ${isCoord ? `<input type="text" aria-label="PIN ${rol} de ${this.escapeHTML(co.name)}" maxlength="4" value="${this.escapeHTML(pinVal)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', '${rol}', this.value)" class="min-h-[44px] w-14 bg-black border border-mars-border text-center text-mars-cyan font-bold p-1 outline-none focus:border-mars-yellow">` : `<span class="text-slate-300">****</span>`}
                                         </td>`;
                                     }).join('')}
                                     <td class="py-3 pr-3">
                                         ${isCoord ? `
                                         <div class="flex items-center gap-1">
-                                            <input type="text" aria-label="PIN AUXILIAR de ${this.escapeHTML(co.name)}" maxlength="4" placeholder="----" value="${this.escapeHTML(auxPin)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', 'AUXILIAR', this.value)" class="min-h-[38px] w-14 bg-black border ${auxPin ? 'border-mars-green text-mars-green' : 'border-slate-700 text-slate-400'} text-center font-bold p-1 outline-none focus:border-mars-yellow">
+                                            <input type="text" aria-label="PIN AUXILIAR de ${this.escapeHTML(co.name)}" maxlength="4" placeholder="----" value="${this.escapeHTML(auxPin)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', 'AUXILIAR', this.value)" class="min-h-[44px] w-14 bg-black border ${auxPin ? 'border-mars-green text-mars-green' : 'border-slate-700 text-slate-400'} text-center font-bold p-1 outline-none focus:border-mars-yellow">
                                             <span class="text-xs text-slate-300 uppercase">[${this.escapeHTML(auxDept)}]</span>
                                         </div>` : `<span class="text-slate-300">****</span>`}
                                     </td>
-                                    <td class="py-3">${isCoord ? `<button onclick="ui.confirmAction('Eliminar Startup', '¿Borrar startup irreversiblemente?', () => ui.deleteStartup('${this.escapeHTML(cid)}'), 'Eliminar')" class="min-h-[38px] text-mars-magenta font-bold hover:underline px-2">Eliminar</button>` : `<span class="text-slate-400">Bloqueado</span>`}</td>
+                                    <td class="py-3">${isCoord ? `<button onclick="ui.confirmAction('Eliminar Startup', '¿Borrar startup irreversiblemente?', () => ui.deleteStartup('${this.escapeHTML(cid)}'), 'Eliminar')" class="min-h-[44px] text-mars-magenta font-bold hover:underline px-2">Eliminar</button>` : `<span class="text-slate-400">Bloqueado</span>`}</td>
                                 </tr>`;
                             }).join('')}
                         </tbody>
@@ -624,10 +627,10 @@ Object.assign(ui, {
                 <td class="py-2 pr-2 text-mars-cyan uppercase">${this.escapeHTML(item.category)}</td>
                 <td class="py-2 pr-2 text-slate-300">${this.escapeHTML(item.unit)} (${this.escapeHTML(item.origin || '--')})</td>
                 <td class="py-2 pr-2">
-                    <input type="number" aria-label="Precio de ${this.escapeHTML(item.name)}" value="${item.price}" step="0.5" onchange="ui.updateCatalogPrice(${idx}, this.value)" class="min-h-[38px] w-20 bg-black border border-mars-green text-mars-green font-mono font-bold text-center p-1">
+                    <input type="number" aria-label="Precio de ${this.escapeHTML(item.name)}" value="${item.price}" step="0.5" onchange="ui.updateCatalogPrice(${idx}, this.value)" class="min-h-[44px] w-20 bg-black border border-mars-green text-mars-green font-mono font-bold text-center p-1">
                 </td>
                 <td class="py-2 text-right">
-                    <button onclick="ui.deleteCatalogItem(${idx})" aria-label="Eliminar artículo" class="min-h-[38px] text-mars-magenta font-bold px-2.5 py-1 border border-mars-magenta hover:bg-mars-magenta hover:text-white">X</button>
+                    <button onclick="ui.deleteCatalogItem(${idx})" aria-label="Eliminar artículo" class="min-h-[44px] min-w-[44px] text-mars-magenta font-bold px-2.5 py-1 border border-mars-magenta hover:bg-mars-magenta hover:text-white inline-flex items-center justify-center">X</button>
                 </td>
             </tr>
         `).join('');
@@ -670,10 +673,10 @@ Object.assign(ui, {
                                 <td class="py-2 font-bold text-white pr-4">${this.escapeHTML(item.name)}</td>
                                 <td class="py-2 text-slate-300 pr-4">${this.escapeHTML(item.category)}</td>
                                 <td class="py-2 pr-4">
-                                    <input type="number" id="price-${this.escapeHTML(item.id)}" aria-label="Precio de ${this.escapeHTML(item.name)}" value="${item.price}" class="min-h-[38px] w-20 bg-black border border-mars-border text-center text-mars-green font-bold p-1 outline-none focus:border-mars-yellow">
+                                    <input type="number" id="price-${this.escapeHTML(item.id)}" aria-label="Precio de ${this.escapeHTML(item.name)}" value="${item.price}" class="min-h-[44px] w-20 bg-black border border-mars-border text-center text-mars-green font-bold p-1 outline-none focus:border-mars-yellow">
                                 </td>
                                 <td class="py-2">
-                                    <button onclick="ui.saveCatalogPrice('${this.escapeHTML(item.id)}')" class="min-h-[38px] bg-mars-yellow/20 text-mars-yellow border border-mars-yellow/50 px-3 py-1.5 font-bold hover:bg-mars-yellow hover:text-black transition-colors">Guardar</button>
+                                    <button onclick="ui.saveCatalogPrice('${this.escapeHTML(item.id)}')" class="min-h-[44px] bg-mars-yellow/20 text-mars-yellow border border-mars-yellow/50 px-3 py-1.5 font-bold hover:bg-mars-yellow hover:text-black transition-colors">Guardar</button>
                                 </td>
                             </tr>
                             `).join('')}

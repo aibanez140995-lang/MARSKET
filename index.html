@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>MARS-KET 2.0 | Advanced Aerospace Learning Management System</title>
     <meta name="theme-color" content="#05070f">
-    <link rel="icon" type="image/png" href="/logo.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MARS-KET 2.0">
+    <link rel="manifest" href="manifest.json?v=1.0.18">
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="apple-touch-icon" href="logo.png">
     
     <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -133,20 +138,20 @@
         <!-- HEADER HUD (FASE 1 v1.0.17: LÍNEA ÚNICA RESPONSIVA COMPACTA) -->
         <header id="hud-header" class="hidden terminal-border bg-mars-card/95 backdrop-blur-md p-3 sm:p-4 mb-3 sm:mb-4 border-b-2 border-b-mars-cyan sticky top-0 z-40">
             <!-- Fila 1: Logo, Versión, Avatar de Marca y Estado de Nube D1 -->
-            <div class="flex justify-between items-center gap-2">
-                <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div class="flex justify-between items-center gap-1.5 sm:gap-2">
+                <div class="flex items-center gap-2 sm:gap-3 min-w-0">
                     <img src="logo.png" alt="MARS-KET 2.0" class="w-8 h-8 sm:w-9 sm:h-9 object-contain drop-shadow-[0_0_8px_rgba(0,240,255,0.65)] shrink-0">
-                    <span class="w-2.5 h-2.5 rounded-full bg-mars-green shadow-[0_0_8px_#00ff66] animate-pulse shrink-0" aria-hidden="true"></span>
+                    <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-mars-green shadow-[0_0_8px_#00ff66] animate-pulse shrink-0" aria-hidden="true"></span>
                     <div class="min-w-0">
-                        <h1 class="font-orbitron font-black text-sm sm:text-lg text-white tracking-widest leading-none flex items-center gap-1.5 truncate">
+                        <h1 class="font-orbitron font-black text-xs sm:text-lg text-white tracking-wider sm:tracking-widest leading-none flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
                             MARS-KET <span class="text-mars-cyan">2.0</span>
                         </h1>
-                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v1.0.17</span>
+                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v1.0.18</span>
                     </div>
                 </div>
-                <div class="flex items-center gap-2 shrink-0">
+                <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
                     <div id="hud-mini-logo" class="w-8 h-8 sm:w-9 sm:h-9 hex-clip border border-mars-cyan bg-black overflow-hidden flex items-center justify-center hidden" title="Emblema de Entidad Activa"></div>
-                    <span id="hud-cloud-status" role="status" aria-live="polite" class="text-xs font-bold uppercase tracking-wider px-2.5 py-1 border border-mars-green/60 text-mars-green bg-mars-green/10 whitespace-nowrap">[D1: SYNCED]</span>
+                    <span id="hud-cloud-status" role="status" aria-live="polite" class="text-xs font-bold uppercase tracking-normal sm:tracking-wider px-2 sm:px-2.5 py-1 border border-mars-green/60 text-mars-green bg-mars-green/10 whitespace-nowrap">[D1: SYNCED]</span>
                 </div>
             </div>
 
@@ -234,6 +239,9 @@
             }
             if (typeof state !== 'undefined' && typeof state.init === 'function') {
                 state.init();
+            }
+            if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+                navigator.serviceWorker.register('sw.js?v=1.0.18').catch(() => {});
             }
         });
     </script>

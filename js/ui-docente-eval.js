@@ -79,7 +79,7 @@ Object.assign(ui, {
                                 
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-mars-cyan/5">
-                                    <td class="py-3 font-orbitron text-white font-bold pr-4"><button onclick="ui.showCompanyLogins('${this.escapeHTML(cid)}')" class="min-h-[36px] text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 max-w-[260px] truncate inline-block align-middle" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)} [${this.escapeHTML(co.classGroup)}]</button></td>${cellsHtml}
+                                    <td class="py-3 font-orbitron text-white font-bold pr-4"><button onclick="ui.showCompanyLogins('${this.escapeHTML(cid)}')" class="min-h-[44px] text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 max-w-[260px] truncate inline-flex items-center align-middle" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)} [${this.escapeHTML(co.classGroup)}]</button></td>${cellsHtml}
                                     <td class="py-3 font-mono pr-3 text-xs ${pctEval === 100 ? 'text-mars-green font-bold' : 'text-slate-300'}">${pctEval}%</td>
                                     <td class="py-3 font-mono text-mars-yellow font-black text-sm">${finalDisplay}</td>
                                 </tr>`;
@@ -139,8 +139,8 @@ Object.assign(ui, {
                                 const deliveredTotal = docCols.filter(col => !!d[col.key]).length;
                                 
                                 const dLink = (doc) => doc 
-                                    ? `<a href="${this.escapeHTML(doc.dataUrl)}" target="_blank" rel="noopener noreferrer" class="bg-mars-green/15 text-mars-green border border-mars-green px-2 py-1 font-bold hover:bg-mars-green hover:text-black transition-colors block text-center">${doc.type==='link'?'🔗 LINK':'📁 FILE'}</a>` 
-                                    : `<span class="text-slate-400 border border-slate-800 px-2 py-1 block text-center">--</span>`;
+                                    ? `<a href="${this.escapeHTML(doc.dataUrl)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] flex items-center justify-center bg-mars-green/15 text-mars-green border border-mars-green px-2 py-1 font-bold hover:bg-mars-green hover:text-black transition-colors text-center">${doc.type==='link'?'🔗 LINK':'📁 FILE'}</a>` 
+                                    : `<span class="min-h-[44px] flex items-center justify-center text-slate-400 border border-slate-800 px-2 py-1 text-center">--</span>`;
                                 
                                 const aLink = aiCount > 0 
                                     ? `<span class="text-blue-400 font-bold bg-blue-500/10 border border-blue-500 px-2 py-1 block text-center">✓ ${aiCount}</span>` 

@@ -189,27 +189,33 @@ Object.assign(ui, {
             }).join('');
 
             // Solicitudes de Paquetes de Marketing pendientes de Finanzas
-            const mktPendingHtml = co.marketingCampaigns.filter(c => c.status === 'PENDIENTE_FINANZAS').map(camp => `
+            const mktPendingHtml = co.marketingCampaigns.filter(c => c.status === 'PENDIENTE_FINANZAS').map(camp => {
+                const campPrice = !isNaN(Number(camp.price)) ? Number(camp.price) : (!isNaN(Number(camp.cost)) ? Number(camp.cost) : 0);
+                const campPkg = camp.packageName || camp.type || 'Campaña Publicitaria';
+                const campTitle = camp.title || camp.type || 'Acción Comercial';
+                const campDesc = camp.desc || 'Solicitud de inversión publicitaria';
+                return `
                 <div class="bg-slate-900 border border-mars-yellow p-4 text-xs mb-3">
                     <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
                         <div>
                             <span class="text-xs font-black uppercase px-2 py-0.5 border bg-mars-yellow/20 text-mars-yellow border-mars-yellow animate-pulse">PENDIENTE FINANZAS</span>
-                            <h4 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">Pack Marketing: ${this.escapeHTML(camp.packageName)}</h4>
+                            <h4 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">Pack Marketing: ${this.escapeHTML(campPkg)}</h4>
                         </div>
                         <div class="text-right">
-                            <span class="text-mars-green font-mono font-bold text-sm sm:text-base">${Number(camp.price).toFixed(2)} €v</span>
-                            <span class="block text-xs text-slate-300 font-mono">${this.escapeHTML(camp.date)}</span>
+                            <span class="text-mars-green font-mono font-bold text-sm sm:text-base">${campPrice.toFixed(2)} €v</span>
+                            <span class="block text-xs text-slate-300 font-mono">${this.escapeHTML(camp.date || '--')}</span>
                         </div>
                     </div>
-                    <p class="text-slate-200 italic mb-1 break-words"><strong class="text-mars-cyan">Campaña:</strong> "${this.escapeHTML(camp.title)}"</p>
-                    <p class="text-slate-300 italic mb-2 break-words"><strong class="text-mars-yellow">Justificación ROI:</strong> "${this.escapeHTML(camp.desc)}"</p>
+                    <p class="text-slate-200 italic mb-1 break-words"><strong class="text-mars-cyan">Campaña:</strong> "${this.escapeHTML(campTitle)}"</p>
+                    <p class="text-slate-300 italic mb-2 break-words"><strong class="text-mars-yellow">Justificación ROI:</strong> "${this.escapeHTML(campDesc)}"</p>
                     ${isFinanzas ? `
                     <div class="flex flex-col sm:flex-row gap-2 mt-3 pt-2 border-t border-slate-800">
                         <button type="button" onclick="ui.approveMktCamp('${this.escapeHTML(camp.id)}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1">Aprobar Paquete MKT</button>
                         <button type="button" onclick="ui.rejectMktCamp('${this.escapeHTML(camp.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Rechazar</button>
                     </div>` : `<p class="text-xs text-slate-300 uppercase italic">Esperando validación presupuestaria de Finanzas.</p>`}
                 </div>
-            `).join('');
+            `;
+            }).join('');
 
             ordersListHtml = mktPendingHtml + idOrdersHtml;
         }

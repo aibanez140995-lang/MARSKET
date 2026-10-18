@@ -481,7 +481,7 @@ Object.assign(ui, {
                         <span class="text-xs text-slate-300">${this.escapeHTML(c.date)}</span>
                     </div>
                     <p class="text-xs text-slate-200 italic mb-2 break-words">"${this.escapeHTML(c.desc)}"</p>
-                    ${c.url ? `<a href="${this.escapeHTML(c.url)}" target="_blank" rel="noopener noreferrer" class="text-xs text-mars-yellow hover:underline">🔗 Ver Creatividad</a>` : ''}
+                    ${c.url ? `<a href="${this.escapeHTML(c.url)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center text-xs text-mars-yellow hover:underline">🔗 Ver Creatividad</a>` : ''}
                 </div>`;
             }
 

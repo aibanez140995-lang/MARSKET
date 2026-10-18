@@ -185,7 +185,14 @@ const state = {
                 if (co.deliverables[docKey] === undefined) co.deliverables[docKey] = null;
             }
 
-            co.flightTests = Array.isArray(co.flightTests) ? co.flightTests : [];
+            co.flightTests = (Array.isArray(co.flightTests) ? co.flightTests : []).map(f => ({
+                ...f,
+                naHCO3: !isNaN(Number(f?.naHCO3)) ? Number(f.naHCO3) : (!isNaN(Number(f?.nahco3)) ? Number(f.nahco3) : (!isNaN(Number(f?.weightG)) ? Number(f.weightG) : 0)),
+                vinegar: !isNaN(Number(f?.vinegar)) ? Number(f.vinegar) : (!isNaN(Number(f?.waterMl)) ? Number(f.waterMl) : 0),
+                costEurV: !isNaN(Number(f?.costEurV)) ? Number(f.costEurV) : 0,
+                heightMm: !isNaN(Number(f?.heightMm)) ? Number(f.heightMm) : (!isNaN(Number(f?.heightM)) ? Number(f.heightM) * 1000 : 0),
+                efficiency: !isNaN(Number(f?.efficiency)) ? Number(f.efficiency) : 0
+            }));
             co.votingMotions = Array.isArray(co.votingMotions) ? co.votingMotions : [];
             co.aiPrompts = Array.isArray(co.aiPrompts) ? co.aiPrompts : [];
             co.ledger = Array.isArray(co.ledger) ? co.ledger : [];
