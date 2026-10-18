@@ -1,16 +1,78 @@
 // js/ui-core.js
+// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO, ONBOARDING INTEGRAL Y GUÍA (v1.0.17) ---
 
 const ui = {
     current: 'login', adminTab: 'dash', coordEvalView: 'ACTA', evalSelectedCo: '', evalClassFilter: 'ALL',
     
     navigate(view) { this.current = view; this.render(); },
     
-    // Función de Saneamiento Global (Filtro Léxico)
-    hasForbiddenWords(text) {
-        if (!text) return false;
+    // FASE 4: Motor de Inspección Léxica Bifurcada (Nombres vs. Insultos)
+    checkLexicon(text, context = 'Actividad General') {
+        if (!text) return { pass: true };
         const words = typeof FORBIDDEN_WORDS !== 'undefined' ? FORBIDDEN_WORDS : [];
-        const lowerText = text.toLowerCase();
-        return words.some(w => lowerText.includes(w.toLowerCase()));
+        
+        // Normalización radical anti-evasión (Leetspeak y caracteres repetidos)
+        let normalizedInput = text.toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/[4@]/g, 'a').replace(/3/g, 'e')
+            .replace(/[1!|]/g, 'i').replace(/0/g, 'o').replace(/[5$]/g, 's')
+            .replace(/[^a-z0-9\s]/g, '')
+            .replace(/(.)\1+/g, '$1');
+
+        const isNameList = ['mario', 'alex', 'alejandro', 'coordinador', 'director', 'profe', 'profesor'];
+        const profanityList = words.filter(w => !isNameList.includes(w.toLowerCase()));
+
+        // 1. Detección de Nombres Propios (Búsqueda por límite de palabra exacta)
+        for (let name of isNameList) {
+            const regex = new RegExp(`\\b${name}\\b`, 'i');
+            if (regex.test(normalizedInput)) {
+                this.recordSecurityIncident('NAME', text, context, name);
+                return { pass: false, type: 'NAME', word: name };
+            }
+        }
+
+        // 2. Detección de Lenguaje Soez / Insultos (Búsqueda de subcadena tolerante)
+        for (let bad of profanityList) {
+            const normBad = bad.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/(.)\1+/g, '$1');
+            if (normalizedInput.includes(normBad)) {
+                this.recordSecurityIncident('PROFANITY', text, context, bad);
+                return { pass: false, type: 'PROFANITY', word: bad };
+            }
+        }
+
+        return { pass: true };
+    },
+
+    recordSecurityIncident(severity, rawText, context, matchedWord) {
+        if (!state.user || state.user.admin) return;
+        state.data.securityIncidents = state.data.securityIncidents || [];
+        state.data.securityIncidents.unshift({
+            id: 'SEC-' + Date.now(),
+            coId: state.user.coId,
+            role: state.user.role,
+            severity: severity, // 'NAME' o 'PROFANITY'
+            word: matchedWord,
+            context: context,
+            text: rawText,
+            date: new Date().toLocaleString(),
+            resolved: false
+        });
+        telemetry.log("SECURITY", `[${severity}] Interceptado en ${context}: "${matchedWord}"`);
+        state.save();
+    },
+
+    // Guardián Universal: Devuelve TRUE si hay palabras prohibidas y lanza el alert automáticamente
+    hasForbiddenWords(text, context = 'Actividad General') {
+        const check = this.checkLexicon(text, context);
+        if (!check.pass) {
+            if (check.type === 'NAME') {
+                alert(`⚠️ AVISO LÉXICO: Se ha detectado la mención de un nombre propio ("${check.word}"). Utiliza únicamente términos departamentales o institucionales. La incidencia ha sido registrada.`);
+            } else {
+                alert("🚨 INFRACCIÓN DISCIPLINARIA: Acción bloqueada por contener lenguaje soez o inapropiado. Se ha generado un expediente disciplinario directo en Coordinación.");
+            }
+            return true; 
+        }
+        return false;
     },
 
     getDeadlineStatus(dateString) {
@@ -74,82 +136,141 @@ const ui = {
         return html;
     },
 
+    // FASE 6: Manual Operativo Integral de Puesto (Modal de Bienvenida Completo)
     showWelcomeModal() {
         if (sessionStorage.getItem('hideWelcome')) return;
         let role = state.user ? state.user.role : '';
         if(state.user && state.user.admin) role = 'DOCENTE';
         
         const elTitle = document.getElementById('onboarding-title');
-        if(elTitle) elTitle.innerText = `¡HOLA, ${role.replace('_',' ')}! 🚀`;
+        if(elTitle) elTitle.innerText = `ORDEN DE OPERACIONES: ${role.replace('_',' ')} 🚀`;
         
-        let content = `<div class="space-y-4 font-mono text-sm leading-relaxed">`;
+        let content = `<div class="space-y-4 font-mono text-xs leading-relaxed">`;
         
         switch(role) {
             case 'CEO': 
-                content += `<p class="text-mars-cyan font-bold">¡Bienvenido a la silla de la presidencia!</p>
-                <p class="text-slate-300">Tu misión principal es que la startup cumpla plazos y opere coordinada.</p>
-                <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400 text-xs">
-                    <li>Vigila el <strong>Cronograma Maestro</strong> y las alertas de sanciones legales.</li>
-                    <li>Supervisa la <strong>Bóveda de Órdenes</strong> (I+D y Paquetes de Marketing).</li>
-                    <li>Ejerce el <strong>voto de calidad</strong> en empates de Gobernanza.</li>
-                    <li>Configura el PIN y departamento vinculado del <strong>Rol Observador (Auxiliar)</strong>.</li>
-                </ul>`; 
+                content += `
+                <div class="bg-mars-cyan/10 border border-mars-cyan p-3">
+                    <p class="text-mars-cyan font-black uppercase text-xs">Dirección General (CEO) — Liderazgo Estratégico</p>
+                    <p class="text-slate-300 text-[10px] mt-1">Tu misión principal es garantizar el cumplimiento estricto de los plazos, coordinar los departamentos y mantener la cohesión operativa de la startup.</p>
+                </div>
+                <div class="space-y-2 text-[11px] text-slate-300">
+                    <p class="text-mars-yellow font-bold uppercase text-[10px] border-b border-slate-800 pb-1">Atribuciones y Operaciones Clave:</p>
+                    <ul class="list-disc pl-5 space-y-1.5">
+                        <li><strong class="text-white">Cronograma Maestro (19 Entregables):</strong> Monitoriza en tiempo real el semáforo temporal de las 6 asignaturas (FYQ, LYE, ECO, MAT, LEN, ING) y anticípate a cierres de plazo.</li>
+                        <li><strong class="text-white">Bóveda de Órdenes:</strong> Supervisa el estado de las adquisiciones de I+D y campañas de Marketing aprobadas por Finanzas.</li>
+                        <li><strong class="text-white">Gabinete de Crisis AEE:</strong> Redacta y publica el Comunicado Oficial de Mitigación ante sanciones o multas regulatorias.</li>
+                        <li><strong class="text-white">Gobernanza y Voto de Calidad:</strong> Convoca mociones asamblearias, dirime empates técnicos con tu voto de calidad y gestiona el Buzón HR.</li>
+                        <li><strong class="text-white">Registro Mercantil y RR.HH.:</strong> Solicita formalmente a Coordinación el cambio de <strong>Denominación Social</strong> de la empresa y gestiona el alta del <strong>Rol Observador (Auxiliar)</strong>.</li>
+                    </ul>
+                </div>`; 
                 break;
+
             case 'TECNICO': 
-                content += `<p class="text-mars-cyan font-bold">¡Saludos, cerebro de la propulsión e ingeniería! 🧪</p>
-                <p class="text-slate-300">De ti depende el diseño físico, la química y la precisión matemática.</p>
-                <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400 text-xs">
-                    <li>Solicita componentes en el <strong>SUPERMARS-KET</strong> o comercia en el <strong>Mercado B2B</strong>.</li>
-                    <li>Registra vuelos en el <strong>Banco de Pruebas</strong> y configura el prototipo (BOM).</li>
-                    <li>Entrega enlaces Drive para la <strong>Hoja Preliminar</strong>, el <strong>Informe Técnico FYQ</strong> y los <strong>Informes Matemáticos</strong>.</li>
-                </ul>`; 
+                content += `
+                <div class="bg-mars-cyan/10 border border-mars-cyan p-3">
+                    <p class="text-mars-cyan font-black uppercase text-xs">Departamento Técnico (I+D e Ingeniería) 🧪</p>
+                    <p class="text-slate-300 text-[10px] mt-1">Responsable del diseño aeroespacial del cohete, estequiometría química del propulsor y cálculo trigonométrico de apogeo.</p>
+                </div>
+                <div class="space-y-2 text-[11px] text-slate-300">
+                    <p class="text-mars-yellow font-bold uppercase text-[10px] border-b border-slate-800 pb-1">Atribuciones y Operaciones Clave:</p>
+                    <ul class="list-disc pl-5 space-y-1.5">
+                        <li><strong class="text-white">Aprovisionamiento (SUPERMARS-KET):</strong> Añade piezas al borrador técnico y tramita órdenes hacia Finanzas con justificación técnica obligatoria (auditada por el filtro léxico).</li>
+                        <li><strong class="text-white">Mercado Secundario (B2B):</strong> Pon a la venta componentes sobrantes de tu inventario y adquiere piezas de otras startups previa autorización en la Aduana Docente.</li>
+                        <li><strong class="text-white">Banco de Pruebas y BOM:</strong> Registra ensayos de vuelo midiendo el apogeo en <strong>milímetros (mm)</strong> para calcular la eficiencia ($E = \\text{mm}/€\\text{v}$) y configura el escandallo final (BOM).</li>
+                        <li><strong class="text-white">Entregables Científicos (Enlaces Cloud):</strong> Sube los enlaces Drive de <strong>Física y Química (25%)</strong> (Informe Preliminar Dic e Informe Final Abr) y los 4 informes de <strong>Matemáticas (5%)</strong> (Goniómetro, Distancia Conocida, Dos Puntos e Informe Final).</li>
+                    </ul>
+                </div>`; 
                 break;
+
             case 'FINANZAS': 
-                content += `<p class="text-mars-cyan font-bold">¡Bienvenido, guardián de la caja! 💰</p>
-                <p class="text-slate-300">Sin tu luz verde presupuestaria no se aprueba ni un tornillo ni un anuncio.</p>
-                <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400 text-xs">
-                    <li>Audita y aprueba (total o parcialmente) las órdenes de <strong>I+D y Paquetes de Marketing</strong>.</li>
-                    <li>Supervisa el <strong>Ledger Inmutable</strong> y las multas de la Ventanilla Legal.</li>
-                    <li>Sube enlaces Drive para los <strong>4 documentos oficiales de Economía</strong>.</li>
-                </ul>`; 
+                content += `
+                <div class="bg-mars-cyan/10 border border-mars-cyan p-3">
+                    <p class="text-mars-cyan font-black uppercase text-xs">Departamento Financiero (CFO) 💰</p>
+                    <p class="text-slate-300 text-[10px] mt-1">Guardián de la viabilidad económica, auditoría de compras, control del capital virtual (2400 €v iniciales) y contabilidad analítica.</p>
+                </div>
+                <div class="space-y-2 text-[11px] text-slate-300">
+                    <p class="text-mars-yellow font-bold uppercase text-[10px] border-b border-slate-800 pb-1">Atribuciones y Operaciones Clave:</p>
+                    <ul class="list-disc pl-5 space-y-1.5">
+                        <li><strong class="text-white">Autorización Presupuestaria:</strong> Audita, aprueba o rechaza en la Bóveda de Órdenes las solicitudes de componentes de I+D y los paquetes publicitarios de Marketing.</li>
+                        <li><strong class="text-white">Libro Mayor (Ledger Inmutable):</strong> Supervisa todos los asientos contables: compras, ingresos por patrocinio, retenciones B2B y deducciones por multas AEE.</li>
+                        <li><strong class="text-white">Control de Coste Físico:</strong> Contrasta la inversión virtual (€v) con el gasto real en euros físicos (€) reportado por Logística en taller.</li>
+                        <li><strong class="text-white">Entregables de Economía (10% - Cloud):</strong> Gestiona y entrega los enlaces Drive/Sheets de los 4 documentos oficiales: <em>Presupuesto Inicial</em>, <em>Cuenta de Resultados</em>, <em>Presupuesto Post-Prototipo</em> y <em>Balance de Situación</em>.</li>
+                    </ul>
+                </div>`; 
                 break;
+
             case 'MARKETING': 
-                content += `<p class="text-mars-cyan font-bold">¡Hola, estratega de marca y negocio! 🎨</p>
-                <p class="text-slate-300">Construye la identidad corporativa, el modelo de negocio y capta inversores.</p>
-                <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400 text-xs">
-                    <li>Solicita a Coordinación la aprobación de tu <strong>Logo y Eslogan</strong>.</li>
-                    <li>Contrata <strong>Paquetes Publicitarios</strong> para ejecutar acciones.</li>
-                    <li>Sube los enlaces a los entregables de <strong>LyE, Lengua e Inglés</strong>.</li>
-                </ul>`; 
+                content += `
+                <div class="bg-mars-cyan/10 border border-mars-cyan p-3">
+                    <p class="text-mars-cyan font-black uppercase text-xs">Departamento de Marketing y Comunicación (CMO) 🎨</p>
+                    <p class="text-slate-300 text-[10px] mt-1">Responsable de la identidad corporativa, estrategia comercial, narrativa persuasiva y captación de patrocinio.</p>
+                </div>
+                <div class="space-y-2 text-[11px] text-slate-300">
+                    <p class="text-mars-yellow font-bold uppercase text-[10px] border-b border-slate-800 pb-1">Atribuciones y Operaciones Clave:</p>
+                    <ul class="list-disc pl-5 space-y-1.5">
+                        <li><strong class="text-white">Aduana de Identidad Corporativa:</strong> Diseña y somete a validación docente el logotipo y eslogan oficial de la startup.</li>
+                        <li><strong class="text-white">Campañas y Paquetes Publicitarios:</strong> Solicita presupuesto a Finanzas para contratar paquetes de medios (Satélite, Tradicional, Híbrido o Supernova) y registra evidencias de cada acción.</li>
+                        <li><strong class="text-white">Entregables de LyE, Lengua e Inglés (Cloud):</strong> Sube los enlaces Drive de <strong>LyE (40%)</strong> (Identidad Dic/Abr, Business Model Escrito y Canvas), <strong>Lengua (15%)</strong> (Dossier Argumentativo de Inversores) e <strong>Inglés (5%)</strong> (Presentación Oral y Redacciones).</li>
+                    </ul>
+                </div>`; 
                 break;
+
             case 'OPERACIONES_IA': 
-                content += `<p class="text-mars-cyan font-bold">¡Saludos, responsable de logística y ética IA! 📦🤖</p>
-                <p class="text-slate-300">Conectas las compras virtuales con el taller real y auditas el uso de IA.</p>
-                <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400 text-xs">
-                    <li>Valida el ensamblaje físico de las órdenes y registra el coste real (€).</li>
-                    <li>Audita la <strong>Bitácora IA</strong> verificando validación humana.</li>
-                    <li>Coordina la entrega de enlaces de la <strong>Bitácora de Decisiones e IA</strong>.</li>
-                </ul>`; 
+                content += `
+                <div class="bg-mars-cyan/10 border border-mars-cyan p-3">
+                    <p class="text-mars-cyan font-black uppercase text-xs">Departamento de Operaciones, Logística e IA (COO) 📦🤖</p>
+                    <p class="text-slate-300 text-[10px] mt-1">Enlace entre el simulador virtual y el taller de fabricación física, aprovisionamiento real y auditoría ética de Inteligencia Artificial.</p>
+                </div>
+                <div class="space-y-2 text-[11px] text-slate-300">
+                    <p class="text-mars-yellow font-bold uppercase text-[10px] border-b border-slate-800 pb-1">Atribuciones y Operaciones Clave:</p>
+                    <ul class="list-disc pl-5 space-y-1.5">
+                        <li><strong class="text-white">Logística y Recepción Física:</strong> Valida la entrada en taller de los pedidos aprobados por Finanzas, registrando el comercio real y el coste físico en euros (€).</li>
+                        <li><strong class="text-white">Auditoría y Bitácora IA:</strong> Declara y audita todos los prompts utilizados por el equipo, exigiendo la verificación humana crítica antes de cerrarlos.</li>
+                        <li><strong class="text-white">Entregables Operativos (Cloud):</strong> Coordina y sube los enlaces Drive del <strong>Diario de Decisiones, Conflictos e IA</strong> correspondientes a las entregas de Diciembre y Abril (LyE).</li>
+                    </ul>
+                </div>`; 
                 break;
+
             case 'AUXILIAR': 
-                content += `<p class="text-mars-cyan font-bold">¡Bienvenido, Observador vinculado! 👁️</p>
-                <p class="text-slate-300">Apoyas a tu departamento asignado y participas en las decisiones democráticas.</p>
-                <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400 text-xs">
-                    <li>Consulta en tiempo real el <strong>SUPERMARS-KET</strong> y los entregables.</li>
-                    <li>Vota y propón mociones en Gobernanza.</li>
-                </ul>`; 
+                content += `
+                <div class="bg-mars-cyan/10 border border-mars-cyan p-3">
+                    <p class="text-mars-cyan font-black uppercase text-xs">Observador Auxiliar (Apoyo Departamental) 👁️</p>
+                    <p class="text-slate-300 text-[10px] mt-1">Miembro táctico adscrito a un departamento específico para refuerzo operativo y participación en la gobernanza.</p>
+                </div>
+                <div class="space-y-2 text-[11px] text-slate-300">
+                    <p class="text-mars-yellow font-bold uppercase text-[10px] border-b border-slate-800 pb-1">Atribuciones y Operaciones Clave:</p>
+                    <ul class="list-disc pl-5 space-y-1.5">
+                        <li><strong class="text-white">Veeduría Departamental:</strong> Acceso directo a la ventana de trabajo del departamento al que te ha vinculado el CEO.</li>
+                        <li><strong class="text-white">Gobernanza Activa:</strong> Derecho pleno a proponer mociones y votar en las decisiones colegiadas de la asamblea.</li>
+                        <li><strong class="text-white">Auditoría de Dossier y Catálogo:</strong> Seguimiento en tiempo real de los 19 entregables y precios del mercado.</li>
+                    </ul>
+                </div>`; 
                 break;
+
             case 'DOCENTE': 
-                content += `<p class="text-mars-cyan font-bold">¡Bienvenido al Alto Mando, Inspector/a! 🎖️</p>
-                <p class="text-slate-300">El Centro de Mando Docente opera bajo la ponderación oficial del 100%.</p>
-                <ul class="list-disc pl-5 space-y-2 mt-2 text-slate-400 text-xs">
-                    <li>Califica mediante rúbricas y audita la matriz central de entregables.</li>
-                    <li>Coordinación supervisa la <strong>Aduana B2B</strong> y aprueba/rechaza <strong>Logos y Eslóganes</strong>.</li>
-                    <li>Aplica sanciones disciplinarias desde Ventanilla Legal.</li>
-                </ul>`; 
+                content += `
+                <div class="bg-mars-cyan/10 border border-mars-cyan p-3">
+                    <p class="text-mars-cyan font-black uppercase text-xs">Alto Mando Docente y Coordinación 🎖️</p>
+                    <p class="text-slate-300 text-[10px] mt-1">Control integral del ecosistema académico, evaluación continua ponderada (100%), aduanas y régimen disciplinario.</p>
+                </div>
+                <div class="space-y-2 text-[11px] text-slate-300">
+                    <p class="text-mars-yellow font-bold uppercase text-[10px] border-b border-slate-800 pb-1">Atribuciones y Operaciones Clave:</p>
+                    <ul class="list-disc pl-5 space-y-1.5">
+                        <li><strong class="text-white">Evaluación Curricular (100%):</strong> Calificación por rúbricas granulares y generación automática del Acta Ponderada oficial.</li>
+                        <li><strong class="text-white">Monitor de Alertas Léxicas:</strong> Recepción discriminada de incidencias: <span class="text-mars-yellow">Avisos Amarillos</span> por uso de nombres propios e <span class="text-red-500">Infracciones Rojas</span> por lenguaje soez con acceso directo a sanción AEE.</li>
+                        <li><strong class="text-white">Aduanas y Registro Mercantil:</strong> Aprobación de traspasos B2B, validación de Logos/Eslóganes, alta de Roles Auxiliares y autorización o edición directa de cambios de <strong>Denominación Social</strong>.</li>
+                        <li><strong class="text-white">Llavero Maestro y Backups D1:</strong> Gestión de códigos de empresa, PINs cifrados y copias de seguridad en Cloudflare D1.</li>
+                    </ul>
+                </div>`; 
                 break;
         }
-        content += `</div>`;
+        content += `
+        <div class="bg-slate-900 border border-slate-700 p-2.5 text-[9px] text-slate-400 uppercase mt-2">
+            🛡️ <strong class="text-mars-yellow">Norma de Seguridad Activa:</strong> Todos los formularios están protegidos por el Filtro Léxico Universal. Queda prohibido introducir nombres propios o lenguaje ofensivo.
+        </div>
+        </div>`;
+
         const elBody = document.getElementById('onboarding-body');
         if(elBody) elBody.innerHTML = content;
         
@@ -179,6 +300,7 @@ const ui = {
                     if (h.type === 'NUEVO') badgeClass = 'bg-mars-green/20 text-mars-green border-mars-green';
                     if (h.type === 'MEJORA') badgeClass = 'bg-mars-yellow/20 text-mars-yellow border-mars-yellow';
                     if (h.type === 'FIX') badgeClass = 'bg-mars-magenta/20 text-mars-magenta border-mars-magenta';
+                    if (h.type === 'SISTEMA') badgeClass = 'bg-blue-500/20 text-blue-400 border-blue-500';
                     
                     return `
                     <li class="flex items-start gap-2.5 pb-2 border-b border-slate-800/80 last:border-0">
@@ -206,16 +328,17 @@ const ui = {
         this.showModal("Registro de Novedades y Versiones", html, "");
     },
 
+    // FASE 6: Guía Táctica Contextual actualizada a v1.0.17
     showGuide() {
         const viewTitles = {
             'market': 'SUPERMARS-KET y Mercado B2B',
             'tech': 'I+D, Matemáticas e Inventario',
-            'orders': 'Bóveda de Órdenes y Crisis',
+            'orders': 'Cronograma (19) y Bóveda de Órdenes',
             'finance': 'Finanzas, Ledger y Economía',
             'cart': 'Logística de Despliegue Físico',
             'brand': 'Centro de Marca, LyE y Marketing',
             'ailog': 'Bitácora y Auditoría de IA',
-            'resolutions': 'Gobernanza, Votaciones y Alertas HR',
+            'resolutions': 'Gobernanza, Registro Mercantil y HR',
             'dossier': 'Dossier Académico (19 Entregables)',
             'admin': 'Centro de Mando Docente'
         };
@@ -226,82 +349,85 @@ const ui = {
         switch(this.current) {
             case 'market':
                 content += `
-                <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Aprovisionamiento y Mercado Secundario B2B</p>
+                <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Aprovisionamiento Oficial y Mercado Secundario B2B</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">Catálogo Oficial:</span> El Rol Técnico añade componentes al borrador de I+D y los transmite a Finanzas con justificación obligatoria.</li>
-                    <li><span class="text-mars-yellow font-bold">Filtro Léxico:</span> El sistema auditará cualquier texto en busca de vocabulario prohibido o insultos.</li>
-                    <li><span class="text-mars-yellow font-bold">Mercado B2B:</span> Permite comprar piezas sobrantes puestas a la venta por otras startups. Toda compra B2B queda retenida hasta validación en Aduana.</li>
+                    <li><span class="text-mars-yellow font-bold">Catálogo Oficial (B2C):</span> El Rol Técnico añade piezas al borrador de I+D y las transmite a Finanzas con justificación técnica obligatoria.</li>
+                    <li><span class="text-mars-yellow font-bold">Blindaje Léxico Activo:</span> Toda justificación de compra u observación B2B es auditada. Usar nombres propios genera un aviso amarillo; usar insultos bloquea la acción y genera expediente rojo en Coordinación.</li>
+                    <li><span class="text-mars-yellow font-bold">Mercado B2B:</span> Permite vender y comprar piezas sobrantes entre startups. El capital se retiene hasta que Coordinación autoriza el traspaso en la Aduana.</li>
                 </ul>`;
                 break;
             case 'tech':
                 content += `
                 <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Ingeniería Aeroespacial, FYQ y Matemáticas</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">Políticas de Subida (v1.0.15):</span> <strong>Queda estrictamente prohibida la subida de archivos físicos.</strong> Todos los entregables deben ser enlaces a Google Drive, Canva, OneDrive, etc.</li>
-                    <li><span class="text-mars-yellow font-bold">Entregables FYQ (25%):</span> Sube el enlace de la <em>Hoja de Registro Preliminar</em> y el <em>Informe Técnico Exhaustivo</em>.</li>
-                    <li><span class="text-mars-yellow font-bold">Entregables MAT (5%):</span> Enlaces para el Goniómetro y los 3 informes trigonométricos.</li>
+                    <li><span class="text-mars-yellow font-bold">Banco de Pruebas (mm):</span> Registra los ensayos introduciendo la altura alcanzada en <strong>milímetros (mm)</strong> para obtener el índice de eficiencia ($E = \\text{mm}/€\\text{v}$).</li>
+                    <li><span class="text-mars-yellow font-bold">Entregables FYQ (25%):</span> Entrega enlaces Drive para el <em>Informe Preliminar (Dic)</em> y el <em>Informe Técnico Final (Abr)</em>.</li>
+                    <li><span class="text-mars-yellow font-bold">Entregables MAT (5%):</span> Entrega enlaces para el <em>Goniómetro</em>, <em>Distancia Conocida</em>, <em>Dos Mediciones</em> e <em>Informe Comparativo Final</em>.</li>
                 </ul>`;
                 break;
             case 'orders':
                 content += `
-                <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Bóveda de Autorización y Gestión de Crisis</p>
+                <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Cronograma Maestro (19 Plazos), Bóveda y Crisis</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">Cadena de Mando:</span> Muestra el progreso en tiempo real (Solicitado ➔ Auditado por Finanzas ➔ Ejecutado en Logística).</li>
-                    <li><span class="text-mars-yellow font-bold">Protocolo de Crisis:</span> Ante una multa institucional, el CEO emite el Comunicado de Crisis.</li>
+                    <li><span class="text-mars-yellow font-bold">Cronograma Maestro:</span> Filtra y supervisa el estado y cuenta atrás semafórica de los 19 entregables oficiales de las 6 materias.</li>
+                    <li><span class="text-mars-yellow font-bold">Cadena de Mando:</span> Visualiza el flujo de órdenes de I+D y Paquetes de Marketing (Solicitado ➔ Auditado por Finanzas ➔ Ejecutado en Logística).</li>
+                    <li><span class="text-mars-yellow font-bold">Gabinete de Crisis:</span> Si la startup recibe una sanción AEE, el CEO debe emitir desde aquí el Comunicado Oficial de Mitigación.</li>
                 </ul>`;
                 break;
             case 'finance':
                 content += `
                 <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Contabilidad Analítica y Economía (10%)</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">Entregables ECO:</span> Aporta enlaces web (Drive/Sheets) para el <em>Presupuesto Inicial</em>, <em>Cuenta de Resultados</em>, <em>Presupuesto Post-Prototipo</em> y <em>Balance</em>.</li>
-                    <li><span class="text-mars-yellow font-bold">Ledger Inmutable:</span> Registro contable automático de I+D, marketing, B2B y multas.</li>
+                    <li><span class="text-mars-yellow font-bold">Entregables ECO:</span> Aporta enlaces web (Drive/Sheets) para el <em>Presupuesto Inicial</em>, <em>Cuenta de Resultados</em>, <em>Presupuesto Post-Prototipo</em> y <em>Balance de Situación</em>.</li>
+                    <li><span class="text-mars-yellow font-bold">Ledger Inmutable:</span> Libro mayor donde quedan registrados todos los movimientos de €v (I+D, marketing, patrocinios, B2B y multas).</li>
                 </ul>`;
                 break;
             case 'cart':
                 content += `
                 <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Logística Física y Recepción de Suministros</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">Validación Real:</span> Operaciones IA valida el ensamblaje de órdenes aprobadas y registra coste real en €.</li>
+                    <li><span class="text-mars-yellow font-bold">Validación en Taller:</span> Operaciones IA confirma la recepción física de las órdenes aprobadas por Finanzas e introduce el comercio y coste real en euros (€).</li>
                 </ul>`;
                 break;
             case 'brand':
                 content += `
                 <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Marketing, LyE (40%), Lengua (15%) e Inglés (5%)</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">Aprobación de Marca (v1.0.15):</span> Cuando configures tu logotipo y eslogan, el sistema los retendrá como "Pendiente". Coordinación debe aprobarlos antes de que sean visibles para el resto de la flota.</li>
-                    <li><span class="text-mars-yellow font-bold">Paquetes MKT:</span> Contrata acciones promocionales con cargo a Finanzas.</li>
-                    <li><span class="text-mars-yellow font-bold">Entregables (Enlaces Web):</span> Proporciona URLs para las 6 entregas de LyE (incluyendo duales de diciembre y abril), Lengua e Inglés.</li>
+                    <li><span class="text-mars-yellow font-bold">Aduana de Marca:</span> Cualquier cambio de logotipo o eslogan queda en estado "Pendiente" hasta su aprobación por Coordinación.</li>
+                    <li><span class="text-mars-yellow font-bold">Paquetes Publicitarios:</span> Solicita a Finanzas la contratación de packs de medios justificando el retorno de inversión (ROI).</li>
+                    <li><span class="text-mars-yellow font-bold">Entregables Cloud:</span> Sube los enlaces Drive de Identidad (Dic/Abr), Business Model, Canvas, Dossier de Inversores (Lengua) y Presentación/Ensayos (Inglés).</li>
                 </ul>`;
                 break;
             case 'ailog':
                 content += `
                 <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Trazabilidad y Ética en Inteligencia Artificial</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">Registro de Prompts:</span> Documenta en la Bitácora IA qué herramientas y prompts has usado. El filtro léxico está activo.</li>
+                    <li><span class="text-mars-yellow font-bold">Bitácora de Prompts:</span> Todo miembro puede declarar el uso de IA desde el botón superior del banner. Operaciones IA audita y valida la revisión humana crítica.</li>
                 </ul>`;
                 break;
             case 'resolutions':
                 content += `
-                <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Gobernanza Democrática y Alertas HR</p>
+                <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Gobernanza, Registro Mercantil y Buzón HR</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">Alertas HR y Mociones:</span> Utiliza el Buzón HR para reportar bloqueos o propone mociones al equipo. Recuerda: cualquier texto con insultos será rechazado por el sistema.</li>
+                    <li><span class="text-mars-yellow font-bold">Cambio de Denominación Social:</span> El CEO dispone del botón oficial para solicitar a Coordinación el cambio de nombre de la startup sin perder el historial.</li>
+                    <li><span class="text-mars-yellow font-bold">Mociones y Voto de Calidad:</span> Las decisiones se votan democráticamente; en caso de empate, el CEO desempata.</li>
+                    <li><span class="text-mars-yellow font-bold">Buzón HR:</span> Canal formal para reportar inactividad departamental ante el Claustro.</li>
                 </ul>`;
                 break;
             case 'dossier':
                 content += `
-                <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Dossier Académico y Ponderación Oficial</p>
+                <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Dossier Académico y Ponderación Oficial (100%)</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">Evaluación Continua:</span> Consulta el desglose y la nota ponderada global en tiempo real.</li>
-                    <li><span class="text-mars-yellow font-bold">Archivo (19 Entregables):</span> Verifica que todos tus enlaces estén entregados.</li>
+                    <li><span class="text-mars-yellow font-bold">Calificaciones en Vivo:</span> Consulta el desglose por rúbricas y la nota ponderada global de la startup.</li>
+                    <li><span class="text-mars-yellow font-bold">Repositorio Central (19 Entregables):</span> Verifica que todos los enlaces a la nube de las 6 materias estén correctamente registrados.</li>
                 </ul>`;
                 break;
             case 'admin':
                 content += `
                 <p class="text-mars-cyan font-bold border-b border-mars-cyan/30 pb-2">Terminal del Claustro y Coordinación</p>
                 <ul class="list-disc pl-5 space-y-2 text-slate-300 text-[11px]">
-                    <li><span class="text-mars-yellow font-bold">Acta Ponderada (100%):</span> Matriz automatizada de evaluación continua.</li>
-                    <li><span class="text-mars-yellow font-bold">Aduanas y Moderación:</span> Coordina traspasos de piezas B2B y aprueba o rechaza los eslóganes y logotipos propuestos por Marketing.</li>
+                    <li><span class="text-mars-yellow font-bold">Monitor Léxico y Sanciones:</span> Revisa avisos amarillos (nombres propios) e infracciones rojas (insultos) y aplica multas AEE.</li>
+                    <li><span class="text-mars-yellow font-bold">Registro Mercantil y Aduanas:</span> Autoriza cambios de nombre solicitados por el CEO (o edítalos con el icono ✏️), aprueba marcas y traspasos B2B.</li>
                 </ul>`;
                 break;
         }
@@ -347,7 +473,7 @@ const ui = {
                     <option value="REGLAS">⚖️ Consulta sobre Normativa / Rúbricas</option>
                 </select>
             </div>
-            <textarea id="sugg-text" class="w-full bg-slate-900 border border-mars-yellow/50 p-3 text-xs text-white h-24 focus:border-mars-yellow outline-none mb-4" placeholder="Describe el reporte... (El uso de lenguaje ofensivo bloqueará el envío)"></textarea>
+            <textarea id="sugg-text" class="w-full bg-slate-900 border border-mars-yellow/50 p-3 text-xs text-white h-24 focus:border-mars-yellow outline-none mb-4" placeholder="Describe el reporte... (El uso de lenguaje ofensivo o nombres propios bloqueará el envío)"></textarea>
             <div class="bg-black/60 border border-slate-800 p-3 max-h-44 overflow-y-auto">
                 <h4 class="text-mars-cyan text-[9px] uppercase font-bold mb-2 border-b border-slate-800 pb-1">Mis Envíos Recientes (Privado)</h4>
                 ${history}
@@ -366,7 +492,9 @@ const ui = {
         const category = elCat ? elCat.value : 'MEJORA';
         
         if(text.length < 5) return alert("Describe tu reporte con más detalle (mínimo 5 caracteres).");
-        if(this.hasForbiddenWords(text)) return alert("El sistema ha detectado vocabulario inapropiado. Por favor, mantén un tono profesional.");
+        
+        // FASE 4: Guardián Léxico Universal
+        if(this.hasForbiddenWords(text, 'Buzón de Sugerencias')) return;
         
         const isDocente = state.user && state.user.admin;
         const coId = state.user ? (isDocente ? 'DOCENTE' : state.user.coId) : 'ANON';
@@ -549,20 +677,36 @@ const ui = {
             auth.logout();
             return;
         }
-        
-        const allowedRoutes = {
-            'CEO': ['orders', 'finance', 'resolutions', 'dossier', 'market'],
-            'TECNICO': ['market', 'tech', 'cart', 'orders', 'dossier', 'resolutions'],
+
+        const role = state.user.role;
+        const co = !state.user.admin ? state.data.companies[state.user.coId] : null;
+
+        const roleAllowedMap = {
+            'CEO': ['orders', 'resolutions', 'finance', 'dossier', 'market'],
+            'TECNICO': ['tech', 'market', 'cart', 'orders', 'dossier', 'resolutions'],
             'FINANZAS': ['finance', 'orders', 'dossier', 'market', 'resolutions'],
-            'MARKETING': ['brand', 'market', 'dossier', 'resolutions'],
-            'OPERACIONES_IA': ['market', 'cart', 'ailog', 'dossier', 'resolutions'],
-            'AUXILIAR': ['market', 'resolutions', 'dossier']
+            'MARKETING': ['brand', 'dossier', 'market', 'resolutions'],
+            'OPERACIONES_IA': ['cart', 'ailog', 'dossier', 'market', 'resolutions']
         };
 
-        if (state.user.admin && !['admin', 'market', 'dossier'].includes(this.current)) {
-            this.current = 'admin';
-        } else if (!state.user.admin && !allowedRoutes[state.user.role].includes(this.current)) {
-            this.current = allowedRoutes[state.user.role][0];
+        let currentAllowed = [];
+        if (state.user.admin) {
+            currentAllowed = ['admin', 'market', 'dossier'];
+            if (!currentAllowed.includes(this.current)) this.current = 'admin';
+        } else if (role === 'AUXILIAR') {
+            const auxDept = co?.auxRoleDept;
+            const auxAllowed = {
+                'CEO': ['orders', 'resolutions', 'finance', 'dossier', 'market'],
+                'TECNICO': ['tech', 'market', 'cart', 'resolutions', 'dossier'],
+                'FINANZAS': ['finance', 'orders', 'resolutions', 'dossier', 'market'],
+                'MARKETING': ['brand', 'resolutions', 'dossier', 'market'],
+                'OPERACIONES_IA': ['cart', 'ailog', 'resolutions', 'dossier', 'market']
+            };
+            currentAllowed = auxAllowed[auxDept] || ['resolutions', 'dossier', 'market'];
+            if (!currentAllowed.includes(this.current)) this.current = currentAllowed[0];
+        } else {
+            currentAllowed = roleAllowedMap[role] || ['orders', 'market', 'dossier', 'resolutions'];
+            if (!currentAllowed.includes(this.current)) this.current = currentAllowed[0];
         }
         
         this.updateHUD();
@@ -591,7 +735,6 @@ const ui = {
                 </div>`;
     },
     
-    // Sustituye a renderHybridUploadBox garantizando la Política de "Solo Enlaces Cloud"
     renderDriveLinkBox(title, desc, docKey, currentDoc) {
         return `
         <div class="border-b border-slate-800 pb-4 mb-4 last:border-0 last:pb-0 last:mb-0">
@@ -608,7 +751,6 @@ const ui = {
         </div>`;
     },
 
-    // Sustituye a handleDeliverableHybridSubmit obligando a verificar que es una URL
     handleDeliverableLinkSubmit(docType) {
         if (!state.user) return;
         const urlInput = document.getElementById(`upload-url-${docType}`);

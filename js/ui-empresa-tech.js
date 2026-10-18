@@ -1,5 +1,5 @@
 // js/ui-empresa-tech.js
-// --- MÓDULO I+D: BANCO DE PRUEBAS, BOM, MATEMÁTICAS E INVENTARIO B2B (v1.0.15) ---
+// --- MÓDULO I+D: BANCO DE PRUEBAS (en mm), BOM, MATEMÁTICAS E INVENTARIO B2B (v1.0.16) ---
 
 Object.assign(ui, {
     setTechDocTab(tab) {
@@ -20,18 +20,20 @@ Object.assign(ui, {
         const activeDocTab = this.techDocTab || 'FYQ';
         const wrapper = document.createElement('div');
         
-        let ftHtml = co.flightTests.map(f => `
+        let ftHtml = co.flightTests.map(f => {
+            // Retrocompatibilidad: Si el vuelo se guardó en metros, lo pasa a mm para mostrarlo
+            const h_mm = f.heightMm !== undefined ? f.heightMm : (f.heightM * 1000);
+            return `
             <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
                 <td class="py-2 text-slate-400 pr-2">${f.date}</td>
                 <td class="py-2 font-bold text-white pr-2">${f.bottle}</td>
                 <td class="py-2 text-mars-cyan pr-2">${f.naHCO3}g / ${f.vinegar}ml</td>
                 <td class="py-2 font-mono text-mars-magenta pr-2">${Number(f.costEurV).toFixed(2)}</td>
-                <td class="py-2 font-mono text-mars-green font-bold text-base pr-2">${Number(f.heightM).toFixed(1)}</td>
-                <td class="py-2 font-orbitron text-mars-yellow font-black">${Number(f.efficiency).toFixed(3)}</td>
-            </tr>
-        `).join('') || `<tr><td colspan="6" class="text-center py-4 text-slate-600 italic text-xs">No hay ensayos registrados.</td></tr>`;
+                <td class="py-2 font-mono text-mars-green font-bold text-base pr-2">${Number(h_mm).toFixed(0)}</td>
+                <td class="py-2 font-orbitron text-mars-yellow font-black">${Number(f.efficiency).toFixed(2)}</td>
+            </tr>`;
+        }).join('') || `<tr><td colspan="6" class="text-center py-4 text-slate-600 italic text-xs">No hay ensayos registrados.</td></tr>`;
 
-        // Recopilación de inventario físico (órdenes ejecutadas)
         let executedItems = [];
         co.orders.filter(o => o.status === 'EJECUTADO').forEach(o => {
             (o.items || []).forEach((item, idx) => {
@@ -78,7 +80,6 @@ Object.assign(ui, {
 
         const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + (Number(o.total) || 0), 0);
 
-        // Contenido dinámico de Documentación (FYQ vs MAT) exclusivamente mediante enlaces Drive/Cloud
         let docSectionContent = '';
         if (activeDocTab === 'FYQ') {
             docSectionContent = `
@@ -91,7 +92,7 @@ Object.assign(ui, {
                 ${state.data.config.guidelines.techReportDocUrl ? `<a href="${state.data.config.guidelines.techReportDocUrl}" target="_blank" class="block text-center border border-mars-cyan text-mars-cyan text-[10px] py-2 mb-4 font-bold uppercase hover:bg-mars-cyan hover:text-black transition-colors">Abrir Guía Oficial FYQ</a>` : ''}
                 
                 ${this.renderDriveLinkBox('1. Hoja de Registro Preliminar (Fase I)', 'Enlace Drive al presupuesto teórico, materiales del catálogo, altura estimada, boceto y foto del prototipo montado sin combustible.', 'preliminaryReport', docs.preliminaryReport)}
-                ${this.renderDriveLinkBox('2. Informe Técnico Exhaustivo (Fase II - 50% FYQ)', 'Enlace Drive al documento formal con marco químico estequiométrico, análisis físico-aerodinámico, balance definitivo y análisis V2.0.', 'technicalReport', docs.technicalReport)}
+                ${this.renderDriveLinkBox('2. Informe Técnico Exhaustivo (Fase II)', 'Enlace Drive al documento formal con marco químico estequiométrico, análisis físico-aerodinámico, balance definitivo y análisis V2.0.', 'technicalReport', docs.technicalReport)}
             `;
         } else {
             docSectionContent = `
@@ -110,7 +111,7 @@ Object.assign(ui, {
 
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <!-- Columna Izquierda: Entregables FYQ y MAT (Solo Enlaces) -->
+            <!-- Columna Izquierda: Entregables FYQ y MAT -->
             <div class="lg:col-span-5 space-y-6">
                 <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan">
                     <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-3 flex-wrap gap-2">
@@ -135,13 +136,14 @@ Object.assign(ui, {
                         <input type="number" id="ft-nahco3" placeholder="NaHCO3 (g)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-cyan w-full" step="0.1">
                         <input type="number" id="ft-vinegar" placeholder="Vinagre (ml)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-cyan w-full" step="1">
                         <input type="number" id="ft-cost" placeholder="Coste Ensayo (€v)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-magenta w-full" step="0.1">
-                        <input type="number" id="ft-height" placeholder="Altura H (metros)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-green font-bold w-full" step="0.1">
+                        <!-- CAMBIO v1.0.16: Entrada en Milímetros -->
+                        <input type="number" id="ft-height-mm" placeholder="Altura H (milímetros)" class="bg-slate-900 border border-slate-700 p-2 text-white outline-none focus:border-mars-green font-bold w-full" step="1">
                         <button onclick="ui.submitFlightTest()" class="bg-mars-yellow text-black font-black uppercase tracking-widest hover:shadow-[0_0_10px_#ffe600] transition-all py-2 w-full">Registrar Vuelo</button>
                     </div>
                     <div class="overflow-x-auto w-full max-h-60 overflow-y-auto">
                         <table class="w-full text-left text-[10px] whitespace-nowrap min-w-max">
                             <thead class="text-slate-500 uppercase border-b border-mars-border sticky top-0 bg-mars-card">
-                                <tr><th class="py-2 pr-2">Fecha</th><th class="pr-2">Fuselaje</th><th class="pr-2">Mix (Sól/Líq)</th><th class="pr-2">Coste (€v)</th><th class="pr-2">H (m)</th><th class="text-mars-yellow">E = H/C</th></tr>
+                                <tr><th class="py-2 pr-2">Fecha</th><th class="pr-2">Fuselaje</th><th class="pr-2">Mix (Sól/Líq)</th><th class="pr-2">Coste (€v)</th><th class="pr-2">H (mm)</th><th class="text-mars-yellow">E = H/C</th></tr>
                             </thead>
                             <tbody>${ftHtml}</tbody>
                         </table>
@@ -243,7 +245,6 @@ Object.assign(ui, {
         const item = ord.items[itemIdx];
         const itemKey = `${orderId}-${itemIdx}`;
 
-        // Desmarcar del BOM si estaba incluido en el prototipo
         co.bom = (co.bom || []).filter(k => k !== itemKey);
         item.b2bStatus = 'EN_VENTA';
 
@@ -274,28 +275,29 @@ Object.assign(ui, {
         const elNahco3 = document.getElementById('ft-nahco3');
         const elVinegar = document.getElementById('ft-vinegar');
         const elCost = document.getElementById('ft-cost');
-        const elHeight = document.getElementById('ft-height');
+        const elHeightMm = document.getElementById('ft-height-mm');
         
-        if (!elBottle || !elNahco3 || !elVinegar || !elCost || !elHeight) return; 
+        if (!elBottle || !elNahco3 || !elVinegar || !elCost || !elHeightMm) return; 
 
         const bottle = elBottle.value.trim();
         const naHCO3 = parseFloat(elNahco3.value);
         const vinegar = parseFloat(elVinegar.value);
         const costEurV = parseFloat(elCost.value);
-        const heightM = parseFloat(elHeight.value);
+        const heightMm = parseFloat(elHeightMm.value); // <--- v1.0.16: Se registra en milímetros
 
-        if(!bottle || isNaN(naHCO3) || isNaN(vinegar) || isNaN(costEurV) || isNaN(heightM)) return alert("Rellene todos los datos numéricos del ensayo.");
+        if(!bottle || isNaN(naHCO3) || isNaN(vinegar) || isNaN(costEurV) || isNaN(heightMm)) return alert("Rellene todos los datos numéricos del ensayo.");
         if(this.hasForbiddenWords(bottle)) return alert("⚠️ Filtro Léxico: Nombre de fuselaje no permitido.");
         if(costEurV <= 0) return alert("El coste no puede ser cero.");
 
-        const efficiency = heightM / costEurV;
+        // Eficiencia: Milímetros por cada € virtual gastado
+        const efficiency = heightMm / costEurV;
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
         
         co.flightTests = co.flightTests || [];
-        co.flightTests.unshift({ id: 'FLT-'+Date.now(), date: new Date().toLocaleDateString(), bottle, naHCO3, vinegar, costEurV, heightM, efficiency });
+        co.flightTests.unshift({ id: 'FLT-'+Date.now(), date: new Date().toLocaleDateString(), bottle, naHCO3, vinegar, costEurV, heightMm, efficiency });
         
-        telemetry.log("PRUEBA VUELO", `Registrado H=${heightM}m, E=${efficiency.toFixed(3)}`);
+        telemetry.log("PRUEBA VUELO", `Registrado H=${heightMm}mm, E=${efficiency.toFixed(2)}`);
         state.save();
         this.render();
     },

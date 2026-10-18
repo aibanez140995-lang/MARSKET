@@ -1,5 +1,5 @@
 // js/ui-empresa-ops.js
-// --- MÓDULO OPERACIONES E IA: LOGÍSTICA FÍSICA, BITÁCORA IA Y DIARIO DE DECISIONES (v1.0.15) ---
+// --- MÓDULO OPERACIONES E IA: LOGÍSTICA FÍSICA, BITÁCORA IA Y DIARIO DE DECISIONES (v1.0.16) ---
 
 Object.assign(ui, {
     viewCart(el) {
@@ -79,7 +79,8 @@ Object.assign(ui, {
                 if(isNaN(valEur) || valEur < 0 || !valShop) {
                     return alert(`Falta indicar el coste real (€) o la tienda para: ${order.items[i].name}`);
                 }
-                if(this.hasForbiddenWords(valShop)) {
+                // FASE 2: Auditar el texto de la tienda con el filtro léxico
+                if(this.hasForbiddenWords(valShop, 'Registro Comercio I+D')) {
                     return alert("⚠️ Filtro Léxico: Nombre de tienda o comercio no permitido.");
                 }
                 order.items[i].realEur = valEur;
@@ -145,7 +146,6 @@ Object.assign(ui, {
             </div>`;
         }
 
-        // Bloque de Entregables Oficiales de Bitácora de Decisiones e IA (LyE 4A y 4B)
         const diaryDocsHtml = `
         <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan mb-8">
             <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
@@ -209,7 +209,8 @@ Object.assign(ui, {
         const verification = elVerify.value.trim();
         
         if(!tool || !prompt || !verification) return alert("Completa todos los campos de trazabilidad IA.");
-        if(this.hasForbiddenWords(tool) || this.hasForbiddenWords(prompt) || this.hasForbiddenWords(verification)) {
+        // FASE 2: Auditar textos IA con el filtro léxico
+        if(this.hasForbiddenWords(tool, 'Herramienta IA') || this.hasForbiddenWords(prompt, 'Prompt IA') || this.hasForbiddenWords(verification, 'Verificación IA')) {
             return alert("⚠️ Filtro Léxico: Se ha detectado vocabulario inapropiado en el reporte de IA.");
         }
         

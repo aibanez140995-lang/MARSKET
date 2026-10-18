@@ -1,0 +1,13 @@
+{
+  "routes": [
+    {
+      "routePath": "/api/state",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/state.js:onRequest"
+      ]
+    }
+  ],
+  "baseURL": "/"
+}

@@ -1,23 +1,58 @@
 // js/ui-empresa-core.js
-// --- MÓDULO CORE: LOGIN, NOTIFICACIONES Y DOSSIER ACADÉMICO (19 ENTREGABLES) (v1.0.15) ---
+// --- MÓDULO CORE: LOGIN EN 2 PASOS (ANTI-ESPIONAJE), NOTIFICACIONES Y DOSSIER ACADÉMICO (v1.0.16) ---
 
 Object.assign(ui, {
     viewLogin(el) {
         if (!el) return;
-        let coOptions = Object.keys(state.data.companies).map(k => `<option value="${k}">${state.data.companies[k].name}</option>`).join('');
+        const verifiedCoId = typeof auth !== 'undefined' ? auth.verifiedCoId : null;
+
+        // PASO 1: Solicitud de Código Privado de Empresa (Ninguna empresa se expone en el DOM)
+        if (!verifiedCoId) {
+            el.innerHTML = `
+            <div class="min-h-[75vh] flex items-center justify-center w-full px-4">
+                <div id="login-box" class="max-w-md w-full terminal-border bg-mars-card p-6 sm:p-8 glow-cyan animate-in fade-in zoom-in duration-300 transition-all">
+                    <img src="/logo.png" alt="MARS-KET 2.0" class="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]" onerror="this.style.display='none'">
+                    <h2 id="login-title" class="font-orbitron text-center text-mars-cyan text-lg sm:text-xl mb-2 tracking-widest uppercase font-black">Secure_Gateway</h2>
+                    <p class="text-[9px] text-slate-400 text-center uppercase tracking-widest mb-6">Paso 1/2: Identificación de Entidad Aeroespacial</p>
+                    
+                    <div class="bg-black/60 border border-mars-border p-4 mb-6">
+                        <label class="text-[9px] text-mars-cyan uppercase font-bold block mb-2 tracking-wider">Código Privado de Empresa</label>
+                        <input type="text" id="login-company-code" placeholder="EJ: AST-1010" onkeydown="if(event.key==='Enter') auth.validateCompanyCode()" class="w-full bg-slate-900 border border-mars-cyan/60 p-3 text-center text-base sm:text-lg font-orbitron font-black uppercase tracking-widest text-mars-yellow outline-none focus:border-mars-cyan mb-4">
+                        <button onclick="auth.validateCompanyCode()" class="w-full bg-mars-cyan text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-all shadow-[0_0_12px_rgba(0,240,255,0.3)]">[ VALIDAR CÓDIGO DE EMPRESA ]</button>
+                    </div>
+
+                    <div class="border-t border-mars-border pt-4 text-center">
+                        <button onclick="auth.activateTeacherLogin()" class="text-[9px] text-mars-yellow/80 hover:text-mars-yellow uppercase font-bold tracking-widest underline decoration-dashed underline-offset-4 transition-colors">🎖️ Acceso Exclusivo Claustro Docente</button>
+                    </div>
+                </div>
+            </div>`;
+            setTimeout(() => document.getElementById('login-company-code')?.focus(), 50);
+            return;
+        }
+
+        // PASO 2: Selección de Departamento y Teclado PIN (Solo para la entidad ya validada)
+        const isTeacher = verifiedCoId === 'admin';
+        const entityLabel = isTeacher 
+            ? 'CLAUSTRO DOCENTE' 
+            : (state.data.companies[verifiedCoId]?.name || 'STARTUP');
+
         el.innerHTML = `
         <div class="min-h-[75vh] flex items-center justify-center w-full px-4">
             <div id="login-box" class="max-w-md w-full terminal-border bg-mars-card p-6 sm:p-8 glow-cyan animate-in fade-in zoom-in duration-300 transition-all">
-                <img src="/logo.png" alt="MARS-KET 2.0" class="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]" onerror="this.style.display='none'">
-                <h2 id="login-title" class="font-orbitron text-center text-mars-cyan text-lg sm:text-xl mb-6 tracking-widest uppercase font-black">Secure_Access</h2>
-                <select id="login-co" onchange="auth.updateRoleOptions()" class="w-full bg-slate-900 border border-mars-border p-3 text-sm mb-4 outline-none focus:border-mars-cyan text-white">
-                    ${coOptions}
-                    <option value="admin" class="text-mars-yellow font-bold">CLAUSTRO DOCENTE</option>
-                </select>
-                <select id="login-role" class="w-full bg-slate-900 border border-mars-border p-3 text-sm mb-6 outline-none focus:border-mars-cyan uppercase text-white font-bold">
-                    <option>CEO</option><option>Técnico</option><option>Finanzas</option><option>Marketing</option><option>Operaciones IA</option><option>Auxiliar</option>
-                </select>
-                <div class="flex justify-center gap-4 mb-8">
+                <div class="flex justify-between items-center border-b border-mars-border pb-3 mb-4">
+                    <span class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Paso 2/2: Credencial Rol</span>
+                    <button onclick="auth.resetCompanyStep()" class="text-[9px] text-mars-magenta hover:text-white uppercase font-black tracking-wider border border-mars-magenta/50 px-2 py-0.5">[⬅ Cambiar Entidad]</button>
+                </div>
+
+                <div class="bg-slate-900/90 border ${isTeacher ? 'border-mars-yellow' : 'border-mars-cyan'} p-3 mb-4 text-center">
+                    <p class="text-[8px] text-slate-400 uppercase tracking-widest">Entidad Verificada</p>
+                    <h2 id="login-title" class="font-orbitron ${isTeacher ? 'text-mars-yellow' : 'text-mars-cyan'} text-base sm:text-lg tracking-widest uppercase font-black truncate mt-0.5">${entityLabel}</h2>
+                </div>
+
+                <label class="text-[9px] text-slate-400 uppercase font-bold block mb-1">Selecciona tu Departamento / Rol</label>
+                <select id="login-role" onchange="auth.clear()" class="w-full bg-slate-900 border border-mars-border p-3 text-sm mb-6 outline-none focus:border-mars-cyan uppercase text-white font-bold"></select>
+                
+                <div class="flex justify-center gap-4 mb-6">
                     ${[1,2,3,4].map(() => `<div class="pin-dot w-3 h-3 rounded-full border border-mars-cyan transition-all"></div>`).join('')}
                 </div>
                 <div id="login-keypad" class="grid grid-cols-3 gap-2 max-w-[220px] mx-auto transition-all">
@@ -28,7 +63,7 @@ Object.assign(ui, {
                 </div>
             </div>
         </div>`;
-        setTimeout(() => auth.updateRoleOptions(), 50);
+        setTimeout(() => auth.updateRoleOptions(), 30);
     },
 
     playLoginAnimation(role) {
@@ -42,7 +77,7 @@ Object.assign(ui, {
         }
         if (title) {
             title.innerText = `ACCESS_GRANTED: ${role.replace('_', ' ')}`;
-            title.classList.remove('text-mars-cyan');
+            title.classList.remove('text-mars-cyan', 'text-mars-yellow');
             title.classList.add('text-mars-green', 'glitch-text');
         }
         if (keypad) {
@@ -51,9 +86,9 @@ Object.assign(ui, {
     },
 
     renderNotifications() {
-        if (!state.user) return;
+        if (!state.user) return '';
         const co = state.data.companies[state.user.coId];
-        if (!co) return;
+        if (!co) return '';
         
         co.notifications = co.notifications || [];
         const myNotifs = co.notifications.filter(n => n.role === state.user.role && !n.read);
@@ -115,7 +150,7 @@ Object.assign(ui, {
                 <div class="flex items-center gap-3 w-full sm:w-auto">
                     <span class="text-mars-cyan font-bold text-[10px] uppercase whitespace-nowrap">Inspeccionando Dossier de:</span>
                     <select onchange="ui.dossierSelectedCo=this.value; ui.render()" class="bg-black border border-mars-cyan text-white text-xs p-2 outline-none w-full sm:w-auto font-bold uppercase">
-                        ${Object.keys(state.data.companies).map(k => `<option value="${k}" ${coId===k?'selected':''}>${state.data.companies[k].name} [Clase${state.data.companies[k].classGroup || 'A'}]</option>`).join('')}
+                        ${Object.keys(state.data.companies).map(k => `<option value="${k}" ${coId===k?'selected':''}>${state.data.companies[k].name} [Clase ${state.data.companies[k].classGroup || 'A'}]</option>`).join('')}
                     </select>
                 </div>
                 <span class="text-[9px] text-mars-yellow uppercase font-bold">Modo Supervisión Docente</span>
@@ -143,7 +178,8 @@ Object.assign(ui, {
         const container = document.getElementById('dossier-content');
         if (!container || !state.user) return; 
         
-        const targetCoId = coId || state.user.coId;
+        // Blindaje FASE 4: Un alumno jamás puede inspeccionar otro coId distinto al de su sesión congelada
+        const targetCoId = state.user.admin ? (coId || Object.keys(state.data.companies)[0]) : state.user.coId;
         const co = state.data.companies[targetCoId];
         if (!state.user.admin && !co) return auth.logout();
         if (!co) return;
@@ -242,8 +278,8 @@ Object.assign(ui, {
                         <h4 class="font-orbitron text-mars-cyan text-xs uppercase">🧪 Física y Química (25%)</h4>
                         <span class="text-[8px] text-slate-400 uppercase">Resp: Dpto. Técnico</span>
                     </div>
-                    ${this.renderDocBadge('1. Hoja de Registro Preliminar (Fase I)', docs.preliminaryReport)}
-                    ${this.renderDocBadge('2. Informe Técnico Exhaustivo (Fase II)', docs.technicalReport)}
+                    ${this.renderDocBadge('1. Informe Preliminar / Prototipo — DICIEMBRE (20%)', docs.preliminaryReport)}
+                    ${this.renderDocBadge('2. Informe Técnico Final Exhaustivo — ABRIL (30%)', docs.technicalReport)}
                 </div>
 
                 <!-- Economía -->
@@ -265,12 +301,12 @@ Object.assign(ui, {
                         <span class="text-[8px] text-slate-400 uppercase">Resp: Marketing / CEO / Operaciones IA</span>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
-                        ${this.renderDocBadge('1A. Identidad de Marca y Misión — DICIEMBRE', docs.brandIdentity_dec)}
-                        ${this.renderDocBadge('1B. Identidad de Marca y Misión — ABRIL', docs.brandIdentity_apr)}
-                        ${this.renderDocBadge('2. Business Model (Documento Escrito)', docs.businessModelDoc)}
-                        ${this.renderDocBadge('3. Business Model Canvas', docs.businessModelCanvas)}
-                        ${this.renderDocBadge('4A. Diario Decisiones, Conflictos e IA — DICIEMBRE', docs.decisionDiary_dec)}
-                        ${this.renderDocBadge('4B. Diario Decisiones, Conflictos e IA — ABRIL', docs.decisionDiary_apr)}
+                        ${this.renderDocBadge('1A. Identidad de Marca y Misión — DICIEMBRE (10%)', docs.brandIdentity_dec)}
+                        ${this.renderDocBadge('1B. Identidad de Marca y Misión — ABRIL (10%)', docs.brandIdentity_apr)}
+                        ${this.renderDocBadge('2. Business Model — Documento Escrito (25%)', docs.businessModelDoc)}
+                        ${this.renderDocBadge('3. Business Model Canvas (15%)', docs.businessModelCanvas)}
+                        ${this.renderDocBadge('4A. Diario Decisiones, Conflictos e IA — DICIEMBRE (10%)', docs.decisionDiary_dec)}
+                        ${this.renderDocBadge('4B. Diario Decisiones, Conflictos e IA — ABRIL (10%)', docs.decisionDiary_apr)}
                     </div>
                 </div>
 

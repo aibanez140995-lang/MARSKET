@@ -1,230 +1,277 @@
 // js/auth.js
+// --- MÓDULO DE AUTENTICACIÓN EN DOS PASOS, RUTAS Y JERARQUÍA POR ROL (v1.0.17) ---
 
 const auth = {
-    press(n) { if(state.pin.length < 4) { state.pin += n; this.updateDots(); } },
-    clear() { state.pin = ''; this.updateDots(); },
-    updateDots() {
-        const dots = document.querySelectorAll('.pin-dot');
-        dots.forEach((d, i) => d.style.background = i < state.pin.length ? '#00f0ff' : 'transparent');
+    verifiedCoId: null, // Almacena temporalmente la entidad desbloqueada en el Paso 1
+
+    validateCompanyCode() {
+        const input = document.getElementById('login-company-code');
+        if (!input) return;
+        const code = input.value.trim().toUpperCase();
+        if (!code) return alert("Introduce el Código de Acceso de tu Startup.");
+
+        // 1. Acceso del Claustro Docente
+        if (code === 'CLAUSTRO' || code === 'DOCENTE' || code === 'ADMIN') {
+            this.verifiedCoId = 'admin';
+            ui.render();
+            return;
+        }
+
+        // 2. Búsqueda de coincidencia con código privado de startup
+        let matchedCoId = null;
+        for (let cid in state.data.companies) {
+            const co = state.data.companies[cid];
+            if (state.getCompanyCode(co).toUpperCase() === code) {
+                matchedCoId = cid;
+                break;
+            }
+        }
+
+        if (!matchedCoId) {
+            input.value = '';
+            return alert("❌ Código de Empresa no reconocido. Solicita el código de tu equipo a Coordinación.");
+        }
+
+        this.verifiedCoId = matchedCoId;
+        state.pin = '';
+        ui.render();
     },
-    normalizeStr(str) { return str.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '_'); },
-    
+
+    activateTeacherLogin() {
+        this.verifiedCoId = 'admin';
+        state.pin = '';
+        ui.render();
+    },
+
+    resetCompanyStep() {
+        this.verifiedCoId = null;
+        state.pin = '';
+        ui.render();
+    },
+
     updateRoleOptions() {
-        const elCo = document.getElementById('login-co');
-        const elRole = document.getElementById('login-role');
-        if (!elCo || !elRole) return; // REGLA 3: DOM Seguro
-        
-        const coId = elCo.value;
-        elRole.innerHTML = '';
-        
-        if (coId === 'admin') {
-            Object.keys(state.data.config.teachers).forEach(key => {
-                const opt = document.createElement('option');
-                opt.value = key; opt.innerText = state.data.config.teachers[key].name;
-                elRole.appendChild(opt);
-            });
+        const roleSelect = document.getElementById('login-role');
+        if (!roleSelect || !this.verifiedCoId) return;
+
+        if (this.verifiedCoId === 'admin') {
+            const teachers = state.data.config.teachers || {};
+            roleSelect.innerHTML = Object.keys(teachers).map(k => `<option value="${k}">${teachers[k].name}</option>`).join('');
         } else {
-            const co = state.data.companies[coId];
-            if (co && co.roles) {
-                Object.keys(co.roles).forEach(r => {
-                    const opt = document.createElement('option');
-                    opt.value = r; 
-                    opt.innerText = r.replace('_', ' ');
-                    elRole.appendChild(opt);
-                });
-            } else {
-                ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA'].forEach(r => {
-                    const opt = document.createElement('option');
-                    opt.value = r; opt.innerText = r.replace('_', ' ');
-                    elRole.appendChild(opt);
-                });
+            const co = state.data.companies[this.verifiedCoId];
+            if (!co) return;
+            const hasAux = !!state.getRolePin(co, 'AUXILIAR');
+            let html = `
+                <option value="CEO">Dirección General (CEO)</option>
+                <option value="TECNICO">Dpto. Técnico (I+D)</option>
+                <option value="FINANZAS">Dpto. Financiero</option>
+                <option value="MARKETING">Dpto. Marketing</option>
+                <option value="OPERACIONES_IA">Dpto. Operaciones e IA</option>
+            `;
+            if (hasAux) {
+                html += `<option value="AUXILIAR">Observador Auxiliar (${co.auxRoleDept || 'General'})</option>`;
+            }
+            roleSelect.innerHTML = html;
+        }
+    },
+
+    press(n) {
+        if (state.pin.length < 4) {
+            state.pin += n;
+            this.updateDots();
+            if (state.pin.length === 4) {
+                setTimeout(() => this.verify(), 120);
             }
         }
     },
 
-    verify() {
-        // REGLA 2: Protección Ghost Clicks
-        if (!state.pin || state.pin.length < 4) return;
-
-        const elCo = document.getElementById('login-co');
-        const elRole = document.getElementById('login-role');
-        if (!elCo || !elRole) return; // REGLA 3
-        
-        const coId = elCo.value;
-        const roleRaw = elRole.value;
-        const roleNorm = this.normalizeStr(roleRaw);
-        
-        if(coId === 'admin' && state.pin === '9999') { dev.open(); this.clear(); return; }
-
-        if (coId === 'admin') {
-            const teacher = state.data.config.teachers[roleRaw];
-            if(teacher && state.pin === teacher.pin) this.login('admin', roleRaw, true, teacher.name);
-            else this.fail();
-        } else {
-            const co = state.data.companies[coId];
-            if(co && co.roles[roleNorm] === state.pin) this.login(coId, roleNorm, false, co.name);
-            else this.fail();
-        }
-    },
-    
-    fail() { 
-        alert("AUTH DENIED: PIN INCORRECTO"); 
-        this.clear(); 
-    },
-    
-    login(coId, roleKey, admin, entityName) {
-        if (!coId || !roleKey) return; // REGLA 2
-        
-        state.user = { coId, role: roleKey, admin };
-        localStorage.setItem(state.sessionKey, JSON.stringify(state.user));
-        
+    clear() {
         state.pin = '';
         this.updateDots();
-        
-        if(!admin) {
-            const co = state.data.companies[coId];
-            if (!co) return; // REGLA 1
-            
-            co.loginStats = co.loginStats || { totalLogins: 0, roles: {} };
-            co.loginStats.roles = co.loginStats.roles || {};
+    },
 
-            co.loginStats.totalLogins++;
-            if(!co.loginStats.roles[roleKey]) co.loginStats.roles[roleKey] = {count:0, lastLogin:null};
-            co.loginStats.roles[roleKey].count++;
-            co.loginStats.roles[roleKey].lastLogin = new Date().toLocaleString();
-        }
-        
-        telemetry.startSession(entityName, roleKey);
-        
-        if (typeof ui.playLoginAnimation === 'function') {
-            ui.playLoginAnimation(roleKey);
-            setTimeout(() => {
-                this.completeLoginNavigation(admin, roleKey);
-            }, 1200);
+    updateDots() {
+        const dots = document.querySelectorAll('.pin-dot');
+        dots.forEach((d, i) => {
+            if (i < state.pin.length) d.classList.add('bg-mars-cyan', 'shadow-[0_0_8px_#00f0ff]');
+            else d.classList.remove('bg-mars-cyan', 'shadow-[0_0_8px_#00f0ff]');
+        });
+    },
+
+    verify() {
+        if (!state.pin || state.pin.length !== 4) return;
+        if (!this.verifiedCoId) return this.resetCompanyStep();
+
+        const roleSelect = document.getElementById('login-role');
+        if (!roleSelect) return;
+        const role = roleSelect.value;
+
+        if (this.verifiedCoId === 'admin') {
+            const t = state.data.config.teachers[role];
+            if (t && t.pin === state.pin) {
+                this.completeLogin({ admin: true, role: role, coId: null }, 'CLAUSTRO DOCENTE', role);
+            } else {
+                alert("❌ PIN Docente incorrecto.");
+                this.clear();
+            }
         } else {
-            this.completeLoginNavigation(admin, roleKey);
+            const co = state.data.companies[this.verifiedCoId];
+            if (!co) return this.resetCompanyStep();
+
+            const expectedPin = state.getRolePin(co, role);
+            if (expectedPin && expectedPin === state.pin) {
+                co.loginStats = co.loginStats || { totalLogins: 0, roles: {} };
+                co.loginStats.totalLogins = (co.loginStats.totalLogins || 0) + 1;
+                co.loginStats.roles = co.loginStats.roles || {};
+                co.loginStats.roles[role] = co.loginStats.roles[role] || { count: 0, lastLogin: null };
+                co.loginStats.roles[role].count++;
+                co.loginStats.roles[role].lastLogin = new Date().toLocaleString();
+
+                this.completeLogin({ admin: false, role: role, coId: this.verifiedCoId }, co.name, role);
+            } else {
+                alert("❌ PIN de departamento incorrecto.");
+                this.clear();
+            }
         }
     },
 
-    completeLoginNavigation(admin, roleKey) {
-        document.getElementById('hud-header')?.classList.remove('hidden');
-        document.getElementById('hud-nav')?.classList.remove('hidden');
-        this.buildNav(admin);
-        
-        if (admin) ui.navigate('admin');
-        else if (roleKey === 'CEO') ui.navigate('orders');
-        else if (roleKey === 'TECNICO') ui.navigate('tech');
-        else if (roleKey === 'FINANZAS') ui.navigate('finance');
-        else if (roleKey === 'MARKETING') ui.navigate('brand');
-        else if (roleKey === 'OPERACIONES_IA') ui.navigate('cart');
-        else if (roleKey === 'AUXILIAR') ui.navigate('dossier');
-        else ui.navigate('dossier');
+    completeLogin(userObj, entityName, roleName) {
+        state.user = Object.freeze(userObj);
+        state.pin = '';
+        localStorage.setItem(state.sessionKey, JSON.stringify(userObj));
 
-        ui.showWelcomeModal();
-    },
-    
-    logout() { 
-        const vp = document.getElementById('viewport');
-        const header = document.getElementById('hud-header');
-        const nav = document.getElementById('hud-nav');
-        const overlay = document.getElementById('modal-overlay');
-        
-        if (header) header.classList.add('hidden');
-        if (nav) nav.classList.add('hidden');
-        if (overlay) overlay.classList.add('hidden');
-        
-        if (vp) {
-            vp.innerHTML = `
-            <div class="min-h-[75vh] flex items-center justify-center w-full">
-                <div class="text-mars-magenta font-orbitron text-xl sm:text-2xl animate-pulse glitch-text tracking-widest font-black">SYSTEM_DISCONNECT...</div>
-            </div>`;
+        if (typeof ui.playLoginAnimation === 'function') {
+            ui.playLoginAnimation(roleName);
         }
-        
-        localStorage.removeItem(state.sessionKey);
-        sessionStorage.removeItem('hideWelcome');
-        
+
+        telemetry.startSession(entityName, roleName);
+
         setTimeout(() => {
-            location.reload(); 
-        }, 600);
+            document.getElementById('hud-header')?.classList.remove('hidden');
+            document.getElementById('hud-nav')?.classList.remove('hidden');
+            this.buildNav(userObj.admin);
+
+            // FASE 2: Entrada directa a la ventana prioritaria del rol
+            if (userObj.admin) {
+                ui.current = 'admin';
+            } else {
+                const co = state.data.companies[userObj.coId];
+                const primaryRouteByRole = {
+                    'CEO': 'orders',
+                    'TECNICO': 'tech',
+                    'FINANZAS': 'finance',
+                    'MARKETING': 'brand',
+                    'OPERACIONES_IA': 'cart'
+                };
+                if (userObj.role === 'AUXILIAR') {
+                    const auxDept = co?.auxRoleDept;
+                    const auxMap = {
+                        'CEO': 'orders',
+                        'TECNICO': 'tech',
+                        'FINANZAS': 'finance',
+                        'MARKETING': 'brand',
+                        'OPERACIONES_IA': 'cart'
+                    };
+                    ui.current = auxMap[auxDept] || 'resolutions';
+                } else {
+                    ui.current = primaryRouteByRole[userObj.role] || 'orders';
+                }
+            }
+
+            ui.render();
+            if (typeof ui.showWelcomeModal === 'function') ui.showWelcomeModal();
+        }, 450);
     },
-    
+
+    // FASE 2: Jerarquía Táctica de Pestañas según Rol Operativo
     buildNav(isAdmin) {
         const nav = document.getElementById('nav-container');
-        if (!nav) return; // REGLA 3
-        
+        if (!nav) return;
+
         if (isAdmin) {
             nav.innerHTML = `
-                <button onclick="ui.adminTab='dash'; ui.navigate('admin')" class="nav-tab tab-active px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase border-r border-mars-border text-mars-yellow whitespace-nowrap">Terminal Docente</button>
-                <button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>
-                <button onclick="ui.adminTab='eval'; ui.navigate('admin')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Rúbricas & Entregas</button>
-                <button onclick="ui.navigate('dossier')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Dossier Académico</button>
+                <button onclick="ui.navigate('admin')" class="nav-tab px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white whitespace-nowrap">🎖️ Centro de Mando</button>
+                <button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white whitespace-nowrap">🛒 Inspeccionar Mercado</button>
+                <button onclick="ui.navigate('dossier')" class="nav-tab px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white whitespace-nowrap">📁 Inspeccionar Dossiers</button>
             `;
             return;
         }
-        
-        const role = state.user.role;
-        let html = '';
-        
-        const badgeHtml = (id) => `<span id="${id}" class="hidden ml-2 bg-mars-magenta text-white px-1.5 py-0.5 rounded-full text-[8px] animate-pulse shadow-[0_0_8px_#ff0055]">0</span>`;
-        
-        if (role === 'CEO') {
-            html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Órdenes CEO ${badgeHtml('badge-orders')}</button>`;
-            html += `<button onclick="ui.navigate('finance')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Finanzas</button>`;
-        } else if (role === 'TECNICO') {
-            html += `<button onclick="ui.navigate('tech')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">I+D y Pruebas</button>`;
-            html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
-            html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Órdenes I+D ${badgeHtml('badge-orders')}</button>`;
-            html += `<button onclick="ui.navigate('cart')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Logística ${badgeHtml('badge-cart')}</button>`;
-        } else if (role === 'FINANZAS') {
-            html += `<button onclick="ui.navigate('finance')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Finanzas / Ledger</button>`;
-            html += `<button onclick="ui.navigate('orders')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Órdenes de Compra ${badgeHtml('badge-orders')}</button>`;
-        } else if (role === 'MARKETING') {
-            html += `<button onclick="ui.navigate('brand')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Centro de Marca</button>`;
-            html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
-        } else if (role === 'OPERACIONES_IA') {
-            html += `<button onclick="ui.navigate('cart')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Logística ${badgeHtml('badge-cart')}</button>`;
-            html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
-            html += `<button onclick="ui.navigate('ailog')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Buzón Bitácora IA ${badgeHtml('badge-ailog')}</button>`;
-        } else if (role === 'AUXILIAR') {
-            html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
+
+        const role = state.user ? state.user.role : '';
+        const co = (state.user && !state.user.admin) ? state.data.companies[state.user.coId] : null;
+
+        const tabDefs = {
+            'orders': { id: 'orders', label: '🔐 Bóveda Órdenes', badge: 'badge-orders' },
+            'resolutions': { id: 'resolutions', label: '⚖️ Gobernanza', badge: 'badge-resolutions' },
+            'finance': { id: 'finance', label: '💰 Finanzas & ECO' },
+            'dossier': { id: 'dossier', label: '📁 Dossier (19)' },
+            'market': { id: 'market', label: '🛒 SUPERMARS-KET' },
+            'tech': { id: 'tech', label: '🧪 I+D & Vuelos' },
+            'cart': { id: 'cart', label: '📦 Logística Física', badge: 'badge-cart' },
+            'brand': { id: 'brand', label: '🎨 Marca & LyE' },
+            'ailog': { id: 'ailog', label: '🤖 Bitácora IA', badge: 'badge-ailog' }
+        };
+
+        const roleOrders = {
+            'CEO': ['orders', 'resolutions', 'finance', 'dossier', 'market'],
+            'TECNICO': ['tech', 'market', 'cart', 'orders', 'dossier', 'resolutions'],
+            'FINANZAS': ['finance', 'orders', 'dossier', 'market', 'resolutions'],
+            'MARKETING': ['brand', 'dossier', 'market', 'resolutions'],
+            'OPERACIONES_IA': ['cart', 'ailog', 'dossier', 'market', 'resolutions']
+        };
+
+        let activeTabIds = [];
+
+        if (role === 'AUXILIAR') {
+            const auxDept = co?.auxRoleDept;
+            const auxMap = {
+                'CEO': ['orders', 'resolutions', 'finance', 'dossier', 'market'],
+                'TECNICO': ['tech', 'market', 'cart', 'resolutions', 'dossier'],
+                'FINANZAS': ['finance', 'orders', 'resolutions', 'dossier', 'market'],
+                'MARKETING': ['brand', 'resolutions', 'dossier', 'market'],
+                'OPERACIONES_IA': ['cart', 'ailog', 'resolutions', 'dossier', 'market']
+            };
+            activeTabIds = auxMap[auxDept] || ['resolutions', 'dossier', 'market'];
+        } else {
+            activeTabIds = roleOrders[role] || ['orders', 'market', 'dossier', 'resolutions'];
         }
-        
-        if (role !== 'TECNICO' && role !== 'MARKETING' && role !== 'OPERACIONES_IA' && role !== 'AUXILIAR') {
-            html += `<button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">SUPERMARS-KET</button>`;
-        }
-        
-        html += `<button onclick="ui.navigate('resolutions')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan flex items-center whitespace-nowrap">Gobernanza / Actas ${badgeHtml('badge-resolutions')}</button>`;
-        html += `<button onclick="ui.navigate('dossier')" class="nav-tab px-4 py-3 sm:px-6 sm:py-4 text-[9px] sm:text-[10px] font-bold uppercase hover:text-mars-cyan whitespace-nowrap">Dossier / Notas</button>`;
-        nav.innerHTML = html;
+
+        nav.innerHTML = activeTabIds.map(tid => {
+            const t = tabDefs[tid];
+            if (!t) return '';
+            return `
+            <button onclick="ui.navigate('${t.id}')" class="nav-tab relative px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white whitespace-nowrap flex items-center gap-1.5">
+                ${t.label}
+                ${t.badge ? `<span id="${t.badge}" class="hidden bg-mars-magenta text-white text-[8px] font-black px-1.5 py-0.5 rounded-full animate-pulse">0</span>` : ''}
+            </button>`;
+        }).join('');
+    },
+
+    logout() {
+        state.user = null;
+        state.pin = '';
+        this.verifiedCoId = null;
+        localStorage.removeItem(state.sessionKey);
+        document.getElementById('hud-header')?.classList.add('hidden');
+        document.getElementById('hud-nav')?.classList.add('hidden');
+        ui.current = 'login';
+        ui.render();
     }
 };
 
+// Backdoor de Consola de Desarrollo
 const dev = {
-    clickCount: 0, clickTimer: null,
+    clicks: 0, timer: null,
     handleTrigger() {
-        this.clickCount++;
-        clearTimeout(this.clickTimer);
-        if(this.clickCount >= 3) { this.open(); this.clickCount = 0; }
-        else { this.clickTimer = setTimeout(() => this.clickCount = 0, 400); }
-    },
-    open() {
-        // FIX: Eliminada la vulnerabilidad que mostraba los PINs en texto claro
-        let html = `<h4 class="text-mars-magenta glitch-text font-bold mb-4">DEV_BACKDOOR_ACCESS_GRANTED [v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0'}]</h4>`;
-        html += `<div class="bg-black border border-mars-magenta p-4 text-[10px] space-y-4 mb-4 font-mono">`;
-        html += `<p class="text-mars-cyan">Terminal de diagnóstico activada. Los códigos PIN han sido ocultados por seguridad.</p>`;
-        html += `</div>`;
-        const actions = `<button onclick="dev.resetTeacherPins()" class="bg-mars-yellow text-black px-4 py-2 text-[9px] font-bold uppercase hover:bg-white">Reset Docentes</button><button onclick="dev.rootLogin()" class="bg-mars-magenta text-white px-4 py-2 text-[9px] font-bold uppercase hover:bg-white hover:text-mars-magenta">Login Root Bypass</button>`;
-        ui.showModal("Terminal de Rescate", html, actions);
-    },
-    resetTeacherPins() {
-        Object.keys(state.data.config.teachers).forEach((k, idx) => { 
-            if(k === 'COORD_MARIO') state.data.config.teachers[k].pin = '0001';
-            else if(k === 'COORD_ALEX') state.data.config.teachers[k].pin = '0002';
-            else state.data.config.teachers[k].pin = '0' + (idx+1) + '0' + (idx+1); 
-        });
-        state.save();
-        alert("PINs docentes restablecidos a valores de fábrica.");
-        ui.closeModal();
-    },
-    rootLogin() { ui.closeModal(); auth.login('admin', 'COORD_MARIO', true, "ROOT_OVERRIDE"); }
+        this.clicks++;
+        clearTimeout(this.timer);
+        if (this.clicks >= 3) {
+            this.clicks = 0;
+            if (state.user && state.user.admin && state.user.role.startsWith('COORD')) {
+                ui.adminTab = 'settings';
+                ui.render();
+            }
+        } else {
+            this.timer = setTimeout(() => { this.clicks = 0; }, 600);
+        }
+    }
 };

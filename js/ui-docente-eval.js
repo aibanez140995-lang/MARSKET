@@ -1,5 +1,5 @@
 // js/ui-docente-eval.js
-// --- MÓDULO DOCENTE: RÚBRICAS PONDERADAS (100%), ACTAS Y ARCHIVO DOCUMENTAL (19 ENTREGABLES) (v1.0.15) ---
+// --- MÓDULO DOCENTE: RÚBRICAS PONDERADAS (100%), ACTAS Y ARCHIVO DOCUMENTAL (19 ENTREGABLES) (v1.0.16) ---
 
 Object.assign(ui, {
     renderAdminEval() {
@@ -180,12 +180,16 @@ Object.assign(ui, {
                 
                 let evidenceHtml = `<h4 class="font-orbitron text-mars-cyan text-xs uppercase mb-4 tracking-widest border-b border-mars-border pb-2">Evidencias Adjuntas (${activeSubject})</h4>`;
                 
+                // CAMBIO v1.0.16: Renderizar FYQ con medidas en mm si corresponde
                 if (activeSubject === 'FYQ') {
-                    evidenceHtml += this.renderDocBadge('1. Hoja Registro Preliminar (Fase I)', docs.preliminaryReport);
-                    evidenceHtml += this.renderDocBadge('2. Informe Técnico Exhaustivo (Fase II)', docs.technicalReport);
+                    evidenceHtml += this.renderDocBadge('1. Hoja Registro Preliminar (Dic)', docs.preliminaryReport);
+                    evidenceHtml += this.renderDocBadge('2. Informe Técnico Final (Abr)', docs.technicalReport);
                     if(co.flightTests && co.flightTests.length > 0) {
                         evidenceHtml += `<div class="mt-4 bg-black p-3 border border-slate-800"><span class="text-mars-yellow text-[9px] font-bold uppercase block mb-2">Ensayos en Banco de Pruebas:</span><div class="text-[9px] space-y-1 max-h-40 overflow-y-auto">`;
-                        co.flightTests.forEach(f => evidenceHtml += `<p class="text-slate-300 border-b border-slate-900 pb-1">${f.bottle} | H: <strong class="text-mars-green">${f.heightM}m</strong> | C: ${f.costEurV}€v | E: <strong class="text-mars-yellow">${Number(f.efficiency).toFixed(3)}</strong></p>`);
+                        co.flightTests.forEach(f => {
+                            const h_mm = f.heightMm !== undefined ? f.heightMm : (f.heightM * 1000);
+                            evidenceHtml += `<p class="text-slate-300 border-b border-slate-900 pb-1">${f.bottle} | H: <strong class="text-mars-green">${Number(h_mm).toFixed(0)} mm</strong> | C: ${f.costEurV}€v | E: <strong class="text-mars-yellow">${Number(f.efficiency).toFixed(2)}</strong></p>`;
+                        });
                         evidenceHtml += `</div></div>`;
                     }
                 } else if (activeSubject === 'ECO') {

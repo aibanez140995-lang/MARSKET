@@ -1,170 +1,194 @@
 <!DOCTYPE html>
-<html lang="es" class="dark">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MARS-KET 2.0 | TACTICAL COMMAND</title>
+    <title>MARS-KET 2.0 | Advanced Aerospace Learning Management System</title>
+    <meta name="theme-color" content="#000000">
+    <link rel="icon" type="image/png" href="/logo.png">
     
-    <!-- PWA & Favicon -->
-    <link id="favicon" rel="icon" type="image/jpeg" href="/logo.jpg">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#05070a">
-    <link id="apple-touch-icon" rel="apple-touch-icon" href="/logo.jpg">
-    
-    <!-- Web App Manifest (Data URI) -->
-    <link id="pwa-manifest" rel="manifest" href='data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22MARS-KET%202.0%22%2C%22short_name%22%3A%22MARSKET%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2305070a%22%2C%22theme_color%22%3A%22%2305070a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22%2Flogo.jpg%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fjpeg%22%7D%5D%7D'>
-    
+    <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-    
-    <!-- Tailwind Configuration -->
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        mars: {
-                            bg: '#05070a', card: '#0b121d', cyan: '#00f0ff',
-                            magenta: '#ff0055', yellow: '#ffe600', green: '#00ff66',
-                            border: '#1a2635'
-                        }
+                        'mars-bg': '#05070f',
+                        'mars-card': '#0b1120',
+                        'mars-border': '#1e293b',
+                        'mars-cyan': '#00f0ff',
+                        'mars-magenta': '#ff0055',
+                        'mars-yellow': '#ffb703',
+                        'mars-green': '#00ff66'
                     },
                     fontFamily: {
-                        orbitron: ['Orbitron', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
+                        'orbitron': ['Orbitron', 'sans-serif'],
+                        'mono': ['Courier New', 'Courier', 'monospace']
+                    },
+                    boxShadow: {
+                        'neon-cyan': '0 0 15px rgba(0, 240, 255, 0.4)',
+                        'neon-magenta': '0 0 15px rgba(255, 0, 85, 0.4)',
+                        'neon-green': '0 0 15px rgba(0, 255, 102, 0.4)'
                     }
                 }
             }
         }
     </script>
-
-    <!-- Custom Cyberpunk Styles -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #05070a; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; overflow-x: hidden; touch-action: manipulation; }
-        .glow-cyan { box-shadow: 0 0 15px rgba(0, 240, 255, 0.15); }
-        .glow-magenta { box-shadow: 0 0 15px rgba(255, 0, 85, 0.2); }
-        .terminal-border { border: 1px solid #1a2635; position: relative; clip-path: polygon(0 0, 98% 0, 100% 2%, 100% 100%, 2% 100%, 0 98%); }
-        .scanline { width: 100%; height: 2px; background: rgba(0, 240, 255, 0.05); position: fixed; top: 0; pointer-events: none; z-index: 100; animation: scan 8s linear infinite; }
-        @keyframes scan { from { top: 0; } to { top: 100vh; } }
-        .tab-active { border-bottom: 2px solid #00f0ff; color: #00f0ff; background: linear-gradient(to top, rgba(0, 240, 255, 0.1), transparent); }
+        body {
+            background-color: #05070f;
+            color: #cbd5e1;
+            font-family: 'Courier New', Courier, monospace;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(0, 240, 255, 0.03) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(255, 0, 85, 0.03) 0%, transparent 20%);
+        }
+        .terminal-border {
+            border: 1px solid #1e293b;
+            position: relative;
+        }
+        .terminal-border::before {
+            content: '';
+            position: absolute;
+            top: -1px; left: -1px;
+            width: 6px; height: 6px;
+            border-top: 2px solid #00f0ff;
+            border-left: 2px solid #00f0ff;
+        }
+        .terminal-border::after {
+            content: '';
+            position: absolute;
+            bottom: -1px; right: -1px;
+            width: 6px; height: 6px;
+            border-bottom: 2px solid #00f0ff;
+            border-right: 2px solid #00f0ff;
+        }
+        .tab-active {
+            border-bottom: 2px solid #00f0ff !important;
+            color: #00f0ff !important;
+            background: rgba(0, 240, 255, 0.05);
+        }
+        .glow-cyan { box-shadow: 0 0 15px rgba(0, 240, 255, 0.2); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
-        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .led-green { width: 8px; height: 8px; border-radius: 50%; background: #00ff66; box-shadow: 0 0 5px #00ff66; }
-        .glitch-text { text-shadow: 2px 0 #ff0055, -2px 0 #00f0ff; animation: glitch 1s infinite alternate; }
-        @keyframes glitch { 0% { transform: skewX(0deg); } 20% { transform: skewX(-10deg); } 40% { transform: skewX(10deg); } 60% { transform: skewX(0deg); } }
-        .hex-clip { clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .hex-clip {
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+        }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
-    <!-- Efecto Visual CRT -->
-    <div class="scanline"></div>
+<body class="min-h-screen flex flex-col justify-between selection:bg-mars-cyan selection:text-black">
 
-    <!-- HUD HEADER -->
-    <header id="hud-header" class="hidden border-b border-mars-border bg-mars-bg/90 backdrop-blur-md sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-3 py-2 flex justify-between items-center flex-wrap gap-2">
-            <!-- Izquierda: Identidad y Status -->
-            <div class="flex items-center gap-4">
-                <div class="led-green animate-pulse"></div>
-                <!-- Trigger Secreto Backdoor (Triple Click) con Logo Oficial -->
-                <div onclick="dev.handleTrigger()" class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity select-none pr-4 border-r border-mars-border group">
-                    <img src="/logo.png" alt="M2" class="w-8 h-8 object-contain drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]" onerror="this.style.display='none'">
-                    <div class="flex flex-col">
-                        <h1 class="font-orbitron font-black text-mars-cyan text-lg tracking-widest group-hover:text-white transition-colors leading-none">MARS-KET 2.0</h1>
-                        <span id="hud-version" class="text-[7px] text-mars-cyan uppercase tracking-widest mt-1">v1.0.15</span>
+    <!-- CONTENEDOR PRINCIPAL -->
+    <div class="max-w-7xl mx-auto w-full p-2 sm:p-4 flex-grow flex flex-col">
+        
+        <!-- HEADER HUD (FASE 1 v1.0.17: LÍNEA ÚNICA RESPONSIVA COMPACTA) -->
+        <header id="hud-header" class="hidden terminal-border bg-mars-card/95 backdrop-blur-md p-3 sm:p-4 mb-3 sm:mb-4 border-b-2 border-b-mars-cyan sticky top-0 z-40">
+            <!-- Fila 1: Logo, Versión, Avatar de Marca y Estado de Nube D1 -->
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <span class="w-2.5 h-2.5 rounded-full bg-mars-green shadow-[0_0_8px_#00ff66] animate-pulse"></span>
+                    <div>
+                        <h1 class="font-orbitron font-black text-sm sm:text-lg text-white tracking-widest leading-none flex items-center gap-1.5">
+                            MARS-KET <span class="text-mars-cyan">2.0</span>
+                        </h1>
+                        <span id="hud-version" class="text-[7px] sm:text-[8px] text-slate-500 font-mono tracking-widest block mt-0.5">v1.0.17</span>
                     </div>
                 </div>
-
-                <div class="flex items-center gap-2 sm:gap-3">
-                    <div id="hud-mini-logo" class="hidden w-6 h-6 hex-clip bg-mars-card border border-mars-cyan flex items-center justify-center overflow-hidden"></div>
-                    <span id="hud-cloud-status" class="text-[7px] sm:text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border"></span>
-                    <span class="hidden sm:inline text-[9px] text-slate-500 uppercase font-bold">SYS_OP: <span id="hud-mode" class="text-mars-yellow">SECURE</span></span>
+                <div class="flex items-center gap-2">
+                    <div id="hud-mini-logo" class="w-6 h-6 sm:w-7 sm:h-7 hex-clip border border-mars-cyan bg-black overflow-hidden flex items-center justify-center hidden"></div>
+                    <span id="hud-cloud-status" class="text-[7px] sm:text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 border border-mars-green/40 text-mars-green bg-mars-green/10 whitespace-nowrap">[D1: SYNCED]</span>
                 </div>
             </div>
-            
-            <!-- Derecha: Acciones y Balance -->
-            <div class="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
-                <div class="text-right hidden sm:block mr-2">
-                    <p class="text-[8px] text-slate-500 uppercase leading-none mb-1 tracking-widest">Saldo Disponible</p>
-                    <p id="hud-balance" class="text-mars-green font-bold text-xl font-orbitron tracking-tighter">0.00 €v</p>
-                </div>
-                <button onclick="ui.modalChangelog()" class="border border-mars-green text-mars-green bg-mars-green/10 text-[9px] px-2 py-1.5 hover:bg-mars-green hover:text-black transition-all font-bold tracking-widest shadow-[0_0_10px_rgba(0,255,102,0.15)]">[🚀 NOVEDADES]</button>
-                <button onclick="ui.modalSuggestion()" class="border border-mars-yellow text-mars-yellow bg-mars-yellow/10 text-[9px] px-2 py-1.5 hover:bg-mars-yellow hover:text-black transition-all font-bold tracking-widest">[💡 SUGERENCIA]</button>
-                <button onclick="ui.showGuide()" class="border border-mars-cyan text-mars-cyan bg-mars-cyan/10 text-[9px] px-2 py-1.5 hover:bg-mars-cyan hover:text-black transition-all font-bold tracking-widest shadow-[0_0_10px_rgba(0,240,255,0.2)]">[❓ GUÍA]</button>
-                <button onclick="auth.logout()" class="border border-mars-magenta/50 text-mars-magenta text-[9px] px-2 py-1.5 hover:bg-mars-magenta hover:text-white transition-all font-bold tracking-widest">[SALIR]</button>
+
+            <!-- Fila 2: Barra de Utilidades en Línea Única (Grid de 4 Columnas Exactas sin Quiebre en Móvil) -->
+            <div class="grid grid-cols-4 gap-1 sm:gap-2 w-full mt-2.5">
+                <button onclick="ui.modalChangelog()" class="bg-mars-green/10 border border-mars-green text-mars-green py-1 px-1 sm:px-2 text-[8px] sm:text-[9px] font-bold uppercase tracking-tight sm:tracking-widest hover:bg-mars-green hover:text-black transition-all flex items-center justify-center text-center truncate">
+                    [ 🚀 NOVEDADES ]
+                </button>
+                <button onclick="ui.modalSuggestion()" class="bg-mars-yellow/10 border border-mars-yellow text-mars-yellow py-1 px-1 sm:px-2 text-[8px] sm:text-[9px] font-bold uppercase tracking-tight sm:tracking-widest hover:bg-mars-yellow hover:text-black transition-all flex items-center justify-center text-center truncate">
+                    [ 💡 SUGERENCIA ]
+                </button>
+                <button onclick="ui.showGuide()" class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-1 px-1 sm:px-2 text-[8px] sm:text-[9px] font-bold uppercase tracking-tight sm:tracking-widest hover:bg-mars-cyan hover:text-black transition-all flex items-center justify-center text-center truncate">
+                    [ ❓ GUÍA ]
+                </button>
+                <button onclick="auth.logout()" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta py-1 px-1 sm:px-2 text-[8px] sm:text-[9px] font-black uppercase tracking-tight sm:tracking-widest hover:bg-mars-magenta hover:text-white transition-all flex items-center justify-center text-center truncate">
+                    [ SALIR ]
+                </button>
             </div>
-        </div>
-        
-        <!-- Info Footer del Header -->
-        <div class="bg-mars-card/50 border-t border-mars-border px-4 py-1 flex justify-between text-[8px] text-slate-400 font-bold uppercase tracking-widest">
-            <div id="hud-info">ENTITY: --- | ROLE: ---</div>
-            <div id="hud-clock">TIME: 00:00:00</div>
-        </div>
-    </header>
 
-    <!-- NAVIGATION TABS -->
-    <nav id="hud-nav" class="hidden bg-mars-card border-b border-mars-border overflow-x-auto scrollbar-hide">
-        <div class="max-w-7xl mx-auto flex" id="nav-container">
-            <!-- Pestañas renderizadas dinámicamente vía auth.buildNav() -->
-        </div>
-    </nav>
+            <!-- Fila 3: Información Táctica (Entidad, Rol y Reloj) -->
+            <div class="flex justify-between items-center text-[8px] sm:text-[9px] text-slate-400 border-t border-mars-border/40 mt-2.5 pt-2 uppercase font-mono">
+                <span id="hud-info" class="truncate pr-2">ENTITY: -- | ROLE: --</span>
+                <span id="hud-clock" class="shrink-0 text-slate-500 font-bold">TIME: --:--:--</span>
+            </div>
+        </header>
 
-    <!-- MAIN VIEWPORT -->
-    <main id="viewport" class="flex-grow container mx-auto px-4 py-6 w-full max-w-7xl overflow-x-hidden">
-        <!-- Contenido renderizado dinámicamente vía ui.render() -->
-    </main>
+        <!-- NAVEGACIÓN DINÁMICA POR ROL -->
+        <nav id="hud-nav" class="hidden mb-4 overflow-x-auto scrollbar-hide border-b border-mars-border/50">
+            <div id="nav-container" class="flex gap-1 min-w-max"></div>
+        </nav>
 
-    <!-- MODAL OVERLAY (General) -->
-    <div id="modal-overlay" class="fixed inset-0 bg-mars-bg/95 backdrop-blur-md hidden z-[100] flex items-center justify-center p-4">
-        <div class="terminal-border bg-mars-card w-full max-w-lg p-6 glow-cyan flex flex-col max-h-[90vh]">
-            <h3 id="modal-title" class="font-orbitron text-mars-cyan text-lg mb-4 uppercase tracking-tighter shrink-0">System Alert</h3>
-            <div id="modal-body" class="mb-6 overflow-y-auto pr-2 text-sm text-slate-300 grow"></div>
-            <div class="flex justify-end gap-3 shrink-0" id="modal-actions"></div>
+        <!-- VIEWPORT PRINCIPAL DINÁMICO -->
+        <main id="viewport" class="w-full flex-grow flex flex-col justify-start"></main>
+
+    </div>
+
+    <!-- FOOTER INSTITUCIONAL -->
+    <footer class="border-t border-mars-border/40 bg-black/40 py-3 px-4 text-center text-[8px] sm:text-[9px] text-slate-600 uppercase font-mono">
+        <p>MARS-KET 2.0 • Plataforma Aeroespacial Interdisciplinar • AEE / ESA Simulación Académica • 2026-2027</p>
+    </footer>
+
+    <!-- MODAL GLOBAL DE OPERACIONES -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden animate-in fade-in duration-200">
+        <div class="terminal-border bg-mars-card max-w-lg w-full p-4 sm:p-6 border-2 border-mars-cyan glow-cyan max-h-[90vh] flex flex-col">
+            <h3 id="modal-title" class="font-orbitron font-black text-sm sm:text-base text-mars-cyan mb-3 uppercase tracking-wider border-b border-mars-border pb-2">AVISO INSTITUCIONAL</h3>
+            <div id="modal-body" class="text-xs text-slate-300 space-y-3 overflow-y-auto pr-1 flex-grow font-mono leading-relaxed"></div>
+            <div id="modal-actions" class="flex gap-2 justify-end mt-4 pt-3 border-t border-mars-border flex-wrap"></div>
         </div>
     </div>
 
-    <!-- ONBOARDING MODAL -->
-    <div id="onboarding-overlay" class="fixed inset-0 bg-mars-bg/95 backdrop-blur-md hidden z-[110] flex items-center justify-center p-4">
-        <div class="terminal-border bg-mars-card w-full max-w-lg p-6 glow-magenta flex flex-col max-h-[90vh]">
-            <h3 id="onboarding-title" class="font-orbitron text-white text-xl mb-2 uppercase tracking-tighter shrink-0"></h3>
-            <div id="onboarding-body" class="mb-6 overflow-y-auto text-sm text-slate-300 space-y-4 grow pr-2"></div>
-            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-mars-border shrink-0">
-                <label class="flex items-center gap-2 text-[10px] text-slate-400 cursor-pointer">
-                    <input type="checkbox" id="skip-onboarding" class="bg-black border-mars-cyan"> No volver a mostrar
+    <!-- MODAL DE BIENVENIDA / ONBOARDING -->
+    <div id="onboarding-overlay" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden animate-in fade-in duration-300">
+        <div class="terminal-border bg-mars-card max-w-xl w-full p-6 sm:p-8 border-2 border-mars-yellow glow-cyan max-h-[90vh] flex flex-col">
+            <h2 id="onboarding-title" class="font-orbitron font-black text-lg text-mars-yellow mb-2 uppercase tracking-widest text-center border-b border-mars-border pb-3">ORDEN GENERAL DE OPERACIONES</h2>
+            <div id="onboarding-body" class="overflow-y-auto pr-2 my-4 space-y-4"></div>
+            <div class="flex items-center justify-between pt-3 border-t border-mars-border flex-wrap gap-2">
+                <label class="flex items-center gap-2 text-[9px] text-slate-400 uppercase cursor-pointer">
+                    <input type="checkbox" id="skip-onboarding" class="form-checkbox bg-black border-slate-700 text-mars-cyan">
+                    No mostrar de nuevo en esta sesión
                 </label>
-                <button onclick="ui.closeOnboarding()" class="bg-mars-cyan text-black px-6 py-3 text-[10px] font-black uppercase tracking-widest hover:shadow-[0_0_15px_#00f0ff] transition-all w-full sm:w-auto">[ INICIAR OPERACIONES ]</button>
+                <button onclick="ui.closeOnboarding()" class="bg-mars-yellow text-black font-black px-6 py-2 text-[10px] uppercase tracking-widest hover:bg-white transition-all">ENTENDIDO</button>
             </div>
         </div>
     </div>
 
-    <!-- CARGA DE MÓDULOS JAVASCRIPT -->
+    <!-- SCRIPTS ORDENADOS DEL SISTEMA -->
     <script src="js/config.js"></script>
     <script src="js/state.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/ui-core.js"></script>
-
-    <!-- Vistas y Acciones de Empresa/Alumnos -->
     <script src="js/ui-empresa-core.js"></script>
     <script src="js/ui-empresa-market.js"></script>
     <script src="js/ui-empresa-tech.js"></script>
     <script src="js/ui-empresa-finance.js"></script>
     <script src="js/ui-empresa-ops.js"></script>
     <script src="js/ui-empresa-gov-brand.js"></script>
-
-    <!-- Vistas y Acciones de Docentes -->
     <script src="js/ui-docente-core.js"></script>
     <script src="js/ui-docente-eval.js"></script>
     <script src="js/ui-docente-management.js"></script>
 
-    <!-- INICIALIZACIÓN DE LA APLICACIÓN -->
     <script>
-        window.onload = function() {
+        window.addEventListener('DOMContentLoaded', () => {
+            if (typeof ui !== 'undefined' && typeof ui.setupPwaBlackIcon === 'function') {
+                ui.setupPwaBlackIcon();
+            }
             if (typeof state !== 'undefined' && typeof state.init === 'function') {
                 state.init();
-            } else {
-                console.error("CRITICAL ERROR: Los módulos JavaScript no se han cargado correctamente.");
             }
-        };
+        });
     </script>
 </body>
 </html>

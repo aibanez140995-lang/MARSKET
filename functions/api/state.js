@@ -1,93 +1,90 @@
 // functions/api/state.js
 
-export async function onRequestGet(context) {
-    try {
-        const row = await context.env.DB.prepare(
-            "SELECT data FROM app_state WHERE id = 'master'"
-        ).first();
+export async function onRequest(context) {
+    const { request, env } = context;
+    const url = new URL(request.url);
+    
+    // Configurar CORS
+    const headers = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+    };
 
-        if (!row || !row.data) {
-            return new Response(JSON.stringify({ status: "empty" }), {
-                headers: { "Content-Type": "application/json" }
-            });
-        }
+    if (request.method === 'OPTIONS') return new Response(null, { headers });
 
-        return new Response(row.data, {
-            headers: { "Content-Type": "application/json" }
-        });
-    } catch (err) {
-        return new Response(JSON.stringify({ error: err.message }), { 
-            status: 500,
-            headers: { "Content-Type": "application/json" }
-        });
+    // Verificamos que el binding D1 (MARSKET_DB) esté mapeado
+    if (!env.MARSKET_DB) {
+        return new Response(JSON.stringify({ error: 'Binding de Cloudflare D1 (MARSKET_DB) no encontrado en el entorno.' }), { status: 500, headers });
     }
-}
 
-export async function onRequestPost(context) {
     try {
-        const bodyText = await context.request.text();
-        let incomingData;
-        
-        try {
-            incomingData = JSON.parse(bodyText);
-        } catch (parseErr) {
-            return new Response(JSON.stringify({ error: "Invalid JSON payload" }), {
-                status: 400,
-                headers: { "Content-Type": "application/json" }
-            });
-        }
-
-        // M-01: Control de concurrencia optimista (Optimistic Locking)
-        const currentRow = await context.env.DB.prepare(
-            "SELECT data FROM app_state WHERE id = 'master'"
-        ).first();
-
-        let nextVersion = 1;
-
-        if (currentRow && currentRow.data) {
-            try {
-                const serverData = JSON.parse(currentRow.data);
-                const serverVersion = Number(serverData.version) || 1;
-                const clientVersion = Number(incomingData.version) || 1;
-
-                // Si el servidor tiene una versión superior y no es un guardado forzado post-fusión, devolver 409 Conflict
-                if (clientVersion < serverVersion && !incomingData._resolvedConflict) {
-                    return new Response(JSON.stringify({ 
-                        error: "Version conflict detected", 
-                        serverVersion 
-                    }), {
-                        status: 409,
-                        headers: { "Content-Type": "application/json" }
-                    });
-                }
-                nextVersion = Math.max(serverVersion, clientVersion) + 1;
-            } catch (e) {
-                nextVersion = (Number(incomingData.version) || 1) + 1;
+        if (request.method === 'GET') {
+            const action = url.searchParams.get('action');
+            
+            // FASE 5: Descarga de un backup específico si se solicita
+            if (action === 'get_backup') {
+                const type = url.searchParams.get('type') || 'backup_daily';
+                const { results } = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = ?").bind(type).all();
+                if (results && results.length > 0) return new Response(results[0].data, { headers });
+                return new Response(JSON.stringify({ status: 'empty' }), { headers });
             }
+
+            // Lectura normal del estado en vivo
+            const { results } = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = 'current'").all();
+            if (results && results.length > 0) return new Response(results[0].data, { headers });
+            
+            return new Response(JSON.stringify({ status: 'empty' }), { headers });
         }
 
-        // Limpiar flag temporal y sellar nueva versión maestra
-        delete incomingData._resolvedConflict;
-        incomingData.version = nextVersion;
+        if (request.method === 'POST') {
+            const payload = await request.json();
+            
+            // FASE 5: Acción manual de backup interceptada desde el Panel Docente
+            if (payload.action === 'force_backup') {
+                const { results } = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = 'current'").all();
+                if (results && results.length > 0) {
+                    const currentData = results[0].data;
+                    const dateTag = new Date().toISOString().split('T')[0];
+                    
+                    // Backup Diario: Sobreescribe siempre la fila 'backup_daily'
+                    await env.MARSKET_DB.prepare("INSERT OR REPLACE INTO state (id, data) VALUES (?, ?)").bind('backup_daily', currentData).run();
+                    
+                    // Backup Semanal: Crea una fila inmutable con la fecha actual
+                    if (payload.type === 'weekly') {
+                        await env.MARSKET_DB.prepare("INSERT OR REPLACE INTO state (id, data) VALUES (?, ?)").bind(`backup_weekly_${dateTag}`, currentData).run();
+                    }
+                    return new Response(JSON.stringify({ success: true, message: 'Backup D1 completado de forma nativa' }), { headers });
+                }
+                return new Response(JSON.stringify({ error: 'No hay datos en estado corriente para respaldar' }), { status: 400, headers });
+            }
 
-        const finalPayload = JSON.stringify(incomingData);
+            // Flujo normal: Control optimista de concurrencia basado en payload.version
+            const { results: versionCheck } = await env.MARSKET_DB.prepare("SELECT json_extract(data, '$.version') as v FROM state WHERE id = 'current'").all();
+            const serverVersion = (versionCheck && versionCheck.length > 0) ? Number(versionCheck[0].v) : 0;
+            const incomingVersion = Number(payload.version) || 0;
 
-        await context.env.DB.prepare(
-            "INSERT INTO app_state (id, data, updated_at) VALUES ('master', ?1, CURRENT_TIMESTAMP) " +
-            "ON CONFLICT(id) DO UPDATE SET data = ?1, updated_at = CURRENT_TIMESTAMP"
-        ).bind(finalPayload).run();
+            if (serverVersion > 0 && incomingVersion <= serverVersion && incomingVersion !== 0) {
+                return new Response(JSON.stringify({ error: 'Conflict: Server has a newer version', serverVersion }), { status: 409, headers });
+            }
 
-        return new Response(JSON.stringify({ 
-            success: true, 
-            version: nextVersion, 
-            timestamp: Date.now() 
-        }), {
-            headers: { "Content-Type": "application/json" }
-        });
+            // Forzar actualización de versión si todo va bien
+            payload.version = serverVersion + 1;
+            const dataString = JSON.stringify(payload);
+            
+            // FASE 5: Resiliencia - Auto-Backup del estado inmediatamente anterior antes de sobreescribir
+            await env.MARSKET_DB.prepare("INSERT OR REPLACE INTO state (id, data) SELECT 'backup_previous', data FROM state WHERE id = 'current'").run();
+            
+            // Escritura atómica en D1
+            await env.MARSKET_DB.prepare("INSERT OR REPLACE INTO state (id, data) VALUES ('current', ?)").bind(dataString).run();
+            
+            return new Response(JSON.stringify({ success: true, version: payload.version }), { headers });
+        }
+        
+        return new Response('Method Not Allowed', { status: 405, headers });
+        
     } catch (err) {
-        return new Response(JSON.stringify({ error: err.message }), { 
-            status: 500,
-            headers: { "Content-Type": "application/json" }
-        });
+        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers });
     }
 }
