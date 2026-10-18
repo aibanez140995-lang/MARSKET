@@ -9,20 +9,20 @@ Object.assign(ui, {
         // PASO 1: Solicitud de Código Privado de Empresa (Ninguna empresa se expone en el DOM)
         if (!verifiedCoId) {
             el.innerHTML = `
-            <div class="min-h-[75vh] flex items-center justify-center w-full px-4">
+            <div class="min-h-[75vh] flex items-center justify-center w-full px-3 sm:px-4 py-4">
                 <div id="login-box" class="max-w-md w-full terminal-border bg-mars-card p-6 sm:p-8 glow-cyan animate-in fade-in zoom-in duration-300 transition-all">
-                    <img src="/logo.png" alt="MARS-KET 2.0" class="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]" onerror="this.style.display='none'">
+                    <img src="logo.png" alt="Logo oficial MARS-KET 2.0" class="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 drop-shadow-[0_0_12px_rgba(0,240,255,0.8)]" onerror="this.style.display='none'">
                     <h2 id="login-title" class="font-orbitron text-center text-mars-cyan text-lg sm:text-xl mb-2 tracking-widest uppercase font-black">Secure_Gateway</h2>
-                    <p class="text-[9px] text-slate-400 text-center uppercase tracking-widest mb-6">Paso 1/2: Identificación de Entidad Aeroespacial</p>
+                    <p class="text-xs text-slate-300 text-center uppercase tracking-wider mb-6">Paso 1/2: Identificación de Entidad Aeroespacial</p>
                     
                     <div class="bg-black/60 border border-mars-border p-4 mb-6">
-                        <label class="text-[9px] text-mars-cyan uppercase font-bold block mb-2 tracking-wider">Código Privado de Empresa</label>
-                        <input type="text" id="login-company-code" placeholder="EJ: AST-1010" onkeydown="if(event.key==='Enter') auth.validateCompanyCode()" class="w-full bg-slate-900 border border-mars-cyan/60 p-3 text-center text-base sm:text-lg font-orbitron font-black uppercase tracking-widest text-mars-yellow outline-none focus:border-mars-cyan mb-4">
-                        <button onclick="auth.validateCompanyCode()" class="w-full bg-mars-cyan text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-all shadow-[0_0_12px_rgba(0,240,255,0.3)]">[ VALIDAR CÓDIGO DE EMPRESA ]</button>
+                        <label for="login-company-code" class="text-xs text-mars-cyan uppercase font-bold block mb-2 tracking-wider">Código Privado de Empresa</label>
+                        <input type="text" id="login-company-code" autocomplete="off" placeholder="EJ: AST-1010" onkeydown="if(event.key==='Enter') auth.validateCompanyCode()" class="w-full bg-slate-900 border border-mars-cyan/60 p-3 text-center text-base sm:text-lg font-orbitron font-black uppercase tracking-widest text-mars-yellow outline-none focus:border-mars-cyan mb-4 min-h-[48px]">
+                        <button type="button" onclick="auth.validateCompanyCode()" class="w-full min-h-[48px] bg-mars-cyan text-black font-black py-3 px-4 text-xs uppercase tracking-widest hover:bg-white transition-all shadow-[0_0_12px_rgba(0,240,255,0.3)]">[ VALIDAR CÓDIGO DE EMPRESA ]</button>
                     </div>
 
                     <div class="border-t border-mars-border pt-4 text-center">
-                        <button onclick="auth.activateTeacherLogin()" class="text-[9px] text-mars-yellow/80 hover:text-mars-yellow uppercase font-bold tracking-widest underline decoration-dashed underline-offset-4 transition-colors">🎖️ Acceso Exclusivo Claustro Docente</button>
+                        <button type="button" onclick="auth.activateTeacherLogin()" class="min-h-[44px] px-3 py-2 text-xs text-mars-yellow hover:text-white uppercase font-bold tracking-wider underline decoration-dashed underline-offset-4 transition-colors">🎖️ Acceso Exclusivo Claustro Docente</button>
                     </div>
                 </div>
             </div>`;
@@ -37,30 +37,34 @@ Object.assign(ui, {
             : (state.data.companies[verifiedCoId]?.name || 'STARTUP');
 
         el.innerHTML = `
-        <div class="min-h-[75vh] flex items-center justify-center w-full px-4">
+        <div class="min-h-[75vh] flex items-center justify-center w-full px-3 sm:px-4 py-4">
             <div id="login-box" class="max-w-md w-full terminal-border bg-mars-card p-6 sm:p-8 glow-cyan animate-in fade-in zoom-in duration-300 transition-all">
-                <div class="flex justify-between items-center border-b border-mars-border pb-3 mb-4">
-                    <span class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Paso 2/2: Credencial Rol</span>
-                    <button onclick="auth.resetCompanyStep()" class="text-[9px] text-mars-magenta hover:text-white uppercase font-black tracking-wider border border-mars-magenta/50 px-2 py-0.5">[⬅ Cambiar Entidad]</button>
+                <div class="flex justify-between items-center border-b border-mars-border pb-3 mb-4 gap-2">
+                    <div class="flex items-center gap-2">
+                        <img src="logo.png" alt="MARS-KET 2.0" class="w-7 h-7 object-contain drop-shadow-[0_0_6px_rgba(0,240,255,0.7)]">
+                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider">Paso 2/2: Credencial</span>
+                    </div>
+                    <button type="button" onclick="auth.resetCompanyStep()" class="min-h-[44px] text-xs text-mars-magenta hover:text-white uppercase font-black tracking-wider border border-mars-magenta/60 px-3 py-1.5">[⬅ Cambiar Entidad]</button>
                 </div>
 
                 <div class="bg-slate-900/90 border ${isTeacher ? 'border-mars-yellow' : 'border-mars-cyan'} p-3 mb-4 text-center">
-                    <p class="text-[8px] text-slate-400 uppercase tracking-widest">Entidad Verificada</p>
-                    <h2 id="login-title" class="font-orbitron ${isTeacher ? 'text-mars-yellow' : 'text-mars-cyan'} text-base sm:text-lg tracking-widest uppercase font-black truncate mt-0.5">${entityLabel}</h2>
+                    <p class="text-xs text-slate-300 uppercase tracking-wider">Entidad Verificada</p>
+                    <h2 id="login-title" class="font-orbitron ${isTeacher ? 'text-mars-yellow' : 'text-mars-cyan'} text-base sm:text-lg tracking-widest uppercase font-black break-words mt-1">${this.escapeHTML(entityLabel)}</h2>
                 </div>
 
-                <label class="text-[9px] text-slate-400 uppercase font-bold block mb-1">Selecciona tu Departamento / Rol</label>
-                <select id="login-role" onchange="auth.clear()" class="w-full bg-slate-900 border border-mars-border p-3 text-sm mb-6 outline-none focus:border-mars-cyan uppercase text-white font-bold"></select>
+                <label for="login-role" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Selecciona tu Departamento / Rol</label>
+                <select id="login-role" onchange="auth.clear()" class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-3 text-sm mb-5 outline-none focus:border-mars-cyan uppercase text-white font-bold"></select>
                 
-                <div class="flex justify-center gap-4 mb-6">
-                    ${[1,2,3,4].map(() => `<div class="pin-dot w-3 h-3 rounded-full border border-mars-cyan transition-all"></div>`).join('')}
+                <div class="flex justify-center gap-4 mb-5" role="status" aria-label="Indicador de dígitos de PIN introducidos">
+                    ${[1,2,3,4].map(() => `<div class="pin-dot w-3.5 h-3.5 rounded-full border-2 border-mars-cyan transition-all"></div>`).join('')}
                 </div>
-                <div id="login-keypad" class="grid grid-cols-3 gap-2 max-w-[220px] mx-auto transition-all">
-                    ${[1,2,3,4,5,6,7,8,9].map(n => `<button onclick="auth.press('${n}')" class="bg-slate-800 p-4 text-sm font-bold hover:bg-mars-cyan hover:text-mars-bg transition-all active:scale-95">${n}</button>`).join('')}
-                    <button onclick="auth.clear()" class="bg-slate-800 p-4 text-mars-magenta text-xs font-bold hover:bg-mars-magenta hover:text-white transition-all active:scale-95">CLR</button>
-                    <button onclick="auth.press('0')" class="bg-slate-800 p-4 text-sm font-bold hover:bg-mars-cyan hover:text-mars-bg transition-all active:scale-95">0</button>
-                    <button onclick="auth.verify()" class="bg-mars-green/20 border border-mars-green text-mars-green p-4 text-xs font-bold hover:bg-mars-green hover:text-mars-bg transition-all active:scale-95">ENT</button>
+                <div id="login-keypad" role="group" aria-label="Teclado numérico de PIN (también admite teclado físico 0-9, Backspace y Enter)" class="grid grid-cols-3 gap-2.5 max-w-[240px] mx-auto transition-all">
+                    ${[1,2,3,4,5,6,7,8,9].map(n => `<button type="button" aria-label="Dígito ${n}" onclick="auth.press('${n}')" class="min-h-[48px] bg-slate-800 border border-slate-700 p-3 text-base font-bold text-white hover:bg-mars-cyan hover:text-mars-bg transition-all active:scale-95">${n}</button>`).join('')}
+                    <button type="button" aria-label="Borrar PIN" onclick="auth.clear()" class="min-h-[48px] bg-slate-800 border border-mars-magenta/50 p-3 text-mars-magenta text-xs font-black hover:bg-mars-magenta hover:text-white transition-all active:scale-95">CLR</button>
+                    <button type="button" aria-label="Dígito 0" onclick="auth.press('0')" class="min-h-[48px] bg-slate-800 border border-slate-700 p-3 text-base font-bold text-white hover:bg-mars-cyan hover:text-mars-bg transition-all active:scale-95">0</button>
+                    <button type="button" aria-label="Confirmar PIN" onclick="auth.verify()" class="min-h-[48px] bg-mars-green/20 border border-mars-green text-mars-green p-3 text-xs font-black hover:bg-mars-green hover:text-mars-bg transition-all active:scale-95">ENT</button>
                 </div>
+                <p class="text-xs text-slate-300 text-center uppercase mt-4">Soporta teclado numérico físico (0-9, Backspace, Enter)</p>
             </div>
         </div>`;
         setTimeout(() => auth.updateRoleOptions(), 30);
@@ -94,7 +98,7 @@ Object.assign(ui, {
         const myNotifs = co.notifications.filter(n => n.role === state.user.role && !n.read);
         if (myNotifs.length === 0) return '';
         
-        return `<div class="mb-6 space-y-2 animate-in fade-in slide-in-from-top-4">
+        return `<div class="mb-6 space-y-2 animate-in fade-in slide-in-from-top-4" role="region" aria-label="Notificaciones operativas">
             ${myNotifs.map(n => {
                 let colors = 'border-mars-cyan bg-mars-cyan/10 text-mars-cyan';
                 if (n.type === 'error') colors = 'border-mars-magenta bg-mars-magenta/10 text-mars-magenta';
@@ -102,12 +106,12 @@ Object.assign(ui, {
                 if (n.type === 'warning') colors = 'border-mars-yellow bg-mars-yellow/10 text-mars-yellow';
                 
                 return `
-                <div class="flex justify-between items-center p-3 border ${colors} shadow-sm">
-                    <div class="flex flex-col">
-                        <span class="text-[10px] font-bold uppercase leading-tight">${n.message}</span>
-                        <span class="text-[8px] opacity-70 mt-1">${n.date}</span>
+                <div class="flex justify-between items-center gap-3 p-3 border ${colors} shadow-sm">
+                    <div class="flex flex-col min-w-0">
+                        <span class="text-xs font-bold uppercase leading-relaxed break-words">${this.escapeHTML(n.message)}</span>
+                        <span class="text-xs text-slate-300 mt-1">${this.escapeHTML(n.date)}</span>
                     </div>
-                    <button onclick="ui.dismissNotification('${n.id}')" class="px-3 py-1 font-black hover:text-white transition-colors text-xs">X</button>
+                    <button type="button" aria-label="Descartar notificación" onclick="ui.dismissNotification('${this.escapeHTML(n.id)}')" class="min-h-[44px] min-w-[44px] px-3 py-2 font-black hover:text-white transition-colors text-xs border border-current/40 shrink-0">✕</button>
                 </div>`;
             }).join('')}
         </div>`;
@@ -136,7 +140,7 @@ Object.assign(ui, {
         const co = state.data.companies[coId];
         if (!state.user.admin && !co) return auth.logout();
         if (state.user.admin && !co) {
-            el.innerHTML = `<div class="p-6 text-center text-slate-500">No hay startups registradas.</div>`;
+            el.innerHTML = `<div class="p-6 text-center text-xs text-slate-300">No hay startups registradas.</div>`;
             return;
         }
         
@@ -146,22 +150,22 @@ Object.assign(ui, {
         let adminSelector = '';
         if (state.user.admin) {
             adminSelector = `
-            <div class="mb-6 bg-slate-900 p-3 border border-mars-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div class="flex items-center gap-3 w-full sm:w-auto">
-                    <span class="text-mars-cyan font-bold text-[10px] uppercase whitespace-nowrap">Inspeccionando Dossier de:</span>
-                    <select onchange="ui.dossierSelectedCo=this.value; ui.render()" class="bg-black border border-mars-cyan text-white text-xs p-2 outline-none w-full sm:w-auto font-bold uppercase">
-                        ${Object.keys(state.data.companies).map(k => `<option value="${k}" ${coId===k?'selected':''}>${state.data.companies[k].name} [Clase ${state.data.companies[k].classGroup || 'A'}]</option>`).join('')}
+            <div class="mb-6 bg-slate-900 p-3 sm:p-4 border border-mars-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                    <label for="dossier-co-select" class="text-mars-cyan font-bold text-xs uppercase whitespace-nowrap">Inspeccionando Dossier de:</label>
+                    <select id="dossier-co-select" onchange="ui.dossierSelectedCo=this.value; ui.render()" class="min-h-[44px] bg-black border border-mars-cyan text-white text-xs p-2.5 outline-none w-full sm:w-auto font-bold uppercase">
+                        ${Object.keys(state.data.companies).map(k => `<option value="${this.escapeHTML(k)}" ${coId===k?'selected':''}>${this.escapeHTML(state.data.companies[k].name)} [Clase ${this.escapeHTML(state.data.companies[k].classGroup || 'A')}]</option>`).join('')}
                     </select>
                 </div>
-                <span class="text-[9px] text-mars-yellow uppercase font-bold">Modo Supervisión Docente</span>
+                <span class="text-xs text-mars-yellow uppercase font-bold">Modo Supervisión Docente</span>
             </div>`;
         }
         
         wrapper.innerHTML = `
         ${adminSelector}
-        <div class="flex gap-2 mb-6 border-b border-mars-border pb-2">
-            <button onclick="ui.showDossierTab('eval')" class="px-4 py-2 text-[10px] font-bold uppercase ${tab==='eval'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">📊 Evaluación Continua (100%)</button>
-            <button onclick="ui.showDossierTab('docs')" class="px-4 py-2 text-[10px] font-bold uppercase ${tab==='docs'?'bg-mars-cyan text-black':'text-slate-400 hover:text-white'} transition-colors">📁 Archivo Documental Oficial (19)</button>
+        <div role="tablist" aria-label="Secciones del Dossier Académico" class="flex flex-wrap gap-2 mb-6 border-b border-mars-border pb-2">
+            <button type="button" role="tab" aria-selected="${tab==='eval'}" onclick="ui.showDossierTab('eval')" class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase ${tab==='eval'?'bg-mars-cyan text-black':'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'} transition-colors">📊 Evaluación Continua (100%)</button>
+            <button type="button" role="tab" aria-selected="${tab==='docs'}" onclick="ui.showDossierTab('docs')" class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase ${tab==='docs'?'bg-mars-cyan text-black':'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'} transition-colors">📁 Archivo Documental Oficial (19)</button>
         </div>
         <div id="dossier-content" class="w-full"></div>
         `;
@@ -209,14 +213,14 @@ Object.assign(ui, {
             <div class="terminal-border bg-mars-card p-5 mb-6 border-l-4 border-l-mars-yellow flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h3 class="font-orbitron text-mars-yellow text-sm uppercase tracking-widest font-black">Calificación Global Ponderada del Proyecto</h3>
-                    <p class="text-[9px] text-slate-400 uppercase mt-1">Fórmula Oficial: FYQ (25%) + LYE (40%) + LEN (15%) + ECO (10%) + MAT (5%) + ING (5%)</p>
+                    <p class="text-xs text-slate-300 uppercase mt-1">Fórmula Oficial: FYQ (25%) + LYE (40%) + LEN (15%) + ECO (10%) + MAT (5%) + ING (5%)</p>
                 </div>
-                <div class="flex items-center gap-4 bg-black px-4 py-2 border border-mars-border self-end sm:self-center">
+                <div class="flex items-center gap-4 bg-black px-4 py-2.5 border border-mars-border self-end sm:self-center">
                     <div class="text-right">
-                        <span class="block text-[8px] text-slate-500 uppercase font-bold">Peso Evaluado: ${progressPct}%</span>
-                        <span class="text-[9px] text-mars-cyan font-bold uppercase">Nota Acumulada</span>
+                        <span class="block text-xs text-slate-300 uppercase font-bold">Peso Evaluado: ${progressPct}%</span>
+                        <span class="text-xs text-mars-cyan font-bold uppercase">Nota Acumulada</span>
                     </div>
-                    <span class="text-2xl sm:text-3xl font-orbitron font-black ${hasAnyGrade ? 'text-mars-green' : 'text-slate-600'}">${globalNoteDisplay}</span>
+                    <span class="text-2xl sm:text-3xl font-orbitron font-black ${hasAnyGrade ? 'text-mars-green' : 'text-slate-400'}">${globalNoteDisplay}</span>
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">`;
@@ -230,22 +234,22 @@ Object.assign(ui, {
                 html += `
                 <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-cyan w-full flex flex-col justify-between">
                     <div>
-                        <div class="flex justify-between items-center mb-3 border-b border-mars-border/50 pb-2">
+                        <div class="flex justify-between items-center mb-3 border-b border-mars-border/50 pb-2 gap-2">
                             <div>
-                                <h3 class="font-orbitron text-mars-cyan text-xs uppercase">${config.name}</h3>
-                                <span class="text-[8px] bg-mars-cyan/10 text-mars-cyan border border-mars-cyan/40 px-1.5 py-0.5 font-bold uppercase inline-block mt-1">Representación en Proyecto: ${subWeightPct}%</span>
+                                <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase">${this.escapeHTML(config.name)}</h3>
+                                <span class="text-xs bg-mars-cyan/10 text-mars-cyan border border-mars-cyan/40 px-2 py-0.5 font-bold uppercase inline-block mt-1">Representación en Proyecto: ${subWeightPct}%</span>
                             </div>
-                            <span class="text-xl font-mono font-black ${grade.final !== null && grade.final !== undefined ? 'text-mars-green' : 'text-slate-600'}">${grade.final !== null && grade.final !== undefined ? Number(grade.final).toFixed(2) : '--'}</span>
+                            <span class="text-xl font-mono font-black ${grade.final !== null && grade.final !== undefined ? 'text-mars-green' : 'text-slate-400'}">${grade.final !== null && grade.final !== undefined ? Number(grade.final).toFixed(2) : '--'}</span>
                         </div>
                         <div class="space-y-2 mb-3 w-full">
                             ${config.criteria.map(c => `
-                            <div class="flex justify-between text-[9px] uppercase w-full border-b border-slate-800/60 pb-1">
-                                <span class="text-slate-400 pr-2">${c.name} (${Math.round(c.weight*100)}%)</span>
-                                <span class="font-mono font-bold shrink-0 ${grade.scores && grade.scores[c.id] !== undefined ? 'text-white' : 'text-slate-600'}">${grade.scores && grade.scores[c.id] !== undefined ? grade.scores[c.id] : '-'}</span>
+                            <div class="flex justify-between text-xs uppercase w-full border-b border-slate-800/60 pb-1.5 gap-2">
+                                <span class="text-slate-300 pr-2">${this.escapeHTML(c.name)} (${Math.round(c.weight*100)}%)</span>
+                                <span class="font-mono font-bold shrink-0 ${grade.scores && grade.scores[c.id] !== undefined ? 'text-white' : 'text-slate-400'}">${grade.scores && grade.scores[c.id] !== undefined ? this.escapeHTML(grade.scores[c.id]) : '-'}</span>
                             </div>`).join('')}
                         </div>
                     </div>
-                    ${grade.feedback ? `<div class="bg-black p-2.5 border border-slate-800 text-[9px] text-slate-300 italic w-full mt-2"><span class="text-mars-yellow font-bold not-italic block mb-0.5 uppercase text-[8px]">Feedback Docente:</span>"${grade.feedback}"</div>` : '<div class="text-[8px] text-slate-600 italic uppercase mt-2">Sin observaciones registradas todavía.</div>'}
+                    ${grade.feedback ? `<div class="bg-black p-3 border border-slate-700 text-xs text-slate-200 italic w-full mt-2 break-words"><span class="text-mars-yellow font-bold not-italic block mb-1 uppercase text-xs">Feedback Docente:</span>"${this.escapeHTML(grade.feedback)}"</div>` : '<div class="text-xs text-slate-400 italic uppercase mt-2">Sin observaciones registradas todavía.</div>'}
                 </div>`;
             });
             html += `</div>`;
@@ -266,7 +270,7 @@ Object.assign(ui, {
             <div class="terminal-border bg-mars-card p-4 mb-6 border-l-4 border-l-mars-cyan flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
                     <h3 class="font-orbitron text-mars-cyan text-sm uppercase">Estado del Repositorio Oficial de Entregables (Drive)</h3>
-                    <p class="text-[9px] text-slate-400 uppercase mt-0.5">Auditoría centralizada de enlaces externos por departamento curricular.</p>
+                    <p class="text-xs text-slate-300 uppercase mt-1">Auditoría centralizada de enlaces externos por departamento curricular.</p>
                 </div>
                 <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-3 py-1.5 text-xs font-mono font-black uppercase">Entregados: ${deliveredCount} / ${allKeys.length}</span>
             </div>
@@ -274,9 +278,9 @@ Object.assign(ui, {
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
                 <!-- Física y Química -->
                 <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-cyan">
-                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
-                        <h4 class="font-orbitron text-mars-cyan text-xs uppercase">🧪 Física y Química (25%)</h4>
-                        <span class="text-[8px] text-slate-400 uppercase">Resp: Dpto. Técnico</span>
+                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2 gap-2">
+                        <h4 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase">🧪 Física y Química (25%)</h4>
+                        <span class="text-xs text-slate-300 uppercase">Resp: Dpto. Técnico</span>
                     </div>
                     ${this.renderDocBadge('1. Informe Preliminar / Prototipo — DICIEMBRE (20%)', docs.preliminaryReport)}
                     ${this.renderDocBadge('2. Informe Técnico Final Exhaustivo — ABRIL (30%)', docs.technicalReport)}
@@ -284,9 +288,9 @@ Object.assign(ui, {
 
                 <!-- Economía -->
                 <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-green">
-                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
-                        <h4 class="font-orbitron text-mars-green text-xs uppercase">💰 Economía (10%)</h4>
-                        <span class="text-[8px] text-slate-400 uppercase">Resp: Dpto. Finanzas</span>
+                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2 gap-2">
+                        <h4 class="font-orbitron text-mars-green text-xs sm:text-sm uppercase">💰 Economía (10%)</h4>
+                        <span class="text-xs text-slate-300 uppercase">Resp: Dpto. Finanzas</span>
                     </div>
                     ${this.renderDocBadge('1. Presupuesto Inicial', docs.budgetInitial)}
                     ${this.renderDocBadge('2. Cuenta de Resultados', docs.incomeStatement)}
@@ -296,9 +300,9 @@ Object.assign(ui, {
 
                 <!-- Liderazgo y Emprendimiento -->
                 <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-yellow lg:col-span-2">
-                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
-                        <h4 class="font-orbitron text-mars-yellow text-xs uppercase">🚀 Liderazgo y Emprendimiento (40%)</h4>
-                        <span class="text-[8px] text-slate-400 uppercase">Resp: Marketing / CEO / Operaciones IA</span>
+                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2 gap-2">
+                        <h4 class="font-orbitron text-mars-yellow text-xs sm:text-sm uppercase">🚀 Liderazgo y Emprendimiento (40%)</h4>
+                        <span class="text-xs text-slate-300 uppercase">Resp: Marketing / CEO / Operaciones IA</span>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
                         ${this.renderDocBadge('1A. Identidad de Marca y Misión — DICIEMBRE (10%)', docs.brandIdentity_dec)}
@@ -312,9 +316,9 @@ Object.assign(ui, {
 
                 <!-- Matemáticas -->
                 <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-yellow">
-                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
-                        <h4 class="font-orbitron text-mars-yellow text-xs uppercase">📐 Matemáticas (5%)</h4>
-                        <span class="text-[8px] text-slate-400 uppercase">Resp: Dpto. Técnico</span>
+                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2 gap-2">
+                        <h4 class="font-orbitron text-mars-yellow text-xs sm:text-sm uppercase">📐 Matemáticas (5%)</h4>
+                        <span class="text-xs text-slate-300 uppercase">Resp: Dpto. Técnico</span>
                     </div>
                     ${this.renderDocBadge('1. Elaboración de Goniómetro/s', docs.goniometerEvidence)}
                     ${this.renderDocBadge('2. Informe: Distancia Conocida a Base', docs.mathReportDist)}
@@ -324,9 +328,9 @@ Object.assign(ui, {
 
                 <!-- Lengua Castellana e Inglés -->
                 <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-magenta">
-                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
-                        <h4 class="font-orbitron text-mars-magenta text-xs uppercase">🗣️ Lengua Castellana (15%) & Inglés (5%)</h4>
-                        <span class="text-[8px] text-slate-400 uppercase">Resp: Marketing / Equipo</span>
+                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2 gap-2">
+                        <h4 class="font-orbitron text-mars-magenta text-xs sm:text-sm uppercase">🗣️ Lengua Castellana (15%) & Inglés (5%)</h4>
+                        <span class="text-xs text-slate-300 uppercase">Resp: Marketing / Equipo</span>
                     </div>
                     ${this.renderDocBadge('LEN: Dossier para Inversores (Texto Argumentativo)', docs.investorDossier)}
                     ${this.renderDocBadge('ING: Expresión Oral (Presentación Prototipo)', docs.oralPresentation)}

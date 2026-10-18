@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.0.17) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.0.18) ---
 
-const APP_VERSION = "1.0.17";
+const APP_VERSION = "1.0.18";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const REGULATORY_AGENCIES = {
@@ -107,8 +107,18 @@ const FORBIDDEN_WORDS = [
     'mario', 'alex', 'alejandro', 'coordinador', 'director', 'profe', 'profesor'
 ];
 
-// FASE 6: Changelog Oficial consolidado para la versión 1.0.17
+// FASE 6: Changelog Oficial consolidado para la versión 1.0.18
 const APP_CHANGELOG = [
+    {
+        version: "1.0.18",
+        date: "Octubre 2026",
+        title: "Consolidación HUD Awwwards, Accesibilidad WCAG AA, Escapado XSS y PWA",
+        highlights: [
+            { type: "SISTEMA", text: "Control estricto de caché (?v=1.0.18), aislamiento total de errores visuales frente a Cloudflare D1 y soporte PWA con Service Worker estático." },
+            { type: "MEJORA", text: "Sistema de notificaciones y diálogos HUD no bloqueantes, trampa de foco en modales, soporte de teclado físico en PIN y legibilidad mínima garantizada (≥12px)." },
+            { type: "NUEVO", text: "Blindaje XSS integral (ui.escapeHTML) en todos los flujos de texto libre y blindaje global de emblemas corporativos (logo.png)." }
+        ]
+    },
     {
         version: "1.0.17",
         date: "Octubre 2026",

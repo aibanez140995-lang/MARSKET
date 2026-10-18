@@ -7,8 +7,9 @@ const auth = {
     validateCompanyCode() {
         const input = document.getElementById('login-company-code');
         if (!input) return;
-        const code = input.value.trim().toUpperCase();
-        if (!code) return alert("Introduce el Código de Acceso de tu Startup.");
+        const cleanVal = typeof ui !== 'undefined' && ui.cleanInput ? ui.cleanInput(input.value) : input.value.trim();
+        const code = cleanVal.toUpperCase();
+        if (!code) return ui.notify("Introduce el Código de Acceso de tu Startup.", "warning");
 
         // 1. Acceso del Claustro Docente
         if (code === 'CLAUSTRO' || code === 'DOCENTE' || code === 'ADMIN') {
@@ -29,7 +30,7 @@ const auth = {
 
         if (!matchedCoId) {
             input.value = '';
-            return alert("❌ Código de Empresa no reconocido. Solicita el código de tu equipo a Coordinación.");
+            return ui.notify("❌ Código de Empresa no reconocido. Solicita el código de tu equipo a Coordinación.", "error");
         }
 
         this.verifiedCoId = matchedCoId;
@@ -55,7 +56,7 @@ const auth = {
 
         if (this.verifiedCoId === 'admin') {
             const teachers = state.data.config.teachers || {};
-            roleSelect.innerHTML = Object.keys(teachers).map(k => `<option value="${k}">${teachers[k].name}</option>`).join('');
+            roleSelect.innerHTML = Object.keys(teachers).map(k => `<option value="${ui.escapeHTML(k)}">${ui.escapeHTML(teachers[k].name)}</option>`).join('');
         } else {
             const co = state.data.companies[this.verifiedCoId];
             if (!co) return;
@@ -68,7 +69,7 @@ const auth = {
                 <option value="OPERACIONES_IA">Dpto. Operaciones e IA</option>
             `;
             if (hasAux) {
-                html += `<option value="AUXILIAR">Observador Auxiliar (${co.auxRoleDept || 'General'})</option>`;
+                html += `<option value="AUXILIAR">Observador Auxiliar (${ui.escapeHTML(co.auxRoleDept || 'General')})</option>`;
             }
             roleSelect.innerHTML = html;
         }
@@ -110,7 +111,7 @@ const auth = {
             if (t && t.pin === state.pin) {
                 this.completeLogin({ admin: true, role: role, coId: null }, 'CLAUSTRO DOCENTE', role);
             } else {
-                alert("❌ PIN Docente incorrecto.");
+                ui.notify("❌ PIN Docente incorrecto.", "error");
                 this.clear();
             }
         } else {
@@ -128,7 +129,7 @@ const auth = {
 
                 this.completeLogin({ admin: false, role: role, coId: this.verifiedCoId }, co.name, role);
             } else {
-                alert("❌ PIN de departamento incorrecto.");
+                ui.notify("❌ PIN de departamento incorrecto.", "error");
                 this.clear();
             }
         }
@@ -189,9 +190,9 @@ const auth = {
 
         if (isAdmin) {
             nav.innerHTML = `
-                <button onclick="ui.navigate('admin')" class="nav-tab px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white whitespace-nowrap">🎖️ Centro de Mando</button>
-                <button onclick="ui.navigate('market')" class="nav-tab px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white whitespace-nowrap">🛒 Inspeccionar Mercado</button>
-                <button onclick="ui.navigate('dossier')" class="nav-tab px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white whitespace-nowrap">📁 Inspeccionar Dossiers</button>
+                <button type="button" role="tab" onclick="ui.navigate('admin')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">🎖️ Centro de Mando</button>
+                <button type="button" role="tab" onclick="ui.navigate('market')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">🛒 Inspeccionar Mercado</button>
+                <button type="button" role="tab" onclick="ui.navigate('dossier')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">📁 Inspeccionar Dossiers</button>
             `;
             return;
         }
@@ -239,9 +240,9 @@ const auth = {
             const t = tabDefs[tid];
             if (!t) return '';
             return `
-            <button onclick="ui.navigate('${t.id}')" class="nav-tab relative px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white whitespace-nowrap flex items-center gap-1.5">
+            <button type="button" role="tab" onclick="ui.navigate('${t.id}')" class="nav-tab relative min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center gap-1.5">
                 ${t.label}
-                ${t.badge ? `<span id="${t.badge}" class="hidden bg-mars-magenta text-white text-[8px] font-black px-1.5 py-0.5 rounded-full animate-pulse">0</span>` : ''}
+                ${t.badge ? `<span id="${t.badge}" class="hidden bg-mars-magenta text-white text-xs font-black px-1.5 py-0.5 rounded-full animate-pulse">0</span>` : ''}
             </button>`;
         }).join('');
     },

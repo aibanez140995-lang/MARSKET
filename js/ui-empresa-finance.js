@@ -30,18 +30,18 @@ Object.assign(ui, {
         const unreadCrisis = co.crisisAlerts.filter(a => !a.read);
         if (unreadCrisis.length > 0) {
             crisisHtml = `
-            <div class="terminal-border bg-red-950/40 p-4 sm:p-5 mb-6 border-l-4 border-l-red-600 animate-pulse shadow-[0_0_20px_rgba(255,0,0,0.3)]">
+            <div role="alert" class="terminal-border bg-red-950/50 p-4 sm:p-5 mb-6 border-l-4 border-l-red-600 shadow-[0_0_20px_rgba(255,0,0,0.3)]">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
-                        <div class="flex items-center gap-2">
-                            <span class="bg-red-600 text-white text-[8px] font-black uppercase px-2 py-0.5 tracking-wider">ALERTA DISCIPLINARIA AEE</span>
-                            <span class="text-[9px] text-slate-400">${unreadCrisis[0].date}</span>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="bg-red-600 text-white text-xs font-black uppercase px-2.5 py-0.5 tracking-wider">ALERTA DISCIPLINARIA AEE</span>
+                            <span class="text-xs text-slate-300">${this.escapeHTML(unreadCrisis[0].date)}</span>
                         </div>
-                        <h3 class="font-orbitron text-red-500 text-sm sm:text-base font-bold uppercase mt-1">Expediente Sancionador: ${unreadCrisis[0].article || 'Infracción Normativa'}</h3>
-                        <p class="text-[10px] text-slate-300 italic mt-0.5">"${unreadCrisis[0].reason}"</p>
-                        <p class="text-mars-magenta font-mono font-bold text-xs mt-1">Penalización Económica: ${Number(unreadCrisis[0].amount).toFixed(2)} €v</p>
+                        <h3 class="font-orbitron text-red-400 text-sm sm:text-base font-bold uppercase mt-1.5">Expediente Sancionador: ${this.escapeHTML(unreadCrisis[0].article || 'Infracción Normativa')}</h3>
+                        <p class="text-xs text-slate-200 italic mt-1 break-words">"${this.escapeHTML(unreadCrisis[0].reason)}"</p>
+                        <p class="text-mars-magenta font-mono font-bold text-xs sm:text-sm mt-1">Penalización Económica: ${Number(unreadCrisis[0].amount).toFixed(2)} €v</p>
                     </div>
-                    ${isCEO ? `<button onclick="ui.modalCrisisAction()" class="bg-red-700 text-white font-black px-4 py-2 text-[10px] uppercase tracking-widest hover:bg-white hover:text-red-700 transition-all border border-red-500 shadow-[0_0_10px_red] shrink-0 w-full sm:w-auto">[ Emitir Comunicado de Crisis ]</button>` : `<span class="text-[9px] text-mars-yellow font-bold uppercase">Esperando acción de Dirección General (CEO)...</span>`}
+                    ${isCEO ? `<button type="button" onclick="ui.modalCrisisAction()" class="min-h-[44px] bg-red-700 text-white font-black px-4 py-2.5 text-xs uppercase tracking-wider hover:bg-white hover:text-red-700 transition-all border border-red-500 shadow-[0_0_10px_red] shrink-0 w-full sm:w-auto">[ Emitir Comunicado de Crisis ]</button>` : `<span class="text-xs text-mars-yellow font-bold uppercase">Esperando acción de Dirección General (CEO)...</span>`}
                 </div>
             </div>`;
         }
@@ -71,7 +71,7 @@ Object.assign(ui, {
             { id: 'LEN', label: 'LEN (1)' },
             { id: 'ING', label: 'ING (2)' }
         ].map(btn => `
-            <button onclick="ui.setCronogramaSubjectFilter('${btn.id}')" class="px-2.5 py-1 text-[8px] sm:text-[9px] font-bold uppercase transition-colors whitespace-nowrap ${activeSubj === btn.id ? 'bg-mars-cyan text-black' : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'}">
+            <button type="button" role="tab" aria-selected="${activeSubj === btn.id}" onclick="ui.setCronogramaSubjectFilter('${btn.id}')" class="min-h-[44px] px-3 py-2 text-xs font-bold uppercase transition-colors whitespace-nowrap ${activeSubj === btn.id ? 'bg-mars-cyan text-black' : 'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'}">
                 ${btn.label}
             </button>
         `).join('');
@@ -85,24 +85,24 @@ Object.assign(ui, {
             const displayDate = dateStr.replace('T', ' ');
 
             return `
-            <div class="terminal-border bg-slate-950 p-3 sm:p-4 border border-slate-800 flex flex-col justify-between hover:border-mars-cyan/60 transition-all">
+            <div class="terminal-border bg-slate-950 p-3.5 sm:p-4 border border-slate-800 flex flex-col justify-between hover:border-mars-cyan/60 transition-all">
                 <div>
-                    <div class="flex justify-between items-center mb-1.5 flex-wrap gap-1">
-                        <span class="text-[8px] font-black uppercase px-1.5 py-0.5 border ${sBadge}">${d.subject} • ${d.weight}</span>
+                    <div class="flex justify-between items-center mb-2 flex-wrap gap-1.5">
+                        <span class="text-xs font-black uppercase px-2 py-0.5 border ${sBadge}">${this.escapeHTML(d.subject)} • ${this.escapeHTML(d.weight)}</span>
                         ${isDelivered 
-                            ? `<span class="text-[8px] font-black uppercase text-mars-green bg-mars-green/10 border border-mars-green/50 px-1.5 py-0.5">✓ ENTREGADO</span>`
-                            : `<span class="text-[8px] font-bold uppercase text-slate-500 bg-black px-1.5 py-0.5">PENDIENTE</span>`}
+                            ? `<span class="text-xs font-black uppercase text-mars-green bg-mars-green/10 border border-mars-green/50 px-2 py-0.5">✓ ENTREGADO</span>`
+                            : `<span class="text-xs font-bold uppercase text-slate-300 bg-black border border-slate-700 px-2 py-0.5">PENDIENTE</span>`}
                     </div>
-                    <h4 class="text-white font-bold text-[10px] sm:text-[11px] uppercase leading-snug mb-1">${d.name}</h4>
-                    <span class="text-[8px] text-slate-400 block mb-2 uppercase font-mono">Resp: ${d.role.replace('_',' ')}</span>
+                    <h4 class="text-white font-bold text-xs sm:text-sm uppercase leading-snug mb-1.5 break-words">${this.escapeHTML(d.name)}</h4>
+                    <span class="text-xs text-slate-300 block mb-2.5 uppercase font-mono">Resp: ${this.escapeHTML(d.role.replace('_',' '))}</span>
                 </div>
                 <div>
-                    <div class="flex justify-between items-center text-[9px] font-mono text-white mb-2 pt-2 border-t border-slate-900">
-                        <span class="text-slate-400 text-[8px] uppercase">Límite:</span>
-                        <span class="font-bold tracking-tight">${displayDate}</span>
+                    <div class="flex justify-between items-center text-xs font-mono text-white mb-2 pt-2 border-t border-slate-800 gap-2">
+                        <span class="text-slate-300 text-xs uppercase">Límite:</span>
+                        <span class="font-bold tracking-tight">${this.escapeHTML(displayDate)}</span>
                     </div>
-                    <div class="w-full text-center py-1 text-[8px] sm:text-[9px] font-black uppercase tracking-wider ${st.class}">
-                        ${st.text}
+                    <div class="w-full text-center py-1.5 text-xs font-black uppercase tracking-wider ${st.class}">
+                        ${this.escapeHTML(st.text)}
                     </div>
                 </div>
             </div>`;
@@ -113,18 +113,18 @@ Object.assign(ui, {
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 border-b border-mars-border pb-3">
                 <div>
                     <h3 class="font-orbitron text-mars-yellow text-sm sm:text-base uppercase tracking-tighter font-black">Cronograma Maestro de Entregas</h3>
-                    <p class="text-[9px] text-slate-400 uppercase mt-0.5">Seguimiento oficial de los 19 entregables curriculares con semáforo temporal.</p>
+                    <p class="text-xs text-slate-300 uppercase mt-1">Seguimiento oficial de los 19 entregables curriculares con semáforo temporal.</p>
                 </div>
-                ${isCEO ? `<button onclick="ui.modalCreateAuxRole()" class="bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-3 py-1.5 text-[9px] font-black uppercase tracking-widest hover:bg-mars-cyan hover:text-black transition-all shrink-0 w-full sm:w-auto">Gestionar Rol Observador</button>` : ''}
+                ${isCEO ? `<button type="button" onclick="ui.modalCreateAuxRole()" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase tracking-wider hover:bg-mars-cyan hover:text-black transition-all shrink-0 w-full sm:w-auto">Gestionar Rol Observador</button>` : ''}
             </div>
 
             <!-- Filtros por Materia -->
-            <div class="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2 mb-4">
+            <div role="tablist" aria-label="Filtrar entregables por asignatura" class="flex flex-wrap gap-2 pb-2 mb-4">
                 ${subjectNavButtons}
             </div>
 
             <!-- Cuadrícula Responsiva de 19 Plazos -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                 ${deadlineCardsHtml}
             </div>
         </div>`;
@@ -134,7 +134,7 @@ Object.assign(ui, {
         const allOrders = [...co.orders];
 
         if (allOrders.length === 0 && co.marketingCampaigns.length === 0) {
-            ordersListHtml = `<div class="terminal-border border-dashed p-8 text-center text-slate-600 italic text-xs">No hay órdenes de I+D ni campañas de Marketing tramitadas.</div>`;
+            ordersListHtml = `<div class="terminal-border border-dashed p-8 text-center text-slate-300 italic text-xs">No hay órdenes de I+D ni campañas de Marketing tramitadas.</div>`;
         } else {
             // Órdenes de Componentes I+D
             const idOrdersHtml = allOrders.map(order => {
@@ -149,38 +149,38 @@ Object.assign(ui, {
                 if (isExecuted) trackerIdx = 2;
 
                 let stBadge = 'bg-mars-yellow/20 text-mars-yellow border-mars-yellow animate-pulse';
-                if (isApproved) stBadge = 'bg-blue-500/20 text-blue-400 border-blue-500';
+                if (isApproved) stBadge = 'bg-blue-500/20 text-blue-300 border-blue-500';
                 if (isExecuted) stBadge = 'bg-mars-green/20 text-mars-green border-mars-green';
                 if (isRejected) stBadge = 'bg-mars-magenta/20 text-mars-magenta border-mars-magenta';
 
                 let finActions = '';
                 if (isFinanzas && isPending) {
                     finActions = `
-                    <div class="flex gap-2 mt-4 pt-3 border-t border-slate-800">
-                        <button onclick="ui.approveOrder('${order.id}')" class="bg-mars-green text-black px-4 py-2 text-[9px] font-black uppercase hover:bg-white transition-all flex-1">Aprobar Presupuesto</button>
-                        <button onclick="ui.rejectOrder('${order.id}')" class="bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2 text-[9px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Rechazar</button>
+                    <div class="flex flex-col sm:flex-row gap-2 mt-4 pt-3 border-t border-slate-800">
+                        <button type="button" onclick="ui.approveOrder('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1">Aprobar Presupuesto</button>
+                        <button type="button" onclick="ui.rejectOrder('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Rechazar</button>
                     </div>`;
                 }
 
                 return `
-                <div class="bg-slate-900 border ${isPending ? 'border-mars-yellow/60' : 'border-mars-border'} p-4 text-[10px] mb-3">
+                <div class="bg-slate-900 border ${isPending ? 'border-mars-yellow/60' : 'border-mars-border'} p-4 text-xs mb-3">
                     ${ui.renderWorkflowTracker(['I+D (Solicita)', 'Finanzas (Audita)', 'Logística (Ejecuta)'], trackerIdx)}
                     <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
                         <div>
-                            <span class="text-[8px] font-black uppercase px-2 py-0.5 border ${stBadge}">${st}</span>
-                            <h4 class="text-white font-orbitron font-bold uppercase text-xs mt-1">Orden #${order.id}</h4>
+                            <span class="text-xs font-black uppercase px-2 py-0.5 border ${stBadge}">${this.escapeHTML(st)}</span>
+                            <h4 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">Orden #${this.escapeHTML(order.id)}</h4>
                         </div>
                         <div class="text-right">
-                            <span class="text-mars-green font-mono font-bold text-sm">${Number(order.total).toFixed(2)} €v</span>
-                            <span class="block text-[8px] text-slate-500 font-mono">${order.date}</span>
+                            <span class="text-mars-green font-mono font-bold text-sm sm:text-base">${Number(order.total).toFixed(2)} €v</span>
+                            <span class="block text-xs text-slate-300 font-mono">${this.escapeHTML(order.date)}</span>
                         </div>
                     </div>
-                    <p class="text-slate-300 italic mb-2">Justificación Técnica: "${order.justification || 'Sin justificación'}"</p>
-                    <div class="space-y-1 mb-2 bg-black/60 p-2 border border-slate-800">
+                    <p class="text-slate-200 italic mb-2 break-words">Justificación Técnica: "${this.escapeHTML(order.justification || 'Sin justificación')}"</p>
+                    <div class="space-y-1.5 mb-2 bg-black/60 p-2.5 border border-slate-800">
                         ${(order.items || []).map(it => `
-                            <div class="flex justify-between text-[9px] text-slate-400">
-                                <span>${it.name} (x${it.qty || 1})</span>
-                                <span class="font-mono text-white">${Number(it.price).toFixed(2)} €v</span>
+                            <div class="flex justify-between text-xs text-slate-300 gap-2">
+                                <span class="break-words">${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
+                                <span class="font-mono text-white shrink-0">${Number(it.price).toFixed(2)} €v</span>
                             </div>
                         `).join('')}
                     </div>
@@ -190,24 +190,24 @@ Object.assign(ui, {
 
             // Solicitudes de Paquetes de Marketing pendientes de Finanzas
             const mktPendingHtml = co.marketingCampaigns.filter(c => c.status === 'PENDIENTE_FINANZAS').map(camp => `
-                <div class="bg-slate-900 border border-mars-yellow p-4 text-[10px] mb-3">
-                    <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2">
+                <div class="bg-slate-900 border border-mars-yellow p-4 text-xs mb-3">
+                    <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
                         <div>
-                            <span class="text-[8px] font-black uppercase px-2 py-0.5 border bg-mars-yellow/20 text-mars-yellow border-mars-yellow animate-pulse">PENDIENTE FINANZAS</span>
-                            <h4 class="text-white font-orbitron font-bold uppercase text-xs mt-1">Pack Marketing: ${camp.packageName}</h4>
+                            <span class="text-xs font-black uppercase px-2 py-0.5 border bg-mars-yellow/20 text-mars-yellow border-mars-yellow animate-pulse">PENDIENTE FINANZAS</span>
+                            <h4 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">Pack Marketing: ${this.escapeHTML(camp.packageName)}</h4>
                         </div>
                         <div class="text-right">
-                            <span class="text-mars-green font-mono font-bold text-sm">${Number(camp.price).toFixed(2)} €v</span>
-                            <span class="block text-[8px] text-slate-500 font-mono">${camp.date}</span>
+                            <span class="text-mars-green font-mono font-bold text-sm sm:text-base">${Number(camp.price).toFixed(2)} €v</span>
+                            <span class="block text-xs text-slate-300 font-mono">${this.escapeHTML(camp.date)}</span>
                         </div>
                     </div>
-                    <p class="text-slate-300 italic mb-1"><strong class="text-mars-cyan">Campaña:</strong> "${camp.title}"</p>
-                    <p class="text-slate-400 italic mb-2"><strong class="text-mars-yellow">Justificación ROI:</strong> "${camp.desc}"</p>
+                    <p class="text-slate-200 italic mb-1 break-words"><strong class="text-mars-cyan">Campaña:</strong> "${this.escapeHTML(camp.title)}"</p>
+                    <p class="text-slate-300 italic mb-2 break-words"><strong class="text-mars-yellow">Justificación ROI:</strong> "${this.escapeHTML(camp.desc)}"</p>
                     ${isFinanzas ? `
-                    <div class="flex gap-2 mt-3 pt-2 border-t border-slate-800">
-                        <button onclick="ui.approveMktCamp('${camp.id}')" class="bg-mars-green text-black px-4 py-2 text-[9px] font-black uppercase hover:bg-white transition-all flex-1">Aprobar Paquete MKT</button>
-                        <button onclick="ui.rejectMktCamp('${camp.id}')" class="bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2 text-[9px] font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Rechazar</button>
-                    </div>` : `<p class="text-[8px] text-slate-500 uppercase italic">Esperando validación presupuestaria de Finanzas.</p>`}
+                    <div class="flex flex-col sm:flex-row gap-2 mt-3 pt-2 border-t border-slate-800">
+                        <button type="button" onclick="ui.approveMktCamp('${this.escapeHTML(camp.id)}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1">Aprobar Paquete MKT</button>
+                        <button type="button" onclick="ui.rejectMktCamp('${this.escapeHTML(camp.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Rechazar</button>
+                    </div>` : `<p class="text-xs text-slate-300 uppercase italic">Esperando validación presupuestaria de Finanzas.</p>`}
                 </div>
             `).join('');
 
@@ -219,7 +219,7 @@ Object.assign(ui, {
             <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-3">
                 <div>
                     <h3 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter font-black">Bóveda de Órdenes y Adquisiciones</h3>
-                    <p class="text-[9px] text-slate-400 uppercase mt-0.5">Control de flujo presupuestario: Solicitud de I+D y Paquetes de Marketing.</p>
+                    <p class="text-xs text-slate-300 uppercase mt-1">Control de flujo presupuestario: Solicitud de I+D y Paquetes de Marketing.</p>
                 </div>
             </div>
             <div class="space-y-3">
@@ -236,7 +236,7 @@ Object.assign(ui, {
     },
 
     approveOrder(oid) {
-        if (!state.user || state.user.role !== 'FINANZAS') return alert("Solo Finanzas puede aprobar órdenes.");
+        if (!state.user || state.user.role !== 'FINANZAS') return this.notify("Solo Finanzas puede aprobar órdenes.", "warning");
         const co = state.data.companies[state.user.coId];
         if (!co || !co.orders) return;
 
@@ -244,7 +244,7 @@ Object.assign(ui, {
         if (!order || order.status !== 'PENDIENTE_FINANZAS') return;
 
         if (co.balance < order.total) {
-            return alert("Fondos virtuales insuficientes en el saldo corporativo para autorizar esta orden.");
+            return this.notify("Fondos virtuales insuficientes en el saldo corporativo para autorizar esta orden.", "error");
         }
 
         order.status = 'APROBADO_FINANZAS';
@@ -253,12 +253,12 @@ Object.assign(ui, {
         
         telemetry.log("ORDEN APROBADA", `Finanzas aprobó orden #${order.id} por ${order.total}€v`);
         state.save();
-        alert(`✅ Orden #${order.id} aprobada. Pasa a Logística de Despliegue Físico.`);
+        this.notify(`✅ Orden #${order.id} aprobada. Pasa a Logística de Despliegue Físico.`, "success");
         this.render();
     },
 
     rejectOrder(oid) {
-        if (!state.user || state.user.role !== 'FINANZAS') return alert("Solo Finanzas puede rechazar órdenes.");
+        if (!state.user || state.user.role !== 'FINANZAS') return this.notify("Solo Finanzas puede rechazar órdenes.", "warning");
         const co = state.data.companies[state.user.coId];
         if (!co || !co.orders) return;
 
@@ -270,7 +270,7 @@ Object.assign(ui, {
         
         telemetry.log("ORDEN RECHAZADA", `Finanzas rechazó orden #${order.id}`);
         state.save();
-        alert(`❌ Orden #${order.id} rechazada.`);
+        this.notify(`❌ Orden #${order.id} rechazada.`, "info");
         this.render();
     },
 
@@ -283,7 +283,7 @@ Object.assign(ui, {
         if (!camp || camp.status !== 'PENDIENTE_FINANZAS') return;
 
         const price = Number(camp.price) || 0;
-        if (co.balance < price) return alert("Fondos virtuales insuficientes para contratar este paquete.");
+        if (co.balance < price) return this.notify("Fondos virtuales insuficientes para contratar este paquete.", "error");
 
         camp.status = 'ACTIVO';
         state.addToLedger(state.user.coId, `[PUBLICIDAD] Contratación de ${camp.packageName}`, 'MARKETING', -price);
@@ -291,7 +291,7 @@ Object.assign(ui, {
         ui.pushNotification(state.user.coId, 'MARKETING', `Finanzas autorizó el paquete "${camp.packageName}". Ya puedes publicar tus ${camp.totalActions} acciones.`, 'success');
         telemetry.log("MKT APROBADO", `Aprobado ${camp.packageName} (-${price}€v)`);
         state.save();
-        alert(`✅ Paquete publicitario activado y fondos descontados del Ledger.`);
+        this.notify(`✅ Paquete publicitario activado y fondos descontados del Ledger.`, "success");
         this.render();
     },
 
@@ -307,17 +307,18 @@ Object.assign(ui, {
         ui.pushNotification(state.user.coId, 'MARKETING', `Finanzas denegó la contratación del paquete "${camp.packageName}".`, 'error');
         telemetry.log("MKT RECHAZADO", `Denegado ${camp.packageName}`);
         state.save();
-        alert(`❌ Solicitud de paquete de marketing rechazada.`);
+        this.notify(`❌ Solicitud de paquete de marketing rechazada.`, "info");
         this.render();
     },
 
     modalCrisisAction() {
         if (!state.user || state.user.role !== 'CEO') return;
         const html = `
-            <p class="text-[10px] text-slate-400 mb-3 leading-relaxed">Como CEO, redacta un Comunicado Oficial de Mitigación de Crisis dirigido a la Agencia Reguladora y a toda la startup.</p>
+            <p class="text-xs text-slate-300 mb-3 leading-relaxed">Como CEO, redacta un Comunicado Oficial de Mitigación de Crisis dirigido a la Agencia Reguladora y a toda la startup.</p>
+            <label for="crisis-response-text" class="text-xs text-red-400 font-bold uppercase block mb-1.5">Comunicado de Mitigación</label>
             <textarea id="crisis-response-text" placeholder="Explica las medidas correctivas que adoptará la startup para corregir la infracción y evitar nuevas sanciones..." class="w-full bg-slate-900 border border-red-500 p-3 text-xs text-white h-28 outline-none focus:border-red-400 mb-3"></textarea>
         `;
-        const actions = `<button onclick="ui.submitCrisisAction()" class="bg-red-700 text-white font-black px-6 py-2 text-[10px] uppercase tracking-widest hover:bg-white hover:text-red-700 transition-all border border-red-500">Publicar Comunicado</button>`;
+        const actions = `<button type="button" onclick="ui.submitCrisisAction()" class="min-h-[44px] bg-red-700 text-white font-black px-6 py-2.5 text-xs uppercase tracking-wider hover:bg-white hover:text-red-700 transition-all border border-red-500">Publicar Comunicado</button>`;
         this.showModal("Gabinete de Crisis AEE (Dirección General)", html, actions);
     },
 
@@ -325,11 +326,11 @@ Object.assign(ui, {
         if (!state.user || state.user.role !== 'CEO') return;
         const elText = document.getElementById('crisis-response-text');
         if (!elText) return;
-        const text = elText.value.trim();
-        if (text.length < 10) return alert("El comunicado de mitigación debe ser formal y detallado (mínimo 10 caracteres).");
+        const text = this.cleanInput(elText.value);
+        if (text.length < 10) return this.notify("El comunicado de mitigación debe ser formal y detallado (mínimo 10 caracteres).", "warning");
 
         if (this.hasForbiddenWords(text, 'Comunicado Crisis CEO')) {
-            return alert("⚠️ Filtro Léxico: Lenguaje no permitido en comunicado oficial.");
+            return;
         }
 
         const co = state.data.companies[state.user.coId];
@@ -351,7 +352,7 @@ Object.assign(ui, {
         telemetry.log("CRISIS", "Comunicado de mitigación emitido por CEO");
         state.save();
         this.closeModal();
-        alert("✅ Comunicado Oficial de Crisis publicado y archivado.");
+        this.notify("✅ Comunicado Oficial de Crisis publicado y archivado.", "success");
         this.render();
     },
 
@@ -367,6 +368,9 @@ Object.assign(ui, {
         const totalRealCost = co.realCosts.reduce((acc, c) => acc + (Number(c.eur) || 0), 0);
         const virtualSpend = co.ledger.filter(l => l.delta < 0).reduce((acc, l) => acc + Math.abs(Number(l.delta) || 0), 0);
 
+        const maxVisibleLedger = 100;
+        const visibleLedger = co.ledger.slice(0, maxVisibleLedger);
+
         const wrapper = document.createElement('div');
 
         wrapper.innerHTML = `
@@ -375,62 +379,63 @@ Object.assign(ui, {
             <div class="lg:col-span-7 space-y-6">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-green text-center">
-                        <span class="text-[8px] text-slate-400 uppercase font-bold tracking-widest block mb-1">Saldo Virtual Disponible</span>
-                        <p class="text-2xl font-orbitron font-black text-mars-green">${Number(co.balance).toFixed(2)} €v</p>
+                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Saldo Virtual Disponible</span>
+                        <p class="text-xl sm:text-2xl font-orbitron font-black text-mars-green">${Number(co.balance).toFixed(2)} €v</p>
                     </div>
                     <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-yellow text-center">
-                        <span class="text-[8px] text-slate-400 uppercase font-bold tracking-widest block mb-1">Gasto Virtual Acumulado</span>
-                        <p class="text-2xl font-orbitron font-black text-mars-yellow">-${virtualSpend.toFixed(2)} €v</p>
+                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Gasto Virtual Acumulado</span>
+                        <p class="text-xl sm:text-2xl font-orbitron font-black text-mars-yellow">-${virtualSpend.toFixed(2)} €v</p>
                     </div>
                     <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-magenta text-center">
-                        <span class="text-[8px] text-slate-400 uppercase font-bold tracking-widest block mb-1">Coste Real Físico (Taller)</span>
-                        <p class="text-2xl font-orbitron font-black text-mars-magenta">${totalRealCost.toFixed(2)} €</p>
+                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Coste Real Físico (Taller)</span>
+                        <p class="text-xl sm:text-2xl font-orbitron font-black text-mars-magenta">${totalRealCost.toFixed(2)} €</p>
                     </div>
                 </div>
 
                 <!-- Ledger Inmutable -->
-                <div class="terminal-border bg-mars-card p-5 border-t-4 border-t-mars-cyan">
-                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
+                <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-cyan">
+                    <div class="flex flex-wrap justify-between items-center mb-3 border-b border-mars-border pb-2 gap-2">
                         <div>
                             <h3 class="font-orbitron text-mars-cyan text-sm uppercase tracking-tighter">Libro Mayor (Ledger Inmutable)</h3>
-                            <p class="text-[8px] text-slate-400 uppercase mt-0.5">Asientos contables ordenados cronológicamente.</p>
+                            <p class="text-xs text-slate-300 uppercase mt-0.5">Asientos contables ordenados cronológicamente.</p>
                         </div>
-                        <span class="text-[8px] bg-slate-800 text-slate-300 font-mono px-2 py-1">${co.ledger.length} Asientos</span>
+                        <span class="text-xs bg-slate-800 text-slate-200 font-mono px-2.5 py-1 border border-slate-700">${co.ledger.length} Asientos</span>
                     </div>
-                    <div class="max-h-80 overflow-y-auto pr-1">
-                        <table class="w-full text-left text-[9px] font-mono whitespace-nowrap">
-                            <thead class="text-slate-500 uppercase border-b border-slate-800">
+                    <div class="max-h-80 overflow-x-auto overflow-y-auto pr-1">
+                        <table class="w-full text-left text-xs font-mono whitespace-nowrap min-w-max">
+                            <thead class="text-slate-300 uppercase border-b border-slate-700 sticky top-0 bg-mars-card">
                                 <tr>
-                                    <th class="py-1.5 pr-2">Fecha</th>
-                                    <th class="pr-2">Concepto</th>
-                                    <th class="pr-2">Dpto</th>
+                                    <th class="py-2 pr-3">Fecha</th>
+                                    <th class="pr-3">Concepto</th>
+                                    <th class="pr-3">Dpto</th>
                                     <th class="text-right">Delta</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${co.ledger.map(entry => `
-                                    <tr class="border-b border-slate-900/60 hover:bg-slate-900/40">
-                                        <td class="py-2 pr-2 text-slate-400 text-[8px]">${entry.date}</td>
-                                        <td class="py-2 pr-2 text-white font-bold truncate max-w-[180px]">${entry.concept}</td>
-                                        <td class="py-2 pr-2 text-mars-cyan uppercase text-[8px]">${entry.dept}</td>
+                                ${visibleLedger.map(entry => `
+                                    <tr class="border-b border-slate-800/70 hover:bg-slate-900/50">
+                                        <td class="py-2 pr-3 text-slate-300 text-xs">${this.escapeHTML(entry.date)}</td>
+                                        <td class="py-2 pr-3 text-white font-bold max-w-[240px] truncate" title="${this.escapeHTML(entry.concept)}">${this.escapeHTML(entry.concept)}</td>
+                                        <td class="py-2 pr-3 text-mars-cyan uppercase text-xs">${this.escapeHTML(entry.dept)}</td>
                                         <td class="py-2 text-right font-bold ${entry.delta >= 0 ? 'text-mars-green' : 'text-mars-magenta'}">
                                             ${entry.delta >= 0 ? '+' : ''}${Number(entry.delta).toFixed(2)} €v
                                         </td>
                                     </tr>
-                                `).join('') || `<tr><td colspan="4" class="text-center py-4 text-slate-600 italic">No hay transacciones registradas.</td></tr>`}
+                                `).join('') || `<tr><td colspan="4" class="text-center py-4 text-slate-300 italic text-xs">No hay transacciones registradas.</td></tr>`}
                             </tbody>
                         </table>
                     </div>
+                    ${co.ledger.length > maxVisibleLedger ? `<p class="text-xs text-slate-300 uppercase font-mono mt-2 pt-2 border-t border-slate-800 text-center">Mostrando los ${visibleLedger.length} asientos más recientes de ${co.ledger.length} contabilizados.</p>` : ''}
                 </div>
             </div>
 
             <!-- Columna Derecha: Entregables Oficiales de Economía (Drive) -->
             <div class="lg:col-span-5 space-y-6">
-                <div class="terminal-border bg-mars-card p-5 border-t-4 border-t-mars-green">
+                <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-green">
                     <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
                         <div>
                             <h3 class="font-orbitron text-mars-green text-sm uppercase tracking-tighter">Entregables Oficiales: Economía (10%)</h3>
-                            <p class="text-[8px] text-slate-400 uppercase mt-0.5">Resp: Departamento Financiero (Solo Enlaces Cloud).</p>
+                            <p class="text-xs text-slate-300 uppercase mt-0.5">Resp: Departamento Financiero (Solo Enlaces Cloud).</p>
                         </div>
                     </div>
                     <div class="space-y-4">

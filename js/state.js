@@ -319,7 +319,7 @@ const state = {
 
     async fetchFromCloud() {
         this.isSyncing = true;
-        if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD();
+        try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
         let shouldRender = false;
 
         try {
@@ -327,7 +327,7 @@ const state = {
             if(res.ok) {
                 const json = await res.json();
                 if(json && json.status !== 'empty') {
-                    localStorage.setItem('marsket_emergency_snapshot', JSON.stringify(this.data));
+                    try { localStorage.setItem('marsket_emergency_snapshot', JSON.stringify(this.data)); } catch(e) {}
                     this.data = this.mergeData(this.migrate(json), this.data);
                     this.data.version = json.version || this.data.version;
                     this.saveLocalOnly();
@@ -345,7 +345,7 @@ const state = {
             this.isCloudOnline = false; 
         } finally { 
             this.isSyncing = false; 
-            if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); 
+            try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
         }
 
         // Renderizado separado del bloque de red para que nunca tumbe la conexión D1
@@ -353,13 +353,17 @@ const state = {
             try {
                 ui.render();
             } catch (uiErr) {
-                console.error("Excepción visual en ui.render():", uiErr);
+                console.error("Excepción visual aislada en ui.render():", uiErr);
             }
         }
     },
 
     saveLocalOnly() {
-        localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+        try {
+            localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+        } catch (e) {
+            console.error("Aviso: almacenamiento local lleno o restringido:", e);
+        }
     },
 
     save() { 
@@ -369,7 +373,7 @@ const state = {
         this.data.lastUpdated = Date.now();
         
         this.saveLocalOnly(); 
-        if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); 
+        try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
         this.pushToCloud(true);
     },
 
@@ -380,7 +384,8 @@ const state = {
             return;
         }
         this.isSyncing = true;
-        if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD();
+        try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
+        let shouldRenderConflict = false;
         
         try {
             const payload = JSON.parse(JSON.stringify(this.data));
@@ -403,7 +408,7 @@ const state = {
                                 this.saveLocalOnly();
                             }
                         }
-                        try { if (typeof ui !== 'undefined' && ui.render) ui.render(); } catch(e) {}
+                        shouldRenderConflict = true;
                     }
                 }
                 this.isCloudOnline = true;
@@ -422,7 +427,11 @@ const state = {
             this.isCloudOnline = false; 
         } finally { 
             this.isSyncing = false; 
-            if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); 
+            try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
+        }
+
+        if (shouldRenderConflict && typeof ui !== 'undefined' && ui.render) {
+            try { ui.render(); } catch(uiErr) { console.error("Excepción visual aislada tras reconciliación:", uiErr); }
         }
     },
 

@@ -2,9 +2,9 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>MARS-KET 2.0 | Advanced Aerospace Learning Management System</title>
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#05070f">
     <link rel="icon" type="image/png" href="/logo.png">
     
     <!-- Tailwind CSS (CDN) -->
@@ -23,7 +23,7 @@
                         'mars-green': '#00ff66'
                     },
                     fontFamily: {
-                        'orbitron': ['Orbitron', 'sans-serif'],
+                        'orbitron': ['Orbitron', 'Segoe UI', 'Roboto', 'sans-serif'],
                         'mono': ['Courier New', 'Courier', 'monospace']
                     },
                     boxShadow: {
@@ -35,47 +35,89 @@
             }
         }
     </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&display=swap" rel="stylesheet">
     <style>
+        :root {
+            color-scheme: dark;
+        }
         body {
             background-color: #05070f;
-            color: #cbd5e1;
+            color: #e2e8f0;
             font-family: 'Courier New', Courier, monospace;
             overflow-x: hidden;
+            padding-top: env(safe-area-inset-top, 0px);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            padding-left: env(safe-area-inset-left, 0px);
+            padding-right: env(safe-area-inset-right, 0px);
             background-image: 
-                radial-gradient(circle at 10% 20%, rgba(0, 240, 255, 0.03) 0%, transparent 20%),
-                radial-gradient(circle at 90% 80%, rgba(255, 0, 85, 0.03) 0%, transparent 20%);
+                radial-gradient(circle at 10% 20%, rgba(0, 240, 255, 0.05) 0%, transparent 25%),
+                radial-gradient(circle at 90% 80%, rgba(255, 0, 85, 0.04) 0%, transparent 25%),
+                linear-gradient(rgba(30, 41, 59, 0.18) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(30, 41, 59, 0.18) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
         }
         .terminal-border {
             border: 1px solid #1e293b;
             position: relative;
+            box-shadow: inset 0 1px 0 0 rgba(0, 240, 255, 0.08);
         }
         .terminal-border::before {
             content: '';
             position: absolute;
             top: -1px; left: -1px;
-            width: 6px; height: 6px;
+            width: 8px; height: 8px;
             border-top: 2px solid #00f0ff;
             border-left: 2px solid #00f0ff;
+            pointer-events: none;
         }
         .terminal-border::after {
             content: '';
             position: absolute;
             bottom: -1px; right: -1px;
-            width: 6px; height: 6px;
+            width: 8px; height: 8px;
             border-bottom: 2px solid #00f0ff;
             border-right: 2px solid #00f0ff;
+            pointer-events: none;
         }
         .tab-active {
-            border-bottom: 2px solid #00f0ff !important;
+            border-bottom: 3px solid #00f0ff !important;
             color: #00f0ff !important;
-            background: rgba(0, 240, 255, 0.05);
+            background: linear-gradient(180deg, rgba(0, 240, 255, 0.03) 0%, rgba(0, 240, 255, 0.14) 100%);
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.45);
         }
-        .glow-cyan { box-shadow: 0 0 15px rgba(0, 240, 255, 0.2); }
+        .glow-cyan { box-shadow: 0 0 18px rgba(0, 240, 255, 0.22); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         .hex-clip {
             clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+        }
+        @keyframes marsFadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes marsZoomIn {
+            from { opacity: 0; transform: scale(0.97); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-in {
+            animation: marsFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        .zoom-in {
+            animation: marsZoomIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        :focus-visible {
+            outline: 2px solid #00f0ff !important;
+            outline-offset: 2px !important;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, ::before, ::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
         }
     </style>
 </head>
@@ -87,48 +129,49 @@
         <!-- HEADER HUD (FASE 1 v1.0.17: LÍNEA ÚNICA RESPONSIVA COMPACTA) -->
         <header id="hud-header" class="hidden terminal-border bg-mars-card/95 backdrop-blur-md p-3 sm:p-4 mb-3 sm:mb-4 border-b-2 border-b-mars-cyan sticky top-0 z-40">
             <!-- Fila 1: Logo, Versión, Avatar de Marca y Estado de Nube D1 -->
-            <div class="flex justify-between items-center">
-                <div class="flex items-center gap-2 sm:gap-3">
-                    <span class="w-2.5 h-2.5 rounded-full bg-mars-green shadow-[0_0_8px_#00ff66] animate-pulse"></span>
-                    <div>
-                        <h1 class="font-orbitron font-black text-sm sm:text-lg text-white tracking-widest leading-none flex items-center gap-1.5">
+            <div class="flex justify-between items-center gap-2">
+                <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                    <img src="logo.png" alt="MARS-KET 2.0" class="w-8 h-8 sm:w-9 sm:h-9 object-contain drop-shadow-[0_0_8px_rgba(0,240,255,0.65)] shrink-0">
+                    <span class="w-2.5 h-2.5 rounded-full bg-mars-green shadow-[0_0_8px_#00ff66] animate-pulse shrink-0" aria-hidden="true"></span>
+                    <div class="min-w-0">
+                        <h1 class="font-orbitron font-black text-sm sm:text-lg text-white tracking-widest leading-none flex items-center gap-1.5 truncate">
                             MARS-KET <span class="text-mars-cyan">2.0</span>
                         </h1>
-                        <span id="hud-version" class="text-[7px] sm:text-[8px] text-slate-500 font-mono tracking-widest block mt-0.5">v1.0.17</span>
+                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v1.0.17</span>
                     </div>
                 </div>
-                <div class="flex items-center gap-2">
-                    <div id="hud-mini-logo" class="w-6 h-6 sm:w-7 sm:h-7 hex-clip border border-mars-cyan bg-black overflow-hidden flex items-center justify-center hidden"></div>
-                    <span id="hud-cloud-status" class="text-[7px] sm:text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 border border-mars-green/40 text-mars-green bg-mars-green/10 whitespace-nowrap">[D1: SYNCED]</span>
+                <div class="flex items-center gap-2 shrink-0">
+                    <div id="hud-mini-logo" class="w-8 h-8 sm:w-9 sm:h-9 hex-clip border border-mars-cyan bg-black overflow-hidden flex items-center justify-center hidden" title="Emblema de Entidad Activa"></div>
+                    <span id="hud-cloud-status" role="status" aria-live="polite" class="text-xs font-bold uppercase tracking-wider px-2.5 py-1 border border-mars-green/60 text-mars-green bg-mars-green/10 whitespace-nowrap">[D1: SYNCED]</span>
                 </div>
             </div>
 
-            <!-- Fila 2: Barra de Utilidades en Línea Única (Grid de 4 Columnas Exactas sin Quiebre en Móvil) -->
-            <div class="grid grid-cols-4 gap-1 sm:gap-2 w-full mt-2.5">
-                <button onclick="ui.modalChangelog()" class="bg-mars-green/10 border border-mars-green text-mars-green py-1 px-1 sm:px-2 text-[8px] sm:text-[9px] font-bold uppercase tracking-tight sm:tracking-widest hover:bg-mars-green hover:text-black transition-all flex items-center justify-center text-center truncate">
+            <!-- Fila 2: Barra de Utilidades Táctica (44px Touch Targets, 2x2 en móvil, 4 cols en sm+) -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full mt-3">
+                <button type="button" onclick="ui.modalChangelog()" class="min-h-[44px] bg-mars-green/10 border border-mars-green text-mars-green py-2 px-2 text-xs font-bold uppercase tracking-wider hover:bg-mars-green hover:text-black transition-all flex items-center justify-center text-center">
                     [ 🚀 NOVEDADES ]
                 </button>
-                <button onclick="ui.modalSuggestion()" class="bg-mars-yellow/10 border border-mars-yellow text-mars-yellow py-1 px-1 sm:px-2 text-[8px] sm:text-[9px] font-bold uppercase tracking-tight sm:tracking-widest hover:bg-mars-yellow hover:text-black transition-all flex items-center justify-center text-center truncate">
+                <button type="button" onclick="ui.modalSuggestion()" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow py-2 px-2 text-xs font-bold uppercase tracking-wider hover:bg-mars-yellow hover:text-black transition-all flex items-center justify-center text-center">
                     [ 💡 SUGERENCIA ]
                 </button>
-                <button onclick="ui.showGuide()" class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-1 px-1 sm:px-2 text-[8px] sm:text-[9px] font-bold uppercase tracking-tight sm:tracking-widest hover:bg-mars-cyan hover:text-black transition-all flex items-center justify-center text-center truncate">
+                <button type="button" onclick="ui.showGuide()" class="min-h-[44px] bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-2 px-2 text-xs font-bold uppercase tracking-wider hover:bg-mars-cyan hover:text-black transition-all flex items-center justify-center text-center">
                     [ ❓ GUÍA ]
                 </button>
-                <button onclick="auth.logout()" class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta py-1 px-1 sm:px-2 text-[8px] sm:text-[9px] font-black uppercase tracking-tight sm:tracking-widest hover:bg-mars-magenta hover:text-white transition-all flex items-center justify-center text-center truncate">
+                <button type="button" onclick="auth.logout()" class="min-h-[44px] bg-mars-magenta/10 border border-mars-magenta text-mars-magenta py-2 px-2 text-xs font-black uppercase tracking-wider hover:bg-mars-magenta hover:text-white transition-all flex items-center justify-center text-center">
                     [ SALIR ]
                 </button>
             </div>
 
             <!-- Fila 3: Información Táctica (Entidad, Rol y Reloj) -->
-            <div class="flex justify-between items-center text-[8px] sm:text-[9px] text-slate-400 border-t border-mars-border/40 mt-2.5 pt-2 uppercase font-mono">
-                <span id="hud-info" class="truncate pr-2">ENTITY: -- | ROLE: --</span>
-                <span id="hud-clock" class="shrink-0 text-slate-500 font-bold">TIME: --:--:--</span>
+            <div class="flex flex-wrap justify-between items-center gap-2 text-xs text-slate-300 border-t border-mars-border/60 mt-3 pt-2 uppercase font-mono">
+                <span id="hud-info" class="truncate max-w-full sm:max-w-[70%] pr-2 font-bold text-slate-200">ENTITY: -- | ROLE: --</span>
+                <span id="hud-clock" class="shrink-0 text-mars-cyan font-bold">TIME: --:--:--</span>
             </div>
         </header>
 
         <!-- NAVEGACIÓN DINÁMICA POR ROL -->
-        <nav id="hud-nav" class="hidden mb-4 overflow-x-auto scrollbar-hide border-b border-mars-border/50">
-            <div id="nav-container" class="flex gap-1 min-w-max"></div>
+        <nav id="hud-nav" aria-label="Navegación principal por departamento" class="hidden mb-4 overflow-x-auto scrollbar-hide border-b border-mars-border/70 bg-mars-card/50">
+            <div id="nav-container" role="tablist" class="flex gap-1 min-w-max"></div>
         </nav>
 
         <!-- VIEWPORT PRINCIPAL DINÁMICO -->
@@ -137,30 +180,30 @@
     </div>
 
     <!-- FOOTER INSTITUCIONAL -->
-    <footer class="border-t border-mars-border/40 bg-black/40 py-3 px-4 text-center text-[8px] sm:text-[9px] text-slate-600 uppercase font-mono">
+    <footer class="border-t border-mars-border/60 bg-black/60 py-3 px-4 text-center text-xs text-slate-300 uppercase font-mono">
         <p>MARS-KET 2.0 • Plataforma Aeroespacial Interdisciplinar • AEE / ESA Simulación Académica • 2026-2027</p>
     </footer>
 
     <!-- MODAL GLOBAL DE OPERACIONES -->
-    <div id="modal-overlay" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden animate-in fade-in duration-200">
+    <div id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden animate-in fade-in duration-200">
         <div class="terminal-border bg-mars-card max-w-lg w-full p-4 sm:p-6 border-2 border-mars-cyan glow-cyan max-h-[90vh] flex flex-col">
             <h3 id="modal-title" class="font-orbitron font-black text-sm sm:text-base text-mars-cyan mb-3 uppercase tracking-wider border-b border-mars-border pb-2">AVISO INSTITUCIONAL</h3>
-            <div id="modal-body" class="text-xs text-slate-300 space-y-3 overflow-y-auto pr-1 flex-grow font-mono leading-relaxed"></div>
+            <div id="modal-body" class="text-xs sm:text-sm text-slate-200 space-y-3 overflow-y-auto pr-1 flex-grow font-mono leading-relaxed"></div>
             <div id="modal-actions" class="flex gap-2 justify-end mt-4 pt-3 border-t border-mars-border flex-wrap"></div>
         </div>
     </div>
 
     <!-- MODAL DE BIENVENIDA / ONBOARDING -->
-    <div id="onboarding-overlay" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden animate-in fade-in duration-300">
-        <div class="terminal-border bg-mars-card max-w-xl w-full p-6 sm:p-8 border-2 border-mars-yellow glow-cyan max-h-[90vh] flex flex-col">
-            <h2 id="onboarding-title" class="font-orbitron font-black text-lg text-mars-yellow mb-2 uppercase tracking-widest text-center border-b border-mars-border pb-3">ORDEN GENERAL DE OPERACIONES</h2>
+    <div id="onboarding-overlay" role="dialog" aria-modal="true" aria-labelledby="onboarding-title" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden animate-in fade-in duration-300">
+        <div class="terminal-border bg-mars-card max-w-xl w-full p-5 sm:p-8 border-2 border-mars-yellow glow-cyan max-h-[90vh] flex flex-col">
+            <h2 id="onboarding-title" class="font-orbitron font-black text-base sm:text-lg text-mars-yellow mb-2 uppercase tracking-widest text-center border-b border-mars-border pb-3">ORDEN GENERAL DE OPERACIONES</h2>
             <div id="onboarding-body" class="overflow-y-auto pr-2 my-4 space-y-4"></div>
-            <div class="flex items-center justify-between pt-3 border-t border-mars-border flex-wrap gap-2">
-                <label class="flex items-center gap-2 text-[9px] text-slate-400 uppercase cursor-pointer">
-                    <input type="checkbox" id="skip-onboarding" class="form-checkbox bg-black border-slate-700 text-mars-cyan">
+            <div class="flex items-center justify-between pt-3 border-t border-mars-border flex-wrap gap-3">
+                <label class="flex items-center gap-2.5 text-xs text-slate-300 uppercase cursor-pointer min-h-[44px]">
+                    <input type="checkbox" id="skip-onboarding" class="w-4 h-4 bg-black border-slate-600 text-mars-cyan">
                     No mostrar de nuevo en esta sesión
                 </label>
-                <button onclick="ui.closeOnboarding()" class="bg-mars-yellow text-black font-black px-6 py-2 text-[10px] uppercase tracking-widest hover:bg-white transition-all">ENTENDIDO</button>
+                <button type="button" onclick="ui.closeOnboarding()" class="min-h-[44px] bg-mars-yellow text-black font-black px-6 py-2.5 text-xs uppercase tracking-widest hover:bg-white transition-all">ENTENDIDO</button>
             </div>
         </div>
     </div>
