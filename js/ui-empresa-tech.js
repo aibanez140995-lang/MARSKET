@@ -69,8 +69,9 @@ Object.assign(ui, {
 
                 return `
                 <div class="flex flex-wrap justify-between items-center bg-slate-900 p-2.5 border ${isSold ? 'border-slate-800 opacity-60' : (isListed ? 'border-mars-yellow/50' : 'border-mars-border')} text-xs mb-2 gap-2">
-                    <label class="flex items-center gap-2.5 text-white ${isSold || isListed ? 'cursor-not-allowed line-through text-slate-400' : 'cursor-pointer'} flex-grow min-w-0 min-h-[44px]">
-                        <input type="checkbox" class="w-4 h-4 bg-black border-mars-cyan shrink-0" ${isChecked ? 'checked' : ''} ${isSold || isListed ? 'disabled' : ''} onchange="ui.toggleBomItem('${this.escapeHTML(item.itemKey)}', this.checked)">
+                    <label class="mars-checkbox-label flex items-center gap-2.5 text-white ${isSold || isListed ? 'cursor-not-allowed line-through text-slate-400' : 'cursor-pointer'} flex-grow min-w-0 min-h-[44px]">
+                        <input type="checkbox" class="mars-touch-input" ${isChecked ? 'checked' : ''} ${isSold || isListed ? 'disabled' : ''} onchange="ui.toggleBomItem('${this.escapeHTML(item.itemKey)}', this.checked)">
+                        <span class="mars-checkbox-visual"></span>
                         <span class="break-words">${this.escapeHTML(item.name)} (x${Number(item.qty)||1})</span>
                     </label>
                     <div class="flex items-center gap-2 shrink-0">

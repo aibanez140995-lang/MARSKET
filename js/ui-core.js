@@ -9,6 +9,9 @@ const ui = {
     currentSubView: null,
     _lastFocusedElement: null,
     _toastTimer: null,
+    _layerStack: [],
+    _layerCounter: 0,
+    _isPoppingState: false,
 
     escapeHTML(str) {
         if (str === null || str === undefined) return '';
@@ -21,12 +24,27 @@ const ui = {
             .replace(/'/g, '&#39;');
     },
 
+    escapeAttr(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/[\u200B-\u200D\uFEFF]/g, '')
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    },
+
     cleanInput(str) {
         if (str === null || str === undefined) return '';
         return String(str).replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
     },
 
-    notify(message, type = 'info') {
+    toast(message, tone = 'info', duration = 4000) {
+        return this.notify(message, tone, duration);
+    },
+
+    notify(message, type = 'info', duration = 5000) {
         const cleanMsg = String(message || '').replace(/[\u200B-\u200D\uFEFF]/g, '');
         let tone = type;
         if (cleanMsg.startsWith('❌') || cleanMsg.startsWith('🚨') || cleanMsg.includes('ALERTA LOPD') || cleanMsg.toLowerCase().includes('error') || cleanMsg.toLowerCase().includes('incorrecto') || cleanMsg.toLowerCase().includes('insuficientes') || cleanMsg.toLowerCase().includes('denegad') || cleanMsg.toLowerCase().includes('rechazad')) {
@@ -57,12 +75,12 @@ const ui = {
         toast.className = `pointer-events-auto terminal-border border-l-4 ${borderColors[tone] || borderColors.info} p-3.5 text-xs font-mono flex items-start justify-between gap-3 animate-in fade-in duration-200`;
         toast.innerHTML = `
             <div class="leading-relaxed text-white break-words flex-grow">${this.escapeHTML(cleanMsg)}</div>
-            <button type="button" aria-label="Cerrar aviso" class="text-slate-300 hover:text-white font-black px-2 py-1 min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 border border-slate-700 bg-black/60" onclick="this.parentElement.remove()">✕</button>
+            <button type="button" aria-label="Cerrar aviso" class="w-11 h-11 min-w-[44px] min-h-[44px] text-slate-300 hover:text-white font-black flex items-center justify-center shrink-0 border border-slate-700 bg-black/60" onclick="this.parentElement.remove()">✕</button>
         `;
         container.appendChild(toast);
         setTimeout(() => {
             if (toast && toast.parentElement) toast.remove();
-        }, 5000);
+        }, duration || 5000);
     },
 
     confirmAction(title, message, onConfirm, confirmLabel = 'Confirmar Operación', isDanger = false) {
@@ -89,6 +107,10 @@ const ui = {
                 resolve(true);
             }, confirmLabel, isDanger);
         });
+    },
+
+    confirmHUD(title, message, onConfirm, confirmLabel = 'Confirmar Operación', isDanger = false) {
+        return this.confirmModal(title, message, onConfirm, confirmLabel, isDanger);
     },
 
     renderLogin() {
@@ -121,8 +143,14 @@ const ui = {
         this.render();
     },
 
-    setSubView(subView) {
-        this.currentSubView = subView || null;
+    setSubView(subView, skipHistory = false) {
+        if (subView) {
+            this.currentSubView = subView;
+            this.pushLayer('subview', (skipHist) => this.setSubView(null, skipHist));
+        } else {
+            this.currentSubView = null;
+            this.closeLayer('subview', skipHistory);
+        }
         this.render();
     },
 
@@ -151,55 +179,136 @@ const ui = {
         titleEl.innerText = title || 'INSPECCIÓN TÁCTICA';
         bodyEl.innerHTML = bodyHtml || '';
         overlay.classList.remove('hidden');
+        this.pushLayer('drawer', (skipHistory) => this.closeDrawer(skipHistory));
         setTimeout(() => {
             const firstBtn = overlay.querySelector('button:not([disabled]), a[href], input:not([disabled])');
             if (firstBtn) firstBtn.focus();
         }, 40);
     },
 
-    closeDrawer() {
+    closeDrawer(skipHistory = false) {
         const overlay = document.getElementById('hud-drawer-overlay');
         if (overlay) overlay.classList.add('hidden');
+        this.closeLayer('drawer', skipHistory);
         if (this._lastFocusedElement && typeof this._lastFocusedElement.focus === 'function') {
             this._lastFocusedElement.focus();
         }
     },
 
-    // MÓDULO C (v1.0.19): Validador Centralizado Anti-Impropios y LOPD Contextual No Destructivo
+    // G6 · Pipeline de normalización de texto seguro en orden riguroso:
+    // NFKC → quitar invisibles → minúsculas → mapa de homoglifos → NFD sin diacríticos → leet → colapsar letras sueltas → borrar no alfanumérico → colapsar repeticiones
+    normalizeTextPipeline(text) {
+        if (!text) return { cleanText: '', collapsed: '', tokens: [] };
+
+        // 1. Unicode NFKC
+        let s = String(text).normalize('NFKC');
+
+        // 2. Quitar caracteres invisibles y de control (U+200B–U+200F, U+2060, U+FEFF, U+00AD, selectores de variación)
+        s = s.replace(/[\u200B-\u200F\u2060\uFEFF\u00AD\uFE00-\uFE0F]/g, '');
+
+        // 3. Minúsculas
+        s = s.toLowerCase();
+
+        // 4. Mapa de homoglifos (cirílico y griego confusables -> latino) ANTES del borrado
+        const homoglyphs = typeof LEXICON_HOMOGLYPHS !== 'undefined' ? LEXICON_HOMOGLYPHS : {
+            'а': 'a', 'е': 'e', 'о': 'o', 'р': 'p', 'с': 'c', 'у': 'y', 'х': 'x', 
+            'к': 'k', 'м': 'm', 'н': 'h', 'т': 't', 'в': 'b', 'і': 'i', 'ј': 'j', 
+            'ѕ': 's', 'ё': 'e', 'п': 'n',
+            'ο': 'o', 'α': 'a', 'ν': 'v', 'ρ': 'p', 'ι': 'i', 'κ': 'k', 'τ': 't', 
+            'υ': 'u', 'χ': 'x', 'β': 'b'
+        };
+        s = s.replace(/[аеорсухкмнтвіјѕёпоανρικτυχβ]/g, ch => homoglyphs[ch] || ch);
+
+        // 5. NFD sin diacríticos
+        s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+        // 6. Leet: @->a 4->a 3->e 1->i (probado también como l) 0->o 5->$->s 7->t 8->b (NO sustituir v por u)
+        s = s.replace(/[@4]/g, 'a')
+             .replace(/3/g, 'e')
+             .replace(/[1!|]/g, 'i')
+             .replace(/0/g, 'o')
+             .replace(/[5$]/g, 's')
+             .replace(/7/g, 't')
+             .replace(/8/g, 'b');
+
+        // 7. Colapsar solo letras sueltas separadas ("p e d r o", "p.e.d.r.o", "p_e_d_r_o") con regex de caracteres individuales
+        let prev = '';
+        while (prev !== s) {
+            prev = s;
+            s = s.replace(/(?<=(?:^|[\s.,_\-\/]))([a-z0-9])[.\s_\-\/]+(?=[a-z0-9](?:[\s.,_\-\/]|$))/gi, '$1');
+        }
+
+        // 8. Borrar lo no alfanumérico (dejando espacios entre palabras completas)
+        s = s.replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+
+        // 9. Colapsar repeticiones de 3 o más letras
+        const collapsed = s.replace(/(.)\1{2,}/g, '$1$1');
+
+        const tokens = collapsed.split(' ').filter(Boolean);
+        return { cleanText: s, collapsed, tokens };
+    },
+
+    // MÓDULO C (v1.0.19 / G6): Validador Centralizado Anti-Impropios y LOPD Contextual No Destructivo
     validateSafeText(text) {
         if (!text || !String(text).trim()) {
             return { valid: true, reason: '', matches: [] };
         }
 
-        const rawStr = String(text).replace(/[\u200B-\u200D\uFEFF]/g, '');
-        const normalizeBase = (s) => s
-            .toLowerCase()
-            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-            .replace(/[@4]/g, 'a')
-            .replace(/3/g, 'e')
-            .replace(/[1!|]/g, 'i')
-            .replace(/0/g, 'o')
-            .replace(/[5$]/g, 's');
-
-        const baseClean = normalizeBase(rawStr).replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-        const collapsedClean = baseClean.replace(/(.)\1+/g, '$1');
+        const { cleanText, collapsed, tokens } = this.normalizeTextPipeline(text);
+        if (!collapsed) {
+            return { valid: true, reason: '', matches: [] };
+        }
 
         const words = typeof FORBIDDEN_WORDS !== 'undefined' ? FORBIDDEN_WORDS : [];
         const roleAliases = ['mario', 'alex', 'alejandro', 'coordinador', 'director', 'profe', 'profesor'];
         const profanityList = words.filter(w => !roleAliases.includes(w.toLowerCase()));
 
+        const safeWords = typeof LEXICON_SAFE_WORDS !== 'undefined' ? LEXICON_SAFE_WORDS : [
+            'calculo', 'vehiculo', 'obstaculo', 'espectaculo', 'computo', 'computadora', 
+            'disputa', 'penetracion', 'metal exterior', 'asombro', 'dispuesto'
+        ];
+
+        const eponyms = typeof SCIENTIFIC_EPONYMS !== 'undefined' ? SCIENTIFIC_EPONYMS : [
+            'newton', 'kepler', 'hubble', 'gagarin', 'armstrong', 'tsiolkovsky', 'goddard', 
+            'bernoulli', 'reynolds', 'hooke', 'coriolis', 'kennedy', 'johnson', 'curie', 
+            'einstein', 'hawking', 'galileo', 'copernico', 'brahe', 'sagan', 'huygens'
+        ];
+
         const firstNames = new Set(typeof LOPD_FIRST_NAMES !== 'undefined' ? LOPD_FIRST_NAMES : ['juana', 'maria', 'alejandro', 'pedro', 'lucia', 'carlos', 'sofia', 'mario', 'alex', 'john', 'mohammed', 'yan', 'fatima']);
         const surnames = new Set(typeof LOPD_SURNAMES !== 'undefined' ? LOPD_SURNAMES : ['garcia', 'gonzalez', 'rodriguez', 'fernandez', 'lopez', 'martinez', 'sanchez', 'perez', 'gomez', 'smith']);
-        const whitelist = new Set(typeof AEROSPACE_WHITELIST !== 'undefined' ? AEROSPACE_WHITELIST : ['luna', 'marte', 'roca', 'franco', 'sierra', 'corona', 'cruz', 'blanco', 'polo', 'vega', 'sol', 'carbon', 'silicio']);
+        const baseWhitelist = typeof AEROSPACE_WHITELIST !== 'undefined' ? AEROSPACE_WHITELIST : ['luna', 'marte', 'roca', 'franco', 'sierra', 'corona', 'cruz', 'blanco', 'polo', 'vega', 'sol', 'carbon', 'silicio'];
+        const whitelist = new Set([...baseWhitelist, ...eponyms]);
 
         const matches = [];
         let violationType = null;
 
+        // Comprobación de palabras seguras (evitar falsos positivos como calculo -> culo o disputa -> puta)
+        const isSafeContext = (word) => {
+            return safeWords.some(sw => sw === word || (sw.includes(word) && (cleanText.includes(sw) || tokens.some(t => t.includes(sw)))));
+        };
+
         // 1. Comprobación de lenguaje soez / impropio
         for (const bad of profanityList) {
-            const normBad = normalizeBase(bad).replace(/(.)\1+/g, '$1');
-            const wordBoundaryRx = new RegExp(`\\b${normBad}\\b`, 'i');
-            if (wordBoundaryRx.test(collapsedClean) || collapsedClean.includes(normBad)) {
+            const normBad = bad.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            if (!normBad) continue;
+
+            const isShort = normBad.length < 5;
+            const boundaryRx = new RegExp(`\\b${normBad}\\b`, 'i');
+
+            let matched = false;
+            if (isShort) {
+                // Menos de 5 letras: exigir límite de palabra estricto
+                if (boundaryRx.test(collapsed) || boundaryRx.test(cleanText)) {
+                    if (!isSafeContext(normBad)) matched = true;
+                }
+            } else {
+                // 5 o más letras: permitir raíz o inclusión salvo si forma parte de palabra segura
+                if (boundaryRx.test(collapsed) || boundaryRx.test(cleanText) || collapsed.includes(normBad)) {
+                    if (!isSafeContext(normBad)) matched = true;
+                }
+            }
+
+            if (matched) {
                 matches.push(bad);
                 violationType = 'PROFANITY';
             }
@@ -214,28 +323,24 @@ const ui = {
             };
         }
 
-        // 2. Tokenización y análisis contextual LOPD (Nombres, Apellidos y Lista Blanca Aeroespacial)
-        const rawTokens = baseClean.split(' ').filter(Boolean);
+        // 2. Tokenización y análisis contextual LOPD (Nombres, Apellidos y Lista Blanca Aeroespacial/Científica)
         const isUnambiguousPersonalToken = (tok) => {
             if (!tok || whitelist.has(tok)) return false;
             const tokCollapsed = tok.replace(/(.)\1+/g, '$1');
-            const tokVtoU = tokCollapsed.replace(/v/g, 'u');
             if (whitelist.has(tokCollapsed)) return false;
             return firstNames.has(tok) || surnames.has(tok) || roleAliases.includes(tok) ||
-                   firstNames.has(tokCollapsed) || surnames.has(tokCollapsed) || roleAliases.includes(tokCollapsed) ||
-                   firstNames.has(tokVtoU) || surnames.has(tokVtoU);
+                   firstNames.has(tokCollapsed) || surnames.has(tokCollapsed) || roleAliases.includes(tokCollapsed);
         };
 
-        for (let i = 0; i < rawTokens.length; i++) {
-            const tok = rawTokens[i];
+        for (let i = 0; i < tokens.length; i++) {
+            const tok = tokens[i];
             const tokCollapsed = tok.replace(/(.)\1+/g, '$1');
-            const tokVtoU = tokCollapsed.replace(/v/g, 'u');
 
             if (whitelist.has(tok) || whitelist.has(tokCollapsed)) {
-                // Es un término aeroespacial/científico en Lista Blanca (ej. luna, roca, sierra, marte...).
+                // Es un término aeroespacial o epónimo científico en Lista Blanca.
                 // Solo se bloquea si va precedido o seguido inmediatamente por un nombre/apellido personal no técnico.
-                const prevTok = i > 0 ? rawTokens[i - 1] : null;
-                const nextTok = i < rawTokens.length - 1 ? rawTokens[i + 1] : null;
+                const prevTok = i > 0 ? tokens[i - 1] : null;
+                const nextTok = i < tokens.length - 1 ? tokens[i + 1] : null;
                 if (isUnambiguousPersonalToken(prevTok) || isUnambiguousPersonalToken(nextTok)) {
                     matches.push(tok);
                     violationType = 'NAME';
@@ -244,15 +349,14 @@ const ui = {
             }
 
             if (isUnambiguousPersonalToken(tok)) {
-                const matchedLabel = firstNames.has(tokVtoU) || surnames.has(tokVtoU) ? tokVtoU : tokCollapsed;
-                matches.push(matchedLabel);
+                matches.push(tok);
                 violationType = 'NAME';
             }
         }
 
-        // 3. Patrón estructural de firma personal explícita ("hecho por X", "autor: X")
-        const signatureRx = /\b(?:hecho por|autor|autora|firmado por|alumno|alumna)\s+([a-z]{3,})/i;
-        const sigMatch = baseClean.match(signatureRx);
+        // 3. Patrón estructural de firma personal explícita ("hecho por X", "fdo: X", "soy X", "me llamo X")
+        const signatureRx = /\b(?:hecho por|autor|autora|firmado por|fdo|soy|me llamo|alumno|alumna)\s+([a-z]{3,})/i;
+        const sigMatch = cleanText.match(signatureRx);
         if (sigMatch && sigMatch[1] && !whitelist.has(sigMatch[1])) {
             matches.push(sigMatch[1]);
             violationType = 'NAME';
@@ -354,10 +458,77 @@ const ui = {
         return { text: `EN PLAZO (${Math.floor(diffHours/24)}d)`, class: "bg-mars-cyan text-black" };
     },
 
-    setupPwaBlackIcon() {
+    setupNavigationHistory() {
         const metaTheme = document.querySelector('meta[name="theme-color"]');
         if (metaTheme) metaTheme.setAttribute('content', '#05070f');
-        if (!this._keyListenerAttached) {
+
+        // Al cargar, si history.state?.layer existe, haz replaceState limpio
+        if (typeof window !== 'undefined' && window.history && window.history.state && window.history.state.layer !== undefined) {
+            try {
+                window.history.replaceState({ layer: 0 }, document.title);
+            } catch (e) {}
+        }
+
+        this._layerStack = [];
+        this._layerCounter = 0;
+        this._isPoppingState = false;
+
+        if (!this._navHistoryAttached && typeof window !== 'undefined') {
+            this._navHistoryAttached = true;
+            window.addEventListener('popstate', (e) => {
+                // El listener popstate cierra la capa superior SIN volver a llamar a back
+                if (this._layerStack && this._layerStack.length > 0) {
+                    this._isPoppingState = true;
+                    const topLayer = this._layerStack.pop();
+                    if (topLayer && typeof topLayer.closeFn === 'function') {
+                        try {
+                            topLayer.closeFn(true); // true = skipHistoryBack
+                        } catch (err) {
+                            console.error("Error en cierre de capa popstate:", err);
+                        }
+                    }
+                    this._isPoppingState = false;
+                }
+            });
+        }
+
+        this.setupKeyboardListeners();
+    },
+
+    setupPwaBlackIcon() {
+        return this.setupNavigationHistory();
+    },
+
+    pushLayer(type, closeFn) {
+        this._layerCounter = (this._layerCounter || 0) + 1;
+        const n = this._layerCounter;
+        this._layerStack = this._layerStack || [];
+        this._layerStack.push({ layer: n, type, closeFn });
+        if (!this._isPoppingState && typeof window !== 'undefined' && window.history) {
+            try {
+                window.history.pushState({ layer: n, type }, document.title);
+            } catch (e) {}
+        }
+    },
+
+    closeLayer(type, skipHistory = false) {
+        this._layerStack = this._layerStack || [];
+        if (this._layerStack.length === 0) return;
+        const idx = type 
+            ? this._layerStack.map(l => l.type).lastIndexOf(type) 
+            : this._layerStack.length - 1;
+        if (idx !== -1) {
+            this._layerStack.splice(idx, 1);
+            if (!skipHistory && !this._isPoppingState && typeof window !== 'undefined' && window.history) {
+                try {
+                    window.history.back();
+                } catch (e) {}
+            }
+        }
+    },
+
+    setupKeyboardListeners() {
+        if (!this._keyListenerAttached && typeof document !== 'undefined') {
             this._keyListenerAttached = true;
             document.addEventListener('keydown', (e) => {
                 const modalOverlay = document.getElementById('modal-overlay');
@@ -451,16 +622,11 @@ const ui = {
     },
 
     showWelcomeModal() {
-        if (sessionStorage.getItem('hideWelcome')) return;
-        this._lastFocusedElement = document.activeElement;
-        let role = state.user ? state.user.role : '';
-        if(state.user && state.user.admin) role = 'DOCENTE';
-        
-        const elTitle = document.getElementById('onboarding-title');
-        if(elTitle) elTitle.innerText = `ORDEN DE OPERACIONES: ${role.replace('_',' ')} 🚀`;
-        
+        return this.showOnboarding();
+    },
+
+    getOnboardingContent(role) {
         let content = `<div class="space-y-4 font-mono text-xs sm:text-sm leading-relaxed">`;
-        
         switch(role) {
             case 'CEO': 
                 content += `
@@ -573,6 +739,19 @@ const ui = {
                 </div>`; 
                 break;
         }
+        return content;
+    },
+
+    showOnboarding() {
+        if (sessionStorage.getItem('hideWelcome')) return;
+        this._lastFocusedElement = document.activeElement;
+        let role = state.user ? state.user.role : '';
+        if(state.user && state.user.admin) role = 'DOCENTE';
+        
+        const elTitle = document.getElementById('onboarding-title');
+        if(elTitle) elTitle.innerText = `ORDEN DE OPERACIONES: ${role.replace('_',' ')} 🚀`;
+        
+        let content = this.getOnboardingContent(role);
         let dynamicStatusHtml = '';
         if (role === 'DOCENTE') {
             const totalCos = Object.keys(state.data.companies || {}).length;
@@ -825,7 +1004,7 @@ const ui = {
         if(co.sponsorAwarded) {
             const color = co.sponsorAwarded==='ORO'?'text-[#ffd700] border-[#ffd700] bg-[#ffd700]/10':co.sponsorAwarded==='PLATA'?'text-[#c0c0c0] border-[#c0c0c0] bg-[#c0c0c0]/10':'text-[#cd7f32] border-[#cd7f32] bg-[#cd7f32]/10';
             const spName = co.sponsorData?.name ? ` - ${this.escapeHTML(co.sponsorData.name)}` : '';
-            const spLogo = co.sponsorData?.logo ? `<img src="${this.escapeHTML(co.sponsorData.logo)}" alt="Logo patrocinador" class="h-4 inline-block ml-2 rounded-sm object-contain">` : '';
+            const spLogo = co.sponsorData?.logo ? `<img src="${this.escapeHTML(co.sponsorData.logo)}" alt="Logo patrocinador" width="16" height="16" class="h-4 inline-block ml-2 rounded-sm object-contain">` : '';
             sponsorBadge = `<span class="${color} border px-2 py-1 font-black shadow-[0_0_10px_currentColor] flex items-center gap-1 text-xs">[PATROCINIO ${this.escapeHTML(co.sponsorAwarded)}${spName}] ${spLogo}</span>`;
         }
 
@@ -833,7 +1012,7 @@ const ui = {
         const hasApprovedLogo = co.logo && (!co.brandApproval || co.brandApproval.status === 'APROBADO');
         const activeLogoSrc = hasApprovedLogo ? this.escapeHTML(co.logo) : 'logo.png';
         const imgHtml = `
-            <img src="${activeLogoSrc}" alt="Logo de ${this.escapeHTML(co.name)}" onerror="this.onerror=null;this.src='logo.png';" class="w-full h-full ${hasApprovedLogo ? 'object-cover' : 'object-contain p-2 bg-black'}">
+            <img src="${activeLogoSrc}" alt="Logo de ${this.escapeHTML(co.name)}" width="96" height="96" onerror="this.onerror=null;this.src='logo.png';" class="w-full h-full ${hasApprovedLogo ? 'object-cover' : 'object-contain p-2 bg-black'}">
             ${isBrandPending ? `<span class="absolute bottom-0 inset-x-0 bg-mars-magenta/90 text-white text-xs font-black text-center py-0.5 uppercase tracking-tighter" title="Marca en revisión">⏳</span>` : ''}
         `;
 
@@ -917,21 +1096,29 @@ const ui = {
         
         if (state.user.admin) {
             if(balEl) balEl.innerText = '∞ €v';
-            if(infoEl) infoEl.innerText = `ENTITY: CLAUSTRO | ROLE: ${state.data.config.teachers[state.user.role]?.name.toUpperCase() || 'ROOT'}`;
+            if(infoEl) {
+                const teacherInfo = `ENTITY: CLAUSTRO | ROLE: ${state.data.config.teachers[state.user.role]?.name.toUpperCase() || 'ROOT'}`;
+                infoEl.innerText = teacherInfo;
+                infoEl.title = teacherInfo;
+            }
             if(miniLogo) {
-                miniLogo.classList.remove('hidden');
-                miniLogo.innerHTML = `<img src="logo.png" alt="Logo institucional MARS-KET" onerror="this.onerror=null;this.src='logo.png';" class="w-full h-full object-contain p-0.5">`;
+                miniLogo.classList.add('hidden');
+                miniLogo.innerHTML = '';
             }
         } else {
             const co = state.data.companies[state.user.coId];
             if(co && balEl) balEl.innerText = `${co.balance.toFixed(2)} €v`;
-            if(co && infoEl) infoEl.innerText = `ENTITY: ${co.name.toUpperCase()} | ROLE: ${state.user.role.replace('_',' ')}`;
+            if(co && infoEl) {
+                const entityInfo = `ENTITY: ${co.name.toUpperCase()} | ROLE: ${state.user.role.replace('_',' ')}`;
+                infoEl.innerText = entityInfo;
+                infoEl.title = entityInfo;
+            }
             
             if(miniLogo && co) {
                 miniLogo.classList.remove('hidden');
                 const hasApprovedLogo = co.logo && (!co.brandApproval || co.brandApproval.status === 'APROBADO');
                 const hudLogoSrc = hasApprovedLogo ? this.escapeHTML(co.logo) : 'logo.png';
-                miniLogo.innerHTML = `<img src="${hudLogoSrc}" alt="Logo startup ${this.escapeHTML(co.name)}" onerror="this.onerror=null;this.src='logo.png';" class="w-full h-full ${hasApprovedLogo ? 'object-cover' : 'object-contain p-0.5'}">`;
+                miniLogo.innerHTML = `<img src="${hudLogoSrc}" alt="Logo startup ${this.escapeHTML(co.name)}" width="36" height="36" onerror="this.onerror=null;this.src='logo.png';" class="w-full h-full ${hasApprovedLogo ? 'object-cover' : 'object-contain p-0.5'}">`;
             }
         }
 
@@ -944,12 +1131,13 @@ const ui = {
                 cloudEl.innerText = '[D1: SYNCED]';
             } else {
                 cloudEl.className = 'text-xs font-bold uppercase tracking-normal sm:tracking-wider px-2 sm:px-2.5 py-1 border border-mars-yellow/60 text-mars-yellow bg-slate-900 whitespace-nowrap';
-                cloudEl.innerText = '[LOCAL ONLY]';
+                cloudEl.innerText = '[D1: OFFLINE]';
             }
         }
 
-        document.getElementById('hud-header')?.classList.remove('hidden');
-        document.getElementById('hud-nav')?.classList.remove('hidden');
+        this.setHUDVisibility(true);
+        const hdrLogo = document.getElementById('hud-marsket-logo') || document.getElementById('marsket-logo');
+        if (hdrLogo) hdrLogo.id = 'marsket-logo';
         if (typeof auth !== 'undefined' && typeof auth.buildNav === 'function') {
             auth.buildNav(!!state.user.admin);
         }
@@ -966,10 +1154,38 @@ const ui = {
 
         this.updateBadges();
     },
+
+    setHUDVisibility(isLoggedIn) {
+        const hdr = document.getElementById('hud-header');
+        const nav = document.getElementById('hud-nav');
+        const actionBar = document.getElementById('hud-action-bar');
+        const navContainer = document.getElementById('nav-container');
+        if (hdr) hdr.classList.remove('hidden');
+        if (nav) nav.classList.remove('hidden');
+        if (actionBar) actionBar.style.visibility = isLoggedIn ? 'visible' : 'hidden';
+        if (navContainer) navContainer.style.visibility = isLoggedIn ? 'visible' : 'hidden';
+        if (!isLoggedIn) {
+            const infoEl = document.getElementById('hud-info');
+            const balEl = document.getElementById('hud-balance');
+            const miniLogo = document.getElementById('hud-mini-logo');
+            if (infoEl) {
+                infoEl.innerText = 'ENTITY: -- | ROLE: --';
+                infoEl.title = 'ENTITY: -- | ROLE: --';
+            }
+            if (balEl) balEl.innerText = '-- €v';
+            if (miniLogo) {
+                miniLogo.classList.add('hidden');
+                miniLogo.innerHTML = '';
+            }
+        }
+    },
     
     render() {
         const vp = document.getElementById('viewport');
         if(!vp) return;
+        const prevScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+        const activeId = typeof document !== 'undefined' && document.activeElement && document.activeElement.id ? document.activeElement.id : null;
+
         vp.innerHTML = '';
         if(!state.user) { this.viewLogin(vp); return; }
         
@@ -1024,6 +1240,16 @@ const ui = {
             case 'ailog': vp.innerHTML = hero + notifs; this.viewAILog(vp); break;
             case 'tech': vp.innerHTML = hero + notifs; this.viewTech(vp); break;
             case 'resolutions': vp.innerHTML = hero + notifs; this.viewResolutions(vp); break;
+        }
+
+        if (activeId) {
+            const restoredEl = document.getElementById(activeId);
+            if (restoredEl && typeof restoredEl.focus === 'function') {
+                try { restoredEl.focus({ preventScroll: true }); } catch (e) {}
+            }
+        }
+        if (typeof window !== 'undefined' && prevScrollY > 0) {
+            window.scrollTo({ top: prevScrollY, behavior: 'instant' });
         }
     },
 

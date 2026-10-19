@@ -29,8 +29,9 @@ Object.assign(ui, {
                 <div class="space-y-3 mb-6">
                     ${(order.items || []).map((item, idx) => `
                         <div class="bg-slate-900 p-3 border border-mars-border flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                            <label class="flex items-center gap-2.5 text-xs text-white font-bold cursor-pointer flex-grow min-h-[44px]">
-                                <input type="checkbox" id="assembled-${this.escapeHTML(order.id)}-${idx}" class="w-4 h-4 bg-black border-mars-cyan shrink-0" checked>
+                            <label class="mars-checkbox-label flex items-center gap-2.5 text-xs text-white font-bold cursor-pointer flex-grow min-h-[44px]">
+                                <input type="checkbox" id="assembled-${this.escapeHTML(order.id)}-${idx}" class="mars-touch-input" checked>
+                                <span class="mars-checkbox-visual"></span>
                                 <span class="break-words">${this.escapeHTML(item.name)} (x${Number(item.qty)||1}) - <span class="text-mars-cyan font-mono">${Number(item.price).toFixed(2)} €v</span></span>
                             </label>
                             <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">

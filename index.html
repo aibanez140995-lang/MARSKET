@@ -12,34 +12,8 @@
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="apple-touch-icon" href="logo.png">
     
-    <!-- Tailwind CSS (CDN) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'mars-bg': '#05070f',
-                        'mars-card': '#0b1120',
-                        'mars-border': '#1e293b',
-                        'mars-cyan': '#00f0ff',
-                        'mars-magenta': '#ff0055',
-                        'mars-yellow': '#ffb703',
-                        'mars-green': '#00ff66'
-                    },
-                    fontFamily: {
-                        'orbitron': ['Orbitron', 'Segoe UI', 'Roboto', 'sans-serif'],
-                        'mono': ['Courier New', 'Courier', 'monospace']
-                    },
-                    boxShadow: {
-                        'neon-cyan': '0 0 15px rgba(0, 240, 255, 0.4)',
-                        'neon-magenta': '0 0 15px rgba(255, 0, 85, 0.4)',
-                        'neon-green': '0 0 15px rgba(0, 255, 102, 0.4)'
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Tailwind CSS (Compilado localmente v1.0.19 - Bloque T) -->
+    <link rel="stylesheet" href="css/tailwind.css?v=1.0.19">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&display=swap" rel="stylesheet">
@@ -112,10 +86,56 @@
         .zoom-in {
             animation: marsZoomIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
-        .break-words {
-            overflow-wrap: anywhere;
-            word-break: break-word;
+        /* G8: Reglas universales de contención de texto nativas (independientes de utilidades) */
+        .flex > *, .grid > * {
+            min-width: 0;
         }
+        p, li, td, th, label, h1, h2, h3, h4, h5, h6, span, a, div {
+            overflow-wrap: anywhere;
+        }
+        table {
+            max-width: 100%;
+        }
+        .table-responsive-container, .overflow-x-auto {
+            overflow-x: auto;
+            max-width: 100%;
+            -webkit-overflow-scrolling: touch;
+        }
+        .truncate-line {
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+            max-width: 100%;
+        }
+
+        /* G16 CLS: Reserva dimensional estricta del HUD y números tabulares */
+        #hud-header {
+            display: block !important;
+            min-height: 140px;
+        }
+        #hud-nav {
+            display: block !important;
+            min-height: 44px;
+        }
+        #hud-clock {
+            font-variant-numeric: tabular-nums;
+            min-width: 130px;
+            display: inline-block;
+            text-align: right;
+        }
+        #hud-cloud-status {
+            font-variant-numeric: tabular-nums;
+            min-width: 120px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #hud-balance {
+            font-variant-numeric: tabular-nums;
+            min-width: 80px;
+            display: inline-block;
+        }
+
         :focus-visible {
             outline: 2px solid #00f0ff !important;
             outline-offset: 2px !important;
@@ -132,6 +152,94 @@
         }
         button:active:not(:disabled), [role="button"]:active:not(:disabled) {
             transform: scale(0.98);
+        }
+
+        /* G16 Táctil: Medidas de caja real (>= 44x44 px) sin !important bajo media query estándar */
+        @media (pointer: coarse), (max-width: 1023.98px) {
+            button,
+            [role="button"],
+            [role="tab"],
+            select,
+            summary,
+            input:not([type="hidden"]),
+            a:not(p a):not(li a):not(td a),
+            .flex > button,
+            .flex > [role="button"],
+            .flex > [role="tab"],
+            .flex > select,
+            .flex > summary,
+            .flex > input:not([type="hidden"]),
+            .flex > a:not(p a):not(li a):not(td a),
+            .grid > button,
+            .grid > [role="button"],
+            .grid > [role="tab"],
+            .grid > select,
+            .grid > summary,
+            .grid > input:not([type="hidden"]),
+            .grid > a:not(p a):not(li a):not(td a) {
+                min-height: 44px;
+                min-width: 44px;
+                box-sizing: border-box;
+            }
+            button,
+            [role="button"],
+            [role="tab"],
+            summary,
+            a:not(p a):not(li a):not(td a) {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+        }
+
+        /* G16 Casillas: <input> de 44x44 superpuesto e invisible con caja visual personalizada */
+        .mars-checkbox-label {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-height: 44px;
+            min-width: 44px;
+            cursor: pointer;
+            user-select: none;
+            padding-left: 28px;
+        }
+        .mars-checkbox-label input[type="checkbox"],
+        .mars-touch-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            min-height: 44px;
+            opacity: 0;
+            margin: 0;
+            cursor: pointer;
+            z-index: 2;
+        }
+        .mars-checkbox-visual {
+            position: absolute;
+            left: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            border: 1.5px solid #00f0ff;
+            background-color: #000;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            flex-shrink: 0;
+        }
+        .mars-checkbox-label input[type="checkbox"]:checked + .mars-checkbox-visual::after,
+        .mars-touch-input:checked + .mars-checkbox-visual::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background-color: #00f0ff;
+            box-shadow: 0 0 6px #00f0ff;
         }
         .input-lopd-error {
             border-color: #ef4444 !important;
@@ -164,12 +272,12 @@
     <!-- CONTENEDOR PRINCIPAL -->
     <div class="max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden p-2 sm:p-4 flex-grow flex flex-col">
         
-        <!-- HEADER HUD (FASE 1 v1.0.17: LÍNEA ÚNICA RESPONSIVA COMPACTA) -->
-        <header id="hud-header" class="hidden terminal-border bg-mars-card/95 backdrop-blur-md p-3 sm:p-4 mb-3 sm:mb-4 border-b-2 border-b-mars-cyan sticky top-0 z-40">
+        <!-- HEADER HUD (FASE 1 v1.0.17: LÍNEA ÚNICA RESPONSIVA COMPACTA - DIMENSIÓN CONSTANTE) -->
+        <header id="hud-header" class="terminal-border bg-mars-card/95 backdrop-blur-md p-3 sm:p-4 mb-3 sm:mb-4 border-b-2 border-b-mars-cyan sticky top-0 z-40">
             <!-- Fila 1: Logo, Versión, Avatar de Marca y Estado de Nube D1 -->
             <div class="flex justify-between items-center gap-1.5 sm:gap-2">
                 <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-                    <img src="logo.png" alt="MARS-KET 2.0" class="w-8 h-8 sm:w-9 sm:h-9 object-contain drop-shadow-[0_0_8px_rgba(0,240,255,0.65)] shrink-0">
+                    <img id="hud-marsket-logo" src="logo.png" alt="MARS-KET 2.0" width="36" height="36" onerror="this.onerror=null;this.src='logo.png';" class="w-8 h-8 sm:w-9 sm:h-9 object-contain drop-shadow-[0_0_8px_rgba(0,240,255,0.65)] shrink-0">
                     <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-mars-green shadow-[0_0_8px_#00ff66] animate-pulse shrink-0" aria-hidden="true"></span>
                     <div class="min-w-0">
                         <h1 class="font-orbitron font-black text-xs sm:text-lg text-white tracking-wider sm:tracking-widest leading-none flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
@@ -185,7 +293,7 @@
             </div>
 
             <!-- Fila 2: Barra de Utilidades Táctica (44px Touch Targets, 2x2 en móvil, 4 cols en sm+) -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full mt-3">
+            <div id="hud-action-bar" style="visibility: hidden;" class="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full mt-3">
                 <button type="button" onclick="ui.modalChangelog()" class="min-h-[44px] bg-mars-green/10 border border-mars-green text-mars-green py-2 px-2 text-xs font-bold uppercase tracking-wider hover:bg-mars-green hover:text-black transition-all flex items-center justify-center text-center">
                     [ 🚀 NOVEDADES ]
                 </button>
@@ -200,16 +308,21 @@
                 </button>
             </div>
 
-            <!-- Fila 3: Información Táctica (Entidad, Rol y Reloj) -->
+            <!-- Fila 3: Información Táctica (Entidad, Rol, Saldo y Reloj) -->
             <div class="flex flex-wrap justify-between items-center gap-2 text-xs text-slate-300 border-t border-mars-border/60 mt-3 pt-2 uppercase font-mono">
-                <span id="hud-info" class="truncate max-w-full sm:max-w-[70%] pr-2 font-bold text-slate-200">ENTITY: -- | ROLE: --</span>
+                <div class="flex items-center gap-2 truncate max-w-full sm:max-w-[70%] min-w-0">
+                    <span id="hud-info" class="font-bold text-slate-200 truncate min-w-0" title="ENTITY: -- | ROLE: --">ENTITY: -- | ROLE: --</span>
+                    <span class="text-slate-500">|</span>
+                    <span class="text-slate-400">SALDO:</span>
+                    <span id="hud-balance" class="text-mars-green font-bold shrink-0">-- €v</span>
+                </div>
                 <span id="hud-clock" class="shrink-0 text-mars-cyan font-bold">TIME: --:--:--</span>
             </div>
         </header>
 
-        <!-- NAVEGACIÓN DINÁMICA POR ROL -->
-        <nav id="hud-nav" aria-label="Navegación principal por departamento" class="hidden mb-4 overflow-x-auto scrollbar-hide border-b border-mars-border/70 bg-mars-card/50">
-            <div id="nav-container" role="tablist" class="flex gap-1 min-w-max"></div>
+        <!-- NAVEGACIÓN DINÁMICA POR ROL (DIMENSIÓN CONSTANTE) -->
+        <nav id="hud-nav" aria-label="Navegación principal por departamento" class="mb-4 overflow-x-auto scrollbar-hide border-b border-mars-border/70 bg-mars-card/50">
+            <div id="nav-container" role="tablist" style="visibility: hidden;" class="flex gap-1 min-w-max"></div>
         </nav>
 
         <!-- VIEWPORT PRINCIPAL DINÁMICO -->
@@ -237,9 +350,10 @@
             <h2 id="onboarding-title" class="font-orbitron font-black text-base sm:text-lg text-mars-yellow mb-2 uppercase tracking-widest text-center border-b border-mars-border pb-3">ORDEN GENERAL DE OPERACIONES</h2>
             <div id="onboarding-body" class="overflow-y-auto pr-2 my-4 space-y-4"></div>
             <div class="flex items-center justify-between pt-3 border-t border-mars-border flex-wrap gap-3">
-                <label class="flex items-center gap-2.5 text-xs text-slate-300 uppercase cursor-pointer min-h-[44px]">
-                    <input type="checkbox" id="skip-onboarding" class="w-4 h-4 bg-black border-slate-600 text-mars-cyan">
-                    No mostrar de nuevo en esta sesión
+                <label class="mars-checkbox-label text-xs text-slate-300 uppercase cursor-pointer min-h-[44px]">
+                    <input type="checkbox" id="skip-onboarding" class="mars-touch-input">
+                    <span class="mars-checkbox-visual"></span>
+                    <span>No mostrar de nuevo en esta sesión</span>
                 </label>
                 <button type="button" onclick="ui.closeOnboarding()" class="min-h-[44px] bg-mars-yellow text-black font-black px-6 py-2.5 text-xs uppercase tracking-widest hover:bg-white transition-all">ENTENDIDO</button>
             </div>
@@ -276,7 +390,11 @@
         </div>
     </div>
 
-<!-- SCRIPTS ORDENADOS DEL SISTEMA -->
+    <!-- CONTENEDOR DE TOASTS HUD -->
+    <div id="hud-toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-[70] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- SCRIPTS ORDENADOS DEL SISTEMA -->
+    <script src="js/lexicon-data.js?v=1.0.19"></script>
     <script src="js/config.js?v=1.0.19"></script>
     <script src="js/state.js?v=1.0.19"></script>
     <script src="js/auth.js?v=1.0.19"></script>
@@ -293,8 +411,12 @@
 
     <script>
         window.addEventListener('DOMContentLoaded', () => {
-            if (typeof ui !== 'undefined' && typeof ui.setupPwaBlackIcon === 'function') {
-                ui.setupPwaBlackIcon();
+            if (typeof ui !== 'undefined') {
+                if (typeof ui.setupNavigationHistory === 'function') {
+                    ui.setupNavigationHistory();
+                } else if (typeof ui.setupPwaBlackIcon === 'function') {
+                    ui.setupPwaBlackIcon();
+                }
             }
             if (typeof state !== 'undefined' && typeof state.init === 'function') {
                 state.init();

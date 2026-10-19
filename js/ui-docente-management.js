@@ -114,7 +114,7 @@ Object.assign(ui, {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     ${pendingBrands.map(cid => {
                         const co = state.data.companies[cid];
-                        const logoPreview = co.brandApproval.pendingLogo ? `<img src="${this.escapeHTML(co.brandApproval.pendingLogo)}" alt="Logo pendiente" onerror="this.onerror=null;this.src='logo.png';" class="w-16 h-16 object-contain border border-mars-border bg-black p-1">` : `<div class="w-16 h-16 border border-mars-border bg-slate-900 flex items-center justify-center text-xs text-slate-300 uppercase text-center">Sin Logo</div>`;
+                        const logoPreview = co.brandApproval.pendingLogo ? `<img src="${this.escapeHTML(co.brandApproval.pendingLogo)}" alt="Logo pendiente" width="64" height="64" onerror="this.onerror=null;this.src='logo.png';" class="w-16 h-16 object-contain border border-mars-border bg-black p-1">` : `<div class="w-16 h-16 border border-mars-border bg-slate-900 flex items-center justify-center text-xs text-slate-300 uppercase text-center">Sin Logo</div>`;
                         return `
                         <div class="bg-slate-900 border border-mars-magenta/50 p-4 flex flex-col gap-3">
                             <div class="flex justify-between items-start border-b border-slate-800 pb-2 gap-2">
@@ -214,7 +214,7 @@ Object.assign(ui, {
                                     if(c.sponsorAwarded) {
                                         const cl = c.sponsorAwarded==='ORO'?'text-[#ffd700] border-[#ffd700]':c.sponsorAwarded==='PLATA'?'text-[#c0c0c0] border-[#c0c0c0]':'text-[#cd7f32] border-[#cd7f32]';
                                         let spName = c.sponsorData?.name ? ` - ${this.escapeHTML(c.sponsorData.name)}` : '';
-                                        let spLogo = c.sponsorData?.logo ? `<img src="${this.escapeHTML(c.sponsorData.logo)}" alt="Logo patrocinador" class="h-4 inline-block ml-2 rounded-sm object-contain bg-black/50 p-0.5">` : '';
+                                        let spLogo = c.sponsorData?.logo ? `<img src="${this.escapeHTML(c.sponsorData.logo)}" alt="Logo patrocinador" width="16" height="16" class="h-4 inline-block ml-2 rounded-sm object-contain bg-black/50 p-0.5">` : '';
                                         sponsorHtml = `<span class="${cl} font-bold text-xs uppercase border px-2 py-1 bg-black/50 flex items-center w-max gap-1">[PATROCINIO: ${this.escapeHTML(c.sponsorAwarded)}${spName}]${spLogo}</span>`;
                                     } else {
                                         sponsorHtml = `<span class="text-slate-300 font-bold text-xs uppercase border border-slate-700 px-2 py-1 bg-slate-900 block w-max">[SIN PATROCINIO]</span>`;
@@ -908,18 +908,20 @@ Object.assign(ui, {
                 <p class="text-xs text-slate-300 uppercase font-bold mb-1">Total Conexiones</p>
                 <p class="text-3xl font-orbitron text-mars-cyan">${s.totalLogins}</p>
             </div>
-            <table class="w-full text-left text-xs whitespace-nowrap">
-                <thead class="text-slate-300 uppercase border-b border-mars-border">
-                    <tr><th class="py-2">Rol</th><th class="text-right">Logins</th></tr>
-                </thead>
-                <tbody>
-                    ${['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA','AUXILIAR'].map(r => `
-                    <tr class="border-b border-mars-border/30">
-                        <td class="py-2 font-bold text-white">${this.escapeHTML(r)}</td>
-                        <td class="py-2 text-right font-mono text-mars-yellow">${s.roles[r]?.count || 0}</td>
-                    </tr>`).join('')}
-                </tbody>
-            </table>
+            <div class="overflow-x-auto max-w-full">
+                <table class="w-full text-left text-xs whitespace-nowrap">
+                    <thead class="text-slate-300 uppercase border-b border-mars-border">
+                        <tr><th class="py-2">Rol</th><th class="text-right">Logins</th></tr>
+                    </thead>
+                    <tbody>
+                        ${['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA','AUXILIAR'].map(r => `
+                        <tr class="border-b border-mars-border/30">
+                            <td class="py-2 font-bold text-white">${this.escapeHTML(r)}</td>
+                            <td class="py-2 text-right font-mono text-mars-yellow">${s.roles[r]?.count || 0}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
         </div>`;
         this.showModal(`Auditoría Conexiones: ${this.escapeHTML(co.name)}`, html, "");
     },
@@ -1073,7 +1075,7 @@ Object.assign(ui, {
                 <span class="text-xs text-slate-200 uppercase font-bold">Total Gasto Virtual Acumulado:</span>
                 <span class="text-lg font-orbitron text-mars-magenta font-black">-${total.toFixed(2)} €v</span>
             </div>
-            <div class="max-h-72 overflow-y-auto pr-1">
+            <div class="max-h-72 overflow-y-auto pr-1 overflow-x-auto max-w-full">
                 <table class="w-full text-left">
                     <thead class="text-xs text-slate-300 uppercase border-b border-mars-border">
                         <tr><th class="py-1">Fecha</th><th>Concepto</th><th>Dpto</th><th class="text-right">Importe</th></tr>

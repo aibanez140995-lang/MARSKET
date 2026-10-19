@@ -7,10 +7,26 @@ const MASTER_TEACHER_HASH = "8d3e69f8c6b7588cf32d2ea7cfc2a2977468f7000e84b8d7ebf
 // verificó fuera del repositorio y se registra como MASTER_TEACHER_DIGEST. Nunca se almacena el código en claro.
 const MASTER_TEACHER_DIGEST = "dfd744e45238558921c2450aa8252224a6fae2049f395980a713e36a053045bc";
 const MASTER_TEACHER_DIGESTS = [MASTER_TEACHER_HASH, MASTER_TEACHER_DIGEST];
+const AUTH_PROOF_SALT = "MARSKET_v1019_SESSION_PROOF_SALT";
 
 const auth = {
     verifiedCoId: null, // Almacena temporalmente la entidad desbloqueada en el Paso 1
     _lastLogoTap: 0,
+
+    async generateAuthProof(role, coId, exp, credential) {
+        const payload = `${role || ''}|${coId || ''}|${exp || 0}|${credential || ''}|${AUTH_PROOF_SALT}`;
+        if (typeof crypto !== 'undefined' && crypto.subtle) {
+            const buffer = new TextEncoder().encode(payload);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+            return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        let h = 0;
+        for (let i = 0; i < payload.length; i++) {
+            h = ((h << 5) - h) + payload.charCodeAt(i);
+            h |= 0;
+        }
+        return 'proof_' + Math.abs(h).toString(16);
+    },
 
     handleLogoTrigger(event) {
         const now = Date.now();
@@ -163,7 +179,7 @@ const auth = {
         });
     },
 
-    verify() {
+    async verify() {
         if (!state.pin || state.pin.length !== 4) return;
         if (!this.verifiedCoId) return this.resetCompanyStep();
 
@@ -174,7 +190,7 @@ const auth = {
         if (this.verifiedCoId === 'admin') {
             const t = state.data.config.teachers[role];
             if (t && t.pin === state.pin) {
-                this.completeLogin({ admin: true, role: role, coId: null }, 'CLAUSTRO DOCENTE', role);
+                await this.completeLogin({ admin: true, role: role, coId: null }, 'CLAUSTRO DOCENTE', role, t.pin);
             } else {
                 ui.notify("❌ PIN Docente incorrecto.", "error");
                 this.clear();
@@ -192,7 +208,7 @@ const auth = {
                 co.loginStats.roles[role].count++;
                 co.loginStats.roles[role].lastLogin = new Date().toLocaleString();
 
-                this.completeLogin({ admin: false, role: role, coId: this.verifiedCoId }, co.name, role);
+                await this.completeLogin({ admin: false, role: role, coId: this.verifiedCoId }, co.name, role, expectedPin);
             } else {
                 ui.notify("❌ PIN de departamento incorrecto.", "error");
                 this.clear();
@@ -200,12 +216,36 @@ const auth = {
         }
     },
 
-    completeLogin(userObj, entityName, roleName) {
-        const sessionPayload = { ...userObj, authToken: state.getAuthToken(userObj) };
+    async completeLogin(userObj, entityName, roleName, verifiedCredential) {
+        // G4a: Solución transitoria de sesión. Expira a las 8 horas.
+        const exp = Date.now() + (8 * 60 * 60 * 1000);
+        const credential = verifiedCredential || (userObj.admin 
+            ? (state.data.config?.teachers?.[userObj.role]?.pin || '') 
+            : (state.getRolePin(state.data.companies?.[userObj.coId], userObj.role) || ''));
+
+        const authProof = await this.generateAuthProof(userObj.role, userObj.coId, exp, credential);
+        const authToken = state.getAuthToken(userObj);
+
+        const sessionPayload = { 
+            admin: !!userObj.admin,
+            role: userObj.role,
+            coId: userObj.coId,
+            exp,
+            authProof,
+            authToken
+        };
+
         state.user = Object.freeze(sessionPayload);
         state.currentUser = state.user;
         state.pin = '';
-        localStorage.setItem(state.sessionKey, JSON.stringify(sessionPayload));
+
+        // G4a: Guardar exclusivamente en sessionStorage, no en localStorage
+        try {
+            sessionStorage.setItem(state.sessionKey, JSON.stringify(sessionPayload));
+        } catch (e) {}
+        try {
+            localStorage.removeItem(state.sessionKey);
+        } catch (e) {}
 
         if (typeof ui.playLoginAnimation === 'function') {
             ui.playLoginAnimation(roleName);
@@ -214,8 +254,9 @@ const auth = {
         telemetry.startSession(entityName, roleName);
 
         setTimeout(() => {
-            document.getElementById('hud-header')?.classList.remove('hidden');
-            document.getElementById('hud-nav')?.classList.remove('hidden');
+            if (typeof ui !== 'undefined' && typeof ui.setHUDVisibility === 'function') {
+                ui.setHUDVisibility(true);
+            }
             this.buildNav(userObj.admin);
 
             // FASE 2: Entrada directa a la ventana prioritaria del rol
@@ -319,10 +360,16 @@ const auth = {
         state.currentUser = null;
         state.pin = '';
         this.verifiedCoId = null;
-        localStorage.removeItem(state.sessionKey);
+        try { sessionStorage.removeItem(state.sessionKey); } catch(e) {}
+        try { localStorage.removeItem(state.sessionKey); } catch(e) {}
         try { sessionStorage.clear(); } catch(e) {}
-        document.getElementById('hud-header')?.classList.add('hidden');
-        document.getElementById('hud-nav')?.classList.add('hidden');
+        const hdrLogo = document.getElementById('marsket-logo');
+        if (hdrLogo && hdrLogo.closest('#hud-header')) {
+            hdrLogo.id = 'hud-marsket-logo';
+        }
+        if (typeof ui !== 'undefined' && typeof ui.setHUDVisibility === 'function') {
+            ui.setHUDVisibility(false);
+        }
         ui.current = 'login';
         ui.render();
     }

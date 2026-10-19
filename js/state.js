@@ -7,6 +7,7 @@ const state = {
     sessionKey: 'marsket_session_v1',
     isCloudOnline: false, isSyncing: false, syncTimer: null, heartbeatTimer: null,
     consecutiveNetworkFailures: 0, isOfflineContained: false, _listenersAttached: false,
+    _hasWarnedCloudNetwork: false,
     _vaultKey: 'MARS_AEE_2026_SECRET_KEY',
 
     encodeSecret(str) {
@@ -95,7 +96,7 @@ const state = {
         if (userObj.admin) {
             const t = dataRoot.config?.teachers?.[userObj.role];
             if (!t) return '';
-            const raw = `T|${userObj.role}|${t.pin || ''}|${t.pinUpdatedAt || 0}`;
+            const raw = `T|${userObj.role}|${t.pinUpdatedAt || 0}`;
             return this.encodeSecret(raw);
         }
         const co = dataRoot.companies?.[userObj.coId];
@@ -104,7 +105,7 @@ const state = {
         const pin = this.getRolePin(co, userObj.role);
         if (!pin) return '';
         const auxDept = userObj.role === 'AUXILIAR' ? (co.auxRoleDept || '') : '';
-        const raw = `S|${userObj.coId}|${userObj.role}|${code}|${pin}|${auxDept}|${co.authUpdatedAt || 0}`;
+        const raw = `S|${userObj.coId}|${userObj.role}|${code}|${auxDept}|${co.authUpdatedAt || 0}`;
         return this.encodeSecret(raw);
     },
 
@@ -346,6 +347,13 @@ const state = {
 
     verifySessionIntegrity(serverOrMergedData = this.data) {
         if (!this.user) return true;
+
+        // Comprobar expiración de la sesión (8 horas)
+        if (this.user.exp && this.user.exp < Date.now()) {
+            this.revokeSession("Sesión finalizada: El tiempo de autorización de misión (8 horas) ha expirado.");
+            return false;
+        }
+
         const expectedToken = this.getAuthToken(this.user, serverOrMergedData);
         const currentToken = this.user.authToken || '';
         const isEntityValid = this.user.admin
@@ -353,30 +361,36 @@ const state = {
             : !!(serverOrMergedData?.companies?.[this.user.coId] && this.getRolePin(serverOrMergedData.companies[this.user.coId], this.user.role));
 
         if (!isEntityValid || !expectedToken || (currentToken && currentToken !== expectedToken)) {
-            clearTimeout(this.syncTimer);
-            this.user = null;
-            this.currentUser = null;
-            this.pin = '';
-            if (typeof auth !== 'undefined') auth.verifiedCoId = null;
-            try { localStorage.removeItem(this.sessionKey); } catch(e) {}
-            try { sessionStorage.clear(); } catch(e) {}
-            document.getElementById('hud-header')?.classList.add('hidden');
-            document.getElementById('hud-nav')?.classList.add('hidden');
-            if (typeof ui !== 'undefined') {
-                ui.current = 'login';
-                if (typeof ui.renderLogin === 'function') ui.renderLogin();
-                else if (typeof ui.render === 'function') ui.render();
-                if (typeof ui.showModal === 'function') {
-                    ui.showModal(
-                        "ALERTA DE SEGURIDAD // SESIÓN REVOCADA",
-                        `<p class="text-xs sm:text-sm text-mars-magenta font-bold leading-relaxed">Sesión finalizada: Las credenciales de acceso han sido modificadas por coordinación.</p>`,
-                        ""
-                    );
-                }
-            }
+            this.revokeSession("Sesión finalizada: Las credenciales de acceso han sido modificadas por coordinación.");
             return false;
         }
         return true;
+    },
+
+    revokeSession(reason) {
+        clearTimeout(this.syncTimer);
+        this.user = null;
+        this.currentUser = null;
+        this.pin = '';
+        if (typeof auth !== 'undefined') auth.verifiedCoId = null;
+        try { localStorage.removeItem(this.sessionKey); } catch(e) {}
+        try { sessionStorage.removeItem(this.sessionKey); } catch(e) {}
+        try { sessionStorage.clear(); } catch(e) {}
+        if (typeof ui !== 'undefined' && typeof ui.setHUDVisibility === 'function') {
+            ui.setHUDVisibility(false);
+        }
+        if (typeof ui !== 'undefined') {
+            ui.current = 'login';
+            if (typeof ui.renderLogin === 'function') ui.renderLogin();
+            else if (typeof ui.render === 'function') ui.render();
+            if (typeof ui.showModal === 'function' && reason) {
+                ui.showModal(
+                    "ALERTA DE SEGURIDAD // SESIÓN REVOCADA",
+                    `<p class="text-xs sm:text-sm text-mars-magenta font-bold leading-relaxed">${ui.escapeHTML(reason)}</p>`,
+                    ""
+                );
+            }
+        }
     },
 
     setOfflineContainment(active) {
@@ -402,7 +416,8 @@ const state = {
             const refreshed = { ...this.user, authToken: this.getAuthToken(this.user, this.data) };
             this.user = Object.freeze(refreshed);
             this.currentUser = this.user;
-            try { localStorage.setItem(this.sessionKey, JSON.stringify(refreshed)); } catch(e) {}
+            try { sessionStorage.setItem(this.sessionKey, JSON.stringify(refreshed)); } catch(e) {}
+            try { localStorage.removeItem(this.sessionKey); } catch(e) {}
         }
 
         this.saveLocalOnly();
@@ -425,7 +440,8 @@ const state = {
             const refreshed = { ...this.user, authToken: this.getAuthToken(this.user, this.data) };
             this.user = Object.freeze(refreshed);
             this.currentUser = this.user;
-            try { localStorage.setItem(this.sessionKey, JSON.stringify(refreshed)); } catch(e) {}
+            try { sessionStorage.setItem(this.sessionKey, JSON.stringify(refreshed)); } catch(e) {}
+            try { localStorage.removeItem(this.sessionKey); } catch(e) {}
         }
 
         this.saveLocalOnly();
@@ -444,7 +460,8 @@ const state = {
             const refreshed = { ...this.user, authToken: this.getAuthToken(this.user, this.data) };
             this.user = Object.freeze(refreshed);
             this.currentUser = this.user;
-            try { localStorage.setItem(this.sessionKey, JSON.stringify(refreshed)); } catch(e) {}
+            try { sessionStorage.setItem(this.sessionKey, JSON.stringify(refreshed)); } catch(e) {}
+            try { localStorage.removeItem(this.sessionKey); } catch(e) {}
         }
 
         this.saveLocalOnly();
@@ -463,35 +480,58 @@ const state = {
             this.data = this.migrate(JSON.parse(JSON.stringify(INITIAL_DATA)));
         }
 
-        const savedSession = localStorage.getItem(this.sessionKey);
+        // G4a: Eliminar auto-asignación de tokens en state.init().
+        // La sesión transitoria reside en sessionStorage con prueba criptográfica SHA-256 (authProof) y exp (8 h).
+        // Se limpia cualquier sesión residual en localStorage para impedir suplantación offline persistente.
+        try { localStorage.removeItem(this.sessionKey); } catch (e) {}
+
+        const savedSession = sessionStorage.getItem(this.sessionKey);
         if (savedSession) {
             try {
                 const sessionUser = JSON.parse(savedSession);
-                const isValid = sessionUser && (sessionUser.admin 
-                    ? !!(this.data.config?.teachers && this.data.config.teachers[sessionUser.role])
-                    : !!(this.data.companies && this.data.companies[sessionUser.coId]));
+                const now = Date.now();
 
-                if (isValid) {
-                    if (!sessionUser.authToken) {
-                        sessionUser.authToken = this.getAuthToken(sessionUser, this.data);
-                        localStorage.setItem(this.sessionKey, JSON.stringify(sessionUser));
-                    }
-                    this.user = Object.freeze(sessionUser);
-                    this.currentUser = this.user;
-                    document.getElementById('hud-header')?.classList.remove('hidden');
-                    document.getElementById('hud-nav')?.classList.remove('hidden');
-                    if (typeof auth !== 'undefined' && typeof auth.buildNav === 'function') {
-                        auth.buildNav(this.user.admin);
-                    }
-                } else {
-                    this.user = null;
-                    this.currentUser = null;
-                    localStorage.removeItem(this.sessionKey);
+                // 1. Validar expiración (8 h) y presencia obligatoria de prueba
+                if (!sessionUser || !sessionUser.exp || sessionUser.exp < now || !sessionUser.authProof) {
+                    throw new Error("Sesión expirada o sin prueba de autorización");
+                }
+
+                // 2. Extraer credencial vigente del estado actual (PIN docente o PIN de rol de startup)
+                let credencialVigente = '';
+                if (sessionUser.admin) {
+                    credencialVigente = this.data.config?.teachers?.[sessionUser.role]?.pin || '';
+                } else if (sessionUser.coId && this.data.companies?.[sessionUser.coId]) {
+                    const co = this.data.companies[sessionUser.coId];
+                    credencialVigente = this.getRolePin(co, sessionUser.role) || '';
+                }
+
+                if (!credencialVigente) {
+                    throw new Error("Credencial no encontrada en el estado actual");
+                }
+
+                // 3. Recalcular prueba criptográfica con la credencial del estado actual
+                const expectedProof = (typeof auth !== 'undefined' && typeof auth.generateAuthProof === 'function')
+                    ? await auth.generateAuthProof(sessionUser.role, sessionUser.coId, sessionUser.exp, credencialVigente)
+                    : null;
+
+                if (!expectedProof || sessionUser.authProof !== expectedProof) {
+                    throw new Error("Fallo de integridad criptográfica en la prueba de sesión");
+                }
+
+                // Sesión legítima validada
+                this.user = Object.freeze(sessionUser);
+                this.currentUser = this.user;
+                if (typeof ui !== 'undefined' && typeof ui.setHUDVisibility === 'function') {
+                    ui.setHUDVisibility(true);
+                }
+                if (typeof auth !== 'undefined' && typeof auth.buildNav === 'function') {
+                    auth.buildNav(this.user.admin);
                 }
             } catch(e) {
+                // NOTA TÉCNICA G4b: La vulnerabilidad G4b (falsificar leyendo /api/state) sigue abierta transitoriamente hasta la aprobación e implantación del servidor D2 (GS1–GS4).
                 this.user = null;
                 this.currentUser = null;
-                localStorage.removeItem(this.sessionKey);
+                try { sessionStorage.removeItem(this.sessionKey); } catch(err) {}
             }
         }
         
@@ -552,6 +592,7 @@ const state = {
         try {
             const res = await fetch('/api/state', { cache: 'no-store' });
             if(res.ok) {
+                this._hasWarnedCloudNetwork = false;
                 const json = await res.json();
                 networkOk = true;
                 this.consecutiveNetworkFailures = 0;
@@ -578,12 +619,20 @@ const state = {
             } else {
                 this.isCloudOnline = false;
                 this.consecutiveNetworkFailures++;
+                console.error(`Error HTTP inesperado en fetchFromCloud (${res.status}):`, res.statusText);
                 if (this.consecutiveNetworkFailures >= 2 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
                     this.setOfflineContainment(true);
                 }
             }
         } catch(err) { 
-            console.error("Error de red en fetchFromCloud:", err);
+            // G9: Contingencia de red esperada (offline/servidor no alcanzable) -> telemetry + console.debug (rate-limited a 1 vez)
+            if (!this._hasWarnedCloudNetwork) {
+                this._hasWarnedCloudNetwork = true;
+                if (typeof telemetry !== 'undefined' && typeof telemetry.log === 'function') {
+                    telemetry.log("NETWORK", "Conexión /api/state no disponible actualmente (modo sin conexión)");
+                }
+                console.debug("[D1: OFFLINE] Modo sin conexión activado (/api/state no alcanzable).");
+            }
             this.isCloudOnline = false;
             this.consecutiveNetworkFailures++;
             if (this.consecutiveNetworkFailures >= 2 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
@@ -698,7 +747,14 @@ const state = {
                 }
             }
         } catch(err) { 
-            console.error("Error de red en pushToCloud:", err);
+            // G9: Contingencia de red esperada en pushToCloud -> telemetry + console.debug (rate-limited a 1 vez)
+            if (!this._hasWarnedCloudNetwork) {
+                this._hasWarnedCloudNetwork = true;
+                if (typeof telemetry !== 'undefined' && typeof telemetry.log === 'function') {
+                    telemetry.log("NETWORK", "Conexión /api/state no disponible para push (guardado local)");
+                }
+                console.debug("[D1: OFFLINE] Modo sin conexión activado (push no alcanzable).");
+            }
             this.isCloudOnline = false;
             this.consecutiveNetworkFailures++;
             if (this.consecutiveNetworkFailures >= 2 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {

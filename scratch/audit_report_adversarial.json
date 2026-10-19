@@ -1,0 +1,339 @@
+{
+  "timestamp": "2026-10-19T05:22:26.892Z",
+  "environment": "HTTP standard http://127.0.0.1:3000/ (Tailwind compilado css/tailwind.css)",
+  "gates": {
+    "G8": {
+      "status": "CORRECTO",
+      "overflowCount": 0,
+      "results": [
+        {
+          "viewportWidth": 375,
+          "overflows": []
+        },
+        {
+          "viewportWidth": 390,
+          "overflows": []
+        },
+        {
+          "viewportWidth": 768,
+          "overflows": []
+        }
+      ],
+      "evidence": "Auditadas todas las vistas en 375px, 390px y 768px con 80 caracteres 'B'. Desbordamientos horizontales detectados: 0."
+    },
+    "G9": {
+      "status": "CORRECTO",
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "consoleDebugs": [
+        "[D1: OFFLINE] Modo sin conexión activado (/api/state no alcanzable)."
+      ],
+      "offlineUI": {
+        "cloudIndicator": "[D1: OFFLINE]",
+        "isOnline": false
+      },
+      "evidence": "Errores consola: 0. Avisos (console.warn): 0. Indicador UI en desconexión: [D1: OFFLINE]."
+    },
+    "G16": {
+      "status": "CORRECTO",
+      "clsScore": 0.009767192886473753,
+      "clsTopShifts": [
+        {
+          "value": 0.006718344643539004,
+          "sources": [
+            {
+              "nodeTag": "FOOTER",
+              "nodeId": "",
+              "previousRect": {
+                "x": 0,
+                "y": 803,
+                "width": 768,
+                "height": 41,
+                "top": 803,
+                "right": 768,
+                "bottom": 844,
+                "left": 0
+              },
+              "currentRect": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            },
+            {
+              "nodeTag": "SPAN",
+              "nodeId": "",
+              "previousRect": {
+                "x": 218.375,
+                "y": 33,
+                "width": 32.734375,
+                "height": 28,
+                "top": 33,
+                "right": 251.109375,
+                "bottom": 61,
+                "left": 218.375
+              },
+              "currentRect": {
+                "x": 236.015625,
+                "y": 33,
+                "width": 39.546875,
+                "height": 28,
+                "top": 33,
+                "right": 275.5625,
+                "bottom": 61,
+                "left": 236.015625
+              }
+            }
+          ]
+        },
+        {
+          "value": 0.001745460241608829,
+          "sources": [
+            {
+              "nodeTag": "DIV",
+              "nodeId": "",
+              "previousRect": {
+                "x": 615,
+                "y": 43,
+                "width": 120,
+                "height": 26,
+                "top": 43,
+                "right": 735,
+                "bottom": 69,
+                "left": 615
+              },
+              "currentRect": {
+                "x": 571,
+                "y": 38,
+                "width": 164,
+                "height": 36,
+                "top": 38,
+                "right": 735,
+                "bottom": 74,
+                "left": 571
+              }
+            },
+            {
+              "nodeTag": "SPAN",
+              "nodeId": "hud-balance",
+              "previousRect": {
+                "x": 258.65625,
+                "y": 156,
+                "width": 80,
+                "height": 16,
+                "top": 156,
+                "right": 338.65625,
+                "bottom": 172,
+                "left": 258.65625
+              },
+              "currentRect": {
+                "x": 359.46875,
+                "y": 156,
+                "width": 80,
+                "height": 16,
+                "top": 156,
+                "right": 439.46875,
+                "bottom": 172,
+                "left": 359.46875
+              }
+            },
+            {
+              "nodeTag": "SPAN",
+              "nodeId": "",
+              "previousRect": {
+                "x": 207.4375,
+                "y": 156,
+                "width": 43.21875,
+                "height": 16,
+                "top": 156,
+                "right": 250.65625,
+                "bottom": 172,
+                "left": 207.4375
+              },
+              "currentRect": {
+                "x": 308.25,
+                "y": 156,
+                "width": 43.21875,
+                "height": 16,
+                "top": 156,
+                "right": 351.46875,
+                "bottom": 172,
+                "left": 308.25
+              }
+            },
+            {
+              "nodeTag": "SPAN",
+              "nodeId": "",
+              "previousRect": {
+                "x": 192.234375,
+                "y": 156,
+                "width": 7.203125,
+                "height": 16,
+                "top": 156,
+                "right": 199.4375,
+                "bottom": 172,
+                "left": 192.234375
+              },
+              "currentRect": {
+                "x": 293.046875,
+                "y": 156,
+                "width": 7.203125,
+                "height": 16,
+                "top": 156,
+                "right": 300.25,
+                "bottom": 172,
+                "left": 293.046875
+              }
+            }
+          ]
+        },
+        {
+          "value": 0.0012730520713715157,
+          "sources": [
+            {
+              "nodeTag": "DIV",
+              "nodeId": "",
+              "previousRect": {
+                "x": 571,
+                "y": 38,
+                "width": 164,
+                "height": 36,
+                "top": 38,
+                "right": 735,
+                "bottom": 74,
+                "left": 571
+              },
+              "currentRect": {
+                "x": 615,
+                "y": 43,
+                "width": 120,
+                "height": 26,
+                "top": 43,
+                "right": 735,
+                "bottom": 69,
+                "left": 615
+              }
+            },
+            {
+              "nodeTag": "SPAN",
+              "nodeId": "",
+              "previousRect": {
+                "x": 301.046875,
+                "y": 156,
+                "width": 37.609375,
+                "height": 16,
+                "top": 156,
+                "right": 338.65625,
+                "bottom": 172,
+                "left": 301.046875
+              },
+              "currentRect": {
+                "x": 207.4375,
+                "y": 156,
+                "width": 43.21875,
+                "height": 16,
+                "top": 156,
+                "right": 250.65625,
+                "bottom": 172,
+                "left": 207.4375
+              }
+            },
+            {
+              "nodeTag": "SPAN",
+              "nodeId": "",
+              "previousRect": {
+                "x": 285.84375,
+                "y": 156,
+                "width": 7.203125,
+                "height": 16,
+                "top": 156,
+                "right": 293.046875,
+                "bottom": 172,
+                "left": 285.84375
+              },
+              "currentRect": {
+                "x": 192.234375,
+                "y": 156,
+                "width": 7.203125,
+                "height": 16,
+                "top": 156,
+                "right": 199.4375,
+                "bottom": 172,
+                "left": 192.234375
+              }
+            }
+          ]
+        }
+      ],
+      "touchViolationsCount": 0,
+      "touchViolations": [],
+      "sampleCompliant": [
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "type": "button",
+          "text": "[ 🚀 NOVEDADES ]",
+          "w": 170,
+          "h": 44
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "type": "button",
+          "text": "[ 💡 SUGERENCIA ]",
+          "w": 170,
+          "h": 44
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "type": "button",
+          "text": "[ ❓ GUÍA ]",
+          "w": 170,
+          "h": 44
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "type": "button",
+          "text": "[ SALIR ]",
+          "w": 170,
+          "h": 44
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "type": "button",
+          "text": "🔐 BÓVEDA ÓRDENES",
+          "w": 166,
+          "h": 44
+        }
+      ],
+      "skipOnboardingBox": {
+        "w": 44,
+        "h": 44
+      },
+      "evidence": "CLS acumulado medido: 0.0098 (Umbral <= 0.02). Violaciones táctiles < 44x44: 0. Casilla #skip-onboarding: {\"w\":44,\"h\":44}."
+    },
+    "G6": {
+      "status": "CORRECTO",
+      "failedTerms": [],
+      "evidence": "Probados 13 términos de riesgo LOPD. Bloqueados: 13/13."
+    },
+    "G7": {
+      "status": "CORRECTO",
+      "failedTerms": [],
+      "evidence": "Probados 6 términos aeroespaciales/epónimos. Autorizados: 6/6."
+    },
+    "G14": {
+      "status": "CORRECTO",
+      "uniqueRolesCovered": 7,
+      "evidence": "Manuales operativos diferenciados de puesto: 7 perfiles únicos validados."
+    }
+  }
+}

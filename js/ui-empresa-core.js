@@ -11,7 +11,7 @@ Object.assign(ui, {
             el.innerHTML = `
             <div class="min-h-[75vh] flex items-center justify-center w-full px-3 sm:px-4 py-4">
                 <div id="login-box" class="max-w-md w-full terminal-border bg-mars-card p-6 sm:p-8 glow-cyan animate-in fade-in zoom-in duration-300 transition-all">
-                    <img id="marsket-logo" src="logo.png" alt="Logo oficial MARS-KET 2.0" onclick="auth.handleLogoTrigger(event)" ondblclick="auth.handleLogoTrigger(event)" style="touch-action: manipulation;" class="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 drop-shadow-[0_0_12px_rgba(0,240,255,0.8)] cursor-pointer select-none" onerror="this.style.display='none'">
+                    <img id="marsket-logo" src="logo.png" alt="Logo oficial MARS-KET 2.0" width="96" height="96" onclick="auth.handleLogoTrigger(event)" ondblclick="auth.handleLogoTrigger(event)" style="touch-action: manipulation;" class="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 drop-shadow-[0_0_12px_rgba(0,240,255,0.8)] cursor-pointer select-none" onerror="this.onerror=null;this.src='logo.png';">
                     <h2 id="login-title" class="font-orbitron text-center text-mars-cyan text-lg sm:text-xl mb-2 tracking-widest uppercase font-black">Secure_Gateway</h2>
                     <p class="text-xs text-slate-300 text-center uppercase tracking-wider mb-6">Paso 1/2: Identificación de Entidad Aeroespacial</p>
                     
@@ -37,7 +37,7 @@ Object.assign(ui, {
             <div id="login-box" class="max-w-md w-full terminal-border bg-mars-card p-6 sm:p-8 glow-cyan animate-in fade-in zoom-in duration-300 transition-all">
                 <div class="flex justify-between items-center border-b border-mars-border pb-3 mb-4 gap-2">
                     <div class="flex items-center gap-2">
-                        <img src="logo.png" alt="MARS-KET 2.0" class="w-7 h-7 object-contain drop-shadow-[0_0_6px_rgba(0,240,255,0.7)]">
+                        <img src="logo.png" alt="MARS-KET 2.0" width="28" height="28" class="w-7 h-7 object-contain drop-shadow-[0_0_6px_rgba(0,240,255,0.7)]">
                         <span class="text-xs text-slate-300 uppercase font-bold tracking-wider">Paso 2/2: Credencial</span>
                     </div>
                     <button type="button" onclick="auth.resetCompanyStep()" class="min-h-[44px] text-xs text-mars-magenta hover:text-white uppercase font-black tracking-wider border border-mars-magenta/60 px-3 py-1.5">[⬅ Cambiar Entidad]</button>
@@ -107,7 +107,7 @@ Object.assign(ui, {
                         <span class="text-xs font-bold uppercase leading-relaxed break-words">${this.escapeHTML(n.message)}</span>
                         <span class="text-xs text-slate-300 mt-1">${this.escapeHTML(n.date)}</span>
                     </div>
-                    <button type="button" aria-label="Descartar notificación" onclick="ui.dismissNotification('${this.escapeHTML(n.id)}')" class="min-h-[44px] min-w-[44px] px-3 py-2 font-black hover:text-white transition-colors text-xs border border-current/40 shrink-0">✕</button>
+                    <button type="button" aria-label="Descartar notificación" onclick="ui.dismissNotification('${this.escapeHTML(n.id)}')" class="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center font-black hover:text-white transition-colors text-xs border border-current/40 shrink-0">✕</button>
                 </div>`;
             }).join('')}
         </div>`;
