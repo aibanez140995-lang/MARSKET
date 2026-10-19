@@ -30,6 +30,8 @@ Documento normativo de referencia para la arquitectura de interfaces, enrutamien
 | `ui` | `setSubView` | `(subView, skipHistory)` | No | `subView: string|null`, `skipHistory: boolean` | `void` | Activa una sub-vista en móvil integrándola en la pila de capas del botón Atrás. |
 | `ui` | `openDrawer` | `(title, bodyHtml)` | No | `title: string`, `bodyHtml: string` | `void` | Despliega el bottom-sheet HUD con retención de foco, unidades dvh e inserción en la pila de navegación. |
 | `ui` | `closeDrawer` | `(skipHistory)` | No | `skipHistory: boolean` | `void` | Cierra el bottom-sheet HUD devolviendo el foco al elemento de origen y sincronizando capas. |
+| `ui` | `cancelNameChangeRequest` | `()` | No | Ninguno | `void` | Permite al CEO retirar/cancelar una solicitud de cambio de denominación social pendiente, marcándola como CANCELADO con marca temporal y sincronización. |
+| `ui` | `dismissNameChangeRejection` | `()` | No | Ninguno | `void` | Permite al CEO acusar recibo del aviso de denegación de nombre del Registro Mercantil y archivar la solicitud para permitir un nuevo trámite. |
 | `ui` | `render` | `()` | No | Ninguno | `void` | Renderiza la vista activa. Si no hay sesión, delega en `#login-screen` y oculta todo el HUD sin desplazamiento vertical ni CLS. |
 
 ---

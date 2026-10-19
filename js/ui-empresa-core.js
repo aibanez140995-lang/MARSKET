@@ -124,7 +124,11 @@ Object.assign(ui, {
         
         co.notifications = co.notifications || [];
         const notif = co.notifications.find(n => n.id === id);
-        if (notif) notif.read = true;
+        if (notif) {
+            notif.read = true;
+            notif.updatedAt = Date.now();
+        }
+        co.updatedAt = Date.now();
         state.save();
         this.render();
     },

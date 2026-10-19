@@ -112,12 +112,27 @@ Object.assign(ui, {
             const req = co.nameChangeRequest;
             if (req && req.status === 'PENDIENTE') {
                 nameChangeHtml = `
-                <div class="bg-mars-yellow/10 border border-mars-yellow p-4 flex flex-wrap justify-between items-center gap-2 mb-6">
-                    <div>
+                <div class="bg-mars-yellow/10 border border-mars-yellow p-4 flex flex-wrap justify-between items-center gap-3 mb-6">
+                    <div class="min-w-0">
                         <span class="text-xs text-mars-yellow font-bold uppercase tracking-wider block mb-1">Registro Mercantil</span>
                         <p class="text-xs sm:text-sm text-white break-words">Solicitud enviada: <span class="font-orbitron font-bold">${this.escapeHTML(req.proposedName)}</span></p>
                     </div>
-                    <span class="text-xs bg-mars-yellow text-black font-black px-2.5 py-1 uppercase animate-pulse">En Revisión</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs bg-mars-yellow text-black font-black px-2.5 py-1 uppercase animate-pulse">En Revisión</span>
+                        <button type="button" onclick="ui.cancelNameChangeRequest()" class="min-h-[44px] bg-slate-800 border border-mars-magenta/60 text-mars-magenta hover:bg-mars-magenta hover:text-white px-3 py-1.5 text-xs font-bold uppercase transition-all">Cancelar Solicitud</button>
+                    </div>
+                </div>`;
+            } else if (req && req.status === 'RECHAZADO') {
+                nameChangeHtml = `
+                <div class="bg-mars-magenta/10 border border-mars-magenta p-4 flex flex-wrap justify-between items-center gap-3 mb-6">
+                    <div class="min-w-0 flex-1">
+                        <span class="text-xs text-mars-magenta font-bold uppercase tracking-wider block mb-1">🏛️ Registro Mercantil // Solicitud Denegada</span>
+                        <p class="text-xs sm:text-sm text-white break-words">La propuesta de denominación social <span class="font-orbitron font-bold text-mars-magenta">"${this.escapeHTML(req.proposedName)}"</span> ha sido denegada por Coordinación.</p>
+                    </div>
+                    <div class="flex gap-2 shrink-0">
+                        <button type="button" onclick="ui.promptRequestNameChange()" class="min-h-[44px] bg-mars-yellow text-black font-black px-3 py-2 text-xs uppercase hover:bg-white transition-all">Nueva Solicitud</button>
+                        <button type="button" onclick="ui.dismissNameChangeRejection()" class="min-h-[44px] bg-slate-800 border border-slate-700 text-slate-300 hover:text-white px-3 py-2 text-xs uppercase font-bold transition-all">Entendido</button>
+                    </div>
                 </div>`;
             } else {
                 nameChangeHtml = `
@@ -225,13 +240,48 @@ Object.assign(ui, {
             status: 'PENDIENTE',
             proposedName: newName,
             reason: reason,
-            date: new Date().toLocaleString()
+            date: new Date().toLocaleString(),
+            updatedAt: Date.now()
         };
+        co.updatedAt = Date.now();
 
         state.save();
         this.closeModal();
         this.render();
         this.notify("✅ Solicitud enviada exitosamente al Registro Mercantil (Coordinación).", "success");
+    },
+
+    cancelNameChangeRequest() {
+        if (!state.user || state.user.role !== 'CEO') return;
+        const co = state.data.companies[state.user.coId];
+        if (!co || !co.nameChangeRequest || co.nameChangeRequest.status !== 'PENDIENTE') return;
+
+        ui.confirmHUD(
+            "Cancelar Solicitud de Nombre",
+            "¿Deseas retirar la solicitud de cambio de denominación social enviada al Registro Mercantil?",
+            () => {
+                co.nameChangeRequest.status = 'CANCELADO';
+                co.nameChangeRequest.resolvedAt = Date.now();
+                co.nameChangeRequest.updatedAt = Date.now();
+                co.updatedAt = Date.now();
+                state.save();
+                this.render();
+                this.notify("Solicitud de cambio de nombre cancelada.", "info");
+            },
+            "Retirar Solicitud",
+            true
+        );
+    },
+
+    dismissNameChangeRejection() {
+        if (!state.user || state.user.role !== 'CEO') return;
+        const co = state.data.companies[state.user.coId];
+        if (!co || !co.nameChangeRequest) return;
+        co.nameChangeRequest.status = 'ARCHIVADO';
+        co.nameChangeRequest.updatedAt = Date.now();
+        co.updatedAt = Date.now();
+        state.save();
+        this.render();
     },
 
     modalReportInactivity() {

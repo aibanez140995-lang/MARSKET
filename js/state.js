@@ -296,6 +296,17 @@ const state = {
                         merged.companies[k].auxRoleRequest = JSON.parse(JSON.stringify(sCo.auxRoleRequest));
                         merged.companies[k].authUpdatedAt = sAuthTime;
                     }
+                    const mergeArraysLocalDominant = (arrLocal, arrServer) => {
+                        if (!Array.isArray(arrLocal)) arrLocal = [];
+                        if (!Array.isArray(arrServer)) arrServer = [];
+                        const localIds = new Set(arrLocal.map(i => String(i?.id)));
+                        const missingInLocal = arrServer.filter(i => i && i.id && !localIds.has(String(i.id)));
+                        return [...arrLocal, ...missingInLocal];
+                    };
+                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'cart', 'bom'];
+                    arraysToMerge.forEach(arrName => {
+                        merged.companies[k][arrName] = mergeArraysLocalDominant(lCo[arrName], sCo[arrName]);
+                    });
                 } else {
                     if (lAuthTime > sAuthTime) {
                         sCo.authVault = JSON.parse(JSON.stringify(lCo.authVault));
@@ -304,12 +315,51 @@ const state = {
                         sCo.auxRoleRequest = JSON.parse(JSON.stringify(lCo.auxRoleRequest));
                         sCo.authUpdatedAt = lAuthTime;
                     }
+                    // Preservar resolución de solicitudes de cambio de nombre frente a estados pendientes desactualizados
+                    if (lCo.nameChangeRequest) {
+                        const lSt = lCo.nameChangeRequest.status;
+                        const sSt = sCo.nameChangeRequest ? sCo.nameChangeRequest.status : null;
+                        if (!sSt || (sSt === 'PENDIENTE' && lSt && lSt !== 'PENDIENTE') || (lCo.nameChangeRequest.updatedAt || 0) > (sCo.nameChangeRequest?.updatedAt || 0)) {
+                            sCo.nameChangeRequest = JSON.parse(JSON.stringify(lCo.nameChangeRequest));
+                        }
+                    }
+                    if (lCo.brandApproval) {
+                        const lSt = lCo.brandApproval.status;
+                        const sSt = sCo.brandApproval ? sCo.brandApproval.status : null;
+                        if (!sSt || (sSt === 'PENDIENTE' && lSt && lSt !== 'PENDIENTE') || (lCo.brandApproval.updatedAt || 0) > (sCo.brandApproval?.updatedAt || 0)) {
+                            sCo.brandApproval = JSON.parse(JSON.stringify(lCo.brandApproval));
+                        }
+                    }
+                    if (lCo.auxRoleRequest) {
+                        const lSt = lCo.auxRoleRequest.status;
+                        const sSt = sCo.auxRoleRequest ? sCo.auxRoleRequest.status : null;
+                        if (!sSt || (sSt === 'PENDIENTE' && lSt && lSt !== 'PENDIENTE') || (lCo.auxRoleRequest.updatedAt || 0) > (sCo.auxRoleRequest?.updatedAt || 0)) {
+                            sCo.auxRoleRequest = JSON.parse(JSON.stringify(lCo.auxRoleRequest));
+                        }
+                    }
                     const mergeArrays = (arrServer, arrLocal) => {
                         if (!Array.isArray(arrServer)) arrServer = [];
                         if (!Array.isArray(arrLocal)) arrLocal = [];
-                        const serverIds = new Set(arrServer.map(i => String(i.id)));
+                        const localMap = new Map();
+                        arrLocal.forEach(i => { if (i && i.id) localMap.set(String(i.id), i); });
+                        
+                        const mergedServer = arrServer.map(sItem => {
+                            if (!sItem || !sItem.id) return sItem;
+                            const lItem = localMap.get(String(sItem.id));
+                            if (!lItem) return sItem;
+                            
+                            // Preservar estado leído de notificaciones (una vez leída, nunca vuelve a no leída)
+                            const isRead = Boolean(sItem.read || lItem.read);
+                            let status = sItem.status;
+                            if (sItem.status === 'PENDIENTE' && lItem.status && lItem.status !== 'PENDIENTE') {
+                                status = lItem.status;
+                            }
+                            return { ...sItem, ...lItem, read: isRead, status: status || sItem.status };
+                        });
+                        
+                        const serverIds = new Set(arrServer.map(i => String(i?.id)));
                         const missingInServer = arrLocal.filter(i => i && i.id && !serverIds.has(String(i.id)));
-                        return [...missingInServer, ...arrServer];
+                        return [...missingInServer, ...mergedServer];
                     };
 
                     const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'cart', 'bom'];
@@ -325,9 +375,26 @@ const state = {
         const mergeArraysGlobal = (arrS, arrL) => {
             if(!Array.isArray(arrS)) arrS = [];
             if(!Array.isArray(arrL)) arrL = [];
+            const localMap = new Map();
+            arrL.forEach(i => {
+                const id = String(i?.id || i?.sessionId || '');
+                if (id) localMap.set(id, i);
+            });
+            const mergedGlobal = arrS.map(sItem => {
+                const id = String(sItem?.id || sItem?.sessionId || '');
+                if (!id) return sItem;
+                const lItem = localMap.get(id);
+                if (!lItem) return sItem;
+                const isResolved = Boolean(sItem.resolved || lItem.resolved);
+                let status = sItem.status;
+                if (sItem.status && sItem.status.includes('PENDIENTE') && lItem.status && !lItem.status.includes('PENDIENTE')) {
+                    status = lItem.status;
+                }
+                return { ...sItem, ...lItem, resolved: isResolved, status: status || sItem.status };
+            });
             const ids = new Set(arrS.map(i => String(i?.id || i?.sessionId)));
             const missing = arrL.filter(i => i && (i.id || i.sessionId) && !ids.has(String(i.id || i.sessionId)));
-            return [...missing, ...arrS];
+            return [...missing, ...mergedGlobal];
         };
 
         if (localData.telemetry && localData.telemetry.sessions) {

@@ -953,6 +953,8 @@ Object.assign(ui, {
 
         co.brandApproval.status = 'RECHAZADO';
         co.brandApproval.feedback = reason;
+        co.brandApproval.updatedAt = Date.now();
+        co.updatedAt = Date.now();
 
         ui.pushNotification(cid, 'MARKETING', `Tu propuesta de marca (Logo/Eslogan) ha sido RECHAZADA por Coordinación. Motivo: ${reason}`, 'error');
         ui.pushNotification(cid, 'CEO', `Propuesta de identidad corporativa rechazada. Revisa el panel de Marketing.`, 'error');
@@ -973,6 +975,8 @@ Object.assign(ui, {
         co.brandApproval.pendingLogo = null;
         co.brandApproval.pendingSlogan = "";
         co.brandApproval.feedback = "";
+        co.brandApproval.updatedAt = Date.now();
+        co.updatedAt = Date.now();
 
         ui.pushNotification(cid, 'MARKETING', `¡Enhorabuena! Tu logotipo y eslogan han sido APROBADOS por Coordinación y ya son públicos en el HUD.`, 'success');
         ui.pushNotification(cid, 'CEO', `Identidad corporativa aprobada y visible para toda la flota.`, 'success');
@@ -1206,6 +1210,9 @@ Object.assign(ui, {
         }
         
         co.nameChangeRequest.status = isApproved ? 'APROBADO' : 'RECHAZADO';
+        co.nameChangeRequest.resolvedAt = Date.now();
+        co.nameChangeRequest.updatedAt = Date.now();
+        co.updatedAt = Date.now();
         state.save();
         this.render();
     },

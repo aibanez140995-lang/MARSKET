@@ -591,10 +591,12 @@ const ui = {
             message: message,
             type: type,
             date: new Date().toLocaleString(),
-            read: false
+            read: false,
+            updatedAt: Date.now()
         });
         
         if (co.notifications.length > 50) co.notifications.pop();
+        co.updatedAt = Date.now();
         state.save();
     },
 
