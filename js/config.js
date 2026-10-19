@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.00) ---
 
-const APP_VERSION = "1.1.00";
+const APP_VERSION = "1.1.01";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const REGULATORY_AGENCIES = {
@@ -157,8 +157,18 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.00
+// Changelog Oficial de Producción v1.1.01
 const APP_CHANGELOG = [
+    {
+        version: "1.1.01",
+        date: "Octubre 2026",
+        title: "Gestión de Catálogo, Fix de Precios y Tarjetas PDF de Acceso",
+        highlights: [
+            { type: "NUEVO", text: "Tarjetas PDF de Acceso AEE: Emisión e impresión de credenciales físicas/digitales por rol, flota por startup y baraja completa de aula." },
+            { type: "FIX", text: "Purga de Artículos en Catálogo: Activación del botón de eliminación directa de ítems obsoletos o de prueba en SUPERMARS-KET." },
+            { type: "FIX", text: "Edición y Persistencia de Precios: Actualización numérica inmediata y re-renderizado reactivo en la tabla de gestión de precios." }
+        ]
+    },
     {
         version: "1.1.00",
         date: "Octubre 2026",

@@ -771,7 +771,7 @@ const ui = {
             dynamicStatusHtml = `
             <div class="bg-slate-950 border border-mars-cyan/60 p-3.5 space-y-2.5 mt-2">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-1.5 flex-wrap gap-2">
-                    <span class="text-xs font-orbitron font-black text-mars-cyan uppercase tracking-wider">📡 Telemetría en Vivo del Aula (v1.0.19)</span>
+                    <span class="text-xs font-orbitron font-black text-mars-cyan uppercase tracking-wider">📡 Telemetría en Vivo del Aula (v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.01'})</span>
                     <span class="text-xs font-bold uppercase px-2 py-0.5 border ${d1StatusColor}">[D1: ${d1StatusText}]</span>
                 </div>
                 <div class="grid grid-cols-3 gap-2 text-center text-xs">
@@ -808,7 +808,7 @@ const ui = {
             <div class="bg-slate-950 border border-mars-cyan/60 p-3.5 space-y-2 mt-2 text-xs">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-1.5 flex-wrap gap-1">
                     <span class="font-orbitron font-black text-mars-cyan uppercase">🔐 Estado Operativo y Custodia de Credenciales</span>
-                    <span class="text-mars-green font-bold uppercase">[TOKEN ACTIVO v1.0.19]</span>
+                    <span class="text-mars-green font-bold uppercase">[TOKEN ACTIVO v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.01'}]</span>
                 </div>
                 <p class="text-slate-200 leading-relaxed">
                     <strong>Custodia de PIN:</strong> Tu sesión está protegida mediante huella criptográfica (<code class="text-mars-cyan">authToken</code>). Si Coordinación modifica el PIN de tu puesto o el código de empresa, esta terminal cerrará la sesión en caliente de forma inmediata.
@@ -826,7 +826,7 @@ const ui = {
         content += `
         ${dynamicStatusHtml}
         <div class="bg-slate-900 border border-slate-700 p-3 text-xs text-slate-300 uppercase mt-2 space-y-1">
-            <p>🛡️ <strong class="text-mars-yellow">Norma de Seguridad y LOPD Activa (v1.0.19):</strong> Todos los formularios cuentan con validación LOPD contextual no destructiva (<code class="text-mars-cyan">ui.validateSafeText</code>). Los nombres personales o términos indebidos se señalan con borde neón rojo sin borrar el texto.</p>
+            <p>🛡️ <strong class="text-mars-yellow">Norma de Seguridad y LOPD Activa (v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.01'}):</strong> Todos los formularios cuentan con validación LOPD contextual no destructiva (<code class="text-mars-cyan">ui.validateSafeText</code>). Los nombres personales o términos indebidos se señalan con borde neón rojo sin borrar el texto.</p>
             <p>📱 <strong class="text-mars-cyan">Ergonomía Táctil y Bóveda Descongestionada:</strong> Entradas tipográficas a 16px (anti-zoom móvil), acordeones por hitos con detalle en Drawer táctil y pasarela docente oculta Web Crypto SHA-256.</p>
         </div>
         </div>`;
@@ -898,10 +898,11 @@ const ui = {
     },
 
     showGuide() {
+        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.01';
         const html = `
         <div class="space-y-4 font-mono text-xs leading-relaxed text-slate-200">
             <div class="bg-mars-cyan/10 border border-mars-cyan p-3">
-                <p class="text-mars-cyan font-black uppercase text-xs">Manual Táctico MARS-KET 2.0 (v1.0.19)</p>
+                <p class="text-mars-cyan font-black uppercase text-xs">Manual Táctico MARS-KET 2.0 (v${currentVer})</p>
                 <p class="mt-1">Plataforma oficial de simulación aeroespacial interdisciplinar (AEE / ESA). Cada rol dispone de atribuciones y pestañas priorizadas según su responsabilidad diaria.</p>
             </div>
             <ul class="list-disc pl-5 space-y-2">
@@ -910,7 +911,7 @@ const ui = {
                 <li><strong class="text-mars-green">Gobernanza y Auditoría IA:</strong> Todo uso de IA generativa debe registrarse en la Bitácora IA con verificación humana explícita.</li>
             </ul>
             <div class="bg-slate-950 border border-slate-800 p-3 space-y-1.5">
-                <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">Arquitectura de Seguridad, UX Móvil y Persistencia v1.0.19:</p>
+                <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">Arquitectura de Seguridad, UX Móvil y Persistencia v${currentVer}:</p>
                 <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">await state.updatePin(coId, role, newPin)</code> / <code class="text-mars-cyan">state.updateTeacherPin</code> / <code class="text-mars-cyan">state.updateCompanyCode</code>: Persistencia atómica directa contra Cloudflare D1 sin debounce ni rebote de PIN.</p>
                 <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">ui.validateSafeText(text)</code> &amp; <code class="text-mars-cyan">ui.hasForbiddenWords</code>: Filtro LOPD multicultural y lista blanca aeroespacial contextual no destructiva (retiene el texto y resalta en rojo neón).</p>
                 <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">ui.openDrawer(title, html)</code> / <code class="text-mars-cyan">ui.toggleMilestoneAccordion</code>: Descongestión móvil con acordeones por fase y paneles deslizantes inferiores (Bottom-Sheet HUD).</p>
@@ -1488,6 +1489,11 @@ const ui = {
     closeModal() { 
         const elOverlay = document.getElementById('modal-overlay');
         if(elOverlay) elOverlay.classList.add('hidden');
+        const modalBox = document.querySelector('#modal-overlay > div');
+        if (modalBox && modalBox.classList.contains('max-w-5xl')) {
+            modalBox.classList.remove('max-w-5xl');
+            modalBox.classList.add('max-w-lg');
+        }
         if (this._lastFocusedElement && typeof this._lastFocusedElement.focus === 'function') {
             this._lastFocusedElement.focus();
         }

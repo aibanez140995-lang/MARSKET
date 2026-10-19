@@ -336,11 +336,53 @@
                 scroll-behavior: auto !important;
             }
         }
+        @media print {
+            body {
+                background: #000 !important;
+                color: #fff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            body > *:not(#credentials-print-area) {
+                display: none !important;
+            }
+            #credentials-print-area {
+                display: block !important;
+                position: static !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 8mm !important;
+                box-sizing: border-box !important;
+                background-color: #000 !important;
+                color: #fff !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .credentials-grid {
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 8mm !important;
+                width: 100% !important;
+            }
+            .credential-card {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                box-shadow: none !important;
+                border: 2px solid #00f0ff !important;
+                background-color: #030712 !important;
+                color: #ffffff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-mars-cyan selection:text-black">
 
-    <!-- CAPA DE ACCESO INMERSIVA / LOGIN SCREEN (v1.0.19b) -->
+    <!-- CAPA DE ACCESO INMERSIVA / LOGIN SCREEN (v1.1.01) -->
     <div id="login-screen" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-3 sm:p-4 bg-mars-bg text-slate-100 transition-opacity duration-200">
         <!-- Contenido de tarjeta inyectado por ui.viewLogin() -->
     </div>
@@ -359,7 +401,7 @@
                         <h1 class="font-orbitron font-black text-xs sm:text-lg text-white tracking-wider sm:tracking-widest leading-none flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
                             MARS-KET <span class="text-mars-cyan">2.0</span>
                         </h1>
-                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v1.0.19b</span>
+                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v1.1.01</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -469,21 +511,24 @@
     <!-- CONTENEDOR DE TOASTS HUD -->
     <div id="hud-toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-[70] flex flex-col gap-2 pointer-events-none"></div>
 
+    <!-- ÁREA EXCLUSIVA DE IMPRESIÓN DE CREDENCIALES PDF (@media print) -->
+    <div id="credentials-print-area" class="hidden"></div>
+
     <!-- SCRIPTS ORDENADOS DEL SISTEMA -->
-    <script src="js/lexicon-data.js?v=1.1.00"></script>
-    <script src="js/config.js?v=1.1.00"></script>
-    <script src="js/state.js?v=1.1.00"></script>
-    <script src="js/auth.js?v=1.1.00"></script>
-    <script src="js/ui-core.js?v=1.1.00"></script>
-    <script src="js/ui-empresa-core.js?v=1.1.00"></script>
-    <script src="js/ui-empresa-market.js?v=1.1.00"></script>
-    <script src="js/ui-empresa-tech.js?v=1.1.00"></script>
-    <script src="js/ui-empresa-finance.js?v=1.1.00"></script>
-    <script src="js/ui-empresa-ops.js?v=1.1.00"></script>
-    <script src="js/ui-empresa-gov-brand.js?v=1.1.00"></script>
-    <script src="js/ui-docente-core.js?v=1.1.00"></script>
-    <script src="js/ui-docente-eval.js?v=1.1.00"></script>
-    <script src="js/ui-docente-management.js?v=1.1.00"></script>
+    <script src="js/lexicon-data.js?v=1.1.01"></script>
+    <script src="js/config.js?v=1.1.01"></script>
+    <script src="js/state.js?v=1.1.01"></script>
+    <script src="js/auth.js?v=1.1.01"></script>
+    <script src="js/ui-core.js?v=1.1.01"></script>
+    <script src="js/ui-empresa-core.js?v=1.1.01"></script>
+    <script src="js/ui-empresa-market.js?v=1.1.01"></script>
+    <script src="js/ui-empresa-tech.js?v=1.1.01"></script>
+    <script src="js/ui-empresa-finance.js?v=1.1.01"></script>
+    <script src="js/ui-empresa-ops.js?v=1.1.01"></script>
+    <script src="js/ui-empresa-gov-brand.js?v=1.1.01"></script>
+    <script src="js/ui-docente-core.js?v=1.1.01"></script>
+    <script src="js/ui-docente-eval.js?v=1.1.01"></script>
+    <script src="js/ui-docente-management.js?v=1.1.01"></script>
 
     <script>
         window.addEventListener('DOMContentLoaded', () => {
@@ -498,7 +543,7 @@
                 state.init();
             }
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-                navigator.serviceWorker.register('sw.js?v=1.1.00').catch(() => {});
+                navigator.serviceWorker.register('sw.js?v=1.1.01').catch(() => {});
             }
         });
     </script>

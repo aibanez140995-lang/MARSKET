@@ -359,6 +359,7 @@ Object.assign(ui, {
                     </div>
                     <div class="flex items-center gap-2 flex-wrap">
                         ${isCoord ? `<button id="toggle-pins-btn" onclick="ui.togglePinsVisibility()" class="min-h-[44px] bg-slate-800 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase hover:bg-mars-cyan hover:text-black transition-colors shrink-0">${this.pinsVisible ? '[ 🔒 Ocultar PINs ]' : '[ 👁️ Revelar PINs ]'}</button>` : ''}
+                        ${isCoord ? `<button onclick="ui.generateAllCompaniesCredentialCards()" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-4 py-2 text-xs font-black uppercase transition-colors shrink-0">[🪪 TODAS LAS CREDENCIALES PDF]</button>` : ''}
                         ${isCoord ? `<button onclick="ui.exportCredentialsCSV()" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">[📥 Exportar Llavero CSV]</button>` : ''}
                     </div>
                 </div>
@@ -399,17 +400,28 @@ Object.assign(ui, {
                                         const pinVal = state.getRolePin(co, rol) || '1234';
                                         return `
                                         <td class="py-3 pr-2">
-                                            ${isCoord ? `<input type="${this.pinsVisible ? 'text' : 'password'}" id="pin-input-${this.escapeHTML(cid)}-${rol}" aria-label="PIN ${rol} de ${this.escapeHTML(co.name)}" maxlength="4" value="${this.escapeHTML(pinVal)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', '${rol}', this.value)" class="min-h-[44px] w-14 bg-black border border-mars-border text-center text-mars-cyan font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">` : `<span class="text-slate-300">****</span>`}
+                                            <div class="flex flex-col items-center gap-1.5">
+                                                ${isCoord ? `<input type="${this.pinsVisible ? 'text' : 'password'}" id="pin-input-${this.escapeHTML(cid)}-${rol}" aria-label="PIN ${rol} de ${this.escapeHTML(co.name)}" maxlength="4" value="${this.escapeHTML(pinVal)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', '${rol}', this.value)" class="min-h-[44px] w-14 bg-black border border-mars-border text-center text-mars-cyan font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">` : `<span class="text-slate-300">****</span>`}
+                                                ${isCoord ? `<button onclick="ui.generateRoleCredentialCard('${this.escapeHTML(cid)}', '${rol}')" aria-label="Credencial PDF ${rol}" title="Emitir Credencial PDF ${rol}" class="min-h-[44px] w-full inline-flex items-center justify-center text-xs font-mono font-bold bg-slate-900 border border-slate-700 hover:border-mars-cyan text-slate-300 hover:text-mars-cyan px-2 py-1 rounded-sm transition-colors whitespace-nowrap">🪪 ${rol}</button>` : ''}
+                                            </div>
                                         </td>`;
                                     }).join('')}
                                     <td class="py-3 pr-3">
-                                        ${isCoord ? `
-                                        <div class="flex items-center gap-1">
-                                            <input type="${this.pinsVisible ? 'text' : 'password'}" id="pin-input-${this.escapeHTML(cid)}-AUXILIAR" aria-label="PIN AUXILIAR de ${this.escapeHTML(co.name)}" maxlength="4" placeholder="----" value="${this.escapeHTML(auxPin)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', 'AUXILIAR', this.value)" class="min-h-[44px] w-14 bg-black border ${auxPin ? 'border-mars-green text-mars-green' : 'border-slate-700 text-slate-400'} text-center font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">
-                                            <span class="text-xs text-slate-300 uppercase">[${this.escapeHTML(auxDept)}]</span>
-                                        </div>` : `<span class="text-slate-300">****</span>`}
+                                        <div class="flex flex-col items-center gap-1.5">
+                                            ${isCoord ? `
+                                            <div class="flex items-center gap-1">
+                                                <input type="${this.pinsVisible ? 'text' : 'password'}" id="pin-input-${this.escapeHTML(cid)}-AUXILIAR" aria-label="PIN AUXILIAR de ${this.escapeHTML(co.name)}" maxlength="4" placeholder="----" value="${this.escapeHTML(auxPin)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', 'AUXILIAR', this.value)" class="min-h-[44px] w-14 bg-black border ${auxPin ? 'border-mars-green text-mars-green' : 'border-slate-700 text-slate-400'} text-center font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">
+                                                <span class="text-xs text-slate-300 uppercase">[${this.escapeHTML(auxDept)}]</span>
+                                            </div>` : `<span class="text-slate-300">****</span>`}
+                                            ${isCoord && auxPin ? `<button onclick="ui.generateRoleCredentialCard('${this.escapeHTML(cid)}', 'AUXILIAR')" aria-label="Credencial PDF AUXILIAR" title="Emitir Credencial PDF AUXILIAR" class="min-h-[44px] w-full inline-flex items-center justify-center text-xs font-mono font-bold bg-slate-900 border border-slate-700 hover:border-mars-green text-slate-300 hover:text-mars-green px-2 py-1 rounded-sm transition-colors whitespace-nowrap">🪪 AUX</button>` : ''}
+                                        </div>
                                     </td>
-                                    <td class="py-3">${isCoord ? `<button onclick="ui.confirmAction('Eliminar Startup', '¿Borrar startup irreversiblemente?', () => ui.deleteStartup('${this.escapeHTML(cid)}'), 'Eliminar')" class="min-h-[44px] text-mars-magenta font-bold hover:underline px-2">Eliminar</button>` : `<span class="text-slate-400">Bloqueado</span>`}</td>
+                                    <td class="py-3">
+                                        <div class="flex items-center gap-2">
+                                            ${isCoord ? `<button onclick="ui.generateCompanyCredentialCards('${this.escapeHTML(cid)}')" title="Emitir todas las credenciales de flota de ${this.escapeHTML(co.name)}" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold text-xs px-2.5 py-1 transition-colors whitespace-nowrap">🪪 Flota PDF</button>` : ''}
+                                            ${isCoord ? `<button onclick="ui.confirmAction('Eliminar Startup', '¿Borrar startup irreversiblemente?', () => ui.deleteStartup('${this.escapeHTML(cid)}'), 'Eliminar')" class="min-h-[44px] text-mars-magenta font-bold hover:underline px-2">Eliminar</button>` : `<span class="text-slate-400">Bloqueado</span>`}
+                                        </div>
+                                    </td>
                                 </tr>`;
                             }).join('')}
                         </tbody>
@@ -667,20 +679,6 @@ Object.assign(ui, {
 
     renderAdminCatalog() {
         const cat = Array.isArray(state.data.catalog) ? state.data.catalog : [];
-        const rows = cat.map((item, idx) => `
-            <tr class="border-b border-slate-800 text-xs">
-                <td class="py-2 pr-2 font-mono text-slate-300">${this.escapeHTML(item.id)}</td>
-                <td class="py-2 pr-2 text-white font-bold uppercase break-words">${this.escapeHTML(item.name)}</td>
-                <td class="py-2 pr-2 text-mars-cyan uppercase">${this.escapeHTML(item.category)}</td>
-                <td class="py-2 pr-2 text-slate-300">${this.escapeHTML(item.unit)} (${this.escapeHTML(item.origin || '--')})</td>
-                <td class="py-2 pr-2">
-                    <input type="number" aria-label="Precio de ${this.escapeHTML(item.name)}" value="${item.price}" step="0.5" onchange="ui.updateCatalogPrice(${idx}, this.value)" class="min-h-[44px] w-20 bg-black border border-mars-green text-mars-green font-mono font-bold text-center p-1">
-                </td>
-                <td class="py-2 text-right">
-                    <button onclick="ui.deleteCatalogItem(${idx})" aria-label="Eliminar artículo" class="min-h-[44px] min-w-[44px] text-mars-magenta font-bold px-2.5 py-1 border border-mars-magenta hover:bg-mars-magenta hover:text-white inline-flex items-center justify-center">X</button>
-                </td>
-            </tr>
-        `).join('');
 
         return `
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -707,26 +705,40 @@ Object.assign(ui, {
                 <button onclick="ui.addCatalogItem()" class="min-h-[44px] w-full bg-mars-cyan text-black font-black py-3 text-xs uppercase tracking-widest hover:shadow-[0_0_10px_#00f0ff] transition-shadow">Añadir al Catálogo</button>
             </div>
             <div class="lg:col-span-2 terminal-border bg-mars-card p-6 w-full overflow-hidden border-t-4 border-t-mars-yellow">
-                <h3 class="font-orbitron text-mars-yellow text-xs mb-4 uppercase tracking-widest">Gestión de Precios</h3>
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                    <h3 class="font-orbitron text-mars-yellow text-xs uppercase tracking-widest">Gestión de Precios y Catálogo Global</h3>
+                    <span class="text-xs text-slate-300 font-mono">${cat.length} Artículos Registrados</span>
+                </div>
                 <div class="overflow-x-auto w-full">
                     <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
                         <thead class="text-slate-300 uppercase border-b border-mars-border">
-                            <tr><th class="py-2 pr-4">ID</th><th class="pr-4">Nombre</th><th class="pr-4">Categoría</th><th class="pr-4">Precio (€v)</th><th>Acción</th></tr>
+                            <tr>
+                                <th class="py-2 pr-4">ID</th>
+                                <th class="pr-4">Nombre</th>
+                                <th class="pr-4">Categoría</th>
+                                <th class="pr-4">Unidad / Origen</th>
+                                <th class="pr-4">Precio (€v)</th>
+                                <th>Acciones</th>
+                            </tr>
                         </thead>
                         <tbody>
-                            ${state.data.catalog.map(item => `
+                            ${cat.map((item, idx) => `
                             <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
                                 <td class="py-2 text-slate-300 font-mono pr-4">${this.escapeHTML(item.id)}</td>
-                                <td class="py-2 font-bold text-white pr-4">${this.escapeHTML(item.name)}</td>
-                                <td class="py-2 text-slate-300 pr-4">${this.escapeHTML(item.category)}</td>
+                                <td class="py-2 font-bold text-white pr-4 uppercase break-words">${this.escapeHTML(item.name)}</td>
+                                <td class="py-2 text-mars-cyan uppercase pr-4">${this.escapeHTML(item.category)}</td>
+                                <td class="py-2 text-slate-300 pr-4">${this.escapeHTML(item.unit || 'Ud')} (${this.escapeHTML(item.origin || '--')})</td>
                                 <td class="py-2 pr-4">
-                                    <input type="number" id="price-${this.escapeHTML(item.id)}" aria-label="Precio de ${this.escapeHTML(item.name)}" value="${item.price}" class="min-h-[44px] w-20 bg-black border border-mars-border text-center text-mars-green font-bold p-1 outline-none focus:border-mars-yellow">
+                                    <input type="number" id="price-${this.escapeHTML(item.id)}" data-cat-idx="${idx}" aria-label="Precio de ${this.escapeHTML(item.name)}" value="${item.price}" step="0.5" min="0" onchange="ui.updateCatalogPrice(${idx}, this.value)" class="min-h-[44px] w-24 bg-black border border-mars-border text-center text-mars-green font-mono font-bold p-1 outline-none focus:border-mars-yellow">
                                 </td>
                                 <td class="py-2">
-                                    <button onclick="ui.saveCatalogPrice('${this.escapeHTML(item.id)}')" class="min-h-[44px] bg-mars-yellow/20 text-mars-yellow border border-mars-yellow/50 px-3 py-1.5 font-bold hover:bg-mars-yellow hover:text-black transition-colors">Guardar</button>
+                                    <div class="flex items-center gap-2">
+                                        <button onclick="ui.saveCatalogPrice('${this.escapeHTML(item.id)}', ${idx})" aria-label="Guardar precio de ${this.escapeHTML(item.name)}" class="min-h-[44px] bg-mars-yellow/20 text-mars-yellow border border-mars-yellow/50 px-3 py-1.5 font-bold hover:bg-mars-yellow hover:text-black transition-colors">Guardar</button>
+                                        <button onclick="ui.deleteCatalogItem('${this.escapeHTML(item.id)}')" aria-label="Eliminar ${this.escapeHTML(item.name)}" class="min-h-[44px] min-w-[44px] text-mars-magenta font-bold px-2.5 py-1.5 border border-mars-magenta hover:bg-mars-magenta hover:text-white transition-colors" title="Eliminar artículo del catálogo">✕</button>
+                                    </div>
                                 </td>
                             </tr>
-                            `).join('')}
+                            `).join('') || `<tr><td colspan="6" class="py-4 text-center text-slate-400 italic">No hay artículos en el catálogo.</td></tr>`}
                         </tbody>
                     </table>
                 </div>
@@ -748,17 +760,29 @@ Object.assign(ui, {
         </div>`;
     },
 
-    saveCatalogPrice(itemId) {
-        const el = document.getElementById(`price-${itemId}`);
-        if (!el) return;
-        const p = parseFloat(el.value);
-        if (isNaN(p) || p < 0) return this.notify("Precio inválido.", "error");
-        const item = (state.data.catalog || []).find(i => String(i.id) === String(itemId));
+    saveCatalogPrice(itemId, idx) {
+        let p = NaN;
+        const el = document.getElementById(`price-${itemId}`) || (idx !== undefined ? document.querySelector(`input[data-cat-idx="${idx}"]`) : null);
+        if (el) {
+            p = parseFloat(el.value);
+        }
+        if (isNaN(p) || p < 0) return this.notify("Precio inválido. Debe ser un número mayor o igual a 0.", "error");
+
+        if (!Array.isArray(state.data.catalog)) state.data.catalog = [];
+        let item = null;
+        if (idx !== undefined && state.data.catalog[idx] && String(state.data.catalog[idx].id) === String(itemId)) {
+            item = state.data.catalog[idx];
+        } else {
+            item = state.data.catalog.find(i => String(i.id) === String(itemId));
+        }
+
         if (item) {
             item.price = p;
             state.save();
             this.notify(`Precio de "${item.name}" actualizado a ${p} €v.`, "success");
             this.render();
+        } else {
+            this.notify("Artículo no encontrado en el catálogo.", "error");
         }
     },
 
@@ -771,11 +795,28 @@ Object.assign(ui, {
         }
     },
 
-    deleteCatalogItem(idx) {
-        if (!state.data.catalog) return;
-        state.data.catalog.splice(idx, 1);
-        state.save();
-        this.render();
+    deleteCatalogItem(target) {
+        if (!Array.isArray(state.data.catalog)) return;
+        let idx = -1;
+        if (typeof target === 'number') {
+            idx = target;
+        } else if (typeof target === 'string') {
+            idx = state.data.catalog.findIndex(i => String(i.id) === target);
+            if (idx === -1 && !isNaN(parseInt(target, 10)) && String(parseInt(target, 10)) === target) {
+                const numericIdx = parseInt(target, 10);
+                if (numericIdx >= 0 && numericIdx < state.data.catalog.length) {
+                    idx = numericIdx;
+                }
+            }
+        }
+        if (idx >= 0 && idx < state.data.catalog.length) {
+            const removed = state.data.catalog.splice(idx, 1)[0];
+            state.save();
+            this.notify(`Artículo "${removed?.name || idx}" purgado del catálogo.`, "info");
+            this.render();
+        } else {
+            this.notify("No se pudo localizar el artículo a eliminar.", "error");
+        }
     },
 
     addCatalogItem() {
@@ -1310,5 +1351,297 @@ Object.assign(ui, {
         
         this.closeModal();
         this.render();
+    },
+
+    getRoleMetadata(role) {
+        const map = {
+            'CEO': {
+                name: 'DIRECCIÓN GENERAL // CEO',
+                dept: 'DIRECCIÓN EJECUTIVA & RELACIONES INSTITUCIONALES',
+                badge: 'MANDO SUPREMO',
+                color: 'text-mars-yellow',
+                border: 'border-mars-yellow',
+                bgBadge: 'bg-mars-yellow/20',
+                hex: '#ffb703'
+            },
+            'TECNICO': {
+                name: 'DIRECCIÓN TÉCNICA // INGENIERÍA',
+                dept: 'DESARROLLO AEROESPACIAL & PROPULSIÓN',
+                badge: 'I+D / B.O.M.',
+                color: 'text-mars-cyan',
+                border: 'border-mars-cyan',
+                bgBadge: 'bg-mars-cyan/20',
+                hex: '#00f0ff'
+            },
+            'FINANZAS': {
+                name: 'DIRECCIÓN FINANCIERA // CFO',
+                dept: 'TESORERÍA, BALANCE & PATROCINIOS',
+                badge: 'AUDITORÍA & FISCALIDAD',
+                color: 'text-mars-green',
+                border: 'border-mars-green',
+                bgBadge: 'bg-mars-green/20',
+                hex: '#00ff66'
+            },
+            'MARKETING': {
+                name: 'DIRECCIÓN MARKETING // CMO',
+                dept: 'IDENTIDAD CORPORATIVA & COMUNICACIÓN',
+                badge: 'COMUNICACIÓN & BRANDING',
+                color: 'text-mars-magenta',
+                border: 'border-mars-magenta',
+                bgBadge: 'bg-mars-magenta/20',
+                hex: '#ff0055'
+            },
+            'OPERACIONES_IA': {
+                name: 'OPERACIONES & IA // COO',
+                dept: 'CADENA DE SUMINISTRO & TELEMETRÍA I.A.',
+                badge: 'LOGÍSTICA & ALGORITMOS',
+                color: 'text-blue-400',
+                border: 'border-blue-400',
+                bgBadge: 'bg-blue-400/20',
+                hex: '#60a5fa'
+            },
+            'AUXILIAR': {
+                name: 'OBSERVADOR // AUXILIAR',
+                dept: 'SOPORTE OPERATIVO MULTIDISCIPLINAR',
+                badge: 'CONTROL DE CALIDAD',
+                color: 'text-purple-400',
+                border: 'border-purple-400',
+                bgBadge: 'bg-purple-400/20',
+                hex: '#c084fc'
+            }
+        };
+        return map[role] || {
+            name: role,
+            dept: 'OPERACIONES GENERALES',
+            badge: 'TRIPULACIÓN',
+            color: 'text-mars-cyan',
+            border: 'border-mars-cyan',
+            bgBadge: 'bg-mars-cyan/20',
+            hex: '#00f0ff'
+        };
+    },
+
+    renderCredentialCardHTML(co, role, code, pin) {
+        const meta = this.getRoleMetadata(role);
+        const deptName = (role === 'AUXILIAR' && co.auxRoleDept) ? `DPTO. VINCULADO: ${co.auxRoleDept}` : meta.dept;
+        const emissionDate = new Date().toISOString().split('T')[0];
+
+        return `
+        <div class="credential-card relative terminal-border bg-slate-950 p-4 sm:p-5 border-2 ${meta.border} text-white font-mono shadow-[0_0_20px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col justify-between" style="min-height: 250px; break-inside: avoid; page-break-inside: avoid;">
+            <!-- Marca de agua diegética -->
+            <div class="absolute -right-6 -bottom-6 w-32 h-32 rounded-full border border-slate-800 pointer-events-none opacity-20 flex items-center justify-center font-orbitron font-black text-4xl text-slate-700 select-none">
+                AEE
+            </div>
+
+            <!-- Cabecera de la Credencial -->
+            <div class="border-b border-slate-800 pb-2.5 mb-3">
+                <div class="flex justify-between items-start gap-2">
+                    <div class="flex items-center gap-2">
+                        <img src="logo.png" alt="MARS-KET" width="32" height="32" onerror="this.onerror=null;this.src='logo.png';" class="w-8 h-8 object-contain shrink-0 drop-shadow-[0_0_6px_#00f0ff]">
+                        <div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-orbitron font-black text-xs text-white tracking-widest">MARS-KET <span class="text-mars-cyan">2.0</span></span>
+                                <span class="text-[9px] px-1 py-0.5 bg-mars-cyan/20 text-mars-cyan border border-mars-cyan/40 uppercase font-bold tracking-wider">AEE / ESA</span>
+                            </div>
+                            <span class="text-[9px] text-slate-400 uppercase tracking-widest block">AGENCIA ESPACIAL // TARJETA DE ACCESO OPERATIVO</span>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <span class="text-[9px] font-black uppercase px-1.5 py-0.5 border border-red-500/60 bg-red-950/40 text-red-400 tracking-wider">NIVEL 4 • CLASIFICADO</span>
+                    </div>
+                </div>
+
+                <!-- Empresa y Clase -->
+                <div class="flex justify-between items-baseline mt-2 pt-1 border-t border-slate-900 gap-2">
+                    <h4 class="font-orbitron font-black text-sm sm:text-base text-white uppercase tracking-wider truncate" title="${this.escapeHTML(co.name)}">
+                        ${this.escapeHTML(co.name)}
+                    </h4>
+                    <span class="bg-mars-yellow text-black font-black text-xs px-2 py-0.5 uppercase shrink-0">
+                        CLASE ${this.escapeHTML(co.classGroup || 'A')}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Cuerpo: Rol e Insignia Departamental -->
+            <div class="my-2 space-y-1.5">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="font-orbitron font-black text-xs sm:text-sm uppercase ${meta.color} tracking-wider">
+                        ${this.escapeHTML(meta.name)}
+                    </span>
+                    <span class="text-[10px] font-bold uppercase px-2 py-0.5 border ${meta.border} ${meta.bgBadge} ${meta.color} shrink-0">
+                        ${this.escapeHTML(meta.badge)}
+                    </span>
+                </div>
+                <p class="text-[10px] text-slate-400 uppercase tracking-wide truncate">
+                    ${this.escapeHTML(deptName)}
+                </p>
+            </div>
+
+            <!-- Caja de Credenciales de Alta Visibilidad -->
+            <div class="grid grid-cols-2 gap-2 my-2.5">
+                <div class="bg-black/90 border border-mars-yellow/60 p-2 text-center">
+                    <span class="text-[9px] text-slate-400 uppercase font-bold tracking-widest block mb-0.5">CÓDIGO DE EMPRESA</span>
+                    <span class="font-mono font-black text-mars-yellow text-base sm:text-lg tracking-widest select-all block">${this.escapeHTML(code)}</span>
+                </div>
+                <div class="bg-black/90 border border-mars-cyan/60 p-2 text-center">
+                    <span class="text-[9px] text-slate-400 uppercase font-bold tracking-widest block mb-0.5">PIN DE ACCESO (4 DÍGITOS)</span>
+                    <span class="font-mono font-black text-mars-cyan text-base sm:text-lg tracking-[0.25em] select-all block">${this.escapeHTML(pin)}</span>
+                </div>
+            </div>
+
+            <!-- Pie Diegético: Código de barras simulado CSS, aviso militar y fecha -->
+            <div class="border-t border-slate-800 pt-2 mt-1 space-y-1.5">
+                <div class="flex justify-between items-center gap-2">
+                    <!-- Código de barras simulado en CSS -->
+                    <div class="flex items-center gap-0.5 h-5 bg-white p-0.5 shrink-0" aria-hidden="true" title="AEE-BARCODE-${this.escapeHTML(code)}-${this.escapeHTML(role)}">
+                        <span class="w-0.5 h-full bg-black"></span>
+                        <span class="w-1 h-full bg-black"></span>
+                        <span class="w-0.5 h-full bg-black"></span>
+                        <span class="w-1.5 h-full bg-black"></span>
+                        <span class="w-0.5 h-full bg-black"></span>
+                        <span class="w-2 h-full bg-black"></span>
+                        <span class="w-0.5 h-full bg-black"></span>
+                        <span class="w-1 h-full bg-black"></span>
+                        <span class="w-1.5 h-full bg-black"></span>
+                        <span class="w-0.5 h-full bg-black"></span>
+                        <span class="w-2 h-full bg-black"></span>
+                        <span class="w-1 h-full bg-black"></span>
+                    </div>
+                    <span class="text-[9px] text-slate-400 font-mono tracking-tighter truncate">SEC-ID: ${this.escapeHTML(code)}-${this.escapeHTML(role)}-${this.escapeHTML(pin)}</span>
+                    <span class="text-[9px] text-slate-500 font-mono shrink-0">${emissionDate}</span>
+                </div>
+                <p class="text-[8px] text-slate-400 uppercase leading-none tracking-tight">
+                    USO EXCLUSIVO DE LA TRIPULACIÓN ASIGNADA • PROHIBIDA SU CESIÓN O DIVULGACIÓN
+                </p>
+            </div>
+        </div>
+        `;
+    },
+
+    generateRoleCredentialCard(cid, role) {
+        const co = state.data.companies[cid];
+        if (!co) return this.notify("Startup no encontrada.", "error");
+        const code = state.getCompanyCode(co);
+        const pin = state.getRolePin(co, role) || (role === 'AUXILIAR' ? '5555' : '1234');
+        const cardHtml = this.renderCredentialCardHTML(co, role, code, pin);
+        
+        const previewHtml = `
+            <div class="space-y-4">
+                <div class="bg-slate-900 border border-slate-800 p-2.5 text-xs text-slate-300 flex justify-between items-center flex-wrap gap-2">
+                    <span>🪪 Credencial individual lista para impresión o captura digital.</span>
+                    <span class="text-mars-cyan font-bold">${this.escapeHTML(co.name)} [${role}]</span>
+                </div>
+                <div class="max-w-md mx-auto w-full">
+                    ${cardHtml}
+                </div>
+            </div>
+        `;
+        this.showCredentialsModal(`CREDENCIAL OFICIAL // ${role} - ${co.name}`, previewHtml, cardHtml);
+    },
+
+    generateCompanyCredentialCards(cid) {
+        const co = state.data.companies[cid];
+        if (!co) return this.notify("Startup no encontrada.", "error");
+        const code = state.getCompanyCode(co);
+        
+        const roles = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA'];
+        const auxPin = state.getRolePin(co, 'AUXILIAR');
+        if (auxPin || co.auxRoleDept) {
+            roles.push('AUXILIAR');
+        }
+
+        const cardsList = roles.map(r => {
+            const pin = state.getRolePin(co, r) || '1234';
+            return this.renderCredentialCardHTML(co, r, code, pin);
+        });
+
+        const cardsGrid = `
+            <div class="credentials-grid grid grid-cols-1 md:grid-cols-2 gap-4">
+                ${cardsList.join('')}
+            </div>
+        `;
+
+        const previewHtml = `
+            <div class="space-y-4">
+                <div class="bg-slate-900 border border-slate-800 p-2.5 text-xs text-slate-300 flex justify-between items-center flex-wrap gap-2">
+                    <span>🪪 Flota completa de credenciales (${roles.length} tripulantes) de <strong>${this.escapeHTML(co.name)}</strong>.</span>
+                    <span class="text-mars-yellow font-bold uppercase">Clase ${this.escapeHTML(co.classGroup || 'A')}</span>
+                </div>
+                ${cardsGrid}
+            </div>
+        `;
+
+        this.showCredentialsModal(`CREDENCIALES DE FLOTA // ${co.name}`, previewHtml, cardsGrid);
+    },
+
+    generateAllCompaniesCredentialCards() {
+        const cos = Object.keys(state.data.companies || {});
+        if (cos.length === 0) return this.notify("No hay startups registradas en el sistema.", "warning");
+        
+        let allCardsHtml = '';
+        let totalCards = 0;
+
+        cos.forEach(cid => {
+            const co = state.data.companies[cid];
+            const code = state.getCompanyCode(co);
+            const roles = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA'];
+            const auxPin = state.getRolePin(co, 'AUXILIAR');
+            if (auxPin || co.auxRoleDept) roles.push('AUXILIAR');
+
+            roles.forEach(r => {
+                const pin = state.getRolePin(co, r) || '1234';
+                allCardsHtml += this.renderCredentialCardHTML(co, r, code, pin);
+                totalCards++;
+            });
+        });
+
+        const cardsGrid = `
+            <div class="credentials-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                ${allCardsHtml}
+            </div>
+        `;
+
+        const previewHtml = `
+            <div class="space-y-4">
+                <div class="bg-slate-900 border border-slate-800 p-2.5 text-xs text-slate-300 flex justify-between items-center flex-wrap gap-2">
+                    <span>🪪 Baraja completa de aula: <strong>${totalCards} credenciales</strong> generadas para ${cos.length} startups.</span>
+                    <span class="text-mars-green font-bold uppercase">Listo para Impresión</span>
+                </div>
+                ${cardsGrid}
+            </div>
+        `;
+
+        this.showCredentialsModal(`BARAJA COMPLETA DE CREDENCIALES (${totalCards} TARJETAS)`, previewHtml, cardsGrid);
+    },
+
+    showCredentialsModal(title, previewBody, printCardsHtml) {
+        // Almacenar contenido en el área de impresión
+        const printArea = document.getElementById('credentials-print-area');
+        if (printArea) {
+            printArea.innerHTML = printCardsHtml || previewBody;
+        }
+
+        // Expandir el contenedor modal a max-w-5xl
+        const modalBox = document.querySelector('#modal-overlay > div');
+        if (modalBox) {
+            modalBox.classList.remove('max-w-lg');
+            modalBox.classList.add('max-w-5xl');
+        }
+
+        const actionButtons = `
+            <button type="button" onclick="ui.printCredentialCards()" class="min-h-[44px] bg-mars-cyan text-black px-4 sm:px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_#00f0ff] flex items-center gap-2">
+                <span>🖨️</span> <span>IMPRIMIR / DESCARGAR PDF</span>
+            </button>
+        `;
+
+        this.showModal(title, previewBody, actionButtons);
+    },
+
+    printCredentialCards() {
+        if (typeof window !== 'undefined' && typeof window.print === 'function') {
+            window.print();
+        } else {
+            this.notify("La función de impresión no está disponible en este entorno.", "warning");
+        }
     }
 });
