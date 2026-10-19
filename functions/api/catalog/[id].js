@@ -1,10 +1,24 @@
 // functions/api/catalog/[id].js
-// Control de Concurrencia Optimista Estricto en Catálogo Cloudflare D1 (v1.1.02)
+// Control de Concurrencia Optimista y Autorización Zero-Trust en Catálogo Cloudflare D1 (v1.1.03)
+
+import { verifySession } from '../_auth.js';
 
 export async function onRequestPatch(context) {
   const { request, env, params } = context;
+
+  // Verificación de autorización de Coordinador
+  const authResult = await verifySession(request, env);
+  if (!authResult.authorized) {
+    return new Response(JSON.stringify({ 
+      error: 'UNAUTHORIZED', 
+      message: 'Modificación de catálogo restringida exclusivamente a Coordinación docente.' 
+    }), { 
+      status: 403, 
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+    });
+  }
+
   const targetId = (params && params.id) || null;
-  
   const body = await request.json();
   const id = targetId || body.id;
   const clientVersion = body.version;
@@ -63,8 +77,20 @@ export async function onRequestPatch(context) {
 
 export async function onRequestDelete(context) {
   const { request, env, params } = context;
+
+  // Verificación de autorización de Coordinador
+  const authResult = await verifySession(request, env);
+  if (!authResult.authorized) {
+    return new Response(JSON.stringify({ 
+      error: 'UNAUTHORIZED', 
+      message: 'Eliminación de ítems de catálogo restringida exclusivamente a Coordinación docente.' 
+    }), { 
+      status: 403, 
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+    });
+  }
+
   const targetId = (params && params.id) || null;
-  
   let body = {};
   try {
     body = await request.json();

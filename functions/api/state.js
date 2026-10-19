@@ -1,4 +1,42 @@
 // functions/api/state.js
+// Endpoint de Estado Zero-Trust y Control de Persistencia en Cloudflare D1 (v1.1.03)
+
+import { verifySession } from './_auth.js';
+
+/**
+ * Aplica una capa de filtrado destructivo en memoria sobre el estado de D1
+ * para eliminar credenciales y secretos antes de transmitir al cliente (CWE-200).
+ *
+ * @param {object} rawState
+ * @returns {object}
+ */
+export function sanitizeStateForClient(rawState) {
+    if (!rawState || typeof rawState !== 'object') return rawState;
+    const clean = JSON.parse(JSON.stringify(rawState));
+
+    // 1. Elimina pin de todas las entradas en config.teachers
+    if (clean.config && clean.config.teachers) {
+        for (const teacherKey in clean.config.teachers) {
+            if (clean.config.teachers[teacherKey]) {
+                delete clean.config.teachers[teacherKey].pin;
+            }
+        }
+    }
+
+    // 2. Elimina authVault, roles y accessCode de todas las entradas en companies
+    if (clean.companies) {
+        for (const cid in clean.companies) {
+            const co = clean.companies[cid];
+            if (co) {
+                delete co.authVault;
+                delete co.roles;
+                delete co.accessCode;
+            }
+        }
+    }
+
+    return clean;
+}
 
 export async function onRequest(context) {
     const { request, env } = context;
@@ -9,7 +47,7 @@ export async function onRequest(context) {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     };
 
     if (request.method === 'OPTIONS') return new Response(null, { headers });
@@ -23,17 +61,35 @@ export async function onRequest(context) {
         if (request.method === 'GET') {
             const action = url.searchParams.get('action');
             
-            // FASE 5: Descarga de un backup específico si se solicita
+            // Descarga de un backup específico si se solicita
             if (action === 'get_backup') {
                 const type = url.searchParams.get('type') || 'backup_daily';
                 const { results } = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = ?").bind(type).all();
-                if (results && results.length > 0) return new Response(results[0].data, { headers });
+                if (results && results.length > 0) {
+                    let parsed = null;
+                    try { parsed = typeof results[0].data === 'string' ? JSON.parse(results[0].data) : results[0].data; } catch(e) {}
+                    if (parsed) {
+                        return new Response(JSON.stringify(sanitizeStateForClient(parsed)), { headers });
+                    }
+                    return new Response(results[0].data, { headers });
+                }
                 return new Response(JSON.stringify({ status: 'empty' }), { headers });
             }
 
-            // Lectura normal del estado en vivo
+            // Lectura normal del estado en vivo con sanitización Zero-Trust
             const { results } = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = 'current'").all();
-            if (results && results.length > 0) return new Response(results[0].data, { headers });
+            if (results && results.length > 0) {
+                let parsed = null;
+                try {
+                    parsed = typeof results[0].data === 'string' ? JSON.parse(results[0].data) : results[0].data;
+                } catch(e) {}
+                
+                if (parsed) {
+                    const sanitized = sanitizeStateForClient(parsed);
+                    return new Response(JSON.stringify(sanitized), { headers });
+                }
+                return new Response(results[0].data, { headers });
+            }
             
             return new Response(JSON.stringify({ status: 'empty' }), { headers });
         }
@@ -41,7 +97,7 @@ export async function onRequest(context) {
         if (request.method === 'POST') {
             const payload = await request.json();
 
-            // MÓDULO D (v1.0.19): Verificación de código maestro docente en servidor contra env.TEACHER_MASTER_CODE
+            // Verificación de código maestro docente en servidor contra env.TEACHER_MASTER_CODE
             if (payload.action === 'verify_teacher_master') {
                 if (!env.TEACHER_MASTER_CODE) {
                     return new Response(JSON.stringify({ verified: true, mode: 'client_sha256' }), { headers });
@@ -50,7 +106,83 @@ export async function onRequest(context) {
                 return new Response(JSON.stringify({ verified: isAuthorized }), { status: isAuthorized ? 200 : 403, headers });
             }
 
-            // FASE 5: Acción manual de backup interceptada desde el Panel Docente
+            // Validación de código de empresa en servidor (Zero-Trust)
+            if (payload.action === 'validate_company_code') {
+                const { results } = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = 'current'").all();
+                if (results && results.length > 0) {
+                    const currentData = typeof results[0].data === 'string' ? JSON.parse(results[0].data) : results[0].data;
+                    const code = String(payload.code || '').trim().toUpperCase();
+                    let matchedCoId = null;
+                    let hasAux = false;
+                    for (const cid in currentData.companies || {}) {
+                        const co = currentData.companies[cid];
+                        let coCode = '';
+                        if (co.authVault && co.authVault.code) {
+                            try {
+                                const b64 = co.authVault.code.startsWith('VLT_') ? co.authVault.code.slice(4) : co.authVault.code;
+                                coCode = (typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('utf8')).trim().toUpperCase();
+                            } catch(e) {}
+                        } else if (co.accessCode) {
+                            coCode = String(co.accessCode).trim().toUpperCase();
+                        }
+                        if (coCode === code) {
+                            matchedCoId = cid;
+                            hasAux = !!(co.authVault?.roles?.AUXILIAR || co.roles?.AUXILIAR);
+                            break;
+                        }
+                    }
+                    if (matchedCoId) {
+                        return new Response(JSON.stringify({
+                            matchedCoId,
+                            companyMeta: { hasAux, name: currentData.companies[matchedCoId].name }
+                        }), { headers });
+                    }
+                }
+                return new Response(JSON.stringify({ error: 'Company code not found' }), { status: 404, headers });
+            }
+
+            // Verificación de PIN de departamento en servidor (Zero-Trust)
+            if (payload.action === 'verify_student_login') {
+                const { results } = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = 'current'").all();
+                if (results && results.length > 0) {
+                    const currentData = typeof results[0].data === 'string' ? JSON.parse(results[0].data) : results[0].data;
+                    const co = currentData.companies?.[payload.coId];
+                    if (co) {
+                        let expectedPin = '';
+                        if (co.authVault && co.authVault.roles && co.authVault.roles[payload.role]) {
+                            try {
+                                const b64 = co.authVault.roles[payload.role].startsWith('VLT_') ? co.authVault.roles[payload.role].slice(4) : co.authVault.roles[payload.role];
+                                expectedPin = (typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('utf8')).trim();
+                            } catch(e) {}
+                        } else if (co.roles && co.roles[payload.role] && !String(co.roles[payload.role]).startsWith('VLT_')) {
+                            expectedPin = String(co.roles[payload.role]).trim();
+                        }
+                        const verified = Boolean(expectedPin && expectedPin === String(payload.pin).trim());
+                        return new Response(JSON.stringify({ verified, companyName: co.name }), {
+                            status: verified ? 200 : 401,
+                            headers
+                        });
+                    }
+                }
+                return new Response(JSON.stringify({ verified: false }), { status: 401, headers });
+            }
+
+            // Verificación de PIN docente en servidor (Zero-Trust)
+            if (payload.action === 'verify_teacher_login') {
+                const { results } = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = 'current'").all();
+                if (results && results.length > 0) {
+                    const currentData = typeof results[0].data === 'string' ? JSON.parse(results[0].data) : results[0].data;
+                    const t = currentData.config?.teachers?.[payload.role];
+                    const verified = Boolean(t && String(t.pin).trim() === String(payload.pin).trim());
+                    return new Response(JSON.stringify({ verified }), {
+                        status: verified ? 200 : 401,
+                        headers
+                    });
+                }
+                return new Response(JSON.stringify({ verified: false }), { status: 401, headers });
+            }
+
+            // Acción manual de backup interceptada desde el Panel Docente
             if (payload.action === 'force_backup') {
                 if (env.TEACHER_MASTER_CODE && payload.teacherMasterCode && payload.teacherMasterCode !== env.TEACHER_MASTER_CODE) {
                     return new Response(JSON.stringify({ error: 'Autorización maestra docente inválida' }), { status: 403, headers });
@@ -72,7 +204,16 @@ export async function onRequest(context) {
                 return new Response(JSON.stringify({ error: 'No hay datos en estado corriente para respaldar' }), { status: 400, headers });
             }
 
-            // Flujo normal: Control optimista de concurrencia basado en payload.version
+            // BLINDAJE ZERO-TRUST (CWE-285): Rechazo de guardado monolítico sin rol de Coordinador
+            const authResult = await verifySession(request, env);
+            if (!authResult.authorized) {
+                return new Response(JSON.stringify({
+                    error: 'UNAUTHORIZED_MUTATION',
+                    message: 'Guardado monolítico restringido exclusivamente a Coordinación docente autenticada.'
+                }), { status: 403, headers });
+            }
+
+            // Control optimista de concurrencia basado en payload.version
             const { results: versionCheck } = await env.MARSKET_DB.prepare("SELECT json_extract(data, '$.version') as v FROM state WHERE id = 'current'").all();
             const serverVersion = (versionCheck && versionCheck.length > 0) ? Number(versionCheck[0].v) : 0;
             const incomingVersion = Number(payload.version) || 0;
@@ -81,11 +222,11 @@ export async function onRequest(context) {
                 return new Response(JSON.stringify({ error: 'Conflict: Server has a newer version', serverVersion, changes: 0 }), { status: 409, headers });
             }
 
-            // Forzar actualización de versión si todo va bien
+            // Forzar actualización de versión
             payload.version = serverVersion + 1;
             const dataString = JSON.stringify(payload);
             
-            // FASE 5: Resiliencia - Auto-Backup del estado inmediatamente anterior antes de sobreescribir
+            // Resiliencia - Auto-Backup del estado inmediatamente anterior antes de sobreescribir
             await env.MARSKET_DB.prepare("INSERT OR REPLACE INTO state (id, data) SELECT 'backup_previous', data FROM state WHERE id = 'current'").run();
             
             // Escritura atómica en D1

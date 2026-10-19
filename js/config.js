@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.02) ---
 
-const APP_VERSION = "1.1.02";
+const APP_VERSION = "1.1.03";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const REGULATORY_AGENCIES = {
@@ -157,8 +157,18 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.02
+// Changelog Oficial de Producción v1.1.03
 const APP_CHANGELOG = [
+    {
+        version: "1.1.03",
+        date: "Octubre 2026",
+        title: "Actualización de Seguridad Estructural y Optimización de Red",
+        highlights: [
+            { type: "SISTEMA", text: "Arquitectura de Seguridad Estructural: Blindaje de la capa de persistencia y verificación centralizada de operaciones en servidor." },
+            { type: "MEJORA", text: "Optimización de Red y Telemetría: Eficiencia en la transferencia de datos operativos y sincronización robusta entre terminales." },
+            { type: "SISTEMA", text: "Sesiones Cifradas: Protocolos reforzados de autenticación de canal con aislamiento de contexto operativo." }
+        ]
+    },
     {
         version: "1.1.02",
         date: "Octubre 2026",
@@ -200,46 +210,3 @@ const DEFAULT_DEADLINES = {};
 DELIVERABLES_DEF.forEach(d => {
     DEFAULT_DEADLINES[d.key] = d.defaultDate;
 });
-
-const INITIAL_DATA = {
-    version: 1,
-    resetEpoch: 0,
-    b2bMarket: [],
-    b2bContracts: [],
-    securityIncidents: [],
-    config: { 
-        nextOrderId: 1000,
-        deadlines: DEFAULT_DEADLINES,
-        guidelines: { techReportDocUrl: "", techReportNotes: "Guía oficial redactada por FYQ." },
-        teachers: {
-            FYQ: { name: "Física y Química", pin: "0101", canSponsor: false },
-            ECO: { name: "Economía", pin: "0202", canSponsor: false },
-            LYE: { name: "Liderazgo y Emprendimiento", pin: "0303", canSponsor: false },
-            LEN: { name: "Lengua Castellana", pin: "0404", canSponsor: false },
-            MAT: { name: "Matemáticas", pin: "0505", canSponsor: false },
-            ING: { name: "Inglés", pin: "0606", canSponsor: false },
-            COORD_MARIO: { name: "Coordinación - Mario", pin: "0001", canSponsor: true },
-            COORD_ALEX: { name: "Coordinación - Alex", pin: "0002", canSponsor: true }
-        }
-    },
-    suggestionsToAlex: [], pendingCustom: [],
-    telemetry: { totalLogins: 0, sessions: [] },
-    catalog: [
-        { id: 'F01', name: 'Botella PET 500ml', price: 97.0, unit: 'Unidad', category: 'Fuselaje', origin: 'China' },
-        { id: 'F02', name: 'Botella PET 1L', price: 120.0, unit: 'Unidad', category: 'Fuselaje', origin: 'China' },
-        { id: 'P01', name: 'Bicarbonato de Sodio', price: 10.0, unit: 'Gramo', category: 'Propulsión', origin: 'Turquía' },
-        { id: 'P02', name: 'Vinagre', price: 5.0, unit: '10ml', category: 'Propulsión', origin: 'España' },
-        { id: 'A01', name: 'Cartón Básico', price: 30.0, unit: 'Set', category: 'Aerodinámica', origin: 'Marruecos' },
-        { id: 'S01', name: 'Papel de Cocina', price: 5.0, unit: 'Unidad', category: 'Sellado', origin: 'Portugal' },
-        { id: 'S05', name: 'Cinta Aislante', price: 10.0, unit: 'Rollo', category: 'Sellado', origin: 'Alemania' }
-    ],
-    companies: {
-        astra: { 
-            name: "Astra Dynamics", balance: 2400, classGroup: 'A', logo: null, slogan: "", valueProposition: "",
-            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" }, sponsorAwarded: null, sponsorData: { name: null, logo: null },
-            aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
-            roles: { CEO:'1111', TECNICO:'1111', FINANZAS:'1111', MARKETING:'1111', OPERACIONES_IA:'1111' }, 
-            loginStats: {totalLogins: 0, roles: {CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0}}}, deliverables: {}
-        }
-    }
-};

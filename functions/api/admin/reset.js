@@ -1,6 +1,7 @@
 // functions/api/admin/reset.js
-// Protocolo de Reset Global Transaccional (v1.1.02)
-// Protegido por token de coordinador y ejecutado de forma atómica en Cloudflare D1
+// Protocolo de Reset Global Transaccional Zero-Trust en Cloudflare D1 (v1.1.03)
+
+import { verifySession } from '../_auth.js';
 
 export async function onRequest(context) {
     return handleReset(context);
@@ -25,30 +26,51 @@ async function handleReset(context) {
         return new Response(JSON.stringify({ error: 'Method Not Allowed' }), { status: 405, headers });
     }
 
-    // 1. Verificación de autorización de coordinador
-    let authHeader = request.headers.get('Authorization') || '';
-    let token = authHeader.replace(/^Bearer\s+/i, '').trim();
     let payload = {};
     try {
         payload = await request.json();
     } catch (e) {}
 
-    if (!token && payload.token) token = payload.token;
+    let authHeader = request.headers.get('Authorization') || '';
+    let token = authHeader.replace(/^Bearer\s+/i, '').trim() || (payload.token || '');
 
+    // 1. Verificación de autorización Zero-Trust
     let isAuthorized = false;
-    if (env.TEACHER_MASTER_CODE) {
-        if (token === env.TEACHER_MASTER_CODE || payload.code === env.TEACHER_MASTER_CODE) {
+
+    // A. Validación por Hash Maestro en variables de entorno (env.MASTER_RESET_HASH)
+    if (env?.MASTER_RESET_HASH && payload.code) {
+        try {
+            const buffer = new TextEncoder().encode(String(payload.code).trim());
+            const digest = await crypto.subtle.digest('SHA-256', buffer);
+            const inputHash = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+            if (inputHash === env.MASTER_RESET_HASH || String(payload.code).trim() === env.MASTER_RESET_HASH) {
+                isAuthorized = true;
+            }
+        } catch(e) {}
+    }
+
+    // B. Validación por Código Maestro de Misión en variables de entorno (env.TEACHER_MASTER_CODE)
+    if (!isAuthorized && env?.TEACHER_MASTER_CODE) {
+        if (payload.code === env.TEACHER_MASTER_CODE || token === env.TEACHER_MASTER_CODE) {
             isAuthorized = true;
         }
-    } else {
-        // En ausencia de variable de entorno específica, cualquier token docente no vacío autoriza
-        if (token && token.length > 3) isAuthorized = true;
-        else if (payload.role && String(payload.role).toLowerCase().includes('coord')) isAuthorized = true;
-        else if (payload.code) isAuthorized = true;
+    }
+
+    // C. Validación por sesión de Coordinador autenticado
+    if (!isAuthorized) {
+        const sessionAuth = await verifySession(request, env);
+        if (sessionAuth.authorized) {
+            isAuthorized = true;
+        } else if (!env?.MASTER_RESET_HASH && !env?.TEACHER_MASTER_CODE) {
+            // Entorno local sin variables secretas inyectadas: autoriza si se envía código o rol coordinador
+            if (payload.code || (payload.role && String(payload.role).toLowerCase().includes('coord')) || (token && token.length > 3)) {
+                isAuthorized = true;
+            }
+        }
     }
 
     if (!isAuthorized) {
-        return new Response(JSON.stringify({ error: 'Autorización denegada: Se requiere token de coordinador.' }), { status: 403, headers });
+        return new Response(JSON.stringify({ error: 'Autorización denegada: Clave maestra o credencial de coordinador inválida.' }), { status: 403, headers });
     }
 
     if (!env.MARSKET_DB) {
@@ -56,7 +78,7 @@ async function handleReset(context) {
     }
 
     try {
-        // 2. Ejecutar transacción D1 estricta requerida por la misión v1.1.02
+        // 2. Ejecutar transacción D1 estricta
         try {
             await env.MARSKET_DB.batch([
                 env.MARSKET_DB.prepare("DELETE FROM orders;"),
@@ -68,7 +90,7 @@ async function handleReset(context) {
                 env.MARSKET_DB.prepare("UPDATE supermarsket_catalog SET price = default_price, stock = default_stock;")
             ]);
         } catch (tableErr) {
-            // Si el esquema actual de D1 opera con la tabla monolítica 'state', se maneja limpiamente
+            // En caso de operar sobre tabla única 'state'
         }
 
         // 3. Resetear documento de estado en 'state' (id = 'current')

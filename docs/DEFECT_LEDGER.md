@@ -1,5 +1,5 @@
 # MARS-KET OS · REGISTRO DE DEFECTOS (DEFECT LEDGER)
-Última actualización: v1.1.02 (2026-10-19)
+Última actualización: v1.1.03 (2026-10-19)
 
 | ID | Severidad | Módulo | Descripción | Estado | Resolución / Recomendación |
 |---|---|---|---|---|---|
@@ -10,3 +10,5 @@
 | DEF-005 | MEDIA | `state.js` / D1 | Riesgo de sobreescritura concurrente entre múltiples terminales de aula | RESUELTO | Bloqueo optimista con versión incremental e intercepción de colisión HTTP 409 con rehidratación automática. |
 | DEF-006 | MEDIA | `functions/api/catalog/update.js` | Falta de alias de endpoint para llamadas concurrentes de catálogo | RESUELTO | Creado re-export `export { onRequestPatch, onRequestDelete } from './[id].js'` con control de versión. |
 | DEF-007 | ALTA | `ui-docente-management.js` | Exposición de generación PDF sin intercepción explícita de consola | RESUELTO | Añadido wrapper `window.exportBadgePDF` con verificación de rol y lanzamiento de `SECURITY_EXCEPTION`. |
+| DEF-008 | BAJA | `functions/api/state.js` | Fallback de lectura en D1 podría devolver string crudo si el JSON no parsea en GET /api/state | ABIERTO | En caso de JSON corrupto en D1, forzar aborto 500 en lugar de retorno de buffer crudo. |
+| DEF-009 | BAJA | `functions/api/_auth.js` | Comparación directa de string para TEACHER_MASTER_CODE vulnerable a análisis de tiempos | ABIERTO | Migrar a comparación en tiempo constante con `crypto.subtle.timingSafeEqual` en Cloudflare Workers. |

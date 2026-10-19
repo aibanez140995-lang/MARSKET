@@ -1,5 +1,48 @@
 // js/state.js
-// --- GESTIÓN DE ESTADO, MIGRACIÓN (19 PLAZOS LWW), CIFRADO Y PERSISTENCIA ATÓMICA (v1.0.19) ---
+// --- GESTIÓN DE ESTADO ZERO-TRUST, MIGRACIÓN Y PERSISTENCIA ATÓMICA (v1.1.03) ---
+
+const DEFAULT_STATE = {
+    version: 1,
+    resetEpoch: 0,
+    b2bMarket: [],
+    b2bContracts: [],
+    securityIncidents: [],
+    suggestionsToAlex: [],
+    pendingCustom: [],
+    telemetry: { totalLogins: 0, sessions: [] },
+    catalog: [
+        { id: 'F01', name: 'Botella PET 500ml', price: 97.0, unit: 'Unidad', category: 'Fuselaje', origin: 'China' },
+        { id: 'F02', name: 'Botella PET 1L', price: 120.0, unit: 'Unidad', category: 'Fuselaje', origin: 'China' },
+        { id: 'P01', name: 'Bicarbonato de Sodio', price: 10.0, unit: 'Gramo', category: 'Propulsión', origin: 'Turquía' },
+        { id: 'P02', name: 'Vinagre', price: 5.0, unit: '10ml', category: 'Propulsión', origin: 'España' },
+        { id: 'A01', name: 'Cartón Básico', price: 30.0, unit: 'Set', category: 'Aerodinámica', origin: 'Marruecos' },
+        { id: 'S01', name: 'Papel de Cocina', price: 5.0, unit: 'Unidad', category: 'Sellado', origin: 'Portugal' },
+        { id: 'S05', name: 'Cinta Aislante', price: 10.0, unit: 'Rollo', category: 'Sellado', origin: 'Alemania' }
+    ],
+    config: {
+        nextOrderId: 1000,
+        deadlines: typeof DEFAULT_DEADLINES !== 'undefined' ? DEFAULT_DEADLINES : {},
+        guidelines: { techReportDocUrl: "", techReportNotes: "Guía oficial redactada por FYQ." },
+        teachers: {
+            FYQ: { name: "Física y Química", canSponsor: false },
+            ECO: { name: "Economía", canSponsor: false },
+            LYE: { name: "Liderazgo y Emprendimiento", canSponsor: false },
+            LEN: { name: "Lengua Castellana", canSponsor: false },
+            MAT: { name: "Matemáticas", canSponsor: false },
+            ING: { name: "Inglés", canSponsor: false },
+            COORD_MARIO: { name: "Coordinación - Mario", canSponsor: true },
+            COORD_ALEX: { name: "Coordinación - Alex", canSponsor: true }
+        }
+    },
+    companies: {
+        astra: {
+            name: "Astra Dynamics", balance: 2400, classGroup: 'A', logo: null, slogan: "", valueProposition: "",
+            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" }, sponsorAwarded: null, sponsorData: { name: null, logo: null },
+            aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
+            deliverables: {}
+        }
+    }
+};
 
 const state = {
     data: {}, user: null, currentUser: null, pin: '', sessionData: null,
@@ -114,9 +157,9 @@ const state = {
         d = d || {};
         d.version = Number(d.version) || 1; 
         d.lastUpdated = d.lastUpdated || Date.now();
-        d.config = d.config || JSON.parse(JSON.stringify(INITIAL_DATA.config));
-        d.catalog = d.catalog && d.catalog.length > 0 ? d.catalog : JSON.parse(JSON.stringify(INITIAL_DATA.catalog));
-        d.companies = d.companies || JSON.parse(JSON.stringify(INITIAL_DATA.companies));
+        d.config = d.config || JSON.parse(JSON.stringify(DEFAULT_STATE.config));
+        d.catalog = d.catalog && d.catalog.length > 0 ? d.catalog : JSON.parse(JSON.stringify(DEFAULT_STATE.catalog));
+        d.companies = d.companies || JSON.parse(JSON.stringify(DEFAULT_STATE.companies));
         d.telemetry = d.telemetry || { totalLogins: 0, sessions: [] };
         d.telemetry.sessions = Array.isArray(d.telemetry.sessions) ? d.telemetry.sessions : [];
 
@@ -142,12 +185,12 @@ const state = {
         }
 
         d.config.guidelines = d.config.guidelines || { techReportDocUrl: "", techReportNotes: "" };
-        d.config.teachers = d.config.teachers || JSON.parse(JSON.stringify(INITIAL_DATA.config.teachers));
+        d.config.teachers = d.config.teachers || JSON.parse(JSON.stringify(DEFAULT_STATE.config.teachers));
         
         if(d.config.teachers.COORD) {
             delete d.config.teachers.COORD;
-            d.config.teachers.COORD_MARIO = { name: "Coordinación - Mario", pin: "0001", canSponsor: true };
-            d.config.teachers.COORD_ALEX = { name: "Coordinación - Alex", pin: "0002", canSponsor: true };
+            d.config.teachers.COORD_MARIO = { name: "Coordinación - Mario", canSponsor: true };
+            d.config.teachers.COORD_ALEX = { name: "Coordinación - Alex", canSponsor: true };
         }
 
         const countries = ['China', 'Alemania', 'España', 'Turquía', 'Marruecos', 'ESA / Francia', 'Polonia', 'Italia', 'Portugal', 'India', 'República Checa', 'Japón'];
@@ -497,9 +540,11 @@ const state = {
         const currentToken = this.user.authToken || '';
         const isEntityValid = this.user.admin
             ? !!(serverOrMergedData?.config?.teachers?.[this.user.role])
-            : !!(serverOrMergedData?.companies?.[this.user.coId] && this.getRolePin(serverOrMergedData.companies[this.user.coId], this.user.role));
+            : !!(serverOrMergedData?.companies?.[this.user.coId]);
 
-        if (!isEntityValid || !expectedToken || (currentToken && currentToken !== expectedToken)) {
+        // En arquitectura Zero-Trust, el estado remoto no transporta credenciales en texto plano.
+        // Si expectedToken puede ser calculado en memoria local, se valida coincidencia exacta.
+        if (!isEntityValid || (expectedToken && currentToken && currentToken !== expectedToken)) {
             this.revokeSession("Sesión finalizada: Las credenciales de acceso han sido modificadas por coordinación.");
             return false;
         }
@@ -611,12 +656,12 @@ const state = {
     async init() {
         try {
             const saved = localStorage.getItem(this.storageKey);
-            const raw = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(INITIAL_DATA));
+            const raw = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_STATE));
             this.data = this.migrate(raw);
             this.saveLocalOnly();
         } catch (err) {
             console.error("Error migrando datos locales:", err);
-            this.data = this.migrate(JSON.parse(JSON.stringify(INITIAL_DATA)));
+            this.data = this.migrate(JSON.parse(JSON.stringify(DEFAULT_STATE)));
         }
 
         // G4a: Eliminar auto-asignación de tokens en state.init().
@@ -635,7 +680,7 @@ const state = {
                     throw new Error("Sesión expirada o sin prueba de autorización");
                 }
 
-                // 2. Extraer credencial vigente del estado actual (PIN docente o PIN de rol de startup)
+                // 2. Extraer credencial vigente del estado actual si está disponible en memoria local
                 let credencialVigente = '';
                 if (sessionUser.admin) {
                     credencialVigente = this.data.config?.teachers?.[sessionUser.role]?.pin || '';
@@ -644,17 +689,15 @@ const state = {
                     credencialVigente = this.getRolePin(co, sessionUser.role) || '';
                 }
 
-                if (!credencialVigente) {
-                    throw new Error("Credencial no encontrada en el estado actual");
-                }
+                // 3. Si la credencial está disponible localmente, validar prueba criptográfica
+                if (credencialVigente) {
+                    const expectedProof = (typeof auth !== 'undefined' && typeof auth.generateAuthProof === 'function')
+                        ? await auth.generateAuthProof(sessionUser.role, sessionUser.coId, sessionUser.exp, credencialVigente)
+                        : null;
 
-                // 3. Recalcular prueba criptográfica con la credencial del estado actual
-                const expectedProof = (typeof auth !== 'undefined' && typeof auth.generateAuthProof === 'function')
-                    ? await auth.generateAuthProof(sessionUser.role, sessionUser.coId, sessionUser.exp, credencialVigente)
-                    : null;
-
-                if (!expectedProof || sessionUser.authProof !== expectedProof) {
-                    throw new Error("Fallo de integridad criptográfica en la prueba de sesión");
+                    if (!expectedProof || sessionUser.authProof !== expectedProof) {
+                        throw new Error("Fallo de integridad criptográfica en la prueba de sesión");
+                    }
                 }
 
                 // Sesión legítima validada
@@ -890,7 +933,12 @@ const state = {
         
         try {
             const payload = JSON.parse(JSON.stringify(this.data));
-            const res = await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const token = this.getAuthToken(this.user, this.data);
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            };
+            const res = await fetch('/api/state', { method: 'POST', headers, body: JSON.stringify(payload) });
             
             if (res.status === 409 || res.status === 412) {
                 if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
@@ -910,7 +958,12 @@ const state = {
                         this.data.version = Number(serverData.version || this.data.version) + 1;
                         this.saveLocalOnly();
                         
-                        const retryRes = await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.data) });
+                        const retryToken = this.getAuthToken(this.user, this.data);
+                        const retryHeaders = {
+                            'Content-Type': 'application/json',
+                            ...(retryToken ? { 'Authorization': `Bearer ${retryToken}` } : {})
+                        };
+                        const retryRes = await fetch('/api/state', { method: 'POST', headers: retryHeaders, body: JSON.stringify(this.data) });
                         if (retryRes.ok) {
                             const retryJson = await retryRes.json().catch(() => null);
                             if (retryJson && retryJson.version) {

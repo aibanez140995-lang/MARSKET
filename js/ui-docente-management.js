@@ -781,9 +781,13 @@ Object.assign(ui, {
             // 2. Esperar confirmación res.ok de D1 antes de manipular el estado en memoria
             let d1Ok = false;
             try {
+                const token = state.getAuthToken(state.user, state.data);
                 const res = await fetch(`/api/catalog/${encodeURIComponent(itemId)}`, {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    },
                     body: JSON.stringify({
                         id: itemId,
                         version: Number(state.data.version) || 1,
@@ -878,9 +882,13 @@ Object.assign(ui, {
             // 2. Esperar confirmación res.ok de D1 antes de manipular el estado en memoria
             let d1Ok = false;
             try {
+                const token = state.getAuthToken(state.user, state.data);
                 const res = await fetch(`/api/catalog/${encodeURIComponent(itemId)}`, {
                     method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    },
                     body: JSON.stringify({
                         id: itemId,
                         version: Number(state.data.version) || 1

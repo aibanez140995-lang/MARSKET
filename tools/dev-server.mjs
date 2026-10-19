@@ -42,6 +42,29 @@ function sendJSON(res, statusCode, data) {
     res.end(jsonStr);
 }
 
+function sanitizeStateForClient(rawState) {
+    if (!rawState || typeof rawState !== 'object') return rawState;
+    const clean = JSON.parse(JSON.stringify(rawState));
+    if (clean.config && clean.config.teachers) {
+        for (const teacherKey in clean.config.teachers) {
+            if (clean.config.teachers[teacherKey]) {
+                delete clean.config.teachers[teacherKey].pin;
+            }
+        }
+    }
+    if (clean.companies) {
+        for (const cid in clean.companies) {
+            const co = clean.companies[cid];
+            if (co) {
+                delete co.authVault;
+                delete co.roles;
+                delete co.accessCode;
+            }
+        }
+    }
+    return clean;
+}
+
 const server = http.createServer((req, res) => {
     const parsedUrl = new URL(req.url, `http://localhost:${PORT}`);
     const pathname = decodeURIComponent(parsedUrl.pathname);
@@ -249,7 +272,7 @@ const server = http.createServer((req, res) => {
             if (!memoryState) {
                 return sendJSON(res, 200, { status: 'empty' });
             }
-            return sendJSON(res, 200, memoryState);
+            return sendJSON(res, 200, sanitizeStateForClient(memoryState));
         }
 
         if (req.method === 'POST') {
@@ -258,6 +281,57 @@ const server = http.createServer((req, res) => {
             req.on('end', () => {
                 try {
                     const incoming = JSON.parse(body);
+
+                    // Validación de código de empresa (Zero-Trust)
+                    if (incoming.action === 'validate_company_code') {
+                        if (memoryState && memoryState.companies) {
+                            const code = String(incoming.code || '').trim().toUpperCase();
+                            for (const cid in memoryState.companies) {
+                                const co = memoryState.companies[cid];
+                                let coCode = co.accessCode || '';
+                                if (co.authVault && co.authVault.code) {
+                                    try {
+                                        const b64 = co.authVault.code.startsWith('VLT_') ? co.authVault.code.slice(4) : co.authVault.code;
+                                        coCode = Buffer.from(b64, 'base64').toString('utf8');
+                                    } catch(e) {}
+                                }
+                                if (coCode.trim().toUpperCase() === code) {
+                                    const hasAux = !!(co.authVault?.roles?.AUXILIAR || co.roles?.AUXILIAR);
+                                    return sendJSON(res, 200, { matchedCoId: cid, companyMeta: { hasAux, name: co.name } });
+                                }
+                            }
+                        }
+                        return sendJSON(res, 404, { error: 'Company code not found' });
+                    }
+
+                    // Verificación de PIN de departamento en servidor (Zero-Trust)
+                    if (incoming.action === 'verify_student_login') {
+                        if (memoryState && memoryState.companies && memoryState.companies[incoming.coId]) {
+                            const co = memoryState.companies[incoming.coId];
+                            let expectedPin = '';
+                            if (co.authVault && co.authVault.roles && co.authVault.roles[incoming.role]) {
+                                try {
+                                    const b64 = co.authVault.roles[incoming.role].startsWith('VLT_') ? co.authVault.roles[incoming.role].slice(4) : co.authVault.roles[incoming.role];
+                                    expectedPin = Buffer.from(b64, 'base64').toString('utf8').trim();
+                                } catch(e) {}
+                            } else if (co.roles && co.roles[incoming.role]) {
+                                expectedPin = String(co.roles[incoming.role]).trim();
+                            }
+                            const verified = Boolean(expectedPin && expectedPin === String(incoming.pin).trim());
+                            return sendJSON(res, verified ? 200 : 401, { verified, companyName: co.name });
+                        }
+                        return sendJSON(res, 401, { verified: false });
+                    }
+
+                    // Verificación de PIN docente en servidor (Zero-Trust)
+                    if (incoming.action === 'verify_teacher_login') {
+                        if (memoryState && memoryState.config && memoryState.config.teachers && memoryState.config.teachers[incoming.role]) {
+                            const t = memoryState.config.teachers[incoming.role];
+                            const verified = Boolean(t && String(t.pin).trim() === String(incoming.pin).trim());
+                            return sendJSON(res, verified ? 200 : 401, { verified });
+                        }
+                        return sendJSON(res, 401, { verified: false });
+                    }
 
                     // Control de versión optimista (409 Conflict)
                     if (memoryState && incoming.version && Number(incoming.version) < Number(memoryState.version)) {

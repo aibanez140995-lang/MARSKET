@@ -663,7 +663,10 @@ const ui = {
     },
 
     getOnboardingContent(role) {
-        let content = `<div class="space-y-4 font-mono text-xs sm:text-sm leading-relaxed">`;
+        let content = `<div class="space-y-4 font-mono text-xs sm:text-sm leading-relaxed">
+            <div class="bg-mars-green/10 border border-mars-green/50 p-2 text-xs text-mars-green font-bold flex items-center gap-1.5">
+                <span>🔐</span> Sesión Cifrada y Segura (v1.1.03): Canal autenticado con validación estricta en servidor.
+            </div>`;
         switch(role) {
             case 'CEO': 
                 content += `
@@ -946,11 +949,11 @@ const ui = {
                 <li><strong class="text-mars-green">Gobernanza y Auditoría IA:</strong> Todo uso de IA generativa debe registrarse en la Bitácora IA con verificación humana explícita.</li>
             </ul>
             <div class="bg-slate-950 border border-slate-800 p-3 space-y-1.5">
-                <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">Arquitectura de Seguridad, UX Móvil y Persistencia v${currentVer}:</p>
+                <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">Arquitectura de Seguridad, Sesiones Cifradas y Persistencia v${currentVer}:</p>
                 <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">await state.updatePin(coId, role, newPin)</code> / <code class="text-mars-cyan">state.updateTeacherPin</code> / <code class="text-mars-cyan">state.updateCompanyCode</code>: Persistencia atómica directa contra Cloudflare D1 sin debounce ni rebote de PIN.</p>
                 <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">ui.validateSafeText(text)</code> &amp; <code class="text-mars-cyan">ui.hasForbiddenWords</code>: Filtro LOPD multicultural y lista blanca aeroespacial contextual no destructiva (retiene el texto y resalta en rojo neón).</p>
                 <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">ui.openDrawer(title, html)</code> / <code class="text-mars-cyan">ui.toggleMilestoneAccordion</code>: Descongestión móvil con acordeones por fase y paneles deslizantes inferiores (Bottom-Sheet HUD).</p>
-                <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">auth.verifyMasterCode()</code> &amp; <code class="text-mars-cyan">state.verifySessionIntegrity(serverData)</code>: Pasarela docente oculta con hash Web Crypto SHA-256 (Zero-Knowledge) y revocación en caliente de sesiones zombi.</p>
+                <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">auth.verifyMasterCode()</code> &amp; <code class="text-mars-cyan">state.verifySessionIntegrity()</code>: Pasarela docente con sesiones cifradas Zero-Trust, tokens verificados en servidor y aislamiento criptográfico.</p>
             </div>
             <div class="pt-2">
                 <button type="button" onclick="ui.closeModal(); sessionStorage.removeItem('hideWelcome'); ui.showWelcomeModal();" class="w-full bg-mars-yellow text-black font-black py-2.5 px-4 text-xs uppercase tracking-widest hover:bg-white transition-all min-h-[44px]">Ver Manual Completo de mi Rol</button>

@@ -389,78 +389,59 @@ Object.assign(ui, {
     verifyAndConfirmFactoryReset() {
         const input = document.getElementById('factory-reset-key');
         const key = input ? input.value.trim() : '';
-        if (key !== 'JOVE2025') {
-            this.notify("Clave de autorización maestra INCORRECTA. Operación abortada.", "error");
-            if (input) input.value = '';
+        if (!key) {
+            this.notify("Clave de autorización requerida.", "error");
             return;
         }
         this.closeModal();
         this.confirmAction(
             "ÚLTIMA CONFIRMACIÓN CRÍTICA",
             "¿Estás absolutamente seguro de ejecutar el RESET GENERAL DE FÁBRICA? Esta acción reescribirá la base de datos D1.",
-            () => this.factoryResetLaunch(),
+            () => this.factoryResetLaunch(key),
             "EJECUTAR RESET DE FÁBRICA"
         );
     },
 
-    async factoryResetLaunch() {
-        if (!state.user || !state.user.role.startsWith('COORD')) {
+    async factoryResetLaunch(providedKey = '') {
+        if (!state.user || !state.user.role || !state.user.role.startsWith('COORD')) {
             this.notify("Acceso restringido.", "error");
             return;
         }
+        this.notify("Enviando orden de reset de fábrica a Cloudflare D1...", "info");
         try {
-            if (state.data && state.data.companies) {
-                Object.keys(state.data.companies).forEach(cid => {
-                    const co = state.data.companies[cid];
-                    co.balance = 2400.00;
-                    co.logo = null;
-                    co.slogan = "";
-                    co.valueProposition = "";
-                    co.brandApproval = { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
+            const token = state.getAuthToken(state.user, state.data);
+            const res = await fetch('/api/admin/reset', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    token: token,
+                    code: providedKey,
+                    role: state.user.role
+                })
+            });
 
-                    co.ledger = [];
-                    co.orders = [];
-                    co.realCosts = [];
-                    co.flightTests = [];
-                    co.votingMotions = [];
-                    co.aiPrompts = [];
-                    co.marketingCampaigns = [];
-                    co.inactivityReports = [];
-                    co.notifications = [];
-                    co.sanctions = [];
-                    co.crisisAlerts = [];
-                    co.cart = [];
-                    co.bom = [];
-
-                    co.deliverables = {};
-                    if (typeof DELIVERABLES_DEF !== 'undefined' && Array.isArray(DELIVERABLES_DEF)) {
-                        DELIVERABLES_DEF.forEach(d => {
-                            co.deliverables[d.key] = null;
-                        });
-                    }
-
-                    delete co.nameChangeRequest;
-                    delete co.auxRoleRequest;
-                    delete co.brandPendingLogo;
-                    delete co.brandPendingSlogan;
-
-                    co.updatedAt = Date.now();
-                    co.authUpdatedAt = Date.now();
-                });
+            if (!res.ok) {
+                const errJson = await res.json().catch(() => ({}));
+                this.notify(`Clave de autorización maestra INCORRECTA o denegada: ${errJson.error || res.statusText}`, "error");
+                return;
             }
 
-            state.data.b2bMarket = [];
-            state.data.b2bContracts = [];
-            state.data.securityIncidents = [];
-            state.data.suggestionsToAlex = [];
-            state.data.telemetry = { totalLogins: 0, sessions: [] };
+            try {
+                localStorage.removeItem(state.storageKey);
+                localStorage.removeItem('marsket_emergency_snapshot');
+            } catch(e) {}
 
-            state.data.version = (Number(state.data.version) || 1) + 50;
-            state.data.lastUpdated = Date.now();
+            if (typeof BroadcastChannel !== 'undefined') {
+                try {
+                    const bc = new BroadcastChannel('marsket_channel');
+                    bc.postMessage({ type: 'MARSKET_GLOBAL_RESET', timestamp: Date.now() });
+                } catch(e) {}
+            }
 
-            state.saveLocalOnly();
-            await state.pushToCloud(false);
-
+            await state.fetchFromCloud();
             this.notify("🚀 RESET GENERAL PRE-LANZAMIENTO EJECUTADO CON ÉXITO.", "success");
             this.render();
         } catch (err) {
