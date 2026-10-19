@@ -19,9 +19,11 @@ export async function onRequestPatch(context) {
   }
 
   const targetId = (params && params.id) || null;
-  const body = await request.json();
+  const body = await request.json().catch(() => ({}));
   const id = targetId || body.id;
   const clientVersion = body.version;
+  const url = new URL(request.url);
+  const force = body.force === true || url.searchParams.get('force') === 'true';
 
   if (typeof clientVersion !== 'number') {
     return new Response(JSON.stringify({ error: 'Falta parámetro version' }), { 
@@ -38,7 +40,7 @@ export async function onRequestPatch(context) {
   const currentState = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
 
   // CONTROL DE CONCURRENCIA ESTRICTO
-  if (currentState.version !== clientVersion) {
+  if (!force && currentState.version !== clientVersion) {
     return new Response(JSON.stringify({ 
       error: 'CONFLICT', 
       serverVersion: currentState.version 
@@ -48,7 +50,7 @@ export async function onRequestPatch(context) {
     }); // Rechaza la sobreescritura ciega
   }
 
-  const itemIndex = currentState.catalog.findIndex(i => String(i.id) === String(id));
+  const itemIndex = currentState.catalog ? currentState.catalog.findIndex(i => String(i.id) === String(id)) : -1;
   if (itemIndex === -1) {
     return new Response(JSON.stringify({ error: 'Not found' }), { 
       status: 404, 
@@ -62,7 +64,7 @@ export async function onRequestPatch(context) {
   if (body.name !== undefined && changes.name === undefined) changes.name = body.name;
 
   currentState.catalog[itemIndex] = { ...currentState.catalog[itemIndex], ...changes };
-  currentState.version += 1;
+  currentState.version = (Number(currentState.version) || 1) + 1;
   currentState.lastUpdated = Date.now();
 
   await env.MARSKET_DB.prepare(
@@ -99,6 +101,7 @@ export async function onRequestDelete(context) {
   const url = new URL(request.url);
   const id = targetId || body.id || url.searchParams.get('id');
   const clientVersion = typeof body.version === 'number' ? body.version : (url.searchParams.get('version') ? Number(url.searchParams.get('version')) : null);
+  const force = body.force === true || url.searchParams.get('force') === 'true';
 
   if (typeof clientVersion !== 'number' || isNaN(clientVersion)) {
     return new Response(JSON.stringify({ error: 'Falta parámetro version' }), { 
@@ -114,27 +117,33 @@ export async function onRequestDelete(context) {
   });
   const currentState = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
 
-  // CONTROL DE CONCURRENCIA ESTRICTO
-  if (currentState.version !== clientVersion) {
+  // Si el artículo ya no existe en el catálogo, se reporta éxito de forma idempotente
+  const itemIndex = currentState.catalog ? currentState.catalog.findIndex(i => String(i.id) === String(id)) : -1;
+  if (itemIndex === -1) {
+    return new Response(JSON.stringify({ 
+      success: true, 
+      alreadyDeleted: true, 
+      message: 'Artículo no localizado en el catálogo del servidor (ya purgado).', 
+      version: currentState.version 
+    }), { 
+      status: 200, 
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+    });
+  }
+
+  // CONTROL DE CONCURRENCIA ESTRICTO (permite force en reintento)
+  if (!force && currentState.version !== clientVersion) {
     return new Response(JSON.stringify({ 
       error: 'CONFLICT', 
       serverVersion: currentState.version 
     }), { 
       status: 409, 
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
-    }); // Rechaza la sobreescritura ciega
-  }
-
-  const itemIndex = currentState.catalog.findIndex(i => String(i.id) === String(id));
-  if (itemIndex === -1) {
-    return new Response(JSON.stringify({ error: 'Not found' }), { 
-      status: 404, 
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
     });
   }
 
   const deleted = currentState.catalog.splice(itemIndex, 1)[0];
-  currentState.version += 1;
+  currentState.version = (Number(currentState.version) || 1) + 1;
   currentState.lastUpdated = Date.now();
 
   await env.MARSKET_DB.prepare(

@@ -168,14 +168,15 @@ const server = http.createServer((req, res) => {
             req.on('data', chunk => { body += chunk; });
             req.on('end', () => {
                 try {
-                    const payload = JSON.parse(body);
+                    const payload = JSON.parse(body || '{}');
                     const clientVersion = payload.version;
+                    const force = payload.force === true;
                     const serverVersion = memoryState ? (Number(memoryState.version) || 1) : 1;
 
                     if (typeof clientVersion !== 'number') {
                         return sendJSON(res, 400, { error: 'Falta parámetro version' });
                     }
-                    if (clientVersion !== serverVersion) {
+                    if (!force && clientVersion !== serverVersion) {
                         return sendJSON(res, 409, { error: 'CONFLICT', serverVersion, changes: 0 });
                     }
 
@@ -204,26 +205,31 @@ const server = http.createServer((req, res) => {
             req.on('end', () => {
                 try {
                     let clientVersion = null;
+                    let force = false;
                     if (body) {
                         const payload = JSON.parse(body);
                         clientVersion = payload.version;
+                        force = payload.force === true;
                     }
                     const serverVersion = memoryState ? (Number(memoryState.version) || 1) : 1;
                     if (typeof clientVersion !== 'number') {
                         return sendJSON(res, 400, { error: 'Falta parámetro version' });
                     }
-                    if (clientVersion !== serverVersion) {
-                        return sendJSON(res, 409, { error: 'CONFLICT', serverVersion, changes: 0 });
-                    }
+
                     if (memoryState && Array.isArray(memoryState.catalog)) {
                         const idx = memoryState.catalog.findIndex(i => String(i.id) === String(itemId));
-                        if (idx === -1) return sendJSON(res, 404, { error: 'Not found' });
+                        if (idx === -1) {
+                            return sendJSON(res, 200, { success: true, alreadyDeleted: true, version: serverVersion });
+                        }
+                        if (!force && clientVersion !== serverVersion) {
+                            return sendJSON(res, 409, { error: 'CONFLICT', serverVersion, changes: 0 });
+                        }
                         const removed = memoryState.catalog.splice(idx, 1)[0];
                         memoryState.version = serverVersion + 1;
                         memoryState.lastUpdated = Date.now();
                         return sendJSON(res, 200, { success: true, deleted: removed, version: memoryState.version });
                     }
-                    return sendJSON(res, 200, { success: true });
+                    return sendJSON(res, 200, { success: true, version: serverVersion });
                 } catch(e) {
                     return sendJSON(res, 400, { error: e.message });
                 }
@@ -341,6 +347,30 @@ const server = http.createServer((req, res) => {
                             serverVersion: memoryState.version,
                             changes: 0
                         });
+                    }
+
+                    // FUSIÓN DE SECRETOS EN SERVIDOR (Server-Side Merging)
+                    if (memoryState) {
+                        if (incoming.config && incoming.config.teachers && memoryState.config?.teachers) {
+                            for (const key in incoming.config.teachers) {
+                                if (memoryState.config.teachers[key]?.pin) {
+                                    incoming.config.teachers[key].pin = memoryState.config.teachers[key].pin;
+                                }
+                            }
+                        } else if (memoryState.config) {
+                            incoming.config = incoming.config || {};
+                            incoming.config.teachers = memoryState.config.teachers;
+                        }
+                        if (incoming.companies && memoryState.companies) {
+                            for (const cid in incoming.companies) {
+                                const sCo = memoryState.companies[cid];
+                                if (sCo) {
+                                    if (sCo.authVault) incoming.companies[cid].authVault = sCo.authVault;
+                                    if (sCo.accessCode) incoming.companies[cid].accessCode = sCo.accessCode;
+                                    if (sCo.roles) incoming.companies[cid].roles = sCo.roles;
+                                }
+                            }
+                        }
                     }
 
                     // Asignación de versión atómica

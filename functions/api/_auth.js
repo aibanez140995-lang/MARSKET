@@ -22,10 +22,10 @@ export async function verifySession(request, env = {}) {
 
     // 1. Verificación directa contra variables de entorno maestras
     if (env?.TEACHER_MASTER_CODE && token === env.TEACHER_MASTER_CODE) {
-        return { authorized: true, role: 'coordinador', isAdmin: true };
+        return { authorized: true, isCoordinator: true, role: 'coordinador', isAdmin: true };
     }
     if (env?.MASTER_RESET_HASH && token === env.MASTER_RESET_HASH) {
-        return { authorized: true, role: 'coordinador', isAdmin: true };
+        return { authorized: true, isCoordinator: true, role: 'coordinador', isAdmin: true };
     }
 
     // 2. Procesamiento de token según formato
@@ -33,7 +33,21 @@ export async function verifySession(request, env = {}) {
         let decoded = '';
         if (token.startsWith('VLT_')) {
             const b64 = token.slice(4);
-            decoded = typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('utf8');
+            const VAULT_KEY = 'MARS_AEE_2026_SECRET_KEY';
+            let rawStr = '';
+            try {
+                rawStr = typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('binary');
+            } catch(e) {}
+
+            let deXor = '';
+            for (let i = 0; i < rawStr.length; i++) {
+                deXor += String.fromCharCode(rawStr.charCodeAt(i) ^ VAULT_KEY.charCodeAt(i % VAULT_KEY.length));
+            }
+            if (deXor.startsWith('T|') || deXor.startsWith('S|')) {
+                decoded = deXor;
+            } else {
+                decoded = rawStr || (typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('utf8'));
+            }
         } else if (token.includes('.')) {
             // Token JWT (header.payload.signature)
             const parts = token.split('.');
@@ -44,6 +58,7 @@ export async function verifySession(request, env = {}) {
                 const isCoord = role === 'coordinador' || role.includes('coord') || jwtPayload.admin === true;
                 return {
                     authorized: isCoord,
+                    isCoordinator: isCoord,
                     role: jwtPayload.role,
                     isAdmin: !!jwtPayload.admin,
                     user: jwtPayload
@@ -58,9 +73,10 @@ export async function verifySession(request, env = {}) {
             const parts = decoded.split('|');
             const role = parts[1] || '';
             const lowerRole = role.toLowerCase();
-            const isCoord = lowerRole.includes('coord') || lowerRole === 'coordinador' || lowerRole === 'docente';
+            const isCoord = lowerRole.includes('coord') || lowerRole === 'coordinador' || lowerRole === 'docente' || lowerRole.startsWith('coord_');
             return {
                 authorized: isCoord,
+                isCoordinator: isCoord,
                 role: role,
                 isAdmin: true,
                 raw: decoded

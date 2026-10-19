@@ -38,6 +38,9 @@ export function sanitizeStateForClient(rawState) {
     return clean;
 }
 
+export const onRequestGet = onRequest;
+export const onRequestPost = onRequest;
+
 export async function onRequest(context) {
     const { request, env } = context;
     const url = new URL(request.url);
@@ -213,12 +216,80 @@ export async function onRequest(context) {
                 }), { status: 403, headers });
             }
 
+            // 1. Recuperar el estado REAL actual de D1
+            const row = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = 'current'").first();
+            let currentState = null;
+            if (row && row.data) {
+                try {
+                    currentState = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
+                } catch(e) {}
+            }
+
+            // 2. Si D1 está vacío o corrupto, aplicar Seeding de Emergencia
+            if (!currentState || !currentState.config || !currentState.config.teachers) {
+                currentState = currentState || { config: {}, companies: {} };
+                currentState.config = currentState.config || {};
+                const defaultTeachers = {
+                    'COORD_MARIO': { name: "Coordinación - Mario", pin: "0001", admin: true },
+                    'COORD_ALEX': { name: "Coordinación - Álex", pin: "0002", admin: true },
+                    'FYQ': { name: "Dpto. Física y Química", pin: "0101", admin: true },
+                    'ECO': { name: "Dpto. Economía", pin: "0202", admin: true },
+                    'LYE': { name: "Dpto. Liderazgo y Emprendimiento", pin: "0303", admin: true },
+                    'LEN': { name: "Dpto. Lengua Castellana", pin: "0404", admin: true },
+                    'MAT': { name: "Dpto. Matemáticas", pin: "0505", admin: true },
+                    'ING': { name: "Dpto. Inglés", pin: "0606", admin: true }
+                };
+                currentState.config.teachers = defaultTeachers;
+            }
+
+            // 3. FUSIÓN DE SECRETOS (Server-Side Merging)
+            // El cliente envía 'payload'. Reinyectamos las credenciales reales de D1.
+            
+            // A. Restaurar PINs docentes
+            if (payload.config && payload.config.teachers) {
+                for (const key in payload.config.teachers) {
+                    if (currentState.config?.teachers?.[key] && currentState.config.teachers[key].pin) {
+                        payload.config.teachers[key].pin = currentState.config.teachers[key].pin;
+                    } else if (!payload.config.teachers[key].pin) {
+                        payload.config.teachers[key].pin = "1234";
+                    }
+                }
+                if (currentState.config?.teachers) {
+                    for (const key in currentState.config.teachers) {
+                        if (!payload.config.teachers[key]) {
+                            payload.config.teachers[key] = currentState.config.teachers[key];
+                        }
+                    }
+                }
+            } else if (currentState.config) {
+                payload.config = currentState.config;
+            }
+
+            // B. Restaurar Bóvedas de Startups (authVault, accessCode, roles)
+            if (payload.companies) {
+                for (const cid in payload.companies) {
+                    if (currentState.companies && currentState.companies[cid]) {
+                        const sCo = currentState.companies[cid];
+                        if (sCo.authVault) {
+                            payload.companies[cid].authVault = sCo.authVault;
+                        }
+                        if (sCo.accessCode) {
+                            payload.companies[cid].accessCode = sCo.accessCode;
+                        }
+                        if (sCo.roles) {
+                            payload.companies[cid].roles = sCo.roles;
+                        }
+                    }
+                }
+            } else if (currentState.companies) {
+                payload.companies = currentState.companies;
+            }
+
             // Control optimista de concurrencia basado en payload.version
-            const { results: versionCheck } = await env.MARSKET_DB.prepare("SELECT json_extract(data, '$.version') as v FROM state WHERE id = 'current'").all();
-            const serverVersion = (versionCheck && versionCheck.length > 0) ? Number(versionCheck[0].v) : 0;
+            const serverVersion = (currentState && currentState.version) ? Number(currentState.version) : 0;
             const incomingVersion = Number(payload.version) || 0;
 
-            if (serverVersion > 0 && incomingVersion <= serverVersion && incomingVersion !== 0) {
+            if (serverVersion > 0 && incomingVersion < serverVersion && incomingVersion !== 0) {
                 return new Response(JSON.stringify({ error: 'Conflict: Server has a newer version', serverVersion, changes: 0 }), { status: 409, headers });
             }
 

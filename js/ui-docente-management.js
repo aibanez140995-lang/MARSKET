@@ -455,6 +455,7 @@ Object.assign(ui, {
         this.notify("Plazo actualizado en el Cronograma Maestro.", "success");
     },
 
+    // TODO: En la versión v1.1.04 se deberá crear un panel exclusivo y un endpoint (/api/admin/credentials) para que solo los Coordinadores puedan ver y editar estos PINs, ya que actualmente están blindados y son inmutables desde el cliente.
     async updateTeacherPin(tk, val) {
         if (!state.user || !state.user.role.startsWith('COORD')) return;
         const clean = this.cleanInput(val);
@@ -782,12 +783,13 @@ Object.assign(ui, {
             let d1Ok = false;
             try {
                 const token = state.getAuthToken(state.user, state.data);
-                const res = await fetch(`/api/catalog/${encodeURIComponent(itemId)}`, {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                };
+                let res = await fetch(`/api/catalog/${encodeURIComponent(itemId)}`, {
                     method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                    },
+                    headers,
                     body: JSON.stringify({
                         id: itemId,
                         version: Number(state.data.version) || 1,
@@ -796,10 +798,21 @@ Object.assign(ui, {
                     })
                 });
                 if (res.status === 409) {
-                    this.notify("⚠️ CONFLICTO EN CATÁLOGO: Otra terminal actualizó el catálogo. Sincronizando...", "warning");
-                    await state.fetchFromCloud();
-                    this.render();
-                    return;
+                    const conflictJson = await res.json().catch(() => ({}));
+                    const freshVersion = conflictJson.serverVersion || Number(state.data.version) || 1;
+                    state.data.version = freshVersion;
+
+                    res = await fetch(`/api/catalog/${encodeURIComponent(itemId)}`, {
+                        method: 'PATCH',
+                        headers,
+                        body: JSON.stringify({
+                            id: itemId,
+                            version: freshVersion,
+                            changes: { price: normalizedPrice },
+                            price: normalizedPrice,
+                            force: true
+                        })
+                    });
                 }
                 if (res.ok) {
                     const resJson = await res.json().catch(() => ({}));
@@ -808,27 +821,18 @@ Object.assign(ui, {
                 }
             } catch(e) {}
 
+            if (state.data.catalog && state.data.catalog[idx]) {
+                state.data.catalog[idx].price = normalizedPrice;
+            }
+            state.saveLocalOnly();
+
             if (!d1Ok) {
-                // Fallback a pushToCloud con versionado optimista
-                if (!Array.isArray(state.data.catalog)) state.data.catalog = [];
-                const item = state.data.catalog.find(i => String(i.id) === String(itemId));
-                if (item) {
-                    const prevPrice = item.price;
-                    item.price = normalizedPrice;
-                    const pushed = await state.pushToCloud(false);
-                    if (!pushed) {
-                        item.price = prevPrice;
-                        this.notify("Error de persistencia D1. No se pudo confirmar la actualización.", "error");
-                        return;
-                    }
-                    d1Ok = true;
+                const pushed = await state.pushToCloud(false);
+                if (!pushed) {
+                    this.notify("Precio actualizado localmente (pendiente de persistir en D1).", "warning");
+                    this.render();
+                    return;
                 }
-            } else {
-                // Confirmación res.ok recibida -> manipular el estado en memoria
-                if (!Array.isArray(state.data.catalog)) state.data.catalog = [];
-                const item = state.data.catalog.find(i => String(i.id) === String(itemId));
-                if (item) item.price = normalizedPrice;
-                state.saveLocalOnly();
             }
 
             this.notify(`Precio de "${itemId}" sincronizado y persistido en D1 (${normalizedPrice} €v).`, "success");
@@ -883,23 +887,35 @@ Object.assign(ui, {
             let d1Ok = false;
             try {
                 const token = state.getAuthToken(state.user, state.data);
-                const res = await fetch(`/api/catalog/${encodeURIComponent(itemId)}`, {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                };
+                let res = await fetch(`/api/catalog/${encodeURIComponent(itemId)}`, {
                     method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                    },
+                    headers,
                     body: JSON.stringify({
                         id: itemId,
                         version: Number(state.data.version) || 1
                     })
                 });
+
                 if (res.status === 409) {
-                    this.notify("⚠️ CONFLICTO EN CATÁLOGO: El catálogo cambió en el servidor. Sincronizando...", "warning");
-                    await state.fetchFromCloud();
-                    this.render();
-                    return;
+                    const conflictJson = await res.json().catch(() => ({}));
+                    const freshVersion = conflictJson.serverVersion || Number(state.data.version) || 1;
+                    state.data.version = freshVersion;
+
+                    res = await fetch(`/api/catalog/${encodeURIComponent(itemId)}`, {
+                        method: 'DELETE',
+                        headers,
+                        body: JSON.stringify({
+                            id: itemId,
+                            version: freshVersion,
+                            force: true
+                        })
+                    });
                 }
+
                 if (res.ok) {
                     const resJson = await res.json().catch(() => ({}));
                     if (resJson.version) state.data.version = resJson.version;
@@ -907,17 +923,22 @@ Object.assign(ui, {
                 }
             } catch(e) {}
 
+            // Registrar en lista negra persistente local para evitar cualquier resurrección
+            if (typeof state.recordDeletedCatalogItem === 'function') {
+                state.recordDeletedCatalogItem(itemId);
+            }
+
+            // Purgar de la memoria local
+            state.data.catalog = state.data.catalog.filter(i => String(i?.id) !== String(itemId));
+            state.saveLocalOnly();
+
             if (!d1Ok) {
-                const removed = state.data.catalog.splice(idx, 1)[0];
                 const pushed = await state.pushToCloud(false);
                 if (!pushed) {
-                    state.data.catalog.splice(idx, 0, removed);
-                    this.notify("Error de persistencia D1 al purgar artículo.", "error");
+                    this.notify(`Artículo "${itemId}" purgado en local (pendiente de D1).`, "warning");
+                    this.render();
                     return;
                 }
-            } else {
-                state.data.catalog.splice(idx, 1);
-                state.saveLocalOnly();
             }
 
             this.notify(`Artículo "${itemId}" purgado y confirmado en D1.`, "info");

@@ -508,20 +508,20 @@ const state = {
         merged.securityIncidents = mergeArraysGlobal(merged.securityIncidents, localData.securityIncidents);
 
         if (Array.isArray(localData.catalog) && Array.isArray(merged.catalog)) {
+            const deletedIds = new Set(this.getDeletedCatalogItems ? this.getDeletedCatalogItems() : []);
             const localMap = new Map();
-            localData.catalog.forEach(item => { if (item && item.id) localMap.set(String(item.id), item); });
-            merged.catalog = merged.catalog.map(sItem => {
-                if (!sItem || !sItem.id) return sItem;
-                const lItem = localMap.get(String(sItem.id));
-                if (!lItem) return sItem;
-                return { ...sItem, price: lItem.price !== undefined ? lItem.price : sItem.price };
-            });
-            const serverIds = new Set(merged.catalog.map(i => String(i?.id)));
-            localData.catalog.forEach(lItem => {
-                if (lItem && lItem.id && String(lItem.id).startsWith('CUST-') && !serverIds.has(String(lItem.id))) {
-                    merged.catalog.unshift(lItem);
+            localData.catalog.forEach(item => {
+                if (item && item.id && !deletedIds.has(String(item.id))) {
+                    localMap.set(String(item.id), item);
                 }
             });
+            merged.catalog = merged.catalog
+                .filter(sItem => sItem && sItem.id && !deletedIds.has(String(sItem.id)))
+                .map(sItem => {
+                    const lItem = localMap.get(String(sItem.id));
+                    if (!lItem) return sItem;
+                    return { ...sItem, price: lItem.price !== undefined ? lItem.price : sItem.price };
+                });
         }
 
         return merged;
@@ -850,9 +850,9 @@ const state = {
                 }
             } else {
                 this.isCloudOnline = false;
-                this.consecutiveNetworkFailures++;
+                this.consecutiveNetworkFailures = 0;
                 console.error(`Error HTTP inesperado en fetchFromCloud (${res.status}):`, res.statusText);
-                if (this.consecutiveNetworkFailures >= 2 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+                if (typeof navigator !== 'undefined' && navigator.onLine === false) {
                     this.setOfflineContainment(true);
                 }
             }
@@ -890,6 +890,28 @@ const state = {
             }
         }
         return networkOk;
+    },
+
+    recordDeletedCatalogItem(itemId) {
+        if (!itemId) return;
+        try {
+            const raw = localStorage.getItem('marsket_deleted_catalog_ids');
+            const list = raw ? JSON.parse(raw) : [];
+            const strId = String(itemId);
+            if (!list.includes(strId)) {
+                list.push(strId);
+                localStorage.setItem('marsket_deleted_catalog_ids', JSON.stringify(list));
+            }
+        } catch(e) {}
+    },
+
+    getDeletedCatalogItems() {
+        try {
+            const raw = localStorage.getItem('marsket_deleted_catalog_ids');
+            return raw ? JSON.parse(raw) : [];
+        } catch(e) {
+            return [];
+        }
     },
 
     saveToLocal() {
@@ -992,9 +1014,9 @@ const state = {
                 pushSuccess = true;
             } else {
                 this.isCloudOnline = false;
-                this.consecutiveNetworkFailures++;
-                if (this.consecutiveNetworkFailures >= 2 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
-                    this.setOfflineContainment(true);
+                this.consecutiveNetworkFailures = 0;
+                if (res.status === 403) {
+                    console.warn("[SECURITY] Petición pushToCloud rechazada por permisos (HTTP 403).");
                 }
             }
         } catch(err) { 
