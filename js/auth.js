@@ -378,6 +378,11 @@ const auth = {
         try { localStorage.removeItem(state.sessionKey); } catch(e) {}
         try { sessionStorage.clear(); } catch(e) {}
 
+        const appContainer = document.getElementById('app-container') || document.querySelector('.max-w-7xl');
+        if (appContainer) {
+            appContainer.classList.add('hidden');
+        }
+
         const loginScreen = document.getElementById('login-screen');
         if (loginScreen) {
             loginScreen.classList.remove('hidden');

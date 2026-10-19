@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.0.19b) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.00) ---
 
-const APP_VERSION = "1.0.19b";
+const APP_VERSION = "1.1.00";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const REGULATORY_AGENCIES = {
@@ -157,62 +157,18 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// FASE 6: Changelog Oficial consolidado para la versión 1.0.19b
+// Changelog Oficial de Producción v1.1.00
 const APP_CHANGELOG = [
     {
-        version: "1.0.19b",
+        version: "1.1.00",
         date: "Octubre 2026",
-        title: "Capa de Acceso Inmersiva Zero-Shift, Erradicación del HUD en Login y Encaje Móvil 320-393px",
+        title: "Lanzamiento Oficial de Producción",
         highlights: [
-            { type: "MEJORA", text: "Capa de Acceso #login-screen: Aislamiento total de la pantalla de login con display:none en HUD y viewport durante el estado no autenticado. Centrado perfecto y encaje sin scroll en 375x667, 390x844 y 393x852." },
-            { type: "SISTEMA", text: "Transición Sin Salto de Diseño (CLS <= 0.02): Renderizado de la app bajo capa opaca con desvanecimiento exclusivo de opacidad (200ms) eliminando cualquier desplazamiento visual." },
-            { type: "UX", text: "Adaptación Táctil Móvil y Teclado Virtual: Botón en una sola línea desde 320px ([ VALIDAR CÓDIGO ]), inputs a 16px sin auto-zoom y scrollIntoView automático al enfocar." },
-            { type: "RESILIENCIA", text: "Aviso de Conexión Contextual: Notificación discreta de modo local dentro de la tarjeta de acceso ante indisponibilidad de /api/state sin alterar el flujo." }
-        ]
-    },
-    {
-        version: "1.0.19",
-        date: "Octubre 2026",
-        title: "Persistencia Atómica D1, UX Móvil Awwwards, Blindaje LOPD Contextual y Pasarela Docente SHA-256",
-        highlights: [
-            { type: "SISTEMA", text: "Persistencia Atómica D1 y Fin del Rebote de PIN: Guardado inmediato sin debounce en credenciales (state.updatePin, state.updateTeacherPin, state.updateCompanyCode) con resolución LWW por authUpdatedAt." },
-            { type: "NUEVO", text: "Pasarela Docente Oculta Zero-Knowledge (Módulo D): Activación táctil mediante doble clic/tap en el logo (#marsket-logo) con verificación criptográfica Web Crypto SHA-256 (auth.verifyMasterCode) sin código maestro en texto plano." },
-            { type: "MEJORA", text: "Erradicación de Auto-Zoom Móvil y Descongestión Visual (Módulos A y B): Inputs a 16px con touch-action: manipulation, acordeones de hitos (Milestone Collapsible), Drawer inferior táctil (ui.openDrawer) y paginación en Bóveda de Órdenes." },
-            { type: "NUEVO", text: "Filtro Centralizado Anti-Impropios y LOPD No Destructivo (Módulo C): Validación ui.validateSafeText(text) con normalización leetspeak, nombres y apellidos multiculturales, lista blanca aeroespacial contextual y retención del texto con resaltado neón rojo." },
-            { type: "NUEVO", text: "Revocación en Caliente y Contención Offline Estricta: Heartbeat adaptativo (12s) con huella authToken y bloqueo preventivo ante caídas de red frente a /api/state." }
-        ]
-    },
-    {
-        version: "1.0.18",
-        date: "Octubre 2026",
-        title: "Consolidación HUD Awwwards, Accesibilidad WCAG AA, Escapado XSS y PWA",
-        highlights: [
-            { type: "SISTEMA", text: "Control estricto de caché (?v=1.0.18), aislamiento total de errores visuales frente a Cloudflare D1 y soporte PWA con Service Worker estático." },
-            { type: "MEJORA", text: "Sistema de notificaciones y diálogos HUD no bloqueantes, trampa de foco en modales, soporte de teclado físico en PIN y legibilidad mínima garantizada (≥12px)." },
-            { type: "NUEVO", text: "Blindaje XSS integral (ui.escapeHTML) en todos los flujos de texto libre y blindaje global de emblemas corporativos (logo.png)." }
-        ]
-    },
-    {
-        version: "1.0.17",
-        date: "Octubre 2026",
-        title: "Blindaje Léxico Universal, Registro Mercantil, Cronograma (19) y UX Móvil",
-        highlights: [
-            { type: "NUEVO", text: "Cronograma Maestro Integral: Los 19 entregables oficiales de las 6 materias (FYQ, LYE, ECO, MAT, LEN e ING) visibles con filtros y semáforos temporales." },
-            { type: "NUEVO", text: "Registro Mercantil: Flujo digitalizado para que el CEO solicite el cambio de Denominación Social y Coordinación lo apruebe o edite directamente." },
-            { type: "MEJORA", text: "Blindaje Léxico Universal: Intercepción anti-evasión en todos los formularios (Carrito I+D, Marketing, B2B, Gobernanza) diferenciando avisos amarillos (nombres propios) de infracciones rojas (insultos)." },
-            { type: "MEJORA", text: "Header HUD Móvil y Jerarquía Táctica: Botonera superior en línea única (4 columnas) y orden de pestañas personalizado según la prioridad diaria de cada rol." },
-            { type: "MEJORA", text: "Onboarding Integral de Puesto: El modal de bienvenida detalla el manual operativo completo de cada departamento al iniciar sesión." },
-            { type: "SISTEMA", text: "Resiliencia Cloudflare D1: Fusión Last-Write-Wins (LWW) por empresa, snapshot local de emergencia y rotación automática de backup en SQLite." }
-        ]
-    },
-    {
-        version: "1.0.16",
-        date: "Octubre 2026",
-        title: "Motor Curricular, Métricas Físicas y Filtros Avanzados",
-        highlights: [
-            { type: "MEJORA", text: "Rúbricas de LyE y FYQ desglosadas por cada informe oficial (Dic y Abr) con ponderaciones granulares." },
-            { type: "SISTEMA", text: "Transición del Banco de Pruebas a Milímetros (mm). Nueva fórmula de Eficiencia: E = H(mm) / Coste." },
-            { type: "NUEVO", text: "Filtro Léxico Avanzado: Normalización de texto (anti-leetspeak) y alertas disciplinarias directas a Coordinación." }
+            { type: "NUEVO", text: "Cronograma Maestro: Matriz curricular de 19 entregables con semáforos de plazo integrados para las 6 materias." },
+            { type: "NUEVO", text: "Registro Mercantil: Flujo oficial de solicitud y aprobación de cambio de denominación social para startups." },
+            { type: "SISTEMA", text: "Blindaje Léxico Universal: Intercepción anti-evasión en todos los formularios con distinción de avisos y sanciones AEE." },
+            { type: "MEJORA", text: "Interfaz Adaptable y Scanline Láser: Experiencia visual HUD homogénea en móviles, iPad y monitores de escritorio sin desbordamiento." },
+            { type: "SISTEMA", text: "Hardening de Credenciales: Enmascaramiento de PINs en Llavero Maestro y persistencia sincronizada en Cloudflare D1." }
         ]
     }
 ];

@@ -1,10 +1,10 @@
-# MARS-KET 2.0 // ESPECIFICACIÓN TÉCNICA DE FUNCIONES (v1.0.19b)
+# MARS-KET 2.0 // ESPECIFICACIÓN TÉCNICA DE FUNCIONES (v1.1.00)
 
 Documento normativo de referencia para la arquitectura de interfaces, enrutamiento, validación y seguridad de MARS-KET 2.0.
 
 ---
 
-## 1. Inventario de Funciones Nuevas y Modificadas (Ronda 2b, v1.0.19 & v1.0.19b)
+## 1. Inventario de Funciones Nuevas y Modificadas (v1.1.00)
 
 | Módulo | Función | Firma | Async | Parámetros | Retorno | Propósito y Comportamiento |
 | :--- | :--- | :--- | :---: | :--- | :--- | :--- |
@@ -16,7 +16,8 @@ Documento normativo de referencia para la arquitectura de interfaces, enrutamien
 | `state` | `verifySessionIntegrity`| `(serverOrMergedData)` | No | `serverOrMergedData: Object` | `boolean` | Fiscaliza la vigencia de la sesión: comprueba expiración (8 h), existencia de la entidad y validez del token. Si falla, revoca con modal informativo. |
 | `state` | `revokeSession` | `(reason)` | No | `reason: string` | `void` | Finaliza de forma controlada la sesión, limpia `sessionStorage`, oculta el HUD y presenta aviso de seguridad en modal. |
 | `state` | `init` | `()` | **Sí** | Ninguno | `Promise<void>` | Inicializa el simulador: migra almacenamiento local, fiscaliza la sesión en `sessionStorage` recalculando `authProof` con la credencial del estado (0 auto-asignación). |
-| `state` | `fetchFromCloud` | `()` | **Sí** | Ninguno | `Promise<boolean>` | Sincroniza con `/api/state`: errores de red esperados (offline) emiten `console.warn` una sola vez con limitador; errores HTTP 5xx emiten `console.error`. |
+| `state` | `fetchFromCloud` | `()` | **Sí** | Ninguno | `Promise<boolean>` | Sincroniza con `/api/state`: errores de red esperados (offline) emiten telemetría y `console.debug`; errores HTTP 5xx emiten `console.error`. |
+| `state` | `save` | `(targetCid = null)` | No | `targetCid: string|null` | `void` | Persiste en almacenamiento local y sincroniza con Cloudflare D1; actualiza marcas temporales de la empresa objetivo (`updatedAt`) incluso cuando es invocado por claustro docente. |
 | `ui` | `setHUDVisibility` | `(isLoggedIn)` | No | `isLoggedIn: boolean` | `void` | Conmuta visibilidad atómica de `#hud-header`, `#hud-nav` y `#hud-footer` mediante clase `.hidden`. Blindado ante encuestas en segundo plano (`updateHUD`). |
 | `ui` | `escapeHTML` | `(str)` | No | `str: any` | `string` | Sanitiza texto plano para inyección segura en HTML (`&`, `<`, `>`, `"`, `'`). Elimina invisibles U+200B–U+200F y U+FEFF. |
 | `ui` | `escapeAttr` | `(str)` | No | `str: any` | `string` | Escapa atributos HTML (comillas dobles, simples y ampersands) para evitar quiebres de sintaxis en atributos. |
@@ -30,6 +31,10 @@ Documento normativo de referencia para la arquitectura de interfaces, enrutamien
 | `ui` | `setSubView` | `(subView, skipHistory)` | No | `subView: string|null`, `skipHistory: boolean` | `void` | Activa una sub-vista en móvil integrándola en la pila de capas del botón Atrás. |
 | `ui` | `openDrawer` | `(title, bodyHtml)` | No | `title: string`, `bodyHtml: string` | `void` | Despliega el bottom-sheet HUD con retención de foco, unidades dvh e inserción en la pila de navegación. |
 | `ui` | `closeDrawer` | `(skipHistory)` | No | `skipHistory: boolean` | `void` | Cierra el bottom-sheet HUD devolviendo el foco al elemento de origen y sincronizando capas. |
+| `ui` | `togglePinsVisibility` | `()` | No | Ninguno | `void` | Conmuta visibilidad de PINs en el Llavero Maestro entre modo protegido (`password`) y texto plano (`text`), actualizando los controles en vivo. |
+| `ui` | `promptFactoryResetLaunch` | `()` | No | Ninguno | `void` | Abre modal protegido para reset de fábrica pre-lanzamiento solicitando la clave maestra (`JOVE2025`). |
+| `ui` | `verifyAndConfirmFactoryReset` | `()` | No | Ninguno | `void` | Valida la clave maestra de autorización del claustro y solicita confirmación crítica de segundo nivel. |
+| `ui` | `factoryResetLaunch` | `()` | **Sí** | Ninguno | `Promise<void>` | Ejecuta el reset general de simulación a condiciones de fábrica conservando identidades, credenciales y catálogo, incrementando versión D1 (+50). |
 | `ui` | `cancelNameChangeRequest` | `()` | No | Ninguno | `void` | Permite al CEO retirar/cancelar una solicitud de cambio de denominación social pendiente, marcándola como CANCELADO con marca temporal y sincronización. |
 | `ui` | `dismissNameChangeRejection` | `()` | No | Ninguno | `void` | Permite al CEO acusar recibo del aviso de denegación de nombre del Registro Mercantil y archivar la solicitud para permitir un nuevo trámite. |
 | `ui` | `render` | `()` | No | Ninguno | `void` | Renderiza la vista activa. Si no hay sesión, delega en `#login-screen` y oculta todo el HUD sin desplazamiento vertical ni CLS. |
@@ -121,3 +126,25 @@ Documento normativo de referencia para la arquitectura de interfaces, enrutamien
   - Botón de retroceso `[⬅ Cambiar]` para regresar al paso 1 sin recargar.
 - **Aviso Offline Seguro**:
   - Notificación discreta `#login-offline-notice` integrada al pie de la tarjeta de login, con texto legible $\ge 12\text{ px}$ (`text-xs`) y atributo `aria-live="polite"`. Solo se hace visible si falla `/api/state`.
+
+---
+
+## 5. Especificaciones de Hardening y Producción (v1.1.00)
+
+### 5.1 Contención de Tarjeta en Escritorio y Scanline Láser Inmersivo (R1 & R2)
+- **Contención `#login-box`**: Se impone `max-width: 28rem !important` (448 px) con centrado vertical y horizontal automático en resoluciones $\ge 1024\text{ px}$ (1440×900, 1920×1080), eliminando cualquier deformación horizontal de inputs y botones.
+- **Scanline Láser CRT**: Capa `.login-scanline-layer` fija a pantalla completa con haz animado `.login-laser-beam` (`scanline-laser 4.5s linear infinite`), acelerado por hardware (`will-change: transform; transform: translateZ(0)`), respetando `prefers-reduced-motion` y manteniendo un CLS idéntico a 0.000.
+
+### 5.2 Ocultación y Revelado Controlado de PINs (R3)
+- **Llavero Maestro**: Todos los campos de entrada de PIN en `renderAdminStartups` (roles de startups y credenciales docentes) se renderizan por defecto con `type="password"`.
+- **Toggle Global**: Botón `ui.togglePinsVisibility()` conmutador `[ 👁️ Revelar PINs / 🔒 Ocultar PINs ]` que conmuta la visibilidad en tiempo real sin recargas destructivas de DOM.
+- **Cero Fuga en DOM**: Se garantiza la ausencia total de atributos `data-pin` en texto plano en cualquier elemento del árbol DOM.
+
+### 5.3 Persistencia Garantizada en Registro Mercantil (R4)
+- **Sincronización D1**: `ui.resolveNameChangeRequest(cid, isApproved)` sella `resolvedAt`, `updatedAt`, `co.updatedAt` y llama a `state.save(cid)` para forzar que Cloudflare D1 registre la modificación administrativa.
+- **Resolución Determinista en `mergeData`**: Las resoluciones (`APROBADO`, `RECHAZADO`, `CANCELADO`, `ARCHIVADO`) dominan siempre sobre estados `PENDIENTE` en cualquier reconciliación, y el nombre aprobado se consolida de forma inmediata y definitiva en `co.name`.
+
+### 5.4 Reset General Pre-Lanzamiento (R5)
+- **Protección Maestra**: Botón `ui.promptFactoryResetLaunch()` en el panel docente de backups protegido mediante modal y clave maestra `JOVE2025`.
+- **Alcance Operativo**: Restaura balances a 2400.00 €v, vacía historial de pedidos, gastos, vuelos, mociones, avisos, multas y entregables (19 slots reseteados a pendiente), conservando intactas las startups registradas, sus claves de acceso corporativas, los PINs de roles, el catálogo y las credenciales docentes.
+- **Replicación Inmediata**: Incrementa la versión de sincronización Cloudflare D1 en $+50$ unidades forzando la aceptación del reset por LWW (Last-Write-Wins).

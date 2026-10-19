@@ -299,14 +299,38 @@ const state = {
                     const mergeArraysLocalDominant = (arrLocal, arrServer) => {
                         if (!Array.isArray(arrLocal)) arrLocal = [];
                         if (!Array.isArray(arrServer)) arrServer = [];
+                        const serverMap = new Map();
+                        arrServer.forEach(i => { if (i && i.id) serverMap.set(String(i.id), i); });
+                        
+                        const mergedLocal = arrLocal.map(lItem => {
+                            if (!lItem || !lItem.id) return lItem;
+                            const sItem = serverMap.get(String(lItem.id));
+                            if (!sItem) return lItem;
+                            const isRead = Boolean(lItem.read || sItem.read);
+                            let status = lItem.status;
+                            if (lItem.status === 'PENDIENTE' && sItem.status && sItem.status !== 'PENDIENTE') {
+                                status = sItem.status;
+                            }
+                            return { ...sItem, ...lItem, read: isRead, status: status || lItem.status };
+                        });
                         const localIds = new Set(arrLocal.map(i => String(i?.id)));
                         const missingInLocal = arrServer.filter(i => i && i.id && !localIds.has(String(i.id)));
-                        return [...arrLocal, ...missingInLocal];
+                        return [...mergedLocal, ...missingInLocal];
                     };
                     const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'cart', 'bom'];
                     arraysToMerge.forEach(arrName => {
                         merged.companies[k][arrName] = mergeArraysLocalDominant(lCo[arrName], sCo[arrName]);
                     });
+                    if (lCo.nameChangeRequest && sCo.nameChangeRequest) {
+                        const lReq = lCo.nameChangeRequest;
+                        const sReq = sCo.nameChangeRequest;
+                        if (lReq.status === 'PENDIENTE' && sReq.status !== 'PENDIENTE') {
+                            merged.companies[k].nameChangeRequest = JSON.parse(JSON.stringify(sReq));
+                        }
+                    }
+                    if (merged.companies[k].nameChangeRequest?.status === 'APROBADO' && merged.companies[k].nameChangeRequest.proposedName) {
+                        merged.companies[k].name = merged.companies[k].nameChangeRequest.proposedName;
+                    }
                 } else {
                     if (lAuthTime > sAuthTime) {
                         sCo.authVault = JSON.parse(JSON.stringify(lCo.authVault));
@@ -322,6 +346,9 @@ const state = {
                         if (!sSt || (sSt === 'PENDIENTE' && lSt && lSt !== 'PENDIENTE') || (lCo.nameChangeRequest.updatedAt || 0) > (sCo.nameChangeRequest?.updatedAt || 0)) {
                             sCo.nameChangeRequest = JSON.parse(JSON.stringify(lCo.nameChangeRequest));
                         }
+                    }
+                    if (sCo.nameChangeRequest?.status === 'APROBADO' && sCo.nameChangeRequest.proposedName) {
+                        sCo.name = sCo.nameChangeRequest.proposedName;
                     }
                     if (lCo.brandApproval) {
                         const lSt = lCo.brandApproval.status;
@@ -735,9 +762,11 @@ const state = {
         }
     },
 
-    save() { 
+    save(targetCid = null) { 
         if (this.user && !this.user.admin && this.data.companies[this.user.coId]) {
             this.data.companies[this.user.coId].updatedAt = Date.now();
+        } else if (targetCid && this.data.companies && this.data.companies[targetCid]) {
+            this.data.companies[targetCid].updatedAt = Date.now();
         }
         this.data.lastUpdated = Date.now();
         

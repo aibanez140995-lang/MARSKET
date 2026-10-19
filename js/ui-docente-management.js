@@ -1,7 +1,8 @@
 // js/ui-docente-management.js
-// --- MÓDULO DOCENTE: GESTIÓN, LLAVERO MAESTRO, ADUANAS Y REGISTRO MERCANTIL (v1.0.18) ---
+// --- MÓDULO DOCENTE: GESTIÓN, LLAVERO MAESTRO, ADUANAS Y REGISTRO MERCANTIL (v1.1.00) ---
 
 Object.assign(ui, {
+    pinsVisible: false,
     renderAdminDash() {
         let globalReal = 0;
         for (let c in state.data.companies) {
@@ -312,7 +313,7 @@ Object.assign(ui, {
                         <span class="text-xs text-mars-cyan font-bold uppercase block">${this.escapeHTML(tk)}</span>
                         <label for="teacher-pin-${this.escapeHTML(tk)}" class="text-xs text-white font-bold uppercase">${this.escapeHTML(t.name)}</label>
                     </div>
-                    <input type="text" id="teacher-pin-${this.escapeHTML(tk)}" value="${this.escapeHTML(t.pin)}" maxlength="4" onchange="ui.updateTeacherPin('${this.escapeHTML(tk)}', this.value)" class="min-h-[44px] w-20 bg-black border border-mars-cyan text-center text-mars-cyan font-mono font-bold text-base sm:text-xs p-1.5">
+                    <input type="${this.pinsVisible ? 'text' : 'password'}" id="teacher-pin-${this.escapeHTML(tk)}" value="${this.escapeHTML(t.pin)}" maxlength="4" onchange="ui.updateTeacherPin('${this.escapeHTML(tk)}', this.value)" class="min-h-[44px] w-20 bg-black border border-mars-cyan text-center text-mars-cyan font-mono font-bold text-base sm:text-xs p-1.5">
                 </div>`;
             }).join('');
 
@@ -356,7 +357,10 @@ Object.assign(ui, {
                         <h3 class="font-orbitron text-mars-yellow text-xs uppercase tracking-widest">🔑 Llavero Maestro: Códigos de Empresa y PINs</h3>
                         <p class="text-xs text-slate-300 uppercase mt-0.5">Credenciales desencriptadas para soporte directo al alumnado en el aula.</p>
                     </div>
-                    ${isCoord ? `<button onclick="ui.exportCredentialsCSV()" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">[📥 Exportar Llavero CSV]</button>` : ''}
+                    <div class="flex items-center gap-2 flex-wrap">
+                        ${isCoord ? `<button id="toggle-pins-btn" onclick="ui.togglePinsVisibility()" class="min-h-[44px] bg-slate-800 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase hover:bg-mars-cyan hover:text-black transition-colors shrink-0">${this.pinsVisible ? '[ 🔒 Ocultar PINs ]' : '[ 👁️ Revelar PINs ]'}</button>` : ''}
+                        ${isCoord ? `<button onclick="ui.exportCredentialsCSV()" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">[📥 Exportar Llavero CSV]</button>` : ''}
+                    </div>
                 </div>
                 <div class="overflow-x-auto w-full">
                     <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
@@ -395,13 +399,13 @@ Object.assign(ui, {
                                         const pinVal = state.getRolePin(co, rol) || '1234';
                                         return `
                                         <td class="py-3 pr-2">
-                                            ${isCoord ? `<input type="text" id="pin-input-${this.escapeHTML(cid)}-${rol}" aria-label="PIN ${rol} de ${this.escapeHTML(co.name)}" maxlength="4" value="${this.escapeHTML(pinVal)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', '${rol}', this.value)" class="min-h-[44px] w-14 bg-black border border-mars-border text-center text-mars-cyan font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">` : `<span class="text-slate-300">****</span>`}
+                                            ${isCoord ? `<input type="${this.pinsVisible ? 'text' : 'password'}" id="pin-input-${this.escapeHTML(cid)}-${rol}" aria-label="PIN ${rol} de ${this.escapeHTML(co.name)}" maxlength="4" value="${this.escapeHTML(pinVal)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', '${rol}', this.value)" class="min-h-[44px] w-14 bg-black border border-mars-border text-center text-mars-cyan font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">` : `<span class="text-slate-300">****</span>`}
                                         </td>`;
                                     }).join('')}
                                     <td class="py-3 pr-3">
                                         ${isCoord ? `
                                         <div class="flex items-center gap-1">
-                                            <input type="text" id="pin-input-${this.escapeHTML(cid)}-AUXILIAR" aria-label="PIN AUXILIAR de ${this.escapeHTML(co.name)}" maxlength="4" placeholder="----" value="${this.escapeHTML(auxPin)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', 'AUXILIAR', this.value)" class="min-h-[44px] w-14 bg-black border ${auxPin ? 'border-mars-green text-mars-green' : 'border-slate-700 text-slate-400'} text-center font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">
+                                            <input type="${this.pinsVisible ? 'text' : 'password'}" id="pin-input-${this.escapeHTML(cid)}-AUXILIAR" aria-label="PIN AUXILIAR de ${this.escapeHTML(co.name)}" maxlength="4" placeholder="----" value="${this.escapeHTML(auxPin)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', 'AUXILIAR', this.value)" class="min-h-[44px] w-14 bg-black border ${auxPin ? 'border-mars-green text-mars-green' : 'border-slate-700 text-slate-400'} text-center font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">
                                             <span class="text-xs text-slate-300 uppercase">[${this.escapeHTML(auxDept)}]</span>
                                         </div>` : `<span class="text-slate-300">****</span>`}
                                     </td>
@@ -415,6 +419,19 @@ Object.assign(ui, {
             </div>
         </div>
         ${coordSettingsHtml}`;
+    },
+
+    togglePinsVisibility() {
+        this.pinsVisible = !this.pinsVisible;
+        const btn = document.getElementById('toggle-pins-btn');
+        if (btn) {
+            btn.innerHTML = this.pinsVisible ? '[ 🔒 Ocultar PINs ]' : '[ 👁️ Revelar PINs ]';
+        }
+        const pinInputs = document.querySelectorAll('input[id^="pin-input-"], input[id^="teacher-pin-"]');
+        pinInputs.forEach(input => {
+            input.type = this.pinsVisible ? 'text' : 'password';
+        });
+        this.notify(this.pinsVisible ? "PINs visibles temporalmente." : "PINs protegidos (modo contraseña).", "info");
     },
 
     updateDeadline(key, val) {
@@ -1213,7 +1230,7 @@ Object.assign(ui, {
         co.nameChangeRequest.resolvedAt = Date.now();
         co.nameChangeRequest.updatedAt = Date.now();
         co.updatedAt = Date.now();
-        state.save();
+        state.save(cid);
         this.render();
     },
 

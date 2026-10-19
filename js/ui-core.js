@@ -597,7 +597,7 @@ const ui = {
         
         if (co.notifications.length > 50) co.notifications.pop();
         co.updatedAt = Date.now();
-        state.save();
+        state.save(coId);
     },
 
     renderWorkflowTracker(steps, currentIndex) {
@@ -1174,15 +1174,18 @@ const ui = {
         const hdr = document.getElementById('hud-header');
         const nav = document.getElementById('hud-nav');
         const ftr = document.getElementById('hud-footer');
+        const appContainer = document.getElementById('app-container') || document.querySelector('.max-w-7xl');
         const actionBar = document.getElementById('hud-action-bar');
         const navContainer = document.getElementById('nav-container');
         if (isLoggedIn) {
+            if (appContainer) appContainer.classList.remove('hidden');
             if (hdr) hdr.classList.remove('hidden');
             if (nav) nav.classList.remove('hidden');
             if (ftr) ftr.classList.remove('hidden');
             if (actionBar) actionBar.style.visibility = 'visible';
             if (navContainer) navContainer.style.visibility = 'visible';
         } else {
+            if (appContainer) appContainer.classList.add('hidden');
             if (hdr) hdr.classList.add('hidden');
             if (nav) nav.classList.add('hidden');
             if (ftr) ftr.classList.add('hidden');

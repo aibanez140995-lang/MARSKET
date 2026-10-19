@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-10-19T08:03:48.289Z",
+  "timestamp": "2026-10-19T09:51:26.265Z",
   "gates": {
     "G2": {
       "status": "CORRECTO",
-      "filesScanned": 35,
+      "filesScanned": 40,
       "leakCount": 0,
       "leakedFiles": [],
-      "evidence": "Escaneados 35 archivos en repo. Coincidencias de código maestro en claro: 0."
+      "evidence": "Escaneados 40 archivos en repo. Coincidencias de código maestro en claro: 0."
     },
     "G3": {
       "status": "CORRECTO",
@@ -75,14 +75,12 @@
     },
     "G14": {
       "status": "CORRECTO",
-      "version": "1.0.19b",
+      "version": "1.1.00",
       "changelog": {
-        "v17": true,
-        "v18": true,
-        "v19": true
+        "v11": true
       },
       "uniqueWelcomesCount": 7,
-      "evidence": "Versión única: 1.0.19b. Changelog contiene entradas 1.0.17, 1.0.18 y 1.0.19. Bienvenidas onboarding diferenciadas para roles: 7 perfiles únicos."
+      "evidence": "Versión única: 1.1.00. Changelog oficial de producción v1.1.00. Bienvenidas onboarding diferenciadas para roles: 7 perfiles únicos."
     },
     "G16": {
       "status": "CORRECTO",

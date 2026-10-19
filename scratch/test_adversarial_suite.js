@@ -501,9 +501,7 @@ async function runSuite() {
     const versionMatch = cfgCode.match(/const APP_VERSION = ["']([^"']+)["']/);
     const singleVersion = versionMatch ? versionMatch[1] : null;
 
-    const changelogHas17 = cfgCode.includes("1.0.17");
-    const changelogHas18 = cfgCode.includes("1.0.18");
-    const changelogHas19 = cfgCode.includes("1.0.19");
+    const changelogHas11 = cfgCode.includes("1.1.00");
 
     // Check onboarding welcomes for all 7 roles
     const onboardingCheck = await page.evaluate(() => {
@@ -519,13 +517,13 @@ async function runSuite() {
     });
 
     const uniqueWelcomes = new Set(Object.values(onboardingCheck)).size;
-    const g14Pass = (singleVersion === '1.0.19' || singleVersion === '1.0.19b') && changelogHas17 && changelogHas18 && changelogHas19 && uniqueWelcomes >= 6;
+    const g14Pass = (singleVersion === '1.1.00' || singleVersion === '1.0.19' || singleVersion === '1.0.19b') && changelogHas11 && uniqueWelcomes >= 6;
     report.gates.G14 = {
         status: g14Pass ? "CORRECTO" : "FALLO",
         version: singleVersion,
-        changelog: { v17: changelogHas17, v18: changelogHas18, v19: changelogHas19 },
+        changelog: { v11: changelogHas11 },
         uniqueWelcomesCount: uniqueWelcomes,
-        evidence: `Versión única: ${singleVersion}. Changelog contiene entradas 1.0.17, 1.0.18 y 1.0.19. Bienvenidas onboarding diferenciadas para roles: ${uniqueWelcomes} perfiles únicos.`
+        evidence: `Versión única: ${singleVersion}. Changelog oficial de producción v1.1.00. Bienvenidas onboarding diferenciadas para roles: ${uniqueWelcomes} perfiles únicos.`
     };
     console.log(`G14 Verdict: ${report.gates.G14.status}`);
 

@@ -1,0 +1,178 @@
+{
+  "timestamp": "2026-10-19T09:53:00.005Z",
+  "gates": {
+    "P1": {
+      "status": "PASS",
+      "details": [
+        {
+          "viewport": "1440x900",
+          "width": 448,
+          "isWidthLeq480": true,
+          "left": 496,
+          "right": 496,
+          "isCentered": true,
+          "scrollHeight": 900,
+          "innerHeight": 900,
+          "noVerticalScroll": true
+        },
+        {
+          "viewport": "1920x1080",
+          "width": 448,
+          "isWidthLeq480": true,
+          "left": 736,
+          "right": 736,
+          "isCentered": true,
+          "scrollHeight": 1080,
+          "innerHeight": 1080,
+          "noVerticalScroll": true
+        },
+        {
+          "viewport": "768x1024",
+          "width": 448,
+          "isWidthLeq480": true,
+          "left": 160,
+          "right": 160,
+          "isCentered": true,
+          "scrollHeight": 1024,
+          "innerHeight": 1024,
+          "noVerticalScroll": true
+        }
+      ],
+      "p1ScrollHeightOk": true,
+      "evidence": "Mediciones de width: 1440x900: 448px (centrado: true), 1920x1080: 448px (centrado: true), 768x1024: 448px (centrado: true). ScrollHeight 1440x900: 900px vs innerHeight: 900px."
+    },
+    "P2": {
+      "status": "PASS",
+      "metrics": {
+        "layerWidth": 1440,
+        "layerHeight": 900,
+        "vpWidth": 1440,
+        "vpHeight": 900,
+        "coversViewport": true,
+        "pointerEventsNone": true,
+        "layerZIndex": 1,
+        "boxZIndex": 10,
+        "zIndexCorrect": true,
+        "animationName": "scanline-laser",
+        "usesTransform": true,
+        "willChange": "transform"
+      },
+      "evidence": "Capa scanline: 1440x900 (vp: 1440x900), pointer-events: true, z-index layer: 1 < box: 10, anim: scanline-laser."
+    },
+    "P3": {
+      "status": "PASS",
+      "initialPassword": true,
+      "firstToggleToText": true,
+      "secondToggleToPassword": true,
+      "stateAllProtected": true,
+      "stateAllVaultPrefixed": true,
+      "plainPinFindings": [],
+      "evidence": "Total inputs PIN: 6. Estado inicial: password (true). Toggle 1: text (true). Toggle 2: password (true). co.roles con PIN en texto plano: 0."
+    },
+    "P4": {
+      "status": "PASS",
+      "nameAfterApproval": "NOVA AEROSPACE",
+      "requestStatusAfterApproval": "APROBADO",
+      "persistedNameAfterReload": "NOVA AEROSPACE",
+      "persistedStatusAfterReload": "APROBADO",
+      "evidence": "Nombre tras aprobación: \"NOVA AEROSPACE\" (APROBADO). Tras recarga y fetchFromCloud: \"NOVA AEROSPACE\" (APROBADO)."
+    },
+    "P5": {
+      "status": "PASS",
+      "wrongCodeAborts": true,
+      "conditions": {
+        "cond1_companiesKept": true,
+        "cond2_balance2400": true,
+        "cond2_logoNull": true,
+        "cond2_sloganEmpty": true,
+        "cond2_valuePropEmpty": true,
+        "cond2_pendingLogoNull": true,
+        "cond2_all13Empty": true,
+        "cond2_19DeliverablesNull": true,
+        "cond3_b2bMarketEmpty": true,
+        "cond3_b2bContractsEmpty": true,
+        "cond3_securityIncidentsEmpty": true,
+        "cond3_suggestionsToAlexEmpty": true,
+        "cond3_telemetrySessionsEmpty": true,
+        "cond3_totalLoginsZero": true,
+        "cond4_versionBumped50": true
+      },
+      "results": {
+        "balance": 2400,
+        "logo": null,
+        "slogan": "",
+        "valueProposition": "",
+        "brandApprovalPendingLogo": null,
+        "brandApprovalExists": true,
+        "arraysLengths": {
+          "orders": 0,
+          "ledger": 0,
+          "realCosts": 0,
+          "flightTests": 0,
+          "votingMotions": 0,
+          "aiPrompts": 0,
+          "marketingCampaigns": 0,
+          "inactivityReports": 0,
+          "notifications": 0,
+          "sanctions": 0,
+          "crisisAlerts": 0,
+          "cart": 0,
+          "bom": 0
+        },
+        "all13Empty": true,
+        "deliverablesCount": 19,
+        "allDeliverablesNull": true,
+        "globalEmpties": {
+          "b2bMarketLen": 0,
+          "b2bContractsLen": 0,
+          "securityIncidentsLen": 0,
+          "suggestionsToAlexLen": 0,
+          "telemetrySessionsLen": 0,
+          "telemetryTotalLogins": 0
+        },
+        "hasVaultCredentials": true,
+        "nameAndClassPreserved": true,
+        "newVersion": 52,
+        "versionBumped50": true
+      },
+      "evidence": "Reset con \"1234\" abortó sin borrar: true. Con \"JOVE2025\": balance=2400 (true), logo=null (true, valor=null), slogan=\"\" (true, valor=\"\"), valProp=\"\" (true), 13 arrays len=0 (true, ledger=0), 19 deliverables=null (true), b2bMarket len=0 (true, len=0), version bump +50 (true, newVersion=52)."
+    },
+    "P6": {
+      "status": "PASS",
+      "appVersion": "1.1.00",
+      "changelogCheck": {
+        "length": 1,
+        "firstVersion": "1.1.00",
+        "has10x": false
+      },
+      "scriptTagsCount": 14,
+      "scriptsEndingCorrectly": true,
+      "evidence": "APP_VERSION: \"1.1.00\". APP_CHANGELOG length: 1, versión: \"1.1.00\", rastros 1.0.X: false. Total scripts: 14, todos con ?v=1.1.00: true."
+    },
+    "P7": {
+      "status": "PASS",
+      "l1l2Pass": true,
+      "l3Pass": true,
+      "l3Metrics": {
+        "btnHeight": 47,
+        "btnHeightGe44": true,
+        "btnSingleLine": true,
+        "inputFontSize": 16,
+        "inputFontSizeGe16": true
+      },
+      "fullCycleCls": 0,
+      "clsPass": true,
+      "evidence": "L1/L2 cabecera/nav/footer ocultos y scroll: true. L3 en 320px: btnHeight=47px (>=44), singleLine=true, fontSize=16px (>=16). CLS ciclo completo: 0 (umbral <= 0.02, pass: true)."
+    },
+    "P8": {
+      "status": "PASS",
+      "consoleErrorsCount": 0,
+      "consoleErrors": [],
+      "logoFallbackCheck": {
+        "heroImgSrc": "logo.png",
+        "fallbackWorks": true
+      },
+      "evidence": "Errores console.error en navegación por las 8 pestañas docentes y 7 roles de empresa: 0. Fallback de logo cuando co.logo===null: src=\"logo.png\" (pass: true)."
+    }
+  }
+}

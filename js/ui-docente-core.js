@@ -1,5 +1,5 @@
 // js/ui-docente-core.js
-// --- MÓDULO DOCENTE CORE: ENRUTADOR, AJUSTES DE PLAZOS Y BACKUPS D1 (v1.0.18) ---
+// --- MÓDULO DOCENTE CORE: ENRUTADOR, AJUSTES DE PLAZOS Y BACKUPS D1 (v1.1.00) ---
 
 Object.assign(ui, {
     viewAdmin(el) {
@@ -188,6 +188,24 @@ Object.assign(ui, {
                 <input type="file" id="restore-json-file" accept=".json" class="min-h-[44px] text-xs text-slate-300 bg-black border border-slate-700 p-2 w-full md:w-auto flex-grow">
                 <button onclick="ui.restoreStateFromJSON()" class="min-h-[44px] bg-mars-magenta text-white font-black px-6 py-2.5 text-xs uppercase tracking-widest hover:bg-white hover:text-mars-magenta transition-all border border-mars-magenta shadow-[0_0_10px_rgba(255,0,85,0.4)] whitespace-nowrap w-full md:w-auto">⚠ Ejecutar Restauración</button>
             </div>
+        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-red-600 mt-6 shadow-[0_0_20px_rgba(255,0,0,0.2)]">
+            <div class="flex justify-between items-center mb-4 border-b border-red-900/50 pb-2 flex-wrap gap-2">
+                <div>
+                    <h3 class="font-orbitron text-red-500 text-xs sm:text-sm uppercase tracking-widest font-black">🚨 RESET GENERAL PRE-LANZAMIENTO (FÁBRICA)</h3>
+                    <p class="text-xs text-slate-300 uppercase mt-0.5">Inicialización limpia de simulación para el arranque oficial v1.1.00 en aula.</p>
+                </div>
+                <span class="bg-red-950/80 border border-red-500 text-red-400 px-3 py-1 text-xs font-black uppercase">ACCIÓN DESTRUCTIVA PROTEGIDA</span>
+            </div>
+            <p class="text-xs text-slate-200 mb-4 leading-relaxed">
+                Restaura todas las startups al estado base de inicio: <strong>2400.00 €v de tesorería</strong>, libro mayor limpio, 19 entregables reseteados a pendiente, 0 multas, 0 transferencias, 0 mociones y telemetría purgada. <strong>Conserva intactas las empresas, sus nombres, códigos de acceso, PINs de roles, catálogo y docentes.</strong>
+            </p>
+            <div class="bg-red-950/40 border border-red-600/40 p-4 mb-4 text-xs font-mono text-red-300 space-y-1">
+                <p>⚠️ Requiere clave de autorización docente maestra.</p>
+                <p>🔒 Incrementa la versión de sincronización Cloudflare D1 (+50) para forzar replicación inmediata.</p>
+            </div>
+            <button type="button" onclick="ui.promptFactoryResetLaunch()" class="min-h-[44px] bg-red-600 hover:bg-red-500 text-white font-black px-6 py-2.5 text-xs uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(255,0,0,0.5)] border border-red-400">
+                [ 🚨 INICIALIZAR RESET DE FÁBRICA PRE-LANZAMIENTO ]
+            </button>
         </div>
         `;
     },
@@ -296,5 +314,113 @@ Object.assign(ui, {
             },
             "Ejecutar Rollback"
         );
+    },
+
+    promptFactoryResetLaunch() {
+        if (!state.user || !state.user.role.startsWith('COORD')) {
+            this.notify("Acceso restringido: Solo Coordinación Docente puede ejecutar el reset de fábrica.", "error");
+            return;
+        }
+        const html = `
+            <div class="space-y-4">
+                <div class="bg-red-950/60 border border-red-500 p-4 text-center">
+                    <p class="text-red-400 font-orbitron font-black text-sm uppercase tracking-wider mb-1">ATENCIÓN: REINICIO A CONDICIONES DE FÁBRICA</p>
+                    <p class="text-xs text-slate-300 uppercase">Esta acción reiniciará balances a 2400 €v y borrará transacciones, pedidos y entregables de todas las empresas. Se mantendrán los nombres, códigos y PINs.</p>
+                </div>
+                <div>
+                    <label for="factory-reset-key" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Introduce la Clave Maestra de Autorización:</label>
+                    <input type="password" id="factory-reset-key" autocomplete="off" placeholder="••••••••" class="min-h-[44px] w-full bg-slate-900 border border-red-500 p-3 text-center font-orbitron font-black text-sm text-white tracking-widest outline-none focus:border-mars-yellow" onkeydown="if(event.key==='Enter') ui.verifyAndConfirmFactoryReset()">
+                </div>
+            </div>
+        `;
+        const actions = `
+            <button onclick="ui.verifyAndConfirmFactoryReset()" class="min-h-[44px] bg-red-600 text-white font-black px-5 py-2 text-xs uppercase tracking-widest hover:bg-white hover:text-black transition-all border border-red-500">[ PROCEDER AL RESET ]</button>
+            <button onclick="ui.closeModal()" class="min-h-[44px] bg-slate-800 text-slate-300 font-bold px-4 py-2 text-xs uppercase hover:bg-slate-700 transition-all">Cancelar</button>
+        `;
+        this.showModal("CONFIRMACIÓN DE RESET PRE-LANZAMIENTO", html, actions);
+        setTimeout(() => document.getElementById('factory-reset-key')?.focus(), 50);
+    },
+
+    verifyAndConfirmFactoryReset() {
+        const input = document.getElementById('factory-reset-key');
+        const key = input ? input.value.trim() : '';
+        if (key !== 'JOVE2025') {
+            this.notify("Clave de autorización maestra INCORRECTA. Operación abortada.", "error");
+            if (input) input.value = '';
+            return;
+        }
+        this.closeModal();
+        this.confirmAction(
+            "ÚLTIMA CONFIRMACIÓN CRÍTICA",
+            "¿Estás absolutamente seguro de ejecutar el RESET GENERAL DE FÁBRICA? Esta acción reescribirá la base de datos D1.",
+            () => this.factoryResetLaunch(),
+            "EJECUTAR RESET DE FÁBRICA"
+        );
+    },
+
+    async factoryResetLaunch() {
+        if (!state.user || !state.user.role.startsWith('COORD')) {
+            this.notify("Acceso restringido.", "error");
+            return;
+        }
+        try {
+            if (state.data && state.data.companies) {
+                Object.keys(state.data.companies).forEach(cid => {
+                    const co = state.data.companies[cid];
+                    co.balance = 2400.00;
+                    co.logo = null;
+                    co.slogan = "";
+                    co.valueProposition = "";
+                    co.brandApproval = { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
+
+                    co.ledger = [];
+                    co.orders = [];
+                    co.realCosts = [];
+                    co.flightTests = [];
+                    co.votingMotions = [];
+                    co.aiPrompts = [];
+                    co.marketingCampaigns = [];
+                    co.inactivityReports = [];
+                    co.notifications = [];
+                    co.sanctions = [];
+                    co.crisisAlerts = [];
+                    co.cart = [];
+                    co.bom = [];
+
+                    co.deliverables = {};
+                    if (typeof DELIVERABLES_DEF !== 'undefined' && Array.isArray(DELIVERABLES_DEF)) {
+                        DELIVERABLES_DEF.forEach(d => {
+                            co.deliverables[d.key] = null;
+                        });
+                    }
+
+                    delete co.nameChangeRequest;
+                    delete co.auxRoleRequest;
+                    delete co.brandPendingLogo;
+                    delete co.brandPendingSlogan;
+
+                    co.updatedAt = Date.now();
+                    co.authUpdatedAt = Date.now();
+                });
+            }
+
+            state.data.b2bMarket = [];
+            state.data.b2bContracts = [];
+            state.data.securityIncidents = [];
+            state.data.suggestionsToAlex = [];
+            state.data.telemetry = { totalLogins: 0, sessions: [] };
+
+            state.data.version = (Number(state.data.version) || 1) + 50;
+            state.data.lastUpdated = Date.now();
+
+            state.saveLocalOnly();
+            await state.pushToCloud(false);
+
+            this.notify("🚀 RESET GENERAL PRE-LANZAMIENTO EJECUTADO CON ÉXITO.", "success");
+            this.render();
+        } catch (err) {
+            console.error("Error durante el factory reset:", err);
+            this.notify("Error al ejecutar el reset: " + err.message, "error");
+        }
     }
 });

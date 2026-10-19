@@ -8,12 +8,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MARS-KET 2.0">
-    <link rel="manifest" href="manifest.json?v=1.0.19b">
+    <link rel="manifest" href="manifest.json?v=1.1.00">
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="apple-touch-icon" href="logo.png">
     
-    <!-- Tailwind CSS (Compilado localmente v1.0.19b - Bloque T) -->
-    <link rel="stylesheet" href="css/tailwind.css?v=1.0.19b">
+    <!-- Tailwind CSS (Compilado localmente v1.1.00 - Bloque T) -->
+    <link rel="stylesheet" href="css/tailwind.css?v=1.1.00">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&display=swap" rel="stylesheet">
@@ -128,7 +128,7 @@
             display: inline-block;
         }
 
-        /* Capa de Acceso Inmersiva Zero-Shift (v1.0.19b) */
+        /* Capa de Acceso Inmersiva Zero-Shift y Scanline Láser (v1.1.00) */
         #login-screen {
             position: fixed;
             inset: 0;
@@ -152,6 +152,51 @@
             background-size: 28px 28px;
             background-position: center center;
             transition: opacity 200ms ease;
+        }
+
+        /* Scanline Láser de fondo completo (Efecto CRT inmersivo R2) */
+        .login-scanline-layer {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 1;
+        }
+        .login-laser-beam {
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent 0%, rgba(0,240,255,0.2) 15%, rgba(0,240,255,0.9) 50%, rgba(0,240,255,0.2) 85%, transparent 100%);
+            box-shadow: 0 0 15px rgba(0,240,255,0.8), 0 0 30px rgba(0,240,255,0.4);
+            will-change: transform;
+            transform: translateZ(0);
+            animation: scanline-laser 4.5s linear infinite;
+        }
+        @keyframes scanline-laser {
+            0% {
+                transform: translateY(-100%) translateZ(0);
+            }
+            100% {
+                transform: translateY(100vh) translateZ(0);
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .login-laser-beam {
+                animation: none;
+                display: none;
+            }
+        }
+
+        /* Contención estricta de tarjeta en escritorio y tablets (R1) */
+        #login-box {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 28rem !important; /* 448px standard max-w-md */
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .max-w-md {
+            max-width: 28rem !important;
         }
 
         /* Enfoque nítido Cyberpunk sin doble borde (borde + anillo) */
@@ -301,7 +346,7 @@
     </div>
 
     <!-- CONTENEDOR PRINCIPAL -->
-    <div class="max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden p-2 sm:p-4 flex-grow flex flex-col">
+    <div id="app-container" class="hidden max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden p-2 sm:p-4 flex-grow flex flex-col">
         
         <!-- HEADER HUD (FASE 1 v1.0.17: LÍNEA ÚNICA RESPONSIVA COMPACTA - DIMENSIÓN CONSTANTE) -->
         <header id="hud-header" class="hidden terminal-border bg-mars-card/95 backdrop-blur-md p-3 sm:p-4 mb-3 sm:mb-4 border-b-2 border-b-mars-cyan sticky top-0 z-40">
@@ -425,20 +470,20 @@
     <div id="hud-toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-[70] flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- SCRIPTS ORDENADOS DEL SISTEMA -->
-    <script src="js/lexicon-data.js?v=1.0.19b"></script>
-    <script src="js/config.js?v=1.0.19b"></script>
-    <script src="js/state.js?v=1.0.19b"></script>
-    <script src="js/auth.js?v=1.0.19b"></script>
-    <script src="js/ui-core.js?v=1.0.19b"></script>
-    <script src="js/ui-empresa-core.js?v=1.0.19b"></script>
-    <script src="js/ui-empresa-market.js?v=1.0.19b"></script>
-    <script src="js/ui-empresa-tech.js?v=1.0.19b"></script>
-    <script src="js/ui-empresa-finance.js?v=1.0.19b"></script>
-    <script src="js/ui-empresa-ops.js?v=1.0.19b"></script>
-    <script src="js/ui-empresa-gov-brand.js?v=1.0.19b"></script>
-    <script src="js/ui-docente-core.js?v=1.0.19b"></script>
-    <script src="js/ui-docente-eval.js?v=1.0.19b"></script>
-    <script src="js/ui-docente-management.js?v=1.0.19b"></script>
+    <script src="js/lexicon-data.js?v=1.1.00"></script>
+    <script src="js/config.js?v=1.1.00"></script>
+    <script src="js/state.js?v=1.1.00"></script>
+    <script src="js/auth.js?v=1.1.00"></script>
+    <script src="js/ui-core.js?v=1.1.00"></script>
+    <script src="js/ui-empresa-core.js?v=1.1.00"></script>
+    <script src="js/ui-empresa-market.js?v=1.1.00"></script>
+    <script src="js/ui-empresa-tech.js?v=1.1.00"></script>
+    <script src="js/ui-empresa-finance.js?v=1.1.00"></script>
+    <script src="js/ui-empresa-ops.js?v=1.1.00"></script>
+    <script src="js/ui-empresa-gov-brand.js?v=1.1.00"></script>
+    <script src="js/ui-docente-core.js?v=1.1.00"></script>
+    <script src="js/ui-docente-eval.js?v=1.1.00"></script>
+    <script src="js/ui-docente-management.js?v=1.1.00"></script>
 
     <script>
         window.addEventListener('DOMContentLoaded', () => {
@@ -453,7 +498,7 @@
                 state.init();
             }
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-                navigator.serviceWorker.register('sw.js?v=1.0.19b').catch(() => {});
+                navigator.serviceWorker.register('sw.js?v=1.1.00').catch(() => {});
             }
         });
     </script>

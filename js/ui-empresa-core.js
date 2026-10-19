@@ -1,11 +1,16 @@
 // js/ui-empresa-core.js
-// --- MÓDULO CORE: LOGIN EN 2 PASOS (ZERO-KNOWLEDGE), NOTIFICACIONES Y DOSSIER ACADÉMICO (v1.0.19) ---
+// --- MÓDULO CORE: LOGIN EN 2 PASOS (ZERO-KNOWLEDGE), NOTIFICACIONES Y DOSSIER ACADÉMICO (v1.1.00) ---
 
 Object.assign(ui, {
     viewLogin(el) {
         if (!el) return;
         const verifiedCoId = typeof auth !== 'undefined' ? auth.verifiedCoId : null;
         const isOffline = typeof state !== 'undefined' && state.isCloudOnline === false;
+        const scanlineHtml = `
+            <div class="login-scanline-layer" aria-hidden="true">
+                <div class="login-laser-beam"></div>
+            </div>
+        `;
         const offlineHtml = `
             <div id="login-offline-notice" role="status" aria-live="polite" class="${isOffline ? 'mt-3 pt-2 border-t border-mars-yellow/30 text-center' : 'hidden'}">
                 <p class="text-xs text-mars-yellow font-mono tracking-wider">⚠️ MODO LOCAL // SIN CONEXIÓN CON NUBE D1</p>
@@ -15,7 +20,8 @@ Object.assign(ui, {
         // PASO 1: Solicitud de Código Privado de Empresa (Pasarela Docente oculta tras doble clic/tap en #marsket-logo)
         if (!verifiedCoId) {
             el.innerHTML = `
-            <div id="login-box" class="max-w-sm sm:max-w-md w-full terminal-border bg-mars-card p-4 sm:p-6 glow-cyan animate-in fade-in zoom-in duration-300 transition-all mx-auto my-auto">
+            ${scanlineHtml}
+            <div id="login-box" class="w-full max-w-md terminal-border bg-mars-card p-4 sm:p-6 glow-cyan animate-in fade-in zoom-in duration-300 transition-all mx-auto my-auto" style="max-width: 28rem;">
                 <img id="marsket-logo" src="logo.png" alt="Logo oficial MARS-KET 2.0" width="72" height="72" onclick="auth.handleLogoTrigger(event)" ondblclick="auth.handleLogoTrigger(event)" style="touch-action: manipulation; width: clamp(48px, 9vh, 72px); height: clamp(48px, 9vh, 72px);" class="mx-auto mb-2 sm:mb-3 drop-shadow-[0_0_12px_rgba(0,240,255,0.8)] cursor-pointer select-none object-contain" onerror="this.onerror=null;this.src='logo.png';">
                 <h2 id="login-title" class="font-orbitron text-center text-mars-cyan text-sm sm:text-base tracking-wider uppercase font-black mb-1" style="font-size: clamp(0.95rem, 2.2vh, 1.2rem);">SECURE_GATEWAY</h2>
                 <p class="text-xs text-slate-300 text-center uppercase tracking-normal sm:tracking-wider mb-3 sm:mb-4">Paso 1/2: Identificación de Entidad</p>
@@ -38,7 +44,8 @@ Object.assign(ui, {
             : (state.data.companies[verifiedCoId]?.name || 'STARTUP');
 
         el.innerHTML = `
-        <div id="login-box" class="max-w-sm sm:max-w-md w-full terminal-border bg-mars-card p-4 sm:p-6 glow-cyan animate-in fade-in zoom-in duration-300 transition-all mx-auto my-auto">
+        ${scanlineHtml}
+        <div id="login-box" class="w-full max-w-md terminal-border bg-mars-card p-4 sm:p-6 glow-cyan animate-in fade-in zoom-in duration-300 transition-all mx-auto my-auto" style="max-width: 28rem;">
             <div class="flex justify-between items-center border-b border-mars-border pb-2.5 mb-3 gap-2">
                 <div class="flex items-center gap-2 min-w-0">
                     <img src="logo.png" alt="MARS-KET 2.0" width="28" height="28" class="w-7 h-7 object-contain drop-shadow-[0_0_6px_rgba(0,240,255,0.7)] shrink-0">
