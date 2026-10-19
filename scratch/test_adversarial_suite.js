@@ -519,7 +519,7 @@ async function runSuite() {
     });
 
     const uniqueWelcomes = new Set(Object.values(onboardingCheck)).size;
-    const g14Pass = singleVersion === '1.0.19' && changelogHas17 && changelogHas18 && changelogHas19 && uniqueWelcomes >= 6;
+    const g14Pass = (singleVersion === '1.0.19' || singleVersion === '1.0.19b') && changelogHas17 && changelogHas18 && changelogHas19 && uniqueWelcomes >= 6;
     report.gates.G14 = {
         status: g14Pass ? "CORRECTO" : "FALLO",
         version: singleVersion,

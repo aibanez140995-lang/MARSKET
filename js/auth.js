@@ -253,7 +253,11 @@ const auth = {
 
         telemetry.startSession(entityName, roleName);
 
+        // Transición sin CLS (login -> app):
+        // a) Renderiza HUD, pestañas, pie y vista inicial mientras la capa de login sigue opaca encima
+        // b) Retira la capa con un fundido solo de opacity (200ms) y después display:none
         setTimeout(() => {
+            const loginScreen = document.getElementById('login-screen');
             if (typeof ui !== 'undefined' && typeof ui.setHUDVisibility === 'function') {
                 ui.setHUDVisibility(true);
             }
@@ -287,8 +291,18 @@ const auth = {
             }
 
             ui.render();
-            if (typeof ui.showWelcomeModal === 'function') ui.showWelcomeModal();
-        }, 450);
+
+            if (loginScreen) {
+                loginScreen.style.opacity = '0';
+                setTimeout(() => {
+                    loginScreen.style.display = 'none';
+                    loginScreen.classList.add('hidden');
+                    if (typeof ui.showWelcomeModal === 'function') ui.showWelcomeModal();
+                }, 200);
+            } else {
+                if (typeof ui.showWelcomeModal === 'function') ui.showWelcomeModal();
+            }
+        }, 120);
     },
 
     // FASE 2: Jerarquía Táctica de Pestañas según Rol Operativo
@@ -363,6 +377,14 @@ const auth = {
         try { sessionStorage.removeItem(state.sessionKey); } catch(e) {}
         try { localStorage.removeItem(state.sessionKey); } catch(e) {}
         try { sessionStorage.clear(); } catch(e) {}
+
+        const loginScreen = document.getElementById('login-screen');
+        if (loginScreen) {
+            loginScreen.classList.remove('hidden');
+            loginScreen.style.display = 'flex';
+            loginScreen.style.opacity = '1';
+        }
+
         const hdrLogo = document.getElementById('marsket-logo');
         if (hdrLogo && hdrLogo.closest('#hud-header')) {
             hdrLogo.id = 'hud-marsket-logo';

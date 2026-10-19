@@ -5,22 +5,27 @@ Object.assign(ui, {
     viewLogin(el) {
         if (!el) return;
         const verifiedCoId = typeof auth !== 'undefined' ? auth.verifiedCoId : null;
+        const isOffline = typeof state !== 'undefined' && state.isCloudOnline === false;
+        const offlineHtml = `
+            <div id="login-offline-notice" role="status" aria-live="polite" class="${isOffline ? 'mt-3 pt-2 border-t border-mars-yellow/30 text-center' : 'hidden'}">
+                <p class="text-xs text-mars-yellow font-mono tracking-wider">⚠️ MODO LOCAL // SIN CONEXIÓN CON NUBE D1</p>
+            </div>
+        `;
 
         // PASO 1: Solicitud de Código Privado de Empresa (Pasarela Docente oculta tras doble clic/tap en #marsket-logo)
         if (!verifiedCoId) {
             el.innerHTML = `
-            <div class="min-h-[75vh] flex items-center justify-center w-full px-3 sm:px-4 py-4">
-                <div id="login-box" class="max-w-md w-full terminal-border bg-mars-card p-6 sm:p-8 glow-cyan animate-in fade-in zoom-in duration-300 transition-all">
-                    <img id="marsket-logo" src="logo.png" alt="Logo oficial MARS-KET 2.0" width="96" height="96" onclick="auth.handleLogoTrigger(event)" ondblclick="auth.handleLogoTrigger(event)" style="touch-action: manipulation;" class="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 drop-shadow-[0_0_12px_rgba(0,240,255,0.8)] cursor-pointer select-none" onerror="this.onerror=null;this.src='logo.png';">
-                    <h2 id="login-title" class="font-orbitron text-center text-mars-cyan text-lg sm:text-xl mb-2 tracking-widest uppercase font-black">Secure_Gateway</h2>
-                    <p class="text-xs text-slate-300 text-center uppercase tracking-wider mb-6">Paso 1/2: Identificación de Entidad Aeroespacial</p>
-                    
-                    <div class="bg-black/60 border border-mars-border p-4">
-                        <label for="login-company-code" class="text-xs text-mars-cyan uppercase font-bold block mb-2 tracking-wider">Código Privado de Empresa</label>
-                        <input type="text" id="login-company-code" autocomplete="off" placeholder="EJ: AST-1010" style="touch-action: manipulation;" onkeydown="if(event.key==='Enter') auth.validateCompanyCode()" class="w-full bg-slate-900 border border-mars-cyan/60 p-3 text-center text-base sm:text-lg font-orbitron font-black uppercase tracking-widest text-mars-yellow outline-none focus:border-mars-cyan mb-4 min-h-[48px]">
-                        <button type="button" onclick="auth.validateCompanyCode()" style="touch-action: manipulation;" class="w-full min-h-[48px] bg-mars-cyan text-black font-black py-3 px-4 text-xs uppercase tracking-widest hover:bg-white transition-all shadow-[0_0_12px_rgba(0,240,255,0.3)]">[ VALIDAR CÓDIGO DE EMPRESA ]</button>
-                    </div>
+            <div id="login-box" class="max-w-sm sm:max-w-md w-full terminal-border bg-mars-card p-4 sm:p-6 glow-cyan animate-in fade-in zoom-in duration-300 transition-all mx-auto my-auto">
+                <img id="marsket-logo" src="logo.png" alt="Logo oficial MARS-KET 2.0" width="72" height="72" onclick="auth.handleLogoTrigger(event)" ondblclick="auth.handleLogoTrigger(event)" style="touch-action: manipulation; width: clamp(48px, 9vh, 72px); height: clamp(48px, 9vh, 72px);" class="mx-auto mb-2 sm:mb-3 drop-shadow-[0_0_12px_rgba(0,240,255,0.8)] cursor-pointer select-none object-contain" onerror="this.onerror=null;this.src='logo.png';">
+                <h2 id="login-title" class="font-orbitron text-center text-mars-cyan text-sm sm:text-base tracking-wider uppercase font-black mb-1" style="font-size: clamp(0.95rem, 2.2vh, 1.2rem);">SECURE_GATEWAY</h2>
+                <p class="text-xs text-slate-300 text-center uppercase tracking-normal sm:tracking-wider mb-3 sm:mb-4">Paso 1/2: Identificación de Entidad</p>
+                
+                <div class="bg-black/60 border border-mars-border p-3 sm:p-4">
+                    <label for="login-company-code" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5 tracking-wider">Código Privado de Empresa</label>
+                    <input type="text" id="login-company-code" autocomplete="off" placeholder="EJ: AST-1010" style="touch-action: manipulation; font-size: 16px;" onkeydown="if(event.key==='Enter') auth.validateCompanyCode()" onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="w-full bg-slate-900 border border-mars-cyan/60 p-2.5 sm:p-3 text-center font-orbitron font-black uppercase tracking-widest text-mars-yellow outline-none focus:border-mars-cyan mb-3 min-h-[48px]">
+                    <button type="button" onclick="auth.validateCompanyCode()" style="touch-action: manipulation;" class="w-full min-h-[48px] bg-mars-cyan text-black font-black py-3 px-3 text-xs uppercase tracking-normal sm:tracking-wider hover:bg-white transition-all shadow-[0_0_12px_rgba(0,240,255,0.3)] whitespace-nowrap">[ VALIDAR CÓDIGO ]</button>
                 </div>
+                ${offlineHtml}
             </div>`;
             setTimeout(() => document.getElementById('login-company-code')?.focus(), 50);
             return;
@@ -33,35 +38,34 @@ Object.assign(ui, {
             : (state.data.companies[verifiedCoId]?.name || 'STARTUP');
 
         el.innerHTML = `
-        <div class="min-h-[75vh] flex items-center justify-center w-full px-3 sm:px-4 py-4">
-            <div id="login-box" class="max-w-md w-full terminal-border bg-mars-card p-6 sm:p-8 glow-cyan animate-in fade-in zoom-in duration-300 transition-all">
-                <div class="flex justify-between items-center border-b border-mars-border pb-3 mb-4 gap-2">
-                    <div class="flex items-center gap-2">
-                        <img src="logo.png" alt="MARS-KET 2.0" width="28" height="28" class="w-7 h-7 object-contain drop-shadow-[0_0_6px_rgba(0,240,255,0.7)]">
-                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider">Paso 2/2: Credencial</span>
-                    </div>
-                    <button type="button" onclick="auth.resetCompanyStep()" class="min-h-[44px] text-xs text-mars-magenta hover:text-white uppercase font-black tracking-wider border border-mars-magenta/60 px-3 py-1.5">[⬅ Cambiar Entidad]</button>
+        <div id="login-box" class="max-w-sm sm:max-w-md w-full terminal-border bg-mars-card p-4 sm:p-6 glow-cyan animate-in fade-in zoom-in duration-300 transition-all mx-auto my-auto">
+            <div class="flex justify-between items-center border-b border-mars-border pb-2.5 mb-3 gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <img src="logo.png" alt="MARS-KET 2.0" width="28" height="28" class="w-7 h-7 object-contain drop-shadow-[0_0_6px_rgba(0,240,255,0.7)] shrink-0">
+                    <span class="text-xs text-slate-300 uppercase font-bold tracking-normal sm:tracking-wider truncate">Paso 2/2: Credencial</span>
                 </div>
-
-                <div class="bg-slate-900/90 border ${isTeacher ? 'border-mars-yellow' : 'border-mars-cyan'} p-3 mb-4 text-center">
-                    <p class="text-xs text-slate-300 uppercase tracking-wider">Entidad Verificada</p>
-                    <h2 id="login-title" class="font-orbitron ${isTeacher ? 'text-mars-yellow' : 'text-mars-cyan'} text-base sm:text-lg tracking-widest uppercase font-black break-words mt-1">${this.escapeHTML(entityLabel)}</h2>
-                </div>
-
-                <label for="login-role" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Selecciona tu Departamento / Rol</label>
-                <select id="login-role" onchange="auth.clear()" style="touch-action: manipulation;" class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-3 text-base sm:text-sm mb-5 outline-none focus:border-mars-cyan uppercase text-white font-bold"></select>
-                
-                <div class="flex justify-center gap-4 mb-5" role="status" aria-label="Indicador de dígitos de PIN introducidos">
-                    ${[1,2,3,4].map(() => `<div class="pin-dot w-3.5 h-3.5 rounded-full border-2 border-mars-cyan transition-all"></div>`).join('')}
-                </div>
-                <div id="login-keypad" role="group" style="touch-action: manipulation;" aria-label="Teclado numérico de PIN (también admite teclado físico 0-9, Backspace y Enter)" class="grid grid-cols-3 gap-2.5 max-w-[240px] mx-auto transition-all">
-                    ${[1,2,3,4,5,6,7,8,9].map(n => `<button type="button" aria-label="Dígito ${n}" onclick="auth.press('${n}')" style="touch-action: manipulation;" class="min-h-[48px] bg-slate-800 border border-slate-700 p-3 text-base font-bold text-white hover:bg-mars-cyan hover:text-mars-bg transition-all active:scale-95">${n}</button>`).join('')}
-                    <button type="button" aria-label="Borrar PIN" onclick="auth.clear()" style="touch-action: manipulation;" class="min-h-[48px] bg-slate-800 border border-mars-magenta/50 p-3 text-mars-magenta text-xs font-black hover:bg-mars-magenta hover:text-white transition-all active:scale-95">CLR</button>
-                    <button type="button" aria-label="Dígito 0" onclick="auth.press('0')" style="touch-action: manipulation;" class="min-h-[48px] bg-slate-800 border border-slate-700 p-3 text-base font-bold text-white hover:bg-mars-cyan hover:text-mars-bg transition-all active:scale-95">0</button>
-                    <button type="button" aria-label="Confirmar PIN" onclick="auth.verify()" style="touch-action: manipulation;" class="min-h-[48px] bg-mars-green/20 border border-mars-green text-mars-green p-3 text-xs font-black hover:bg-mars-green hover:text-mars-bg transition-all active:scale-95">ENT</button>
-                </div>
-                <p class="text-xs text-slate-300 text-center uppercase mt-4">Soporta teclado numérico físico (0-9, Backspace, Enter)</p>
+                <button type="button" onclick="auth.resetCompanyStep()" class="min-h-[44px] text-xs text-mars-magenta hover:text-white uppercase font-black tracking-normal sm:tracking-wider border border-mars-magenta/60 px-2.5 py-1.5 shrink-0 whitespace-nowrap">[⬅ Cambiar]</button>
             </div>
+
+            <div class="bg-slate-900/90 border ${isTeacher ? 'border-mars-yellow' : 'border-mars-cyan'} p-2.5 sm:p-3 mb-3 text-center">
+                <p class="text-xs text-slate-400 uppercase tracking-wider">Entidad Verificada</p>
+                <h2 id="login-title" class="font-orbitron ${isTeacher ? 'text-mars-yellow' : 'text-mars-cyan'} text-sm sm:text-base tracking-wider uppercase font-black truncate mt-0.5">${this.escapeHTML(entityLabel)}</h2>
+            </div>
+
+            <label for="login-role" class="text-xs text-slate-300 uppercase font-bold block mb-1">Selecciona tu Departamento / Rol</label>
+            <select id="login-role" onchange="auth.clear()" style="touch-action: manipulation; font-size: 16px;" class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-xs sm:text-sm mb-3 outline-none focus:border-mars-cyan uppercase text-white font-bold"></select>
+            
+            <div class="flex justify-center gap-3 mb-3" role="status" aria-label="Indicador de dígitos de PIN introducidos">
+                ${[1,2,3,4].map(() => `<div class="pin-dot w-3.5 h-3.5 rounded-full border-2 border-mars-cyan transition-all"></div>`).join('')}
+            </div>
+            <div id="login-keypad" role="group" style="touch-action: manipulation;" aria-label="Teclado numérico de PIN (también admite teclado físico 0-9, Backspace y Enter)" class="grid grid-cols-3 gap-2 max-w-[240px] mx-auto transition-all">
+                ${[1,2,3,4,5,6,7,8,9].map(n => `<button type="button" aria-label="Dígito ${n}" onclick="auth.press('${n}')" style="touch-action: manipulation;" class="min-h-[44px] bg-slate-800 border border-slate-700 p-2.5 text-base font-bold text-white hover:bg-mars-cyan hover:text-mars-bg transition-all active:scale-95">${n}</button>`).join('')}
+                <button type="button" aria-label="Borrar PIN" onclick="auth.clear()" style="touch-action: manipulation;" class="min-h-[44px] bg-slate-800 border border-mars-magenta/50 p-2 text-mars-magenta text-xs font-black hover:bg-mars-magenta hover:text-white transition-all active:scale-95">CLR</button>
+                <button type="button" aria-label="Dígito 0" onclick="auth.press('0')" style="touch-action: manipulation;" class="min-h-[44px] bg-slate-800 border border-slate-700 p-2.5 text-base font-bold text-white hover:bg-mars-cyan hover:text-mars-bg transition-all active:scale-95">0</button>
+                <button type="button" aria-label="Confirmar PIN" onclick="auth.verify()" style="touch-action: manipulation;" class="min-h-[44px] bg-mars-green/20 border border-mars-green text-mars-green p-2 text-xs font-black hover:bg-mars-green hover:text-mars-bg transition-all active:scale-95">ENT</button>
+            </div>
+            <p class="text-xs text-slate-400 text-center uppercase mt-2.5">Soporta teclado numérico físico (0-9, Backspace, Enter)</p>
+            ${offlineHtml}
         </div>`;
         setTimeout(() => auth.updateRoleOptions(), 30);
     },

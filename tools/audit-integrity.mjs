@@ -95,7 +95,7 @@ if (!BASELINE_FUNCTIONS) {
 function runAudit() {
     const report = {
         timestamp: new Date().toISOString(),
-        version: '1.0.19',
+        version: '1.0.19b',
         files: {},
         definedFunctions: { ui: [], state: [], auth: [], telemetry: [], dev: [] },
         calledFunctions: { ui: [], state: [], auth: [], telemetry: [], dev: [] },
@@ -222,7 +222,7 @@ function runAudit() {
         'get', 'set', 'clear', 'keys', 'values', 'entries', 'then', 'catch', 'finally',
         'addEventListener', 'removeEventListener', 'parentElement', 'closest', 'querySelector',
         'querySelectorAll', 'getElementById', 'getAttribute', 'setAttribute', 'removeAttribute',
-        'classList', 'style', 'focus', 'blur', 'click', 'submit', 'reset', 'toString', 'valueOf',
+        'classList', 'style', 'focus', 'blur', 'click', 'submit', 'reset', 'scrollIntoView', 'toString', 'valueOf',
         'normalize', 'charCodeAt', 'fromCharCode'
     ]);
 

@@ -1,0 +1,146 @@
+{
+  "timestamp": "2026-10-19T07:28:13.048Z",
+  "version": "1.0.19b",
+  "hudHiddenCheck": {
+    "status": "CORRECTO",
+    "details": {
+      "headerDisplay": "none",
+      "navDisplay": "none",
+      "footerDisplay": "none",
+      "viewportDisplay": "flex",
+      "viewportEmpty": true,
+      "loginScreenVisible": true,
+      "forbiddenTextFound": [],
+      "hasMarsketLogoInLogin": true
+    }
+  },
+  "cardFitCheck": {
+    "status": "CORRECTO",
+    "results": [
+      {
+        "viewport": "375x667",
+        "step1": {
+          "screenScrollHeight": 667,
+          "screenClientHeight": 667,
+          "hasVerticalScroll": false,
+          "boxWidth": 351,
+          "boxHeight": 308,
+          "btnHeight": 48,
+          "btnText": "[ VALIDAR CÓDIGO ]",
+          "btnLineHeight": "16px",
+          "titleWidth": 317
+        },
+        "step2": {
+          "screenScrollHeight": 667,
+          "screenClientHeight": 667,
+          "hasVerticalScroll": false,
+          "boxHeight": 515,
+          "keypadVisible": true
+        },
+        "passStep1": true,
+        "passStep2": true
+      },
+      {
+        "viewport": "390x844",
+        "step1": {
+          "screenScrollHeight": 844,
+          "screenClientHeight": 844,
+          "hasVerticalScroll": false,
+          "boxWidth": 366,
+          "boxHeight": 320,
+          "btnHeight": 48,
+          "btnText": "[ VALIDAR CÓDIGO ]",
+          "btnLineHeight": "16px",
+          "titleWidth": 332
+        },
+        "step2": {
+          "screenScrollHeight": 844,
+          "screenClientHeight": 844,
+          "hasVerticalScroll": false,
+          "boxHeight": 515,
+          "keypadVisible": true
+        },
+        "passStep1": true,
+        "passStep2": true
+      },
+      {
+        "viewport": "393x852",
+        "step1": {
+          "screenScrollHeight": 852,
+          "screenClientHeight": 852,
+          "hasVerticalScroll": false,
+          "boxWidth": 369,
+          "boxHeight": 320,
+          "btnHeight": 48,
+          "btnText": "[ VALIDAR CÓDIGO ]",
+          "btnLineHeight": "16px",
+          "titleWidth": 335
+        },
+        "step2": {
+          "screenScrollHeight": 852,
+          "screenClientHeight": 852,
+          "hasVerticalScroll": false,
+          "boxHeight": 515,
+          "keypadVisible": true
+        },
+        "passStep1": true,
+        "passStep2": true
+      }
+    ]
+  },
+  "touchTargets": {
+    "status": "CORRECTO",
+    "step1": {
+      "bad": [],
+      "total": 2
+    },
+    "step2": {
+      "bad": [],
+      "total": 14
+    }
+  },
+  "virtualKeyboard": {
+    "status": "CORRECTO",
+    "details": {
+      "windowInnerHeight": 500,
+      "inputRect": {
+        "top": 262,
+        "bottom": 308
+      },
+      "btnRect": {
+        "top": 320,
+        "bottom": 368
+      },
+      "inputVisible": true,
+      "btnVisible": true
+    }
+  },
+  "offlineNotice": {
+    "status": "CORRECTO",
+    "details": {
+      "found": true,
+      "visible": true,
+      "text": "⚠️ MODO LOCAL // SIN CONEXIÓN CON NUBE D1",
+      "ariaLive": "polite",
+      "fontSize": "12px"
+    }
+  },
+  "fullCycleCLS": {
+    "status": "CORRECTO",
+    "clsScore": 0,
+    "topShifts": []
+  },
+  "screenshots": [
+    "login_step1_320x568.png",
+    "login_step2_320x568.png",
+    "login_step1_375x667.png",
+    "login_step2_375x667.png",
+    "login_step1_393x852.png",
+    "login_step2_393x852.png",
+    "login_step1_768x1024.png",
+    "login_step2_768x1024.png",
+    "login_step1_1440x900.png",
+    "login_step2_1440x900.png",
+    "login_step1_virtual_keyboard_393x500.png"
+  ]
+}

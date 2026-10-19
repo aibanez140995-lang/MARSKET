@@ -1135,11 +1135,24 @@ const ui = {
             }
         }
 
-        this.setHUDVisibility(true);
-        const hdrLogo = document.getElementById('hud-marsket-logo') || document.getElementById('marsket-logo');
-        if (hdrLogo) hdrLogo.id = 'marsket-logo';
-        if (typeof auth !== 'undefined' && typeof auth.buildNav === 'function') {
-            auth.buildNav(!!state.user.admin);
+        const loginNotice = document.getElementById('login-offline-notice');
+        if (loginNotice) {
+            if (!state.isCloudOnline) {
+                loginNotice.className = 'mt-3 pt-2 border-t border-mars-yellow/30 text-center';
+                loginNotice.innerHTML = '<p class="text-xs text-mars-yellow font-mono tracking-wider">⚠️ MODO LOCAL // SIN CONEXIÓN CON NUBE D1</p>';
+            } else {
+                loginNotice.className = 'hidden';
+                loginNotice.innerHTML = '';
+            }
+        }
+
+        if (state.user) {
+            this.setHUDVisibility(true);
+            const hdrLogo = document.getElementById('hud-marsket-logo') || document.getElementById('marsket-logo');
+            if (hdrLogo) hdrLogo.id = 'marsket-logo';
+            if (typeof auth !== 'undefined' && typeof auth.buildNav === 'function') {
+                auth.buildNav(!!state.user.admin);
+            }
         }
 
         document.querySelectorAll('.nav-tab').forEach(t => {
@@ -1158,13 +1171,21 @@ const ui = {
     setHUDVisibility(isLoggedIn) {
         const hdr = document.getElementById('hud-header');
         const nav = document.getElementById('hud-nav');
+        const ftr = document.getElementById('hud-footer');
         const actionBar = document.getElementById('hud-action-bar');
         const navContainer = document.getElementById('nav-container');
-        if (hdr) hdr.classList.remove('hidden');
-        if (nav) nav.classList.remove('hidden');
-        if (actionBar) actionBar.style.visibility = isLoggedIn ? 'visible' : 'hidden';
-        if (navContainer) navContainer.style.visibility = isLoggedIn ? 'visible' : 'hidden';
-        if (!isLoggedIn) {
+        if (isLoggedIn) {
+            if (hdr) hdr.classList.remove('hidden');
+            if (nav) nav.classList.remove('hidden');
+            if (ftr) ftr.classList.remove('hidden');
+            if (actionBar) actionBar.style.visibility = 'visible';
+            if (navContainer) navContainer.style.visibility = 'visible';
+        } else {
+            if (hdr) hdr.classList.add('hidden');
+            if (nav) nav.classList.add('hidden');
+            if (ftr) ftr.classList.add('hidden');
+            if (actionBar) actionBar.style.visibility = 'hidden';
+            if (navContainer) navContainer.style.visibility = 'hidden';
             const infoEl = document.getElementById('hud-info');
             const balEl = document.getElementById('hud-balance');
             const miniLogo = document.getElementById('hud-mini-logo');
@@ -1187,12 +1208,31 @@ const ui = {
         const activeId = typeof document !== 'undefined' && document.activeElement && document.activeElement.id ? document.activeElement.id : null;
 
         vp.innerHTML = '';
-        if(!state.user) { this.viewLogin(vp); return; }
+        if(!state.user) {
+            this.setHUDVisibility(false);
+            const loginScreen = document.getElementById('login-screen');
+            if (loginScreen) {
+                loginScreen.classList.remove('hidden');
+                loginScreen.style.display = 'flex';
+                loginScreen.style.opacity = '1';
+                this.viewLogin(loginScreen);
+            } else {
+                this.viewLogin(vp);
+            }
+            return;
+        }
         
         if (!state.user.admin && !state.data.companies[state.user.coId]) {
             auth.logout();
             return;
         }
+
+        const loginScreen = document.getElementById('login-screen');
+        if (loginScreen && loginScreen.style.opacity !== '0' && loginScreen.style.display !== 'none') {
+            loginScreen.style.display = 'none';
+            loginScreen.classList.add('hidden');
+        }
+        this.setHUDVisibility(true);
 
         const role = state.user.role;
         const co = !state.user.admin ? state.data.companies[state.user.coId] : null;

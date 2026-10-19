@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.0.19) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.0.19b) ---
 
-const APP_VERSION = "1.0.19";
+const APP_VERSION = "1.0.19b";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const REGULATORY_AGENCIES = {
@@ -157,8 +157,19 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// FASE 6: Changelog Oficial consolidado para la versión 1.0.19
+// FASE 6: Changelog Oficial consolidado para la versión 1.0.19b
 const APP_CHANGELOG = [
+    {
+        version: "1.0.19b",
+        date: "Octubre 2026",
+        title: "Capa de Acceso Inmersiva Zero-Shift, Erradicación del HUD en Login y Encaje Móvil 320-393px",
+        highlights: [
+            { type: "MEJORA", text: "Capa de Acceso #login-screen: Aislamiento total de la pantalla de login con display:none en HUD y viewport durante el estado no autenticado. Centrado perfecto y encaje sin scroll en 375x667, 390x844 y 393x852." },
+            { type: "SISTEMA", text: "Transición Sin Salto de Diseño (CLS <= 0.02): Renderizado de la app bajo capa opaca con desvanecimiento exclusivo de opacidad (200ms) eliminando cualquier desplazamiento visual." },
+            { type: "UX", text: "Adaptación Táctil Móvil y Teclado Virtual: Botón en una sola línea desde 320px ([ VALIDAR CÓDIGO ]), inputs a 16px sin auto-zoom y scrollIntoView automático al enfocar." },
+            { type: "RESILIENCIA", text: "Aviso de Conexión Contextual: Notificación discreta de modo local dentro de la tarjeta de acceso ante indisponibilidad de /api/state sin alterar el flujo." }
+        ]
+    },
     {
         version: "1.0.19",
         date: "Octubre 2026",

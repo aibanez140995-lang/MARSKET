@@ -8,12 +8,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MARS-KET 2.0">
-    <link rel="manifest" href="manifest.json?v=1.0.19">
+    <link rel="manifest" href="manifest.json?v=1.0.19b">
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="apple-touch-icon" href="logo.png">
     
-    <!-- Tailwind CSS (Compilado localmente v1.0.19 - Bloque T) -->
-    <link rel="stylesheet" href="css/tailwind.css?v=1.0.19">
+    <!-- Tailwind CSS (Compilado localmente v1.0.19b - Bloque T) -->
+    <link rel="stylesheet" href="css/tailwind.css?v=1.0.19b">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&display=swap" rel="stylesheet">
@@ -108,15 +108,7 @@
             max-width: 100%;
         }
 
-        /* G16 CLS: Reserva dimensional estricta del HUD y números tabulares */
-        #hud-header {
-            display: block !important;
-            min-height: 140px;
-        }
-        #hud-nav {
-            display: block !important;
-            min-height: 44px;
-        }
+        /* G16 CLS: Números tabulares para prevenir oscilaciones numéricas en HUD activo */
         #hud-clock {
             font-variant-numeric: tabular-nums;
             min-width: 130px;
@@ -136,9 +128,43 @@
             display: inline-block;
         }
 
+        /* Capa de Acceso Inmersiva Zero-Shift (v1.0.19b) */
+        #login-screen {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100dvh;
+            min-height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+            padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+            padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+            padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+            background-color: #060913;
+            background-image: 
+                linear-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
+            background-size: 28px 28px;
+            background-position: center center;
+            transition: opacity 200ms ease;
+        }
+
+        /* Enfoque nítido Cyberpunk sin doble borde (borde + anillo) */
+        input:focus-visible,
+        select:focus-visible,
+        textarea:focus-visible {
+            outline: none !important;
+            border-color: #00f0ff !important;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.45) !important;
+        }
         :focus-visible {
-            outline: 2px solid #00f0ff !important;
-            outline-offset: 2px !important;
+            outline: 2px solid #00f0ff;
+            outline-offset: 2px;
         }
         button, [role="button"], [role="tab"], input, select, textarea, a {
             touch-action: manipulation;
@@ -269,11 +295,16 @@
 </head>
 <body class="min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-mars-cyan selection:text-black">
 
+    <!-- CAPA DE ACCESO INMERSIVA / LOGIN SCREEN (v1.0.19b) -->
+    <div id="login-screen" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-3 sm:p-4 bg-mars-bg text-slate-100 transition-opacity duration-200">
+        <!-- Contenido de tarjeta inyectado por ui.viewLogin() -->
+    </div>
+
     <!-- CONTENEDOR PRINCIPAL -->
     <div class="max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden p-2 sm:p-4 flex-grow flex flex-col">
         
         <!-- HEADER HUD (FASE 1 v1.0.17: LÍNEA ÚNICA RESPONSIVA COMPACTA - DIMENSIÓN CONSTANTE) -->
-        <header id="hud-header" class="terminal-border bg-mars-card/95 backdrop-blur-md p-3 sm:p-4 mb-3 sm:mb-4 border-b-2 border-b-mars-cyan sticky top-0 z-40">
+        <header id="hud-header" class="hidden terminal-border bg-mars-card/95 backdrop-blur-md p-3 sm:p-4 mb-3 sm:mb-4 border-b-2 border-b-mars-cyan sticky top-0 z-40">
             <!-- Fila 1: Logo, Versión, Avatar de Marca y Estado de Nube D1 -->
             <div class="flex justify-between items-center gap-1.5 sm:gap-2">
                 <div class="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -283,7 +314,7 @@
                         <h1 class="font-orbitron font-black text-xs sm:text-lg text-white tracking-wider sm:tracking-widest leading-none flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
                             MARS-KET <span class="text-mars-cyan">2.0</span>
                         </h1>
-                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v1.0.19</span>
+                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v1.0.19b</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -321,7 +352,7 @@
         </header>
 
         <!-- NAVEGACIÓN DINÁMICA POR ROL (DIMENSIÓN CONSTANTE) -->
-        <nav id="hud-nav" aria-label="Navegación principal por departamento" class="mb-4 overflow-x-auto scrollbar-hide border-b border-mars-border/70 bg-mars-card/50">
+        <nav id="hud-nav" aria-label="Navegación principal por departamento" class="hidden mb-4 overflow-x-auto scrollbar-hide border-b border-mars-border/70 bg-mars-card/50">
             <div id="nav-container" role="tablist" style="visibility: hidden;" class="flex gap-1 min-w-max"></div>
         </nav>
 
@@ -331,7 +362,7 @@
     </div>
 
     <!-- FOOTER INSTITUCIONAL -->
-    <footer class="border-t border-mars-border/60 bg-black/60 py-3 px-4 text-center text-xs text-slate-300 uppercase font-mono">
+    <footer id="hud-footer" class="hidden border-t border-mars-border/60 bg-black/60 py-3 px-4 text-center text-xs text-slate-300 uppercase font-mono">
         <p>MARS-KET 2.0 • Plataforma Aeroespacial Interdisciplinar • AEE / ESA Simulación Académica • 2026-2027</p>
     </footer>
 
@@ -394,20 +425,20 @@
     <div id="hud-toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-[70] flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- SCRIPTS ORDENADOS DEL SISTEMA -->
-    <script src="js/lexicon-data.js?v=1.0.19"></script>
-    <script src="js/config.js?v=1.0.19"></script>
-    <script src="js/state.js?v=1.0.19"></script>
-    <script src="js/auth.js?v=1.0.19"></script>
-    <script src="js/ui-core.js?v=1.0.19"></script>
-    <script src="js/ui-empresa-core.js?v=1.0.19"></script>
-    <script src="js/ui-empresa-market.js?v=1.0.19"></script>
-    <script src="js/ui-empresa-tech.js?v=1.0.19"></script>
-    <script src="js/ui-empresa-finance.js?v=1.0.19"></script>
-    <script src="js/ui-empresa-ops.js?v=1.0.19"></script>
-    <script src="js/ui-empresa-gov-brand.js?v=1.0.19"></script>
-    <script src="js/ui-docente-core.js?v=1.0.19"></script>
-    <script src="js/ui-docente-eval.js?v=1.0.19"></script>
-    <script src="js/ui-docente-management.js?v=1.0.19"></script>
+    <script src="js/lexicon-data.js?v=1.0.19b"></script>
+    <script src="js/config.js?v=1.0.19b"></script>
+    <script src="js/state.js?v=1.0.19b"></script>
+    <script src="js/auth.js?v=1.0.19b"></script>
+    <script src="js/ui-core.js?v=1.0.19b"></script>
+    <script src="js/ui-empresa-core.js?v=1.0.19b"></script>
+    <script src="js/ui-empresa-market.js?v=1.0.19b"></script>
+    <script src="js/ui-empresa-tech.js?v=1.0.19b"></script>
+    <script src="js/ui-empresa-finance.js?v=1.0.19b"></script>
+    <script src="js/ui-empresa-ops.js?v=1.0.19b"></script>
+    <script src="js/ui-empresa-gov-brand.js?v=1.0.19b"></script>
+    <script src="js/ui-docente-core.js?v=1.0.19b"></script>
+    <script src="js/ui-docente-eval.js?v=1.0.19b"></script>
+    <script src="js/ui-docente-management.js?v=1.0.19b"></script>
 
     <script>
         window.addEventListener('DOMContentLoaded', () => {
@@ -422,7 +453,7 @@
                 state.init();
             }
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-                navigator.serviceWorker.register('sw.js?v=1.0.19').catch(() => {});
+                navigator.serviceWorker.register('sw.js?v=1.0.19b').catch(() => {});
             }
         });
     </script>
