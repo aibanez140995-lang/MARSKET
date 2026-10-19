@@ -8,12 +8,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MARS-KET 2.0">
-    <link rel="manifest" href="manifest.json?v=1.1.00">
+    <link rel="manifest" href="manifest.json?v=1.1.02">
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="apple-touch-icon" href="logo.png">
     
-    <!-- Tailwind CSS (Compilado localmente v1.1.00 - Bloque T) -->
-    <link rel="stylesheet" href="css/tailwind.css?v=1.1.00">
+    <!-- Tailwind CSS (Compilado localmente v1.1.02 - Bloque T) -->
+    <link rel="stylesheet" href="css/tailwind.css?v=1.1.02">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&display=swap" rel="stylesheet">
@@ -337,8 +337,12 @@
             }
         }
         @media print {
+            @page {
+                size: A4 portrait;
+                margin: 10mm;
+            }
             body {
-                background: #000 !important;
+                background: #07090E !important;
                 color: #fff !important;
                 margin: 0 !important;
                 padding: 0 !important;
@@ -349,30 +353,39 @@
                 display: none !important;
             }
             #credentials-print-area {
-                display: block !important;
-                position: static !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
                 width: 100% !important;
-                margin: 0 !important;
-                padding: 8mm !important;
+                min-height: calc(100vh - 20mm) !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
                 box-sizing: border-box !important;
-                background-color: #000 !important;
+                background-color: transparent !important;
                 color: #fff !important;
             }
             .no-print {
                 display: none !important;
             }
-            .credentials-grid {
-                display: grid !important;
-                grid-template-columns: repeat(2, 1fr) !important;
+            .credential-card-pair {
+                display: flex !important;
+                flex-direction: row !important;
+                justify-content: center !important;
+                align-items: center !important;
                 gap: 8mm !important;
-                width: 100% !important;
+                margin: auto !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                transform: scale(0.95);
+                transform-origin: center center;
             }
             .credential-card {
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
                 box-shadow: none !important;
-                border: 2px solid #00f0ff !important;
-                background-color: #030712 !important;
+                border: 2px solid #1A2333 !important;
+                background-color: #07090E !important;
                 color: #ffffff !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
@@ -382,7 +395,7 @@
 </head>
 <body class="min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-mars-cyan selection:text-black">
 
-    <!-- CAPA DE ACCESO INMERSIVA / LOGIN SCREEN (v1.1.01) -->
+    <!-- CAPA DE ACCESO INMERSIVA / LOGIN SCREEN (v1.1.02) -->
     <div id="login-screen" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-3 sm:p-4 bg-mars-bg text-slate-100 transition-opacity duration-200">
         <!-- Contenido de tarjeta inyectado por ui.viewLogin() -->
     </div>
@@ -401,7 +414,7 @@
                         <h1 class="font-orbitron font-black text-xs sm:text-lg text-white tracking-wider sm:tracking-widest leading-none flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
                             MARS-KET <span class="text-mars-cyan">2.0</span>
                         </h1>
-                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v1.1.01</span>
+                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v1.1.02</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -515,20 +528,20 @@
     <div id="credentials-print-area" class="hidden"></div>
 
     <!-- SCRIPTS ORDENADOS DEL SISTEMA -->
-    <script src="js/lexicon-data.js?v=1.1.01"></script>
-    <script src="js/config.js?v=1.1.01"></script>
-    <script src="js/state.js?v=1.1.01"></script>
-    <script src="js/auth.js?v=1.1.01"></script>
-    <script src="js/ui-core.js?v=1.1.01"></script>
-    <script src="js/ui-empresa-core.js?v=1.1.01"></script>
-    <script src="js/ui-empresa-market.js?v=1.1.01"></script>
-    <script src="js/ui-empresa-tech.js?v=1.1.01"></script>
-    <script src="js/ui-empresa-finance.js?v=1.1.01"></script>
-    <script src="js/ui-empresa-ops.js?v=1.1.01"></script>
-    <script src="js/ui-empresa-gov-brand.js?v=1.1.01"></script>
-    <script src="js/ui-docente-core.js?v=1.1.01"></script>
-    <script src="js/ui-docente-eval.js?v=1.1.01"></script>
-    <script src="js/ui-docente-management.js?v=1.1.01"></script>
+    <script src="js/lexicon-data.js?v=1.1.02"></script>
+    <script src="js/config.js?v=1.1.02"></script>
+    <script src="js/state.js?v=1.1.02"></script>
+    <script src="js/auth.js?v=1.1.02"></script>
+    <script src="js/ui-core.js?v=1.1.02"></script>
+    <script src="js/ui-empresa-core.js?v=1.1.02"></script>
+    <script src="js/ui-empresa-market.js?v=1.1.02"></script>
+    <script src="js/ui-empresa-tech.js?v=1.1.02"></script>
+    <script src="js/ui-empresa-finance.js?v=1.1.02"></script>
+    <script src="js/ui-empresa-ops.js?v=1.1.02"></script>
+    <script src="js/ui-empresa-gov-brand.js?v=1.1.02"></script>
+    <script src="js/ui-docente-core.js?v=1.1.02"></script>
+    <script src="js/ui-docente-eval.js?v=1.1.02"></script>
+    <script src="js/ui-docente-management.js?v=1.1.02"></script>
 
     <script>
         window.addEventListener('DOMContentLoaded', () => {
@@ -543,7 +556,7 @@
                 state.init();
             }
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-                navigator.serviceWorker.register('sw.js?v=1.1.01').catch(() => {});
+                navigator.serviceWorker.register('sw.js?v=1.1.02').catch(() => {});
             }
         });
     </script>

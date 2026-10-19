@@ -44,6 +44,14 @@ const ui = {
         return this.notify(message, tone, duration);
     },
 
+    showToast(message, tone = 'info', duration = 4000) {
+        return this.notify(message, tone, duration);
+    },
+
+    renderAll() {
+        return this.render();
+    },
+
     notify(message, type = 'info', duration = 5000) {
         const cleanMsg = String(message || '').replace(/[\u200B-\u200D\uFEFF]/g, '');
         let tone = type;
@@ -420,17 +428,44 @@ const ui = {
     },
 
     recordSecurityIncident(severity, rawText, context, matchedWord) {
+        const teamId = (state.user && !state.user.admin) ? state.user.coId : (state.currentUser?.coId || 'AEE');
+        const studentAlias = (state.user && !state.user.admin) ? state.user.role : (state.currentUser?.role || 'ESTUDIANTE');
+        const offendingText = this.cleanInput(rawText);
+        const timestamp = new Date().toISOString();
+
+        // Enviar payload silencioso: POST /api/moderation/report
+        try {
+            if (typeof fetch !== 'undefined') {
+                fetch('/api/moderation/report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        team_id: teamId,
+                        student_alias: studentAlias,
+                        offending_text: offendingText,
+                        matched_term: matchedWord,
+                        timestamp: timestamp
+                    })
+                }).catch(() => {});
+            }
+        } catch(e) {}
+
         if (!state.user || state.user.admin) return;
         state.data.securityIncidents = state.data.securityIncidents || [];
         state.data.securityIncidents.unshift({
             id: 'SEC-' + Date.now(),
-            coId: state.user.coId,
-            role: state.user.role,
+            coId: teamId,
+            team_id: teamId,
+            role: studentAlias,
+            student_alias: studentAlias,
             severity: severity,
             word: matchedWord,
+            matched_term: matchedWord,
             context: context,
-            text: this.cleanInput(rawText),
+            text: offendingText,
+            offending_text: offendingText,
             date: new Date().toLocaleString(),
+            timestamp: timestamp,
             resolved: false
         });
         telemetry.log("SECURITY", `[${severity}] Interceptado en ${context}: "${matchedWord}"`);

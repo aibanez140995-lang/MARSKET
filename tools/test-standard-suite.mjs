@@ -112,7 +112,7 @@ try {
     const g8Results = [];
 
     await page.goto(BASE_URL);
-    await page.waitForSelector('#hud-marsket-logo');
+    await page.waitForSelector('#login-screen');
 
     for (const vpWidth of testViewports) {
         await page.setViewportSize({ width: vpWidth, height: 844 });
@@ -245,7 +245,7 @@ try {
     console.log("\n--- Auditando G16: CLS y Objetivos Táctiles ---");
     // 1. Measure CLS with PerformanceObserver
     await page.goto(BASE_URL);
-    await page.waitForSelector('#hud-marsket-logo');
+    await page.waitForSelector('#login-screen');
 
     const clsData = await page.evaluate(async () => {
         let clsScore = 0;

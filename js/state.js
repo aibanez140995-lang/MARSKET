@@ -6,6 +6,7 @@ const state = {
     storageKey: 'marsket_v10_PWA',
     sessionKey: 'marsket_session_v1',
     isCloudOnline: false, isSyncing: false, syncTimer: null, heartbeatTimer: null,
+    pausePolling: false, _broadcastChannel: null,
     consecutiveNetworkFailures: 0, isOfflineContained: false, _listenersAttached: false,
     _hasWarnedCloudNetwork: false,
     _vaultKey: 'MARS_AEE_2026_SECRET_KEY',
@@ -251,6 +252,33 @@ const state = {
         if (!serverData) return localData;
         if (!localData) return serverData;
 
+        // Al recibir serverData de la red:
+        const localEpoch = parseInt(localStorage.getItem('marsket_reset_epoch') || '0', 10);
+        const serverEpoch = serverData.resetEpoch || 0;
+
+        if (serverEpoch > localEpoch) {
+            console.warn('[SECURITY] Reset Epoch superior detectado. Destruyendo caché huérfana local.');
+            
+            const savedSession = localStorage.getItem('marsket_session');
+            const savedRole = localStorage.getItem('marsket_user_role');
+            const savedV1Session = this.sessionKey ? localStorage.getItem(this.sessionKey) : null;
+            
+            localStorage.clear(); // Purga masiva
+            
+            if (savedSession) localStorage.setItem('marsket_session', savedSession);
+            if (savedRole) localStorage.setItem('marsket_user_role', savedRole);
+            if (savedV1Session && this.sessionKey) localStorage.setItem(this.sessionKey, savedV1Session);
+            localStorage.setItem('marsket_reset_epoch', serverEpoch.toString());
+            
+            // Reemplazo destructivo directo, omitiendo cualquier merge aditivo
+            this.data = JSON.parse(JSON.stringify(serverData));
+            this.saveToLocal();
+            if (typeof ui !== 'undefined' && ui.renderAll) ui.renderAll();
+            else if (typeof ui !== 'undefined' && ui.render) ui.render();
+            
+            return this.data; // ABORTAR ejecución posterior de mergeData
+        }
+
         const merged = JSON.parse(JSON.stringify(serverData)); 
 
         // Resolución LWW para configuración y PINs docentes (evita rebote de PIN en el Claustro)
@@ -435,6 +463,23 @@ const state = {
         merged.b2bMarket = mergeArraysGlobal(merged.b2bMarket, localData.b2bMarket);
         merged.b2bContracts = mergeArraysGlobal(merged.b2bContracts, localData.b2bContracts);
         merged.securityIncidents = mergeArraysGlobal(merged.securityIncidents, localData.securityIncidents);
+
+        if (Array.isArray(localData.catalog) && Array.isArray(merged.catalog)) {
+            const localMap = new Map();
+            localData.catalog.forEach(item => { if (item && item.id) localMap.set(String(item.id), item); });
+            merged.catalog = merged.catalog.map(sItem => {
+                if (!sItem || !sItem.id) return sItem;
+                const lItem = localMap.get(String(sItem.id));
+                if (!lItem) return sItem;
+                return { ...sItem, price: lItem.price !== undefined ? lItem.price : sItem.price };
+            });
+            const serverIds = new Set(merged.catalog.map(i => String(i?.id)));
+            localData.catalog.forEach(lItem => {
+                if (lItem && lItem.id && String(lItem.id).startsWith('CUST-') && !serverIds.has(String(lItem.id))) {
+                    merged.catalog.unshift(lItem);
+                }
+            });
+        }
 
         return merged;
     },
@@ -672,12 +717,34 @@ const state = {
                     }
                 });
             }
+
+            if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined' && !this._broadcastChannel) {
+                try {
+                    this._broadcastChannel = new BroadcastChannel('marsket_channel');
+                    this._broadcastChannel.onmessage = (ev) => {
+                        if (ev.data && ev.data.type === 'MARSKET_GLOBAL_RESET') {
+                            this.fetchFromCloud();
+                        }
+                    };
+                } catch(e) {}
+            }
         }
         
         await this.fetchFromCloud();
     },
 
+    resumePolling() {
+        this.pausePolling = false;
+        if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+        this.heartbeatTimer = setInterval(() => {
+            if (!this.pausePolling && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+                this.fetchFromCloud();
+            }
+        }, 12000);
+    },
+
     async fetchFromCloud() {
+        if (this.pausePolling) return false;
         this.isSyncing = true;
         try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
         let shouldRender = false;
@@ -691,6 +758,34 @@ const state = {
                 networkOk = true;
                 this.consecutiveNetworkFailures = 0;
                 if(json && json.status !== 'empty') {
+                    // Purgado Incondicional por resetEpoch (v1.1.02)
+                    const localEpoch = parseInt(localStorage.getItem('marsket_reset_epoch') || '0', 10);
+                    const serverEpoch = json.resetEpoch || 0;
+
+                    if (serverEpoch > localEpoch) {
+                        console.warn('[SECURITY] Reset Epoch superior detectado. Destruyendo caché huérfana local.');
+                        
+                        const savedSession = localStorage.getItem('marsket_session');
+                        const savedRole = localStorage.getItem('marsket_user_role');
+                        const savedV1Session = this.sessionKey ? localStorage.getItem(this.sessionKey) : null;
+                        
+                        localStorage.clear(); // Purga masiva
+                        
+                        if (savedSession) localStorage.setItem('marsket_session', savedSession);
+                        if (savedRole) localStorage.setItem('marsket_user_role', savedRole);
+                        if (savedV1Session && this.sessionKey) localStorage.setItem(this.sessionKey, savedV1Session);
+                        localStorage.setItem('marsket_reset_epoch', serverEpoch.toString());
+                        
+                        // Reemplazo destructivo directo, omitiendo cualquier merge aditivo
+                        this.data = JSON.parse(JSON.stringify(json));
+                        this.saveToLocal();
+                        if (typeof ui !== 'undefined' && ui.renderAll) ui.renderAll();
+                        else if (typeof ui !== 'undefined' && ui.render) ui.render();
+                        
+                        this.isCloudOnline = true;
+                        return true; // ABORTAR ejecución posterior de mergeData
+                    }
+
                     try { localStorage.setItem('marsket_emergency_snapshot', JSON.stringify(this.data)); } catch(e) {}
                     const merged = this.mergeData(this.migrate(json), this.data);
                     this.data = merged;
@@ -754,6 +849,10 @@ const state = {
         return networkOk;
     },
 
+    saveToLocal() {
+        this.saveLocalOnly();
+    },
+
     saveLocalOnly() {
         try {
             localStorage.setItem(this.storageKey, JSON.stringify(this.data));
@@ -794,6 +893,9 @@ const state = {
             const res = await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             
             if (res.status === 409 || res.status === 412) {
+                if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
+                    ui.notify("⚠️ Conflicto de concurrencia detectado. Se ha sincronizado el registro más reciente de la nube sin sobrescribir datos ajenos.", "warning");
+                }
                 const fetchRes = await fetch('/api/state', { cache: 'no-store' });
                 if (fetchRes.ok) {
                     const serverData = await fetchRes.json();
@@ -870,10 +972,12 @@ const state = {
     addToLedger(coId, concept, dept, delta) {
         const co = this.data.companies[coId];
         if (!co) return; 
-        co.balance = (Number(co.balance) || 0) + Number(delta);
+        const currentBal = Math.round((Number(co.balance || 0) + Number.EPSILON) * 100) / 100;
+        const deltaNum = Math.round((Number(delta || 0) + Number.EPSILON) * 100) / 100;
+        co.balance = Math.round(((currentBal + deltaNum) + Number.EPSILON) * 100) / 100;
         co.updatedAt = Date.now();
         co.ledger = co.ledger || [];
-        co.ledger.unshift({ id: 'TX-' + Math.random().toString(36).substr(2, 5).toUpperCase(), date: new Date().toLocaleString(), concept, dept, delta: Number(delta), final: co.balance });
+        co.ledger.unshift({ id: 'TX-' + Math.random().toString(36).substr(2, 5).toUpperCase(), date: new Date().toLocaleString(), concept, dept, delta: deltaNum, final: co.balance });
         this.save();
     }
 };

@@ -35,6 +35,14 @@ Object.assign(ui, {
             </button>
             <button role="tab" aria-selected="${currentTab==='backups'}" onclick="ui.adminTab='backups'; ui.render()" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all ${currentTab==='backups'?'bg-blue-500 text-white border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]':'bg-mars-card text-slate-300 border-mars-border hover:text-white'}">
                 💾 Backups & D1
+            </button>
+            <button type="button" onclick="ui.modalModerationIncidents()" title="Registro de Infracciones Léxicas" class="min-h-[44px] px-3 py-2 text-xs font-bold uppercase tracking-widest border border-[#FF0055]/60 bg-[#FF0055]/10 text-[#FF0055] hover:bg-[#FF0055] hover:text-white transition-all flex items-center gap-2 shadow-[0_0_10px_rgba(255,0,85,0.25)] ml-auto">
+                <span class="relative flex h-2.5 w-2.5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF0055] opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#FF0055]"></span>
+                </span>
+                <span>🚨 INFRACCIONES</span>
+                <span class="bg-[#FF0055] text-white px-1.5 py-0.5 rounded text-[10px] font-mono font-bold">${(state.data.securityIncidents || []).length}</span>
             </button>` : ''}
         </div>`;
 
@@ -65,8 +73,11 @@ Object.assign(ui, {
     renderAdminSettings() {
         const dl = state.data.config.deadlines || {};
         const suggestions = state.data.suggestionsToAlex || [];
+        const isResolvedStatus = (s) => s.status === 'IMPLEMENTADO' || s.status === 'RESUELTO' || s.resolved === true;
+        const activeSuggs = suggestions.filter(s => !isResolvedStatus(s));
+        const resolvedSuggs = suggestions.filter(s => isResolvedStatus(s));
 
-        const suggsHtml = suggestions.map((sugg) => {
+        const renderSuggItem = (sugg) => {
             const cat = sugg.category || 'MEJORA';
             const status = sugg.status || 'RECIBIDO';
             const catBadge = cat === 'BUG' ? 'text-mars-magenta border-mars-magenta bg-mars-magenta/10' : (cat === 'REGLAS' ? 'text-mars-cyan border-mars-cyan bg-mars-cyan/10' : 'text-mars-yellow border-mars-yellow bg-mars-yellow/10');
@@ -90,7 +101,10 @@ Object.assign(ui, {
                 <p class="text-slate-200 italic mb-2 bg-black/50 p-2 border border-slate-800 break-words">"${this.escapeHTML(sugg.text)}"</p>
                 <span class="text-xs text-slate-300 block text-right">${this.escapeHTML(sugg.date)}</span>
             </div>`;
-        }).join('') || '<p class="text-slate-300 italic text-xs">No hay sugerencias ni reportes en el buzón.</p>';
+        };
+
+        const activeHtml = activeSuggs.map(renderSuggItem).join('') || '<p class="text-slate-300 italic text-xs">No hay consultas activas pendientes en el buzón.</p>';
+        const resolvedHtml = resolvedSuggs.map(renderSuggItem).join('') || '<p class="text-slate-400 italic text-xs">No hay consultas resueltas registradas.</p>';
 
         return `
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -129,12 +143,27 @@ Object.assign(ui, {
 
             <!-- Buzón Alex y Sugerencias -->
             <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow">
-                <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-2">
-                    <h3 class="font-orbitron text-mars-yellow text-xs uppercase tracking-widest">Buzón Alex (Desarrollo & Feedback)</h3>
-                    <span class="text-xs text-slate-300 uppercase">${suggestions.length} Reportes</span>
+                <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-2 flex-wrap gap-2">
+                    <h3 class="font-orbitron text-mars-yellow text-xs uppercase tracking-widest">Buzón de Consultas & Feedback</h3>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-mars-cyan font-bold font-mono">${activeSuggs.length} Activas</span>
+                        <span class="text-xs text-slate-400 font-mono">/ ${suggestions.length} Total</span>
+                    </div>
                 </div>
                 <div class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                    ${suggsHtml}
+                    <div class="space-y-2">
+                        ${activeHtml}
+                    </div>
+
+                    <details class="border border-cyan-500/20 bg-[#0A0E17] rounded-lg mt-4 p-3">
+                        <summary class="cursor-pointer font-orbitron text-xs text-mars-cyan uppercase tracking-wider font-bold select-none flex items-center justify-between">
+                            <span>CONSULTAS Y SUGERENCIAS RESUELTAS</span>
+                            <span class="bg-cyan-950/80 text-mars-cyan border border-cyan-500/30 px-2 py-0.5 rounded text-[11px] font-mono">[${resolvedSuggs.length} RESUELTAS]</span>
+                        </summary>
+                        <div class="space-y-2 mt-3 pt-2 border-t border-cyan-500/20">
+                            ${resolvedHtml}
+                        </div>
+                    </details>
                 </div>
             </div>
         </div>`;
@@ -205,6 +234,22 @@ Object.assign(ui, {
             </div>
             <button type="button" onclick="ui.promptFactoryResetLaunch()" class="min-h-[44px] bg-red-600 hover:bg-red-500 text-white font-black px-6 py-2.5 text-xs uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(255,0,0,0.5)] border border-red-400">
                 [ 🚨 INICIALIZAR RESET DE FÁBRICA PRE-LANZAMIENTO ]
+            </button>
+        </div>
+
+        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-cyan-500 mt-6 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
+            <div class="flex justify-between items-center mb-4 border-b border-cyan-900/50 pb-2 flex-wrap gap-2">
+                <div>
+                    <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase tracking-widest font-black">⚡ RESET GLOBAL TRANSACCIONAL (RPC /api/admin/reset)</h3>
+                    <p class="text-xs text-slate-300 uppercase mt-0.5">Misión v1.1.02: Transacción estricta en Cloudflare D1 y sincronización multicliente por broadcast.</p>
+                </div>
+                <span class="bg-cyan-950/80 border border-mars-cyan text-mars-cyan px-3 py-1 text-xs font-black uppercase">TRANSACCIÓN D1 ATÓMICA</span>
+            </div>
+            <p class="text-xs text-slate-200 mb-4 leading-relaxed">
+                Ejecuta la purga transaccional D1 de pedidos, buzones, sugerencias e incidentes, restableciendo balances a <strong>1000.00 €v</strong> y catálogo a valores por defecto. Vacía el almacenamiento local selectivo (preservando la sesión del coordinador) y fuerza recarga de estado mediante broadcast en todos los navegadores conectados.
+            </p>
+            <button type="button" onclick="ui.globalTransactionalReset()" class="min-h-[44px] bg-mars-cyan hover:bg-white text-black font-black px-6 py-2.5 text-xs uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(0,240,255,0.4)] border border-mars-cyan">
+                [ ⚡ EJECUTAR RESET GLOBAL TRANSACCIONAL ]
             </button>
         </div>
         `;
@@ -422,5 +467,109 @@ Object.assign(ui, {
             console.error("Error durante el factory reset:", err);
             this.notify("Error al ejecutar el reset: " + err.message, "error");
         }
+    },
+
+    async globalTransactionalReset() {
+        if (!state.user || !state.user.admin) return;
+        const cu = (typeof currentUser !== 'undefined' ? currentUser : null) || state.currentUser || state.user;
+        const r = String(cu?.role || '').toLowerCase();
+        if (cu?.role !== 'coordinador' && r !== 'coordinador' && !r.includes('coord') && !cu?.admin) {
+            return this.notify("Operación reservada exclusivamente para el rol de Coordinador.", "error");
+        }
+
+        const inputCode = prompt("PROTOCOLO DE RESET GLOBAL TRANSACCIONAL (v1.1.02)\n\nEsta acción ejecutará una transacción estricta D1 (órdenes, buzón, sugerencias, balances a 1000.00 €v y catálogo por defecto) y forzará la recarga en todos los clientes.\n\nIntroduce el CÓDIGO MAESTRO DE COORDINADOR para confirmar:");
+        if (!inputCode) return this.notify("Operación de reset cancelada.", "info");
+
+        this.notify("Ejecutando transacción D1 estricta de reset global...", "info");
+
+        try {
+            const token = state.getAuthToken(state.user, state.data);
+            const res = await fetch('/api/admin/reset', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    token: token,
+                    code: inputCode.trim(),
+                    role: state.user.role
+                })
+            });
+
+            if (!res.ok) {
+                const errJson = await res.json().catch(() => ({}));
+                return this.notify(`Error en el reset D1: ${errJson.error || res.statusText}`, "error");
+            }
+
+            // En el cliente: Vaciar localStorage selectivo (preservando sesión del coordinador)
+            try {
+                localStorage.removeItem(state.storageKey);
+                localStorage.removeItem('marsket_emergency_snapshot');
+            } catch(e) {}
+
+            // Forzar recarga de estado en todos los clientes mediante broadcast
+            if (typeof BroadcastChannel !== 'undefined') {
+                try {
+                    const bc = new BroadcastChannel('marsket_channel');
+                    bc.postMessage({ type: 'MARSKET_GLOBAL_RESET', timestamp: Date.now() });
+                } catch(e) {}
+            }
+
+            await state.fetchFromCloud();
+            this.notify("✅ Protocolo de Reset Global Transaccional ejecutado exitosamente. Clientes sincronizados.", "success");
+            this.render();
+        } catch(netErr) {
+            this.notify(`Excepción durante el reset: ${netErr.message}`, "error");
+        }
+    },
+
+    modalModerationIncidents() {
+        const incidents = state.data.securityIncidents || [];
+        const rows = incidents.map((inc) => `
+            <tr class="border-b border-slate-800 text-xs hover:bg-slate-900/60 transition-colors">
+                <td class="p-2.5 font-mono text-slate-400 whitespace-nowrap">${this.escapeHTML(inc.date || inc.timestamp || '--')}</td>
+                <td class="p-2.5 font-bold text-mars-yellow uppercase">${this.escapeHTML(inc.team_id || inc.coId || 'AEE')}</td>
+                <td class="p-2.5 text-mars-cyan font-mono uppercase">${this.escapeHTML(inc.student_alias || inc.role || 'ESTUDIANTE')}</td>
+                <td class="p-2.5">
+                    <span class="bg-[#FF0055]/20 text-[#FF0055] border border-[#FF0055]/50 px-2 py-0.5 font-mono font-black text-[11px] uppercase">${this.escapeHTML(inc.matched_term || inc.word || 'INFRACCIÓN')}</span>
+                </td>
+                <td class="p-2.5 text-slate-300 break-words font-mono text-[11px] max-w-xs">
+                    "${this.escapeHTML(inc.offending_text || inc.text || '--')}"
+                </td>
+            </tr>
+        `).join('') || `<tr><td colspan="5" class="p-6 text-center text-slate-400 italic">No se han registrado infracciones léxicas en la telemetría pedagógica.</td></tr>`;
+
+        const body = `
+        <div class="space-y-4 font-mono text-xs">
+            <div class="bg-slate-950 border border-[#FF0055]/60 p-3 text-slate-200 flex justify-between items-center flex-wrap gap-2">
+                <div>
+                    <p class="text-[#FF0055] font-orbitron font-black uppercase text-xs">TELEMETRÍA PEDAGÓGICA // REGISTRO DE INFRACCIONES LÉXICAS</p>
+                    <p class="text-xs text-slate-300">Auditoría en tiempo real de transgresiones LOPD y filtros de lenguaje de aula.</p>
+                </div>
+                <span class="bg-[#FF0055] text-white px-2.5 py-1 text-xs font-black uppercase tracking-wider font-mono">${incidents.length} INCIDENTES</span>
+            </div>
+            <div class="overflow-x-auto max-h-[60vh] border border-slate-800">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-900 text-slate-400 text-[10px] uppercase font-bold tracking-wider sticky top-0">
+                        <tr>
+                            <th class="p-2.5 border-b border-slate-700">FECHA / HORA</th>
+                            <th class="p-2.5 border-b border-slate-700">STARTUP / EQUIPO</th>
+                            <th class="p-2.5 border-b border-slate-700">ROL / ALIAS</th>
+                            <th class="p-2.5 border-b border-slate-700">TÉRMINO DETECTADO</th>
+                            <th class="p-2.5 border-b border-slate-700">TEXTO INTERCEPTADO</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+
+        const actions = `
+            <button type="button" onclick="ui.closeModal()" class="min-h-[44px] bg-slate-800 text-white px-4 py-2 text-xs font-bold uppercase hover:bg-white hover:text-black transition-all">Cerrar</button>
+        `;
+        this.showModal("REGISTRO DE INFRACCIONES LÉXICAS", body, actions);
     }
 });

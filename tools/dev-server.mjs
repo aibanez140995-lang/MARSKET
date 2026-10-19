@@ -52,6 +52,197 @@ const server = http.createServer((req, res) => {
         return sendJSON(res, 200, { ok: true, message: 'Estado D1 en memoria reiniciado a empty' });
     }
 
+    // Endpoint RPC v1.1.02: /api/admin/reset
+    if (pathname === '/api/admin/reset') {
+        if (req.method !== 'POST') return sendJSON(res, 405, { error: 'MethodNotAllowed' });
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', () => {
+            if (memoryState) {
+                if (memoryState.companies) {
+                    for (const cid in memoryState.companies) {
+                        const co = memoryState.companies[cid];
+                        co.balance = 1000.00;
+                        co.orders = [];
+                        co.ledger = [];
+                        co.cart = [];
+                        co.bom = [];
+                        co.realCosts = [];
+                        co.flightTests = [];
+                        co.marketingCampaigns = [];
+                        co.inactivityReports = [];
+                        co.sanctions = [];
+                        co.crisisAlerts = [];
+                        co.notifications = [];
+                        co.logo = null;
+                        co.slogan = "";
+                        co.valueProposition = "";
+                        co.brandApproval = { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
+                    }
+                }
+                memoryState.suggestionsToAlex = [];
+                memoryState.pendingCustom = [];
+                memoryState.b2bMarket = [];
+                memoryState.b2bContracts = [];
+                memoryState.securityIncidents = [];
+                memoryState.moderationAlerts = [];
+                if (Array.isArray(memoryState.catalog)) {
+                    memoryState.catalog.forEach(item => {
+                        if (item.default_price !== undefined) item.price = item.default_price;
+                        if (item.default_stock !== undefined) item.stock = item.default_stock;
+                    });
+                }
+                memoryState.version = (Number(memoryState.version) || 1) + 1;
+                memoryState.resetEpoch = Date.now();
+                memoryState.lastUpdated = Date.now();
+            }
+            return sendJSON(res, 200, { success: true, resetEpoch: memoryState ? memoryState.resetEpoch : Date.now(), message: 'Reset transaccional completado en memoria' });
+        });
+        return;
+    }
+
+    // Endpoint v1.1.02: /api/catalog/update con control optimista
+    if (pathname === '/api/catalog/update') {
+        if (req.method !== 'POST' && req.method !== 'PATCH' && req.method !== 'PUT') {
+            return sendJSON(res, 405, { error: 'MethodNotAllowed' });
+        }
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', () => {
+            try {
+                const payload = JSON.parse(body);
+                const clientVersion = payload.version !== undefined ? Number(payload.version) : null;
+                const serverVersion = memoryState ? (Number(memoryState.version) || 1) : 1;
+
+                if (clientVersion !== null && clientVersion < serverVersion) {
+                    return sendJSON(res, 409, { error: 'Conflict: Outdated version', changes: 0, serverVersion });
+                }
+
+                if (memoryState && Array.isArray(memoryState.catalog)) {
+                    const item = memoryState.catalog.find(i => String(i.id) === String(payload.id));
+                    if (item) {
+                        if (payload.price !== undefined) item.price = Number(payload.price);
+                        if (payload.stock !== undefined) item.stock = Number(payload.stock);
+                        if (payload.name !== undefined) item.name = String(payload.name);
+                    }
+                    memoryState.version = serverVersion + 1;
+                    memoryState.lastUpdated = Date.now();
+                    return sendJSON(res, 200, { ok: true, item, version: memoryState.version });
+                }
+                return sendJSON(res, 200, { ok: true });
+            } catch (e) {
+                return sendJSON(res, 400, { error: e.message });
+            }
+        });
+        return;
+    }
+
+    // Endpoint v1.1.02: /api/catalog/:id
+    if (pathname.startsWith('/api/catalog/')) {
+        const itemId = decodeURIComponent(pathname.slice('/api/catalog/'.length));
+        if (req.method === 'PATCH') {
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            req.on('end', () => {
+                try {
+                    const payload = JSON.parse(body);
+                    const clientVersion = payload.version;
+                    const serverVersion = memoryState ? (Number(memoryState.version) || 1) : 1;
+
+                    if (typeof clientVersion !== 'number') {
+                        return sendJSON(res, 400, { error: 'Falta parámetro version' });
+                    }
+                    if (clientVersion !== serverVersion) {
+                        return sendJSON(res, 409, { error: 'CONFLICT', serverVersion, changes: 0 });
+                    }
+
+                    if (memoryState && Array.isArray(memoryState.catalog)) {
+                        const item = memoryState.catalog.find(i => String(i.id) === String(itemId));
+                        if (!item) return sendJSON(res, 404, { error: 'Not found' });
+                        const changes = payload.changes || {};
+                        if (payload.price !== undefined && changes.price === undefined) changes.price = payload.price;
+                        if (payload.stock !== undefined && changes.stock === undefined) changes.stock = payload.stock;
+                        if (payload.name !== undefined && changes.name === undefined) changes.name = payload.name;
+                        Object.assign(item, changes);
+                        memoryState.version = serverVersion + 1;
+                        memoryState.lastUpdated = Date.now();
+                        return sendJSON(res, 200, { success: true, item, version: memoryState.version });
+                    }
+                    return sendJSON(res, 200, { success: true, version: serverVersion });
+                } catch(e) {
+                    return sendJSON(res, 400, { error: e.message });
+                }
+            });
+            return;
+        }
+        if (req.method === 'DELETE') {
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            req.on('end', () => {
+                try {
+                    let clientVersion = null;
+                    if (body) {
+                        const payload = JSON.parse(body);
+                        clientVersion = payload.version;
+                    }
+                    const serverVersion = memoryState ? (Number(memoryState.version) || 1) : 1;
+                    if (typeof clientVersion !== 'number') {
+                        return sendJSON(res, 400, { error: 'Falta parámetro version' });
+                    }
+                    if (clientVersion !== serverVersion) {
+                        return sendJSON(res, 409, { error: 'CONFLICT', serverVersion, changes: 0 });
+                    }
+                    if (memoryState && Array.isArray(memoryState.catalog)) {
+                        const idx = memoryState.catalog.findIndex(i => String(i.id) === String(itemId));
+                        if (idx === -1) return sendJSON(res, 404, { error: 'Not found' });
+                        const removed = memoryState.catalog.splice(idx, 1)[0];
+                        memoryState.version = serverVersion + 1;
+                        memoryState.lastUpdated = Date.now();
+                        return sendJSON(res, 200, { success: true, deleted: removed, version: memoryState.version });
+                    }
+                    return sendJSON(res, 200, { success: true });
+                } catch(e) {
+                    return sendJSON(res, 400, { error: e.message });
+                }
+            });
+            return;
+        }
+        return sendJSON(res, 405, { error: 'MethodNotAllowed' });
+    }
+
+    // Endpoint v1.1.02: /api/moderation/report
+    if (pathname === '/api/moderation/report') {
+        if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            req.on('end', () => {
+                try {
+                    const payload = JSON.parse(body);
+                    const record = {
+                        id: 'MOD-' + Date.now(),
+                        team_id: payload.team_id || 'UNKNOWN',
+                        student_alias: payload.student_alias || 'ESTUDIANTE',
+                        offending_text: payload.offending_text || '',
+                        matched_term: payload.matched_term || '',
+                        timestamp: payload.timestamp || new Date().toISOString()
+                    };
+                    if (memoryState) {
+                        memoryState.securityIncidents = memoryState.securityIncidents || [];
+                        memoryState.securityIncidents.unshift(record);
+                    }
+                    return sendJSON(res, 200, { ok: true, record });
+                } catch(e) {
+                    return sendJSON(res, 400, { error: e.message });
+                }
+            });
+            return;
+        }
+        if (req.method === 'GET') {
+            return sendJSON(res, 200, memoryState?.securityIncidents || []);
+        }
+        return sendJSON(res, 405, { error: 'MethodNotAllowed' });
+    }
+
     // Endpoint D1: /api/state
     if (pathname === '/api/state') {
         if (req.method === 'GET') {
@@ -73,7 +264,8 @@ const server = http.createServer((req, res) => {
                         return sendJSON(res, 409, {
                             error: 'VersionConflict',
                             message: `Conflicto de versión: entrante ${incoming.version} vs servidor ${memoryState.version}`,
-                            serverVersion: memoryState.version
+                            serverVersion: memoryState.version,
+                            changes: 0
                         });
                     }
 

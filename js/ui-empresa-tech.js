@@ -303,14 +303,28 @@ Object.assign(ui, {
         if (!elBottle || !elNahco3 || !elVinegar || !elCost || !elHeightMm) return; 
 
         const bottle = this.cleanInput(elBottle.value);
-        const naHCO3 = parseFloat(elNahco3.value);
-        const vinegar = parseFloat(elVinegar.value);
+        const rawNahco3 = String(elNahco3.value || '').trim();
+        const rawVinegar = String(elVinegar.value || '').trim();
+
+        // Controlar que las entradas de masa (NaHCO3) y volumen (CH3COOH) rechacen números negativos o cadenas con caracteres alfanuméricos no numéricos
+        const strictNumPattern = /^[0-9]+(\.[0-9]+)?$/;
+        if (!strictNumPattern.test(rawNahco3)) {
+            return this.notify("La masa de NaHCO3 debe ser un valor numérico estrictamente positivo sin caracteres alfanuméricos.", "error");
+        }
+        if (!strictNumPattern.test(rawVinegar)) {
+            return this.notify("El volumen de vinagre (CH3COOH) debe ser un valor numérico estrictamente positivo sin caracteres alfanuméricos.", "error");
+        }
+
+        const naHCO3 = parseFloat(rawNahco3);
+        const vinegar = parseFloat(rawVinegar);
         const costEurV = parseFloat(elCost.value);
         const heightMm = parseFloat(elHeightMm.value); // <--- v1.0.16: Se registra en milímetros
 
         if(!bottle || isNaN(naHCO3) || isNaN(vinegar) || isNaN(costEurV) || isNaN(heightMm)) return this.notify("Rellene todos los datos numéricos del ensayo.", "warning");
+        if(naHCO3 <= 0 || vinegar <= 0) return this.notify("La masa y el volumen de reactivos deben ser mayores a cero.", "warning");
         if(this.hasForbiddenWords(bottle, 'Banco de Pruebas (Fuselaje)', elBottle)) return;
         if(costEurV <= 0) return this.notify("El coste no puede ser cero.", "warning");
+        if(heightMm < 0) return this.notify("La altura no puede ser un número negativo.", "warning");
 
         // Eficiencia: Milímetros por cada € virtual gastado
         const efficiency = heightMm / costEurV;

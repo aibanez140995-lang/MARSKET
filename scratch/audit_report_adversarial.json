@@ -1,92 +1,185 @@
 {
-  "timestamp": "2026-10-19T09:51:26.265Z",
+  "timestamp": "2026-10-19T19:34:21.951Z",
+  "environment": "HTTP standard http://127.0.0.1:3000/ (Tailwind compilado css/tailwind.css)",
   "gates": {
-    "G2": {
+    "G8": {
       "status": "CORRECTO",
-      "filesScanned": 40,
-      "leakCount": 0,
-      "leakedFiles": [],
-      "evidence": "Escaneados 40 archivos en repo. Coincidencias de código maestro en claro: 0."
+      "overflowCount": 0,
+      "results": [
+        {
+          "viewportWidth": 375,
+          "overflows": []
+        },
+        {
+          "viewportWidth": 390,
+          "overflows": []
+        },
+        {
+          "viewportWidth": 768,
+          "overflows": []
+        }
+      ],
+      "evidence": "Auditadas todas las vistas en 375px, 390px y 768px con 80 caracteres 'B'. Desbordamientos horizontales detectados: 0."
     },
-    "G3": {
+    "G9": {
       "status": "CORRECTO",
-      "hashMatchesLocalCalc": true,
-      "singleClickModalOpen": false,
-      "doubleClickModalOpen": true,
-      "wrongAttemptBlocked": true,
-      "correctAttemptGranted": true,
-      "evidence": "Hash SHA-256 verificado en local vs auth.js. Dblclick requerido para modal. Código incorrecto bloquea sin pistas. Código correcto desbloquea claustro docente."
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "consoleDebugs": [
+        "[D1: OFFLINE] Modo sin conexión activado (/api/state no alcanzable)."
+      ],
+      "offlineUI": {
+        "cloudIndicator": "[D1: OFFLINE]",
+        "isOnline": false
+      },
+      "evidence": "Errores consola: 0. Avisos (console.warn): 0. Indicador UI en desconexión: [D1: OFFLINE]."
     },
-    "G4a": {
+    "G16": {
       "status": "CORRECTO",
-      "evidence": "Inyección forzada en localStorage {admin:true, role:'COORD_MARIO'}. Tras recarga: currentUser=null, view=login. Sesión purgada por falta de authProof."
-    },
-    "G4b": {
-      "status": "RIESGO_RESIDUAL_DOCUMENTADO",
-      "evidence": "Falsificación mediante lectura directa de /api/state: Documentado como riesgo residual de arquitectura hasta la fase D2 (servidor GS1–GS4, cookies HttpOnly y D1 AES-GCM)."
+      "clsScore": 0.00003033592995440354,
+      "clsTopShifts": [
+        {
+          "value": 0.00003033592995440354,
+          "sources": [
+            {
+              "nodeTag": "SPAN",
+              "nodeId": "hud-balance",
+              "previousRect": {
+                "x": 359.46875,
+                "y": 156,
+                "width": 72.796875,
+                "height": 16,
+                "top": 156,
+                "right": 432.265625,
+                "bottom": 172,
+                "left": 359.46875
+              },
+              "currentRect": {
+                "x": 352.265625,
+                "y": 156,
+                "width": 80,
+                "height": 16,
+                "top": 156,
+                "right": 432.265625,
+                "bottom": 172,
+                "left": 352.265625
+              }
+            },
+            {
+              "nodeTag": "SPAN",
+              "nodeId": "",
+              "previousRect": {
+                "x": 308.25,
+                "y": 156,
+                "width": 43.21875,
+                "height": 16,
+                "top": 156,
+                "right": 351.46875,
+                "bottom": 172,
+                "left": 308.25
+              },
+              "currentRect": {
+                "x": 301.046875,
+                "y": 156,
+                "width": 43.21875,
+                "height": 16,
+                "top": 156,
+                "right": 344.265625,
+                "bottom": 172,
+                "left": 301.046875
+              }
+            },
+            {
+              "nodeTag": "SPAN",
+              "nodeId": "",
+              "previousRect": {
+                "x": 293.046875,
+                "y": 156,
+                "width": 7.203125,
+                "height": 16,
+                "top": 156,
+                "right": 300.25,
+                "bottom": 172,
+                "left": 293.046875
+              },
+              "currentRect": {
+                "x": 285.84375,
+                "y": 156,
+                "width": 7.203125,
+                "height": 16,
+                "top": 156,
+                "right": 293.046875,
+                "bottom": 172,
+                "left": 285.84375
+              }
+            }
+          ]
+        }
+      ],
+      "touchViolationsCount": 0,
+      "touchViolations": [],
+      "sampleCompliant": [
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "type": "button",
+          "text": "[ 🚀 NOVEDADES ]",
+          "w": 170,
+          "h": 44
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "type": "button",
+          "text": "[ 💡 SUGERENCIA ]",
+          "w": 170,
+          "h": 44
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "type": "button",
+          "text": "[ ❓ GUÍA ]",
+          "w": 170,
+          "h": 44
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "type": "button",
+          "text": "[ SALIR ]",
+          "w": 170,
+          "h": 44
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "type": "button",
+          "text": "🔐 BÓVEDA ÓRDENES",
+          "w": 166,
+          "h": 44
+        }
+      ],
+      "skipOnboardingBox": {
+        "w": 44,
+        "h": 44
+      },
+      "evidence": "CLS acumulado medido: 0.0000 (Umbral <= 0.02). Violaciones táctiles < 44x44: 0. Casilla #skip-onboarding: {\"w\":44,\"h\":44}."
     },
     "G6": {
       "status": "CORRECTO",
       "failedTerms": [],
-      "inputPreservedOnFailure": true,
-      "evidence": "Probados 20 términos de riesgo LOPD/malsonantes. Bloqueados: 20/20. Retención de texto en campo: true."
+      "evidence": "Probados 13 términos de riesgo LOPD. Bloqueados: 13/13."
     },
     "G7": {
       "status": "CORRECTO",
       "failedTerms": [],
-      "evidence": "Probados 9 términos de lista blanca y epónimos. Autorizados: 9/9."
-    },
-    "G8": {
-      "status": "CORRECTO",
-      "xssAlertFired": false,
-      "bodyScrollWidth": 390,
-      "bodyClientWidth": 390,
-      "evidence": "Ejecutados payloads SVG/IMG/URL inline. alert() ejecutados: false. Contención de desbordamiento horizontal: scrollWidth=390 vs clientWidth=390."
-    },
-    "G9": {
-      "status": "CORRECTO",
-      "appErrors": [],
-      "appWarnings": [],
-      "evidence": "Auditadas 7 pestañas docentes y 7 roles de alumno. Errores de aplicación: 0. Avisos propios (console.warn): 0 ([])."
-    },
-    "G11": {
-      "status": "CORRECTO",
-      "drawerBackWorked": true,
-      "escapeModalWorked": true,
-      "evidence": "Atrás de sistema (popstate/history.back): cerró drawer (true -> false). Tecla Escape: cerró modal (true -> false)."
-    },
-    "G12": {
-      "status": "CORRECTO",
-      "loginLogo": {
-        "exists": true,
-        "visible": true,
-        "hasText": false
-      },
-      "headerLogoAcrossRoles": {
-        "CEO": true,
-        "TECNICO": true,
-        "FINANZAS": true,
-        "MARKETING": true,
-        "OPERACIONES_IA": true,
-        "AUXILIAR": true,
-        "DOCENTE": true
-      },
-      "evidence": "Logo MARS-KET verificado en login (true) y en cabecera activa de los 7 roles ({\"CEO\":true,\"TECNICO\":true,\"FINANZAS\":true,\"MARKETING\":true,\"OPERACIONES_IA\":true,\"AUXILIAR\":true,\"DOCENTE\":true})."
+      "evidence": "Probados 6 términos aeroespaciales/epónimos. Autorizados: 6/6."
     },
     "G14": {
       "status": "CORRECTO",
-      "version": "1.1.00",
-      "changelog": {
-        "v11": true
-      },
-      "uniqueWelcomesCount": 7,
-      "evidence": "Versión única: 1.1.00. Changelog oficial de producción v1.1.00. Bienvenidas onboarding diferenciadas para roles: 7 perfiles únicos."
-    },
-    "G16": {
-      "status": "CORRECTO",
-      "touchViolationsCount": 0,
-      "touchViolationsSample": [],
-      "evidence": "Objetivos táctiles medidos en 390x844: 0 elementos por debajo de 44x44px. Elementos afectados incluyen botones HUD y pestañas."
+      "uniqueRolesCovered": 7,
+      "evidence": "Manuales operativos diferenciados de puesto: 7 perfiles únicos validados."
     }
   }
 }

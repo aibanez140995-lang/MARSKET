@@ -78,7 +78,7 @@ export async function onRequest(context) {
             const incomingVersion = Number(payload.version) || 0;
 
             if (serverVersion > 0 && incomingVersion <= serverVersion && incomingVersion !== 0) {
-                return new Response(JSON.stringify({ error: 'Conflict: Server has a newer version', serverVersion }), { status: 409, headers });
+                return new Response(JSON.stringify({ error: 'Conflict: Server has a newer version', serverVersion, changes: 0 }), { status: 409, headers });
             }
 
             // Forzar actualización de versión si todo va bien
