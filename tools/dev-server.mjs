@@ -272,12 +272,135 @@ const server = http.createServer((req, res) => {
         return sendJSON(res, 405, { error: 'MethodNotAllowed' });
     }
 
+    // Endpoint v1.1.05: /api/admin/credentials
+    if (pathname === '/api/admin/credentials') {
+        const VAULT_KEY = 'MARS_AEE_2026_SECRET_KEY';
+        const decodeSecret = (str) => {
+            if (!str || typeof str !== 'string' || !str.startsWith('VLT_')) return str || '';
+            const b64 = str.slice(4);
+            try {
+                const raw = Buffer.from(b64, 'base64').toString('binary');
+                let out = '';
+                for (let i = 0; i < raw.length; i++) {
+                    out += String.fromCharCode(raw.charCodeAt(i) ^ VAULT_KEY.charCodeAt(i % VAULT_KEY.length));
+                }
+                return out;
+            } catch(e) { return str; }
+        };
+        const encodeSecret = (str) => {
+            if (!str) return '';
+            const s = String(str);
+            let out = '';
+            for (let i = 0; i < s.length; i++) {
+                out += String.fromCharCode(s.charCodeAt(i) ^ VAULT_KEY.charCodeAt(i % VAULT_KEY.length));
+            }
+            return 'VLT_' + Buffer.from(out, 'binary').toString('base64');
+        };
+
+        if (req.method === 'GET') {
+            if (!memoryState) return sendJSON(res, 404, { error: 'NoState' });
+            const teachers = memoryState.config?.teachers || {};
+            const companies = {};
+            const allRoles = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'];
+            for (const cid in memoryState.companies || {}) {
+                const co = memoryState.companies[cid];
+                let plainCode = co.accessCode || '';
+                if (co.authVault?.code) plainCode = decodeSecret(co.authVault.code);
+                const plainRoles = {};
+                for (const r of allRoles) {
+                    let rPin = '';
+                    if (co.authVault?.roles?.[r]) rPin = decodeSecret(co.authVault.roles[r]);
+                    else if (co.roles?.[r] && !String(co.roles[r]).startsWith('VLT_')) rPin = String(co.roles[r]);
+                    if (rPin) plainRoles[r] = rPin;
+                }
+                companies[cid] = {
+                    id: cid,
+                    name: co.name,
+                    classGroup: co.classGroup || 'A',
+                    accessCode: plainCode,
+                    roles: plainRoles,
+                    auxRoleDept: co.auxRoleDept || ''
+                };
+            }
+            return sendJSON(res, 200, { teachers, companies, version: memoryState.version || 1 });
+        }
+
+        if (req.method === 'PATCH') {
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            req.on('end', () => {
+                try {
+                    const { type, id, role, newPin, newCode } = JSON.parse(body);
+                    if (!type || !id || (type !== 'teacher' && type !== 'company')) {
+                        return sendJSON(res, 400, { error: 'InvalidParams' });
+                    }
+                    if (!memoryState) return sendJSON(res, 404, { error: 'NoState' });
+
+                    const now = Date.now();
+                    if (type === 'teacher') {
+                        memoryState.config = memoryState.config || {};
+                        memoryState.config.teachers = memoryState.config.teachers || {};
+                        if (!memoryState.config.teachers[id]) return sendJSON(res, 404, { error: 'TeacherNotFound' });
+                        memoryState.config.teachers[id].pin = String(newPin || '').trim();
+                        memoryState.config.teachers[id].pinUpdatedAt = now;
+                    } else {
+                        memoryState.companies = memoryState.companies || {};
+                        const co = memoryState.companies[id];
+                        if (!co) return sendJSON(res, 404, { error: 'CompanyNotFound' });
+                        co.authVault = co.authVault || { code: '', roles: {} };
+                        co.authVault.roles = co.authVault.roles || {};
+                        if (role) {
+                            const cleanPin = String(newPin || '').trim();
+                            if (role === 'AUXILIAR' && cleanPin === '') {
+                                delete co.authVault.roles['AUXILIAR'];
+                                if (co.roles) delete co.roles['AUXILIAR'];
+                            } else {
+                                co.authVault.roles[role] = encodeSecret(cleanPin);
+                                co.roles = co.roles || {};
+                                co.roles[role] = 'PROTECTED';
+                            }
+                        } else {
+                            const cleanCode = String(newPin || newCode || '').trim().toUpperCase();
+                            co.authVault.code = encodeSecret(cleanCode);
+                            delete co.accessCode;
+                        }
+                        co.updatedAt = now;
+                        co.authUpdatedAt = now;
+                    }
+
+                    memoryState.version = (Number(memoryState.version) || 0) + 1;
+                    memoryState.lastUpdated = now;
+                    return sendJSON(res, 200, { success: true, newVersion: memoryState.version });
+                } catch(err) {
+                    return sendJSON(res, 400, { error: err.message });
+                }
+            });
+            return;
+        }
+        return sendJSON(res, 405, { error: 'MethodNotAllowed' });
+    }
+
     // Endpoint D1: /api/state
     if (pathname === '/api/state') {
         if (req.method === 'GET') {
             if (!memoryState) {
                 return sendJSON(res, 200, { status: 'empty' });
             }
+            const currentVersion = memoryState.version ? String(memoryState.version) : "1";
+            const serverETag = `W/"v-${currentVersion}"`;
+            const clientETag = req.headers['if-none-match'];
+
+            if (clientETag === serverETag) {
+                res.writeHead(304, {
+                    'ETag': serverETag,
+                    'Cache-Control': 'public, no-cache',
+                    'Access-Control-Allow-Origin': '*'
+                });
+                return res.end();
+            }
+
+            res.setHeader('ETag', serverETag);
+            res.setHeader('Cache-Control', 'public, no-cache');
             return sendJSON(res, 200, sanitizeStateForClient(memoryState));
         }
 
@@ -347,14 +470,18 @@ const server = http.createServer((req, res) => {
                         return sendJSON(res, verified ? 200 : 401, { verified });
                     }
 
-                    // Control de versión optimista (409 Conflict)
-                    if (memoryState && incoming.version && Number(incoming.version) < Number(memoryState.version)) {
-                        return sendJSON(res, 409, {
-                            error: 'VersionConflict',
-                            message: `Conflicto de versión: entrante ${incoming.version} vs servidor ${memoryState.version}`,
-                            serverVersion: memoryState.version,
-                            changes: 0
-                        });
+                    // Control de versión optimista estricto sin bypass de versión 0 (v1.1.05)
+                    if (memoryState) {
+                        const incomingVersion = incoming.version;
+                        const serverVersion = Number(memoryState.version) || 0;
+                        if (typeof incomingVersion !== 'number' || isNaN(incomingVersion) || incomingVersion <= serverVersion) {
+                            return sendJSON(res, 409, {
+                                error: 'CONFLICT',
+                                message: 'Versión obsoleta o ausente. Conflicto de concurrencia detectado.',
+                                serverVersion: serverVersion,
+                                changes: 0
+                            });
+                        }
                     }
 
                     // FUSIÓN DE SECRETOS EN SERVIDOR (Server-Side Merging)

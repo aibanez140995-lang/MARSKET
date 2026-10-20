@@ -79,22 +79,53 @@ export async function onRequest(context) {
                 return new Response(JSON.stringify({ status: 'empty' }), { headers });
             }
 
-            // Lectura normal del estado en vivo con sanitización Zero-Trust
-            const { results } = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = 'current'").all();
-            if (results && results.length > 0) {
-                let parsed = null;
-                try {
-                    parsed = typeof results[0].data === 'string' ? JSON.parse(results[0].data) : results[0].data;
-                } catch(e) {}
-                
-                if (parsed) {
-                    const sanitized = sanitizeStateForClient(parsed);
-                    return new Response(JSON.stringify(sanitized), { headers });
-                }
-                return new Response(results[0].data, { headers });
-            }
+            // 1. Lectura sub-milisegundo solo del campo de versión (Mitigación ETag / HTTP 304)
+            const row = await env.MARSKET_DB.prepare(
+                "SELECT json_extract(data, '$.version') as v FROM state WHERE id = 'current'"
+            ).first();
             
-            return new Response(JSON.stringify({ status: 'empty' }), { headers });
+            const currentVersion = (row && row.v !== null && row.v !== undefined) ? String(row.v) : "1";
+            const clientETag = request.headers.get('If-None-Match');
+            const serverETag = `W/"v-${currentVersion}"`;
+
+            // 2. Si el cliente está actualizado, responder 304 sin payload (0 bytes transferidos)
+            if (clientETag === serverETag) {
+                return new Response(null, {
+                    status: 304,
+                    headers: {
+                        'ETag': serverETag,
+                        'Cache-Control': 'public, no-cache',
+                        'Access-Control-Allow-Origin': '*'
+                    }
+                });
+            }
+
+            // 3. Si hay cambio, entregar payload sanitizado e inyectar ETag
+            const full = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = 'current'").first();
+            if (!full || !full.data) {
+                return new Response(JSON.stringify({ status: 'empty' }), {
+                    headers: {
+                        ...headers,
+                        'ETag': serverETag,
+                        'Cache-Control': 'public, no-cache'
+                    }
+                });
+            }
+
+            let parsed = null;
+            try {
+                parsed = typeof full.data === 'string' ? JSON.parse(full.data) : full.data;
+            } catch(e) {}
+
+            const sanitized = sanitizeStateForClient(parsed || {});
+            return new Response(JSON.stringify(sanitized), {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'ETag': serverETag,
+                    'Cache-Control': 'public, no-cache',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
         }
 
         if (request.method === 'POST') {
@@ -302,22 +333,23 @@ export async function onRequest(context) {
                 payload.companies = currentState.companies;
             }
 
-            // Control optimista de concurrencia basado en payload.version
-            const serverVersion = (currentState && currentState.version) ? Number(currentState.version) : 0;
-            const incomingVersion = Number(payload.version) || 0;
+            // Control optimista de concurrencia estricto sin bypass de versión 0
+            const serverVersion = (currentState && currentState.version !== undefined) ? Number(currentState.version) : 0;
+            const incomingVersion = payload.version;
 
-            if (serverVersion > 0 && incomingVersion < serverVersion && incomingVersion !== 0) {
-                return new Response(JSON.stringify({ error: 'Conflict: Server has a newer version', serverVersion, changes: 0 }), { status: 409, headers });
+            if (typeof incomingVersion !== 'number' || isNaN(incomingVersion) || incomingVersion <= serverVersion) {
+                return new Response(JSON.stringify({ 
+                    error: 'CONFLICT', 
+                    serverVersion, 
+                    message: 'Versión obsoleta o ausente. Conflicto de concurrencia detectado.' 
+                }), { status: 409, headers });
             }
 
             // Forzar actualización de versión
             payload.version = serverVersion + 1;
             const dataString = JSON.stringify(payload);
             
-            // Resiliencia - Auto-Backup del estado inmediatamente anterior antes de sobreescribir
-            await env.MARSKET_DB.prepare("INSERT OR REPLACE INTO state (id, data) SELECT 'backup_previous', data FROM state WHERE id = 'current'").run();
-            
-            // Escritura atómica en D1
+            // Escritura atómica directa en D1 (Supresión de backup_previous para eliminar Write Amplification)
             await env.MARSKET_DB.prepare("INSERT OR REPLACE INTO state (id, data) VALUES ('current', ?)").bind(dataString).run();
             
             return new Response(JSON.stringify({ success: true, version: payload.version }), { headers });

@@ -49,7 +49,7 @@ const state = {
     storageKey: 'marsket_v10_PWA',
     sessionKey: 'marsket_session_v1',
     isCloudOnline: false, isSyncing: false, syncTimer: null, heartbeatTimer: null,
-    pausePolling: false, _broadcastChannel: null,
+    pausePolling: false, _broadcastChannel: null, lastETag: null,
     consecutiveNetworkFailures: 0, isOfflineContained: false, _listenersAttached: false,
     _hasWarnedCloudNetwork: false,
     _vaultKey: 'MARS_AEE_2026_SECRET_KEY',
@@ -338,8 +338,13 @@ const state = {
                     const lT = localData.config.teachers[tk];
                     const sT = merged.config.teachers[tk];
                     if (sT && lT) {
-                        if ((lT.pinUpdatedAt || 0) > (sT.pinUpdatedAt || 0)) {
-                            merged.config.teachers[tk] = JSON.parse(JSON.stringify(lT));
+                        // NUNCA sobreescribir un PIN existente en el cliente con valores nulos o undefined de la sanitización
+                        if (lT.pin && !sT.pin) {
+                            sT.pin = lT.pin;
+                            sT.pinUpdatedAt = lT.pinUpdatedAt || sT.pinUpdatedAt;
+                        } else if ((lT.pinUpdatedAt || 0) > (sT.pinUpdatedAt || 0) && lT.pin) {
+                            sT.pin = lT.pin;
+                            sT.pinUpdatedAt = lT.pinUpdatedAt;
                         }
                     } else if (lT && !sT) {
                         merged.config.teachers[tk] = JSON.parse(JSON.stringify(lT));
@@ -353,6 +358,17 @@ const state = {
             const lCo = localData.companies[k];
             
             if (sCo && lCo) {
+                // Protección de memoria local: nunca sobreescribir secretos con nulos de la sanitización
+                if (lCo.authVault && (!sCo.authVault || !sCo.authVault.code)) {
+                    sCo.authVault = JSON.parse(JSON.stringify(lCo.authVault));
+                }
+                if (lCo.accessCode && !sCo.accessCode) {
+                    sCo.accessCode = lCo.accessCode;
+                }
+                if (lCo.roles && (!sCo.roles || Object.keys(sCo.roles).length === 0)) {
+                    sCo.roles = JSON.parse(JSON.stringify(lCo.roles));
+                }
+
                 const sTime = sCo.updatedAt || 0;
                 const lTime = lCo.updatedAt || 0;
                 const sAuthTime = sCo.authUpdatedAt || 0;
@@ -360,7 +376,7 @@ const state = {
                 
                 if (lTime > sTime) {
                     merged.companies[k] = JSON.parse(JSON.stringify(lCo));
-                    if (sAuthTime > lAuthTime) {
+                    if (sAuthTime > lAuthTime && sCo.authVault && sCo.authVault.code) {
                         merged.companies[k].authVault = JSON.parse(JSON.stringify(sCo.authVault));
                         merged.companies[k].roles = JSON.parse(JSON.stringify(sCo.roles));
                         merged.companies[k].auxRoleDept = sCo.auxRoleDept;
@@ -588,6 +604,7 @@ const state = {
         const co = this.data.companies?.[coId];
         if (!co) return false;
         clearTimeout(this.syncTimer);
+        this.pausePolling = true;
         const clean = String(newPin || '').trim();
         this.setRolePin(co, role, clean, true);
         if (role === 'AUXILIAR' && co.auxRoleRequest) {
@@ -605,7 +622,30 @@ const state = {
         }
 
         this.saveLocalOnly();
-        const ok = await this.pushToCloud(false);
+        let ok = false;
+        try {
+            const token = this.getAuthToken(this.user, this.data);
+            const res = await fetch('/api/admin/credentials', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ type: 'company', id: coId, role, newPin: clean })
+            });
+            if (res.ok) {
+                const resJson = await res.json().catch(() => null);
+                if (resJson && resJson.newVersion) {
+                    this.data.version = resJson.newVersion;
+                    this.saveLocalOnly();
+                }
+                ok = true;
+            }
+        } catch(e) {
+            console.error("Error al actualizar PIN en /api/admin/credentials:", e);
+        } finally {
+            this.pausePolling = false;
+        }
         return ok;
     },
 
@@ -613,8 +653,10 @@ const state = {
         const t = this.data.config?.teachers?.[teacherKey];
         if (!t) return false;
         clearTimeout(this.syncTimer);
+        this.pausePolling = true;
         const now = Date.now();
-        t.pin = String(newPin || '').trim();
+        const clean = String(newPin || '').trim();
+        t.pin = clean;
         t.pinUpdatedAt = now;
         this.data.config.updatedAt = now;
         this.data.lastUpdated = now;
@@ -629,7 +671,30 @@ const state = {
         }
 
         this.saveLocalOnly();
-        const ok = await this.pushToCloud(false);
+        let ok = false;
+        try {
+            const token = this.getAuthToken(this.user, this.data);
+            const res = await fetch('/api/admin/credentials', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ type: 'teacher', id: teacherKey, newPin: clean })
+            });
+            if (res.ok) {
+                const resJson = await res.json().catch(() => null);
+                if (resJson && resJson.newVersion) {
+                    this.data.version = resJson.newVersion;
+                    this.saveLocalOnly();
+                }
+                ok = true;
+            }
+        } catch(e) {
+            console.error("Error al actualizar PIN docente en /api/admin/credentials:", e);
+        } finally {
+            this.pausePolling = false;
+        }
         return ok;
     },
 
@@ -637,7 +702,9 @@ const state = {
         const co = this.data.companies?.[coId];
         if (!co) return false;
         clearTimeout(this.syncTimer);
-        this.setCompanyCode(co, newCode, true);
+        this.pausePolling = true;
+        const clean = String(newCode || '').trim().toUpperCase();
+        this.setCompanyCode(co, clean, true);
         this.data.lastUpdated = Date.now();
 
         if (this.user && !this.user.admin && this.user.coId === coId) {
@@ -649,7 +716,30 @@ const state = {
         }
 
         this.saveLocalOnly();
-        const ok = await this.pushToCloud(false);
+        let ok = false;
+        try {
+            const token = this.getAuthToken(this.user, this.data);
+            const res = await fetch('/api/admin/credentials', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ type: 'company', id: coId, newCode: clean, newPin: clean })
+            });
+            if (res.ok) {
+                const resJson = await res.json().catch(() => null);
+                if (resJson && resJson.newVersion) {
+                    this.data.version = resJson.newVersion;
+                    this.saveLocalOnly();
+                }
+                ok = true;
+            }
+        } catch(e) {
+            console.error("Error al actualizar código de empresa en /api/admin/credentials:", e);
+        } finally {
+            this.pausePolling = false;
+        }
         return ok;
     },
 
@@ -794,9 +884,25 @@ const state = {
         let networkOk = false;
 
         try {
-            const res = await fetch('/api/state', { cache: 'no-store' });
+            const reqHeaders = { 'Cache-Control': 'no-cache' };
+            if (this.lastETag) {
+                reqHeaders['If-None-Match'] = this.lastETag;
+            }
+            const res = await fetch('/api/state', { cache: 'no-store', headers: reqHeaders });
+
+            // Mitigación ETag / HTTP 304: abortar inmediatamente la reconciliación y evitar redibujados (0 bytes)
+            if (res.status === 304) {
+                this._hasWarnedCloudNetwork = false;
+                this.isCloudOnline = true;
+                this.consecutiveNetworkFailures = 0;
+                if (this.isOfflineContained) this.setOfflineContainment(false);
+                return true;
+            }
+
             if(res.ok) {
                 this._hasWarnedCloudNetwork = false;
+                const etag = res.headers.get('ETag');
+                if (etag) this.lastETag = etag;
                 const json = await res.json();
                 networkOk = true;
                 this.consecutiveNetworkFailures = 0;
@@ -939,6 +1045,32 @@ const state = {
         this.pushToCloud(true);
     },
 
+    async pushWithBackoff(payload, attempt = 0) {
+        const MAX_RETRIES = 4;
+        const token = this.getAuthToken(this.user, this.data);
+        const headers = {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        };
+        const res = await fetch('/api/state', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload)
+        });
+
+        if (res.status === 409 && attempt < MAX_RETRIES) {
+            // Backoff exponencial con jitter: t = min(1500, 75 * 2^attempt) + random(0, 150) ms
+            const delay = Math.min(1500, 75 * Math.pow(2, attempt)) + Math.floor(Math.random() * 150);
+            await new Promise(r => setTimeout(r, delay));
+            
+            // Refrescar versión del servidor antes de reintentar
+            await this.fetchFromCloud();
+            payload.version = (Number(this.data.version) || 0) + 1;
+            return this.pushWithBackoff(payload, attempt + 1);
+        }
+        return res;
+    },
+
     async pushToCloud(debounced = false) {
         if (!this.verifySessionIntegrity(this.data)) {
             return false;
@@ -950,59 +1082,16 @@ const state = {
         }
         this.isSyncing = true;
         try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
-        let shouldRenderConflict = false;
         let pushSuccess = false;
         
         try {
             const payload = JSON.parse(JSON.stringify(this.data));
-            const token = this.getAuthToken(this.user, this.data);
-            const headers = {
-                'Content-Type': 'application/json',
-                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-            };
-            const res = await fetch('/api/state', { method: 'POST', headers, body: JSON.stringify(payload) });
+            if (typeof payload.version !== 'number' || isNaN(payload.version)) {
+                payload.version = (Number(this.data.version) || 0) + 1;
+            }
+            const res = await this.pushWithBackoff(payload);
             
-            if (res.status === 409 || res.status === 412) {
-                if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
-                    ui.notify("⚠️ Conflicto de concurrencia detectado. Se ha sincronizado el registro más reciente de la nube sin sobrescribir datos ajenos.", "warning");
-                }
-                const fetchRes = await fetch('/api/state', { cache: 'no-store' });
-                if (fetchRes.ok) {
-                    const serverData = await fetchRes.json();
-                    if (serverData && serverData.status !== 'empty') {
-                        const migratedServer = this.migrate(serverData);
-                        if (!this.verifySessionIntegrity(migratedServer)) {
-                            this.data = migratedServer;
-                            this.saveLocalOnly();
-                            return false;
-                        }
-                        this.data = this.mergeData(migratedServer, this.data);
-                        this.data.version = Number(serverData.version || this.data.version) + 1;
-                        this.saveLocalOnly();
-                        
-                        const retryToken = this.getAuthToken(this.user, this.data);
-                        const retryHeaders = {
-                            'Content-Type': 'application/json',
-                            ...(retryToken ? { 'Authorization': `Bearer ${retryToken}` } : {})
-                        };
-                        const retryRes = await fetch('/api/state', { method: 'POST', headers: retryHeaders, body: JSON.stringify(this.data) });
-                        if (retryRes.ok) {
-                            const retryJson = await retryRes.json().catch(() => null);
-                            if (retryJson && retryJson.version) {
-                                this.data.version = retryJson.version;
-                                this.saveLocalOnly();
-                            }
-                            pushSuccess = true;
-                        }
-                        shouldRenderConflict = true;
-                    }
-                }
-                this.isCloudOnline = pushSuccess;
-                if (pushSuccess) {
-                    this.consecutiveNetworkFailures = 0;
-                    if (this.isOfflineContained) this.setOfflineContainment(false);
-                }
-            } else if (res.ok) {
+            if (res.ok) {
                 const json = await res.json().catch(() => null);
                 if (json && json.version) {
                     this.data.version = json.version; 
@@ -1012,6 +1101,12 @@ const state = {
                 this.consecutiveNetworkFailures = 0;
                 if (this.isOfflineContained) this.setOfflineContainment(false);
                 pushSuccess = true;
+            } else if (res.status === 409) {
+                if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
+                    ui.notify("⚠️ Conflicto de concurrencia detectado. Se ha sincronizado el registro más reciente de la nube sin sobrescribir datos ajenos.", "warning");
+                }
+                await this.fetchFromCloud();
+                this.isCloudOnline = true;
             } else {
                 this.isCloudOnline = false;
                 this.consecutiveNetworkFailures = 0;

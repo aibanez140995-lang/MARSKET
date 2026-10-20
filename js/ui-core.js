@@ -774,7 +774,8 @@ const ui = {
                         <li><strong class="text-white">Evaluación Curricular (100%):</strong> Calificación por rúbricas granulares y generación automática del Acta Ponderada oficial.</li>
                         <li><strong class="text-white">Monitor de Alertas Léxicas:</strong> Recepción discriminada de incidencias: <span class="text-mars-yellow">Avisos Amarillos</span> por uso de nombres propios e <span class="text-red-400">Infracciones Rojas</span> por lenguaje soez con acceso directo a sanción AEE.</li>
                         <li><strong class="text-white">Aduanas y Registro Mercantil:</strong> Aprobación de traspasos B2B, validación de Logos/Eslóganes, alta de Roles Auxiliares y autorización o edición directa de cambios de <strong>Denominación Social</strong>.</li>
-                        <li><strong class="text-white">Llavero Maestro y Backups D1:</strong> Gestión de códigos de empresa, PINs cifrados y copias de seguridad en Cloudflare D1.</li>
+                        <li><strong class="text-white">Llavero Maestro y Backups D1:</strong> Gestión desacoplada de códigos de empresa, PINs blindados y copias de seguridad en Cloudflare D1.</li>
+                        <li><strong class="text-white">Acreditaciones y Tarjetas de Acceso PDF:</strong> Emisión e impresión de credenciales físicas HUD A4 para el claustro docente y las flotas de startups con avatares tácticos y PINs clasificados.</li>
                     </ul>
                 </div>`; 
                 break;

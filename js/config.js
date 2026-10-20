@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.02) ---
 
-const APP_VERSION = "1.1.03";
+const APP_VERSION = "1.1.05";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const REGULATORY_AGENCIES = {
@@ -159,6 +159,16 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.03
 const APP_CHANGELOG = [
+    {
+        version: "1.1.05",
+        date: "Octubre 2026",
+        title: "Optimización de Telemetría HTTP 304, Mitigación de I/O y Acreditaciones Docentes",
+        highlights: [
+            { type: "SISTEMA", text: "v1.1.05: Optimización de telemetría de red bajo estándar HTTP 304, mitigación de I/O en almacenamiento y habilitación de terminal de acreditación para el claustro docente." },
+            { type: "NUEVO", text: "Acreditaciones Claustro Docente PDF: Emisión de tarjetas de acceso físicas con avatar táctico, código de barras y protocolo AEE." },
+            { type: "MEJORA", text: "Mitigación de Ancho de Banda y Concurrencia: Validación sub-milisegundo ETag/304 y reintento con backoff exponencial estocástico." }
+        ]
+    },
     {
         version: "1.1.03",
         date: "Octubre 2026",

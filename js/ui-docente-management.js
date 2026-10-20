@@ -327,8 +327,12 @@ Object.assign(ui, {
                     ${deadlinesInputs}
                 </div>
 
-                <div class="mb-4 border-b border-mars-border pb-2">
-                    <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase tracking-widest">🔐 Credenciales del Claustro Docente</h3>
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-2 gap-2">
+                    <div>
+                        <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase tracking-widest">🔐 Credenciales del Claustro Docente</h3>
+                        <p class="text-xs text-slate-400 uppercase mt-0.5">Gestión desacoplada y persistencia atómica en servidor D1.</p>
+                    </div>
+                    ${isCoord ? `<button onclick="ui.exportTeacherBadgesPDF()" class="min-h-[44px] bg-[#00F0FF] text-black px-4 py-1.5 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">[🪪 Credenciales Claustro PDF]</button>` : ''}
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     ${teacherPins}
@@ -359,6 +363,7 @@ Object.assign(ui, {
                     </div>
                     <div class="flex items-center gap-2 flex-wrap">
                         ${isCoord ? `<button id="toggle-pins-btn" onclick="ui.togglePinsVisibility()" class="min-h-[44px] bg-slate-800 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase hover:bg-mars-cyan hover:text-black transition-colors shrink-0">${this.pinsVisible ? '[ 🔒 Ocultar PINs ]' : '[ 👁️ Revelar PINs ]'}</button>` : ''}
+                        ${isCoord ? `<button onclick="ui.exportTeacherBadgesPDF()" class="min-h-[44px] bg-[#00F0FF] text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">[🪪 Claustro PDF]</button>` : ''}
                         ${isCoord ? `<button onclick="ui.generateAllCompaniesCredentialCards()" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-4 py-2 text-xs font-black uppercase transition-colors shrink-0">[🪪 TODAS LAS CREDENCIALES PDF]</button>` : ''}
                         ${isCoord ? `<button onclick="ui.exportCredentialsCSV()" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">[📥 Exportar Llavero CSV]</button>` : ''}
                     </div>
@@ -1856,14 +1861,227 @@ Object.assign(ui, {
         } else {
             this.notify("La función de impresión no está disponible en este entorno.", "warning");
         }
+    },
+
+    renderTeacherCredentialCardHTML(tk, teacher) {
+        const pin = teacher.pin || '0000';
+        const name = teacher.name || tk;
+        const matricula = `DOC-${tk}`;
+
+        const generateDynamicBarcode = (idStr) => {
+            const seed = String(idStr || 'AEE-0000');
+            let bars = '';
+            let x = 4;
+            for (let i = 0; i < seed.length; i++) {
+                const c = seed.charCodeAt(i);
+                const w1 = ((c * 3) % 4) + 1.2;
+                const gap1 = ((c * 2) % 3) + 1.2;
+                const w2 = ((c * 5) % 3) + 1.0;
+                const gap2 = 1.8;
+                bars += `<rect x="${x.toFixed(1)}" y="0" width="${w1.toFixed(1)}" height="32" fill="#FFB300" />`;
+                x += w1 + gap1;
+                bars += `<rect x="${x.toFixed(1)}" y="0" width="${w2.toFixed(1)}" height="32" fill="#FFB300" />`;
+                x += w2 + gap2;
+            }
+            return `<svg viewBox="0 0 ${Math.max(Math.ceil(x + 4), 160)} 32" class="w-full h-8" preserveAspectRatio="none">${bars}</svg>`;
+        };
+
+        const barcodeSvg = generateDynamicBarcode(matricula);
+
+        return `
+        <div class="credential-card-pair flex flex-col md:flex-row gap-4 justify-center items-center font-mono text-white select-none my-3" style="page-break-inside: avoid; break-inside: avoid;">
+            
+            <!-- ANVERSO // FRONT CARD -->
+            <div class="credential-card relative w-[300px] h-[520px] bg-[#07090E] border-2 border-[#1A2333] p-4 flex flex-col justify-between overflow-hidden shadow-[0_0_25px_rgba(0,240,255,0.15)]" style="page-break-inside: avoid; break-inside: avoid;">
+                <!-- Trazados de circuito decorativo SVG en esquinas -->
+                <svg class="absolute top-0 right-0 w-36 h-36 pointer-events-none opacity-40" viewBox="0 0 100 100">
+                    <path d="M 10 0 L 30 20 L 70 20 L 90 40 L 90 90" fill="none" stroke="#1A2333" stroke-width="1.5"/>
+                    <path d="M 40 0 L 50 10 L 80 10 L 100 30" fill="none" stroke="#00F0FF" stroke-width="1"/>
+                    <circle cx="90" cy="90" r="2.5" fill="#00F0FF"/>
+                    <circle cx="100" cy="30" r="2" fill="#FF007F"/>
+                </svg>
+                <svg class="absolute bottom-0 left-0 w-36 h-36 pointer-events-none opacity-40" viewBox="0 0 100 100">
+                    <path d="M 0 60 L 20 80 L 60 80 L 80 100" fill="none" stroke="#1A2333" stroke-width="1.5"/>
+                    <circle cx="80" cy="100" r="2.5" fill="#FF007F"/>
+                </svg>
+
+                <!-- Cabecera Superior: Matrícula & Claustro -->
+                <div class="relative z-10 flex justify-between items-center border-b border-[#1A2333] pb-2">
+                    <div class="flex items-center gap-1.5">
+                        <span class="inline-block w-2 h-2 rounded-full bg-[#00F0FF] animate-pulse"></span>
+                        <span class="font-orbitron font-black text-[10px] text-[#00F0FF] tracking-widest uppercase">AEE // FACULTY ID</span>
+                    </div>
+                    <span class="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider">${this.escapeHTML(tk)}</span>
+                </div>
+
+                <!-- Recuadro de Identificación con Avatar Reticular y Bordes Achaflanados -->
+                <div class="relative z-10 my-auto flex flex-col items-center">
+                    <span class="text-[9px] text-[#00F0FF] tracking-widest uppercase font-mono font-bold mb-1">FACULTY CREDENTIAL // AEE</span>
+                    
+                    <!-- Contenedor con borde achaflanado neón magenta (#FF007F) y cian criogénico (#00F0FF) -->
+                    <div class="relative w-40 h-44 p-1" style="background: linear-gradient(135deg, #FF007F 0%, #1A2333 45%, #00F0FF 100%); clip-path: polygon(15% 0%, 100% 0%, 100% 85%, 85% 100%, 0% 100%, 0% 15%);">
+                        <div class="w-full h-full bg-[#07090E] p-2 flex items-center justify-center relative overflow-hidden" style="clip-path: polygon(15% 0%, 100% 0%, 100% 85%, 85% 100%, 0% 100%, 0% 15%);">
+                            <svg viewBox="0 0 160 180" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                                <defs>
+                                    <pattern id="reticular-grid-teach-${this.escapeHTML(tk)}" width="10" height="10" patternUnits="userSpaceOnUse">
+                                        <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#1A2333" stroke-width="0.8"/>
+                                    </pattern>
+                                </defs>
+                                <rect width="100%" height="100%" fill="url(#reticular-grid-teach-${this.escapeHTML(tk)})" />
+                                <g fill="#0A0E17" stroke="#00F0FF" stroke-width="1.2">
+                                    <path d="M 25 175 Q 30 120 55 115 L 65 110 L 95 110 L 105 115 Q 130 120 135 175 Z" />
+                                    <path d="M 55 75 Q 52 38 80 35 Q 108 38 105 75 Q 105 105 80 107 Q 55 105 55 75 Z" />
+                                    <path d="M 66 65 Q 80 63 94 65 Q 92 73 80 74 Q 68 73 66 65 Z" fill="#FFB300" stroke="#FFB300" />
+                                </g>
+                                <circle cx="15" cy="15" r="2" fill="#FF007F"/>
+                                <circle cx="145" cy="15" r="2" fill="#00F0FF"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bloque de Código de Barras Dinámico con Identificador y PIN destacado en ámbar -->
+                <div class="relative z-10 bg-black/80 border border-[#00F0FF]/60 p-2 my-2">
+                    <div class="flex justify-between items-center text-[9px] text-[#00F0FF] font-mono font-bold mb-1">
+                        <span>MATRÍCULA: ${this.escapeHTML(matricula)}</span>
+                        <span class="text-[#FFB300] font-black text-xs font-mono">PIN: ${this.escapeHTML(pin)}</span>
+                    </div>
+                    <div class="w-full bg-[#07090E] p-1 border border-[#1A2333]">
+                        ${barcodeSvg}
+                    </div>
+                </div>
+
+                <!-- Bloque de Nombre y Posición -->
+                <div class="relative z-10 border-t border-[#1A2333] pt-2">
+                    <h3 class="font-orbitron font-black text-sm text-white uppercase tracking-wider truncate" title="${this.escapeHTML(name)}">
+                        ${this.escapeHTML(name)}
+                    </h3>
+                    <div class="flex justify-between items-baseline mt-0.5">
+                        <span class="text-xs font-bold font-orbitron uppercase text-[#FF007F] tracking-wide">CLAUSTRO EVALUADOR</span>
+                        <span class="text-[9px] bg-mars-yellow text-black px-1.5 py-0.2 font-black uppercase">DOCENTE</span>
+                    </div>
+                    <p class="text-[9px] text-slate-400 font-mono uppercase truncate mt-0.5">ESTADO: ACTIVO // AEE-AUTORIZADO</p>
+                </div>
+            </div>
+
+            <!-- REVERSO // BACK CARD -->
+            <div class="credential-card relative w-[300px] h-[520px] bg-[#07090E] border-2 border-[#1A2333] p-4 flex flex-col justify-between overflow-hidden shadow-[0_0_25px_rgba(255,0,127,0.15)]" style="page-break-inside: avoid; break-inside: avoid;">
+                <svg class="absolute top-0 left-0 w-full h-32 pointer-events-none opacity-40" viewBox="0 0 200 80">
+                    <path d="M 0 20 L 50 20 L 80 50 L 150 50 L 170 30 L 200 30" fill="none" stroke="#1A2333" stroke-width="1.5"/>
+                    <path d="M 30 0 L 40 10 L 70 10 L 90 30 L 140 30" fill="none" stroke="#00F0FF" stroke-width="1"/>
+                    <circle cx="80" cy="50" r="2.5" fill="#00F0FF"/>
+                    <circle cx="170" cy="30" r="2" fill="#FF007F"/>
+                </svg>
+
+                <div class="relative z-10 flex justify-between items-center border-b border-[#1A2333] pb-2">
+                    <span class="font-orbitron font-black text-[10px] text-slate-400 uppercase tracking-widest">MARS-KET OS // v1.1.05</span>
+                    <span class="text-[9px] font-mono text-[#00F0FF] uppercase">AEE FACULTY PROTOCOL</span>
+                </div>
+
+                <div class="relative z-10 my-auto text-center flex flex-col items-center justify-center space-y-3">
+                    <div class="relative w-16 h-16 flex items-center justify-center" style="background: #FF007F; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); filter: drop-shadow(0 0 10px #FF007F);">
+                        <div class="w-14 h-14 bg-[#07090E] flex items-center justify-center" style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
+                            <span class="font-orbitron font-black text-xl text-[#00F0FF]">D</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h2 class="font-orbitron font-black text-lg text-[#00F0FF] tracking-widest uppercase break-words">${this.escapeHTML(name)}</h2>
+                        <p class="font-mono text-xs text-slate-300 tracking-wider uppercase mt-1 italic">"AGENCIA ESPACIAL ESPAÑOLA - MISIÓN MARS-KET"</p>
+                    </div>
+
+                    <div class="bg-black/60 border border-[#1A2333] p-2 text-left w-full space-y-1 text-[10px] text-slate-400 font-mono">
+                        <div class="flex justify-between"><span>IDENTIFICADOR:</span><span class="text-white font-bold">${this.escapeHTML(tk)}</span></div>
+                        <div class="flex justify-between"><span>PERMISO:</span><span class="text-mars-yellow font-bold">EVALUACIÓN & CONTROL</span></div>
+                        <div class="flex justify-between"><span>PIN AUTORIZADO:</span><span class="text-[#FFB300] font-bold font-mono text-xs">${this.escapeHTML(pin)}</span></div>
+                    </div>
+                </div>
+
+                <div class="relative z-10 border-2 border-[#FF007F] bg-[#FF007F]/10 p-2.5 text-left">
+                    <div class="flex items-center gap-2 mb-1">
+                        <svg class="w-5 h-5 text-[#FF007F] shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L1 21h22L12 2zm0 3.5l8.5 14.5H3.5L12 5.5zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
+                        </svg>
+                        <span class="font-orbitron font-black text-[10px] text-[#FF007F] uppercase tracking-widest">CAUTION: CLASSIFIED TEACHER ACCESS</span>
+                    </div>
+                    <p class="text-[8px] text-slate-300 font-mono leading-tight tracking-tight uppercase">
+                        RESTRICTED ACCESS PROTOCOL // NIVEL AEE-DOCENTE // CREDENCIAL CLASIFICADA. PROHIBIDA LA DIVULGACIÓN DEL PIN O CESIÓN DE ESTA TARJETA.
+                    </p>
+                </div>
+            </div>
+
+        </div>`;
+    },
+
+    async exportTeacherBadgesPDF() {
+        if (!state.user || (!state.user.role.startsWith('COORD') && state.user.role !== 'coordinador')) {
+            console.error('[SECURITY_VIOLATION] Intento de acceso no autorizado a exportTeacherBadgesPDF.');
+            if (typeof this.notify === 'function') this.notify("❌ Acceso restringido exclusivamente a Coordinación docente.", "error");
+            throw new Error("SECURITY_EXCEPTION: Permisos de Coordinador requeridos");
+        }
+
+        let teachers = state.data.config?.teachers || {};
+        try {
+            const token = state.getAuthToken(state.user, state.data);
+            const res = await fetch('/api/admin/credentials', {
+                headers: {
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                }
+            });
+            if (res.ok) {
+                const creds = await res.json().catch(() => null);
+                if (creds && creds.teachers) {
+                    teachers = creds.teachers;
+                    if (state.data.config) state.data.config.teachers = teachers;
+                }
+            }
+        } catch(e) {
+            console.warn("Aviso: usando credenciales locales para PDF:", e);
+        }
+
+        const teacherKeys = Object.keys(teachers);
+        if (teacherKeys.length === 0) {
+            return this.notify("No hay profesores registrados en el sistema.", "warning");
+        }
+
+        const cardsList = teacherKeys.map(tk => {
+            return this.renderTeacherCredentialCardHTML(tk, teachers[tk]);
+        });
+
+        const cardsGrid = `
+            <div class="credentials-grid grid grid-cols-1 gap-6">
+                ${cardsList.join('')}
+            </div>
+        `;
+
+        const previewHtml = `
+            <div class="space-y-4">
+                <div class="bg-slate-900 border border-slate-800 p-2.5 text-xs text-slate-300 flex justify-between items-center flex-wrap gap-2">
+                    <span>🪪 Acreditaciones oficiales del Claustro Docente (${teacherKeys.length} tarjetas).</span>
+                    <span class="text-mars-cyan font-bold uppercase">Nivel AEE Docente</span>
+                </div>
+                ${cardsGrid}
+            </div>
+        `;
+
+        this.showCredentialsModal(`CREDENCIALES OFICIALES // CLAUSTRO DOCENTE (${teacherKeys.length})`, previewHtml, cardsGrid);
     }
 });
 
 window.exportBadgePDF = function() {
-  if (!state.user || (state.user.role !== 'coordinador' && state.user.role !== 'DOCENTE')) {
+  if (!state.user || (!state.user.role.startsWith('COORD') && state.user.role !== 'coordinador' && state.user.role !== 'DOCENTE')) {
     console.error('[SECURITY_VIOLATION] Intento de acceso no autorizado a credenciales.');
-    ui.showToast('Acceso denegado. Se requiere nivel de Coordinador.', 'error');
+    if (typeof ui !== 'undefined' && ui.notify) ui.notify('Acceso denegado. Se requiere nivel de Coordinador.', 'error');
     throw new Error("SECURITY_EXCEPTION: Permisos de Coordinador requeridos");
   }
   return ui.printCredentialCards();
+};
+
+window.exportTeacherBadgesPDF = function() {
+  if (!state.user || (!state.user.role.startsWith('COORD') && state.user.role !== 'coordinador')) {
+    console.error('[SECURITY_VIOLATION] Intento de acceso no autorizado a exportTeacherBadgesPDF.');
+    if (typeof ui !== 'undefined' && ui.notify) ui.notify('Acceso denegado. Se requiere nivel de Coordinador.', 'error');
+    throw new Error("SECURITY_EXCEPTION: Permisos de Coordinador requeridos");
+  }
+  return ui.exportTeacherBadgesPDF();
 };
