@@ -1,0 +1,117 @@
+{
+  "routes": [
+    {
+      "routePath": "/api/admin/reset",
+      "mountPath": "/api/admin",
+      "method": "POST",
+      "module": [
+        "api/admin/reset.js:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/catalog/update",
+      "mountPath": "/api/catalog",
+      "method": "DELETE",
+      "module": [
+        "api/catalog/update.js:onRequestDelete"
+      ]
+    },
+    {
+      "routePath": "/api/catalog/update",
+      "mountPath": "/api/catalog",
+      "method": "PATCH",
+      "module": [
+        "api/catalog/update.js:onRequestPatch"
+      ]
+    },
+    {
+      "routePath": "/api/catalog/update",
+      "mountPath": "/api/catalog",
+      "method": "POST",
+      "module": [
+        "api/catalog/update.js:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/moderation/report",
+      "mountPath": "/api/moderation",
+      "method": "POST",
+      "module": [
+        "api/moderation/report.js:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/admin/reset",
+      "mountPath": "/api/admin",
+      "method": "",
+      "module": [
+        "api/admin/reset.js:onRequest"
+      ]
+    },
+    {
+      "routePath": "/api/catalog/update",
+      "mountPath": "/api/catalog",
+      "method": "",
+      "module": [
+        "api/catalog/update.js:onRequest"
+      ]
+    },
+    {
+      "routePath": "/api/moderation/report",
+      "mountPath": "/api/moderation",
+      "method": "",
+      "module": [
+        "api/moderation/report.js:onRequest"
+      ]
+    },
+    {
+      "routePath": "/api/catalog/:id",
+      "mountPath": "/api/catalog",
+      "method": "DELETE",
+      "module": [
+        "api/catalog/[id].js:onRequestDelete"
+      ]
+    },
+    {
+      "routePath": "/api/catalog/:id",
+      "mountPath": "/api/catalog",
+      "method": "PATCH",
+      "module": [
+        "api/catalog/[id].js:onRequestPatch"
+      ]
+    },
+    {
+      "routePath": "/api/catalog/:id",
+      "mountPath": "/api/catalog",
+      "method": "",
+      "module": [
+        "api/catalog/[id].js:onRequest"
+      ]
+    },
+    {
+      "routePath": "/api/state",
+      "mountPath": "/api",
+      "method": "GET",
+      "module": [
+        "api/state.js:onRequestGet"
+      ]
+    },
+    {
+      "routePath": "/api/state",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/state.js:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/state",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/state.js:onRequest"
+      ]
+    }
+  ],
+  "baseURL": "/"
+}

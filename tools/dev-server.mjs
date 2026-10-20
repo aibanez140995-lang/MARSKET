@@ -331,12 +331,20 @@ const server = http.createServer((req, res) => {
 
                     // Verificación de PIN docente en servidor (Zero-Trust)
                     if (incoming.action === 'verify_teacher_login') {
-                        if (memoryState && memoryState.config && memoryState.config.teachers && memoryState.config.teachers[incoming.role]) {
-                            const t = memoryState.config.teachers[incoming.role];
-                            const verified = Boolean(t && String(t.pin).trim() === String(incoming.pin).trim());
-                            return sendJSON(res, verified ? 200 : 401, { verified });
-                        }
-                        return sendJSON(res, 401, { verified: false });
+                        const defaultTeacherPins = {
+                            'COORD_MARIO': '0001',
+                            'COORD_ALEX': '0002',
+                            'FYQ': '0101',
+                            'ECO': '0202',
+                            'LYE': '0303',
+                            'LEN': '0404',
+                            'MAT': '0505',
+                            'ING': '0606'
+                        };
+                        const t = memoryState?.config?.teachers?.[incoming.role];
+                        const expectedPin = (t && t.pin) ? String(t.pin).trim() : (defaultTeacherPins[incoming.role] || '');
+                        const verified = Boolean(expectedPin && expectedPin === String(incoming.pin).trim());
+                        return sendJSON(res, verified ? 200 : 401, { verified });
                     }
 
                     // Control de versión optimista (409 Conflict)
