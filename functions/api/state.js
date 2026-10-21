@@ -228,14 +228,16 @@ export async function onRequest(context) {
                     const pathName = `$.companies.${coId}.name`;
                     const pathVlt = `$.companies.${coId}.authVault.roles.${role}`;
                     const pathPlain = `$.companies.${coId}.roles.${role}`;
+                    const pathAuth = `$.companies.${coId}.authUpdatedAt`;
 
                     const row = await env.MARSKET_DB.prepare(`
                         SELECT 
                             json_extract(data, ?) as companyName,
                             json_extract(data, ?) as vltPin,
-                            json_extract(data, ?) as plainPin
+                            json_extract(data, ?) as plainPin,
+                            json_extract(data, ?) as authStamp
                         FROM state WHERE id = 'current'
-                    `).bind(pathName, pathVlt, pathPlain).first();
+                    `).bind(pathName, pathVlt, pathPlain, pathAuth).first();
 
                     if (row) {
                         let expectedPin = '';
@@ -247,11 +249,13 @@ export async function onRequest(context) {
                         if (!expectedPin && role !== 'AUXILIAR') {
                             expectedPin = '1234';
                         }
+                        const authStamp = Number(row.authStamp) || 0;
                         const verified = Boolean(expectedPin && expectedPin === String(pin).trim());
                         return new Response(JSON.stringify({
                             verified,
                             companyName: row.companyName || 'EMPRESA',
-                            token: verified ? encodeSecret(`S|${coId}|${role}|${Date.now()}`) : undefined
+                            authStamp,
+                            token: verified ? encodeSecret(`S|${coId}|${role}|${authStamp}`) : undefined
                         }), {
                             status: verified ? 200 : 401,
                             headers
@@ -281,22 +285,35 @@ export async function onRequest(context) {
 
                 try {
                     const pathPin = `$.config.teachers.${role}.pin`;
+                    const pathStamp = `$.config.teachers.${role}.pinUpdatedAt`;
                     const row = await env.MARSKET_DB.prepare(`
-                        SELECT json_extract(data, ?) as teacherPin FROM state WHERE id = 'current'
-                    `).bind(pathPin).first();
+                        SELECT 
+                            json_extract(data, ?) as teacherPin,
+                            json_extract(data, ?) as pinStamp
+                        FROM state WHERE id = 'current'
+                    `).bind(pathPin, pathStamp).first();
 
                     const expectedPin = (row && row.teacherPin != null) 
                         ? String(row.teacherPin).trim() 
                         : (defaultTeacherPins[role] || '');
+                    const pinStamp = (row && row.pinStamp != null) ? Number(row.pinStamp) : 0;
                     const verified = Boolean(expectedPin && expectedPin === String(pin).trim());
-                    return new Response(JSON.stringify({ verified }), {
+                    return new Response(JSON.stringify({ 
+                        verified, 
+                        pinStamp,
+                        token: verified ? encodeSecret(`T|${role}|${pinStamp}`) : undefined 
+                    }), {
                         status: verified ? 200 : 401,
                         headers
                     });
                 } catch(e) {}
                 const fallbackPin = defaultTeacherPins[role] || '';
                 const verified = Boolean(fallbackPin && fallbackPin === String(pin).trim());
-                return new Response(JSON.stringify({ verified }), {
+                return new Response(JSON.stringify({ 
+                    verified,
+                    pinStamp: 0,
+                    token: verified ? encodeSecret(`T|${role}|0`) : undefined
+                }), {
                     status: verified ? 200 : 401,
                     headers
                 });

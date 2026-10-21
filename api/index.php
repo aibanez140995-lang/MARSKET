@@ -373,7 +373,8 @@ try {
                     SELECT 
                         json_extract(data, '$.companies.' || :coId || '.roles.' || :role) AS role_pin,
                         json_extract(data, '$.companies.' || :coId || '.authVault.roles.' || :role) AS vault_pin,
-                        json_extract(data, '$.companies.' || :coId || '.name') AS name
+                        json_extract(data, '$.companies.' || :coId || '.name') AS name,
+                        json_extract(data, '$.companies.' || :coId || '.authUpdatedAt') AS auth_stamp
                     FROM state WHERE id = 'current'
                 ");
                 $stmt->execute([':coId' => $coId, ':role' => $role]);
@@ -389,12 +390,14 @@ try {
                     if (!$expectedPin && $role !== 'AUXILIAR') {
                         $expectedPin = '1234';
                     }
+                    $authStamp = (int)($row['auth_stamp'] ?? 0);
                     $verified = ($expectedPin !== '' && $expectedPin === $pinAttempt);
                     http_response_code($verified ? 200 : 401);
                     echo json_encode([
                         'verified' => $verified,
                         'companyName' => $row['name'] ?? 'EMPRESA',
-                        'token' => $verified ? encodeSecret("S|{$coId}|{$role}|" . time()) : null
+                        'authStamp' => $authStamp,
+                        'token' => $verified ? encodeSecret("S|{$coId}|{$role}|{$authStamp}") : null
                     ], JSON_UNESCAPED_UNICODE);
                     exit;
                 }
@@ -410,7 +413,9 @@ try {
                 $pinAttempt = trim((string)($payload['pin'] ?? ''));
 
                 $stmt = $pdo->prepare("
-                    SELECT json_extract(data, '$.config.teachers.' || :role || '.pin') AS pin
+                    SELECT 
+                        json_extract(data, '$.config.teachers.' || :role || '.pin') AS pin,
+                        json_extract(data, '$.config.teachers.' || :role || '.pinUpdatedAt') AS pin_stamp
                     FROM state WHERE id = 'current'
                 ");
                 $stmt->execute([':role' => $role]);
@@ -429,10 +434,15 @@ try {
 
                 $dbPin = $row ? $row['pin'] : null;
                 $expectedPin = !empty($dbPin) ? trim((string)$dbPin) : ($defaultTeacherPins[$role] ?? '');
+                $pinStamp = (int)($row['pin_stamp'] ?? 0);
                 $verified = ($expectedPin !== '' && $expectedPin === $pinAttempt);
 
                 http_response_code($verified ? 200 : 401);
-                echo json_encode(['verified' => $verified]);
+                echo json_encode([
+                    'verified' => $verified,
+                    'pinStamp' => $pinStamp,
+                    'token' => $verified ? encodeSecret("T|{$role}|{$pinStamp}") : null
+                ], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 

@@ -137,17 +137,14 @@ const state = {
 
     getAuthToken(userObj, dataRoot = this.data) {
         if (!userObj) return '';
+        if (userObj.authToken) return userObj.authToken;
         if (userObj.admin) {
             const t = dataRoot?.config?.teachers?.[userObj.role];
-            if (!t) return userObj.authToken || '';
-            const raw = `T|${userObj.role}|${t.pinUpdatedAt || 0}`;
+            const raw = `T|${userObj.role}|${t?.pinUpdatedAt || userObj.pinStamp || 0}`;
             return this.encodeSecret(raw);
         }
         const co = dataRoot?.companies?.[userObj.coId];
-        if (!co) return userObj.authToken || '';
-        // Zero-Trust: estado remoto sanitizado no expone PINs ni claves en memoria de cliente.
-        // Se preserva la huella basada en authUpdatedAt de la startup.
-        const authStamp = co.authUpdatedAt || 0;
+        const authStamp = co?.authUpdatedAt || userObj.authStamp || 0;
         const raw = `S|${userObj.coId}|${userObj.role}|${authStamp}`;
         return this.encodeSecret(raw);
     },
@@ -545,24 +542,37 @@ const state = {
     verifySessionIntegrity(serverOrMergedData = this.data) {
         if (!this.user) return true;
 
-        // Comprobar expiración de la sesión (8 horas)
+        // 1. Comprobar expiración de la sesión (8 horas)
         if (this.user.exp && this.user.exp < Date.now()) {
             this.revokeSession("Sesión finalizada: El tiempo de autorización de misión (8 horas) ha expirado.");
             return false;
         }
 
-        const expectedToken = this.getAuthToken(this.user, serverOrMergedData);
-        const currentToken = this.user.authToken || '';
+        // 2. Comprobar que la entidad siga existiendo en el estado del servidor
         const isEntityValid = this.user.admin
             ? !!(serverOrMergedData?.config?.teachers?.[this.user.role])
             : !!(serverOrMergedData?.companies?.[this.user.coId]);
 
-        // En arquitectura Zero-Trust, el estado remoto no transporta credenciales en texto plano.
-        // Si expectedToken puede ser calculado en memoria local, se valida coincidencia exacta.
-        if (!isEntityValid || (expectedToken && currentToken && currentToken !== expectedToken)) {
-            this.revokeSession("Sesión finalizada: Las credenciales de acceso han sido modificadas por coordinación.");
+        if (!isEntityValid) {
+            this.revokeSession("Sesión finalizada: La entidad o puesto asignado ya no existe.");
             return false;
         }
+
+        // 3. Comprobar si Coordinación modificó las credenciales después del inicio de sesión
+        if (this.user.admin) {
+            const serverPinStamp = serverOrMergedData?.config?.teachers?.[this.user.role]?.pinUpdatedAt || 0;
+            if (this.user.pinStamp && serverPinStamp > this.user.pinStamp) {
+                this.revokeSession("Sesión finalizada: Las credenciales de acceso han sido modificadas por coordinación.");
+                return false;
+            }
+        } else {
+            const serverAuthStamp = serverOrMergedData?.companies?.[this.user.coId]?.authUpdatedAt || 0;
+            if (this.user.authStamp && serverAuthStamp > this.user.authStamp) {
+                this.revokeSession("Sesión finalizada: Las credenciales de acceso han sido modificadas por coordinación.");
+                return false;
+            }
+        }
+
         return true;
     },
 

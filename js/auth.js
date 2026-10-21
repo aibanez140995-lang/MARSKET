@@ -31,18 +31,35 @@ const auth = (function() {
     async function _doCompleteLogin(userObj, entityName, roleName, verifiedCredential, serverToken = null) {
         // G4a: Solución transitoria de sesión. Expira a las 8 horas.
         const exp = Date.now() + (8 * 60 * 60 * 1000);
-        const credential = verifiedCredential || (userObj.admin 
-            ? (state.data.config?.teachers?.[userObj.role]?.pin || '') 
-            : (state.getRolePin(state.data.companies?.[userObj.coId], userObj.role) || ''));
+        const isTeacher = !!userObj.admin;
+
+        let authStamp = 0;
+        let pinStamp = 0;
+        let authToken = '';
+
+        if (isTeacher) {
+            const t = state.data?.config?.teachers?.[userObj.role];
+            pinStamp = t?.pinUpdatedAt || 0;
+            authToken = serverToken || state.encodeSecret(`T|${userObj.role}|${pinStamp}`);
+        } else {
+            const co = state.data?.companies?.[userObj.coId];
+            authStamp = co?.authUpdatedAt || 0;
+            authToken = serverToken || state.encodeSecret(`S|${userObj.coId}|${userObj.role}|${authStamp}`);
+        }
+
+        const credential = verifiedCredential || (isTeacher 
+            ? (state.data?.config?.teachers?.[userObj.role]?.pin || '') 
+            : (state.getRolePin(state.data?.companies?.[userObj.coId], userObj.role) || ''));
 
         const authProof = await _generateAuthProof(userObj.role, userObj.coId, exp, credential);
-        const authToken = serverToken || state.getAuthToken(userObj);
 
         const sessionPayload = { 
-            admin: !!userObj.admin,
+            admin: isTeacher,
             role: userObj.role,
             coId: userObj.coId,
             exp,
+            authStamp,
+            pinStamp,
             authProof,
             authToken
         };
