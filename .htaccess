@@ -23,12 +23,20 @@
     <FilesMatch "(^\.|\.sqlite$|\.sqlite3$|\.db$|\.env$|\.log$|\.sql$|\.bak$|\.md$|package\.json|wrangler\.toml)">
         Require all denied
     </FilesMatch>
+    <FilesMatch "^loaderio-.*">
+        Require all granted
+    </FilesMatch>
 </IfModule>
 <IfModule !mod_authz_core.c>
     # Apache 2.2 legacy fallback
     <FilesMatch "(^\.|\.sqlite$|\.sqlite3$|\.db$|\.env$|\.log$|\.sql$|\.bak$|\.md$|package\.json|wrangler\.toml)">
         Order allow,deny
         Deny from all
+    </FilesMatch>
+    <FilesMatch "^loaderio-.*">
+        Order allow,deny
+        Allow from all
+        Satisfy Any
     </FilesMatch>
 </IfModule>
 
