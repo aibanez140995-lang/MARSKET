@@ -80,6 +80,8 @@ function getDatabaseConnection(): PDO {
     $pdo->exec("PRAGMA busy_timeout = 5000;");
     $pdo->exec("PRAGMA synchronous = NORMAL;");
     $pdo->exec("PRAGMA foreign_keys = ON;");
+    $pdo->exec("PRAGMA temp_store = MEMORY;");
+    $pdo->exec("PRAGMA wal_autocheckpoint = 1000;");
 
     // Auto-creación de tablas si no existen
     $pdo->exec("
@@ -87,6 +89,12 @@ function getDatabaseConnection(): PDO {
             id TEXT PRIMARY KEY,
             data TEXT NOT NULL,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS company_state (
+            company_id VARCHAR(100) PRIMARY KEY,
+            data LONGTEXT NOT NULL,
+            version INT NOT NULL DEFAULT 1,
+            updated_at BIGINT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS moderation_alerts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

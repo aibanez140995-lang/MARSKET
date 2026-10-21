@@ -500,6 +500,10 @@ const auth = (function() {
             }).join('');
         },
 
+        getSessionToken() {
+            return (state.user && state.user.authToken) ? state.user.authToken : '';
+        },
+
         logout() {
             state.user = null;
             state.currentUser = null;

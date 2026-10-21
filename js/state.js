@@ -863,7 +863,7 @@ const state = {
                 if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
                     this.checkFastVersion();
                 }
-            }, 3000);
+            }, 12000);
 
             if (typeof document !== 'undefined') {
                 document.addEventListener('visibilitychange', () => {
@@ -911,7 +911,7 @@ const state = {
             if (!this.pausePolling && typeof document !== 'undefined' && document.visibilityState === 'visible') {
                 this.checkFastVersion();
             }
-        }, 3000);
+        }, 12000);
     },
 
     async checkFastVersion() {

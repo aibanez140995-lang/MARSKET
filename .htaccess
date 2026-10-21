@@ -68,8 +68,8 @@
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "SAMEORIGIN"
 
-    # Prevenir caché en respuestas de la API
+    # Prevenir almacenamiento en caché estática pero permitir validación ETag / HTTP 304 en la API
     <FilesMatch "index\.php$">
-        Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+        Header set Cache-Control "no-cache, must-revalidate"
     </FilesMatch>
 </IfModule>
