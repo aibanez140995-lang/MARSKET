@@ -389,7 +389,8 @@ try {
                     http_response_code($verified ? 200 : 401);
                     echo json_encode([
                         'verified' => $verified,
-                        'companyName' => $row['name'] ?? 'EMPRESA'
+                        'companyName' => $row['name'] ?? 'EMPRESA',
+                        'token' => $verified ? encodeSecret("S|{$coId}|{$role}|" . time()) : null
                     ], JSON_UNESCAPED_UNICODE);
                     exit;
                 }
@@ -455,8 +456,8 @@ try {
             $isCoord = !empty($auth['authorized']);
             $isStudent = !empty($auth['isStudent']) || !empty($auth['coId']);
 
-            // Permitir guardado tanto a Coordinación docente como a Startups/Alumnos
-            if (!$isCoord && !$isStudent && empty($payload['companies'])) {
+            // Permitir guardado tanto a Coordinación docente como a Startups/Alumnos autenticados
+            if (!$isCoord && !$isStudent) {
                 http_response_code(403);
                 echo json_encode([
                     'error' => 'UNAUTHORIZED_MUTATION',
@@ -510,6 +511,7 @@ try {
                         if (!empty($sCo['authVault'])) $co['authVault'] = $sCo['authVault'];
                         if (!empty($sCo['accessCode'])) $co['accessCode'] = $sCo['accessCode'];
                         if (!empty($sCo['roles'])) $co['roles'] = $sCo['roles'];
+                        if (!empty($sCo['authUpdatedAt'])) $co['authUpdatedAt'] = $sCo['authUpdatedAt'];
                     }
                 }
             } elseif (isset($currentState['companies'])) {

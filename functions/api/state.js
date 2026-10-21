@@ -1,7 +1,7 @@
 // functions/api/state.js
-// Endpoint de Estado Zero-Trust y Control de Persistencia en Cloudflare D1 (v1.1.06)
+// Endpoint de Estado Zero-Trust y Control de Persistencia en Cloudflare D1 (v1.1.09)
 
-import { verifySession } from './_auth.js';
+import { verifySession, decodeSecret, encodeSecret } from './_auth.js';
 
 /**
  * Aplica sanitización quirúrgica in-place sin deep-cloning JSON.parse(JSON.stringify())
@@ -61,7 +61,7 @@ export async function onRequest(context) {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Marsket-Auth, If-None-Match'
     };
 
     if (request.method === 'OPTIONS') return new Response(null, { headers });
@@ -190,10 +190,7 @@ export async function onRequest(context) {
                         for (const r of rows.results) {
                             let coCode = '';
                             if (r.vlt_code) {
-                                try {
-                                    const b64 = r.vlt_code.startsWith('VLT_') ? r.vlt_code.slice(4) : r.vlt_code;
-                                    coCode = (typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('utf8')).trim().toUpperCase();
-                                } catch(e) {}
+                                coCode = decodeSecret(r.vlt_code).trim().toUpperCase();
                             } else if (r.access_code) {
                                 coCode = String(r.access_code).trim().toUpperCase();
                             }
@@ -233,10 +230,7 @@ export async function onRequest(context) {
                     if (row) {
                         let expectedPin = '';
                         if (row.vltPin) {
-                            try {
-                                const b64 = row.vltPin.startsWith('VLT_') ? row.vltPin.slice(4) : row.vltPin;
-                                expectedPin = (typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('utf8')).trim();
-                            } catch(e) {}
+                            expectedPin = decodeSecret(row.vltPin).trim();
                         } else if (row.plainPin && !String(row.plainPin).startsWith('VLT_')) {
                             expectedPin = String(row.plainPin).trim();
                         }
@@ -244,7 +238,11 @@ export async function onRequest(context) {
                             expectedPin = '1234';
                         }
                         const verified = Boolean(expectedPin && expectedPin === String(pin).trim());
-                        return new Response(JSON.stringify({ verified, companyName: row.companyName || 'EMPRESA' }), {
+                        return new Response(JSON.stringify({
+                            verified,
+                            companyName: row.companyName || 'EMPRESA',
+                            token: verified ? encodeSecret(`S|${coId}|${role}|${Date.now()}`) : undefined
+                        }), {
                             status: verified ? 200 : 401,
                             headers
                         });
@@ -316,12 +314,12 @@ export async function onRequest(context) {
                 return new Response(JSON.stringify({ error: 'No hay datos en estado corriente para respaldar' }), { status: 400, headers });
             }
 
-            // Control de Autorización y Particionado Zero-Trust (v1.1.08)
+            // Control de Autorización y Particionado Zero-Trust (v1.1.09)
             const authResult = await verifySession(request, env);
             const isCoord = Boolean(authResult.authorized);
-            const isStudent = Boolean(authResult.isStudent || authResult.coId);
+            const isStudent = Boolean(authResult.isStudent && authResult.coId);
 
-            if (!isCoord && !isStudent && !payload.companies) {
+            if (!isCoord && !isStudent) {
                 return new Response(JSON.stringify({
                     error: 'UNAUTHORIZED_MUTATION',
                     message: 'Guardado restringido a sesiones activas de la misión.'
@@ -409,6 +407,9 @@ export async function onRequest(context) {
                         }
                         if (sCo.roles) {
                             payload.companies[cid].roles = sCo.roles;
+                        }
+                        if (sCo.authUpdatedAt) {
+                            payload.companies[cid].authUpdatedAt = sCo.authUpdatedAt;
                         }
                     }
                 }

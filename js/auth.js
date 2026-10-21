@@ -28,7 +28,7 @@ const auth = (function() {
         return 'proof_' + Math.abs(h).toString(16);
     }
 
-    async function _doCompleteLogin(userObj, entityName, roleName, verifiedCredential) {
+    async function _doCompleteLogin(userObj, entityName, roleName, verifiedCredential, serverToken = null) {
         // G4a: Solución transitoria de sesión. Expira a las 8 horas.
         const exp = Date.now() + (8 * 60 * 60 * 1000);
         const credential = verifiedCredential || (userObj.admin 
@@ -36,7 +36,7 @@ const auth = (function() {
             : (state.getRolePin(state.data.companies?.[userObj.coId], userObj.role) || ''));
 
         const authProof = await _generateAuthProof(userObj.role, userObj.coId, exp, credential);
-        const authToken = state.getAuthToken(userObj);
+        const authToken = serverToken || state.getAuthToken(userObj);
 
         const sessionPayload = { 
             admin: !!userObj.admin,
@@ -364,6 +364,7 @@ const auth = (function() {
                 }
             } else {
                 let studentOk = false;
+                let serverToken = null;
                 const co = state.data.companies[_verifiedCoId];
                 let coName = co?.name || 'EMPRESA';
 
@@ -378,6 +379,7 @@ const auth = (function() {
                         const json = await res.json();
                         studentOk = !!json.verified;
                         if (json.companyName) coName = json.companyName;
+                        if (json.token) serverToken = json.token;
                     }
                 } catch(e) {}
 
@@ -398,7 +400,7 @@ const auth = (function() {
                     }
                     _internalExecutionGuard = true;
                     try {
-                        await _doCompleteLogin({ admin: false, role: role, coId: _verifiedCoId }, coName, role, pinAttempt);
+                        await _doCompleteLogin({ admin: false, role: role, coId: _verifiedCoId }, coName, role, pinAttempt, serverToken);
                     } finally {
                         _internalExecutionGuard = false;
                     }

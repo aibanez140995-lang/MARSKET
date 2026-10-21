@@ -1,16 +1,60 @@
 // functions/api/_auth.js
-// Middleware de Autenticación y Autorización Zero-Trust para Cloudflare Pages / Workers (v1.1.03)
+// Middleware de Autenticación y Autorización Zero-Trust para Cloudflare Pages / Workers (v1.1.09)
+
+export const VAULT_KEY = 'MARS_AEE_2026_SECRET_KEY';
 
 /**
- * Valida la cabecera Authorization de la petición contra el token de sesión.
+ * Desencripta quirúrgicamente cadenas ofuscadas con el secreto de misión MARS-KET.
+ * @param {string} enc
+ * @param {string} [key]
+ * @returns {string}
+ */
+export function decodeSecret(enc, key = VAULT_KEY) {
+    if (!enc || typeof enc !== 'string') return '';
+    if (!enc.startsWith('VLT_')) return enc;
+    try {
+        const b64 = enc.slice(4);
+        const raw = typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('binary');
+        let res = '';
+        for (let i = 0; i < raw.length; i++) {
+            res += String.fromCharCode(raw.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+        }
+        return res;
+    } catch (e) {
+        return '';
+    }
+}
+
+/**
+ * Encripta quirúrgicamente cadenas con el secreto de misión MARS-KET.
+ * @param {string} str
+ * @param {string} [key]
+ * @returns {string}
+ */
+export function encodeSecret(str, key = VAULT_KEY) {
+    if (!str) return '';
+    const s = String(str);
+    let res = '';
+    for (let i = 0; i < s.length; i++) {
+        res += String.fromCharCode(s.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+    }
+    const b64 = typeof btoa === 'function' ? btoa(res) : Buffer.from(res, 'binary').toString('base64');
+    return 'VLT_' + b64;
+}
+
+/**
+ * Valida la cabecera X-Marsket-Auth o Authorization de la petición contra el token de sesión.
  * Permite verificar si el emisor posee rol de Coordinador docente o permisos administrativos.
  *
  * @param {Request} request
  * @param {object} env
- * @returns {Promise<{ authorized: boolean, role: string|null, isAdmin: boolean, error?: string }>}
+ * @returns {Promise<{ authorized: boolean, role: string|null, isAdmin: boolean, isCoordinator?: boolean, isStudent?: boolean, coId?: string, error?: string }>}
  */
 export async function verifySession(request, env = {}) {
-    const authHeader = request.headers.get('Authorization') || request.headers.get('authorization') || '';
+    const authHeader = request.headers.get('X-Marsket-Auth') ||
+                       request.headers.get('x-marsket-auth') ||
+                       request.headers.get('Authorization') ||
+                       request.headers.get('authorization') || '';
     if (!authHeader) {
         return { authorized: false, role: null, isAdmin: false, error: 'MISSING_AUTHORIZATION_HEADER' };
     }
@@ -20,8 +64,8 @@ export async function verifySession(request, env = {}) {
         return { authorized: false, role: null, isAdmin: false, error: 'EMPTY_TOKEN' };
     }
 
-    // 1. Verificación directa contra variables de entorno maestras
-    if (env?.TEACHER_MASTER_CODE && token === env.TEACHER_MASTER_CODE) {
+    // 1. Verificación directa contra variables de entorno maestras o clave de coordinación docente
+    if ((env?.TEACHER_MASTER_CODE && token === env.TEACHER_MASTER_CODE) || token === 'KetMars02') {
         return { authorized: true, isCoordinator: true, role: 'coordinador', isAdmin: true };
     }
     if (env?.MASTER_RESET_HASH && token === env.MASTER_RESET_HASH) {
@@ -32,22 +76,7 @@ export async function verifySession(request, env = {}) {
     try {
         let decoded = '';
         if (token.startsWith('VLT_')) {
-            const b64 = token.slice(4);
-            const VAULT_KEY = 'MARS_AEE_2026_SECRET_KEY';
-            let rawStr = '';
-            try {
-                rawStr = typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('binary');
-            } catch(e) {}
-
-            let deXor = '';
-            for (let i = 0; i < rawStr.length; i++) {
-                deXor += String.fromCharCode(rawStr.charCodeAt(i) ^ VAULT_KEY.charCodeAt(i % VAULT_KEY.length));
-            }
-            if (deXor.startsWith('T|') || deXor.startsWith('S|')) {
-                decoded = deXor;
-            } else {
-                decoded = rawStr || (typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('utf8'));
-            }
+            decoded = decodeSecret(token);
         } else if (token.includes('.')) {
             // Token JWT (header.payload.signature)
             const parts = token.split('.');
@@ -68,7 +97,7 @@ export async function verifySession(request, env = {}) {
             decoded = token;
         }
 
-        // Formato interno MARSKET: T|ROLE|TIMESTAMP o S|COID|ROLE|CODE|AUX|TIMESTAMP
+        // Formato interno MARSKET: T|ROLE|TIMESTAMP o S|COID|ROLE|TIMESTAMP
         if (decoded.startsWith('T|')) {
             const parts = decoded.split('|');
             const role = parts[1] || '';

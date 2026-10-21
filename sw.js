@@ -1,25 +1,25 @@
-// sw.js — MARS-KET 2.0 Service Worker (Caché estática versionada v1.1.07, excluyendo /api/*)
-const CACHE_NAME = 'marsket-static-v1.1.07';
+// sw.js — MARS-KET 2.0 Service Worker (Caché estática versionada v1.1.09, excluyendo /api/*)
+const CACHE_NAME = 'marsket-static-v1.1.09';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/logo.png',
-  '/manifest.json?v=1.1.07',
-  '/css/tailwind.css?v=1.1.07',
-  '/js/lexicon-data.js?v=1.1.07',
-  '/js/config.js?v=1.1.07',
-  '/js/state.js?v=1.1.07',
-  '/js/auth.js?v=1.1.07',
-  '/js/ui-core.js?v=1.1.07',
-  '/js/ui-empresa-core.js?v=1.1.07',
-  '/js/ui-empresa-market.js?v=1.1.07',
-  '/js/ui-empresa-tech.js?v=1.1.07',
-  '/js/ui-empresa-finance.js?v=1.1.07',
-  '/js/ui-empresa-ops.js?v=1.1.07',
-  '/js/ui-empresa-gov-brand.js?v=1.1.07',
-  '/js/ui-docente-core.js?v=1.1.07',
-  '/js/ui-docente-eval.js?v=1.1.07',
-  '/js/ui-docente-management.js?v=1.1.07'
+  '/manifest.json?v=1.1.09',
+  '/css/tailwind.css?v=1.1.09',
+  '/js/lexicon-data.js?v=1.1.09',
+  '/js/config.js?v=1.1.09',
+  '/js/state.js?v=1.1.09',
+  '/js/auth.js?v=1.1.09',
+  '/js/ui-core.js?v=1.1.09',
+  '/js/ui-empresa-core.js?v=1.1.09',
+  '/js/ui-empresa-market.js?v=1.1.09',
+  '/js/ui-empresa-tech.js?v=1.1.09',
+  '/js/ui-empresa-finance.js?v=1.1.09',
+  '/js/ui-empresa-ops.js?v=1.1.09',
+  '/js/ui-empresa-gov-brand.js?v=1.1.09',
+  '/js/ui-docente-core.js?v=1.1.09',
+  '/js/ui-docente-eval.js?v=1.1.09',
+  '/js/ui-docente-management.js?v=1.1.09'
 ];
 
 self.addEventListener('install', (event) => {

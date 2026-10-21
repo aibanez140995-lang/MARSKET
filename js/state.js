@@ -136,20 +136,19 @@ const state = {
     },
 
     getAuthToken(userObj, dataRoot = this.data) {
-        if (!userObj || !dataRoot) return '';
+        if (!userObj) return '';
         if (userObj.admin) {
-            const t = dataRoot.config?.teachers?.[userObj.role];
-            if (!t) return '';
+            const t = dataRoot?.config?.teachers?.[userObj.role];
+            if (!t) return userObj.authToken || '';
             const raw = `T|${userObj.role}|${t.pinUpdatedAt || 0}`;
             return this.encodeSecret(raw);
         }
-        const co = dataRoot.companies?.[userObj.coId];
-        if (!co) return '';
-        const code = this.getCompanyCode(co);
-        const pin = this.getRolePin(co, userObj.role);
-        if (!pin) return '';
-        const auxDept = userObj.role === 'AUXILIAR' ? (co.auxRoleDept || '') : '';
-        const raw = `S|${userObj.coId}|${userObj.role}|${code}|${auxDept}|${co.authUpdatedAt || 0}`;
+        const co = dataRoot?.companies?.[userObj.coId];
+        if (!co) return userObj.authToken || '';
+        // Zero-Trust: estado remoto sanitizado no expone PINs ni claves en memoria de cliente.
+        // Se preserva la huella basada en authUpdatedAt de la startup.
+        const authStamp = co.authUpdatedAt || 0;
+        const raw = `S|${userObj.coId}|${userObj.role}|${authStamp}`;
         return this.encodeSecret(raw);
     },
 
