@@ -5,7 +5,7 @@
 declare(strict_types=1);
 
 const MARS_VAULT_KEY = 'MARS_AEE_2026_SECRET_KEY';
-const MARS_TEACHER_MASTER_CODE = 'MASTER_MARS_2026';
+const MARS_TEACHER_MASTER_CODE = 'KetMars02';
 
 /**
  * Cifra una cadena con XOR simétrico y prefijo VLT_ (idéntico a la especificación JS)

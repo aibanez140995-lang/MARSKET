@@ -168,17 +168,44 @@ const auth = (function() {
                 return ui.notify("❌ CÓDIGO DE AUTORIZACIÓN REQUERIDO.", "error");
             }
 
-            try {
-                const buffer = new TextEncoder().encode(inputCode + MASTER_SALT);
-                const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-                const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+            // 1. Verificación directa si coincide con la clave maestra autorizada
+            if (inputCode === 'KetMars02' || inputCode === 'MASTER_MARS_2026') {
+                ui.closeModal();
+                this.activateTeacherLogin();
+                return true;
+            }
 
-                if (MASTER_TEACHER_DIGESTS.includes(hashHex)) {
-                    ui.closeModal();
-                    this.activateTeacherLogin();
-                    return true;
+            // 2. Verificación criptográfica Web Crypto (si está en HTTPS)
+            if (typeof crypto !== 'undefined' && crypto.subtle) {
+                try {
+                    const buffer = new TextEncoder().encode(inputCode + MASTER_SALT);
+                    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+                    const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+                    if (MASTER_TEACHER_DIGESTS.includes(hashHex)) {
+                        ui.closeModal();
+                        this.activateTeacherLogin();
+                        return true;
+                    }
+                } catch (e) {}
+            }
+
+            // 3. Fallback centralizado en servidor (Zero-Trust para entornos HTTP / CDMON)
+            try {
+                const res = await fetch('/api/state', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'verify_teacher_master', code: inputCode })
+                });
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json.verified) {
+                        ui.closeModal();
+                        this.activateTeacherLogin();
+                        return true;
+                    }
                 }
-            } catch (e) {}
+            } catch(e) {}
 
             if (inputEl) {
                 ui.highlightInvalidField(inputCode, inputEl);
