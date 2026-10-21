@@ -249,10 +249,14 @@ try {
             }
 
             $cleanPayload = $row['clean_data'];
-            // Purgado complementario sobre string crudo para empresas dinámicas sin instanciar grafos en PHP
-            if (strpos($cleanPayload, '"authVault"') !== false || strpos($cleanPayload, '"accessCode"') !== false) {
-                $cleanPayload = preg_replace('/"authVault":\s*\{[^}]*\}/', '"authVault":{"code":"","roles":{}}', $cleanPayload);
-                $cleanPayload = preg_replace('/"accessCode":\s*"[^"]*"/', '"accessCode":""', $cleanPayload);
+            $decoded = json_decode($cleanPayload, true);
+            if (is_array($decoded)) {
+                $sanitized = sanitizeStateForClient($decoded);
+                header('Content-Type: application/json; charset=utf-8');
+                header('ETag: ' . $serverETag);
+                header('Cache-Control: public, no-cache');
+                echo json_encode($sanitized, JSON_UNESCAPED_UNICODE);
+                exit;
             }
 
             header('Content-Type: application/json; charset=utf-8');
