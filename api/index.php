@@ -11,7 +11,7 @@ require_once __DIR__ . '/db.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, If-None-Match');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Marsket-Auth, If-None-Match');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
 
@@ -44,10 +44,10 @@ $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 
 // 4. Funciones Auxiliares de Autenticación y Sanitización
 function getAuthorizationToken(): string {
-    $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    $header = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['HTTP_X_MARSKET_AUTH'] ?? '';
     if (!$header && function_exists('apache_request_headers')) {
         $headers = apache_request_headers();
-        $header = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+        $header = $headers['Authorization'] ?? $headers['authorization'] ?? $headers['X-Marsket-Auth'] ?? $headers['x-marsket-auth'] ?? '';
     }
     if (preg_match('/^Bearer\s+(.*)$/i', $header, $matches)) {
         return trim($matches[1]);

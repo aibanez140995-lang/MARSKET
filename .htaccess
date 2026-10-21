@@ -32,8 +32,8 @@
     </FilesMatch>
 </IfModule>
 
-# Deshabilitar listado de directorios
-Options -Indexes
+# Deshabilitar listado de directorios (comentado por compatibilidad AllowOverride CDMON)
+# Options -Indexes
 
 # 3. RENDIMIENTO: COMPRESIÓN GZIP / DEFLATE
 <IfModule mod_deflate.c>
