@@ -629,7 +629,7 @@ const state = {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}`, 'X-Marsket-Auth': token } : {})
+                    ...(token ? { 'X-Marsket-Auth': token } : {})
                 },
                 body: JSON.stringify({ type: 'company', id: coId, role, newPin: clean })
             });
@@ -678,7 +678,7 @@ const state = {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}`, 'X-Marsket-Auth': token } : {})
+                    ...(token ? { 'X-Marsket-Auth': token } : {})
                 },
                 body: JSON.stringify({ type: 'teacher', id: teacherKey, newPin: clean })
             });
@@ -723,7 +723,7 @@ const state = {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}`, 'X-Marsket-Auth': token } : {})
+                    ...(token ? { 'X-Marsket-Auth': token } : {})
                 },
                 body: JSON.stringify({ type: 'company', id: coId, newCode: clean, newPin: clean })
             });
@@ -1050,7 +1050,7 @@ const state = {
         const token = this.getAuthToken(this.user, this.data);
         const headers = {
             'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}`, 'X-Marsket-Auth': token } : {})
+            ...(token ? { 'X-Marsket-Auth': token } : {})
         };
         const res = await fetch('/api/state', {
             method: 'POST',

@@ -44,15 +44,26 @@ $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 
 // 4. Funciones Auxiliares de Autenticación y Sanitización
 function getAuthorizationToken(): string {
-    $header = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['HTTP_X_MARSKET_AUTH'] ?? '';
-    if (!$header && function_exists('apache_request_headers')) {
+    // 1. Prioridad absoluta: Cabecera dedicada de MARS-KET (inmune a colisiones con HTTP Basic Auth del hosting)
+    $marsAuth = $_SERVER['HTTP_X_MARSKET_AUTH'] ?? '';
+    if (!$marsAuth && function_exists('apache_request_headers')) {
         $headers = apache_request_headers();
-        $header = $headers['Authorization'] ?? $headers['authorization'] ?? $headers['X-Marsket-Auth'] ?? $headers['x-marsket-auth'] ?? '';
+        $marsAuth = $headers['X-Marsket-Auth'] ?? $headers['x-marsket-auth'] ?? '';
     }
-    if (preg_match('/^Bearer\s+(.*)$/i', $header, $matches)) {
+    if ($marsAuth) {
+        return trim((string)$marsAuth);
+    }
+
+    // 2. Cabecera Authorization estándar (únicamente si emplea el esquema Bearer)
+    $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    if (!$auth && function_exists('apache_request_headers')) {
+        $headers = apache_request_headers();
+        $auth = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+    }
+    if (preg_match('/^Bearer\s+(.*)$/i', (string)$auth, $matches)) {
         return trim($matches[1]);
     }
-    return trim($header);
+    return '';
 }
 
 function verifySession(): array {

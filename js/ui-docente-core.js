@@ -414,7 +414,6 @@ Object.assign(ui, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
                     'X-Marsket-Auth': token
                 },
                 body: JSON.stringify({
@@ -470,7 +469,6 @@ Object.assign(ui, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
                     'X-Marsket-Auth': token
                 },
                 body: JSON.stringify({

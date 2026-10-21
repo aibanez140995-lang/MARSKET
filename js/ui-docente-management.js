@@ -790,7 +790,7 @@ Object.assign(ui, {
                 const token = state.getAuthToken(state.user, state.data);
                 const headers = {
                     'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}`, 'X-Marsket-Auth': token } : {})
+                    ...(token ? { 'X-Marsket-Auth': token } : {})
                 };
                 let res = await fetch(`/api/catalog/${encodeURIComponent(itemId)}`, {
                     method: 'PATCH',
@@ -894,7 +894,7 @@ Object.assign(ui, {
                 const token = state.getAuthToken(state.user, state.data);
                 const headers = {
                     'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}`, 'X-Marsket-Auth': token } : {})
+                    ...(token ? { 'X-Marsket-Auth': token } : {})
                 };
                 let res = await fetch(`/api/catalog/${encodeURIComponent(itemId)}`, {
                     method: 'DELETE',
@@ -2025,7 +2025,7 @@ Object.assign(ui, {
             const token = state.getAuthToken(state.user, state.data);
             const res = await fetch('/api/admin/credentials', {
                 headers: {
-                    ...(token ? { 'Authorization': `Bearer ${token}`, 'X-Marsket-Auth': token } : {})
+                    ...(token ? { 'X-Marsket-Auth': token } : {})
                 }
             });
             if (res.ok) {
