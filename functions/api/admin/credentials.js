@@ -37,6 +37,12 @@ export const onRequest = handleCredentials;
 
 export async function handleCredentials(context) {
     const { request, env } = context;
+
+    // Watchdog de Conexiones Muertas
+    if (request.signal?.aborted) {
+        return new Response(null, { status: 499 });
+    }
+
     const headers = {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',

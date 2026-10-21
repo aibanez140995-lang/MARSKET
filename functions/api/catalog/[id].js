@@ -6,6 +6,11 @@ import { verifySession } from '../_auth.js';
 export async function onRequestPatch(context) {
   const { request, env, params } = context;
 
+  // Watchdog de Conexiones Muertas
+  if (request.signal?.aborted) {
+    return new Response(null, { status: 499 });
+  }
+
   // Verificación de autorización de Coordinador
   const authResult = await verifySession(request, env);
   if (!authResult.authorized) {
@@ -79,6 +84,11 @@ export async function onRequestPatch(context) {
 
 export async function onRequestDelete(context) {
   const { request, env, params } = context;
+
+  // Watchdog de Conexiones Muertas
+  if (request.signal?.aborted) {
+    return new Response(null, { status: 499 });
+  }
 
   // Verificación de autorización de Coordinador
   const authResult = await verifySession(request, env);

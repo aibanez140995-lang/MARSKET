@@ -42,23 +42,78 @@ function sendJSON(res, statusCode, data) {
     res.end(jsonStr);
 }
 
+const MAX_PAYLOAD_BYTES = 2 * 1024 * 1024; // Límite estricto 2 MB anti-OOM (SRE Runtime Security)
+
+function parseJsonWithLimit(req, res, maxBytes = MAX_PAYLOAD_BYTES) {
+    return new Promise((resolve, reject) => {
+        let size = 0;
+        const chunks = [];
+        let destroyed = false;
+
+        req.on('data', chunk => {
+            if (destroyed) return;
+            size += chunk.length;
+            if (size > maxBytes) {
+                destroyed = true;
+                res.writeHead(413, {
+                    'Content-Type': 'application/json; charset=utf-8',
+                    'Connection': 'close',
+                    'Access-Control-Allow-Origin': '*'
+                });
+                res.end(JSON.stringify({ error: 'Payload Too Large: El tamaño excede el límite estricto de 2 MB.' }));
+                req.destroy();
+                const err = new Error('PAYLOAD_LIMIT_EXCEEDED');
+                err.statusCode = 413;
+                return reject(err);
+            }
+            chunks.push(chunk);
+        });
+
+        req.on('end', () => {
+            if (destroyed) return;
+            try {
+                const raw = Buffer.concat(chunks, size).toString('utf8');
+                const parsed = raw.trim() ? JSON.parse(raw) : {};
+                resolve(parsed);
+            } catch (err) {
+                res.writeHead(400, {
+                    'Content-Type': 'application/json; charset=utf-8',
+                    'Access-Control-Allow-Origin': '*'
+                });
+                res.end(JSON.stringify({ error: 'Malformed JSON payload' }));
+                reject(err);
+            }
+        });
+
+        req.on('error', err => {
+            if (!destroyed) reject(err);
+        });
+    });
+}
+
 function sanitizeStateForClient(rawState) {
     if (!rawState || typeof rawState !== 'object') return rawState;
-    const clean = JSON.parse(JSON.stringify(rawState));
+    // Sanitización quirúrgica in-place sin deep-cloning JSON.parse(JSON.stringify())
+    const clean = Array.isArray(rawState) ? [...rawState] : { ...rawState };
     if (clean.config && clean.config.teachers) {
+        clean.config = { ...clean.config, teachers: { ...clean.config.teachers } };
         for (const teacherKey in clean.config.teachers) {
             if (clean.config.teachers[teacherKey]) {
-                delete clean.config.teachers[teacherKey].pin;
+                const t = { ...clean.config.teachers[teacherKey] };
+                delete t.pin;
+                clean.config.teachers[teacherKey] = t;
             }
         }
     }
     if (clean.companies) {
+        clean.companies = { ...clean.companies };
         for (const cid in clean.companies) {
-            const co = clean.companies[cid];
-            if (co) {
+            if (clean.companies[cid]) {
+                const co = { ...clean.companies[cid] };
                 delete co.authVault;
                 delete co.roles;
                 delete co.accessCode;
+                clean.companies[cid] = co;
             }
         }
     }
@@ -78,9 +133,7 @@ const server = http.createServer((req, res) => {
     // Endpoint RPC v1.1.02: /api/admin/reset
     if (pathname === '/api/admin/reset') {
         if (req.method !== 'POST') return sendJSON(res, 405, { error: 'MethodNotAllowed' });
-        let body = '';
-        req.on('data', chunk => { body += chunk; });
-        req.on('end', () => {
+        parseJsonWithLimit(req, res).then(() => {
             if (memoryState) {
                 if (memoryState.companies) {
                     for (const cid in memoryState.companies) {
@@ -120,7 +173,7 @@ const server = http.createServer((req, res) => {
                 memoryState.lastUpdated = Date.now();
             }
             return sendJSON(res, 200, { success: true, resetEpoch: memoryState ? memoryState.resetEpoch : Date.now(), message: 'Reset transaccional completado en memoria' });
-        });
+        }).catch(() => {});
         return;
     }
 
@@ -129,34 +182,27 @@ const server = http.createServer((req, res) => {
         if (req.method !== 'POST' && req.method !== 'PATCH' && req.method !== 'PUT') {
             return sendJSON(res, 405, { error: 'MethodNotAllowed' });
         }
-        let body = '';
-        req.on('data', chunk => { body += chunk; });
-        req.on('end', () => {
-            try {
-                const payload = JSON.parse(body);
-                const clientVersion = payload.version !== undefined ? Number(payload.version) : null;
-                const serverVersion = memoryState ? (Number(memoryState.version) || 1) : 1;
+        parseJsonWithLimit(req, res).then(payload => {
+            const clientVersion = payload.version !== undefined ? Number(payload.version) : null;
+            const serverVersion = memoryState ? (Number(memoryState.version) || 1) : 1;
 
-                if (clientVersion !== null && clientVersion < serverVersion) {
-                    return sendJSON(res, 409, { error: 'Conflict: Outdated version', changes: 0, serverVersion });
-                }
-
-                if (memoryState && Array.isArray(memoryState.catalog)) {
-                    const item = memoryState.catalog.find(i => String(i.id) === String(payload.id));
-                    if (item) {
-                        if (payload.price !== undefined) item.price = Number(payload.price);
-                        if (payload.stock !== undefined) item.stock = Number(payload.stock);
-                        if (payload.name !== undefined) item.name = String(payload.name);
-                    }
-                    memoryState.version = serverVersion + 1;
-                    memoryState.lastUpdated = Date.now();
-                    return sendJSON(res, 200, { ok: true, item, version: memoryState.version });
-                }
-                return sendJSON(res, 200, { ok: true });
-            } catch (e) {
-                return sendJSON(res, 400, { error: e.message });
+            if (clientVersion !== null && clientVersion < serverVersion) {
+                return sendJSON(res, 409, { error: 'Conflict: Outdated version', changes: 0, serverVersion });
             }
-        });
+
+            if (memoryState && Array.isArray(memoryState.catalog)) {
+                const item = memoryState.catalog.find(i => String(i.id) === String(payload.id));
+                if (item) {
+                    if (payload.price !== undefined) item.price = Number(payload.price);
+                    if (payload.stock !== undefined) item.stock = Number(payload.stock);
+                    if (payload.name !== undefined) item.name = String(payload.name);
+                }
+                memoryState.version = serverVersion + 1;
+                memoryState.lastUpdated = Date.now();
+                return sendJSON(res, 200, { ok: true, item, version: memoryState.version });
+            }
+            return sendJSON(res, 200, { ok: true });
+        }).catch(() => {});
         return;
     }
 
@@ -164,76 +210,58 @@ const server = http.createServer((req, res) => {
     if (pathname.startsWith('/api/catalog/')) {
         const itemId = decodeURIComponent(pathname.slice('/api/catalog/'.length));
         if (req.method === 'PATCH') {
-            let body = '';
-            req.on('data', chunk => { body += chunk; });
-            req.on('end', () => {
-                try {
-                    const payload = JSON.parse(body || '{}');
-                    const clientVersion = payload.version;
-                    const force = payload.force === true;
-                    const serverVersion = memoryState ? (Number(memoryState.version) || 1) : 1;
+            parseJsonWithLimit(req, res).then(payload => {
+                const clientVersion = payload.version;
+                const force = payload.force === true;
+                const serverVersion = memoryState ? (Number(memoryState.version) || 1) : 1;
 
-                    if (typeof clientVersion !== 'number') {
-                        return sendJSON(res, 400, { error: 'Falta parámetro version' });
+                if (typeof clientVersion !== 'number') {
+                    return sendJSON(res, 400, { error: 'Falta parámetro version' });
+                }
+                if (!force && clientVersion !== serverVersion) {
+                    return sendJSON(res, 409, { error: 'CONFLICT', serverVersion, changes: 0 });
+                }
+
+                if (memoryState && Array.isArray(memoryState.catalog)) {
+                    const item = memoryState.catalog.find(i => String(i.id) === String(itemId));
+                    if (!item) return sendJSON(res, 404, { error: 'Not found' });
+                    const changes = payload.changes || {};
+                    if (payload.price !== undefined && changes.price === undefined) changes.price = payload.price;
+                    if (payload.stock !== undefined && changes.stock === undefined) changes.stock = payload.stock;
+                    if (payload.name !== undefined && changes.name === undefined) changes.name = payload.name;
+                    Object.assign(item, changes);
+                    memoryState.version = serverVersion + 1;
+                    memoryState.lastUpdated = Date.now();
+                    return sendJSON(res, 200, { success: true, item, version: memoryState.version });
+                }
+                return sendJSON(res, 200, { success: true, version: serverVersion });
+            }).catch(() => {});
+            return;
+        }
+        if (req.method === 'DELETE') {
+            parseJsonWithLimit(req, res).then(payload => {
+                let clientVersion = payload.version;
+                let force = payload.force === true;
+                const serverVersion = memoryState ? (Number(memoryState.version) || 1) : 1;
+                if (typeof clientVersion !== 'number') {
+                    return sendJSON(res, 400, { error: 'Falta parámetro version' });
+                }
+
+                if (memoryState && Array.isArray(memoryState.catalog)) {
+                    const idx = memoryState.catalog.findIndex(i => String(i.id) === String(itemId));
+                    if (idx === -1) {
+                        return sendJSON(res, 200, { success: true, alreadyDeleted: true, version: serverVersion });
                     }
                     if (!force && clientVersion !== serverVersion) {
                         return sendJSON(res, 409, { error: 'CONFLICT', serverVersion, changes: 0 });
                     }
-
-                    if (memoryState && Array.isArray(memoryState.catalog)) {
-                        const item = memoryState.catalog.find(i => String(i.id) === String(itemId));
-                        if (!item) return sendJSON(res, 404, { error: 'Not found' });
-                        const changes = payload.changes || {};
-                        if (payload.price !== undefined && changes.price === undefined) changes.price = payload.price;
-                        if (payload.stock !== undefined && changes.stock === undefined) changes.stock = payload.stock;
-                        if (payload.name !== undefined && changes.name === undefined) changes.name = payload.name;
-                        Object.assign(item, changes);
-                        memoryState.version = serverVersion + 1;
-                        memoryState.lastUpdated = Date.now();
-                        return sendJSON(res, 200, { success: true, item, version: memoryState.version });
-                    }
-                    return sendJSON(res, 200, { success: true, version: serverVersion });
-                } catch(e) {
-                    return sendJSON(res, 400, { error: e.message });
+                    const removed = memoryState.catalog.splice(idx, 1)[0];
+                    memoryState.version = serverVersion + 1;
+                    memoryState.lastUpdated = Date.now();
+                    return sendJSON(res, 200, { success: true, deleted: removed, version: memoryState.version });
                 }
-            });
-            return;
-        }
-        if (req.method === 'DELETE') {
-            let body = '';
-            req.on('data', chunk => { body += chunk; });
-            req.on('end', () => {
-                try {
-                    let clientVersion = null;
-                    let force = false;
-                    if (body) {
-                        const payload = JSON.parse(body);
-                        clientVersion = payload.version;
-                        force = payload.force === true;
-                    }
-                    const serverVersion = memoryState ? (Number(memoryState.version) || 1) : 1;
-                    if (typeof clientVersion !== 'number') {
-                        return sendJSON(res, 400, { error: 'Falta parámetro version' });
-                    }
-
-                    if (memoryState && Array.isArray(memoryState.catalog)) {
-                        const idx = memoryState.catalog.findIndex(i => String(i.id) === String(itemId));
-                        if (idx === -1) {
-                            return sendJSON(res, 200, { success: true, alreadyDeleted: true, version: serverVersion });
-                        }
-                        if (!force && clientVersion !== serverVersion) {
-                            return sendJSON(res, 409, { error: 'CONFLICT', serverVersion, changes: 0 });
-                        }
-                        const removed = memoryState.catalog.splice(idx, 1)[0];
-                        memoryState.version = serverVersion + 1;
-                        memoryState.lastUpdated = Date.now();
-                        return sendJSON(res, 200, { success: true, deleted: removed, version: memoryState.version });
-                    }
-                    return sendJSON(res, 200, { success: true, version: serverVersion });
-                } catch(e) {
-                    return sendJSON(res, 400, { error: e.message });
-                }
-            });
+                return sendJSON(res, 200, { success: true, version: serverVersion });
+            }).catch(() => {});
             return;
         }
         return sendJSON(res, 405, { error: 'MethodNotAllowed' });
@@ -242,28 +270,21 @@ const server = http.createServer((req, res) => {
     // Endpoint v1.1.02: /api/moderation/report
     if (pathname === '/api/moderation/report') {
         if (req.method === 'POST') {
-            let body = '';
-            req.on('data', chunk => { body += chunk; });
-            req.on('end', () => {
-                try {
-                    const payload = JSON.parse(body);
-                    const record = {
-                        id: 'MOD-' + Date.now(),
-                        team_id: payload.team_id || 'UNKNOWN',
-                        student_alias: payload.student_alias || 'ESTUDIANTE',
-                        offending_text: payload.offending_text || '',
-                        matched_term: payload.matched_term || '',
-                        timestamp: payload.timestamp || new Date().toISOString()
-                    };
-                    if (memoryState) {
-                        memoryState.securityIncidents = memoryState.securityIncidents || [];
-                        memoryState.securityIncidents.unshift(record);
-                    }
-                    return sendJSON(res, 200, { ok: true, record });
-                } catch(e) {
-                    return sendJSON(res, 400, { error: e.message });
+            parseJsonWithLimit(req, res).then(payload => {
+                const record = {
+                    id: 'MOD-' + Date.now(),
+                    team_id: payload.team_id || 'UNKNOWN',
+                    student_alias: payload.student_alias || 'ESTUDIANTE',
+                    offending_text: payload.offending_text || '',
+                    matched_term: payload.matched_term || '',
+                    timestamp: payload.timestamp || new Date().toISOString()
+                };
+                if (memoryState) {
+                    memoryState.securityIncidents = memoryState.securityIncidents || [];
+                    memoryState.securityIncidents.unshift(record);
                 }
-            });
+                return sendJSON(res, 200, { ok: true, record });
+            }).catch(() => {});
             return;
         }
         if (req.method === 'GET') {
@@ -326,55 +347,49 @@ const server = http.createServer((req, res) => {
         }
 
         if (req.method === 'PATCH') {
-            let body = '';
-            req.on('data', chunk => { body += chunk; });
-            req.on('end', () => {
-                try {
-                    const { type, id, role, newPin, newCode } = JSON.parse(body);
-                    if (!type || !id || (type !== 'teacher' && type !== 'company')) {
-                        return sendJSON(res, 400, { error: 'InvalidParams' });
-                    }
-                    if (!memoryState) return sendJSON(res, 404, { error: 'NoState' });
-
-                    const now = Date.now();
-                    if (type === 'teacher') {
-                        memoryState.config = memoryState.config || {};
-                        memoryState.config.teachers = memoryState.config.teachers || {};
-                        if (!memoryState.config.teachers[id]) return sendJSON(res, 404, { error: 'TeacherNotFound' });
-                        memoryState.config.teachers[id].pin = String(newPin || '').trim();
-                        memoryState.config.teachers[id].pinUpdatedAt = now;
-                    } else {
-                        memoryState.companies = memoryState.companies || {};
-                        const co = memoryState.companies[id];
-                        if (!co) return sendJSON(res, 404, { error: 'CompanyNotFound' });
-                        co.authVault = co.authVault || { code: '', roles: {} };
-                        co.authVault.roles = co.authVault.roles || {};
-                        if (role) {
-                            const cleanPin = String(newPin || '').trim();
-                            if (role === 'AUXILIAR' && cleanPin === '') {
-                                delete co.authVault.roles['AUXILIAR'];
-                                if (co.roles) delete co.roles['AUXILIAR'];
-                            } else {
-                                co.authVault.roles[role] = encodeSecret(cleanPin);
-                                co.roles = co.roles || {};
-                                co.roles[role] = 'PROTECTED';
-                            }
-                        } else {
-                            const cleanCode = String(newPin || newCode || '').trim().toUpperCase();
-                            co.authVault.code = encodeSecret(cleanCode);
-                            delete co.accessCode;
-                        }
-                        co.updatedAt = now;
-                        co.authUpdatedAt = now;
-                    }
-
-                    memoryState.version = (Number(memoryState.version) || 0) + 1;
-                    memoryState.lastUpdated = now;
-                    return sendJSON(res, 200, { success: true, newVersion: memoryState.version });
-                } catch(err) {
-                    return sendJSON(res, 400, { error: err.message });
+            parseJsonWithLimit(req, res).then(body => {
+                const { type, id, role, newPin, newCode } = body;
+                if (!type || !id || (type !== 'teacher' && type !== 'company')) {
+                    return sendJSON(res, 400, { error: 'InvalidParams' });
                 }
-            });
+                if (!memoryState) return sendJSON(res, 404, { error: 'NoState' });
+
+                const now = Date.now();
+                if (type === 'teacher') {
+                    memoryState.config = memoryState.config || {};
+                    memoryState.config.teachers = memoryState.config.teachers || {};
+                    if (!memoryState.config.teachers[id]) return sendJSON(res, 404, { error: 'TeacherNotFound' });
+                    memoryState.config.teachers[id].pin = String(newPin || '').trim();
+                    memoryState.config.teachers[id].pinUpdatedAt = now;
+                } else {
+                    memoryState.companies = memoryState.companies || {};
+                    const co = memoryState.companies[id];
+                    if (!co) return sendJSON(res, 404, { error: 'CompanyNotFound' });
+                    co.authVault = co.authVault || { code: '', roles: {} };
+                    co.authVault.roles = co.authVault.roles || {};
+                    if (role) {
+                        const cleanPin = String(newPin || '').trim();
+                        if (role === 'AUXILIAR' && cleanPin === '') {
+                            delete co.authVault.roles['AUXILIAR'];
+                            if (co.roles) delete co.roles['AUXILIAR'];
+                        } else {
+                            co.authVault.roles[role] = encodeSecret(cleanPin);
+                            co.roles = co.roles || {};
+                            co.roles[role] = 'PROTECTED';
+                        }
+                    } else {
+                        const cleanCode = String(newPin || newCode || '').trim().toUpperCase();
+                        co.authVault.code = encodeSecret(cleanCode);
+                        delete co.accessCode;
+                    }
+                    co.updatedAt = now;
+                    co.authUpdatedAt = now;
+                }
+
+                memoryState.version = (Number(memoryState.version) || 0) + 1;
+                memoryState.lastUpdated = now;
+                return sendJSON(res, 200, { success: true, newVersion: memoryState.version });
+            }).catch(() => {});
             return;
         }
         return sendJSON(res, 405, { error: 'MethodNotAllowed' });
@@ -405,124 +420,116 @@ const server = http.createServer((req, res) => {
         }
 
         if (req.method === 'POST') {
-            let body = '';
-            req.on('data', chunk => { body += chunk; });
-            req.on('end', () => {
-                try {
-                    const incoming = JSON.parse(body);
-
-                    // Validación de código de empresa (Zero-Trust)
-                    if (incoming.action === 'validate_company_code') {
-                        if (memoryState && memoryState.companies) {
-                            const code = String(incoming.code || '').trim().toUpperCase();
-                            for (const cid in memoryState.companies) {
-                                const co = memoryState.companies[cid];
-                                let coCode = co.accessCode || '';
-                                if (co.authVault && co.authVault.code) {
-                                    try {
-                                        const b64 = co.authVault.code.startsWith('VLT_') ? co.authVault.code.slice(4) : co.authVault.code;
-                                        coCode = Buffer.from(b64, 'base64').toString('utf8');
-                                    } catch(e) {}
-                                }
-                                if (coCode.trim().toUpperCase() === code) {
-                                    const hasAux = !!(co.authVault?.roles?.AUXILIAR || co.roles?.AUXILIAR);
-                                    return sendJSON(res, 200, { matchedCoId: cid, companyMeta: { hasAux, name: co.name } });
-                                }
-                            }
-                        }
-                        return sendJSON(res, 404, { error: 'Company code not found' });
-                    }
-
-                    // Verificación de PIN de departamento en servidor (Zero-Trust)
-                    if (incoming.action === 'verify_student_login') {
-                        if (memoryState && memoryState.companies && memoryState.companies[incoming.coId]) {
-                            const co = memoryState.companies[incoming.coId];
-                            let expectedPin = '';
-                            if (co.authVault && co.authVault.roles && co.authVault.roles[incoming.role]) {
+            parseJsonWithLimit(req, res).then(incoming => {
+                // Validación de código de empresa (Zero-Trust)
+                if (incoming.action === 'validate_company_code') {
+                    if (memoryState && memoryState.companies) {
+                        const code = String(incoming.code || '').trim().toUpperCase();
+                        for (const cid in memoryState.companies) {
+                            const co = memoryState.companies[cid];
+                            let coCode = co.accessCode || '';
+                            if (co.authVault && co.authVault.code) {
                                 try {
-                                    const b64 = co.authVault.roles[incoming.role].startsWith('VLT_') ? co.authVault.roles[incoming.role].slice(4) : co.authVault.roles[incoming.role];
-                                    expectedPin = Buffer.from(b64, 'base64').toString('utf8').trim();
+                                    const b64 = co.authVault.code.startsWith('VLT_') ? co.authVault.code.slice(4) : co.authVault.code;
+                                    coCode = Buffer.from(b64, 'base64').toString('utf8');
                                 } catch(e) {}
-                            } else if (co.roles && co.roles[incoming.role]) {
-                                expectedPin = String(co.roles[incoming.role]).trim();
                             }
-                            const verified = Boolean(expectedPin && expectedPin === String(incoming.pin).trim());
-                            return sendJSON(res, verified ? 200 : 401, { verified, companyName: co.name });
-                        }
-                        return sendJSON(res, 401, { verified: false });
-                    }
-
-                    // Verificación de PIN docente en servidor (Zero-Trust)
-                    if (incoming.action === 'verify_teacher_login') {
-                        const defaultTeacherPins = {
-                            'COORD_MARIO': '0001',
-                            'COORD_ALEX': '0002',
-                            'FYQ': '0101',
-                            'ECO': '0202',
-                            'LYE': '0303',
-                            'LEN': '0404',
-                            'MAT': '0505',
-                            'ING': '0606'
-                        };
-                        const t = memoryState?.config?.teachers?.[incoming.role];
-                        const expectedPin = (t && t.pin) ? String(t.pin).trim() : (defaultTeacherPins[incoming.role] || '');
-                        const verified = Boolean(expectedPin && expectedPin === String(incoming.pin).trim());
-                        return sendJSON(res, verified ? 200 : 401, { verified });
-                    }
-
-                    // Control de versión optimista estricto sin bypass de versión 0 (v1.1.05)
-                    if (memoryState) {
-                        const incomingVersion = incoming.version;
-                        const serverVersion = Number(memoryState.version) || 0;
-                        if (typeof incomingVersion !== 'number' || isNaN(incomingVersion) || incomingVersion <= serverVersion) {
-                            return sendJSON(res, 409, {
-                                error: 'CONFLICT',
-                                message: 'Versión obsoleta o ausente. Conflicto de concurrencia detectado.',
-                                serverVersion: serverVersion,
-                                changes: 0
-                            });
-                        }
-                    }
-
-                    // FUSIÓN DE SECRETOS EN SERVIDOR (Server-Side Merging)
-                    if (memoryState) {
-                        if (incoming.config && incoming.config.teachers && memoryState.config?.teachers) {
-                            for (const key in incoming.config.teachers) {
-                                if (memoryState.config.teachers[key]?.pin) {
-                                    incoming.config.teachers[key].pin = memoryState.config.teachers[key].pin;
-                                }
-                            }
-                        } else if (memoryState.config) {
-                            incoming.config = incoming.config || {};
-                            incoming.config.teachers = memoryState.config.teachers;
-                        }
-                        if (incoming.companies && memoryState.companies) {
-                            for (const cid in incoming.companies) {
-                                const sCo = memoryState.companies[cid];
-                                if (sCo) {
-                                    if (sCo.authVault) incoming.companies[cid].authVault = sCo.authVault;
-                                    if (sCo.accessCode) incoming.companies[cid].accessCode = sCo.accessCode;
-                                    if (sCo.roles) incoming.companies[cid].roles = sCo.roles;
-                                }
+                            if (coCode.trim().toUpperCase() === code) {
+                                const hasAux = !!(co.authVault?.roles?.AUXILIAR || co.roles?.AUXILIAR);
+                                return sendJSON(res, 200, { matchedCoId: cid, companyMeta: { hasAux, name: co.name } });
                             }
                         }
                     }
-
-                    // Asignación de versión atómica
-                    const nextVersion = memoryState ? (Number(incoming.version || memoryState.version) + 1) : 1;
-                    incoming.version = nextVersion;
-                    incoming.lastUpdated = Date.now();
-                    memoryState = incoming;
-
-                    return sendJSON(res, 200, {
-                        success: true,
-                        version: nextVersion,
-                        lastUpdated: incoming.lastUpdated
-                    });
-                } catch (err) {
-                    return sendJSON(res, 400, { error: 'InvalidJSON', details: err.message });
+                    return sendJSON(res, 404, { error: 'Company code not found' });
                 }
-            });
+
+                // Verificación de PIN de departamento en servidor (Zero-Trust)
+                if (incoming.action === 'verify_student_login') {
+                    if (memoryState && memoryState.companies && memoryState.companies[incoming.coId]) {
+                        const co = memoryState.companies[incoming.coId];
+                        let expectedPin = '';
+                        if (co.authVault && co.authVault.roles && co.authVault.roles[incoming.role]) {
+                            try {
+                                const b64 = co.authVault.roles[incoming.role].startsWith('VLT_') ? co.authVault.roles[incoming.role].slice(4) : co.authVault.roles[incoming.role];
+                                expectedPin = Buffer.from(b64, 'base64').toString('utf8').trim();
+                            } catch(e) {}
+                        } else if (co.roles && co.roles[incoming.role]) {
+                            expectedPin = String(co.roles[incoming.role]).trim();
+                        }
+                        const verified = Boolean(expectedPin && expectedPin === String(incoming.pin).trim());
+                        return sendJSON(res, verified ? 200 : 401, { verified, companyName: co.name });
+                    }
+                    return sendJSON(res, 401, { verified: false });
+                }
+
+                // Verificación de PIN docente en servidor (Zero-Trust)
+                if (incoming.action === 'verify_teacher_login') {
+                    const defaultTeacherPins = {
+                        'COORD_MARIO': '0001',
+                        'COORD_ALEX': '0002',
+                        'FYQ': '0101',
+                        'ECO': '0202',
+                        'LYE': '0303',
+                        'LEN': '0404',
+                        'MAT': '0505',
+                        'ING': '0606'
+                    };
+                    const t = memoryState?.config?.teachers?.[incoming.role];
+                    const expectedPin = (t && t.pin) ? String(t.pin).trim() : (defaultTeacherPins[incoming.role] || '');
+                    const verified = Boolean(expectedPin && expectedPin === String(incoming.pin).trim());
+                    return sendJSON(res, verified ? 200 : 401, { verified });
+                }
+
+                // Control de versión optimista estricto sin bypass de versión 0 (v1.1.05)
+                if (memoryState) {
+                    const incomingVersion = incoming.version;
+                    const serverVersion = Number(memoryState.version) || 0;
+                    if (typeof incomingVersion !== 'number' || isNaN(incomingVersion) || incomingVersion <= serverVersion) {
+                        return sendJSON(res, 409, {
+                            error: 'CONFLICT',
+                            message: 'Versión obsoleta o ausente. Conflicto de concurrencia detectado.',
+                            serverVersion: serverVersion,
+                            changes: 0
+                        });
+                    }
+                }
+
+                // FUSIÓN DE SECRETOS EN SERVIDOR (Server-Side Merging)
+                if (memoryState) {
+                    if (incoming.config && incoming.config.teachers && memoryState.config?.teachers) {
+                        for (const key in incoming.config.teachers) {
+                            if (memoryState.config.teachers[key]?.pin) {
+                                incoming.config.teachers[key].pin = memoryState.config.teachers[key].pin;
+                            }
+                        }
+                    } else if (memoryState.config) {
+                        incoming.config = incoming.config || {};
+                        incoming.config.teachers = memoryState.config.teachers;
+                    }
+                    if (incoming.companies && memoryState.companies) {
+                        for (const cid in incoming.companies) {
+                            const sCo = memoryState.companies[cid];
+                            if (sCo) {
+                                if (sCo.authVault) incoming.companies[cid].authVault = sCo.authVault;
+                                if (sCo.accessCode) incoming.companies[cid].accessCode = sCo.accessCode;
+                                if (sCo.roles) incoming.companies[cid].roles = sCo.roles;
+                            }
+                        }
+                    }
+                }
+
+                // Asignación de versión atómica
+                const nextVersion = memoryState ? (Number(incoming.version || memoryState.version) + 1) : 1;
+                incoming.version = nextVersion;
+                incoming.lastUpdated = Date.now();
+                memoryState = incoming;
+
+                return sendJSON(res, 200, {
+                    success: true,
+                    version: nextVersion,
+                    lastUpdated: incoming.lastUpdated
+                });
+            }).catch(() => {});
             return;
         }
 

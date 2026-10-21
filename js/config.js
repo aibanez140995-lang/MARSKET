@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.02) ---
 
-const APP_VERSION = "1.1.05";
+const APP_VERSION = "1.1.07";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const REGULATORY_AGENCIES = {
@@ -157,8 +157,30 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.03
+// Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+        version: "1.1.07",
+        date: "Octubre 2026",
+        title: "Optimización Zero-Heap en Consultas SQLite y Eficiencia de Memoria",
+        highlights: [
+            { type: "RENDIMIENTO", text: "v1.1.07: Purga directa a nivel de motor SQLite (Zero-Heap) eliminando la instanciación innecesaria en memoria de servidor." },
+            { type: "CONCURRENCIA", text: "Validaciones Atómicas Quirúrgicas: Verificación de acceso y roles con lecturas escalares directas sin carga de estructuras globales." },
+            { type: "SISTEMA", text: "Estabilidad de Servidor: Reducción drástica del consumo de RAM por petición para soportar alta carga simultánea en hosting compartido." }
+        ]
+    },
+    {
+        version: "1.1.06",
+        date: "Octubre 2026",
+        title: "Infraestructura CDMON LAMP (Apache + PHP 8.x + SQLite3 WAL)",
+        highlights: [
+            { type: "SISTEMA", text: "v1.1.06: Despliegue directo en hosting CDMON (Apache + PHP 8.x + SQLite3 en modo WAL), eliminando dependencias de Cloudflare Workers/D1." },
+            { type: "RENDIMIENTO", text: "Telemetría ETag y HTTP 304: Consulta sub-milisegundo de versión con respuesta 304 sin payload (0 bytes) ante sondeos idénticos." },
+            { type: "CONCURRENCIA", text: "Soporte de Alta Concurrencia (180 alumnos): SQLite WAL con busy_timeout a 5000ms y serialización transaccional inmediata." },
+            { type: "SEGURIDAD", text: "Aislamiento de Almacenamiento: Base de datos marsket.sqlite blindada por .htaccess con rechazo explícito Require all denied." }
+        ]
+    },
+
     {
         version: "1.1.05",
         date: "Octubre 2026",

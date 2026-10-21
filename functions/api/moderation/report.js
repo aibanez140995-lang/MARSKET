@@ -1,6 +1,6 @@
 // functions/api/moderation/report.js
-// Registro silencioso de infracciones léxicas (v1.1.02)
-// Captura reportes silenciosos de transgresiones LOPD y lenguaje inapropiado para seguimiento pedagógico
+// Registro silencioso de infracciones léxicas (v1.1.06)
+// Captura reportes silenciosos de transgresiones LOPD de forma relacional paginada (Zero-Heap SRE)
 
 export async function onRequest(context) {
     return handleModerationReport(context);
@@ -10,6 +10,12 @@ export const onRequestPost = onRequest;
 
 async function handleModerationReport(context) {
     const { request, env } = context;
+
+    // Watchdog de Conexiones Muertas
+    if (request.signal?.aborted) {
+        return new Response(null, { status: 499 });
+    }
+
     const headers = {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
@@ -40,24 +46,17 @@ async function handleModerationReport(context) {
             };
 
             if (env.MARSKET_DB) {
-                // 1. Inserción opcional en tabla relacional si está provista en D1
+                // Inserción relacional atómica directa sin tocar ni mutar el mega-JSON de estado
                 try {
                     await env.MARSKET_DB.prepare(
-                        "INSERT INTO moderation_alerts (team_id, student_alias, offending_text, timestamp) VALUES (?, ?, ?, ?)"
-                    ).bind(record.team_id, record.student_alias, record.offending_text, record.timestamp).run();
+                        "CREATE TABLE IF NOT EXISTS moderation_alerts (id INTEGER PRIMARY KEY AUTOINCREMENT, team_id TEXT, student_alias TEXT, offending_text TEXT, matched_term TEXT, timestamp TEXT)"
+                    ).run();
                 } catch(e) {}
 
-                // 2. Persistencia en documento de estado 'current' para visibilidad reactiva inmediata
                 try {
-                    const { results } = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = 'current'").all();
-                    if (results && results.length > 0) {
-                        const cur = JSON.parse(results[0].data);
-                        cur.securityIncidents = Array.isArray(cur.securityIncidents) ? cur.securityIncidents : [];
-                        cur.securityIncidents.unshift(record);
-                        if (cur.securityIncidents.length > 200) cur.securityIncidents.pop();
-                        cur.lastUpdated = Date.now();
-                        await env.MARSKET_DB.prepare("INSERT OR REPLACE INTO state (id, data) VALUES ('current', ?)").bind(JSON.stringify(cur)).run();
-                    }
+                    await env.MARSKET_DB.prepare(
+                        "INSERT INTO moderation_alerts (team_id, student_alias, offending_text, matched_term, timestamp) VALUES (?, ?, ?, ?, ?)"
+                    ).bind(record.team_id, record.student_alias, record.offending_text, record.matched_term, record.timestamp).run();
                 } catch(e) {}
             }
 
@@ -66,13 +65,16 @@ async function handleModerationReport(context) {
 
         if (request.method === 'GET') {
             if (env.MARSKET_DB) {
+                const url = new URL(request.url);
+                const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10)));
                 try {
-                    const { results } = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = 'current'").all();
-                    if (results && results.length > 0) {
-                        const cur = JSON.parse(results[0].data);
-                        return new Response(JSON.stringify(cur.securityIncidents || []), { headers });
-                    }
-                } catch(e) {}
+                    const { results } = await env.MARSKET_DB.prepare(
+                        "SELECT id, team_id, student_alias, offending_text, matched_term, timestamp FROM moderation_alerts ORDER BY id DESC LIMIT ?"
+                    ).bind(limit).all();
+                    return new Response(JSON.stringify(results || []), { headers });
+                } catch(e) {
+                    return new Response(JSON.stringify([]), { headers });
+                }
             }
             return new Response(JSON.stringify([]), { headers });
         }

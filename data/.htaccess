@@ -1,0 +1,14 @@
+# ==============================================================================
+# MARS-KET OS - Protección Estricta del Directorio de Base de Datos
+# ==============================================================================
+
+# Apache 2.4+
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+
+# Apache 2.2 legacy fallback
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

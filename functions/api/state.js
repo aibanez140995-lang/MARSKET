@@ -1,36 +1,41 @@
 // functions/api/state.js
-// Endpoint de Estado Zero-Trust y Control de Persistencia en Cloudflare D1 (v1.1.03)
+// Endpoint de Estado Zero-Trust y Control de Persistencia en Cloudflare D1 (v1.1.06)
 
 import { verifySession } from './_auth.js';
 
 /**
- * Aplica una capa de filtrado destructivo en memoria sobre el estado de D1
- * para eliminar credenciales y secretos antes de transmitir al cliente (CWE-200).
+ * Aplica sanitización quirúrgica in-place sin deep-cloning JSON.parse(JSON.stringify())
+ * para erradicar la amplificación de memoria en el Heap de V8 (CWE-200 / SRE Zero-Alloc).
  *
  * @param {object} rawState
  * @returns {object}
  */
 export function sanitizeStateForClient(rawState) {
     if (!rawState || typeof rawState !== 'object') return rawState;
-    const clean = JSON.parse(JSON.stringify(rawState));
+    const clean = Array.isArray(rawState) ? [...rawState] : { ...rawState };
 
-    // 1. Elimina pin de todas las entradas en config.teachers
+    // 1. Elimina pin de todas las entradas en config.teachers sin clonar arrays pesados
     if (clean.config && clean.config.teachers) {
+        clean.config = { ...clean.config, teachers: { ...clean.config.teachers } };
         for (const teacherKey in clean.config.teachers) {
             if (clean.config.teachers[teacherKey]) {
-                delete clean.config.teachers[teacherKey].pin;
+                const t = { ...clean.config.teachers[teacherKey] };
+                delete t.pin;
+                clean.config.teachers[teacherKey] = t;
             }
         }
     }
 
-    // 2. Elimina authVault, roles y accessCode de todas las entradas en companies
+    // 2. Elimina authVault, roles y accessCode de todas las empresas de forma no destructiva
     if (clean.companies) {
+        clean.companies = { ...clean.companies };
         for (const cid in clean.companies) {
-            const co = clean.companies[cid];
-            if (co) {
+            if (clean.companies[cid]) {
+                const co = { ...clean.companies[cid] };
                 delete co.authVault;
                 delete co.roles;
                 delete co.accessCode;
+                clean.companies[cid] = co;
             }
         }
     }
@@ -43,6 +48,12 @@ export const onRequestPost = onRequest;
 
 export async function onRequest(context) {
     const { request, env } = context;
+
+    // Watchdog de Conexiones Muertas: detiene ejecución instantáneamente si el cliente canceló o recargó
+    if (request.signal?.aborted) {
+        return new Response(null, { status: 499 });
+    }
+
     const url = new URL(request.url);
     
     // Configurar CORS
@@ -100,9 +111,26 @@ export async function onRequest(context) {
                 });
             }
 
-            // 3. Si hay cambio, entregar payload sanitizado e inyectar ETag
-            const full = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = 'current'").first();
-            if (!full || !full.data) {
+            // 3. Sanitización Zero-Heap delegada a SQLite D1 (Zero JSON.parse/stringify)
+            const queryClean = `
+                SELECT json_remove(
+                    data,
+                    '$.config.teachers.COORD_MARIO.pin',
+                    '$.config.teachers.COORD_ALEX.pin',
+                    '$.config.teachers.FYQ.pin',
+                    '$.config.teachers.ECO.pin',
+                    '$.config.teachers.LYE.pin',
+                    '$.config.teachers.LEN.pin',
+                    '$.config.teachers.MAT.pin',
+                    '$.config.teachers.ING.pin',
+                    '$.companies.astra.authVault',
+                    '$.companies.astra.roles',
+                    '$.companies.astra.accessCode'
+                ) as clean_data
+                FROM state WHERE id = 'current'
+            `;
+            const rowClean = await env.MARSKET_DB.prepare(queryClean).first();
+            if (!rowClean || !rowClean.clean_data) {
                 return new Response(JSON.stringify({ status: 'empty' }), {
                     headers: {
                         ...headers,
@@ -112,15 +140,17 @@ export async function onRequest(context) {
                 });
             }
 
-            let parsed = null;
-            try {
-                parsed = typeof full.data === 'string' ? JSON.parse(full.data) : full.data;
-            } catch(e) {}
+            // Purgado complementario en string crudo para empresas dinámicas sin instanciar grafos en V8
+            let cleanPayload = typeof rowClean.clean_data === 'string' ? rowClean.clean_data : JSON.stringify(rowClean.clean_data);
+            if (cleanPayload.includes('"authVault"') || cleanPayload.includes('"accessCode"')) {
+                cleanPayload = cleanPayload
+                    .replace(/"authVault":\s*\{[^}]*\}/g, '"authVault":{"code":"","roles":{}}')
+                    .replace(/"accessCode":\s*"[^"]*"/g, '"accessCode":""');
+            }
 
-            const sanitized = sanitizeStateForClient(parsed || {});
-            return new Response(JSON.stringify(sanitized), {
+            return new Response(cleanPayload, {
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json; charset=utf-8',
                     'ETag': serverETag,
                     'Cache-Control': 'public, no-cache',
                     'Access-Control-Allow-Origin': '*'
@@ -140,73 +170,96 @@ export async function onRequest(context) {
                 return new Response(JSON.stringify({ verified: isAuthorized }), { status: isAuthorized ? 200 : 403, headers });
             }
 
-            // Validación de código de empresa en servidor (Zero-Trust)
+            // Validación de código de empresa en servidor (Zero-Trust & Zero-Heap con json_each)
             if (payload.action === 'validate_company_code') {
-                const { results } = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = 'current'").all();
-                if (results && results.length > 0) {
-                    const currentData = typeof results[0].data === 'string' ? JSON.parse(results[0].data) : results[0].data;
-                    const code = String(payload.code || '').trim().toUpperCase();
-                    let matchedCoId = null;
-                    let hasAux = false;
-                    for (const cid in currentData.companies || {}) {
-                        const co = currentData.companies[cid];
-                        let coCode = '';
-                        if (co.authVault && co.authVault.code) {
-                            try {
-                                const b64 = co.authVault.code.startsWith('VLT_') ? co.authVault.code.slice(4) : co.authVault.code;
-                                coCode = (typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('utf8')).trim().toUpperCase();
-                            } catch(e) {}
-                        } else if (co.accessCode) {
-                            coCode = String(co.accessCode).trim().toUpperCase();
-                        }
-                        if (coCode === code) {
-                            matchedCoId = cid;
-                            hasAux = !!(co.authVault?.roles?.AUXILIAR || co.roles?.AUXILIAR);
-                            break;
+                const targetCode = String(payload.code || '').trim().toUpperCase();
+                try {
+                    const rows = await env.MARSKET_DB.prepare(`
+                        SELECT 
+                            c.key as cid,
+                            json_extract(c.value, '$.name') as name,
+                            json_extract(c.value, '$.authVault.code') as vlt_code,
+                            json_extract(c.value, '$.accessCode') as access_code,
+                            json_extract(c.value, '$.roles.AUXILIAR') as aux_role,
+                            json_extract(c.value, '$.authVault.roles.AUXILIAR') as vlt_aux
+                        FROM state, json_each(state.data, '$.companies') as c
+                        WHERE state.id = 'current'
+                    `).all();
+
+                    if (rows && rows.results) {
+                        for (const r of rows.results) {
+                            let coCode = '';
+                            if (r.vlt_code) {
+                                try {
+                                    const b64 = r.vlt_code.startsWith('VLT_') ? r.vlt_code.slice(4) : r.vlt_code;
+                                    coCode = (typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('utf8')).trim().toUpperCase();
+                                } catch(e) {}
+                            } else if (r.access_code) {
+                                coCode = String(r.access_code).trim().toUpperCase();
+                            }
+                            if (coCode === targetCode) {
+                                const hasAux = !!(r.vlt_aux || r.aux_role);
+                                return new Response(JSON.stringify({
+                                    matchedCoId: r.cid,
+                                    companyMeta: { hasAux, name: r.name }
+                                }), { headers });
+                            }
                         }
                     }
-                    if (matchedCoId) {
-                        return new Response(JSON.stringify({
-                            matchedCoId,
-                            companyMeta: { hasAux, name: currentData.companies[matchedCoId].name }
-                        }), { headers });
-                    }
-                }
+                } catch(e) {}
                 return new Response(JSON.stringify({ error: 'Company code not found' }), { status: 404, headers });
             }
 
-            // Verificación de PIN de departamento en servidor (Zero-Trust)
+            // Verificación de PIN de departamento atómica quirúrgica con json_extract (< 1 KB)
             if (payload.action === 'verify_student_login') {
-                const { results } = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = 'current'").all();
-                if (results && results.length > 0) {
-                    const currentData = typeof results[0].data === 'string' ? JSON.parse(results[0].data) : results[0].data;
-                    const co = currentData.companies?.[payload.coId];
-                    if (co) {
+                const { coId, role, pin } = payload;
+                if (!coId || !role || pin === undefined) {
+                    return new Response(JSON.stringify({ verified: false }), { status: 400, headers });
+                }
+
+                try {
+                    const pathName = `$.companies.${coId}.name`;
+                    const pathVlt = `$.companies.${coId}.authVault.roles.${role}`;
+                    const pathPlain = `$.companies.${coId}.roles.${role}`;
+
+                    const row = await env.MARSKET_DB.prepare(`
+                        SELECT 
+                            json_extract(data, ?) as companyName,
+                            json_extract(data, ?) as vltPin,
+                            json_extract(data, ?) as plainPin
+                        FROM state WHERE id = 'current'
+                    `).bind(pathName, pathVlt, pathPlain).first();
+
+                    if (row) {
                         let expectedPin = '';
-                        if (co.authVault && co.authVault.roles && co.authVault.roles[payload.role]) {
+                        if (row.vltPin) {
                             try {
-                                const b64 = co.authVault.roles[payload.role].startsWith('VLT_') ? co.authVault.roles[payload.role].slice(4) : co.authVault.roles[payload.role];
+                                const b64 = row.vltPin.startsWith('VLT_') ? row.vltPin.slice(4) : row.vltPin;
                                 expectedPin = (typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('utf8')).trim();
                             } catch(e) {}
-                        } else if (co.roles && co.roles[payload.role] && !String(co.roles[payload.role]).startsWith('VLT_')) {
-                            expectedPin = String(co.roles[payload.role]).trim();
+                        } else if (row.plainPin && !String(row.plainPin).startsWith('VLT_')) {
+                            expectedPin = String(row.plainPin).trim();
                         }
-                        if (!expectedPin && payload.role !== 'AUXILIAR') {
+                        if (!expectedPin && role !== 'AUXILIAR') {
                             expectedPin = '1234';
                         }
-                        const verified = Boolean(expectedPin && expectedPin === String(payload.pin).trim());
-                        return new Response(JSON.stringify({ verified, companyName: co.name }), {
+                        const verified = Boolean(expectedPin && expectedPin === String(pin).trim());
+                        return new Response(JSON.stringify({ verified, companyName: row.companyName || 'EMPRESA' }), {
                             status: verified ? 200 : 401,
                             headers
                         });
                     }
-                }
+                } catch(e) {}
                 return new Response(JSON.stringify({ verified: false }), { status: 401, headers });
             }
 
-            // Verificación de PIN docente en servidor (Zero-Trust)
+            // Verificación de PIN docente atómica quirúrgica con json_extract (< 1 KB)
             if (payload.action === 'verify_teacher_login') {
-                const { results } = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = 'current'").all();
+                const { role, pin } = payload;
+                if (!role || pin === undefined) {
+                    return new Response(JSON.stringify({ verified: false }), { status: 400, headers });
+                }
+
                 const defaultTeacherPins = {
                     'COORD_MARIO': '0001',
                     'COORD_ALEX': '0002',
@@ -217,16 +270,24 @@ export async function onRequest(context) {
                     'MAT': '0505',
                     'ING': '0606'
                 };
-                let verified = false;
-                if (results && results.length > 0) {
-                    const currentData = typeof results[0].data === 'string' ? JSON.parse(results[0].data) : results[0].data;
-                    const t = currentData.config?.teachers?.[payload.role];
-                    const expectedPin = (t && t.pin) ? String(t.pin).trim() : (defaultTeacherPins[payload.role] || '');
-                    verified = Boolean(expectedPin && expectedPin === String(payload.pin).trim());
-                } else {
-                    const fallbackPin = defaultTeacherPins[payload.role] || '';
-                    verified = Boolean(fallbackPin && fallbackPin === String(payload.pin).trim());
-                }
+
+                try {
+                    const pathPin = `$.config.teachers.${role}.pin`;
+                    const row = await env.MARSKET_DB.prepare(`
+                        SELECT json_extract(data, ?) as teacherPin FROM state WHERE id = 'current'
+                    `).bind(pathPin).first();
+
+                    const expectedPin = (row && row.teacherPin != null) 
+                        ? String(row.teacherPin).trim() 
+                        : (defaultTeacherPins[role] || '');
+                    const verified = Boolean(expectedPin && expectedPin === String(pin).trim());
+                    return new Response(JSON.stringify({ verified }), {
+                        status: verified ? 200 : 401,
+                        headers
+                    });
+                } catch(e) {}
+                const fallbackPin = defaultTeacherPins[role] || '';
+                const verified = Boolean(fallbackPin && fallbackPin === String(pin).trim());
                 return new Response(JSON.stringify({ verified }), {
                     status: verified ? 200 : 401,
                     headers

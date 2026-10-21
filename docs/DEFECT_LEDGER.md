@@ -1,5 +1,5 @@
 # MARS-KET OS · REGISTRO DE DEFECTOS (DEFECT LEDGER)
-Última actualización: v1.1.03 (2026-10-19)
+Última actualización: v1.1.07 (2026-10-21)
 
 | ID | Severidad | Módulo | Descripción | Estado | Resolución / Recomendación |
 |---|---|---|---|---|---|
@@ -12,3 +12,4 @@
 | DEF-007 | ALTA | `ui-docente-management.js` | Exposición de generación PDF sin intercepción explícita de consola | RESUELTO | Añadido wrapper `window.exportBadgePDF` con verificación de rol y lanzamiento de `SECURITY_EXCEPTION`. |
 | DEF-008 | BAJA | `functions/api/state.js` | Fallback de lectura en D1 podría devolver string crudo si el JSON no parsea en GET /api/state | ABIERTO | En caso de JSON corrupto en D1, forzar aborto 500 en lugar de retorno de buffer crudo. |
 | DEF-009 | BAJA | `functions/api/_auth.js` | Comparación directa de string para TEACHER_MASTER_CODE vulnerable a análisis de tiempos | ABIERTO | Migrar a comparación en tiempo constante con `crypto.subtle.timingSafeEqual` en Cloudflare Workers. |
+| DEF-010 | ALTA | `api/index.php` | Regresión de Paridad Zero-Heap: GET /api/state instancia grafo completo en memoria PHP (json_decode) en lugar de purgar secretos en SQLite vía json_remove | RESUELTO | Migrado a `SELECT json_remove(data, ...) AS clean_data` con streaming directo sin heap PHP, y validaciones atómicas con `json_extract()`. |

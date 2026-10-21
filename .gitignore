@@ -1,0 +1,15 @@
+# Dependencias y temporales
+node_modules/
+.wrangler/
+*.zip
+*.log
+
+# Bases de datos SQLite locales en tiempo de ejecución
+data/*.sqlite
+data/*.sqlite-wal
+data/*.sqlite-shm
+data/*.db
+
+# Scratch temporales de pruebas
+scratch/
+test-results/
