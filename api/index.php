@@ -563,6 +563,280 @@ try {
     }
 
     // -------------------------------------------------------------------------
+        // -------------------------------------------------------------------------
+    // A2. ENDPOINT: /api/company/:cid/version (Sondeo Reactivo 3s ETag - v1.1.11)
+    // -------------------------------------------------------------------------
+    if (preg_match('#^company/([^/]+)/version$#', $endpoint, $matches)) {
+        $cid = $matches[1];
+        if ($method === 'OPTIONS') { http_response_code(200); exit; }
+
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS company_state (
+                company_id VARCHAR(100) PRIMARY KEY,
+                data LONGTEXT NOT NULL,
+                version INT NOT NULL DEFAULT 1,
+                updated_at BIGINT NOT NULL
+            )
+        ");
+
+        $stmt = $pdo->prepare("SELECT version, updated_at FROM company_state WHERE company_id = :cid");
+        $stmt->execute([':cid' => $cid]);
+        $row = $stmt->fetch();
+
+        $version = 1;
+        $updatedAt = 0;
+        if ($row) {
+            $version = (int)$row['version'];
+            $updatedAt = (int)$row['updated_at'];
+        } else {
+            $stmtLegacy = $pdo->prepare("SELECT json_extract(data, '$.version') AS v, json_extract(data, '$.companies.' || :cid || '.updatedAt') AS u FROM state WHERE id = 'current'");
+            $stmtLegacy->execute([':cid' => $cid]);
+            $lRow = $stmtLegacy->fetch();
+            if ($lRow) {
+                $version = (int)($lRow['v'] ?? 1);
+                $updatedAt = (int)($lRow['u'] ?? 0);
+            }
+        }
+
+        $serverETag = 'W/"co-' . $cid . '-' . $version . '-' . $updatedAt . '"';
+        $clientETag = $_SERVER['HTTP_IF_NONE_MATCH'] ?? '';
+
+        if ($clientETag === $serverETag) {
+            header('ETag: ' . $serverETag);
+            header('Cache-Control: public, no-cache');
+            http_response_code(304);
+            exit;
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+        header('ETag: ' . $serverETag);
+        header('Cache-Control: public, no-cache');
+        if ($method === 'HEAD') { exit; }
+
+        echo json_encode([
+            'companyId' => $cid,
+            'version' => $version,
+            'updatedAt' => $updatedAt,
+            'etag' => $serverETag
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
+    // A3. ENDPOINT: /api/company/:cid/action (Mutación Atómica Particionada - v1.1.11)
+    // -------------------------------------------------------------------------
+    if (preg_match('#^company/([^/]+)/action$#', $endpoint, $matches)) {
+        $cid = $matches[1];
+        if ($method === 'OPTIONS') { http_response_code(200); exit; }
+        if ($method !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['error' => 'Method Not Allowed']);
+            exit;
+        }
+
+        $auth = verifySession();
+        $isCoord = !empty($auth['authorized']);
+        $isStudentOfCompany = !empty($auth['isStudent']) && ($auth['coId'] === $cid);
+
+        if (!$isCoord && !$isStudentOfCompany) {
+            http_response_code(403);
+            echo json_encode(['error' => 'UNAUTHORIZED_MUTATION'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $payload = json_decode($rawInput, true);
+        if (!is_array($payload) || empty($payload['action'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'INVALID_PAYLOAD']);
+            exit;
+        }
+
+        $action = strtoupper((string)$payload['action']);
+
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS company_state (
+                company_id VARCHAR(100) PRIMARY KEY,
+                data LONGTEXT NOT NULL,
+                version INT NOT NULL DEFAULT 1,
+                updated_at BIGINT NOT NULL
+            )
+        ");
+
+        $stmt = $pdo->prepare("SELECT data, version FROM company_state WHERE company_id = :cid");
+        $stmt->execute([':cid' => $cid]);
+        $row = $stmt->fetch();
+
+        $co = null;
+        $version = 1;
+        if ($row && !empty($row['data'])) {
+            $co = json_decode($row['data'], true);
+            $version = (int)$row['version'];
+        }
+
+        if (!$co) {
+            $stmtLegacy = $pdo->query("SELECT data FROM state WHERE id = 'current'");
+            $sRow = $stmtLegacy->fetch();
+            if ($sRow && !empty($sRow['data'])) {
+                $legacyData = json_decode($sRow['data'], true);
+                if (!empty($legacyData['companies'][$cid])) {
+                    $co = $legacyData['companies'][$cid];
+                    $version = (int)($legacyData['version'] ?? 1);
+                }
+            }
+        }
+
+        if (!$co) {
+            http_response_code(404);
+            echo json_encode(['error' => 'COMPANY_NOT_FOUND']);
+            exit;
+        }
+
+        $now = round(microtime(true) * 1000);
+        $co['ledger'] = is_array($co['ledger'] ?? null) ? $co['ledger'] : [];
+        $co['cart'] = is_array($co['cart'] ?? null) ? $co['cart'] : [];
+        $co['orders'] = is_array($co['orders'] ?? null) ? $co['orders'] : [];
+
+        $calcBalance = function(array $ledger): float {
+            $initial = 2400.0;
+            $seen = [];
+            $deltaSum = 0.0;
+            foreach ($ledger as $tx) {
+                $id = (string)($tx['id'] ?? $tx['tx_id'] ?? '');
+                if ($id === '' || isset($seen[$id])) continue;
+                $seen[$id] = true;
+                $d = (float)($tx['delta'] ?? 0);
+                $deltaSum += $d;
+            }
+            return round($initial + $deltaSum, 2);
+        };
+
+        switch ($action) {
+            case 'EXECUTE_PURCHASE':
+                $items = !empty($payload['items']) && is_array($payload['items']) ? $payload['items'] : $co['cart'];
+                if (empty($items)) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'EMPTY_CART']);
+                    exit;
+                }
+                $totalPurchase = 0.0;
+                foreach ($items as $it) {
+                    $p = (float)($it['price'] ?? 0);
+                    $q = (int)($it['qty'] ?? 1);
+                    $totalPurchase += round($p * $q, 2);
+                }
+                $curBal = $calcBalance($co['ledger']);
+                if ($curBal < $totalPurchase) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'INSUFFICIENT_FUNDS', 'currentBalance' => $curBal, 'required' => $totalPurchase]);
+                    exit;
+                }
+                $orderId = (string)($payload['orderId'] ?? ('ORD-' . substr((string)$now, -4)));
+                $txId = 'TX-' . strtoupper(base_convert((string)$now, 10, 36)) . '-' . strtoupper(substr(md5(uniqid()), 0, 4));
+                $concept = (string)($payload['concept'] ?? ("Compra Catálogo (" . count($items) . " ítems) - Pedido #" . $orderId));
+                array_unshift($co['ledger'], [
+                    'id' => $txId,
+                    'tx_id' => $txId,
+                    'date' => date('d/m/Y, H:i:s'),
+                    'concept' => $concept,
+                    'dept' => $payload['dept'] ?? 'TECNICO',
+                    'delta' => -$totalPurchase,
+                    'timestamp' => $now,
+                    'orderId' => $orderId
+                ]);
+                array_unshift($co['orders'], [
+                    'id' => $orderId,
+                    'items' => $items,
+                    'total' => $totalPurchase,
+                    'date' => date('c'),
+                    'status' => 'ENTREGADO'
+                ]);
+                $co['cart'] = [];
+                break;
+
+            case 'ADD_LEDGER_TX':
+                $delta = round((float)($payload['delta'] ?? 0), 2);
+                $txId = (string)($payload['txId'] ?? ('TX-' . strtoupper(base_convert((string)$now, 10, 36)) . '-' . strtoupper(substr(md5(uniqid()), 0, 4))));
+                array_unshift($co['ledger'], [
+                    'id' => $txId,
+                    'tx_id' => $txId,
+                    'date' => date('d/m/Y, H:i:s'),
+                    'concept' => $payload['concept'] ?? 'Ajuste financiero',
+                    'dept' => $payload['dept'] ?? 'FINANZAS',
+                    'delta' => $delta,
+                    'timestamp' => $now
+                ]);
+                break;
+
+            case 'UPDATE_MARKETING':
+                $co['marketingCampaigns'] = is_array($co['marketingCampaigns'] ?? null) ? $co['marketingCampaigns'] : [];
+                if (!empty($payload['campaign'])) {
+                    array_unshift($co['marketingCampaigns'], $payload['campaign']);
+                }
+                break;
+
+            case 'SUBMIT_DELIVERABLE':
+                $co['deliverables'] = is_array($co['deliverables'] ?? null) ? $co['deliverables'] : [];
+                if (!empty($payload['key'])) {
+                    $co['deliverables'][$payload['key']] = $payload['deliverableData'] ?? $payload['url'] ?? true;
+                }
+                break;
+
+            case 'GENERIC_PATCH':
+                $allowed = ['slogan', 'valueProposition', 'cart', 'votingMotions', 'flightTests', 'bom'];
+                foreach ($allowed as $k) {
+                    if (isset($payload[$k])) {
+                        $co[$k] = $payload[$k];
+                    }
+                }
+                break;
+
+            default:
+                http_response_code(400);
+                echo json_encode(['error' => 'UNKNOWN_ACTION', 'action' => $action]);
+                exit;
+        }
+
+        $co['balance'] = $calcBalance($co['ledger']);
+        $co['updatedAt'] = $now;
+        $newVersion = $version + 1;
+
+        $saveStmt = $pdo->prepare("
+            INSERT OR REPLACE INTO company_state (company_id, data, version, updated_at)
+            VALUES (:cid, :data, :version, :updated_at)
+        ");
+        $saveStmt->execute([
+            ':cid' => $cid,
+            ':data' => json_encode($co, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ':version' => $newVersion,
+            ':updated_at' => $now
+        ]);
+
+        try {
+            $syncStmt = $pdo->prepare("
+                UPDATE state
+                SET data = json_set(data, '$.companies.' || :cid, json(:co_json), '$.version', :ver)
+                WHERE id = 'current'
+            ");
+            $syncStmt->execute([
+                ':cid' => $cid,
+                ':co_json' => json_encode($co, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                ':ver' => $newVersion
+            ]);
+        } catch(\Exception $e) {}
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'success' => true,
+            'companyId' => $cid,
+            'version' => $newVersion,
+            'balance' => $co['balance'],
+            'action' => $action,
+            'updatedAt' => $now
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
     // B. ENDPOINT: /api/moderation/report
     // -------------------------------------------------------------------------
     if ($endpoint === 'moderation/report') {

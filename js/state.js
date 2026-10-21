@@ -49,10 +49,35 @@ const state = {
     storageKey: 'marsket_v10_PWA',
     sessionKey: 'marsket_session_v1',
     isCloudOnline: false, isSyncing: false, syncTimer: null, heartbeatTimer: null,
-    pausePolling: false, _broadcastChannel: null, lastETag: null,
+    pausePolling: false, _broadcastChannel: null, lastETag: null, lastCompanyETag: null,
     consecutiveNetworkFailures: 0, isOfflineContained: false, _listenersAttached: false,
     _hasWarnedCloudNetwork: false,
     _vaultKey: 'MARS_AEE_2026_SECRET_KEY',
+
+    calculateBalance(co) {
+        if (!co) return 2400.0;
+        const INITIAL_CAPITAL = 2400.0;
+        if (!Array.isArray(co.ledger) || co.ledger.length === 0) {
+            return INITIAL_CAPITAL;
+        }
+        const seenTx = new Set();
+        let totalDelta = 0;
+        for (const tx of co.ledger) {
+            const id = String(tx?.id || tx?.tx_id || '');
+            if (!id || seenTx.has(id)) continue;
+            seenTx.add(id);
+            const delta = Number(tx.delta);
+            if (!isNaN(delta)) {
+                totalDelta += delta;
+            }
+        }
+        return Math.round((INITIAL_CAPITAL + totalDelta + Number.EPSILON) * 100) / 100;
+    },
+
+    recalculateBalance(co) {
+        if (!co) return;
+        co.balance = this.calculateBalance(co);
+    },
 
     encodeSecret(str) {
         if (!str) return '';
@@ -210,7 +235,8 @@ const state = {
             if (!co) continue;
             
             co.name = co.name || k.toUpperCase();
-            co.balance = !isNaN(Number(co.balance)) ? Number(co.balance) : 2400;
+            co.ledger = Array.isArray(co.ledger) ? co.ledger : [];
+            co.balance = this.calculateBalance(co);
             co.updatedAt = co.updatedAt || Date.now();
             co.authUpdatedAt = Number(co.authUpdatedAt) || 0;
             co.roles = co.roles || { CEO:'1234', TECNICO:'1234', FINANZAS:'1234', MARKETING:'1234', OPERACIONES_IA:'1234' };
@@ -404,6 +430,7 @@ const state = {
                     arraysToMerge.forEach(arrName => {
                         merged.companies[k][arrName] = mergeArraysLocalDominant(lCo[arrName], sCo[arrName]);
                     });
+                    merged.companies[k].balance = this.calculateBalance(merged.companies[k]);
                     if (lCo.nameChangeRequest && sCo.nameChangeRequest) {
                         const lReq = lCo.nameChangeRequest;
                         const sReq = sCo.nameChangeRequest;
@@ -476,9 +503,11 @@ const state = {
                     arraysToMerge.forEach(arrName => {
                         sCo[arrName] = mergeArrays(sCo[arrName], lCo[arrName]);
                     });
+                    sCo.balance = this.calculateBalance(sCo);
                 }
             } else if (lCo && !sCo && !localData._deletedCompanies?.[k]) {
                 merged.companies[k] = lCo;
+                merged.companies[k].balance = this.calculateBalance(merged.companies[k]);
             }
         }
         
@@ -832,14 +861,14 @@ const state = {
             if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
             this.heartbeatTimer = setInterval(() => {
                 if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-                    this.fetchFromCloud();
+                    this.checkFastVersion();
                 }
-            }, 12000);
+            }, 3000);
 
             if (typeof document !== 'undefined') {
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'visible') {
-                        this.fetchFromCloud();
+                        this.checkFastVersion();
                     }
                 });
             }
@@ -880,9 +909,114 @@ const state = {
         if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
         this.heartbeatTimer = setInterval(() => {
             if (!this.pausePolling && typeof document !== 'undefined' && document.visibilityState === 'visible') {
-                this.fetchFromCloud();
+                this.checkFastVersion();
             }
-        }, 12000);
+        }, 3000);
+    },
+
+    async checkFastVersion() {
+        if (this.pausePolling) return;
+        if (!this.user || !this.user.coId) {
+            // Sondeo de estado general para roles de coordinación docente o invitados
+            return await this.fetchFromCloud();
+        }
+
+        const cid = this.user.coId;
+        const endpoint = `/api/company/${encodeURIComponent(cid)}/version`;
+        const headers = { 'Cache-Control': 'no-cache' };
+        if (this.lastCompanyETag) {
+            headers['If-None-Match'] = this.lastCompanyETag;
+        }
+
+        try {
+            const res = await fetch(endpoint, { method: 'GET', headers, cache: 'no-store' });
+            
+            // HTTP 304 Not Modified: 0 bytes consumidos, sincronización confirmada
+            if (res.status === 304) {
+                this.isCloudOnline = true;
+                this.consecutiveNetworkFailures = 0;
+                if (this.isOfflineContained) this.setOfflineContainment(false);
+                return true;
+            }
+
+            if (res.ok) {
+                const info = await res.json();
+                const etag = res.headers.get('ETag') || info.etag;
+                this.lastCompanyETag = etag;
+                this.isCloudOnline = true;
+                this.consecutiveNetworkFailures = 0;
+                if (this.isOfflineContained) this.setOfflineContainment(false);
+
+                const localCo = this.data.companies?.[cid];
+                const localUpdated = Number(localCo?.updatedAt || 0);
+                const remoteUpdated = Number(info.updatedAt || 0);
+
+                // Si la versión remota es posterior a la local, sincronizar estado completo
+                if (remoteUpdated > localUpdated || !this.lastETag) {
+                    await this.fetchFromCloud();
+                }
+                return true;
+            } else {
+                return await this.fetchFromCloud();
+            }
+        } catch (e) {
+            this.consecutiveNetworkFailures++;
+            if (this.consecutiveNetworkFailures >= 2) {
+                this.isCloudOnline = false;
+                this.setOfflineContainment(true);
+            }
+            return false;
+        }
+    },
+
+    async executeAction(actionName, payload = {}) {
+        const coId = this.user?.coId;
+        if (!coId) {
+            console.warn("[ACTION] executeAction requiere una sesión activa con startup asociada.");
+            return { success: false, error: 'NO_ACTIVE_COMPANY' };
+        }
+
+        const endpoint = `/api/company/${encodeURIComponent(coId)}/action`;
+        const headers = { 'Content-Type': 'application/json' };
+        if (typeof auth !== 'undefined' && typeof auth.getSessionToken === 'function') {
+            const token = auth.getSessionToken();
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        try {
+            this.isSyncing = true;
+            try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
+
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ action: actionName, payload })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                this.isCloudOnline = true;
+                this.consecutiveNetworkFailures = 0;
+                if (this.isOfflineContained) this.setOfflineContainment(false);
+
+                if (data.balance !== undefined && this.data.companies?.[coId]) {
+                    this.data.companies[coId].updatedAt = data.updatedAt || Date.now();
+                }
+                this.lastCompanyETag = `W/"co-${coId}-${data.version}-${data.updatedAt}"`;
+                await this.fetchFromCloud();
+                return { success: true, data };
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                console.warn("[ACTION] Error devuelto por servidor en mutación atómica:", errData);
+                return { success: false, error: errData.error || res.statusText };
+            }
+        } catch(err) {
+            console.error("[ACTION] Excepción de red en executeAction:", err);
+            return { success: false, error: err.message };
+        } finally {
+            this.isSyncing = false;
+            try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
+        }
     },
 
     async fetchFromCloud() {
@@ -1121,6 +1255,9 @@ const state = {
                 this.consecutiveNetworkFailures = 0;
                 if (res.status === 403) {
                     console.warn("[SECURITY] Petición pushToCloud rechazada por permisos (HTTP 403).");
+                    if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
+                        ui.notify("⛔ Error de sincronización (HTTP 403): Sesión no autorizada para persistir en la nube. Recarga o inicia sesión de nuevo.", "error");
+                    }
                 }
             }
         } catch(err) { 
@@ -1151,12 +1288,27 @@ const state = {
     addToLedger(coId, concept, dept, delta) {
         const co = this.data.companies[coId];
         if (!co) return; 
-        const currentBal = Math.round((Number(co.balance || 0) + Number.EPSILON) * 100) / 100;
         const deltaNum = Math.round((Number(delta || 0) + Number.EPSILON) * 100) / 100;
-        co.balance = Math.round(((currentBal + deltaNum) + Number.EPSILON) * 100) / 100;
-        co.updatedAt = Date.now();
-        co.ledger = co.ledger || [];
-        co.ledger.unshift({ id: 'TX-' + Math.random().toString(36).substr(2, 5).toUpperCase(), date: new Date().toLocaleString(), concept, dept, delta: deltaNum, final: co.balance });
+        co.ledger = Array.isArray(co.ledger) ? co.ledger : [];
+        const now = Date.now();
+        const txId = 'TX-' + now.toString(36).toUpperCase() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+        
+        co.ledger.unshift({
+            id: txId,
+            tx_id: txId,
+            date: new Date().toLocaleString(),
+            concept,
+            dept,
+            delta: deltaNum,
+            timestamp: now,
+            final: 0
+        });
+
+        this.recalculateBalance(co);
+        if (co.ledger[0]) {
+            co.ledger[0].final = co.balance;
+        }
+        co.updatedAt = now;
         this.save();
     }
 };
