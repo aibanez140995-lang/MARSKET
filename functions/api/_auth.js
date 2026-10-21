@@ -84,12 +84,13 @@ export async function verifySession(request, env = {}) {
         } else if (decoded.startsWith('S|')) {
             const parts = decoded.split('|');
             return {
-                authorized: false, // Las credenciales de startup/alumno no autorizan mutaciones administrativas
-                role: parts[2] || '',
+                authorized: false, // No es administrador
+                isCoordinator: false,
+                isStudent: true, // Autorizado para mutar su propia startup
+                role: parts[2] || 'student',
                 coId: parts[1] || '',
                 isAdmin: false,
-                raw: decoded,
-                error: 'STUDENT_ROLE_UNAUTHORIZED'
+                raw: decoded
             };
         }
 

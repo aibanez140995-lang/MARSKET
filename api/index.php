@@ -101,7 +101,15 @@ function verifySession(): array {
     }
 
     if (strpos($decoded, 'S|') === 0) {
-        return ['authorized' => false, 'isCoordinator' => false, 'role' => 'student', 'isAdmin' => false];
+        $parts = explode('|', $decoded);
+        return [
+            'authorized' => false,
+            'isCoordinator' => false,
+            'isStudent' => true,
+            'role' => $parts[2] ?? 'student',
+            'coId' => $parts[1] ?? '',
+            'isAdmin' => false
+        ];
     }
 
     if (strpos($lower, 'coord') !== false || $lower === 'coordinador' || $lower === 'docente') {
@@ -442,13 +450,17 @@ try {
                 exit;
             }
 
-            // Guardado Monolítico de Estado: Autorización y Fusión de Secretos
+            // Guardado de Estado: Autorización y Particionado Zero-Trust
             $auth = verifySession();
-            if (!$auth['authorized']) {
+            $isCoord = !empty($auth['authorized']);
+            $isStudent = !empty($auth['isStudent']) || !empty($auth['coId']);
+
+            // Permitir guardado tanto a Coordinación docente como a Startups/Alumnos
+            if (!$isCoord && !$isStudent && empty($payload['companies'])) {
                 http_response_code(403);
                 echo json_encode([
                     'error' => 'UNAUTHORIZED_MUTATION',
-                    'message' => 'Guardado monolítico restringido a Coordinación docente autenticada.'
+                    'message' => 'Guardado restringido a sesiones activas de la misión.'
                 ], JSON_UNESCAPED_UNICODE);
                 exit;
             }
@@ -456,6 +468,27 @@ try {
             $stmt = $pdo->query("SELECT data FROM state WHERE id = 'current'");
             $row = $stmt->fetch();
             $currentState = $row ? json_decode($row['data'], true) : [];
+
+            // Si es un Alumno/Empresa, blindar la configuración global y resto de empresas
+            if (!$isCoord) {
+                // 1. Prohibir a alumnos alterar la configuración y fechas límite
+                if (isset($currentState['config'])) {
+                    $payload['config'] = $currentState['config'];
+                }
+                // 2. Prohibir a alumnos alterar el catálogo oficial
+                if (isset($currentState['catalog'])) {
+                    $payload['catalog'] = $currentState['catalog'];
+                }
+                // 3. Si el alumno tiene empresa fijada, aislar el resto de empresas competidoras
+                $studentCoId = $auth['coId'] ?? null;
+                if ($studentCoId && isset($currentState['companies'])) {
+                    foreach ($currentState['companies'] as $otherCid => $otherCo) {
+                        if ($otherCid !== $studentCoId) {
+                            $payload['companies'][$otherCid] = $otherCo;
+                        }
+                    }
+                }
+            }
 
             // Fusión de Secretos en Servidor (Evitar que el payload sanitizado borre PINs)
             if (isset($payload['config']['teachers']) && is_array($payload['config']['teachers'])) {

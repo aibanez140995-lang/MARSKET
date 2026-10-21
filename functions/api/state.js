@@ -316,12 +316,15 @@ export async function onRequest(context) {
                 return new Response(JSON.stringify({ error: 'No hay datos en estado corriente para respaldar' }), { status: 400, headers });
             }
 
-            // BLINDAJE ZERO-TRUST (CWE-285): Rechazo de guardado monolítico sin rol de Coordinador
+            // Control de Autorización y Particionado Zero-Trust (v1.1.08)
             const authResult = await verifySession(request, env);
-            if (!authResult.authorized) {
+            const isCoord = Boolean(authResult.authorized);
+            const isStudent = Boolean(authResult.isStudent || authResult.coId);
+
+            if (!isCoord && !isStudent && !payload.companies) {
                 return new Response(JSON.stringify({
                     error: 'UNAUTHORIZED_MUTATION',
-                    message: 'Guardado monolítico restringido exclusivamente a Coordinación docente autenticada.'
+                    message: 'Guardado restringido a sesiones activas de la misión.'
                 }), { status: 403, headers });
             }
 
@@ -334,7 +337,26 @@ export async function onRequest(context) {
                 } catch(e) {}
             }
 
-            // 2. Si D1 está vacío o corrupto, aplicar Seeding de Emergencia
+            // 2. Si es un alumno/empresa, blindar la configuración global y resto de empresas
+            if (!isCoord && currentState) {
+                if (currentState.config) {
+                    payload.config = currentState.config;
+                }
+                if (currentState.catalog) {
+                    payload.catalog = currentState.catalog;
+                }
+                const studentCoId = authResult.coId;
+                if (studentCoId && currentState.companies) {
+                    payload.companies = payload.companies || {};
+                    for (const otherCid in currentState.companies) {
+                        if (otherCid !== studentCoId) {
+                            payload.companies[otherCid] = currentState.companies[otherCid];
+                        }
+                    }
+                }
+            }
+
+            // 3. Si D1 está vacío o corrupto, aplicar Seeding de Emergencia
             if (!currentState || !currentState.config || !currentState.config.teachers) {
                 currentState = currentState || { config: {}, companies: {} };
                 currentState.config = currentState.config || {};
