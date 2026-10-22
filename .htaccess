@@ -18,10 +18,14 @@
     Require all granted
 </Files>
 
-# 1. ENRUTAMIENTO API (mod_rewrite)
+# 1. ENRUTAMIENTO API Y BLOQUEO DE ARCHIVOS SENSIBLES (mod_rewrite)
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
+
+    # Bloqueo estricto incondicional de base de datos y archivos sensibles (HTTP 403)
+    RewriteRule ^data(/.*)?$ - [F,L]
+    RewriteRule \.(sqlite|sqlite3|db|env|sql|bak|log)$ - [F,L]
 
     # Pasar cabecera Authorization a PHP (imprescindible en entornos FastCGI / PHP-FPM de CDMON)
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
