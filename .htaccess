@@ -1,8 +1,22 @@
 # ==============================================================================
 # MARS-KET OS - Configuración Apache (.htaccess) para Hosting CDMON
 # Servidor: Apache 2.4+ / PHP 8.x
-# Versión: v1.1.06
+# Versión: v1.1.11
 # ==============================================================================
+
+# EXENCIÓN LOADER.IO PARA VALIDACIÓN DE ESTRÉS
+<Files "loaderio-e04fe1e017d5e583689533102b7d015a.txt">
+    Order Allow,Deny
+    Allow from all
+    Satisfy Any
+    Require all granted
+</Files>
+<Files "loaderio-e04fe1e017d5e583689533102b7d015a.html">
+    Order Allow,Deny
+    Allow from all
+    Satisfy Any
+    Require all granted
+</Files>
 
 # 1. ENRUTAMIENTO API (mod_rewrite)
 <IfModule mod_rewrite.c>

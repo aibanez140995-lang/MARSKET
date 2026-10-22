@@ -8,6 +8,7 @@ Object.assign(ui, {
         const wrapper = document.createElement('div');
         const currentTab = this.adminTab || 'dash';
         const isCoord = state.user.role.startsWith('COORD');
+        const activeSuggsCount = (state.data.suggestionsToAlex || []).filter(s => s.status !== 'IMPLEMENTADO' && s.status !== 'RESUELTO' && !s.resolved).length;
         
         const tabsHtml = `
         <div role="tablist" aria-label="Pestañas del Panel Docente" class="flex flex-wrap gap-2 mb-6 border-b border-mars-border pb-3">
@@ -30,8 +31,9 @@ Object.assign(ui, {
             <button role="tab" aria-selected="${currentTab==='catalog'}" onclick="ui.adminTab='catalog'; ui.render()" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all ${currentTab==='catalog'?'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]':'bg-mars-card text-slate-300 border-mars-border hover:text-white'}">
                 🛒 SUPERMARS-KET
             </button>
-            <button role="tab" aria-selected="${currentTab==='settings'}" onclick="ui.adminTab='settings'; ui.render()" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all ${currentTab==='settings'?'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]':'bg-mars-card text-slate-300 border-mars-border hover:text-white'}">
-                ⚙️ Ajustes & Buzón Dev
+            <button role="tab" aria-selected="${currentTab==='settings'}" onclick="ui.adminTab='settings'; ui.render()" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all flex items-center gap-1.5 ${currentTab==='settings'?'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]':'bg-mars-card text-slate-300 border-mars-border hover:text-white'}">
+                <span>⚙️ Ajustes & Buzón Dev</span>
+                ${activeSuggsCount > 0 ? `<span id="tab-badge-settings" class="bg-mars-yellow text-black px-1.5 py-0.5 rounded text-[10px] font-mono font-black animate-pulse shadow-[0_0_8px_rgba(255,200,0,0.6)]">${activeSuggsCount}</span>` : `<span id="tab-badge-settings" class="hidden"></span>`}
             </button>
             <button role="tab" aria-selected="${currentTab==='backups'}" onclick="ui.adminTab='backups'; ui.render()" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all ${currentTab==='backups'?'bg-blue-500 text-white border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]':'bg-mars-card text-slate-300 border-mars-border hover:text-white'}">
                 💾 Backups & D1

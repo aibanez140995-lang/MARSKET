@@ -936,31 +936,113 @@ const ui = {
         this.showModal("Registro de Novedades y Versiones", html, "");
     },
 
-    showGuide() {
-        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.01';
+    switchGuideRole(role) {
+        const targetRole = role || 'CEO';
+        const container = document.getElementById('guide-role-content');
+        if (container) {
+            container.innerHTML = this.getOnboardingContent(targetRole);
+        }
+        document.querySelectorAll('.guide-role-pill').forEach(btn => {
+            const r = btn.getAttribute('data-role');
+            if (r === targetRole) {
+                btn.className = 'guide-role-pill min-h-[44px] px-2.5 py-1.5 text-xs font-black uppercase tracking-wider bg-mars-cyan text-black border border-mars-cyan transition-all shadow-[0_0_8px_rgba(0,240,255,0.4)]';
+                btn.setAttribute('aria-selected', 'true');
+            } else {
+                btn.className = 'guide-role-pill min-h-[44px] px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider bg-slate-900 text-slate-300 border border-slate-700 hover:text-white hover:border-slate-500 transition-all';
+                btn.setAttribute('aria-selected', 'false');
+            }
+        });
+    },
+
+    showGuide(defaultRole = null) {
+        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.12';
+        let initialRole = defaultRole;
+        if (!initialRole) {
+            if (state.user) {
+                initialRole = state.user.admin ? 'DOCENTE' : state.user.role;
+            } else {
+                initialRole = 'CEO';
+            }
+        }
+
+        const rolesList = [
+            { key: 'CEO', label: '👑 CEO' },
+            { key: 'TECNICO', label: '🧪 TÉCNICO' },
+            { key: 'FINANZAS', label: '💰 FINANZAS' },
+            { key: 'MARKETING', label: '📢 MARKETING' },
+            { key: 'OPERACIONES_IA', label: '🤖 OPS & IA' },
+            { key: 'AUXILIAR', label: '👁️ AUXILIAR' },
+            { key: 'DOCENTE', label: '🎓 DOCENTE' }
+        ];
+
+        const pillsHtml = rolesList.map(r => {
+            const isSelected = r.key === initialRole;
+            const cls = isSelected
+                ? 'guide-role-pill min-h-[44px] px-2.5 py-1.5 text-xs font-black uppercase tracking-wider bg-mars-cyan text-black border border-mars-cyan transition-all shadow-[0_0_8px_rgba(0,240,255,0.4)]'
+                : 'guide-role-pill min-h-[44px] px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider bg-slate-900 text-slate-300 border border-slate-700 hover:text-white hover:border-slate-500 transition-all';
+            return `<button type="button" role="tab" aria-selected="${isSelected}" data-role="${r.key}" onclick="ui.switchGuideRole('${r.key}')" class="${cls}">${r.label}</button>`;
+        }).join('');
+
+        const roleContentHtml = this.getOnboardingContent(initialRole);
+
         const html = `
         <div class="space-y-4 font-mono text-xs leading-relaxed text-slate-200">
+            <!-- Encabezado de la Guía Táctica -->
             <div class="bg-mars-cyan/10 border border-mars-cyan p-3">
-                <p class="text-mars-cyan font-black uppercase text-xs">Manual Táctico MARS-KET 2.0 (v${currentVer})</p>
-                <p class="mt-1">Plataforma oficial de simulación aeroespacial interdisciplinar (AEE / ESA). Cada rol dispone de atribuciones y pestañas priorizadas según su responsabilidad diaria.</p>
+                <div class="flex justify-between items-center flex-wrap gap-2 mb-1">
+                    <p class="text-mars-cyan font-black uppercase text-xs sm:text-sm">Manual Táctico y Guía de Usuario MARS-KET 2.0</p>
+                    <span class="text-[10px] bg-black text-mars-green border border-mars-green/50 px-2 py-0.5 font-bold uppercase font-mono">v${currentVer} OFICIAL</span>
+                </div>
+                <p class="text-slate-300 text-xs">Simulación de emprendimiento aeroespacial interdisciplinar (AEE / ESA). Consulta los protocolos globales de la misión y explora las funciones específicas de cualquier puesto operativo.</p>
             </div>
-            <ul class="list-disc pl-5 space-y-2">
-                <li><strong class="text-mars-yellow">Flujo de Compras (I+D → Finanzas → Logística):</strong> El Dpto. Técnico añade piezas al borrador, Finanzas autoriza el presupuesto en la Bóveda de Órdenes y Operaciones ejecuta el ensamblaje físico registrando el coste real en taller.</li>
-                <li><strong class="text-mars-cyan">Repositorio Oficial (19 Entregables):</strong> Todos los informes se entregan mediante enlaces externos verificables (Google Drive, OneDrive, Canva) con permisos de lectura abiertos y acordeones por fase.</li>
-                <li><strong class="text-mars-green">Gobernanza y Auditoría IA:</strong> Todo uso de IA generativa debe registrarse en la Bitácora IA con verificación humana explícita.</li>
-            </ul>
-            <div class="bg-slate-950 border border-slate-800 p-3 space-y-1.5">
-                <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">Arquitectura de Seguridad, Sesiones Cifradas y Persistencia v${currentVer}:</p>
-                <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">await state.updatePin(coId, role, newPin)</code> / <code class="text-mars-cyan">state.updateTeacherPin</code> / <code class="text-mars-cyan">state.updateCompanyCode</code>: Persistencia atómica directa contra Cloudflare D1 sin debounce ni rebote de PIN.</p>
-                <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">ui.validateSafeText(text)</code> &amp; <code class="text-mars-cyan">ui.hasForbiddenWords</code>: Filtro LOPD multicultural y lista blanca aeroespacial contextual no destructiva (retiene el texto y resalta en rojo neón).</p>
-                <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">ui.openDrawer(title, html)</code> / <code class="text-mars-cyan">ui.toggleMilestoneAccordion</code>: Descongestión móvil con acordeones por fase y paneles deslizantes inferiores (Bottom-Sheet HUD).</p>
-                <p class="text-slate-300 text-xs">• <code class="text-mars-cyan">auth.verifyMasterCode()</code> &amp; <code class="text-mars-cyan">state.verifySessionIntegrity()</code>: Pasarela docente con sesiones cifradas Zero-Trust, tokens verificados en servidor y aislamiento criptográfico.</p>
+
+            <!-- Directivas Clave de la Misión (Acordeón Rápido) -->
+            <div class="bg-black/60 border border-slate-800 p-3 space-y-2">
+                <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">⚡ Protocolos Maestros de Convivencia y Operación:</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-300">
+                    <div class="border border-slate-800 p-2 bg-slate-950">
+                        <strong class="text-white block mb-0.5">🛒 Flujo de Compras B2C:</strong>
+                        <span>I+D añade piezas al borrador → Finanzas aprueba presupuesto → Operaciones retira en taller registrando coste real.</span>
+                    </div>
+                    <div class="border border-slate-800 p-2 bg-slate-950">
+                        <strong class="text-white block mb-0.5">📁 Repositorio de 19 Entregables:</strong>
+                        <span>Enlaces externos cloud (Drive, OneDrive, Canva) con acceso público de lectura obligatorio según semáforos de plazo.</span>
+                    </div>
+                    <div class="border border-slate-800 p-2 bg-slate-950">
+                        <strong class="text-white block mb-0.5">🤖 Gobernanza y Ética IA:</strong>
+                        <span>Todo uso de IA generativa debe quedar documentado en la Bitácora IA con verificación y validación humana explícita.</span>
+                    </div>
+                    <div class="border border-slate-800 p-2 bg-slate-950">
+                        <strong class="text-white block mb-0.5">⚖️ Convivencia y Filtro Léxico AEE:</strong>
+                        <span>Protección de privacidad (LOPD) y respeto mutuo. Las infracciones léxicas generan alertas automáticas a Coordinación.</span>
+                    </div>
+                </div>
             </div>
-            <div class="pt-2">
-                <button type="button" onclick="ui.closeModal(); sessionStorage.removeItem('hideWelcome'); ui.showWelcomeModal();" class="w-full bg-mars-yellow text-black font-black py-2.5 px-4 text-xs uppercase tracking-widest hover:bg-white transition-all min-h-[44px]">Ver Manual Completo de mi Rol</button>
+
+            <!-- Selector de Roles -->
+            <div>
+                <p class="text-mars-cyan font-bold uppercase text-xs mb-2">Selecciona un Rol Operativo para ver su Manual:</p>
+                <div role="tablist" aria-label="Manuales de Rol" class="flex flex-wrap gap-1.5 border-b border-slate-800 pb-2.5">
+                    ${pillsHtml}
+                </div>
+            </div>
+
+            <!-- Contenedor Dinámico del Rol -->
+            <div id="guide-role-content" class="bg-slate-950/80 border border-mars-border p-3.5 min-h-[200px]">
+                ${roleContentHtml}
+            </div>
+
+            <div class="pt-2 flex flex-wrap gap-2 justify-between">
+                <button type="button" onclick="ui.closeModal(); sessionStorage.removeItem('hideWelcome'); ui.showWelcomeModal();" class="min-h-[44px] bg-mars-yellow/20 border border-mars-yellow text-mars-yellow font-black px-4 py-2 text-xs uppercase tracking-wider hover:bg-mars-yellow hover:text-black transition-all">
+                    🚀 Abrir Asistente de Bienvenida (Tour)
+                </button>
+                <button type="button" onclick="ui.closeModal();" class="min-h-[44px] bg-slate-800 border border-slate-600 text-white font-bold px-5 py-2 text-xs uppercase tracking-wider hover:bg-white hover:text-black transition-all">
+                    Entendido / Cerrar
+                </button>
             </div>
         </div>`;
-        this.showModal("Manual Operativo", html, "");
+
+        this.showModal("Manual Táctico y Guía de Usuario", html, "");
     },
 
     modalSuggestion() {
@@ -1036,6 +1118,117 @@ const ui = {
         this.notify("✅ Reporte registrado y enviado a Coordinación.", "success");
     },
 
+    handleHudSuggClick() {
+        if (state.user && state.user.admin && state.user.role && String(state.user.role).startsWith('COORD')) {
+            this.modalCoordinatorInbox();
+        } else {
+            this.modalSuggestion();
+        }
+    },
+
+    modalCoordinatorInbox(filterCategory = 'TODOS') {
+        const allSuggs = state.data.suggestionsToAlex || [];
+        const isResolvedStatus = (s) => s.status === 'IMPLEMENTADO' || s.status === 'RESUELTO' || s.resolved === true;
+        const activeSuggs = allSuggs.filter(s => !isResolvedStatus(s));
+        const resolvedSuggs = allSuggs.filter(s => isResolvedStatus(s));
+
+        const bugCount = activeSuggs.filter(s => s.category === 'BUG').length;
+        const improveCount = activeSuggs.filter(s => s.category === 'MEJORA').length;
+        const rulesCount = activeSuggs.filter(s => s.category === 'REGLAS').length;
+
+        let displayList = allSuggs;
+        if (filterCategory === 'BUGS') displayList = allSuggs.filter(s => s.category === 'BUG');
+        else if (filterCategory === 'MEJORAS') displayList = allSuggs.filter(s => s.category === 'MEJORA');
+        else if (filterCategory === 'REGLAS') displayList = allSuggs.filter(s => s.category === 'REGLAS');
+        else if (filterCategory === 'PENDIENTES') displayList = activeSuggs;
+        else if (filterCategory === 'RESUELTOS') displayList = resolvedSuggs;
+
+        const itemsHtml = displayList.map(sugg => {
+            const cat = sugg.category || 'MEJORA';
+            const status = sugg.status || 'RECIBIDO';
+            const isRes = isResolvedStatus(sugg);
+            const catBadge = cat === 'BUG'
+                ? 'text-mars-magenta border-mars-magenta bg-mars-magenta/10'
+                : (cat === 'REGLAS' ? 'text-mars-cyan border-mars-cyan bg-mars-cyan/10' : 'text-mars-yellow border-mars-yellow bg-mars-yellow/10');
+            const statusColor = status === 'IMPLEMENTADO' ? 'text-mars-green' : (status === 'EN_REVISION' ? 'text-mars-yellow' : 'text-slate-300');
+
+            return `
+            <div class="bg-slate-900 border ${isRes ? 'border-slate-800 opacity-70' : 'border-mars-border'} p-3.5 text-xs mb-2.5 transition-all">
+                <div class="flex justify-between items-start mb-2 flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-black uppercase px-2 py-0.5 border ${catBadge}">${this.escapeHTML(cat)}</span>
+                        <span class="text-white font-bold uppercase">${this.escapeHTML(sugg.author || 'ANÓNIMO')}</span>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-[10px] uppercase font-bold px-2 py-0.5 bg-black border border-slate-700 ${statusColor}">[${this.escapeHTML(status)}]</span>
+                        <select aria-label="Cambiar estado" onchange="ui.updateSuggestionStatus('${this.escapeHTML(sugg.id)}', this.value); ui.modalCoordinatorInbox('${filterCategory}');" class="min-h-[44px] bg-black border border-slate-700 text-white p-1 text-xs uppercase font-bold outline-none focus:border-mars-cyan">
+                            <option value="RECIBIDO" ${status==='RECIBIDO'?'selected':''}>Recibido</option>
+                            <option value="EN_REVISION" ${status==='EN_REVISION'?'selected':''}>En Revisión</option>
+                            <option value="IMPLEMENTADO" ${status==='IMPLEMENTADO'?'selected':''}>Implementado</option>
+                        </select>
+                        <button type="button" onclick="ui.deleteSuggestion('${this.escapeHTML(sugg.id)}'); ui.modalCoordinatorInbox('${filterCategory}');" aria-label="Eliminar reporte" class="min-h-[44px] px-2.5 bg-black text-mars-magenta border border-mars-magenta/40 hover:bg-mars-magenta hover:text-white font-black text-xs transition-all">✕</button>
+                    </div>
+                </div>
+                <p class="text-slate-200 italic mb-2 bg-black/60 p-2.5 border border-slate-800 break-words font-mono">"${this.escapeHTML(sugg.text)}"</p>
+                <div class="flex justify-between items-center text-[10px] text-slate-400">
+                    <span>ID: ${this.escapeHTML(sugg.id)}</span>
+                    <span>${this.escapeHTML(sugg.date)}</span>
+                </div>
+            </div>`;
+        }).join('') || '<p class="text-slate-400 italic text-xs py-4 text-center">No hay reportes que coincidan con este filtro.</p>';
+
+        const filterPills = [
+            { id: 'TODOS', label: `Todos (${allSuggs.length})` },
+            { id: 'PENDIENTES', label: `Pendientes (${activeSuggs.length})` },
+            { id: 'BUGS', label: `🐛 Bugs (${bugCount})` },
+            { id: 'MEJORAS', label: `💡 Ideas (${improveCount})` },
+            { id: 'REGLAS', label: `⚖️ Dudas (${rulesCount})` },
+            { id: 'RESUELTOS', label: `Resueltos (${resolvedSuggs.length})` }
+        ].map(f => {
+            const isSel = filterCategory === f.id;
+            const cls = isSel
+                ? 'min-h-[44px] px-3 py-1.5 text-xs font-black uppercase bg-mars-yellow text-black border border-mars-yellow transition-all shadow-[0_0_8px_rgba(255,200,0,0.4)]'
+                : 'min-h-[44px] px-3 py-1.5 text-xs font-bold uppercase bg-slate-900 text-slate-300 border border-slate-700 hover:text-white transition-all';
+            return `<button type="button" onclick="ui.modalCoordinatorInbox('${f.id}')" class="${cls}">${f.label}</button>`;
+        }).join('');
+
+        const html = `
+        <div class="space-y-4 font-mono text-xs text-slate-200">
+            <!-- Resumen superior de telemetría de buzón -->
+            <div class="bg-mars-yellow/10 border border-mars-yellow p-3 flex justify-between items-center flex-wrap gap-2">
+                <div>
+                    <h3 class="text-mars-yellow font-black uppercase text-xs sm:text-sm">📬 Buzón de Coordinación y Feedback de Alumnos</h3>
+                    <p class="text-slate-300 text-xs mt-0.5">Mensajes directos de los 6 grupos de trabajo (dudas normativas, sugerencias de mejora y reporte de bugs).</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs uppercase font-bold px-2 py-1 bg-black border border-mars-yellow text-mars-yellow">${activeSuggs.length} Activos</span>
+                </div>
+            </div>
+
+            <!-- Filtros rápidos -->
+            <div class="flex flex-wrap gap-1.5 border-b border-slate-800 pb-2">
+                ${filterPills}
+            </div>
+
+            <!-- Listado con scroll acotado -->
+            <div class="max-h-[380px] overflow-y-auto pr-1">
+                ${itemsHtml}
+            </div>
+
+            <!-- Acciones -->
+            <div class="pt-2 flex flex-wrap gap-2 justify-between border-t border-slate-800">
+                <button type="button" onclick="ui.modalSuggestion()" class="min-h-[44px] bg-slate-800 border border-slate-600 text-white font-bold px-4 py-2 text-xs uppercase hover:bg-white hover:text-black transition-all">
+                    + Redactar Nuevo Mensaje
+                </button>
+                <button type="button" onclick="ui.closeModal(); ui.adminTab='settings'; ui.render();" class="min-h-[44px] bg-mars-cyan text-black font-black px-4 py-2 text-xs uppercase hover:bg-white transition-all">
+                    ⚙️ Ir a Panel de Ajustes y Plazos
+                </button>
+            </div>
+        </div>`;
+
+        this.showModal("Buzón de Coordinación", html, "");
+    },
+
     generateHeroBanner() {
         if (!state.user || state.user.admin) return '';
         const co = state.data.companies[state.user.coId];
@@ -1088,7 +1281,51 @@ const ui = {
     },
 
     updateBadges() {
-        if (!state.user || state.user.admin) return;
+        if (!state.user) return;
+
+        if (state.user.admin) {
+            const isCoord = state.user.role && String(state.user.role).startsWith('COORD');
+            const allSuggs = state.data.suggestionsToAlex || [];
+            const isResolvedStatus = (s) => s.status === 'IMPLEMENTADO' || s.status === 'RESUELTO' || s.resolved === true;
+            const activeSuggs = allSuggs.filter(s => !isResolvedStatus(s));
+            const pendingCount = activeSuggs.length;
+
+            const btnSugg = document.getElementById('hud-btn-suggs');
+            if (btnSugg) {
+                if (isCoord && pendingCount > 0) {
+                    btnSugg.innerHTML = `[ 📬 BUZÓN <span class="bg-mars-yellow text-black px-1.5 py-0.5 rounded text-[10px] font-black animate-pulse ml-1">${pendingCount}</span> ]`;
+                    btnSugg.className = 'min-h-[44px] bg-mars-yellow/20 border-2 border-mars-yellow text-mars-yellow py-2 px-2 text-xs font-black uppercase tracking-wider hover:bg-mars-yellow hover:text-black transition-all flex items-center justify-center text-center shadow-[0_0_12px_rgba(255,200,0,0.4)]';
+                    btnSugg.title = `${pendingCount} reporte(s) de mejora o bugs pendientes en Buzón`;
+                } else if (isCoord) {
+                    btnSugg.innerHTML = `[ 📬 BUZÓN DEV ]`;
+                    btnSugg.className = 'min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow py-2 px-2 text-xs font-bold uppercase tracking-wider hover:bg-mars-yellow hover:text-black transition-all flex items-center justify-center text-center';
+                    btnSugg.title = 'Buzón de Desarrollo y Consultas de Alumnos';
+                } else {
+                    btnSugg.innerHTML = `[ 💡 SUGERENCIA ]`;
+                    btnSugg.className = 'min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow py-2 px-2 text-xs font-bold uppercase tracking-wider hover:bg-mars-yellow hover:text-black transition-all flex items-center justify-center text-center';
+                }
+            }
+
+            const tabSettingsBadge = document.getElementById('tab-badge-settings');
+            if (tabSettingsBadge) {
+                if (pendingCount > 0) {
+                    tabSettingsBadge.innerText = pendingCount;
+                    tabSettingsBadge.classList.remove('hidden');
+                } else {
+                    tabSettingsBadge.classList.add('hidden');
+                }
+            }
+
+            if (isCoord && typeof this._lastKnownSuggCount === 'number' && pendingCount > this._lastKnownSuggCount) {
+                const newest = activeSuggs[0];
+                const cat = newest ? (newest.category || 'REPORTE') : 'REPORTE';
+                const author = newest ? (newest.author || 'ALUMNO') : 'ALUMNO';
+                this.notify(`📬 ALERTA COORDINACIÓN: Nuevo mensaje recibido en Buzón ([${cat}] de ${author})`, "warning");
+            }
+            this._lastKnownSuggCount = pendingCount;
+            return;
+        }
+
         const co = state.data.companies[state.user.coId];
         if (!co) return;
 
