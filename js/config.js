@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.02) ---
 
-const APP_VERSION = "1.1.13beta";
+const APP_VERSION = "1.1.14";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const REGULATORY_AGENCIES = {
@@ -159,6 +159,25 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.14",
+      date: new Date().toISOString().split('T')[0],
+      title: "Hardening Perimetral & Privacidad RGPD",
+      items: [
+        "Eliminación de dependencias de telemetría externa (Google Fonts)",
+        "Supresión de snapshots no cifrados en almacenamiento local",
+        "Políticas de Aislamiento HTTP y cabeceras CSP estrictas",
+        "Micro-cláusula de 1ª capa para tratamiento educativo de datos",
+        "Sellado e inmutabilidad de estados globales"
+      ],
+      highlights: [
+        { type: "PRIVACIDAD", text: "Eliminación de dependencias de telemetría externa (Google Fonts)" },
+        { type: "SEGURIDAD", text: "Supresión de snapshots no cifrados en almacenamiento local" },
+        { type: "SEGURIDAD", text: "Políticas de Aislamiento HTTP y cabeceras CSP estrictas" },
+        { type: "RGPD", text: "Micro-cláusula de 1ª capa para tratamiento educativo de datos" },
+        { type: "INTEGRIDAD", text: "Sellado e inmutabilidad de estados globales" }
+      ]
+    },
     {
         version: "1.1.13beta",
         date: "Octubre 2026",

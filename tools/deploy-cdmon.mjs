@@ -29,6 +29,7 @@ const filesToUpload = [
     // CSS
     'css/tailwind.css',
     'css/input.css',
+    'css/fonts/orbitron.woff2',
 
     // JS
     'js/lexicon-data.js',
@@ -57,7 +58,7 @@ for (const relPath of filesToUpload) {
         continue;
     }
     const remoteTarget = `${BASE_REMOTE}/${relPath.replace(/\\/g, '/')}`;
-    const cmd = `curl.exe -s -T "${relPath}" -u "${FTP_USER}:${FTP_PASS}" "ftp://${FTP_HOST}${remoteTarget}"`;
+    const cmd = `curl.exe -s --ftp-create-dirs -T "${relPath}" -u "${FTP_USER}:${FTP_PASS}" "ftp://${FTP_HOST}${remoteTarget}"`;
     try {
         execSync(cmd, { stdio: 'pipe' });
         console.log(`[OK] Subido: ${relPath} -> ${remoteTarget}`);

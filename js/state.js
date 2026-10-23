@@ -1083,7 +1083,6 @@ const state = {
                         return true; // ABORTAR ejecución posterior de mergeData
                     }
 
-                    try { localStorage.setItem('marsket_emergency_snapshot', JSON.stringify(this.data)); } catch(e) {}
                     const merged = this.mergeData(this.migrate(json), this.data);
                     this.data = merged;
                     this.data.version = json.version || this.data.version;
