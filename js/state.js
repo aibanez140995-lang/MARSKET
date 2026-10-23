@@ -851,9 +851,10 @@ const state = {
             console.error("Error en renderizado inicial:", renderErr);
         }
         
-        setInterval(() => { 
-            const el = document.getElementById('hud-clock'); 
-            if(el) el.innerText = `TIME: ${new Date().toLocaleTimeString()}`; 
+        if (this._clockInterval) clearInterval(this._clockInterval);
+        this._clockInterval = setInterval(() => {
+          const el = document.getElementById('hud-clock');
+          if (el) el.innerText = 'TIME: ' + new Date().toLocaleTimeString();
         }, 1000);
 
         if (!this._listenersAttached) {

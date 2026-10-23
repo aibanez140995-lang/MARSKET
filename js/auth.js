@@ -441,16 +441,25 @@ const auth = (function() {
             const nav = document.getElementById('nav-container');
             if (!nav) return;
 
+            const role = state.user?.role || '';
+            const coId = state.user?.coId || '';
+            const auxDept = (role === 'AUXILIAR') ? (state.data?.companies?.[coId]?.auxRoleDept || '') : '';
+            const sig = `${isAdmin ? 'ADMIN' : 'USER'}:${role}:${coId}:${auxDept}`;
+
+            if (this._lastNavSignature === sig && nav.children.length > 0) {
+                return;
+            }
+            this._lastNavSignature = sig;
+
             if (isAdmin) {
                 nav.innerHTML = `
-                    <button type="button" role="tab" onclick="ui.navigate('admin')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">🎖️ Centro de Mando</button>
-                    <button type="button" role="tab" onclick="ui.navigate('market')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">🛒 Inspeccionar Mercado</button>
-                    <button type="button" role="tab" onclick="ui.navigate('dossier')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">📁 Inspeccionar Dossiers</button>
+                    <button type="button" role="tab" data-tab-id="admin" onclick="ui.navigate('admin')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">🎖️ Centro de Mando</button>
+                    <button type="button" role="tab" data-tab-id="market" onclick="ui.navigate('market')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">🛒 Inspeccionar Mercado</button>
+                    <button type="button" role="tab" data-tab-id="dossier" onclick="ui.navigate('dossier')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">📁 Inspeccionar Dossiers</button>
                 `;
                 return;
             }
 
-            const role = state.user ? state.user.role : '';
             const co = (state.user && !state.user.admin) ? state.data.companies[state.user.coId] : null;
 
             const tabDefs = {
@@ -476,7 +485,6 @@ const auth = (function() {
             let activeTabIds = [];
 
             if (role === 'AUXILIAR') {
-                const auxDept = co?.auxRoleDept;
                 const auxMap = {
                     'CEO': ['orders', 'resolutions', 'finance', 'dossier', 'market'],
                     'TECNICO': ['tech', 'market', 'cart', 'resolutions', 'dossier'],
@@ -493,7 +501,7 @@ const auth = (function() {
                 const t = tabDefs[tid];
                 if (!t) return '';
                 return `
-                <button type="button" role="tab" onclick="ui.navigate('${t.id}')" class="nav-tab relative min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center gap-1.5">
+                <button type="button" role="tab" data-tab-id="${t.id}" onclick="ui.navigate('${t.id}')" class="nav-tab relative min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center gap-1.5">
                     ${t.label}
                     ${t.badge ? `<span id="${t.badge}" class="hidden bg-mars-magenta text-white text-xs font-black px-1.5 py-0.5 rounded-full animate-pulse">0</span>` : ''}
                 </button>`;
@@ -505,6 +513,7 @@ const auth = (function() {
         },
 
         logout() {
+            this._lastNavSignature = null;
             state.user = null;
             state.currentUser = null;
             state.pin = '';

@@ -12,6 +12,66 @@ const ui = {
     _layerStack: [],
     _layerCounter: 0,
     _isPoppingState: false,
+    _cleanupHooks: [],
+    _delegationAttached: false,
+
+    onCleanup(fn) {
+        if (typeof fn === 'function') {
+            this._cleanupHooks.push(fn);
+        }
+    },
+
+    beforeRenderCleanup() {
+        for (const fn of this._cleanupHooks) {
+            try {
+                fn();
+            } catch (err) {
+                console.error('[UI] Error en cleanup hook:', err);
+            }
+        }
+        this._cleanupHooks.length = 0;
+    },
+
+    initEventDelegation() {
+        if (this._delegationAttached) return;
+        const vp = document.getElementById('viewport');
+        if (!vp) {
+            console.warn('[UI] #viewport no encontrado para delegación.');
+            return;
+        }
+
+        vp.addEventListener('click', (e) => {
+            const actionEl = e.target.closest('[data-action]');
+            if (!actionEl) return;
+            const action = actionEl.getAttribute('data-action');
+            const rawPayload = actionEl.getAttribute('data-payload');
+            let payload = null;
+            if (rawPayload !== null && rawPayload !== undefined) {
+                try {
+                    payload = JSON.parse(rawPayload);
+                } catch {
+                    payload = rawPayload;
+                }
+            }
+            if (typeof this[action] === 'function') {
+                this[action](payload, actionEl, e);
+            } else if (typeof window[action] === 'function') {
+                window[action](payload, actionEl, e);
+            }
+        });
+
+        vp.addEventListener('change', (e) => {
+            const changeEl = e.target.closest('[data-change]');
+            if (!changeEl) return;
+            const handler = changeEl.dataset.change || changeEl.getAttribute('data-change');
+            const val = changeEl.type === 'checkbox' ? changeEl.checked : changeEl.value;
+            if (typeof this[handler] === 'function') {
+                this[handler](val, changeEl.dataset.extra, changeEl, e);
+            }
+        });
+
+        this._delegationAttached = true;
+    },
 
     escapeHTML(str) {
         if (str === null || str === undefined) return '';
@@ -183,10 +243,47 @@ const ui = {
         const overlay = document.getElementById('hud-drawer-overlay');
         const titleEl = document.getElementById('hud-drawer-title');
         const bodyEl = document.getElementById('hud-drawer-body');
-        if (!overlay || !titleEl || !bodyEl) return;
+        const sheet = document.getElementById('hud-drawer-sheet');
+        const handle = document.getElementById('hud-drawer-handle-zone');
+        if (!overlay || !titleEl || !bodyEl || !sheet || !handle) return;
+
         titleEl.innerText = title || 'INSPECCIÓN TÁCTICA';
         bodyEl.innerHTML = bodyHtml || '';
         overlay.classList.remove('hidden');
+
+        this._touchStartY = 0;
+        this._lastDeltaY = 0;
+
+        this._boundTouchMove = (e) => {
+            const deltaY = e.touches[0].clientY - this._touchStartY;
+            if (deltaY > 0) {
+                this._lastDeltaY = deltaY;
+                sheet.style.transform = `translateY(${deltaY}px)`;
+            }
+        };
+        this._boundTouchEnd = () => {
+            const deltaY = this._lastDeltaY || 0;
+            if (deltaY > 75) {
+                this.closeDrawer();
+            } else {
+                sheet.style.transition = 'transform 0.2s ease-out';
+                sheet.style.transform = 'translateY(0px)';
+            }
+            window.removeEventListener('touchmove', this._boundTouchMove);
+            window.removeEventListener('touchend', this._boundTouchEnd);
+        };
+
+        handle.addEventListener('touchstart', (e) => {
+            this._touchStartY = e.touches[0].clientY;
+            this._lastDeltaY = 0;
+            sheet.style.transition = '';
+            window.addEventListener('touchmove', this._boundTouchMove, { passive: true });
+            window.addEventListener('touchend', this._boundTouchEnd);
+        }, { passive: true });
+
+        window.addEventListener('touchmove', this._boundTouchMove, { passive: true });
+        window.addEventListener('touchend', this._boundTouchEnd);
+
         this.pushLayer('drawer', (skipHistory) => this.closeDrawer(skipHistory));
         setTimeout(() => {
             const firstBtn = overlay.querySelector('button:not([disabled]), a[href], input:not([disabled])');
@@ -195,6 +292,13 @@ const ui = {
     },
 
     closeDrawer(skipHistory = false) {
+        if (this._boundTouchMove) window.removeEventListener('touchmove', this._boundTouchMove);
+        if (this._boundTouchEnd) window.removeEventListener('touchend', this._boundTouchEnd);
+        const sheet = document.getElementById('hud-drawer-sheet');
+        if (sheet) {
+            sheet.style.transform = '';
+            sheet.style.transition = '';
+        }
         const overlay = document.getElementById('hud-drawer-overlay');
         if (overlay) overlay.classList.add('hidden');
         this.closeLayer('drawer', skipHistory);
@@ -1444,6 +1548,11 @@ const ui = {
             }
         });
 
+        const activeEl = document.querySelector(`.nav-tab[data-tab-id="${this.current}"]`);
+        if (activeEl && typeof window !== 'undefined' && window.innerWidth <= 640) {
+            activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+
         this.updateBadges();
     },
 
@@ -1484,6 +1593,8 @@ const ui = {
     },
     
     render() {
+        this.beforeRenderCleanup();
+        this.initEventDelegation();
         const vp = document.getElementById('viewport');
         if(!vp) return;
         const prevScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
