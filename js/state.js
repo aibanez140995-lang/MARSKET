@@ -161,17 +161,12 @@ const state = {
     },
 
     getAuthToken(userObj, dataRoot = this.data) {
-        if (!userObj) return '';
-        if (userObj.authToken) return userObj.authToken;
-        if (userObj.admin) {
-            const t = dataRoot?.config?.teachers?.[userObj.role];
-            const raw = `T|${userObj.role}|${t?.pinUpdatedAt || userObj.pinStamp || 0}`;
-            return this.encodeSecret(raw);
+        if (userObj?.authToken) return userObj.authToken;
+        if (typeof sessionStorage !== 'undefined') {
+            const token = sessionStorage.getItem('marsket_token');
+            if (token) return token;
         }
-        const co = dataRoot?.companies?.[userObj.coId];
-        const authStamp = co?.authUpdatedAt || userObj.authStamp || 0;
-        const raw = `S|${userObj.coId}|${userObj.role}|${authStamp}`;
-        return this.encodeSecret(raw);
+        return '';
     },
 
     migrate(d) {
@@ -924,7 +919,10 @@ const state = {
 
         const cid = this.user.coId;
         const endpoint = `/api/company/${encodeURIComponent(cid)}/version`;
-        const headers = { 'Cache-Control': 'no-cache' };
+        const headers = { 
+            'Cache-Control': 'no-cache',
+            'X-Marsket-Auth': this.user?.authToken || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('marsket_token') : '') || ''
+        };
         if (this.lastCompanyETag) {
             headers['If-None-Match'] = this.lastCompanyETag;
         }
@@ -978,7 +976,10 @@ const state = {
         }
 
         const endpoint = `/api/company/${encodeURIComponent(coId)}/action`;
-        const headers = { 'Content-Type': 'application/json' };
+        const headers = { 
+            'Content-Type': 'application/json',
+            'X-Marsket-Auth': this.user?.authToken || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('marsket_token') : '') || ''
+        };
         if (typeof auth !== 'undefined' && typeof auth.getSessionToken === 'function') {
             const token = auth.getSessionToken();
             if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -1028,7 +1029,10 @@ const state = {
         let networkOk = false;
 
         try {
-            const reqHeaders = { 'Cache-Control': 'no-cache' };
+            const reqHeaders = { 
+                'Cache-Control': 'no-cache',
+                'X-Marsket-Auth': this.user?.authToken || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('marsket_token') : '') || ''
+            };
             if (this.lastETag) {
                 reqHeaders['If-None-Match'] = this.lastETag;
             }
@@ -1191,10 +1195,10 @@ const state = {
 
     async pushWithBackoff(payload, attempt = 0) {
         const MAX_RETRIES = 4;
-        const token = this.getAuthToken(this.user, this.data);
+        const token = this.user?.authToken || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('marsket_token') : '') || '';
         const headers = {
             'Content-Type': 'application/json',
-            ...(token ? { 'X-Marsket-Auth': token } : {})
+            'X-Marsket-Auth': token
         };
         const res = await fetch('/api/state', {
             method: 'POST',
@@ -1230,6 +1234,9 @@ const state = {
         
         try {
             const payload = JSON.parse(JSON.stringify(this.data));
+            if (this.user?.coId) {
+                payload.coId = this.user.coId;
+            }
             if (typeof payload.version !== 'number' || isNaN(payload.version)) {
                 payload.version = (Number(this.data.version) || 0) + 1;
             }

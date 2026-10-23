@@ -2,7 +2,10 @@
 node_modules/
 .wrangler/
 *.zip
+marsket_cdmon.sql
 *.log
+.env*
+api/
 
 # Bases de datos SQLite locales en tiempo de ejecución
 data/*.sqlite

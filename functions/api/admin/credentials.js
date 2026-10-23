@@ -3,11 +3,10 @@
 
 import { verifySession } from '../_auth.js';
 
-const VAULT_KEY = 'MARS_AEE_2026_SECRET_KEY';
-
-function decodeSecret(str) {
+function decodeSecret(str, key) {
     if (!str || typeof str !== 'string') return '';
     if (!str.startsWith('VLT_')) return str;
+    if (!key) return str;
     const b64 = str.slice(4);
     let raw = '';
     try {
@@ -15,17 +14,17 @@ function decodeSecret(str) {
     } catch(e) { return str; }
     let out = '';
     for (let i = 0; i < raw.length; i++) {
-        out += String.fromCharCode(raw.charCodeAt(i) ^ VAULT_KEY.charCodeAt(i % VAULT_KEY.length));
+        out += String.fromCharCode(raw.charCodeAt(i) ^ key.charCodeAt(i % key.length));
     }
     return out;
 }
 
-function encodeSecret(str) {
-    if (!str) return '';
+function encodeSecret(str, key) {
+    if (!str || !key) return '';
     const s = String(str);
     let out = '';
     for (let i = 0; i < s.length; i++) {
-        out += String.fromCharCode(s.charCodeAt(i) ^ VAULT_KEY.charCodeAt(i % VAULT_KEY.length));
+        out += String.fromCharCode(s.charCodeAt(i) ^ key.charCodeAt(i % key.length));
     }
     const b64 = typeof btoa === 'function' ? btoa(out) : Buffer.from(out, 'binary').toString('base64');
     return 'VLT_' + b64;
@@ -59,18 +58,10 @@ export async function handleCredentials(context) {
     }
 
     // 1. Verificación de permisos de Coordinador
-    const authResult = await verifySession(request, env);
-    const roleLower = String(authResult.role || '').toLowerCase();
-    const isCoordinator = authResult.authorized && (
-        authResult.isCoordinator ||
-        authResult.isAdmin ||
-        roleLower.includes('coord') ||
-        roleLower === 'coordinador'
-    );
-
-    if (!isCoordinator) {
+    const auth = await verifySession(request, env);
+    if (!auth.valid || !auth.isCoordinator) {
         return new Response(JSON.stringify({
-            error: 'UNAUTHORIZED_COORDINATOR_ACCESS',
+            error: 'UNAUTHORIZED',
             message: 'Acceso restringido exclusivamente a Coordinación docente.'
         }), { status: 403, headers });
     }
@@ -93,14 +84,14 @@ export async function handleCredentials(context) {
                 const co = currentState.companies[cid];
                 let plainCode = co.accessCode || '';
                 if (co.authVault?.code) {
-                    plainCode = decodeSecret(co.authVault.code);
+                    plainCode = decodeSecret(co.authVault.code, env?.AUTH_SECRET);
                 }
 
                 const plainRoles = {};
                 for (const r of allRoles) {
                     let rPin = '';
                     if (co.authVault?.roles?.[r]) {
-                        rPin = decodeSecret(co.authVault.roles[r]);
+                        rPin = decodeSecret(co.authVault.roles[r], env?.AUTH_SECRET);
                     } else if (co.roles?.[r] && !String(co.roles[r]).startsWith('VLT_')) {
                         rPin = String(co.roles[r]);
                     }
@@ -179,7 +170,7 @@ export async function handleCredentials(context) {
                         if (!/^\d{4}$/.test(cleanPin)) {
                             return new Response(JSON.stringify({ error: 'El PIN departamental debe tener exactamente 4 dígitos numéricos' }), { status: 400, headers });
                         }
-                        co.authVault.roles[role] = encodeSecret(cleanPin);
+                        co.authVault.roles[role] = encodeSecret(cleanPin, env?.AUTH_SECRET);
                         co.roles = co.roles || {};
                         co.roles[role] = 'PROTECTED';
                         if (role === 'AUXILIAR' && co.auxRoleRequest) {
@@ -192,7 +183,7 @@ export async function handleCredentials(context) {
                     if (cleanCode.length < 3) {
                         return new Response(JSON.stringify({ error: 'El código de empresa debe tener al menos 3 caracteres' }), { status: 400, headers });
                     }
-                    co.authVault.code = encodeSecret(cleanCode);
+                    co.authVault.code = encodeSecret(cleanCode, env?.AUTH_SECRET);
                     delete co.accessCode;
                 }
 

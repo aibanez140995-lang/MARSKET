@@ -1,7 +1,7 @@
 // functions/api/state.js
-// Endpoint de Estado Zero-Trust y Control de Persistencia en Cloudflare D1 (v1.1.09)
+// Endpoint de Estado Zero-Trust y Control de Persistencia en Cloudflare D1 (v1.1.13beta)
 
-import { verifySession, decodeSecret, encodeSecret } from './_auth.js';
+import { verifySession, signSessionToken, decodeSecret, encodeSecret } from './_auth.js';
 
 /**
  * Aplica sanitización quirúrgica in-place sin deep-cloning JSON.parse(JSON.stringify())
@@ -183,6 +183,9 @@ export async function onRequest(context) {
             // Validación de código de empresa en servidor (Zero-Trust & Zero-Heap con json_each)
             if (payload.action === 'validate_company_code') {
                 const targetCode = String(payload.code || '').trim().toUpperCase();
+                if (!/^[a-zA-Z0-9_-]{1,32}$/.test(targetCode)) {
+                    return new Response(JSON.stringify({ error: 'Formato de código inválido' }), { status: 400, headers });
+                }
                 try {
                     const rows = await env.MARSKET_DB.prepare(`
                         SELECT 
@@ -200,7 +203,7 @@ export async function onRequest(context) {
                         for (const r of rows.results) {
                             let coCode = '';
                             if (r.vlt_code) {
-                                coCode = decodeSecret(r.vlt_code).trim().toUpperCase();
+                                coCode = decodeSecret(r.vlt_code, env.AUTH_SECRET).trim().toUpperCase();
                             } else if (r.access_code) {
                                 coCode = String(r.access_code).trim().toUpperCase();
                             }
@@ -220,8 +223,9 @@ export async function onRequest(context) {
             // Verificación de PIN de departamento atómica quirúrgica con json_extract (< 1 KB)
             if (payload.action === 'verify_student_login') {
                 const { coId, role, pin } = payload;
-                if (!coId || !role || pin === undefined) {
-                    return new Response(JSON.stringify({ verified: false }), { status: 400, headers });
+                const allowedRoles = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'];
+                if (!coId || !role || pin === undefined || !/^[a-z0-9_-]{2,32}$/i.test(coId) || !/^\d{4,6}$/.test(String(pin).trim()) || !allowedRoles.includes(role)) {
+                    return new Response(JSON.stringify({ verified: false, error: 'INVALID_PARAMETERS' }), { status: 400, headers });
                 }
 
                 try {
@@ -242,7 +246,7 @@ export async function onRequest(context) {
                     if (row) {
                         let expectedPin = '';
                         if (row.vltPin) {
-                            expectedPin = decodeSecret(row.vltPin).trim();
+                            expectedPin = decodeSecret(row.vltPin, env.AUTH_SECRET).trim();
                         } else if (row.plainPin && !String(row.plainPin).startsWith('VLT_')) {
                             expectedPin = String(row.plainPin).trim();
                         }
@@ -251,11 +255,12 @@ export async function onRequest(context) {
                         }
                         const authStamp = Number(row.authStamp) || 0;
                         const verified = Boolean(expectedPin && expectedPin === String(pin).trim());
+                        const token = verified ? await signSessionToken({ role, coId, admin: false }, env.AUTH_SECRET) : undefined;
                         return new Response(JSON.stringify({
                             verified,
                             companyName: row.companyName || 'EMPRESA',
                             authStamp,
-                            token: verified ? encodeSecret(`S|${coId}|${role}|${authStamp}`) : undefined
+                            token
                         }), {
                             status: verified ? 200 : 401,
                             headers
@@ -268,8 +273,8 @@ export async function onRequest(context) {
             // Verificación de PIN docente atómica quirúrgica con json_extract (< 1 KB)
             if (payload.action === 'verify_teacher_login') {
                 const { role, pin } = payload;
-                if (!role || pin === undefined) {
-                    return new Response(JSON.stringify({ verified: false }), { status: 400, headers });
+                if (!role || pin === undefined || !/^(COORD_[A-Z0-9_]{2,20}|FYQ|ECO|LYE|LEN|MAT|ING)$/.test(role) || !/^\d{4,6}$/.test(String(pin).trim())) {
+                    return new Response(JSON.stringify({ verified: false, error: 'INVALID_PARAMETERS' }), { status: 400, headers });
                 }
 
                 const defaultTeacherPins = {
@@ -298,10 +303,12 @@ export async function onRequest(context) {
                         : (defaultTeacherPins[role] || '');
                     const pinStamp = (row && row.pinStamp != null) ? Number(row.pinStamp) : 0;
                     const verified = Boolean(expectedPin && expectedPin === String(pin).trim());
+                    const isCoord = role.startsWith('COORD');
+                    const token = verified ? await signSessionToken({ role, admin: true, isCoordinator: isCoord }, env.AUTH_SECRET) : undefined;
                     return new Response(JSON.stringify({ 
                         verified, 
                         pinStamp,
-                        token: verified ? encodeSecret(`T|${role}|${pinStamp}`) : undefined 
+                        token 
                     }), {
                         status: verified ? 200 : 401,
                         headers
@@ -309,10 +316,12 @@ export async function onRequest(context) {
                 } catch(e) {}
                 const fallbackPin = defaultTeacherPins[role] || '';
                 const verified = Boolean(fallbackPin && fallbackPin === String(pin).trim());
+                const isCoord = role.startsWith('COORD');
+                const token = verified ? await signSessionToken({ role, admin: true, isCoordinator: isCoord }, env.AUTH_SECRET) : undefined;
                 return new Response(JSON.stringify({ 
                     verified,
                     pinStamp: 0,
-                    token: verified ? encodeSecret(`T|${role}|0`) : undefined
+                    token
                 }), {
                     status: verified ? 200 : 401,
                     headers
@@ -342,11 +351,11 @@ export async function onRequest(context) {
             }
 
             // Control de Autorización y Particionado Zero-Trust (v1.1.09)
-            const authResult = await verifySession(request, env);
-            const isCoord = Boolean(authResult.authorized);
-            const isStudent = Boolean(authResult.isStudent && authResult.coId);
-
-            if (!isCoord && !isStudent) {
+            const auth = await verifySession(request, env);
+            if (auth.isStudent && !payload.coId) {
+                payload.coId = auth.coId;
+            }
+            if (!auth.valid || (!auth.isCoordinator && (!auth.isStudent || auth.coId !== payload.coId))) {
                 return new Response(JSON.stringify({
                     error: 'UNAUTHORIZED_MUTATION',
                     message: 'Guardado restringido a sesiones activas de la misión.'
@@ -363,6 +372,7 @@ export async function onRequest(context) {
             }
 
             // 2. Si es un alumno/empresa, blindar la configuración global y resto de empresas
+            const isCoord = Boolean(auth.isCoordinator);
             if (!isCoord && currentState) {
                 if (currentState.config) {
                     payload.config = currentState.config;
@@ -370,7 +380,7 @@ export async function onRequest(context) {
                 if (currentState.catalog) {
                     payload.catalog = currentState.catalog;
                 }
-                const studentCoId = authResult.coId;
+                const studentCoId = auth.coId;
                 if (studentCoId && currentState.companies) {
                     payload.companies = payload.companies || {};
                     for (const otherCid in currentState.companies) {

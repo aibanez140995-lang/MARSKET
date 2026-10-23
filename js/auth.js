@@ -35,16 +35,14 @@ const auth = (function() {
 
         let authStamp = 0;
         let pinStamp = 0;
-        let authToken = '';
+        let authToken = serverToken || '';
 
         if (isTeacher) {
             const t = state.data?.config?.teachers?.[userObj.role];
             pinStamp = t?.pinUpdatedAt || 0;
-            authToken = serverToken || state.encodeSecret(`T|${userObj.role}|${pinStamp}`);
         } else {
             const co = state.data?.companies?.[userObj.coId];
             authStamp = co?.authUpdatedAt || 0;
-            authToken = serverToken || state.encodeSecret(`S|${userObj.coId}|${userObj.role}|${authStamp}`);
         }
 
         const credential = verifiedCredential || (isTeacher 
@@ -71,6 +69,9 @@ const auth = (function() {
         // Guardar exclusivamente en sessionStorage, no en localStorage
         try {
             sessionStorage.setItem(state.sessionKey, JSON.stringify(sessionPayload));
+            if (authToken) {
+                sessionStorage.setItem('marsket_token', authToken);
+            }
         } catch (e) {}
         try {
             localStorage.removeItem(state.sessionKey);
@@ -348,6 +349,7 @@ const auth = (function() {
 
             if (_verifiedCoId === 'admin') {
                 let teacherOk = false;
+                let serverToken = null;
 
                 // 1. Verificación en servidor Zero-Trust
                 try {
@@ -359,6 +361,7 @@ const auth = (function() {
                     if (res.ok) {
                         const json = await res.json();
                         teacherOk = !!json.verified;
+                        if (json.token) serverToken = json.token;
                     }
                 } catch(e) {}
 
@@ -371,7 +374,7 @@ const auth = (function() {
                 if (teacherOk) {
                     _internalExecutionGuard = true;
                     try {
-                        await _doCompleteLogin({ admin: true, role: role, coId: null }, 'CLAUSTRO DOCENTE', role, pinAttempt);
+                        await _doCompleteLogin({ admin: true, role: role, coId: null }, 'CLAUSTRO DOCENTE', role, pinAttempt, serverToken);
                     } finally {
                         _internalExecutionGuard = false;
                     }

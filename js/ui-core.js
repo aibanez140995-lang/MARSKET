@@ -1059,7 +1059,7 @@ const ui = {
     },
 
     showGuide(defaultRole = null) {
-        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.12';
+        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.13beta';
         let initialRole = defaultRole;
         if (!initialRole) {
             if (state.user) {

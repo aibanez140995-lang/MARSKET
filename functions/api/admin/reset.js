@@ -32,51 +32,44 @@ async function handleReset(context) {
         return new Response(JSON.stringify({ error: 'Method Not Allowed' }), { status: 405, headers });
     }
 
+    // 0. Fail-closed: si no están configurados los secretos perimetrales, abortar
+    if (!env?.MASTER_RESET_HASH || !env?.AUTH_SECRET) {
+        return new Response(JSON.stringify({
+            error: 'SECURITY_HALT',
+            message: 'Variables maestras de seguridad perimetral no configuradas.'
+        }), { status: 500, headers });
+    }
+
     let payload = {};
     try {
         payload = await request.json();
     } catch (e) {}
 
-    let authHeader = request.headers.get('Authorization') || '';
-    let token = authHeader.replace(/^Bearer\s+/i, '').trim() || (payload.token || '');
-
-    // 1. Verificación de autorización Zero-Trust
+    // 1. Verificación de autorización Zero-Trust estricta (sin bypasses)
     let isAuthorized = false;
 
-    // A. Validación por Hash Maestro en variables de entorno (env.MASTER_RESET_HASH)
-    if (env?.MASTER_RESET_HASH && payload.code) {
+    // a) Se envía payload.code cuyo digest SHA-256 coincide con env.MASTER_RESET_HASH
+    if (payload.code) {
         try {
             const buffer = new TextEncoder().encode(String(payload.code).trim());
             const digest = await crypto.subtle.digest('SHA-256', buffer);
             const inputHash = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
-            if (inputHash === env.MASTER_RESET_HASH || String(payload.code).trim() === env.MASTER_RESET_HASH) {
+            if (inputHash.toLowerCase() === env.MASTER_RESET_HASH.toLowerCase() || String(payload.code).trim().toLowerCase() === env.MASTER_RESET_HASH.toLowerCase()) {
                 isAuthorized = true;
             }
         } catch(e) {}
     }
 
-    // B. Validación por Código Maestro de Misión en variables de entorno (env.TEACHER_MASTER_CODE)
-    if (!isAuthorized && env?.TEACHER_MASTER_CODE) {
-        if (payload.code === env.TEACHER_MASTER_CODE || token === env.TEACHER_MASTER_CODE) {
+    // b) O si verifySession(request, env) confirma auth.valid && auth.isCoordinator
+    if (!isAuthorized) {
+        const auth = await verifySession(request, env);
+        if (auth.valid && auth.isCoordinator) {
             isAuthorized = true;
         }
     }
 
-    // C. Validación por sesión de Coordinador autenticado
     if (!isAuthorized) {
-        const sessionAuth = await verifySession(request, env);
-        if (sessionAuth.authorized) {
-            isAuthorized = true;
-        } else if (!env?.MASTER_RESET_HASH && !env?.TEACHER_MASTER_CODE) {
-            // Entorno local sin variables secretas inyectadas: autoriza si se envía código o rol coordinador
-            if (payload.code || (payload.role && String(payload.role).toLowerCase().includes('coord')) || (token && token.length > 3)) {
-                isAuthorized = true;
-            }
-        }
-    }
-
-    if (!isAuthorized) {
-        return new Response(JSON.stringify({ error: 'Autorización denegada: Clave maestra o credencial de coordinador inválida.' }), { status: 403, headers });
+        return new Response(JSON.stringify({ error: 'UNAUTHORIZED', message: 'Autorización denegada: Clave maestra o credencial de coordinador inválida.' }), { status: 403, headers });
     }
 
     if (!env.MARSKET_DB) {

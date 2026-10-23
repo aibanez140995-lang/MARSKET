@@ -34,8 +34,8 @@ export async function onRequestPost(context) {
     const { request, env, params } = context;
     const cid = String(params?.cid || '').trim();
 
-    if (!cid) {
-        return new Response(JSON.stringify({ error: 'MISSING_COMPANY_ID' }), { status: 400, headers: CORS_HEADERS });
+    if (!cid || !/^[a-z0-9_-]{2,32}$/i.test(cid)) {
+        return new Response(JSON.stringify({ error: 'INVALID_COMPANY_ID' }), { status: 400, headers: CORS_HEADERS });
     }
 
     if (!env?.MARSKET_DB) {
@@ -43,11 +43,8 @@ export async function onRequestPost(context) {
     }
 
     // 1. Control de Autorización Zero-Trust
-    const authResult = await verifySession(request, env);
-    const isCoord = Boolean(authResult.authorized);
-    const isStudentOfCompany = Boolean(authResult.isStudent && authResult.coId === cid);
-
-    if (!isCoord && !isStudentOfCompany) {
+    const auth = await verifySession(request, env);
+    if (!auth.valid || (!auth.isCoordinator && (!auth.isStudent || auth.coId !== cid))) {
         return new Response(JSON.stringify({
             error: 'UNAUTHORIZED_MUTATION',
             message: 'Acceso restringido: no autorizado para mutar esta startup.'
@@ -191,10 +188,23 @@ export async function onRequestPost(context) {
             }
 
             case 'SUBMIT_DELIVERABLE': {
-                co.deliverables = co.deliverables || {};
-                if (payload.key) {
-                    co.deliverables[payload.key] = payload.deliverableData || payload.url || true;
+                const rawKey = String(payload.key || '').trim();
+                if (!/^[a-zA-Z0-9_-]{1,40}$/.test(rawKey)) {
+                    return new Response(JSON.stringify({ error: 'INVALID_DELIVERABLE_KEY' }), { status: 400, headers: CORS_HEADERS });
                 }
+                const rawUrl = payload.url || payload.deliverableData?.dataUrl;
+                if (rawUrl) {
+                    try {
+                        const urlObj = new URL(rawUrl);
+                        if (urlObj.protocol !== 'https:') {
+                            return new Response(JSON.stringify({ error: 'INVALID_DELIVERABLE_URL', message: 'La URL debe ser estrictamente HTTPS.' }), { status: 400, headers: CORS_HEADERS });
+                        }
+                    } catch (e) {
+                        return new Response(JSON.stringify({ error: 'INVALID_DELIVERABLE_URL', message: 'URL con formato inválido.' }), { status: 400, headers: CORS_HEADERS });
+                    }
+                }
+                co.deliverables = co.deliverables || {};
+                co.deliverables[rawKey] = payload.deliverableData || payload.url || true;
                 break;
             }
 

@@ -2,11 +2,14 @@
 // Registro silencioso de infracciones léxicas (v1.1.06)
 // Captura reportes silenciosos de transgresiones LOPD de forma relacional paginada (Zero-Heap SRE)
 
+import { verifySession } from '../_auth.js';
+
 export async function onRequest(context) {
     return handleModerationReport(context);
 }
 
 export const onRequestPost = onRequest;
+export const onRequestGet = onRequest;
 
 async function handleModerationReport(context) {
     const { request, env } = context;
@@ -20,7 +23,7 @@ async function handleModerationReport(context) {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Marsket-Auth, If-None-Match'
     };
 
     if (request.method === 'OPTIONS') return new Response(null, { headers });
@@ -64,6 +67,14 @@ async function handleModerationReport(context) {
         }
 
         if (request.method === 'GET') {
+            const auth = await verifySession(request, env);
+            if (!auth.valid || (!auth.isCoordinator && !auth.isAdmin)) {
+                return new Response(JSON.stringify({
+                    error: 'UNAUTHORIZED_ACCESS',
+                    message: 'Acceso restringido a claustro de profesores.'
+                }), { status: 403, headers });
+            }
+
             if (env.MARSKET_DB) {
                 const url = new URL(request.url);
                 const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10)));

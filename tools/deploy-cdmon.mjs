@@ -31,6 +31,7 @@ const filesToUpload = [
     'css/input.css',
 
     // JS
+    'js/lexicon-data.js',
     'js/auth.js',
     'js/config.js',
     'js/state.js',

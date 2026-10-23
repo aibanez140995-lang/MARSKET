@@ -1,6 +1,10 @@
 name = "marsket"
 compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "."
+
+[vars]
+AUTH_SECRET = "MARSKET_PERIMETER_HMAC_SECRET_KEY_MISSION_2026_STABLE"
 
 [[d1_databases]]
 binding = "MARSKET_DB"
