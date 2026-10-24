@@ -6,7 +6,7 @@ Object.assign(ui, {
         if (!el || !state.user || !state.user.admin) return auth.logout();
         
         const wrapper = document.createElement('div');
-        const isCoord = state.user.role.startsWith('COORD');
+        const isCoord = state.user.role && String(state.user.role).startsWith('COORD_');
         this.adminMode = this.adminMode || 'aula'; // 'aula' | 'coord'
         const currentTab = this.adminTab || (this.adminMode === 'coord' ? 'startups' : 'eval');
         const activeSuggsCount = (state.data.suggestionsToAlex || []).filter(s => s.status !== 'IMPLEMENTADO' && s.status !== 'RESUELTO' && !s.resolved).length;

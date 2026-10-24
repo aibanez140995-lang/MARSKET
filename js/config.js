@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.02) ---
 
-const APP_VERSION = "1.1.22";
+const APP_VERSION = "1.1.23";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const GOOGLE_DRIVE_REGEX = /^https:\/\/(docs|drive)\.google\.com\/(document|spreadsheets|presentation|file|drive\/folders)\/(d\/)?[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_.-]+)*(\?[^"'\s<>]*)?(#[^"'\s<>]*)?$/;
@@ -206,6 +206,25 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.23",
+      date: new Date().toISOString().split('T')[0],
+      title: "Navegación Operativa por Rol, Landing Prioritario, HUD Compacto <=64px y Flujo de Taller FyQ",
+      items: [
+        "Reingeniería de navegación de alumnos en 4 pestañas directas y específicas ordenadas por rol",
+        "Aterrizaje automático al login en la herramienta operativa prioritaria de cada departamento",
+        "HUD táctico ultra-compacto (<=64px) sticky con saldo corporativo neón y acceso directo a Bitácora IA",
+        "Panel docente dual segmentado: Modo Aula (Rúbricas y Aduana) vs. Modo Coordinación TIC avanzado",
+        "Pipeline de taller FyQ: Técnico (Planos/BOM) -> Operario (Validación/Incidencias) -> CEO (Visado) -> Docente",
+        "Precios congelados inmutables en marketing y registro de compras físicas exclusivo de Operaciones"
+      ],
+      highlights: [
+        { type: "NAVEGACIÓN", text: "Máximo 4 pestañas operativas directas por rol sin niveles intermedios redundantes." },
+        { type: "LANDING", text: "Entrada directa a la herramienta operativa prioritaria de cada puesto tras el login." },
+        { type: "HUD", text: "Barra táctica superior fija de 64px sticky con saldo y acceso instantáneo a IA." },
+        { type: "TALLER", text: "Control de calidad físico para Física y Química con catálogo cerrado de incidencias." }
+      ]
+    },
     {
       version: "1.1.22",
       date: new Date().toISOString().split('T')[0],

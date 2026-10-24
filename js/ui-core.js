@@ -208,56 +208,8 @@ const ui = {
     },
 
     navigate(view) {
-        if (!state.user) {
-            this.current = view;
-            this.currentSubView = null;
-            this.render();
-            return;
-        }
-
-        if (state.user.admin) {
-            this.current = view;
-            this.currentSubView = null;
-            this.render();
-            return;
-        }
-
-        const role = state.user.role;
-        if (view === 'work') {
-            this.current = 'work';
-            this.currentSubView = null;
-        } else if (view === 'dossier') {
-            this.current = 'dossier';
-            this.currentSubView = null;
-        } else if (view === 'company') {
-            this.current = 'company';
-            if (!this.companySubTab) this.companySubTab = 'resolutions';
-            this.currentSubView = null;
-        } else if (view === 'resolutions') {
-            this.current = 'company';
-            this.companySubTab = 'resolutions';
-            this.currentSubView = null;
-        } else if (view === 'market') {
-            this.current = 'company';
-            this.companySubTab = 'market';
-            this.currentSubView = null;
-        } else if (view === 'orders') {
-            if (role === 'CEO') {
-                this.current = 'work';
-                this.workSubView = 'orders';
-            } else {
-                this.current = 'company';
-                this.companySubTab = 'orders';
-            }
-            this.currentSubView = null;
-        } else if (['tech', 'finance', 'brand', 'cart', 'ailog'].includes(view)) {
-            this.current = 'work';
-            this.workSubView = view;
-            this.currentSubView = null;
-        } else {
-            this.current = view;
-            this.currentSubView = null;
-        }
+        this.current = view;
+        this.currentSubView = null;
         this.render();
     },
 
@@ -1596,8 +1548,8 @@ const ui = {
         const balanceStr = Number(co.balance || 0).toFixed(2);
 
         return `
-        <div class="h-16 max-h-16 flex items-center justify-between px-4 bg-[#07090E]/90 border-b border-cyan-500/20 backdrop-blur w-full mb-4 terminal-border overflow-hidden">
-            <!-- Extremo Izquierdo: Hex Logo (40x40px) + Nombre Orbitron + Rol -->
+        <div class="h-16 max-h-16 flex items-center justify-between px-4 bg-[#07090E]/90 border-b border-cyan-500/20 backdrop-blur sticky top-0 z-30 w-full mb-4 terminal-border overflow-hidden">
+            <!-- Izquierda: Miniatura del logotipo (40x40px) + Nombre Orbitron + Badge Rol Activo -->
             <div class="flex items-center gap-3 min-w-0">
                 <div class="relative w-10 h-10 flex-shrink-0 p-0.5 hex-clip bg-mars-bg ${isBrandPending ? 'border border-mars-magenta shadow-[0_0_10px_rgba(255,0,85,0.4)]' : 'border border-mars-cyan shadow-neon-cyan'}">
                     <div class="w-full h-full hex-clip overflow-hidden">
@@ -1610,16 +1562,16 @@ const ui = {
                 </div>
             </div>
 
-            <!-- Centro: Saldo en verde neón font-mono -->
+            <!-- Centro: Saldo corporativo disponible en verde neón font-mono -->
             <div class="flex items-center justify-center px-2">
                 <span class="text-mars-green font-mono font-bold text-sm sm:text-base tracking-wider whitespace-nowrap bg-mars-green/10 border border-mars-green/30 px-3 py-1 rounded-sm shadow-[0_0_10px_rgba(0,255,150,0.2)]">
                     ${balanceStr} €v
                 </span>
             </div>
 
-            <!-- Extremo Derecho: Botón compacto [ 🤖 IA ] -->
+            <!-- Derecha: Acceso directo a la bitácora de IA [ 🤖 IA ] que invoca ui.navigate('ailog') -->
             <div class="flex items-center gap-2 flex-shrink-0">
-                <button type="button" onclick="ui.modalReportAI()" class="bg-blue-600/20 border border-blue-500 text-blue-300 hover:bg-blue-500 hover:text-white px-2.5 sm:px-3 py-1.5 text-xs font-bold uppercase transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)] min-h-[36px] flex items-center gap-1" title="Bitácora y Registro de Prompts IA">
+                <button type="button" onclick="ui.navigate('ailog')" class="bg-blue-600/20 border border-blue-500 text-blue-300 hover:bg-blue-500 hover:text-white px-2.5 sm:px-3 py-1.5 text-xs font-bold uppercase transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)] min-h-[36px] flex items-center gap-1" title="Bitácora y Registro de Prompts IA">
                     <span>🤖</span> <span class="hidden sm:inline">IA</span>
                 </button>
             </div>
@@ -1707,35 +1659,6 @@ const ui = {
             if (pendingAI > 0) { elAILog.innerText = pendingAI; elAILog.classList.remove('hidden'); }
             else { elAILog.classList.add('hidden'); }
         }
-    
-
-        // Badges v1.1.22 para las 3 pestañas principales de alumnos
-        const badgeWork = document.getElementById('badge-work');
-        if (badgeWork) {
-            let workCount = 0;
-            if (state.user.role === 'FINANZAS') {
-                workCount = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS').length + (co.marketingCampaigns || []).filter(m => m.status === 'PENDIENTE_FINANZAS').length;
-            } else if (state.user.role === 'OPERACIONES_IA' || state.user.role === 'OPERACIONES') {
-                workCount = (co.orders || []).filter(o => o.status === 'APROBADO_FINANZAS' && o.type !== 'MARKETING').length + (co.aiPrompts || []).filter(p => p.status === 'PENDIENTE_VALIDACION').length;
-            }
-            if (workCount > 0) {
-                badgeWork.innerText = workCount;
-                badgeWork.classList.remove('hidden');
-            } else {
-                badgeWork.classList.add('hidden');
-            }
-        }
-
-        const badgeCompany = document.getElementById('badge-company');
-        if (badgeCompany) {
-            const pendingMotions = (co.votingMotions || []).filter(m => m.status === 'ABIERTA' && (!m.votes || !m.votes[state.user.role])).length;
-            if (pendingMotions > 0) {
-                badgeCompany.innerText = pendingMotions;
-                badgeCompany.classList.remove('hidden');
-            } else {
-                badgeCompany.classList.add('hidden');
-            }
-        }
     },
 
     updateHUD() {
@@ -1814,17 +1737,7 @@ const ui = {
             t.setAttribute('aria-selected', 'false');
             const tabId = t.getAttribute('data-tab-id') || '';
             const oc = t.getAttribute('onclick') || '';
-            let isActive = false;
-            if (this.current === 'work' || ['tech', 'finance', 'brand', 'cart', 'ailog'].includes(this.current) || (this.current === 'orders' && state.user?.role === 'CEO')) {
-                isActive = (tabId === 'work' || oc.includes("'work'"));
-            } else if (this.current === 'dossier') {
-                isActive = (tabId === 'dossier' || oc.includes("'dossier'"));
-            } else if (this.current === 'company' || ['resolutions', 'market'].includes(this.current) || (this.current === 'orders' && state.user?.role !== 'CEO')) {
-                isActive = (tabId === 'company' || oc.includes("'company'"));
-            } else {
-                isActive = (tabId === this.current || oc.includes(`('${this.current}')`));
-            }
-            if (isActive) {
+            if (tabId === this.current || oc.includes(`('${this.current}')`)) {
                 t.classList.add('tab-active', 'text-mars-cyan');
                 t.setAttribute('aria-selected', 'true');
             }
@@ -1925,8 +1838,19 @@ const ui = {
             currentAllowed = ['admin', 'market', 'dossier'];
             if (!currentAllowed.includes(this.current)) this.current = 'admin';
         } else {
-            currentAllowed = ['work', 'dossier', 'company', 'orders', 'tech', 'finance', 'brand', 'cart', 'ailog', 'resolutions', 'market'];
-            if (!currentAllowed.includes(this.current)) this.current = 'work';
+            const validViews = ['orders', 'finance', 'tech', 'market', 'brand', 'cart', 'ailog', 'dossier', 'resolutions', 'company', 'work'];
+            if (!validViews.includes(this.current)) {
+                const landingByRole = {
+                    'TECNICO': 'market',
+                    'FINANZAS': 'orders',
+                    'OPERACIONES_IA': 'cart',
+                    'OPERACIONES': 'cart',
+                    'CEO': 'orders',
+                    'MARKETING': 'brand'
+                };
+                const auxDept = (role === 'AUXILIAR') ? co?.auxRoleDept : null;
+                this.current = (role === 'AUXILIAR' ? landingByRole[auxDept] : landingByRole[role]) || 'orders';
+            }
         }
         
         this.updateHUD();
@@ -1934,36 +1858,6 @@ const ui = {
         const notifs = state.user.admin ? '' : (this.renderNotifications ? this.renderNotifications() : '');
         
         switch(this.current) {
-            case 'work': {
-                vp.innerHTML = hero + notifs;
-                let tool = this.workSubView;
-                if (!tool) {
-                    if (role === 'CEO') tool = 'orders';
-                    else if (role === 'TECNICO') tool = 'tech';
-                    else if (role === 'FINANZAS') tool = 'finance';
-                    else if (role === 'MARKETING') tool = 'brand';
-                    else if (role === 'OPERACIONES_IA' || role === 'OPERACIONES') tool = 'cart';
-                    else if (role === 'AUXILIAR') {
-                        const auxMap = { 'CEO': 'orders', 'TECNICO': 'tech', 'FINANZAS': 'finance', 'MARKETING': 'brand', 'OPERACIONES_IA': 'cart' };
-                        tool = auxMap[co?.auxRoleDept] || 'orders';
-                    } else {
-                        tool = 'orders';
-                    }
-                }
-                if (tool === 'orders') this.viewOrders(vp);
-                else if (tool === 'tech') this.viewTech(vp);
-                else if (tool === 'finance') this.viewFinance(vp);
-                else if (tool === 'brand') this.viewBrand(vp);
-                else if (tool === 'cart') this.viewCart(vp);
-                else if (tool === 'ailog') this.viewAILog(vp);
-                else this.viewOrders(vp);
-                break;
-            }
-            case 'company': {
-                vp.innerHTML = hero + notifs;
-                this.viewCompany(vp);
-                break;
-            }
             case 'market': vp.innerHTML = hero + notifs; this.viewMarket(vp); break;
             case 'cart': vp.innerHTML = hero + notifs; this.viewCart(vp); break;
             case 'orders': vp.innerHTML = hero + notifs; this.viewOrders(vp); break;
@@ -1984,6 +1878,7 @@ const ui = {
             case 'ailog': vp.innerHTML = hero + notifs; this.viewAILog(vp); break;
             case 'tech': vp.innerHTML = hero + notifs; this.viewTech(vp); break;
             case 'resolutions': vp.innerHTML = hero + notifs; this.viewResolutions(vp); break;
+            case 'company': vp.innerHTML = hero + notifs; this.viewCompany(vp); break;
             default: {
                 vp.innerHTML = hero + notifs;
                 this.viewOrders(vp);
