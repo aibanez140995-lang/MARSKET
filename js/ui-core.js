@@ -833,9 +833,10 @@ const ui = {
                 <div class="space-y-2 text-xs text-slate-200">
                     <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">Atribuciones y Operaciones Clave:</p>
                     <ul class="list-disc pl-5 space-y-1.5">
-                        <li><strong class="text-white">Cronograma Maestro (19 Entregables):</strong> Monitoriza en tiempo real el semáforo temporal de las 6 asignaturas (FYQ, LYE, ECO, MAT, LEN, ING) y anticípate a cierres de plazo.</li>
+                        <li><strong class="text-white">Cronograma Maestro (19 Entregables):</strong> Reubicado exclusivamente en el Dossier Corporativo como hoja de ruta estratégica para monitorizar el semáforo temporal.</li>
                         <li><strong class="text-white">Bóveda de Órdenes:</strong> Supervisa el estado de las adquisiciones de I+D y campañas de Marketing aprobadas por Finanzas.</li>
-                        <li><strong class="text-white">Gabinete de Crisis AEE:</strong> Redacta y publica el Comunicado Oficial de Mitigación ante sanciones o multas regulatorias.</li>
+                        <li><strong class="text-white">Gabinete de Crisis AEE:</strong> Notifica y difunde el Comunicado Oficial Inmutable ante expedientes regulatorios o resoluciones docentes.</li>
+                        <li><strong class="text-white">Identidad de Marca:</strong> La propuesta de Eslogan y Misión se retiene en staging hasta su validación o rechazo por Coordinación antes de difundirse en el HUD.</li>
                         <li><strong class="text-white">Gobernanza y Voto de Calidad:</strong> Convoca mociones asamblearias, dirime empates técnicos con tu voto de calidad y gestiona el Buzón HR.</li>
                         <li><strong class="text-white">Registro Mercantil y RR.HH.:</strong> Solicita formalmente a Coordinación el cambio de <strong>Denominación Social</strong> de la empresa y gestiona el alta del <strong>Rol Observador (Auxiliar)</strong>.</li>
                     </ul>
@@ -882,8 +883,8 @@ const ui = {
                 <div class="space-y-2 text-xs text-slate-200">
                     <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">Atribuciones y Operaciones Clave:</p>
                     <ul class="list-disc pl-5 space-y-1.5">
-                        <li><strong class="text-white">Aduana de Identidad Corporativa:</strong> Diseña y somete a validación docente el logotipo y eslogan oficial de la startup.</li>
-                        <li><strong class="text-white">Campañas y Paquetes Publicitarios:</strong> Solicita presupuesto a Finanzas para contratar paquetes de medios (Satélite, Tradicional, Híbrido o Supernova) y registra evidencias de cada acción.</li>
+                        <li><strong class="text-white">Aduana de Identidad Corporativa:</strong> Diseña y somete a validación docente el logotipo, eslogan y misión corporativa. El Eslogan y la Misión quedan retenidos en staging (<code>co.pendingSlogan</code>, <code>co.pendingMission</code>) a la espera de la validación docente previa a su publicación oficial en el HUD.</li>
+                        <li><strong class="text-white">Campañas y Paquetes Publicitarios:</strong> Solicita presupuesto a Finanzas para contratar paquetes de medios predefinidos y registra evidencias obligatorias mediante enlaces verificados de Google Drive (cero texto libre).</li>
                         <li><strong class="text-white">Entregables de LyE, Lengua e Inglés (Cloud):</strong> Sube los enlaces Drive de <strong>LyE (40%)</strong> (Identidad Dic/Abr, Business Model Escrito y Canvas), <strong>Lengua (15%)</strong> (Dossier Argumentativo de Inversores) e <strong>Inglés (5%)</strong> (Presentación Oral y Redacciones).</li>
                     </ul>
                 </div>`; 

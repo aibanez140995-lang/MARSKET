@@ -204,7 +204,8 @@ const APP_CHANGELOG = [
         "Desacoplamiento del Cronograma Maestro hacia el Dossier Corporativo",
         "Circuito de aprobación docente de Eslogan y Misión en Coordinación",
         "Erradicación de campos de texto libre en contratación de Campañas Publicitarias hacia Google Drive",
-        "Pipeline centralizado de descarte y purga de propuestas en staging"
+        "Pipeline centralizado de descarte y purga de propuestas en staging",
+        "Validación contractual estricta de evidencias publicitarias mediante GOOGLE_DRIVE_REGEX"
       ],
       highlights: [
         { type: "MERCADO", text: "Validación y sanitización numérica estricta en ofertas de mercado B2B." },

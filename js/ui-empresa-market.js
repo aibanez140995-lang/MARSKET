@@ -149,77 +149,15 @@ Object.assign(ui, {
         }
     },
 
-    modalCheckout() {
-        const co = state.data.companies[state.user.coId];
-        if (!co || !co.cart || co.cart.length === 0) {
-            return this.showModal("Borrador Técnico", "<p class='text-slate-300 text-xs sm:text-sm'>El borrador está vacío.</p>", "");
-        }
-
-        let total = 0;
-        let html = `<div class="max-h-60 overflow-y-auto mb-4 border-b border-mars-border pb-2 space-y-2 pr-1">`;
-        co.cart.forEach(item => {
-            const sum = item.price * item.qty;
-            total += sum;
-            html += `
-            <div class="flex flex-wrap justify-between items-center gap-2 text-xs bg-black p-2.5 border border-slate-800">
-                <div class="flex-grow min-w-0">
-                    <span class="text-mars-cyan font-bold uppercase block break-words">${this.escapeHTML(item.name)}</span>
-                    <span class="text-slate-300 block">${Number(item.price).toFixed(2)} €v / ${this.escapeHTML(item.unit)}</span>
-                </div>
-                <div class="flex items-center gap-2 shrink-0">
-                    <button type="button" aria-label="Disminuir cantidad de ${this.escapeHTML(item.name)}" onclick="ui.removeFromCart('${this.escapeHTML(item.id)}')" class="min-h-[44px] min-w-[44px] border border-mars-magenta/50 text-mars-magenta font-black px-2 hover:bg-mars-magenta/20">-</button>
-                    <span class="text-white font-mono w-6 text-center font-bold">${Number(item.qty)}</span>
-                    <button type="button" aria-label="Aumentar cantidad de ${this.escapeHTML(item.name)}" onclick="ui.addToCart('${this.escapeHTML(item.id)}'); ui.modalCheckout()" class="min-h-[44px] min-w-[44px] border border-mars-green/50 text-mars-green font-black px-2 hover:bg-mars-green/20">+</button>
-                    <span class="text-mars-green font-mono font-bold w-20 text-right">${sum.toFixed(2)} €v</span>
-                </div>
-            </div>`;
-        });
-        html += `</div>
-        <div class="flex justify-between items-center bg-slate-900 p-3 mb-4 border border-mars-cyan">
-            <span class="text-xs text-slate-300 uppercase font-bold">Presupuesto Estimado</span>
-            <span class="text-lg font-orbitron font-black text-mars-cyan">${total.toFixed(2)} €v</span>
-        </div>
-        <label for="checkout-justification" class="text-xs text-mars-cyan font-bold uppercase block mb-1.5">Justificación Técnica para Finanzas</label>
-        <textarea id="checkout-justification" placeholder="Redacta la justificación técnica para el Departamento Financiero... (Obligatorio para que aprueben el gasto)" class="w-full bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-white h-24 outline-none focus:border-mars-cyan mb-2"></textarea>
-        `;
-        
-        const actions = `<button type="button" onclick="ui.confirmCart(${total})" class="min-h-[44px] bg-mars-cyan text-black px-5 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all w-full sm:w-auto">Transmitir a Finanzas</button>`;
-        this.showModal("Revisión de Orden I+D", html, actions);
-    },
-
-    confirmCart(total) {
-        const elJust = document.getElementById('checkout-justification');
-        if(!elJust) return;
-        const just = this.cleanInput(elJust.value);
-        if(just.length < 5) return this.notify("La justificación técnica es demasiado corta (mínimo 5 caracteres).", "warning");
-
-        // FASE 4: Guardián Léxico Universal en Carrito
-        if(ui.hasForbiddenWords(just, 'Justificación Carrito I+D', elJust)) return;
-
-        const co = state.data.companies[state.user.coId];
-        if (!co) return;
-
-        co.orders = co.orders || [];
-        const newOrder = {
-            id: 'ORD-' + Date.now().toString().slice(-4),
-            items: JSON.parse(JSON.stringify(co.cart)),
-            total: total,
-            justification: just,
-            status: 'PENDIENTE_FINANZAS',
-            date: new Date().toLocaleString()
-        };
-
-        co.orders.unshift(newOrder);
-        co.cart = [];
-        
-        ui.pushNotification(state.user.coId, 'FINANZAS', `Nueva orden #${newOrder.id} (${total.toFixed(2)} €v) recibida de I+D. Requiere validación urgente.`, 'warning');
-        ui.pushNotification(state.user.coId, 'CEO', `I+D ha tramitado la orden #${newOrder.id} a la espera de Finanzas.`, 'info');
-        
-        telemetry.log("CARRITO", `Orden enviada a Finanzas: ${total}€v`);
-        state.save();
-        this.closeModal();
-        this.render();
-        this.notify("✅ Orden de I+D tramitada. A la espera de autorización financiera.", "success");
+    validateB2BPrice(inputEl) {
+        const btn = document.getElementById('btn-confirm-b2b');
+        if (!btn || !inputEl) return;
+        const raw = inputEl.value.trim();
+        const num = parseFloat(raw);
+        const isValid = raw !== '' && Number.isFinite(num) && num > 0 && num <= 1000000 && /^\d+(\.\d{1,2})?$/.test(raw);
+        btn.disabled = !isValid;
+        btn.classList.toggle('opacity-50', !isValid);
+        btn.classList.toggle('cursor-not-allowed', !isValid);
     },
 
     modalPublishB2B(orderId, itemIndex) {
@@ -240,25 +178,32 @@ Object.assign(ui, {
                 <option value="B2C">B2C (Catálogo Oficial)</option>
             </select>
             <label for="input-unit-price" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Precio de Venta Propuesto (€v)</label>
-            <input type="number" id="input-unit-price" min="0.01" step="0.01" required value="${(item.price * 0.8).toFixed(2)}" oninput="if(parseFloat(this.value)<0) this.value='';" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold mb-3 outline-none focus:border-mars-yellow">
-            <label for="b2b-obs" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Observaciones Técnicas</label>
-            <textarea id="b2b-obs" placeholder="Observaciones técnicas de la pieza (estado, uso previo...)" class="w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white h-20 outline-none focus:border-mars-yellow"></textarea>
+            <input type="number" id="input-unit-price" min="0.01" max="1000000" step="0.01" required value="${(item.price * 0.8).toFixed(2)}" oninput="ui.validateB2BPrice(this)" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold mb-3 outline-none focus:border-mars-yellow">
+            <label for="b2b-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Enlace Drive a Ficha Técnica / Estado (Opcional)</label>
+            <input type="url" id="b2b-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow mb-2">
         `;
-        const actions = `<button type="button" onclick="ui.confirmPublishB2B('${this.escapeHTML(orderId)}', ${Number(itemIndex)})" class="min-h-[44px] bg-mars-yellow text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all w-full sm:w-auto">Publicar Oferta B2B</button>`;
+        const actions = `<button type="button" id="btn-confirm-b2b" onclick="ui.confirmPublishB2B('${this.escapeHTML(orderId)}', ${Number(itemIndex)})" class="min-h-[44px] bg-mars-yellow text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all w-full sm:w-auto">Publicar Oferta B2B</button>`;
         this.showModal("Venta en Mercado Secundario", html, actions);
     },
 
     confirmPublishB2B(orderId, itemIndex) {
-        const elObs = document.getElementById('b2b-obs');
-        const elPrice = document.getElementById('input-unit-price');
-        const price = elPrice ? parseFloat(elPrice.value) : NaN;
-        if(isNaN(price) || price <= 0) return this.notify("Precio unitario inválido. Debe ser un número estrictamente positivo.", "warning");
         const elCat = document.getElementById('market-category');
-        const selectedMarket = (elCat && elCat.value) ? elCat.value : 'B2B';
-        const obs = elObs ? this.cleanInput(elObs.value) : '';
-
-        // FASE 4: Guardián Léxico Universal en Venta B2B
-        if (obs && ui.hasForbiddenWords(obs, 'Mercado B2B (Venta)', elObs)) return;
+        const selectedMarket = (elCat && elCat.value) ? elCat.value.trim() : '';
+        const allowedMarkets = ['B2B', 'B2C'];
+        if (!allowedMarkets.includes(selectedMarket)) {
+            return this.notify("Segmento de mercado no autorizado.", "warning");
+        }
+        const elPrice = document.getElementById('input-unit-price');
+        const rawPrice = elPrice ? elPrice.value.trim() : '';
+        const price = parseFloat(rawPrice);
+        if (!rawPrice || isNaN(price) || !Number.isFinite(price) || price <= 0 || price > 1000000 || !/^\d+(\.\d{1,2})?$/.test(rawPrice)) {
+            return this.notify("Precio unitario inválido. Debe ser un número estrictamente positivo (máx. 2 decimales, hasta 1.000.000 €v).", "warning");
+        }
+        const elDrive = document.getElementById('b2b-drive-url');
+        const driveUrl = elDrive ? elDrive.value.trim() : '';
+        if (driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace opcional debe pertenecer a un recurso válido de Google Drive.", "warning");
+        }
 
         const co = state.data.companies[state.user.coId];
         const ord = co.orders.find(o => String(o.id) === String(orderId));
@@ -276,12 +221,12 @@ Object.assign(ui, {
             qty: item.qty || 1,
             category: item.category,
             price: price,
-            obs: obs,
+            driveUrl: driveUrl || null,
             status: 'EN_VENTA',
             date: new Date().toLocaleString()
         });
 
-        ui.pushNotification(state.user.coId, 'FINANZAS', `I+D ha puesto en venta B2B: ${item.name} por ${price} €v.`, 'info');
+        ui.pushNotification(state.user.coId, 'FINANZAS', `I+D ha puesto en venta B2B: ${item.name} por ${price.toFixed(2)} €v.`, 'info');
         state.save();
         this.closeModal();
         this.render();
