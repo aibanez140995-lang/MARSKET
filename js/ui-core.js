@@ -1,7 +1,7 @@
 // js/ui-core.js
 // --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.0.19) ---
 
-const GOOGLE_DRIVE_REGEX = /^https:\/\/(docs|drive)\.google\.com\/(document|spreadsheets|presentation|file|drive\/folders)\/(d\/)?[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_.-]+)*(\?[^"'\s<>]*)?(#[^"'\s<>]*)?$/;
+// Constante global GOOGLE_DRIVE_REGEX centralizada en js/config.js
 
 const ui = {
     current: 'login', adminTab: 'dash', coordEvalView: 'ACTA', evalSelectedCo: '', evalClassFilter: 'ALL',
@@ -1758,6 +1758,17 @@ const ui = {
             ? (docObj.driveUrl ? docObj : { ...docObj, driveUrl: docObj.dataUrl || docObj.url || '' })
             : { driveUrl: String(docObj || '') };
         const isValidDriveUrl = item.driveUrl && GOOGLE_DRIVE_REGEX.test(item.driveUrl);
+        const status = item.status || 'DELIVERED_TO_TEACHER';
+        
+        let statusBadgeHtml = '';
+        if (status === 'SUBMITTED_TO_CEO') {
+            statusBadgeHtml = `<span class="bg-mars-yellow/20 text-mars-yellow border border-mars-yellow px-2 py-0.5 text-[10px] font-black uppercase shrink-0">[PENDIENTE SUPERVISIÓN CEO]</span>`;
+        } else if (status === 'CEO_REVISION') {
+            statusBadgeHtml = `<span class="bg-mars-magenta/20 text-mars-magenta border border-mars-magenta px-2 py-0.5 text-[10px] font-black uppercase shrink-0">[⚠️ REVISIÓN REQUERIDA POR CEO]</span>`;
+        } else {
+            statusBadgeHtml = `<span class="bg-mars-green/20 text-mars-green border border-mars-green px-2 py-0.5 text-[10px] font-black uppercase shrink-0">[✓ ENTREGADO A DOCENTE]</span>`;
+        }
+
         let actionHtml = '';
         if (isValidDriveUrl) {
             const tipoDoc = item.driveUrl.includes('/document/') ? 'Doc'
@@ -1766,30 +1777,56 @@ const ui = {
               : item.driveUrl.includes('/folders/') ? 'Carpeta'
               : 'Archivo Drive';
             const safeHref = encodeURI(item.driveUrl).replace(/"/g, '&quot;');
-            actionHtml = `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors">
-  <span>Abrir ${tipoDoc} ↗</span>
-</a>`;
+            actionHtml = `<div class="flex items-center gap-2 shrink-0">
+  ${statusBadgeHtml}
+  <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors">
+    <span>Abrir ${tipoDoc} ↗</span>
+  </a>
+</div>`;
         } else {
-            actionHtml = `<span class="text-xs text-amber-500/80 font-mono italic">[Contenido legacy no accesible por directiva RGPD]</span>`;
+            actionHtml = `<div class="flex items-center gap-2 shrink-0">${statusBadgeHtml}<span class="text-xs text-amber-500/80 font-mono italic">[Contenido legacy no accesible por directiva RGPD]</span></div>`;
         }
+
         const dateStr = item.updatedAt || item.date || '';
-        return `<div class="bg-mars-cyan/10 border border-mars-cyan/60 p-3 mb-2 flex justify-between items-center gap-2 text-xs">
-                    <div class="overflow-hidden pr-2">
-                        <span class="text-mars-cyan font-bold uppercase block truncate">${this.escapeHTML(title)}</span>
-                        <span class="text-xs text-slate-300 block truncate">GOOGLE DRIVE | ${this.escapeHTML(String(dateStr).slice(0,10))}</span>
+        const reasonBanner = (status === 'CEO_REVISION' && (item.returnReason || item.returnReasonId))
+            ? `<div class="mt-2 bg-red-950/50 border border-red-500/40 p-2 text-[11px] text-red-300 rounded"><strong class="text-red-400 uppercase">Motivo de Subsanación (CEO):</strong> ${this.escapeHTML(item.returnReason || item.returnReasonId)}</div>`
+            : '';
+
+        return `<div class="bg-mars-cyan/10 border border-mars-cyan/60 p-3 mb-2 text-xs">
+                    <div class="flex justify-between items-center gap-2">
+                        <div class="overflow-hidden pr-2">
+                            <span class="text-mars-cyan font-bold uppercase block truncate">${this.escapeHTML(title)}</span>
+                            <span class="text-xs text-slate-300 block truncate">GOOGLE DRIVE | ${this.escapeHTML(String(dateStr).slice(0,10))}</span>
+                        </div>
+                        ${actionHtml}
                     </div>
-                    ${actionHtml}
+                    ${reasonBanner}
                 </div>`;
     },
     
     renderDriveLinkBox(title, desc, docKey, currentDoc) {
+        const isCEO = (typeof state !== 'undefined' && state.user && state.user.role === 'CEO');
+        const item = (typeof currentDoc === 'object' && currentDoc !== null) ? currentDoc : null;
+        const status = item?.status;
+
+        let ceoControlsHtml = '';
+        if (isCEO && item && (status === 'SUBMITTED_TO_CEO' || status === 'CEO_REVISION')) {
+            ceoControlsHtml = `
+            <div class="bg-slate-950 border border-mars-cyan/40 p-3 mt-2 flex flex-col sm:flex-row gap-2 justify-end">
+                <button type="button" onclick="ui.approveDeliverableByCEO('${docKey}')" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ ✓ APROBAR Y ELEVAR A DOCENTE ]</button>
+                <button type="button" onclick="ui.modalCeoReturnDeliverable('${docKey}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-4 py-2 hover:bg-mars-magenta hover:text-white transition-all">[ ↩ DEVOLVER CON MOTIVO ]</button>
+            </div>
+            `;
+        }
+
         return `
         <div class="border-b border-slate-800 pb-4 mb-4 last:border-0 last:pb-0 last:mb-0">
             <h3 class="text-mars-cyan font-bold text-xs sm:text-sm uppercase mb-1">${this.escapeHTML(title)}</h3>
             <p class="text-xs text-slate-300 mb-2 uppercase leading-relaxed">${this.escapeHTML(desc)}</p>
             ${this.renderDocBadge(title, currentDoc)}
+            ${ceoControlsHtml}
             <div class="bg-slate-900 border border-slate-700 p-3 mt-2 space-y-2">
-                <label for="input-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Entregar Enlace Google Drive</label>
+                <label for="input-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">${isCEO ? 'Entregar o Actualizar Enlace Google Drive' : 'Subir Enlace para Supervisión del CEO'}</label>
                 <div class="space-y-1.5">
                   <input type="url" 
                          id="input-drive-url" 
@@ -1802,15 +1839,57 @@ const ui = {
                   </p>
                 </div>
                 <div class="flex justify-end pt-1">
-                    <button type="button" onclick="ui.submitDeliverable('${docKey}', this)" class="bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white flex-shrink-0 w-full sm:w-auto min-h-[44px]">Entregar Enlace</button>
+                    <button type="button" onclick="ui.submitDeliverable('${docKey}', this)" class="bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white flex-shrink-0 w-full sm:w-auto min-h-[44px]">${isCEO ? 'Entregar y Elevar a Docente' : 'Enviar a Supervisión CEO'}</button>
                 </div>
             </div>
         </div>`;
     },
 
+    modalCeoReturnDeliverable(docKey) {
+        if (!state.user || state.user.role !== 'CEO') return;
+        const reasons = (typeof CEO_RETURN_REASONS !== 'undefined' ? CEO_RETURN_REASONS : [
+            { id: "ENLACE_INVALIDO", label: "Enlace a Google Drive inexistente o con formato incorrecto" },
+            { id: "PERMISOS_BLOQUEADOS", label: "Documento sin permisos de acceso/lectura para el equipo docente" },
+            { id: "PLANTILLA_INCORRECTA", label: "No se ha utilizado la plantilla oficial corporativa/curricular" },
+            { id: "CHECKLIST_INCOMPLETO", label: "Faltan apartados obligatorios según la guía de la materia" },
+            { id: "DISCREPANCIA_DATOS", label: "Discrepancia entre datos de la app y el documento adjunto" },
+            { id: "REVISION_PENDIENTE", label: "Requiere subsanación técnica interna antes de elevar a evaluación" }
+        ]);
+
+        const optionsHtml = reasons.map(r => `<option value="${this.escapeHTML(r.id)}">${this.escapeHTML(r.label)}</option>`).join('');
+
+        const html = `
+            <div class="space-y-3">
+                <p class="text-xs text-slate-300 leading-relaxed">Selecciona el motivo tipificado para devolver este entregable al departamento responsable. No se permite texto libre (directiva RGPD/Gobernanza).</p>
+                <div>
+                    <label for="ceo-return-reason" class="text-xs text-mars-yellow font-bold uppercase block mb-1">Motivo Tipificado de Devolución</label>
+                    <select id="ceo-return-reason" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white outline-none focus:border-white">
+                        ${optionsHtml}
+                    </select>
+                </div>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.confirmCeoReturnDeliverable('${docKey}')" class="min-h-[44px] bg-red-700 text-white font-black px-5 py-2.5 text-xs uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">Confirmar Devolución</button>`;
+        this.showModal("Supervisión CEO: Devolver Entregable", html, actions);
+    },
+
+    confirmCeoReturnDeliverable(docKey) {
+        if (!state.user || state.user.role !== 'CEO') return;
+        const el = document.getElementById('ceo-return-reason');
+        if (!el) return;
+        const reasonId = el.value;
+        this.closeModal();
+        state.returnDeliverableByCEO(docKey, reasonId);
+    },
+
+    approveDeliverableByCEO(docKey) {
+        if (!state.user || state.user.role !== 'CEO') return;
+        state.approveDeliverableByCEO(docKey);
+    },
+
     submitDeliverable(docType, btnEl = null) {
-        const inputFromBtn = (btnEl && btnEl.closest) ? btnEl.closest('.bg-slate-900')?.querySelector('input[name="driveUrl"]') : null;
-        const driveUrl = (inputFromBtn?.value || (document.getElementById('input-drive-url')?.value || '')).trim();
+        const inputFromBtn = (btnEl && btnEl.closest) ? (btnEl.closest('.bg-slate-900')?.querySelector('input[name="driveUrl"]') || btnEl.closest('.border-b')?.querySelector('input[name="driveUrl"]')) : null;
+        const driveUrl = (inputFromBtn?.value || (document.getElementById(`input-drive-url-${docType}`)?.value || document.getElementById('input-drive-url')?.value || '')).trim();
 
         if (!GOOGLE_DRIVE_REGEX.test(driveUrl)) {
             this.notify("Solo se admiten enlaces válidos a recursos de Google Drive.", "error");
@@ -1847,6 +1926,12 @@ const ui = {
         let deliveryStatusHtml = '';
         if (doc) {
             const dateStr = item.updatedAt || item.date || '';
+            const status = item.status || 'DELIVERED_TO_TEACHER';
+            let pipelineLabel = '';
+            if (status === 'SUBMITTED_TO_CEO') pipelineLabel = '<span class="text-mars-yellow font-bold uppercase text-xs">[PENDIENTE SUPERVISIÓN CEO]</span>';
+            else if (status === 'CEO_REVISION') pipelineLabel = '<span class="text-mars-magenta font-bold uppercase text-xs">[⚠️ REVISIÓN REQUERIDA POR CEO]</span>';
+            else pipelineLabel = '<span class="text-mars-green font-bold uppercase text-xs">[✓ ENTREGADO A DOCENTE]</span>';
+
             if (isValidDriveUrl) {
                 const tipoDoc = item.driveUrl.includes('/document/') ? 'Doc'
                   : item.driveUrl.includes('/spreadsheets/') ? 'Sheet'
@@ -1855,16 +1940,24 @@ const ui = {
                   : 'Archivo Drive';
                 const safeHref = encodeURI(item.driveUrl).replace(/"/g, '&quot;');
                 deliveryStatusHtml = `
-                    <p class="text-mars-green font-bold uppercase text-xs mb-1">✓ ENTREGADO (${this.escapeHTML(String(dateStr).slice(0, 10))})</p>
-                    <div class="mt-2">
+                    <div class="flex items-center gap-2 mb-1">
+                        ${pipelineLabel}
+                        <span class="text-slate-400 text-xs font-mono">(${this.escapeHTML(String(dateStr).slice(0, 10))})</span>
+                    </div>
+                    ${status === 'CEO_REVISION' && (item.returnReason || item.returnReasonId) ? `<div class="bg-red-950/40 border border-red-500/40 p-2 text-xs text-red-300 mb-2 rounded"><strong class="uppercase">Motivo:</strong> ${this.escapeHTML(item.returnReason || item.returnReasonId)}</div>` : ''}
+                    <div class="mt-2 flex items-center gap-2">
                         <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors">
                             <span>Abrir ${tipoDoc} ↗</span>
                         </a>
+                        ${(state.user && state.user.role === 'CEO' && (status === 'SUBMITTED_TO_CEO' || status === 'CEO_REVISION')) ? `
+                            <button type="button" onclick="ui.approveDeliverableByCEO('${docKey}'); ui.closeDrawer()" class="px-2.5 py-1 text-xs bg-mars-green text-black font-black uppercase hover:bg-white transition-all">Aprobar CEO</button>
+                            <button type="button" onclick="ui.modalCeoReturnDeliverable('${docKey}'); ui.closeDrawer()" class="px-2.5 py-1 text-xs bg-red-700 text-white font-black uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">Devolver</button>
+                        ` : ''}
                     </div>
                 `;
             } else {
                 deliveryStatusHtml = `
-                    <p class="text-mars-green font-bold uppercase text-xs mb-1">✓ ENTREGADO (${this.escapeHTML(String(dateStr).slice(0, 10))})</p>
+                    <div class="flex items-center gap-2 mb-1">${pipelineLabel} <span class="text-slate-400 text-xs font-mono">(${this.escapeHTML(String(dateStr).slice(0, 10))})</span></div>
                     <div class="mt-1"><span class="text-xs text-amber-500/80 font-mono italic">[Contenido legacy no accesible por directiva RGPD]</span></div>
                 `;
             }

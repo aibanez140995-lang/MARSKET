@@ -45,10 +45,33 @@ Object.assign(ui, {
             </div>
         `).join('') || `<div class="terminal-border border-dashed p-10 text-center text-slate-300 italic text-xs">No hay órdenes aprobadas pendientes de ejecución logística.</div>`;
 
+        const currentHoja = co.deliverables?.hoja_taller_fyq;
+        const hojaHtml = `
+        <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-cyan-400 mb-6 w-full">
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <span class="text-xs font-bold uppercase text-cyan-400 bg-cyan-950/40 border border-cyan-500/40 px-2.5 py-1 tracking-wider">[ENTREGABLE OFICIAL FYQ // 10%]</span>
+                    <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM y Control de Ensamble</h3>
+                </div>
+            </div>
+            <p class="text-xs text-slate-300 mb-3">Registro de desglose de materiales (BOM) y control de calidad físico supervisado para Física y Química.</p>
+            ${this.renderDocBadge("Hoja de Taller: BOM y Control de Ensamble", currentHoja)}
+            <div class="bg-slate-900 border border-slate-700 p-3 mt-3 space-y-2">
+                <label for="hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Enlace Drive Hoja de Taller (BOM & Control Físico)</label>
+                <input type="url" id="hoja-taller-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white rounded font-mono outline-none focus:border-mars-cyan min-h-[44px]">
+                <p class="text-[10px] text-slate-400">Pega el enlace a la hoja de cálculo o documento en Google Drive con permisos de lectura.</p>
+                <div class="flex justify-end pt-1">
+                    <button type="button" onclick="ui.submitHojaTallerDrive()" class="bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white min-h-[44px] w-full sm:w-auto">[ Entregar Hoja de Taller ]</button>
+                </div>
+            </div>
+        </div>
+        `;
+
         wrapper.innerHTML = `
             <div class="flex justify-between items-center mb-6">
                 <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">Logística de Despliegue Físico</h2>
             </div>
+            ${hojaHtml}
             ${ordersHtml}
         `;
         el.appendChild(wrapper);
@@ -192,14 +215,32 @@ Object.assign(ui, {
         el.appendChild(wrapper);
     },
 
+    submitHojaTallerDrive() {
+        const el = document.getElementById('hoja-taller-drive-url');
+        if (!el) return;
+        const url = this.cleanInput(el.value);
+        if (!url) return this.notify("Debes introducir el enlace de Google Drive.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(url)) {
+            return this.notify("Solo se admiten enlaces válidos a recursos de Google Drive.", "error");
+        }
+        state.submitDeliverable('hoja_taller_fyq', { driveUrl: url });
+    },
+
     modalReportAI() {
         if (!state.user) return;
+        const aiProviders = typeof AUTHORIZED_AI_PROVIDERS !== 'undefined' ? AUTHORIZED_AI_PROVIDERS : [
+            "Google Gemini", "OpenAI ChatGPT", "Anthropic Claude", "Microsoft Copilot", "Perplexity AI", "DeepSeek", "Otro autorizado por Coordinación"
+        ];
+        const optionsHtml = aiProviders.map(p => `<option value="${this.escapeHTML(p)}">${this.escapeHTML(p)}</option>`).join('');
+
         const html = `
             <p class="text-xs text-slate-300 mb-3 leading-relaxed">Todo uso de IA generativa debe registrarse en el Cuaderno de Bitácora oficial (Google Docs) con permisos de lectura antes de integrarse en el proyecto.</p>
             <div class="space-y-3">
                 <div>
-                    <label for="ai-tool" class="text-xs text-blue-400 font-bold uppercase block mb-1">Herramienta IA</label>
-                    <input type="text" id="ai-tool" placeholder="Herramienta IA (Ej: ChatGPT, Claude, Gemini)..." class="w-full min-h-[44px] bg-slate-900 border border-blue-500/50 p-2.5 text-base sm:text-xs text-white outline-none focus:border-blue-400">
+                    <label for="ai-tool" class="text-xs text-blue-400 font-bold uppercase block mb-1">Proveedor / Herramienta IA Autorizada</label>
+                    <select id="ai-tool" class="w-full min-h-[44px] bg-slate-900 border border-blue-500/50 p-2.5 text-base sm:text-xs text-white outline-none focus:border-blue-400">
+                        ${optionsHtml}
+                    </select>
                 </div>
                 <div class="space-y-1.5 mb-3">
                     <label for="input-bitacora-url" class="text-[11px] font-mono text-slate-300 uppercase tracking-wide block">

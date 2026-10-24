@@ -776,13 +776,86 @@ try {
 
             case 'SUBMIT_DELIVERABLE':
                 $co['deliverables'] = is_array($co['deliverables'] ?? null) ? $co['deliverables'] : [];
-                if (!empty($payload['key'])) {
-                    $co['deliverables'][$payload['key']] = $payload['deliverableData'] ?? $payload['url'] ?? true;
+                $rawKey = trim((string)($payload['key'] ?? $payload['docKey'] ?? $payload['docType'] ?? ''));
+                if ($rawKey !== '') {
+                    $driveUrl = trim((string)($payload['driveUrl'] ?? $payload['url'] ?? ''));
+                    $isCEO = ($auth['role'] ?? '') === 'CEO' || !empty($auth['isCoordinator']);
+                    $status = $isCEO ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
+                    $co['deliverables'][$rawKey] = [
+                        'driveUrl' => $driveUrl,
+                        'status' => $status,
+                        'returnReasonId' => null,
+                        'returnReason' => null,
+                        'updatedAt' => date('c')
+                    ];
+                }
+                break;
+
+            case 'CEO_REVIEW_DELIVERABLE':
+                if (($auth['role'] ?? '') !== 'CEO' && empty($auth['isCoordinator'])) {
+                    http_response_code(403);
+                    echo json_encode(['error' => 'UNAUTHORIZED_ROLE', 'message' => 'Solo el CEO o Coordinación puede supervisar entregables.']);
+                    exit;
+                }
+                $rawKey = trim((string)($payload['key'] ?? $payload['docKey'] ?? $payload['docType'] ?? ''));
+                $co['deliverables'] = is_array($co['deliverables'] ?? null) ? $co['deliverables'] : [];
+                if (!isset($co['deliverables'][$rawKey])) {
+                    http_response_code(404);
+                    echo json_encode(['error' => 'DELIVERABLE_NOT_FOUND']);
+                    exit;
+                }
+                $currentDoc = &$co['deliverables'][$rawKey];
+                $subAction = strtoupper(trim((string)($payload['action'] ?? $payload['subAction'] ?? '')));
+                if ($subAction === 'APPROVE') {
+                    if (is_string($currentDoc)) {
+                        $currentDoc = ['driveUrl' => $currentDoc, 'status' => 'DELIVERED_TO_TEACHER', 'updatedAt' => date('c')];
+                    } else {
+                        $currentDoc['status'] = 'DELIVERED_TO_TEACHER';
+                        unset($currentDoc['returnReasonId'], $currentDoc['returnReason']);
+                        $currentDoc['updatedAt'] = date('c');
+                    }
+                } elseif ($subAction === 'RETURN') {
+                    $reasonId = trim((string)($payload['reasonId'] ?? ''));
+                    $reasonText = trim((string)($payload['reason'] ?? $reasonId));
+                    if (is_string($currentDoc)) {
+                        $currentDoc = ['driveUrl' => $currentDoc, 'status' => 'CEO_REVISION', 'returnReasonId' => $reasonId, 'returnReason' => $reasonText, 'updatedAt' => date('c')];
+                    } else {
+                        $currentDoc['status'] = 'CEO_REVISION';
+                        $currentDoc['returnReasonId'] = $reasonId;
+                        $currentDoc['returnReason'] = $reasonText;
+                        $currentDoc['updatedAt'] = date('c');
+                    }
+                } else {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'INVALID_REVIEW_ACTION']);
+                    exit;
+                }
+                break;
+
+            case 'VOTE_MOTION':
+                $motionId = trim((string)($payload['id'] ?? $payload['motionId'] ?? ''));
+                $voteValue = trim((string)($payload['vote'] ?? ''));
+                $validVotes = ['A_FAVOR', 'EN_CONTRA', 'NO_ESTOY_SEGURO'];
+                if (!in_array($voteValue, $validVotes, true)) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'INVALID_VOTE_VALUE', 'allowed' => $validVotes]);
+                    exit;
+                }
+                $co['votingMotions'] = is_array($co['votingMotions'] ?? null) ? $co['votingMotions'] : [];
+                foreach ($co['votingMotions'] as &$m) {
+                    if (($m['id'] ?? '') === $motionId) {
+                        if (!isset($m['votes']) || !is_array($m['votes'])) {
+                            $m['votes'] = [];
+                        }
+                        $roleKey = $auth['role'] ?? 'ESTUDIANTE';
+                        $m['votes'][$roleKey] = $voteValue;
+                        break;
+                    }
                 }
                 break;
 
             case 'GENERIC_PATCH':
-                $allowed = ['slogan', 'valueProposition', 'cart', 'votingMotions', 'flightTests', 'bom'];
+                $allowed = ['slogan', 'valueProposition', 'cart', 'votingMotions', 'flightTests', 'bom', 'brandApproval'];
                 foreach ($allowed as $k) {
                     if (isset($payload[$k])) {
                         $co[$k] = $payload[$k];

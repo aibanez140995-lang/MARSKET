@@ -10,13 +10,25 @@ Object.assign(ui, {
         const isCoord = state.user.role.startsWith('COORD');
         const activeSuggsCount = (state.data.suggestionsToAlex || []).filter(s => s.status !== 'IMPLEMENTADO' && s.status !== 'RESUELTO' && !s.resolved).length;
         
+        let deliveredCount = 0;
+        for (const cid in (state.data.companies || {})) {
+            const coDelivs = state.data.companies[cid]?.deliverables || {};
+            for (const dKey in coDelivs) {
+                const item = coDelivs[dKey];
+                if (item && (item.status === 'DELIVERED_TO_TEACHER' || (typeof item === 'string' && item.length > 0))) {
+                    deliveredCount++;
+                }
+            }
+        }
+
         const tabsHtml = `
         <div role="tablist" aria-label="Pestañas del Panel Docente" class="flex flex-wrap gap-2 mb-6 border-b border-mars-border pb-3">
             <button role="tab" aria-selected="${currentTab==='dash'}" onclick="ui.adminTab='dash'; ui.render()" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all ${currentTab==='dash'?'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]':'bg-mars-card text-slate-300 border-mars-border hover:text-white'}">
                 📊 Visión Global & Aduana
             </button>
-            <button role="tab" aria-selected="${currentTab==='eval'}" onclick="ui.adminTab='eval'; ui.render()" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all ${currentTab==='eval'?'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]':'bg-mars-card text-slate-300 border-mars-border hover:text-white'}">
-                🎖️ Rúbricas & Entregas (100%)
+            <button role="tab" aria-selected="${currentTab==='eval'}" onclick="ui.adminTab='eval'; ui.render()" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all flex items-center gap-1.5 ${currentTab==='eval'?'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]':'bg-mars-card text-slate-300 border-mars-border hover:text-white'}">
+                <span>🎖️ Rúbricas & Entregas (100%)</span>
+                ${deliveredCount > 0 ? `<span class="bg-mars-green text-black px-1.5 py-0.5 rounded text-[10px] font-mono font-black">${deliveredCount}</span>` : ''}
             </button>
             <button role="tab" aria-selected="${currentTab==='startups'}" onclick="ui.adminTab='startups'; ui.render()" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all ${currentTab==='startups'?'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]':'bg-mars-card text-slate-300 border-mars-border hover:text-white'}">
                 🚀 Startups & PINs
@@ -54,7 +66,12 @@ Object.assign(ui, {
 
         try {
             switch(currentTab) {
-                case 'dash': subContainer.innerHTML = this.renderAdminDash(); break;
+                case 'dash': {
+                    const isFyqOrCoord = state.user.role === 'FYQ' || state.user.role.startsWith('COORD');
+                    const fyqPanel = isFyqOrCoord ? this.renderFyqReceptionPanel() : '';
+                    subContainer.innerHTML = fyqPanel + this.renderAdminDash();
+                    break;
+                }
                 case 'eval': subContainer.innerHTML = this.renderAdminEval(); break;
                 case 'startups': subContainer.innerHTML = this.renderAdminStartups(); break;
                 case 'telemetry': subContainer.innerHTML = this.renderAdminTelemetry(); break;
@@ -70,6 +87,72 @@ Object.assign(ui, {
 
         wrapper.appendChild(subContainer);
         el.appendChild(wrapper);
+    },
+
+    renderFyqReceptionPanel() {
+        const companies = state.data.companies || {};
+        const defs = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).filter(d => d.subject === 'FYQ');
+
+        let rows = '';
+        for (const cid in companies) {
+            const co = companies[cid];
+            const coName = co.name || cid.toUpperCase();
+            const coDeliverables = co.deliverables || {};
+
+            defs.forEach(def => {
+                const item = coDeliverables[def.key];
+                const isDelivered = item && (item.status === 'DELIVERED_TO_TEACHER' || (typeof item === 'string' && item.length > 0));
+                if (isDelivered) {
+                    const driveUrl = typeof item === 'object' ? item.driveUrl : item;
+                    const updatedAt = (typeof item === 'object' && item.updatedAt) ? String(item.updatedAt).slice(0, 10) : '--';
+                    const safeHref = encodeURI(driveUrl).replace(/"/g, '&quot;');
+                    rows += `
+                        <tr class="border-b border-slate-800 text-xs">
+                            <td class="p-2.5 font-bold text-mars-cyan uppercase">${this.escapeHTML(coName)}</td>
+                            <td class="p-2.5 text-white font-medium">${this.escapeHTML(def.shortName || def.name)}</td>
+                            <td class="p-2.5 font-mono text-slate-300">${this.escapeHTML(updatedAt)}</td>
+                            <td class="p-2.5">
+                                <span class="bg-mars-green/20 text-mars-green border border-mars-green/40 px-2 py-0.5 text-[10px] font-black uppercase">[✓ RECIBIDO DOCENTE]</span>
+                            </td>
+                            <td class="p-2.5">
+                                <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50">Abrir Drive ↗</a>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+        }
+
+        if (!rows) {
+            rows = `<tr><td colspan="5" class="p-4 text-center text-slate-400 italic">No hay recepciones de Física y Química elevadas al equipo docente todavía.</td></tr>`;
+        }
+
+        return `
+        <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-cyan-400 mb-6">
+            <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
+                <div>
+                    <h3 class="font-orbitron text-cyan-400 text-xs sm:text-sm uppercase tracking-wider font-bold">Recepción de Entregables FyQ (Hoja de Taller BOM & Informes)</h3>
+                    <p class="text-[11px] text-slate-300">Entregables supervisados y elevados por el CEO al equipo docente de Física y Química.</p>
+                </div>
+            </div>
+            <div class="overflow-x-auto max-h-64 border border-slate-800">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-900 text-slate-400 text-[10px] uppercase font-bold tracking-wider sticky top-0">
+                        <tr>
+                            <th class="p-2.5 border-b border-slate-700">Startup</th>
+                            <th class="p-2.5 border-b border-slate-700">Hito FYQ</th>
+                            <th class="p-2.5 border-b border-slate-700">Fecha</th>
+                            <th class="p-2.5 border-b border-slate-700">Estado Pipeline</th>
+                            <th class="p-2.5 border-b border-slate-700">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        `;
     },
 
     renderAdminSettings() {

@@ -1,8 +1,33 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.02) ---
 
-const APP_VERSION = "1.1.17";
+const APP_VERSION = "1.1.18";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
+
+const GOOGLE_DRIVE_REGEX = /^https:\/\/(docs|drive)\.google\.com\/(document|spreadsheets|presentation|file|drive\/folders)\/(d\/)?[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_.-]+)*(\?[^"'\s<>]*)?(#[^"'\s<>]*)?$/;
+
+const CEO_RETURN_REASONS = [
+  { id: "ENLACE_INVALIDO", label: "Enlace a Google Drive inexistente o con formato incorrecto" },
+  { id: "PERMISOS_BLOQUEADOS", label: "Documento sin permisos de acceso/lectura para el equipo docente" },
+  { id: "PLANTILLA_INCORRECTA", label: "No se ha utilizado la plantilla oficial corporativa/curricular" },
+  { id: "CHECKLIST_INCOMPLETO", label: "Faltan apartados obligatorios según la guía de la materia" },
+  { id: "DISCREPANCIA_DATOS", label: "Discrepancia entre datos de la app y el documento adjunto" },
+  { id: "REVISION_PENDIENTE", label: "Requiere subsanación técnica interna antes de elevar a evaluación" }
+];
+
+const AUTHORIZED_AI_PROVIDERS = [
+  "Google Gemini", "OpenAI ChatGPT", "Anthropic Claude", "Microsoft Copilot", "Perplexity AI", "DeepSeek", "Otro autorizado por Coordinación"
+];
+
+const GOVERNANCE_MOTION_TYPES = [
+  { id: "CESE_RELEVO", label: "[CESE/RELEVO] Cese o redistribución de rol por inactividad" },
+  { id: "REORGANIZACION_PINS", label: "[REORGANIZACIÓN] Reestructuración de cargos y PINs" },
+  { id: "PACTO_SOCIOS", label: "[CONVIVENCIA] Vulneración del Pacto de Socios" },
+  { id: "MEDIACION_DOCENTE", label: "[MEDIACIÓN] Solicitud formal de mediación docente" },
+  { id: "AUDITORIA_FINANZAS", label: "[AUDITORÍA] Petición de intervención a Tesorería" },
+  { id: "REPARTO_TRABAJO", label: "[REPARTO] Reasignación urgente de cargas de trabajo" },
+  { id: "JUNTA_GENERAL", label: "[EXTRAORDINARIA] Convocatoria de Junta General de Socios" }
+];
 
 const REGULATORY_AGENCIES = {
     FYQ: "Agencia Estatal de Seguridad Aérea (AESA)",
@@ -60,7 +85,18 @@ const RUBRIC_CONFIG = {
 
 // Definición Maestra Oficial de los 19 Entregables Curriculares
 const DELIVERABLES_DEF = [
-    // Física y Química (2)
+    // Física y Química (3)
+    {
+      key: "hoja_taller_fyq",
+      subject: "FYQ",
+      title: "Hoja de Taller: BOM y Control de Ensamble",
+      name: "3. Hoja de Taller: BOM y Control de Ensamble",
+      shortName: "Hoja de Taller (FYQ)",
+      desc: "Registro de desglose de materiales y control de calidad físico (Física y Química).",
+      role: "OPERACIONES_IA",
+      defaultDate: "2027-04-10T23:59",
+      weight: "10% FYQ"
+    },
     { key: 'preliminaryReport', subject: 'FYQ', name: '1. Informe Preliminar / Prototipo (Dic)', shortName: 'Preliminar FYQ (Dic)', role: 'TECNICO', defaultDate: '2026-12-15T23:59', weight: '20% FYQ' },
     { key: 'technicalReport', subject: 'FYQ', name: '2. Informe Técnico Final Exhaustivo (Abr)', shortName: 'Técnico FYQ (Abr)', role: 'TECNICO', defaultDate: '2027-04-20T23:59', weight: '30% FYQ' },
     
@@ -159,6 +195,24 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.18",
+      date: new Date().toISOString().split('T')[0],
+      title: "Pipeline Jerárquico de Entregables, Catálogos Enums y Votación Tripartita",
+      items: [
+        "Supervisión jerárquica del CEO en entregables hacia el equipo docente",
+        "Catálogos cerrados de motivos de devolución, proveedores de IA y tipos de moción",
+        "Votación de gobernanza tripartita (A Favor, En Contra, No estoy seguro)",
+        "Nuevo entregable oficial Hoja de Taller BOM para Física y Química",
+        "Expedientes disciplinarios inmutables y vinculación de logo corporativo a Google Drive"
+      ],
+      highlights: [
+        { type: "PIPELINE", text: "Supervisión jerárquica del CEO previa a la elevación docente." },
+        { type: "CATÁLOGOS", text: "Erradicación de texto libre con catálogos enums para IA, gobernanza y motivos CEO." },
+        { type: "GOBERNANZA", text: "Votación tripartita de mociones (A Favor / En Contra / No estoy seguro)." },
+        { type: "FYQ", text: "Integración de Hoja de Taller BOM y control de calidad físico." }
+      ]
+    },
     {
       version: "1.1.17",
       date: new Date().toISOString().split('T')[0],

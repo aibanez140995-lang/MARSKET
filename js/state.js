@@ -259,7 +259,7 @@ const state = {
         });
 
         const defDocs = {
-            preliminaryReport: null, technicalReport: null,
+            preliminaryReport: null, technicalReport: null, hoja_taller_fyq: null,
             brandIdentity_dec: null, brandIdentity_apr: null, businessModelDoc: null, businessModelCanvas: null, decisionDiary_dec: null, decisionDiary_apr: null,
             investorDossier: null,
             goniometerEvidence: null, mathReportDist: null, mathReportTwoPoints: null, mathReportFinal: null,
@@ -318,7 +318,22 @@ const state = {
             co.deliverables = co.deliverables || {};
             
             for (let docKey in defDocs) {
-                if (co.deliverables[docKey] === undefined) co.deliverables[docKey] = null;
+                if (co.deliverables[docKey] === undefined) {
+                    co.deliverables[docKey] = null;
+                } else if (co.deliverables[docKey] !== null) {
+                    if (typeof co.deliverables[docKey] === 'string') {
+                        co.deliverables[docKey] = {
+                            driveUrl: co.deliverables[docKey],
+                            status: 'DELIVERED_TO_TEACHER',
+                            returnReasonId: null,
+                            returnReason: null,
+                            updatedAt: new Date().toISOString()
+                        };
+                    } else if (typeof co.deliverables[docKey] === 'object' && !co.deliverables[docKey].status) {
+                        co.deliverables[docKey].status = 'DELIVERED_TO_TEACHER';
+                        co.deliverables[docKey].updatedAt = co.deliverables[docKey].updatedAt || new Date().toISOString();
+                    }
+                }
             }
 
             co.flightTests = (Array.isArray(co.flightTests) ? co.flightTests : []).map(f => ({
@@ -1073,29 +1088,108 @@ const state = {
         if (!co) return;
 
         co.deliverables = co.deliverables || {};
+        const isCEO = (this.user.role === 'CEO');
+        const targetStatus = isCEO ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
+
         const sanitizedItem = { 
             driveUrl, 
+            status: targetStatus,
+            returnReasonId: null,
+            returnReason: null,
             updatedAt: new Date().toISOString() 
         };
         co.deliverables[docType] = sanitizedItem;
 
         if (typeof telemetry !== 'undefined' && telemetry.log) {
-            telemetry.log("ENTREGABLE", `Enlace Google Drive subido: ${docType}`);
+            telemetry.log("ENTREGABLE", `Enlace Google Drive subido: ${docType} (Estado: ${targetStatus})`);
         }
 
         this.save();
         if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
             ui.render();
-            ui.notify("✅ Enlace de Google Drive registrado y validado en el Dossier.", "success");
+            if (isCEO) {
+                ui.notify("✅ Enlace registrado y elevado a evaluación docente.", "success");
+            } else {
+                ui.notify("📤 Enlace registrado y remitido a supervisión del CEO.", "info");
+            }
         }
 
         try {
             await this.executeAction('SUBMIT_DELIVERABLE', {
                 key: docType,
-                driveUrl: sanitizedItem.driveUrl
+                driveUrl: sanitizedItem.driveUrl,
+                status: targetStatus
             });
         } catch(e) {
             console.warn("[ACTION] Error sincronizando entrega:", e);
+        }
+    },
+
+    async approveDeliverableByCEO(docType) {
+        if (!this.user || !this.user.coId || this.user.role !== 'CEO') return;
+        const coId = this.user.coId;
+        const co = this.data.companies?.[coId];
+        if (!co || !co.deliverables || !co.deliverables[docType]) return;
+
+        co.deliverables[docType].status = 'DELIVERED_TO_TEACHER';
+        delete co.deliverables[docType].returnReasonId;
+        delete co.deliverables[docType].returnReason;
+        co.deliverables[docType].updatedAt = new Date().toISOString();
+
+        if (typeof telemetry !== 'undefined' && telemetry.log) {
+            telemetry.log("CEO_APROBACION", `Entregable aprobado y elevado a docente: ${docType}`);
+        }
+
+        this.save();
+        if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
+            ui.render();
+            ui.notify("✅ Entregable validado por el CEO y elevado a evaluación docente.", "success");
+        }
+
+        try {
+            await this.executeAction('CEO_REVIEW_DELIVERABLE', {
+                key: docType,
+                action: 'APPROVE'
+            });
+        } catch(e) {
+            console.warn("[ACTION] Error sincronizando aprobación del CEO:", e);
+        }
+    },
+
+    async returnDeliverableByCEO(docType, reasonId) {
+        if (!this.user || !this.user.coId || this.user.role !== 'CEO') return;
+        const coId = this.user.coId;
+        const co = this.data.companies?.[coId];
+        if (!co || !co.deliverables || !co.deliverables[docType]) return;
+
+        const reasonList = typeof CEO_RETURN_REASONS !== 'undefined' ? CEO_RETURN_REASONS : [];
+        const reasonObj = reasonList.find(r => r.id === reasonId);
+        const reasonText = reasonObj ? reasonObj.label : (reasonId || 'Revisión técnica requerida por CEO');
+
+        co.deliverables[docType].status = 'CEO_REVISION';
+        co.deliverables[docType].returnReasonId = reasonId;
+        co.deliverables[docType].returnReason = reasonText;
+        co.deliverables[docType].updatedAt = new Date().toISOString();
+
+        if (typeof telemetry !== 'undefined' && telemetry.log) {
+            telemetry.log("CEO_DEVOLUCION", `Entregable devuelto a departamento: ${docType} (${reasonId})`);
+        }
+
+        this.save();
+        if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
+            ui.render();
+            ui.notify("↩️ Entregable devuelto al departamento para subsanación.", "warning");
+        }
+
+        try {
+            await this.executeAction('CEO_REVIEW_DELIVERABLE', {
+                key: docType,
+                action: 'RETURN',
+                reasonId: reasonId,
+                reasonText: reasonText
+            });
+        } catch(e) {
+            console.warn("[ACTION] Error sincronizando devolución del CEO:", e);
         }
     },
 
@@ -1284,6 +1378,9 @@ const state = {
                             if (d && typeof d === 'object') {
                                 co.deliverables[dKey] = {
                                     driveUrl: String(d.driveUrl || d.dataUrl || d.url || '').trim(),
+                                    status: d.status || 'DELIVERED_TO_TEACHER',
+                                    returnReasonId: d.returnReasonId || null,
+                                    returnReason: d.returnReason || null,
                                     updatedAt: d.updatedAt || d.date || new Date().toISOString()
                                 };
                             }

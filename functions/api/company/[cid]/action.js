@@ -6,6 +6,16 @@ import { verifySession } from '../../_auth.js';
 
 const GOOGLE_DRIVE_REGEX = /^https:\/\/(docs|drive)\.google\.com\/(document|spreadsheets|presentation|file|drive\/folders)\/(d\/)?[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_.-]+)*(\?[^"'\s<>]*)?(#[^"'\s<>]*)?$/;
 
+const CEO_RETURN_REASONS = [
+  { id: "ENLACE_INVALIDO", label: "Enlace a Google Drive inexistente o con formato incorrecto" },
+  { id: "PERMISOS_BLOQUEADOS", label: "Documento sin permisos de acceso/lectura para el equipo docente" },
+  { id: "PLANTILLA_INCORRECTA", label: "No se ha utilizado la plantilla oficial corporativa/curricular" },
+  { id: "CHECKLIST_INCOMPLETO", label: "Faltan apartados obligatorios según la guía de la materia" },
+  { id: "DISCREPANCIA_DATOS", label: "Discrepancia entre datos de la app y el documento adjunto" },
+  { id: "REVISION_PENDIENTE", label: "Requiere subsanación técnica interna antes de elevar a evaluación" }
+];
+const VALID_RETURN_REASON_IDS = CEO_RETURN_REASONS.map(r => r.id);
+
 const CORS_HEADERS = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
@@ -220,7 +230,76 @@ export async function onRequestPost(context) {
                     });
                 }
                 co.deliverables = co.deliverables || {};
-                co.deliverables[rawKey] = { driveUrl, updatedAt: new Date().toISOString() };
+                const isCEO = auth.role === 'CEO' || auth.isCoordinator;
+                const status = isCEO ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
+                co.deliverables[rawKey] = { 
+                    driveUrl, 
+                    status,
+                    returnReasonId: null,
+                    returnReason: null,
+                    updatedAt: new Date().toISOString() 
+                };
+                break;
+            }
+
+            case 'CEO_REVIEW_DELIVERABLE': {
+                if (auth.role !== 'CEO' && !auth.isCoordinator) {
+                    return new Response(JSON.stringify({ error: 'UNAUTHORIZED_ROLE', message: 'Solo el CEO o Coordinación puede supervisar entregables.' }), { status: 403, headers: CORS_HEADERS });
+                }
+                const rawKey = String(payload.key || payload.docKey || payload.docType || '').trim();
+                if (!/^[a-zA-Z0-9_-]{1,40}$/.test(rawKey)) {
+                    return new Response(JSON.stringify({ error: 'INVALID_DELIVERABLE_KEY' }), { status: 400, headers: CORS_HEADERS });
+                }
+                co.deliverables = co.deliverables || {};
+                const currentDoc = co.deliverables[rawKey];
+                if (!currentDoc) {
+                    return new Response(JSON.stringify({ error: 'DELIVERABLE_NOT_FOUND' }), { status: 404, headers: CORS_HEADERS });
+                }
+
+                const subAction = String(p.action || '').toUpperCase();
+                if (subAction === 'APPROVE') {
+                    if (typeof currentDoc === 'string') {
+                        co.deliverables[rawKey] = { driveUrl: currentDoc, status: 'DELIVERED_TO_TEACHER', updatedAt: new Date().toISOString() };
+                    } else {
+                        currentDoc.status = 'DELIVERED_TO_TEACHER';
+                        delete currentDoc.returnReasonId;
+                        delete currentDoc.returnReason;
+                        currentDoc.updatedAt = new Date().toISOString();
+                    }
+                } else if (subAction === 'RETURN') {
+                    const reasonId = String(p.reasonId || '').trim();
+                    if (!VALID_RETURN_REASON_IDS.includes(reasonId)) {
+                        return new Response(JSON.stringify({ error: 'INVALID_RETURN_REASON_ID', allowed: VALID_RETURN_REASON_IDS }), { status: 400, headers: CORS_HEADERS });
+                    }
+                    const reasonObj = CEO_RETURN_REASONS.find(r => r.id === reasonId);
+                    const reasonText = reasonObj ? reasonObj.label : reasonId;
+                    if (typeof currentDoc === 'string') {
+                        co.deliverables[rawKey] = { driveUrl: currentDoc, status: 'CEO_REVISION', returnReasonId: reasonId, returnReason: reasonText, updatedAt: new Date().toISOString() };
+                    } else {
+                        currentDoc.status = 'CEO_REVISION';
+                        currentDoc.returnReasonId = reasonId;
+                        currentDoc.returnReason = reasonText;
+                        currentDoc.updatedAt = new Date().toISOString();
+                    }
+                } else {
+                    return new Response(JSON.stringify({ error: 'INVALID_REVIEW_ACTION' }), { status: 400, headers: CORS_HEADERS });
+                }
+                break;
+            }
+
+            case 'VOTE_MOTION': {
+                const motionId = String(p.id || p.motionId || '').trim();
+                const voteValue = String(p.vote || '').trim();
+                const validVotes = ['A_FAVOR', 'EN_CONTRA', 'NO_ESTOY_SEGURO'];
+                if (!validVotes.includes(voteValue)) {
+                    return new Response(JSON.stringify({ error: 'INVALID_VOTE_VALUE', allowed: validVotes }), { status: 400, headers: CORS_HEADERS });
+                }
+                co.votingMotions = Array.isArray(co.votingMotions) ? co.votingMotions : [];
+                const m = co.votingMotions.find(x => x.id === motionId);
+                if (m) {
+                    m.votes = m.votes || {};
+                    m.votes[auth.role || 'ESTUDIANTE'] = voteValue;
+                }
                 break;
             }
 
@@ -264,7 +343,7 @@ export async function onRequestPost(context) {
             }
 
             case 'GENERIC_PATCH': {
-                const allowed = ['slogan', 'valueProposition', 'cart', 'votingMotions', 'flightTests', 'bom'];
+                const allowed = ['slogan', 'valueProposition', 'cart', 'votingMotions', 'flightTests', 'bom', 'brandApproval'];
                 for (const k of allowed) {
                     if (p[k] !== undefined) {
                         if (k === 'votingMotions' && Array.isArray(p[k])) {

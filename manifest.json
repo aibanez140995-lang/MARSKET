@@ -2,7 +2,7 @@
   "name": "MARS-KET 2.0 | Simulador Aeroespacial Interdisciplinar",
   "short_name": "MARS-KET 2.0",
   "description": "Simulador educativo aeroespacial ABP con interfaz táctica HUD (AEE / ESA).",
-  "start_url": "/?v=1.1.17",
+  "start_url": "/?v=1.1.18",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",

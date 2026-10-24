@@ -155,18 +155,23 @@ Object.assign(ui, {
                     <div class="space-y-4">
                         ${co.votingMotions.map(m => {
                             const votes = Object.values(m.votes || {});
-                            const y = votes.filter(v => v === 'A FAVOR').length;
-                            const n = votes.filter(v => v === 'EN CONTRA').length;
-                            const total = y + n;
+                            const y = votes.filter(v => v === 'A_FAVOR' || v === 'A FAVOR').length;
+                            const n = votes.filter(v => v === 'EN_CONTRA' || v === 'EN CONTRA').length;
+                            const abst = votes.filter(v => v === 'NO_ESTOY_SEGURO').length;
+                            const total = y + n + abst;
                             const myVote = m.votes ? m.votes[state.user.role] : null;
                             const totalRoles = Object.keys(co.roles || {}).length;
                             
                             let actions = '';
                             if(m.status === 'ABIERTA') {
                                 if(!myVote) {
-                                    actions = `<div class="flex flex-wrap gap-2 mt-3"><button type="button" onclick="ui.voteMotion('${this.escapeHTML(m.id)}', 'A FAVOR')" class="min-h-[44px] bg-mars-green text-black px-4 py-2 text-xs font-bold uppercase hover:bg-white transition-colors">A Favor</button><button type="button" onclick="ui.voteMotion('${this.escapeHTML(m.id)}', 'EN CONTRA')" class="min-h-[44px] bg-mars-magenta text-white px-4 py-2 text-xs font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">En Contra</button></div>`;
+                                    actions = `<div class="flex flex-wrap gap-2 mt-3">
+                                        <button type="button" onclick="ui.voteMotion('${this.escapeHTML(m.id)}', 'A_FAVOR')" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2 text-xs font-bold uppercase hover:bg-white transition-colors">A Favor</button>
+                                        <button type="button" onclick="ui.voteMotion('${this.escapeHTML(m.id)}', 'EN_CONTRA')" class="min-h-[44px] bg-red-700 text-white px-4 py-2 text-xs font-bold uppercase hover:bg-white hover:text-red-700 transition-colors">En Contra</button>
+                                        <button type="button" onclick="ui.voteMotion('${this.escapeHTML(m.id)}', 'NO_ESTOY_SEGURO')" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2 text-xs font-bold uppercase hover:bg-white transition-colors">No estoy seguro</button>
+                                    </div>`;
                                 } else {
-                                    actions = `<p class="text-xs text-mars-cyan mt-3 uppercase font-bold">Tu voto: ${this.escapeHTML(myVote)}</p>`;
+                                    actions = `<p class="text-xs text-mars-cyan mt-3 uppercase font-bold">Tu voto: ${this.escapeHTML(String(myVote).replace(/_/g, ' '))}</p>`;
                                 }
 
                                 if(state.user.role === 'CEO' && total >= totalRoles) {
@@ -189,13 +194,15 @@ Object.assign(ui, {
                                     }
                                 </div>
                                 <div class="w-full bg-black h-2.5 flex rounded-sm overflow-hidden mb-1.5">
-                                    <div class="bg-mars-green h-full transition-all" style="width: ${totalRoles>0?(y/totalRoles)*100:0}%"></div>
-                                    <div class="bg-mars-magenta h-full transition-all" style="width: ${totalRoles>0?(n/totalRoles)*100:0}%"></div>
+                                    <div class="bg-mars-cyan h-full transition-all" style="width: ${totalRoles>0?(y/totalRoles)*100:0}%"></div>
+                                    <div class="bg-mars-yellow h-full transition-all" style="width: ${totalRoles>0?(abst/totalRoles)*100:0}%"></div>
+                                    <div class="bg-red-600 h-full transition-all" style="width: ${totalRoles>0?(n/totalRoles)*100:0}%"></div>
                                 </div>
                                 <div class="flex justify-between text-xs font-bold text-slate-300 uppercase">
-                                    <span class="text-mars-green">${y} A Favor</span>
+                                    <span class="text-mars-cyan">${y} A Favor</span>
+                                    <span class="text-mars-yellow">${abst} No seguro</span>
                                     <span>Quórum: ${total}/${totalRoles}</span>
-                                    <span class="text-mars-magenta">${n} En Contra</span>
+                                    <span class="text-red-500">${n} En Contra</span>
                                 </div>
                                 ${actions}
                             </div>`;
@@ -346,9 +353,22 @@ Object.assign(ui, {
 
     modalMotion() {
         if (!state.user) return;
+        const motionTypes = typeof GOVERNANCE_MOTION_TYPES !== 'undefined' ? GOVERNANCE_MOTION_TYPES : [
+            { id: "CESE_RELEVO", label: "[CESE/RELEVO] Cese o redistribución de rol por inactividad" },
+            { id: "REORGANIZACION_PINS", label: "[REORGANIZACIÓN] Reestructuración de cargos y PINs" },
+            { id: "PACTO_SOCIOS", label: "[CONVIVENCIA] Vulneración del Pacto de Socios" },
+            { id: "MEDIACION_DOCENTE", label: "[MEDIACIÓN] Solicitud formal de mediación docente" },
+            { id: "AUDITORIA_FINANZAS", label: "[AUDITORÍA] Petición de intervención a Tesorería" },
+            { id: "REPARTO_TRABAJO", label: "[REPARTO] Reasignación urgente de cargas de trabajo" },
+            { id: "JUNTA_GENERAL", label: "[EXTRAORDINARIA] Convocatoria de Junta General de Socios" }
+        ];
+        const optionsHtml = motionTypes.map(m => `<option value="${this.escapeHTML(m.id)}">${this.escapeHTML(m.label)}</option>`).join('');
+
         const html = `
-            <label for="motion-title" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Título de la Moción</label>
-            <input type="text" id="motion-title" placeholder="Título de la moción..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white mb-3 outline-none focus:border-mars-yellow">
+            <label for="motion-type" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Tipo de Moción Tipificada</label>
+            <select id="motion-type" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white mb-3 outline-none focus:border-mars-yellow">
+                ${optionsHtml}
+            </select>
             <label for="motion-drive-url" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Enlace al Documento de la Propuesta (Google Docs)</label>
             <input type="url" id="motion-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white mb-2 outline-none focus:border-mars-yellow font-mono">
             <p class="text-[10px] text-slate-400 mb-2">La memoria y argumentario de la moción se desarrolla en el Google Doc oficial con permisos de lectura.</p>
@@ -359,18 +379,18 @@ Object.assign(ui, {
 
     submitMotion() {
         if (!state.user) return;
-        const elTitle = document.getElementById('motion-title');
+        const elType = document.getElementById('motion-type');
         const elUrl = document.getElementById('motion-drive-url');
-        if (!elTitle || !elUrl) return;
+        if (!elType || !elUrl) return;
         
-        const title = this.cleanInput(elTitle.value);
+        const motionTypeId = elType.value;
+        const motionList = typeof GOVERNANCE_MOTION_TYPES !== 'undefined' ? GOVERNANCE_MOTION_TYPES : [];
+        const motionObj = motionList.find(m => m.id === motionTypeId);
+        const title = motionObj ? motionObj.label : motionTypeId;
         const driveUrl = this.cleanInput(elUrl.value);
         if(!title || !driveUrl) return this.notify("Rellene todos los campos.", "warning");
         if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
             return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
-        }
-        if(ui.hasForbiddenWords && ui.hasForbiddenWords(title, 'Título Moción Gobernanza', elTitle)) {
-            return;
         }
         
         const co = state.data.companies[state.user.coId];
@@ -380,6 +400,7 @@ Object.assign(ui, {
         co.votingMotions.unshift({ 
             id: 'MOT-'+Date.now(), 
             title, 
+            motionTypeId,
             driveUrl, 
             authorRole: state.user.role, 
             date: new Date().toLocaleString(), 
@@ -399,11 +420,18 @@ Object.assign(ui, {
         if (!co) return auth.logout();
         co.votingMotions = co.votingMotions || [];
         
+        const allowedVotes = ['A_FAVOR', 'EN_CONTRA', 'NO_ESTOY_SEGURO'];
+        if (!allowedVotes.includes(vote)) return;
+
         const m = co.votingMotions.find(x => x.id === id);
         if(m) {
             m.votes = m.votes || {};
             m.votes[state.user.role] = vote;
-            state.save(); this.render();
+            state.save();
+            this.render();
+            try {
+                state.executeAction('VOTE_MOTION', { id, vote });
+            } catch(e) {}
         }
     },
 
@@ -660,11 +688,13 @@ Object.assign(ui, {
                     <input type="text" id="brand-slogan" value="${this.escapeHTML(displaySloganInput)}" placeholder="Eslogan corto corporativo (Tagline)..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-mars-yellow font-bold uppercase mb-3 focus:border-mars-magenta outline-none">
                     <label for="val-prop-text" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Misión, Visión y Propuesta de Valor</label>
                     <textarea id="val-prop-text" class="w-full bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-white h-24 outline-none focus:border-mars-cyan mb-3 leading-relaxed" placeholder="Redacte la misión, visión y propuesta de valor corporativa...">${this.escapeHTML(co.valueProposition || '')}</textarea>
+                    <label for="company-logo-drive" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Enlace al Escudo / Logo Corporativo (Google Drive)</label>
+                    <input type="url" id="company-logo-drive" value="${this.escapeHTML((co.brandApproval && co.brandApproval.pendingLogo) ? co.brandApproval.pendingLogo : (co.logo || ''))}" placeholder="https://drive.google.com/file/d/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-white font-mono mb-2 focus:border-mars-magenta outline-none">
+                    <p class="text-[10px] text-slate-400 mb-3">Pega el enlace a la imagen del logotipo en Google Drive con permisos de lectura.</p>
                     <div class="flex flex-col sm:flex-row gap-2 w-full">
-                        <button type="button" onclick="document.getElementById('brand-logo-upload').click()" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-mars-magenta hover:text-white transition-all flex-1">[ Proponer Escudo / Logo ]</button>
-                        <button type="button" onclick="ui.saveBrandIdentityText()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all flex-1">Enviar para Aprobación</button>
+                        <button type="button" onclick="ui.saveCompanyLogoDrive()" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-mars-magenta hover:text-white transition-all flex-1">[ Vincular Logo Google Drive ]</button>
+                        <button type="button" onclick="ui.saveBrandIdentityText()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all flex-1">Enviar Identidad a Docente</button>
                     </div>
-                    <input type="file" id="brand-logo-upload" class="hidden" accept="image/png, image/jpeg" onchange="ui.handleLogoUpload(event)">
                 </div>
 
                 <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow w-full">
@@ -893,6 +923,29 @@ Object.assign(ui, {
         
         state.save();
         this.render();
+    },
+
+    saveCompanyLogoDrive() {
+        if (!state.user) return;
+        const el = document.getElementById('company-logo-drive');
+        if (!el) return;
+        const driveUrl = this.cleanInput(el.value);
+        if (!driveUrl) return this.notify("Introduce la URL de Google Drive para el logotipo.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive.", "error");
+        }
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout();
+
+        co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
+        co.brandApproval.pendingLogo = driveUrl;
+        if (!co.brandApproval.pendingSlogan) co.brandApproval.pendingSlogan = co.slogan || "";
+        co.brandApproval.status = 'PENDIENTE';
+        co.brandApproval.feedback = '';
+
+        state.save();
+        this.render();
+        this.notify("⏳ Enlace de logotipo registrado y enviado a Coordinación Docente.", "info");
     },
 
     handleLogoUpload(e) {

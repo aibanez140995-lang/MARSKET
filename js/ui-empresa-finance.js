@@ -436,49 +436,73 @@ Object.assign(ui, {
         this.render();
     },
 
-    modalCrisisAction() {
+    modalCrisisAction(crisisId) {
         if (!state.user || state.user.role !== 'CEO') return;
+        const co = state.data.companies[state.user.coId];
+        if (!co) return;
+        const crisis = (co.crisisAlerts || []).find(a => String(a.id) === String(crisisId)) || (co.crisisAlerts || [])[0] || {};
+        const expId = crisis.id || ('EXP-' + Date.now().toString().slice(-4));
+        const articulo = crisis.article || 'Infracción Normativa Regulatoria';
+        const cuantia = Number(crisis.amount || 0).toFixed(2);
+        const immutableText = `COMUNICADO OFICIAL DE SANCIÓN: Expediente ${expId} incoado por ${articulo}. Detracción: ${cuantia} €v. Alegaciones mediante procedimiento ordinario en Google Drive.`;
+
         const html = `
-            <p class="text-xs text-slate-300 mb-3 leading-relaxed">Como CEO, redacta un Comunicado Oficial de Mitigación de Crisis dirigido a la Agencia Reguladora y a toda la startup.</p>
-            <label for="crisis-response-text" class="text-xs text-red-400 font-bold uppercase block mb-1.5">Comunicado de Mitigación</label>
-            <textarea id="crisis-response-text" placeholder="Explica las medidas correctivas que adoptará la startup para corregir la infracción y evitar nuevas sanciones..." class="w-full bg-slate-900 border border-red-500 p-3 text-base sm:text-xs text-white h-28 outline-none focus:border-red-400 mb-3"></textarea>
+            <div class="space-y-3">
+                <p class="text-xs text-slate-300 leading-relaxed">Resolución inmutable de la Agencia Reguladora AEE. Como CEO, debes acusar recibo e informar de oficio a los departamentos de la startup.</p>
+                <div class="bg-black/80 border border-red-600/70 p-4 space-y-2">
+                    <span class="text-xs font-mono font-black text-red-500 uppercase tracking-widest block">[REGISTRO DISCIPLINARIO INMUTABLE]</span>
+                    <p class="text-xs sm:text-sm font-mono text-white leading-relaxed select-all">${this.escapeHTML(immutableText)}</p>
+                </div>
+                <p class="text-[10px] text-slate-400">Por directiva de gobernanza y trazabilidad RGPD, el expediente no admite edición de texto libre. Cualquier alegación se formaliza mediante documento enlazado a Google Drive.</p>
+            </div>
         `;
-        const actions = `<button type="button" onclick="ui.submitCrisisAction()" class="min-h-[44px] bg-red-700 text-white font-black px-6 py-2.5 text-xs uppercase tracking-wider hover:bg-white hover:text-red-700 transition-all border border-red-500">Publicar Comunicado</button>`;
+        const actions = `<button type="button" onclick="ui.notifyDepartmentsCrisis('${this.escapeHTML(expId)}')" class="min-h-[44px] bg-red-700 text-white font-black px-6 py-2.5 text-xs uppercase tracking-wider hover:bg-white hover:text-red-700 transition-all border border-red-500 w-full sm:w-auto">Informar a los departamentos</button>`;
         this.showModal("Gabinete de Crisis AEE (Dirección General)", html, actions);
     },
 
-    submitCrisisAction() {
+    notifyDepartmentsCrisis(expId) {
         if (!state.user || state.user.role !== 'CEO') return;
-        const elText = document.getElementById('crisis-response-text');
-        if (!elText) return;
-        const text = this.cleanInput(elText.value);
-        if (text.length < 10) return this.notify("El comunicado de mitigación debe ser formal y detallado (mínimo 10 caracteres).", "warning");
-
-        if (this.hasForbiddenWords(text, 'Comunicado Crisis CEO', elText)) {
-            return;
-        }
-
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
 
-        (co.crisisAlerts || []).forEach(a => a.read = true);
+        const crisis = (co.crisisAlerts || []).find(a => String(a.id) === String(expId)) || (co.crisisAlerts || [])[0] || {};
+        const expClean = expId || crisis.id || ('EXP-' + Date.now().toString().slice(-4));
+        const articulo = crisis.article || 'Infracción Normativa Regulatoria';
+        const cuantia = Number(crisis.amount || 0).toFixed(2);
+        const immutableText = `COMUNICADO OFICIAL DE SANCIÓN: Expediente ${expClean} incoado por ${articulo}. Detracción: ${cuantia} €v. Alegaciones mediante procedimiento ordinario en Google Drive.`;
+
+        (co.crisisAlerts || []).forEach(a => {
+            if (!expClean || String(a.id) === String(expClean) || !a.id) {
+                a.read = true;
+                a.notified = true;
+            }
+        });
+
         co.executiveResolutions = co.executiveResolutions || [];
         co.executiveResolutions.unshift({
             id: 'CRISIS-' + Date.now(),
-            title: 'COMUNICADO OFICIAL DE MITIGACIÓN DE CRISIS',
-            desc: text,
+            expId: expClean,
+            title: 'COMUNICADO OFICIAL DE SANCIÓN',
+            desc: immutableText,
             date: new Date().toLocaleString()
         });
 
-        ui.pushNotification(state.user.coId, 'TECNICO', `El CEO ha emitido el Comunicado de Crisis AEE.`, 'warning');
-        ui.pushNotification(state.user.coId, 'FINANZAS', `El CEO ha emitido el Comunicado de Crisis AEE.`, 'warning');
-        ui.pushNotification(state.user.coId, 'MARKETING', `El CEO ha emitido el Comunicado de Crisis AEE.`, 'warning');
+        ui.pushNotification(state.user.coId, 'TECNICO', immutableText, 'warning');
+        ui.pushNotification(state.user.coId, 'FINANZAS', immutableText, 'warning');
+        ui.pushNotification(state.user.coId, 'MARKETING', immutableText, 'warning');
+        ui.pushNotification(state.user.coId, 'OPERACIONES_IA', immutableText, 'warning');
 
-        telemetry.log("CRISIS", "Comunicado de mitigación emitido por CEO");
+        if (typeof telemetry !== 'undefined' && telemetry.log) {
+            telemetry.log("CRISIS", `Expediente ${expClean} comunicado a departamentos por CEO`);
+        }
         state.save();
         this.closeModal();
-        this.notify("✅ Comunicado Oficial de Crisis publicado y archivado.", "success");
+        this.notify("✅ Expediente notificado de oficio a todos los departamentos.", "success");
         this.render();
+    },
+
+    submitCrisisAction() {
+        return this.notifyDepartmentsCrisis();
     },
 
     viewFinance(el) {
