@@ -153,7 +153,7 @@ Object.assign(ui, {
                 <h3 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter">Entregables Oficiales: Diario de Decisiones, Conflictos e IA (LyE)</h3>
                 <span class="text-xs bg-mars-cyan/10 text-mars-cyan border border-mars-cyan px-2.5 py-1 font-bold uppercase">Resp: Operaciones IA / Marketing</span>
             </div>
-            <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Sube los enlaces de Google Drive o Canva correspondientes a las dos entregas oficiales de la bitácora del proyecto.</p>
+            <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Sube los enlaces verificados de Google Drive correspondientes a las dos entregas oficiales de la bitácora del proyecto con permisos de lectura compartidos ("Cualquiera con el enlace puede ver").</p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 ${this.renderDriveLinkBox('4A. Diario Decisiones, Conflictos e IA — DICIEMBRE', 'Enlace Drive a la 1ª Entrega (Diciembre) de gobernanza y auditoría IA.', 'decisionDiary_dec', docs.decisionDiary_dec)}
                 ${this.renderDriveLinkBox('4B. Diario Decisiones, Conflictos e IA — ABRIL', 'Enlace Drive a la 2ª Entrega (Abril) de cierre de bitácora e IA.', 'decisionDiary_apr', docs.decisionDiary_apr)}

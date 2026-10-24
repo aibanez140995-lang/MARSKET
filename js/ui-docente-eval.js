@@ -116,7 +116,7 @@ Object.assign(ui, {
                 <div class="mb-4 border-b border-mars-border pb-2 flex justify-between items-center">
                     <div>
                         <h4 class="font-orbitron text-mars-cyan text-xs uppercase tracking-widest">Auditoría del Archivo Documental Central (19 Entregables)</h4>
-                        <p class="text-xs text-slate-300 uppercase mt-0.5">Control de subida de enlaces en Drive/Canva (Desliza horizontalmente ➔)</p>
+                        <p class="text-xs text-slate-300 uppercase mt-0.5">Control de subida de enlaces en Google Drive (Desliza horizontalmente ➔)</p>
                     </div>
                 </div>
                 <div class="overflow-x-auto w-full pb-2">

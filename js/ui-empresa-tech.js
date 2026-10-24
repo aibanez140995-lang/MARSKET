@@ -92,7 +92,7 @@ Object.assign(ui, {
                     <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan text-xs font-black px-2.5 py-1 uppercase">Peso en Proyecto: 25% Global</span>
                     <span class="text-xs text-slate-300 uppercase font-bold">Resp: Dpto. Técnico</span>
                 </div>
-                <p class="text-xs text-slate-300 mb-3 uppercase leading-relaxed">Sube únicamente enlaces de Google Drive, OneDrive o Canva con permisos de lectura abiertos.</p>
+                <p class="text-xs text-slate-300 mb-3 uppercase leading-relaxed">Sube únicamente enlaces verificados de Google Drive con permisos de lectura compartidos ("Cualquiera con el enlace puede ver").</p>
                 ${state.data.config.guidelines.techReportNotes ? `<p class="text-xs text-mars-yellow mb-3 italic">Info: ${this.escapeHTML(state.data.config.guidelines.techReportNotes)}</p>` : ''}
                 ${state.data.config.guidelines.techReportDocUrl ? `<a href="${this.escapeHTML(state.data.config.guidelines.techReportDocUrl)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] flex items-center justify-center border border-mars-cyan text-mars-cyan text-xs py-2.5 mb-4 font-bold uppercase hover:bg-mars-cyan hover:text-black transition-colors">Abrir Guía Oficial FYQ</a>` : ''}
                 

@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.02) ---
 
-const APP_VERSION = "1.1.15";
+const APP_VERSION = "1.1.16";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const REGULATORY_AGENCIES = {
@@ -159,6 +159,24 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.16",
+      date: new Date().toISOString().split('T')[0],
+      title: "Restricción de Canal Google Drive & Mitigación RGPD de Fuga de Datos",
+      items: [
+        "Restricción estricta de canal de entregas a URLs corporativas verificadas de Google Drive",
+        "Supresión de campos de texto libre en entregables mitigando riesgos de fuga de datos (RGPD)",
+        "Validación contractual simétrica en cliente y backend Cloudflare D1 (GOOGLE_DRIVE_REGEX)",
+        "Renderizado defensivo con inspección tipológica (Doc, Sheet, Slide, Carpeta) y neutralización de payloads legacy",
+        "Protocolo obligatorio de permisos compartidos de solo lectura en recursos Drive"
+      ],
+      highlights: [
+        { type: "RGPD", text: "Canal de entregas restringido exclusivamente a URLs verificadas de Google Drive." },
+        { type: "SEGURIDAD", text: "Supresión de entradas de texto libre en entregables para evitar fuga de datos personales." },
+        { type: "SISTEMA", text: "Validación estricta con GOOGLE_DRIVE_REGEX en frontend y backend D1." },
+        { type: "DEFENSA", text: "Renderizado defensivo con detección de tipo y aislamiento de registros legacy no conformes." }
+      ]
+    },
     {
       version: "1.1.15",
       date: new Date().toISOString().split('T')[0],

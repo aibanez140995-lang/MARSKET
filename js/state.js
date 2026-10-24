@@ -1048,6 +1048,40 @@ const state = {
         }
     },
 
+    async submitDeliverable(docType, payload) {
+        const driveUrl = String(payload?.driveUrl || '').trim();
+        if (!this.user || !this.user.coId) return;
+        const coId = this.user.coId;
+        const co = this.data.companies?.[coId];
+        if (!co) return;
+
+        co.deliverables = co.deliverables || {};
+        const sanitizedItem = { 
+            driveUrl, 
+            updatedAt: new Date().toISOString() 
+        };
+        co.deliverables[docType] = sanitizedItem;
+
+        if (typeof telemetry !== 'undefined' && telemetry.log) {
+            telemetry.log("ENTREGABLE", `Enlace Google Drive subido: ${docType}`);
+        }
+
+        this.save();
+        if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
+            ui.render();
+            ui.notify("✅ Enlace de Google Drive registrado y validado en el Dossier.", "success");
+        }
+
+        try {
+            await this.executeAction('SUBMIT_DELIVERABLE', {
+                key: docType,
+                driveUrl: sanitizedItem.driveUrl
+            });
+        } catch(e) {
+            console.warn("[ACTION] Error sincronizando entrega:", e);
+        }
+    },
+
     async fetchFromCloud() {
         if (this.pausePolling) return false;
         this.isSyncing = true;
@@ -1224,6 +1258,17 @@ const state = {
                         for (const r in co.roles) {
                             if (typeof co.roles[r] === 'string' && /^\d{4,6}$/.test(co.roles[r])) {
                                 co.roles[r] = 'PROTECTED';
+                            }
+                        }
+                    }
+                    if (co.deliverables) {
+                        for (const dKey in co.deliverables) {
+                            const d = co.deliverables[dKey];
+                            if (d && typeof d === 'object') {
+                                co.deliverables[dKey] = {
+                                    driveUrl: String(d.driveUrl || d.dataUrl || d.url || '').trim(),
+                                    updatedAt: d.updatedAt || d.date || new Date().toISOString()
+                                };
                             }
                         }
                     }

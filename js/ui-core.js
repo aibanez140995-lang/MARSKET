@@ -1,6 +1,8 @@
 // js/ui-core.js
 // --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.0.19) ---
 
+const GOOGLE_DRIVE_REGEX = /^https:\/\/(docs|drive)\.google\.com\/(document|spreadsheets|presentation|file|drive\/folders)\/(d\/)?[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_.-]+)*(\?[^"'\s<>]*)?(#[^"'\s<>]*)?$/;
+
 const ui = {
     current: 'login', adminTab: 'dash', coordEvalView: 'ACTA', evalSelectedCo: '', evalClassFilter: 'ALL',
     activeMilestoneGroup: 'ACTIVE',
@@ -964,7 +966,7 @@ const ui = {
             dynamicStatusHtml = `
             <div class="bg-slate-950 border border-mars-cyan/60 p-3.5 space-y-2.5 mt-2">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-1.5 flex-wrap gap-2">
-                    <span class="text-xs font-orbitron font-black text-mars-cyan uppercase tracking-wider">📡 Telemetría en Vivo del Aula (v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.15'})</span>
+                    <span class="text-xs font-orbitron font-black text-mars-cyan uppercase tracking-wider">📡 Telemetría en Vivo del Aula (v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.16'})</span>
                     <span class="text-xs font-bold uppercase px-2 py-0.5 border ${d1StatusColor}">[D1: ${d1StatusText}]</span>
                 </div>
                 <div class="grid grid-cols-3 gap-2 text-center text-xs">
@@ -1001,7 +1003,7 @@ const ui = {
             <div class="bg-slate-950 border border-mars-cyan/60 p-3.5 space-y-2 mt-2 text-xs">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-1.5 flex-wrap gap-1">
                     <span class="font-orbitron font-black text-mars-cyan uppercase">🔐 Estado Operativo y Custodia de Credenciales</span>
-                    <span class="text-mars-green font-bold uppercase">[TOKEN ACTIVO v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.15'}]</span>
+                    <span class="text-mars-green font-bold uppercase">[TOKEN ACTIVO v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.16'}]</span>
                 </div>
                 <p class="text-slate-200 leading-relaxed">
                     <strong>Custodia de PIN:</strong> Tu sesión está protegida mediante huella criptográfica (<code class="text-mars-cyan">authToken</code>). Si Coordinación modifica el PIN de tu puesto o el código de empresa, esta terminal cerrará la sesión en caliente de forma inmediata.
@@ -1019,7 +1021,7 @@ const ui = {
         content += `
         ${dynamicStatusHtml}
         <div class="bg-slate-900 border border-slate-700 p-3 text-xs text-slate-300 uppercase mt-2 space-y-1">
-            <p>🛡️ <strong class="text-mars-yellow">Norma de Seguridad y LOPD Activa (v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.15'}):</strong> Todos los formularios cuentan con validación LOPD contextual no destructiva (<code class="text-mars-cyan">ui.validateSafeText</code>). Los nombres personales o términos indebidos se señalan con borde neón rojo sin borrar el texto.</p>
+            <p>🛡️ <strong class="text-mars-yellow">Norma de Seguridad y LOPD Activa (v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.16'}):</strong> Todos los formularios cuentan con validación LOPD contextual no destructiva (<code class="text-mars-cyan">ui.validateSafeText</code>). Los nombres personales o términos indebidos se señalan con borde neón rojo sin borrar el texto.</p>
             <p>📱 <strong class="text-mars-cyan">Ergonomía Táctil y Bóveda Descongestionada:</strong> Entradas tipográficas a 16px (anti-zoom móvil), acordeones por hitos con detalle en Drawer táctil y pasarela docente oculta Web Crypto SHA-256.</p>
         </div>
         </div>`;
@@ -1109,7 +1111,7 @@ const ui = {
     },
 
     showGuide(defaultRole = null) {
-        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.15';
+        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.16';
         let initialRole = defaultRole;
         if (!initialRole) {
             if (state.user) {
@@ -1159,8 +1161,8 @@ const ui = {
                         <span>I+D añade piezas al borrador → Finanzas aprueba presupuesto → Operaciones retira en taller registrando coste real.</span>
                     </div>
                     <div class="border border-slate-800 p-2 bg-slate-950">
-                        <strong class="text-white block mb-0.5">📁 Repositorio de 19 Entregables:</strong>
-                        <span>Enlaces externos cloud (Drive, OneDrive, Canva) con acceso público de lectura obligatorio según semáforos de plazo.</span>
+                        <strong class="text-white block mb-0.5">📁 Repositorio de 19 Entregables (Google Drive Exclusivo):</strong>
+                        <span>Canal corporativo verificado exclusivamente para URLs de Google Drive (Docs, Sheets, Slides, Carpetas) configuradas con permisos de lectura compartidos ("Cualquiera con el enlace puede ver"). Enlaces a plataformas no autorizadas (OneDrive, Canva u otros) quedan estrictamente bloqueados por directiva RGPD para mitigar fugas de datos.</span>
                     </div>
                     <div class="border border-slate-800 p-2 bg-slate-950">
                         <strong class="text-white block mb-0.5">🤖 Gobernanza y Ética IA:</strong>
@@ -1749,59 +1751,77 @@ const ui = {
     },
 
     renderDocBadge(title, docObj, short=false) {
-        if(!docObj) return `<div class="bg-black/60 border border-mars-border border-dashed p-3 mb-2 flex justify-between items-center gap-2 text-xs"><span class="text-slate-300 font-bold uppercase break-words">${this.escapeHTML(title)}</span><span class="text-mars-magenta font-black uppercase shrink-0">[PENDIENTE]</span></div>`;
+        if (!docObj) {
+            return `<div class="bg-black/60 border border-mars-border border-dashed p-3 mb-2 flex justify-between items-center gap-2 text-xs"><span class="text-slate-300 font-bold uppercase break-words">${this.escapeHTML(title)}</span><span class="text-mars-magenta font-black uppercase shrink-0">[PENDIENTE]</span></div>`;
+        }
+        const item = (typeof docObj === 'object' && docObj !== null)
+            ? (docObj.driveUrl ? docObj : { ...docObj, driveUrl: docObj.dataUrl || docObj.url || '' })
+            : { driveUrl: String(docObj || '') };
+        const isValidDriveUrl = item.driveUrl && GOOGLE_DRIVE_REGEX.test(item.driveUrl);
+        let actionHtml = '';
+        if (isValidDriveUrl) {
+            const tipoDoc = item.driveUrl.includes('/document/') ? 'Doc'
+              : item.driveUrl.includes('/spreadsheets/') ? 'Sheet'
+              : item.driveUrl.includes('/presentation/') ? 'Slide'
+              : item.driveUrl.includes('/folders/') ? 'Carpeta'
+              : 'Archivo Drive';
+            const safeHref = encodeURI(item.driveUrl).replace(/"/g, '&quot;');
+            actionHtml = `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors">
+  <span>Abrir ${tipoDoc} ↗</span>
+</a>`;
+        } else {
+            actionHtml = `<span class="text-xs text-amber-500/80 font-mono italic">[Contenido legacy no accesible por directiva RGPD]</span>`;
+        }
+        const dateStr = item.updatedAt || item.date || '';
         return `<div class="bg-mars-cyan/10 border border-mars-cyan/60 p-3 mb-2 flex justify-between items-center gap-2 text-xs">
-                    <div class="overflow-hidden pr-2"><span class="text-mars-cyan font-bold uppercase block truncate">${this.escapeHTML(title)}</span><span class="text-xs text-slate-300 block truncate">ENLACE DRIVE/CLOUD | ${this.escapeHTML((docObj.date || '').slice(0,10))}</span></div>
-                    <a href="${this.escapeHTML(docObj.dataUrl)}" target="_blank" rel="noopener noreferrer" class="bg-mars-cyan text-black px-3 py-2 font-bold uppercase hover:bg-white transition-colors flex-shrink-0 min-h-[44px] flex items-center">Abrir Enlace</a>
+                    <div class="overflow-hidden pr-2">
+                        <span class="text-mars-cyan font-bold uppercase block truncate">${this.escapeHTML(title)}</span>
+                        <span class="text-xs text-slate-300 block truncate">GOOGLE DRIVE | ${this.escapeHTML(String(dateStr).slice(0,10))}</span>
+                    </div>
+                    ${actionHtml}
                 </div>`;
     },
     
     renderDriveLinkBox(title, desc, docKey, currentDoc) {
-        const currentNote = currentDoc && currentDoc.note ? this.escapeHTML(currentDoc.note) : '';
         return `
         <div class="border-b border-slate-800 pb-4 mb-4 last:border-0 last:pb-0 last:mb-0">
             <h3 class="text-mars-cyan font-bold text-xs sm:text-sm uppercase mb-1">${this.escapeHTML(title)}</h3>
             <p class="text-xs text-slate-300 mb-2 uppercase leading-relaxed">${this.escapeHTML(desc)}</p>
             ${this.renderDocBadge(title, currentDoc)}
             <div class="bg-slate-900 border border-slate-700 p-3 mt-2 space-y-2">
-                <label for="upload-url-${docKey}" class="text-xs text-mars-yellow font-bold uppercase block">Entregar Enlace (Google Drive, OneDrive, Canva...)</label>
-                <input type="text" id="upload-desc-${docKey}" value="${currentNote}" placeholder="Nota / Descripción técnica de la entrega (opcional, sin nombres propios LOPD)..." class="w-full bg-black border border-slate-600 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan min-h-[44px]">
-                <div class="flex flex-col sm:flex-row gap-2">
-                    <input type="url" id="upload-url-${docKey}" placeholder="https://..." class="bg-black border border-slate-600 p-2.5 text-base sm:text-xs text-white flex-grow outline-none focus:border-mars-cyan min-h-[44px]">
-                    <button type="button" onclick="ui.handleDeliverableLinkSubmit('${docKey}')" class="bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white flex-shrink-0 w-full sm:w-auto min-h-[44px]">Entregar Enlace</button>
+                <label for="input-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Entregar Enlace Google Drive</label>
+                <div class="space-y-1.5">
+                  <input type="url" 
+                         id="input-drive-url" 
+                         name="driveUrl" 
+                         required 
+                         placeholder="https://docs.google.com/... o https://drive.google.com/..." 
+                         class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white rounded font-mono outline-none focus:border-mars-cyan">
+                  <p class="text-[10px] text-slate-400">
+                    Pega únicamente el enlace de tu archivo o carpeta en Google Drive configurado con permisos de lectura.
+                  </p>
+                </div>
+                <div class="flex justify-end pt-1">
+                    <button type="button" onclick="ui.submitDeliverable('${docKey}', this)" class="bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white flex-shrink-0 w-full sm:w-auto min-h-[44px]">Entregar Enlace</button>
                 </div>
             </div>
         </div>`;
     },
 
-    handleDeliverableLinkSubmit(docType) {
-        if (!state.user) return;
-        const urlInput = document.getElementById(`upload-url-${docType}`);
-        const descInput = document.getElementById(`upload-desc-${docType}`);
-        if (!urlInput) return;
-        
-        const url = this.cleanInput(urlInput.value);
-        const note = descInput ? this.cleanInput(descInput.value) : '';
-        if (note && this.hasForbiddenWords(note, `Descripción de Entregable (${docType})`, descInput)) return;
-        if (this.hasForbiddenWords(url, `Enlace de Entregable (${docType})`, urlInput)) return;
+    submitDeliverable(docType, btnEl = null) {
+        const inputFromBtn = (btnEl && btnEl.closest) ? btnEl.closest('.bg-slate-900')?.querySelector('input[name="driveUrl"]') : null;
+        const driveUrl = (inputFromBtn?.value || (document.getElementById('input-drive-url')?.value || '')).trim();
 
-        if(!url) return this.notify("Debe proporcionar un enlace válido (URL). La subida de archivos físicos está deshabilitada.", "warning");
-        if(!url.toLowerCase().startsWith('http://') && !url.toLowerCase().startsWith('https://')) {
-            return this.notify("Error de formato: El enlace debe comenzar con 'http://' o 'https://'", "error");
+        if (!GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            this.notify("Solo se admiten enlaces válidos a recursos de Google Drive.", "error");
+            return;
         }
-        
-        const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
-        co.deliverables = co.deliverables || {};
 
-        co.deliverables[docType] = { 
-            type: 'link', name: 'Enlace a Nube Externa', note: note || '', date: new Date().toLocaleString(), size: 'URL', dataUrl: url 
-        };
-        
-        telemetry.log("ENTREGABLE", `Enlace subido a Drive: ${docType}`);
-        state.save(); 
-        this.render(); 
-        this.notify("✅ Enlace entregado y registrado en el Dossier Oficial.", "success");
+        state.submitDeliverable(docType, { driveUrl });
+    },
+
+    handleDeliverableLinkSubmit(docType) {
+        return this.submitDeliverable(docType);
     },
 
     inspectDeliverableDrawer(coId, docKey) {
@@ -1820,6 +1840,38 @@ const ui = {
             </li>
         `).join('') : '';
 
+        const item = (typeof doc === 'object' && doc !== null)
+            ? (doc.driveUrl ? doc : { ...doc, driveUrl: doc.dataUrl || doc.url || '' })
+            : { driveUrl: String(doc || '') };
+        const isValidDriveUrl = item.driveUrl && GOOGLE_DRIVE_REGEX.test(item.driveUrl);
+        let deliveryStatusHtml = '';
+        if (doc) {
+            const dateStr = item.updatedAt || item.date || '';
+            if (isValidDriveUrl) {
+                const tipoDoc = item.driveUrl.includes('/document/') ? 'Doc'
+                  : item.driveUrl.includes('/spreadsheets/') ? 'Sheet'
+                  : item.driveUrl.includes('/presentation/') ? 'Slide'
+                  : item.driveUrl.includes('/folders/') ? 'Carpeta'
+                  : 'Archivo Drive';
+                const safeHref = encodeURI(item.driveUrl).replace(/"/g, '&quot;');
+                deliveryStatusHtml = `
+                    <p class="text-mars-green font-bold uppercase text-xs mb-1">✓ ENTREGADO (${this.escapeHTML(String(dateStr).slice(0, 10))})</p>
+                    <div class="mt-2">
+                        <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors">
+                            <span>Abrir ${tipoDoc} ↗</span>
+                        </a>
+                    </div>
+                `;
+            } else {
+                deliveryStatusHtml = `
+                    <p class="text-mars-green font-bold uppercase text-xs mb-1">✓ ENTREGADO (${this.escapeHTML(String(dateStr).slice(0, 10))})</p>
+                    <div class="mt-1"><span class="text-xs text-amber-500/80 font-mono italic">[Contenido legacy no accesible por directiva RGPD]</span></div>
+                `;
+            }
+        } else {
+            deliveryStatusHtml = `<p class="text-mars-magenta font-bold uppercase text-xs">⚠️ PENDIENTE DE ENTREGA POR ${this.escapeHTML(def.role.replace('_',' '))}</p>`;
+        }
+
         const bodyHtml = `
             <div class="space-y-3">
                 <div class="bg-slate-900 border border-slate-700 p-3 space-y-1.5">
@@ -1832,11 +1884,7 @@ const ui = {
                 </div>
                 <div class="bg-black/70 border border-slate-800 p-3">
                     <p class="text-mars-yellow font-bold uppercase text-xs mb-2 border-b border-slate-800 pb-1">Estado de Entrega Cloud</p>
-                    ${doc ? `
-                        <p class="text-mars-green font-bold uppercase text-xs mb-1">✓ ENTREGADO (${this.escapeHTML(doc.date || '')})</p>
-                        ${doc.note ? `<p class="text-slate-200 italic text-xs mb-2">"${this.escapeHTML(doc.note)}"</p>` : ''}
-                        <a href="${this.escapeHTML(doc.dataUrl)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] w-full bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2.5 flex items-center justify-center hover:bg-white transition-all">🔗 ABRIR DOCUMENTO EN NUBE EXTERNA</a>
-                    ` : `<p class="text-mars-magenta font-bold uppercase text-xs">⚠️ PENDIENTE DE ENTREGA POR ${this.escapeHTML(def.role.replace('_',' '))}</p>`}
+                    ${deliveryStatusHtml}
                 </div>
                 ${criteriaHtml ? `
                 <div class="bg-slate-900/80 border border-slate-800 p-3">

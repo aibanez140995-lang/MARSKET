@@ -586,7 +586,7 @@ Object.assign(ui, {
                 <div class="mb-3 flex justify-between items-center">
                     <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan text-xs font-black px-2.5 py-1 uppercase">Peso en Proyecto: 40% Global (Rúbrica Desglosada)</span>
                 </div>
-                <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Entregables oficiales de Liderazgo y Emprendimiento (Solo Enlaces Drive/Canva).</p>
+                <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Entregables oficiales de Liderazgo y Emprendimiento (Solo Enlaces verificados de Google Drive).</p>
                 <div class="space-y-4">
                     ${this.renderDriveLinkBox('1A. Identidad de Marca, Misión y Visión — DICIEMBRE (10%)', 'Nombre, Logo, Tagline, sector elegido y justificación (1ª Entrega). Resp: Marketing.', 'brandIdentity_dec', docs.brandIdentity_dec)}
                     ${this.renderDriveLinkBox('1B. Identidad de Marca, Misión y Visión — ABRIL (10%)', 'Revisión evolutiva de marca, misión y visión tras pruebas (2ª Entrega). Resp: Marketing.', 'brandIdentity_apr', docs.brandIdentity_apr)}
@@ -601,7 +601,7 @@ Object.assign(ui, {
                 <div class="mb-3">
                     <span class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta text-xs font-black px-2.5 py-1 uppercase">Peso en Proyecto: 15% Global (50% Oral / 50% Escrito)</span>
                 </div>
-                <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Entregable oficial para Lengua Castellana (Solo Enlace Drive/Canva).</p>
+                <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Entregable oficial para Lengua Castellana (Solo Enlace verificado de Google Drive).</p>
                 <div class="space-y-4">
                     ${this.renderDriveLinkBox('1. Dossier para Inversores (Texto Argumentativo)', 'Documento persuasivo y formal para captación de inversión. Resp: Marketing / CEO.', 'investorDossier', docs.investorDossier)}
                 </div>
@@ -611,7 +611,7 @@ Object.assign(ui, {
                 <div class="mb-3">
                     <span class="bg-mars-yellow/10 border border-mars-yellow text-mars-yellow text-xs font-black px-2.5 py-1 uppercase">Peso en Proyecto: 5% Global (70% Oral / 30% Redacciones)</span>
                 </div>
-                <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Entregables oficiales para el departamento de Inglés (Solo Enlaces Drive/Canva).</p>
+                <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Entregables oficiales para el departamento de Inglés (Solo Enlaces verificados de Google Drive).</p>
                 <div class="space-y-4">
                     ${this.renderDriveLinkBox('1. Expresión Oral: Presentación Prototipo (70% ING)', 'Enlace a soporte visual / slides de la presentación oral en inglés.', 'oralPresentation', docs.oralPresentation)}
                     ${this.renderDriveLinkBox('2. Redacciones Escritas en Inglés (30% ING)', 'Enlace a documentos escritos y ensayos técnicos/comerciales en lengua inglesa.', 'writtenEssays', docs.writtenEssays)}

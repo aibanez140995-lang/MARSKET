@@ -4,6 +4,8 @@
 
 import { verifySession } from '../../_auth.js';
 
+const GOOGLE_DRIVE_REGEX = /^https:\/\/(docs|drive)\.google\.com\/(document|spreadsheets|presentation|file|drive\/folders)\/(d\/)?[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_.-]+)*(\?[^"'\s<>]*)?(#[^"'\s<>]*)?$/;
+
 const CORS_HEADERS = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
@@ -188,23 +190,22 @@ export async function onRequestPost(context) {
             }
 
             case 'SUBMIT_DELIVERABLE': {
-                const rawKey = String(payload.key || '').trim();
+                const rawKey = String(payload.key || payload.docKey || payload.docType || '').trim();
                 if (!/^[a-zA-Z0-9_-]{1,40}$/.test(rawKey)) {
                     return new Response(JSON.stringify({ error: 'INVALID_DELIVERABLE_KEY' }), { status: 400, headers: CORS_HEADERS });
                 }
-                const rawUrl = payload.url || payload.deliverableData?.dataUrl;
-                if (rawUrl) {
-                    try {
-                        const urlObj = new URL(rawUrl);
-                        if (urlObj.protocol !== 'https:') {
-                            return new Response(JSON.stringify({ error: 'INVALID_DELIVERABLE_URL', message: 'La URL debe ser estrictamente HTTPS.' }), { status: 400, headers: CORS_HEADERS });
-                        }
-                    } catch (e) {
-                        return new Response(JSON.stringify({ error: 'INVALID_DELIVERABLE_URL', message: 'URL con formato inválido.' }), { status: 400, headers: CORS_HEADERS });
-                    }
+                const driveUrl = String(payload.driveUrl || payload.url || '').trim();
+                if (!GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+                    return new Response(JSON.stringify({ 
+                        error: 'INVALID_DRIVE_URL', 
+                        message: 'Solo se admiten enlaces válidos a recursos de Google Drive.' 
+                    }), { 
+                        status: 400, 
+                        headers: { 'Content-Type': 'application/json' } 
+                    });
                 }
                 co.deliverables = co.deliverables || {};
-                co.deliverables[rawKey] = payload.deliverableData || payload.url || true;
+                co.deliverables[rawKey] = { driveUrl, updatedAt: new Date().toISOString() };
                 break;
             }
 
