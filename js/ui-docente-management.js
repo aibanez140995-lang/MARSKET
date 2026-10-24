@@ -293,15 +293,34 @@ Object.assign(ui, {
 
         let coordSettingsHtml = '';
         if (isCoord) {
+            const schedule = state.data.config?.deliverableSchedule || {};
             const deadlinesInputs = defs.map(d => {
-                const val = dl[d.key] || d.defaultDate;
+                const sched = schedule[d.key] || {};
+                const openVal = sched.openDate || d.defaultOpenDate || '';
+                const deadVal = sched.deadline || dl[d.key] || d.defaultDate || '';
+                const guideVal = sched.guideDocUrl || d.defaultGuideDocUrl || '';
+
                 return `
-                <div class="bg-slate-900 border border-slate-800 p-3 flex flex-col justify-between">
+                <div class="bg-slate-900 border border-slate-800 p-3.5 flex flex-col justify-between space-y-2.5 rounded">
                     <div>
-                        <span class="text-xs font-black uppercase px-2 py-0.5 bg-mars-cyan/10 text-mars-cyan border border-mars-cyan/40">${this.escapeHTML(d.subject)} • ${this.escapeHTML(d.weight)}</span>
-                        <label for="dl-master-${this.escapeHTML(d.key)}" class="text-xs text-white font-bold uppercase block mt-1.5 mb-2 leading-snug">${this.escapeHTML(d.name)}</label>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-black uppercase px-2 py-0.5 bg-mars-cyan/10 text-mars-cyan border border-mars-cyan/40">${this.escapeHTML(d.subject)} • ${this.escapeHTML(d.weight)}</span>
+                            <span class="text-[10px] text-slate-400 font-mono uppercase">${this.escapeHTML(d.key)}</span>
+                        </div>
+                        <h4 class="text-xs text-white font-bold uppercase leading-snug">${this.escapeHTML(d.name)}</h4>
                     </div>
-                    <input type="datetime-local" id="dl-master-${this.escapeHTML(d.key)}" value="${this.escapeHTML(val)}" onchange="ui.updateDeadline('${this.escapeHTML(d.key)}', this.value)" class="min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-mars-yellow font-mono outline-none focus:border-mars-yellow">
+                    <div class="space-y-1">
+                        <label for="sched-open-${this.escapeHTML(d.key)}" class="text-[10px] text-mars-cyan uppercase font-bold block">1. Apertura (Desbloqueo)</label>
+                        <input type="datetime-local" id="sched-open-${this.escapeHTML(d.key)}" value="${this.escapeHTML(openVal)}" onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')" class="input-open-date min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-cyan">
+                    </div>
+                    <div class="space-y-1">
+                        <label for="sched-dead-${this.escapeHTML(d.key)}" class="text-[10px] text-mars-yellow uppercase font-bold block">2. Cierre (Límite Entrega)</label>
+                        <input type="datetime-local" id="sched-dead-${this.escapeHTML(d.key)}" value="${this.escapeHTML(deadVal)}" onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')" class="input-deadline min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-mars-yellow font-mono outline-none focus:border-mars-yellow">
+                    </div>
+                    <div class="space-y-1">
+                        <label for="sched-guide-${this.escapeHTML(d.key)}" class="text-[10px] text-mars-green uppercase font-bold block">3. Plantilla Oficial Drive (Opcional)</label>
+                        <input type="url" id="sched-guide-${this.escapeHTML(d.key)}" value="${this.escapeAttr(guideVal)}" placeholder="https://docs.google.com/document/d/..." onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')" class="input-guide-url min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-mars-green font-mono outline-none focus:border-mars-green">
+                    </div>
                 </div>`;
             }).join('');
 
@@ -451,10 +470,46 @@ Object.assign(ui, {
         this.notify(this.pinsVisible ? "PINs visibles temporalmente." : "PINs protegidos (modo contraseña).", "info");
     },
 
+    saveDeliverableSchedule(docKey) {
+        if (!state.user || !state.user.role.startsWith('COORD')) return;
+        const elOpen = document.getElementById(`sched-open-${docKey}`);
+        const elDead = document.getElementById(`sched-dead-${docKey}`);
+        const elGuide = document.getElementById(`sched-guide-${docKey}`);
+        if (!elOpen || !elDead || !elGuide) return;
+
+        const openDate = elOpen.value.trim() || null;
+        const deadline = elDead.value.trim() || null;
+        const guideDocUrl = elGuide.value.trim();
+
+        if (guideDocUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(guideDocUrl)) {
+            return this.notify("El enlace a la plantilla docente debe ser una URL válida de Google Drive / Docs.", "error");
+        }
+
+        state.data.config = state.data.config || {};
+        state.data.config.deliverableSchedule = state.data.config.deliverableSchedule || {};
+        state.data.config.deliverableSchedule[docKey] = {
+            openDate,
+            deadline,
+            guideDocUrl: guideDocUrl || ""
+        };
+
+        if (deadline) {
+            state.data.config.deadlines = state.data.config.deadlines || {};
+            state.data.config.deadlines[docKey] = deadline;
+        }
+
+        state.data.config.updatedAt = Date.now();
+        state.save();
+        this.notify(`✅ Cronograma y plantilla actualizados para ${docKey}.`, "success");
+    },
+
     updateDeadline(key, val) {
         if (!state.user || !state.user.role.startsWith('COORD')) return;
         state.data.config.deadlines = state.data.config.deadlines || {};
         state.data.config.deadlines[key] = val;
+        state.data.config.deliverableSchedule = state.data.config.deliverableSchedule || {};
+        state.data.config.deliverableSchedule[key] = state.data.config.deliverableSchedule[key] || {};
+        state.data.config.deliverableSchedule[key].deadline = val;
         state.data.config.updatedAt = Date.now();
         state.save();
         this.notify("Plazo actualizado en el Cronograma Maestro.", "success");
@@ -567,6 +622,9 @@ Object.assign(ui, {
     },
 
     renderAdminTelemetry() {
+        if (!state.user || !state.user.role.startsWith('COORD_')) {
+            return '<div class="terminal-border bg-mars-card p-8 text-center text-amber-400 font-mono text-xs uppercase font-bold border-l-4 border-l-amber-400">⚠️ Acceso Restringido: La telemetría global está reservada a roles de Coordinación (COORD_*).</div>';
+        }
         let matRows = '';
         Object.keys(state.data.companies).forEach(cid => {
             const co = state.data.companies[cid];

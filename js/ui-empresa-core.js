@@ -318,21 +318,36 @@ Object.assign(ui, {
                 const isExpanded = activeGroup === phase.id;
 
                 const itemsHtml = phaseDefs.map(def => {
+                    const docKey = def.key;
                     const docObj = docs[def.key];
-                    const dlDate = (state.data.config?.deadlines && state.data.config.deadlines[def.key]) ? state.data.config.deadlines[def.key] : def.defaultDate;
+                    const sched = (state.data.config?.deliverableSchedule && state.data.config.deliverableSchedule[docKey]) || {};
+                    const openDate = sched.openDate || def.defaultOpenDate;
+                    const isLocked = Boolean(openDate && !isNaN(new Date(openDate).getTime()) && (new Date() < new Date(openDate)));
+                    const dlDate = sched.deadline || (state.data.config?.deadlines && state.data.config.deadlines[def.key]) ? (sched.deadline || state.data.config.deadlines[def.key]) : def.defaultDate;
                     const dlStatus = this.getDeadlineStatus(dlDate);
+
+                    const lockBadge = isLocked
+                        ? `<span class="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded">🔒 BLOQUEADO HASTA ${new Date(openDate).toLocaleString()}</span>`
+                        : `<span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">🟢 ACTIVO / EN PLAZO</span>`;
+
+                    const templateBtn = sched.guideDocUrl
+                        ? `<a href="${encodeURI(sched.guideDocUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-mars-cyan border border-mars-cyan/30 rounded hover:bg-cyan-900/50 transition-colors font-mono min-h-[44px]"><span>📄 VER PLANTILLA DOCENTE ↗</span></a>`
+                        : '';
+
                     return `
-                    <div class="bg-slate-900/90 border ${docObj ? 'border-mars-green/60' : 'border-slate-800'} p-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div class="bg-slate-900/90 border ${docObj ? 'border-mars-green/60' : (isLocked ? 'border-amber-400/40' : 'border-slate-800')} p-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                         <div class="min-w-0 flex-grow">
                             <div class="flex flex-wrap items-center gap-1.5 mb-1">
                                 <span class="text-xs font-black px-2 py-0.5 border border-mars-cyan/60 text-mars-cyan bg-mars-cyan/10 uppercase">${this.escapeHTML(def.subject)} (${this.escapeHTML(def.weight)})</span>
                                 <span class="text-xs font-black px-2 py-0.5 uppercase ${docObj ? 'bg-mars-green/20 text-mars-green border border-mars-green' : 'bg-mars-magenta/20 text-mars-magenta border border-mars-magenta'}">${docObj ? '✓ ENTREGADO' : '⏳ PENDIENTE'}</span>
+                                ${lockBadge}
                                 <span class="text-xs font-bold px-2 py-0.5 uppercase ${dlStatus.class}">${this.escapeHTML(dlStatus.text)}</span>
                             </div>
                             <p class="text-white font-bold uppercase text-xs sm:text-sm break-words">${this.escapeHTML(def.name)}</p>
                             <p class="hidden sm:block text-xs text-slate-300 uppercase mt-0.5">Responsable: <span class="text-mars-yellow font-bold">${this.escapeHTML(def.role.replace('_',' '))}</span> | Plazo: ${this.escapeHTML(dlDate.replace('T', ' '))}</p>
                         </div>
-                        <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                        <div class="flex items-center gap-2 w-full sm:w-auto shrink-0 flex-wrap">
+                            ${templateBtn}
                             <button type="button" onclick="ui.inspectDeliverableDrawer('${this.escapeHTML(targetCoId)}', '${this.escapeHTML(def.key)}')" class="min-h-[44px] flex-1 sm:flex-initial bg-slate-800 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-black uppercase text-xs px-3 py-2 transition-all">
                                 [ 🔍 INSPECCIONAR ]
                             </button>

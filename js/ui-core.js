@@ -819,125 +819,201 @@ const ui = {
     },
 
     getOnboardingContent(role) {
-        let content = `<div class="space-y-4 font-mono text-xs sm:text-sm leading-relaxed">
-            <div class="bg-mars-green/10 border border-mars-green/50 p-2 text-xs text-mars-green font-bold flex items-center gap-1.5">
-                <span>🔐</span> Sesión Cifrada y Segura (v1.1.03): Canal autenticado con validación estricta en servidor.
+        const isDocente = role === 'DOCENTE' || (state.user && state.user.admin);
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const coId = state.user?.coId;
+        const co = coId ? state.data.companies?.[coId] : null;
+        const docs = co?.deliverables || {};
+
+        if (isDocente) {
+            const isCoord = Boolean(state.user && state.user.role && state.user.role.startsWith('COORD_'));
+            return `
+            <div class="space-y-2 font-mono text-xs leading-relaxed text-slate-200">
+                <!-- 1. Atención Rápida en Aula -->
+                <details open class="group bg-slate-900/80 border border-slate-800 rounded p-3 mb-2 transition-colors">
+                    <summary class="cursor-pointer font-bold text-xs uppercase flex justify-between items-center text-mars-cyan select-none min-h-[44px]">
+                        <span>⚡ 1. Atención Rápida en Aula</span>
+                        <span class="text-slate-400 group-open:rotate-180 transition-transform font-mono text-sm">▼</span>
+                    </summary>
+                    <div class="pt-3 border-t border-slate-800/60 mt-2 space-y-2 text-slate-300">
+                        <p><strong class="text-white">Aduana B2B:</strong> Supervisa y aprueba transferencias de material secundario entre startups para liberar fondos retenidos en el Libro Mayor.</p>
+                        <p><strong class="text-white">Identidades de Marca:</strong> Revisa propuestas de eslogan y misión corporativa antes de su proyección pública en el HUD.</p>
+                        <p><strong class="text-white">Alertas Léxicas y Régimen AEE:</strong> Monitoriza incidencias en tiempo real (nombres propios o lenguaje soez) con imposición de sanciones disciplinarias.</p>
+                    </div>
+                </details>
+
+                <!-- 2. Evaluación Curricular -->
+                <details class="group bg-slate-900/80 border border-slate-800 rounded p-3 mb-2 transition-colors">
+                    <summary class="cursor-pointer font-bold text-xs uppercase flex justify-between items-center text-mars-cyan select-none min-h-[44px]">
+                        <span>🎖️ 2. Evaluación Curricular Ponderada (100%)</span>
+                        <span class="text-slate-400 group-open:rotate-180 transition-transform font-mono text-sm">▼</span>
+                    </summary>
+                    <div class="pt-3 border-t border-slate-800/60 mt-2 space-y-2 text-slate-300">
+                        <p><strong class="text-white">Calificación por Rúbricas:</strong> Accede a los módulos específicos por materia (FYQ 25%, LYE 40%, LEN 15%, ECO 10%, MAT 5%, ING 5%) con ponderación automatizada.</p>
+                        <p><strong class="text-white">Evidencias en Google Drive:</strong> Inspecciona enlaces oficiales entregados y contrástalos con las plantillas docentes programadas.</p>
+                        <p><strong class="text-white">Acta Oficial CSV:</strong> Generación y descarga directa del acta consolidada para secretaría y claustro.</p>
+                    </div>
+                </details>
+
+                <!-- 3. Herramientas de Coordinación (Solo COORD_*) -->
+                ${isCoord ? `
+                <details class="group bg-slate-900/80 border border-slate-800 rounded p-3 mb-2 transition-colors">
+                    <summary class="cursor-pointer font-bold text-xs uppercase flex justify-between items-center text-mars-cyan select-none min-h-[44px]">
+                        <span>🔐 3. Herramientas de Coordinación y Seguridad</span>
+                        <span class="text-slate-400 group-open:rotate-180 transition-transform font-mono text-sm">▼</span>
+                    </summary>
+                    <div class="pt-3 border-t border-slate-800/60 mt-2 space-y-2 text-slate-300">
+                        <p><strong class="text-white">Cronograma y Candados:</strong> Modifica plazos límite, programa fechas de apertura y vincula plantillas oficiales de Google Docs.</p>
+                        <p><strong class="text-white">Llavero Maestro:</strong> Consulta y reasigna PINs docentes de 4 dígitos con sincronización criptográfica atómica.</p>
+                        <p><strong class="text-white">Backups Cloudflare D1:</strong> Gestión de instantáneas del estado global y descargas de seguridad JSON.</p>
+                    </div>
+                </details>` : ''}
             </div>`;
+        }
+
+        // Estructura para Alumnos segmentada en 4 Acordeones Interactivos
+        const roleDeliverables = defs.filter(d => d.role === role);
+        const roleDeliverablesHtml = roleDeliverables.length > 0 ? roleDeliverables.map(d => {
+            const docObj = docs[d.key];
+            const sched = (state.data.config?.deliverableSchedule && state.data.config.deliverableSchedule[d.key]) || {};
+            const openDate = sched.openDate || d.defaultOpenDate;
+            const isLocked = Boolean(openDate && !isNaN(new Date(openDate).getTime()) && (new Date() < new Date(openDate)));
+            const lockLabel = isLocked ? '<span class="text-amber-400 font-bold">[🔒 BLOQUEADO]</span>' : '<span class="text-mars-green font-bold">[🟢 ACTIVO]</span>';
+            const statusLabel = docObj ? '<span class="text-mars-green font-bold">✓ Entregado</span>' : '<span class="text-mars-magenta font-bold">⏳ Pendiente</span>';
+            return `<li class="border-b border-slate-800/80 pb-1.5 flex justify-between items-center gap-2 flex-wrap"><span><strong class="text-white">${this.escapeHTML(d.shortName || d.name)}</strong> (${this.escapeHTML(d.subject)}): ${statusLabel}</span>${lockLabel}</li>`;
+        }).join('') : '<li class="text-slate-400 italic">No tienes entregables curriculares asignados directamente a tu rol. Supervisa o asiste al equipo en el Dossier.</li>';
+
+        let roleActionsHtml = '';
+        let roleCollabHtml = '';
         switch(role) {
-            case 'CEO': 
-                content += `
-                <div class="bg-mars-cyan/10 border border-mars-cyan p-3">
-                    <p class="text-mars-cyan font-black uppercase text-xs sm:text-sm">Dirección General (CEO) — Liderazgo Estratégico</p>
-                    <p class="text-slate-200 text-xs mt-1">Tu misión principal es garantizar el cumplimiento estricto de los plazos, coordinar los departamentos y mantener la cohesión operativa de la startup.</p>
-                </div>
-                <div class="space-y-2 text-xs text-slate-200">
-                    <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">Atribuciones y Operaciones Clave:</p>
-                    <ul class="list-disc pl-5 space-y-1.5">
-                        <li><strong class="text-white">Cronograma Maestro (19 Entregables):</strong> Reubicado exclusivamente en el Dossier Corporativo como hoja de ruta estratégica para monitorizar el semáforo temporal.</li>
-                        <li><strong class="text-white">Bóveda de Órdenes:</strong> Supervisa el estado de las adquisiciones de I+D y campañas de Marketing aprobadas por Finanzas.</li>
-                        <li><strong class="text-white">Gabinete de Crisis AEE:</strong> Notifica y difunde el Comunicado Oficial Inmutable ante expedientes regulatorios o resoluciones docentes.</li>
-                        <li><strong class="text-white">Identidad de Marca:</strong> La propuesta de Eslogan y Misión se retiene en staging hasta su validación o rechazo por Coordinación antes de difundirse en el HUD.</li>
-                        <li><strong class="text-white">Gobernanza y Voto de Calidad:</strong> Convoca mociones asamblearias, dirime empates técnicos con tu voto de calidad y gestiona el Buzón HR.</li>
-                        <li><strong class="text-white">Registro Mercantil y RR.HH.:</strong> Solicita formalmente a Coordinación el cambio de <strong>Denominación Social</strong> de la empresa y gestiona el alta del <strong>Rol Observador (Auxiliar)</strong>.</li>
-                    </ul>
-                </div>`; 
+            case 'CEO':
+                roleActionsHtml = `
+                <div class="space-y-2">
+                    <p><strong class="text-white">Supervisión y Gobernanza:</strong> Modera la asamblea general, ejerce tu voto de calidad en empates y tramita mociones colegiadas.</p>
+                    <p><strong class="text-white">Aprobación Jerárquica:</strong> Audita los entregables antes de elevarlos a los docentes y valida o devuelve con motivo justificado.</p>
+                    <p><strong class="text-white">Gabinete de Crisis:</strong> Difunde el Comunicado Oficial Inmutable ante expedientes sancionadores de la AEE.</p>
+                    <div class="pt-2 flex flex-wrap gap-2">
+                        <button type="button" data-action="dossier" onclick="ui.navigate('dossier'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-mars-cyan text-black font-black uppercase text-xs hover:bg-white transition-all">[ Dossier Corporativo ]</button>
+                        <button type="button" data-action="orders" onclick="ui.navigate('orders'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-slate-800 text-mars-cyan border border-mars-cyan text-xs font-bold uppercase hover:bg-mars-cyan hover:text-black transition-all">[ Bóveda de Órdenes ]</button>
+                    </div>
+                </div>`;
+                roleCollabHtml = `El CEO supervisa el semáforo temporal en el Dossier, coordina las compras iniciadas por I+D y aprobadas por Finanzas, y garantiza la entrega a tiempo de todas las áreas.`;
                 break;
-            case 'TECNICO': 
-                content += `
-                <div class="bg-mars-cyan/10 border border-mars-cyan p-3">
-                    <p class="text-mars-cyan font-black uppercase text-xs sm:text-sm">Departamento Técnico (I+D e Ingeniería) 🧪</p>
-                    <p class="text-slate-200 text-xs mt-1">Responsable del diseño aeroespacial del cohete, estequiometría química del propulsor y cálculo trigonométrico de apogeo.</p>
-                </div>
-                <div class="space-y-2 text-xs text-slate-200">
-                    <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">Atribuciones y Operaciones Clave:</p>
-                    <ul class="list-disc pl-5 space-y-1.5">
-                        <li><strong class="text-white">Aprovisionamiento (SUPERMARS-KET):</strong> Añade piezas al borrador técnico y tramita órdenes hacia Finanzas con justificación técnica obligatoria (auditada por el filtro léxico).</li>
-                        <li><strong class="text-white">Mercado Secundario (B2B):</strong> Pon a la venta componentes sobrantes de tu inventario y adquiere piezas de otras startups previa autorización en la Aduana Docente.</li>
-                        <li><strong class="text-white">Banco de Pruebas y BOM:</strong> Registra ensayos de vuelo midiendo el apogeo en <strong>milímetros (mm)</strong> para calcular la eficiencia (E = mm/€v) y configura el escandallo final (BOM).</li>
-                        <li><strong class="text-white">Entregables Científicos (Enlaces Cloud):</strong> Sube los enlaces Drive de <strong>Física y Química (25%)</strong> (Informe Preliminar Dic e Informe Final Abr) y los 4 informes de <strong>Matemáticas (5%)</strong> (Goniómetro, Distancia Conocida, Dos Puntos e Informe Final).</li>
-                    </ul>
-                </div>`; 
+            case 'TECNICO':
+                roleActionsHtml = `
+                <div class="space-y-2">
+                    <p><strong class="text-white">Aprovisionamiento I+D:</strong> Explora el catálogo SUPERMARS-KET y añade piezas al borrador técnico adjuntando la memoria técnica en Google Drive.</p>
+                    <p><strong class="text-white">Mercado Secundario (B2B):</strong> Vende componentes sobrantes y compra ofertas de otras startups con control de precio estricto.</p>
+                    <p><strong class="text-white">Banco de Pruebas:</strong> Registra las mediciones de apogeo y calcula la eficiencia aeroespacial del propulsor.</p>
+                    <div class="pt-2 flex flex-wrap gap-2">
+                        <button type="button" data-action="market" onclick="ui.navigate('market'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-mars-cyan text-black font-black uppercase text-xs hover:bg-white transition-all">[ Catálogo & B2B ]</button>
+                        <button type="button" data-action="tech" onclick="ui.navigate('tech'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-slate-800 text-mars-cyan border border-mars-cyan text-xs font-bold uppercase hover:bg-mars-cyan hover:text-black transition-all">[ Banco de Pruebas ]</button>
+                    </div>
+                </div>`;
+                roleCollabHtml = `I+D solicita componentes a Finanzas; una vez aprobados, Operaciones los recibe en el taller y verifica el coste real físico.`;
                 break;
-            case 'FINANZAS': 
-                content += `
-                <div class="bg-mars-cyan/10 border border-mars-cyan p-3">
-                    <p class="text-mars-cyan font-black uppercase text-xs sm:text-sm">Departamento Financiero (CFO) 💰</p>
-                    <p class="text-slate-200 text-xs mt-1">Guardián de la viabilidad económica, auditoría de compras, control del capital virtual (2400 €v iniciales) y contabilidad analítica.</p>
-                </div>
-                <div class="space-y-2 text-xs text-slate-200">
-                    <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">Atribuciones y Operaciones Clave:</p>
-                    <ul class="list-disc pl-5 space-y-1.5">
-                        <li><strong class="text-white">Autorización Presupuestaria:</strong> Audita, aprueba o rechaza en la Bóveda de Órdenes las solicitudes de componentes de I+D y los paquetes publicitarios de Marketing.</li>
-                        <li><strong class="text-white">Libro Mayor (Ledger Inmutable):</strong> Supervisa todos los asientos contables: compras, ingresos por patrocinio, retenciones B2B y deducciones por multas AEE.</li>
-                        <li><strong class="text-white">Control de Coste Físico:</strong> Contrasta la inversión virtual (€v) con el gasto real en euros físicos (€) reportado por Logística en taller.</li>
-                        <li><strong class="text-white">Entregables de Economía (10% - Cloud):</strong> Gestiona y entrega los enlaces Drive/Sheets de los 4 documentos oficiales: <em>Presupuesto Inicial</em>, <em>Cuenta de Resultados</em>, <em>Presupuesto Post-Prototipo</em> y <em>Balance de Situación</em>.</li>
-                    </ul>
-                </div>`; 
+            case 'FINANZAS':
+                roleActionsHtml = `
+                <div class="space-y-2">
+                    <p><strong class="text-white">Auditoría Presupuestaria:</strong> Aprueba o rechaza solicitudes de componentes de I+D y campañas de marketing según liquidez disponible.</p>
+                    <p><strong class="text-white">Libro Mayor Inmutable:</strong> Monitoriza ingresos por patrocinio, cargos de adquisiciones y retenciones B2B en Aduana.</p>
+                    <p><strong class="text-white">Entregables de Economía:</strong> Elabora en Google Sheets y entrega los balances y cuentas de resultados oficiales.</p>
+                    <div class="pt-2 flex flex-wrap gap-2">
+                        <button type="button" data-action="finance" onclick="ui.navigate('finance'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-mars-cyan text-black font-black uppercase text-xs hover:bg-white transition-all">[ Panel Financiero ]</button>
+                        <button type="button" data-action="orders" onclick="ui.navigate('orders'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-slate-800 text-mars-cyan border border-mars-cyan text-xs font-bold uppercase hover:bg-mars-cyan hover:text-black transition-all">[ Autorizar Órdenes ]</button>
+                    </div>
+                </div>`;
+                roleCollabHtml = `Finanzas garantiza la solvencia de la startup impidiendo sobrecostes y audita las partidas de inversión propuestas por I+D y Marketing.`;
                 break;
-            case 'MARKETING': 
-                content += `
-                <div class="bg-mars-cyan/10 border border-mars-cyan p-3">
-                    <p class="text-mars-cyan font-black uppercase text-xs sm:text-sm">Departamento de Marketing y Comunicación (CMO) 🎨</p>
-                    <p class="text-slate-200 text-xs mt-1">Responsable de la identidad corporativa, estrategia comercial, narrativa persuasiva y captación de patrocinio.</p>
-                </div>
-                <div class="space-y-2 text-xs text-slate-200">
-                    <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">Atribuciones y Operaciones Clave:</p>
-                    <ul class="list-disc pl-5 space-y-1.5">
-                        <li><strong class="text-white">Aduana de Identidad Corporativa:</strong> Diseña y somete a validación docente el logotipo, eslogan y misión corporativa. El Eslogan y la Misión quedan retenidos en staging (<code>co.pendingSlogan</code>, <code>co.pendingMission</code>) a la espera de la validación docente previa a su publicación oficial en el HUD.</li>
-                        <li><strong class="text-white">Campañas y Paquetes Publicitarios:</strong> Solicita presupuesto a Finanzas para contratar paquetes de medios predefinidos y registra evidencias obligatorias mediante enlaces verificados de Google Drive (cero texto libre).</li>
-                        <li><strong class="text-white">Entregables de LyE, Lengua e Inglés (Cloud):</strong> Sube los enlaces Drive de <strong>LyE (40%)</strong> (Identidad Dic/Abr, Business Model Escrito y Canvas), <strong>Lengua (15%)</strong> (Dossier Argumentativo de Inversores) e <strong>Inglés (5%)</strong> (Presentación Oral y Redacciones).</li>
-                    </ul>
-                </div>`; 
+            case 'MARKETING':
+                roleActionsHtml = `
+                <div class="space-y-2">
+                    <p><strong class="text-white">Identidad Corporativa:</strong> Propón el eslogan y la misión en el HUD; el envío queda en staging hasta su aprobación en Coordinación.</p>
+                    <p><strong class="text-white">Campañas Publicitarias:</strong> Contrata paquetes predefinidos con enlace de justificación en Google Drive (cero texto libre).</p>
+                    <p><strong class="text-white">Dossier y Pitch:</strong> Sube las evidencias en Drive de LyE (40%), Lengua (15%) e Inglés (5%).</p>
+                    <div class="pt-2 flex flex-wrap gap-2">
+                        <button type="button" data-action="brand" onclick="ui.navigate('brand'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-mars-cyan text-black font-black uppercase text-xs hover:bg-white transition-all">[ Identidad & Campañas ]</button>
+                        <button type="button" data-action="dossier" onclick="ui.navigate('dossier'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-slate-800 text-mars-cyan border border-mars-cyan text-xs font-bold uppercase hover:bg-mars-cyan hover:text-black transition-all">[ Entregables de Marca ]</button>
+                    </div>
+                </div>`;
+                roleCollabHtml = `Marketing diseña la identidad y solicita fondos a Finanzas para campañas; coordina con CEO la defensa del modelo de negocio.`;
                 break;
-            case 'OPERACIONES_IA': 
-                content += `
-                <div class="bg-mars-cyan/10 border border-mars-cyan p-3">
-                    <p class="text-mars-cyan font-black uppercase text-xs sm:text-sm">Departamento de Operaciones, Logística e IA (COO) 📦🤖</p>
-                    <p class="text-slate-200 text-xs mt-1">Enlace entre el simulador virtual y el taller de fabricación física, aprovisionamiento real y auditoría ética de Inteligencia Artificial.</p>
-                </div>
-                <div class="space-y-2 text-xs text-slate-200">
-                    <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">Atribuciones y Operaciones Clave:</p>
-                    <ul class="list-disc pl-5 space-y-1.5">
-                        <li><strong class="text-white">Logística y Recepción Física:</strong> Valida la entrada en taller de los pedidos aprobados por Finanzas, registrando el comercio real y el coste físico en euros (€).</li>
-                        <li><strong class="text-white">Auditoría y Bitácora IA:</strong> Declara y audita todos los prompts utilizados por el equipo, exigiendo la verificación humana crítica antes de cerrarlos.</li>
-                        <li><strong class="text-white">Entregables Operativos (Cloud):</strong> Coordina y sube los enlaces Drive del <strong>Diario de Decisiones, Conflictos e IA</strong> correspondientes a las entregas de Diciembre y Abril (LyE).</li>
-                    </ul>
-                </div>`; 
+            case 'OPERACIONES_IA':
+                roleActionsHtml = `
+                <div class="space-y-2">
+                    <p><strong class="text-white">Logística en Taller:</strong> Valida pedidos aprobados registrando el coste real (€) y las piezas físicas recibidas.</p>
+                    <p><strong class="text-white">Bitácora Ética IA:</strong> Registra y audita todos los prompts generativos con validación humana explícita.</p>
+                    <p><strong class="text-white">Hoja de Taller (BOM):</strong> Configura el escandallo de materiales oficial para Física y Química.</p>
+                    <div class="pt-2 flex flex-wrap gap-2">
+                        <button type="button" data-action="cart" onclick="ui.navigate('cart'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-mars-cyan text-black font-black uppercase text-xs hover:bg-white transition-all">[ Logística de Taller ]</button>
+                        <button type="button" data-action="ailog" onclick="ui.navigate('ailog'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-slate-800 text-mars-cyan border border-mars-cyan text-xs font-bold uppercase hover:bg-mars-cyan hover:text-black transition-all">[ Bitácora Ética IA ]</button>
+                    </div>
+                </div>`;
+                roleCollabHtml = `Operaciones une el plano virtual con el taller físico y custodia la integridad documental y ética del uso de Inteligencia Artificial.`;
                 break;
-            case 'AUXILIAR': 
-                content += `
-                <div class="bg-mars-cyan/10 border border-mars-cyan p-3">
-                    <p class="text-mars-cyan font-black uppercase text-xs sm:text-sm">Observador Auxiliar (Apoyo Departamental) 👁️</p>
-                    <p class="text-slate-200 text-xs mt-1">Miembro táctico adscrito a un departamento específico para refuerzo operativo y participación en la gobernanza.</p>
-                </div>
-                <div class="space-y-2 text-xs text-slate-200">
-                    <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">Atribuciones y Operaciones Clave:</p>
-                    <ul class="list-disc pl-5 space-y-1.5">
-                        <li><strong class="text-white">Veeduría Departamental:</strong> Acceso directo a la ventana de trabajo del departamento al que te ha vinculado el CEO.</li>
-                        <li><strong class="text-white">Gobernanza Activa:</strong> Derecho pleno a proponer mociones y votar en las decisiones colegiadas de la asamblea.</li>
-                        <li><strong class="text-white">Auditoría de Dossier y Catálogo:</strong> Seguimiento en tiempo real de los 19 entregables y precios del mercado.</li>
-                    </ul>
-                </div>`; 
-                break;
-            case 'DOCENTE': 
-                content += `
-                <div class="bg-mars-cyan/10 border border-mars-cyan p-3">
-                    <p class="text-mars-cyan font-black uppercase text-xs sm:text-sm">Alto Mando Docente y Coordinación 🎖️</p>
-                    <p class="text-slate-200 text-xs mt-1">Control integral del ecosistema académico, evaluación continua ponderada (100%), aduanas y régimen disciplinario.</p>
-                </div>
-                <div class="space-y-2 text-xs text-slate-200">
-                    <p class="text-mars-yellow font-bold uppercase text-xs border-b border-slate-800 pb-1">Atribuciones y Operaciones Clave:</p>
-                    <ul class="list-disc pl-5 space-y-1.5">
-                        <li><strong class="text-white">Evaluación Curricular (100%):</strong> Calificación por rúbricas granulares y generación automática del Acta Ponderada oficial.</li>
-                        <li><strong class="text-white">Monitor de Alertas Léxicas:</strong> Recepción discriminada de incidencias: <span class="text-mars-yellow">Avisos Amarillos</span> por uso de nombres propios e <span class="text-red-400">Infracciones Rojas</span> por lenguaje soez con acceso directo a sanción AEE.</li>
-                        <li><strong class="text-white">Aduanas y Registro Mercantil:</strong> Aprobación de traspasos B2B, validación de Logos/Eslóganes, alta de Roles Auxiliares y autorización o edición directa de cambios de <strong>Denominación Social</strong>.</li>
-                        <li><strong class="text-white">Llavero Maestro y Backups D1:</strong> Gestión desacoplada de códigos de empresa, PINs blindados y copias de seguridad en Cloudflare D1.</li>
-                        <li><strong class="text-white">Acreditaciones y Tarjetas de Acceso PDF:</strong> Emisión e impresión de credenciales físicas HUD A4 para el claustro docente y las flotas de startups con avatares tácticos y PINs clasificados.</li>
-                    </ul>
-                </div>`; 
+            default:
+                roleActionsHtml = `
+                <div class="space-y-2">
+                    <p><strong class="text-white">Veeduría y Apoyo:</strong> Participa en las asambleas, apoya al departamento al que estás vinculado y audita el avance global.</p>
+                    <div class="pt-2">
+                        <button type="button" data-action="dossier" onclick="ui.navigate('dossier'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-mars-cyan text-black font-black uppercase text-xs hover:bg-white transition-all">[ Inspeccionar Dossier ]</button>
+                    </div>
+                </div>`;
+                roleCollabHtml = `El rol auxiliar colabora activamente en la gobernanza y aporta visión externa para resolver cuellos de botella.`;
                 break;
         }
-        return content;
+
+        return `
+        <div class="space-y-2 font-mono text-xs leading-relaxed text-slate-200">
+            <!-- 1. ¿Qué puedo hacer yo en mi puesto? -->
+            <details open class="group bg-slate-900/80 border border-slate-800 rounded p-3 mb-2 transition-colors">
+                <summary class="cursor-pointer font-bold text-xs uppercase flex justify-between items-center text-mars-cyan select-none min-h-[44px]">
+                    <span>🎯 1. ¿Qué puedo hacer yo en mi puesto?</span>
+                    <span class="text-slate-400 group-open:rotate-180 transition-transform font-mono text-sm">▼</span>
+                </summary>
+                <div class="pt-3 border-t border-slate-800/60 mt-2 space-y-2 text-slate-300">
+                    ${roleActionsHtml}
+                </div>
+            </details>
+
+            <!-- 2. ¿Cómo colaboro con mi equipo? -->
+            <details class="group bg-slate-900/80 border border-slate-800 rounded p-3 mb-2 transition-colors">
+                <summary class="cursor-pointer font-bold text-xs uppercase flex justify-between items-center text-mars-cyan select-none min-h-[44px]">
+                    <span>🤝 2. ¿Cómo colaboro con mi equipo?</span>
+                    <span class="text-slate-400 group-open:rotate-180 transition-transform font-mono text-sm">▼</span>
+                </summary>
+                <div class="pt-3 border-t border-slate-800/60 mt-2 space-y-2 text-slate-300">
+                    <p class="leading-relaxed">${roleCollabHtml}</p>
+                </div>
+            </details>
+
+            <!-- 3. ¿Qué entregas tenemos pendientes? -->
+            <details class="group bg-slate-900/80 border border-slate-800 rounded p-3 mb-2 transition-colors">
+                <summary class="cursor-pointer font-bold text-xs uppercase flex justify-between items-center text-mars-cyan select-none min-h-[44px]">
+                    <span>📁 3. ¿Qué entregas tenemos pendientes?</span>
+                    <span class="text-slate-400 group-open:rotate-180 transition-transform font-mono text-sm">▼</span>
+                </summary>
+                <div class="pt-3 border-t border-slate-800/60 mt-2 space-y-2 text-slate-300">
+                    <p class="text-[11px] text-slate-400">Entregables oficiales vinculados a tu rol (consulta el estado y los candados de apertura):</p>
+                    <ul class="space-y-1.5 pl-1">
+                        ${roleDeliverablesHtml}
+                    </ul>
+                </div>
+            </details>
+
+            <!-- 4. Reglas de Oro AEE -->
+            <details class="group bg-slate-900/80 border border-slate-800 rounded p-3 mb-2 transition-colors">
+                <summary class="cursor-pointer font-bold text-xs uppercase flex justify-between items-center text-mars-cyan select-none min-h-[44px]">
+                    <span>⚖️ 4. Reglas de Oro AEE</span>
+                    <span class="text-slate-400 group-open:rotate-180 transition-transform font-mono text-sm">▼</span>
+                </summary>
+                <div class="pt-3 border-t border-slate-800/60 mt-2 space-y-2 text-slate-300">
+                    <p><strong class="text-white">Privacidad RGPD:</strong> Prohibido estrictamente introducir nombres reales o datos personales; utiliza únicamente roles corporativos.</p>
+                    <p><strong class="text-white">Canal Exclusivo Google Drive:</strong> Todos los documentos entregados deben ser URLs válidas de Google Drive con permisos públicos de lectura ("Cualquiera con el enlace puede ver").</p>
+                    <p><strong class="text-white">Bitácora Ética IA:</strong> Todo prompt generado con IA debe declararse en la Bitácora con verificación humana crítica.</p>
+                </div>
+            </details>
+        </div>`;
     },
 
     showOnboarding() {
@@ -1915,6 +1991,20 @@ const ui = {
         const item = (typeof currentDoc === 'object' && currentDoc !== null) ? currentDoc : null;
         const status = item?.status;
 
+        const sched = (state.data.config?.deliverableSchedule && state.data.config.deliverableSchedule[docKey]) || {};
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const def = defs.find(d => d.key === docKey) || {};
+        const openDate = sched.openDate || def.defaultOpenDate;
+        const isLocked = Boolean(openDate && !isNaN(new Date(openDate).getTime()) && (new Date() < new Date(openDate)));
+
+        const lockBadge = isLocked
+            ? `<span class="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded">🔒 BLOQUEADO HASTA ${new Date(openDate).toLocaleString()}</span>`
+            : `<span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">🟢 ACTIVO / EN PLAZO</span>`;
+
+        const templateBtn = sched.guideDocUrl
+            ? `<div class="mb-2"><a href="${encodeURI(sched.guideDocUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-mars-cyan border border-mars-cyan/30 rounded hover:bg-cyan-900/50 transition-colors font-mono min-h-[44px]"><span>📄 VER PLANTILLA DOCENTE ↗</span></a></div>`
+            : '';
+
         let ceoControlsHtml = '';
         if (isCEO && item && (status === 'SUBMITTED_TO_CEO' || status === 'CEO_REVISION')) {
             ceoControlsHtml = `
@@ -1927,25 +2017,29 @@ const ui = {
 
         return `
         <div class="border-b border-slate-800 pb-4 mb-4 last:border-0 last:pb-0 last:mb-0">
-            <h3 class="text-mars-cyan font-bold text-xs sm:text-sm uppercase mb-1">${this.escapeHTML(title)}</h3>
+            <div class="flex justify-between items-start gap-2 flex-wrap mb-1">
+                <h3 class="text-mars-cyan font-bold text-xs sm:text-sm uppercase">${this.escapeHTML(title)}</h3>
+                ${lockBadge}
+            </div>
             <p class="text-xs text-slate-300 mb-2 uppercase leading-relaxed">${this.escapeHTML(desc)}</p>
+            ${templateBtn}
             ${this.renderDocBadge(title, currentDoc)}
             ${ceoControlsHtml}
             <div class="bg-slate-900 border border-slate-700 p-3 mt-2 space-y-2">
-                <label for="input-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">${isCEO ? 'Entregar o Actualizar Enlace Google Drive' : 'Subir Enlace para Supervisión del CEO'}</label>
+                <label for="input-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">${isLocked ? '🔒 Entrega Bloqueada hasta la Fecha de Apertura' : (isCEO ? 'Entregar o Actualizar Enlace Google Drive' : 'Subir Enlace para Supervisión del CEO')}</label>
                 <div class="space-y-1.5">
                   <input type="url" 
                          id="input-drive-url" 
                          name="driveUrl" 
-                         required 
-                         placeholder="https://docs.google.com/... o https://drive.google.com/..." 
-                         class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white rounded font-mono outline-none focus:border-mars-cyan">
+                         ${isLocked ? 'disabled' : 'required'} 
+                         placeholder="${isLocked ? '🔒 Entrega bloqueada hasta ' + new Date(openDate).toLocaleString() : 'https://docs.google.com/... o https://drive.google.com/...'}" 
+                         class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white rounded font-mono outline-none focus:border-mars-cyan ${isLocked ? 'opacity-50 cursor-not-allowed bg-slate-950' : ''}">
                   <p class="text-[10px] text-slate-400">
-                    Pega únicamente el enlace de tu archivo o carpeta en Google Drive configurado con permisos de lectura.
+                    ${isLocked ? 'El equipo docente ha programado la apertura de este entregable. Podéis consultar la plantilla oficial arriba.' : 'Pega únicamente el enlace de tu archivo o carpeta en Google Drive configurado con permisos de lectura.'}
                   </p>
                 </div>
                 <div class="flex justify-end pt-1">
-                    <button type="button" onclick="ui.submitDeliverable('${docKey}', this)" class="bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white flex-shrink-0 w-full sm:w-auto min-h-[44px]">${isCEO ? 'Entregar y Elevar a Docente' : 'Enviar a Supervisión CEO'}</button>
+                    <button type="button" ${isLocked ? 'disabled' : ''} onclick="ui.submitDeliverable('${docKey}', this)" class="bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white flex-shrink-0 w-full sm:w-auto min-h-[44px] ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}">${isLocked ? '🔒 Entrega Bloqueada' : (isCEO ? 'Entregar y Elevar a Docente' : 'Enviar a Supervisión CEO')}</button>
                 </div>
             </div>
         </div>`;
@@ -2015,8 +2109,17 @@ const ui = {
         const def = defs.find(d => d.key === docKey);
         if (!co || !def) return;
         const doc = co.deliverables?.[docKey];
-        const dlDate = (state.data.config?.deadlines && state.data.config.deadlines[def.key]) ? state.data.config.deadlines[def.key] : def.defaultDate;
+        const sched = (state.data.config?.deliverableSchedule && state.data.config.deliverableSchedule[docKey]) || {};
+        const openDate = sched.openDate || def.defaultOpenDate;
+        const isLocked = Boolean(openDate && !isNaN(new Date(openDate).getTime()) && (new Date() < new Date(openDate)));
+        const dlDate = sched.deadline || ((state.data.config?.deadlines && state.data.config.deadlines[def.key]) ? state.data.config.deadlines[def.key] : def.defaultDate);
         const dlBadge = this.getDeadlineStatus(dlDate);
+        const lockBadge = isLocked
+            ? `<span class="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded">🔒 BLOQUEADO HASTA ${new Date(openDate).toLocaleString()}</span>`
+            : `<span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">🟢 ACTIVO / EN PLAZO</span>`;
+        const templateBtn = sched.guideDocUrl
+            ? `<a href="${encodeURI(sched.guideDocUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-mars-cyan border border-mars-cyan/30 rounded hover:bg-cyan-900/50 transition-colors font-mono min-h-[44px]"><span>📄 VER PLANTILLA DOCENTE ↗</span></a>`
+            : '';
         const rubric = (typeof RUBRIC_CONFIG !== 'undefined' && RUBRIC_CONFIG[def.subject]) ? RUBRIC_CONFIG[def.subject] : null;
         const criteriaHtml = rubric && rubric.criteria ? rubric.criteria.map(c => `
             <li class="flex justify-between items-center py-1 border-b border-slate-800/80 last:border-0">
@@ -2077,6 +2180,10 @@ const ui = {
                     <div class="flex justify-between items-center gap-2 flex-wrap">
                         <span class="text-xs font-black px-2 py-0.5 border border-mars-cyan text-mars-cyan uppercase">${this.escapeHTML(def.subject)} • ${this.escapeHTML(def.weight)}</span>
                         <span class="text-xs font-black px-2 py-0.5 uppercase ${dlBadge.class}">${this.escapeHTML(dlBadge.text)}</span>
+                    </div>
+                    <div class="pt-1 flex items-center gap-2 flex-wrap">
+                        ${lockBadge}
+                        ${templateBtn}
                     </div>
                     <p class="text-white font-bold uppercase text-xs sm:text-sm pt-1">${this.escapeHTML(def.name)}</p>
                     <p class="text-slate-300 text-xs uppercase">Departamento Responsable: <strong class="text-mars-yellow">${this.escapeHTML(def.role.replace('_',' '))}</strong> | Límite: <strong>${this.escapeHTML(dlDate.replace('T', ' '))}</strong></p>

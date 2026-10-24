@@ -22,6 +22,7 @@ const DEFAULT_STATE = {
     config: {
         nextOrderId: 1000,
         deadlines: typeof DEFAULT_DEADLINES !== 'undefined' ? DEFAULT_DEADLINES : {},
+        deliverableSchedule: {},
         guidelines: { techReportDocUrl: "", techReportNotes: "Guía oficial redactada por FYQ." },
         teachers: {
             FYQ: { name: "Física y Química", canSponsor: false },
@@ -200,7 +201,10 @@ const state = {
         d = d || {};
         d.version = Number(d.version) || 1; 
         d.lastUpdated = d.lastUpdated || Date.now();
-        d.config = d.config || JSON.parse(JSON.stringify(DEFAULT_STATE.config));
+        d.config = d.config || {};
+        if (!d.config.deliverableSchedule) {
+            d.config.deliverableSchedule = {};
+        }
         d.catalog = d.catalog && d.catalog.length > 0 ? d.catalog : JSON.parse(JSON.stringify(DEFAULT_STATE.catalog));
         d.companies = d.companies || JSON.parse(JSON.stringify(DEFAULT_STATE.companies));
         d.telemetry = d.telemetry || { totalLogins: 0, sessions: [] };

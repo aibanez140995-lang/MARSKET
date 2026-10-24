@@ -138,9 +138,14 @@ Object.assign(ui, {
                                 const aiCount = (co.aiPrompts||[]).filter(p=>p.status==='APROBADO').length;
                                 const deliveredTotal = docCols.filter(col => !!d[col.key]).length;
                                 
-                                const dLink = (doc) => doc 
-                                    ? `<a href="${this.escapeHTML(doc.dataUrl)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] flex items-center justify-center bg-mars-green/15 text-mars-green border border-mars-green px-2 py-1 font-bold hover:bg-mars-green hover:text-black transition-colors text-center">${doc.type==='link'?'🔗 LINK':'📁 FILE'}</a>` 
-                                    : `<span class="min-h-[44px] flex items-center justify-center text-slate-400 border border-slate-800 px-2 py-1 text-center">--</span>`;
+                                const dLink = (doc, colKey) => {
+                                    const sched = state.data.config?.deliverableSchedule?.[colKey];
+                                    const templateBadge = sched?.guideDocUrl ? `<a href="${encodeURI(sched.guideDocUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-[9px] text-mars-cyan block hover:underline" title="Ver Plantilla Docente">📄 Plantilla ↗</a>` : '';
+                                    if (doc) {
+                                        return `<div class="flex flex-col items-center gap-1"><a href="${this.escapeHTML(doc.dataUrl)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] flex items-center justify-center bg-mars-green/15 text-mars-green border border-mars-green px-2 py-1 font-bold hover:bg-mars-green hover:text-black transition-colors text-center">${doc.type==='link'?'🔗 LINK':'📁 FILE'}</a>${templateBadge}</div>`;
+                                    }
+                                    return `<div class="flex flex-col items-center gap-1"><span class="min-h-[44px] flex items-center justify-center text-slate-400 border border-slate-800 px-2 py-1 text-center">--</span>${templateBadge}</div>`;
+                                };
                                 
                                 const aLink = aiCount > 0 
                                     ? `<span class="text-blue-400 font-bold bg-blue-500/10 border border-blue-500 px-2 py-1 block text-center">✓ ${aiCount}</span>` 
@@ -149,7 +154,7 @@ Object.assign(ui, {
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
                                     <td class="py-2.5 px-2 font-orbitron text-white font-bold sticky left-0 bg-mars-card z-10 border-r border-mars-border max-w-[220px] truncate" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)} [${this.escapeHTML(co.classGroup)}]</td>
-                                    <td class="py-2.5 px-2 font-mono font-bold text-center text-mars-yellow">${deliveredTotal}/${docCols.length}</td>${docCols.map(col => `<td class="py-2.5 px-1.5">${dLink(d[col.key])}</td>`).join('')}
+                                    <td class="py-2.5 px-2 font-mono font-bold text-center text-mars-yellow">${deliveredTotal}/${docCols.length}</td>${docCols.map(col => `<td class="py-2.5 px-1.5">${dLink(d[col.key], col.key)}</td>`).join('')}
                                     <td class="py-2.5 px-1.5">${aLink}</td>
                                 </tr>`;
                             }).join('')}
