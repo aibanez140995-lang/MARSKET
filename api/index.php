@@ -832,6 +832,33 @@ try {
                 }
                 break;
 
+            case 'COORDINATOR_DECIDE_BRAND':
+                if (empty($auth['isCoordinator']) && empty($auth['isAdmin'])) {
+                    http_response_code(403);
+                    echo json_encode(['error' => 'UNAUTHORIZED_ROLE', 'message' => 'Solo Coordinación puede validar marcas.']);
+                    exit;
+                }
+                $approved = !empty($payload['approved']);
+                if ($approved) {
+                    $co['slogan'] = $co['pendingSlogan'] ?? ($co['brandApproval']['pendingSlogan'] ?? ($co['slogan'] ?? ''));
+                    $co['mission'] = $co['pendingMission'] ?? ($co['valueProposition'] ?? ($co['mission'] ?? ''));
+                    $co['valueProposition'] = $co['mission'];
+                    unset($co['pendingSlogan'], $co['pendingMission'], $co['brandStatus']);
+                    if (isset($co['brandApproval']) && is_array($co['brandApproval'])) {
+                        $co['brandApproval']['status'] = 'APROBADO';
+                        unset($co['brandApproval']['pendingSlogan']);
+                    }
+                } else {
+                    unset($co['pendingSlogan'], $co['pendingMission']);
+                    $co['brandStatus'] = 'REJECTED';
+                    if (isset($co['brandApproval']) && is_array($co['brandApproval'])) {
+                        $co['brandApproval']['status'] = 'RECHAZADO';
+                        unset($co['brandApproval']['pendingSlogan']);
+                        $co['brandApproval']['feedback'] = 'Propuesta de marca rechazada por Coordinación.';
+                    }
+                }
+                break;
+
             case 'VOTE_MOTION':
                 $motionId = trim((string)($payload['id'] ?? $payload['motionId'] ?? ''));
                 $voteValue = trim((string)($payload['vote'] ?? ''));
@@ -855,7 +882,7 @@ try {
                 break;
 
             case 'GENERIC_PATCH':
-                $allowed = ['slogan', 'valueProposition', 'cart', 'votingMotions', 'flightTests', 'bom', 'brandApproval'];
+                $allowed = ['slogan', 'valueProposition', 'cart', 'votingMotions', 'flightTests', 'bom', 'brandApproval', 'pendingSlogan', 'pendingMission', 'brandStatus'];
                 foreach ($allowed as $k) {
                     if (isset($payload[$k])) {
                         $co[$k] = $payload[$k];
