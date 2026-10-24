@@ -1924,8 +1924,11 @@ const ui = {
                     <ul class="space-y-1 text-xs">${itemsHtml}</ul>
                 </div>
                 <div class="bg-slate-900 border border-slate-800 p-3">
-                    <p class="text-mars-yellow font-bold uppercase text-xs mb-1">Memoria / Justificación Técnica Registrada</p>
-                    <p class="text-slate-200 italic text-xs break-words">"${this.escapeHTML(ord.justification || ord.reason || ord.desc || 'Sin memoria adjunta')}"</p>
+                    <p class="text-mars-yellow font-bold uppercase text-xs mb-1">Informe Técnico de Especificación</p>
+                    ${(ord.driveUrl && GOOGLE_DRIVE_REGEX.test(ord.driveUrl))
+                        ? `<a href="${encodeURI(ord.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Informe Técnico en Docs ↗</span></a>`
+                        : `<span class="text-xs text-amber-500/80 font-mono italic">[Memoria técnica legacy archivada por protocolo RGPD]</span>`
+                    }
                     ${ord.realStore ? `<p class="text-mars-green text-xs font-bold uppercase mt-2 pt-2 border-t border-slate-800">Comercio Real: ${this.escapeHTML(ord.realStore)} | Coste Físico: ${Number(ord.realCost || 0).toFixed(2)} €</p>` : ''}
                 </div>
             </div>
@@ -1957,8 +1960,11 @@ const ui = {
             <div class="space-y-3">
                 <p class="text-white font-bold uppercase text-xs">${this.escapeHTML(camp.title || camp.type || 'Acción Comercial')}</p>
                 <div class="bg-slate-900 border border-slate-800 p-3">
-                    <p class="text-mars-yellow font-bold uppercase text-xs mb-1">Justificación ROI</p>
-                    <p class="text-slate-200 italic text-xs break-words">"${this.escapeHTML(camp.desc || 'Solicitud de inversión publicitaria')}"</p>
+                    <p class="text-mars-yellow font-bold uppercase text-xs mb-1">Dossier / Justificación ROI</p>
+                    ${(camp.driveUrl && GOOGLE_DRIVE_REGEX.test(camp.driveUrl))
+                        ? `<a href="${encodeURI(camp.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Dossier ROI en Docs ↗</span></a>`
+                        : `<span class="text-xs text-amber-500/80 font-mono italic">[Justificación ROI legacy archivada por protocolo RGPD]</span>`
+                    }
                 </div>
             </div>`;
         this.openDrawer(`JUSTIFICACIÓN ROI // ${pkg}`, body);
@@ -1981,6 +1987,22 @@ const ui = {
                 if (firstFocusable) firstFocusable.focus();
             }, 40);
         }
+    },
+
+    openRgpdModal() {
+        const html = `
+            <div class="space-y-3 text-xs text-slate-200 font-mono leading-relaxed">
+                <div class="p-2.5 bg-slate-900 border border-cyan-500/30">
+                    <p><strong class="text-cyan-400">RESPONSABLE:</strong> Centro Educativo / Coordinación MARS-KET.</p>
+                    <p class="mt-1"><strong class="text-cyan-400">FINALIDAD:</strong> Simulación aeroespacial y evaluación pedagógica competencial del alumnado.</p>
+                    <p class="mt-1"><strong class="text-cyan-400">LEGITIMACIÓN:</strong> Misión de interés público y función docente (Art. 6.1.e RGPD).</p>
+                    <p class="mt-1"><strong class="text-cyan-400">DESTINATARIOS:</strong> Sin cesión de datos a terceros ni transferencias internacionales.</p>
+                    <p class="mt-1"><strong class="text-cyan-400">DERECHOS:</strong> Acceso, rectificación y supresión ante la dirección o profesorado del centro.</p>
+                </div>
+                <p class="text-[11px] text-slate-400 italic">La plataforma opera bajo el principio de minimización de datos: prohibido el uso de nombres reales o datos de contacto.</p>
+            </div>
+        `;
+        this.showModal("Protocolo de Privacidad y RGPD (Art. 13)", html, "");
     },
 
     closeModal() { 

@@ -18,13 +18,10 @@ Object.assign(ui, {
         `;
 
         const rgpdClauseHtml = `
-            <div class="rgpd-clause-13 mt-3 pt-2.5 border-t border-mars-border/60 text-[10px] text-slate-400 font-mono leading-relaxed space-y-1">
-                <p class="text-mars-cyan font-bold uppercase tracking-wider text-center text-[10px]">[ CLÁUSULA INFORMATIVA RGPD (ART. 13) ]</p>
-                <p><strong class="text-slate-300">RESPONSABLE:</strong> Centro Educativo / Coordinación MARS-KET.</p>
-                <p><strong class="text-slate-300">FINALIDAD:</strong> Simulación aeroespacial y evaluación pedagógica competencial.</p>
-                <p><strong class="text-slate-300">LEGITIMACIÓN:</strong> Misión de interés público / función docente (Art. 6.1.e RGPD).</p>
-                <p><strong class="text-slate-300">DESTINATARIOS:</strong> Sin cesión a terceros ni transferencias internacionales.</p>
-                <p><strong class="text-slate-300">DERECHOS:</strong> Acceso, rectificación y supresión ante la dirección o profesorado del centro.</p>
+            <div class="mt-4 text-center">
+                <button type="button" id="btn-open-rgpd-modal" onclick="ui.openRgpdModal()" class="text-[10px] text-slate-500 hover:text-cyan-400 font-mono tracking-wider transition-colors">
+                    [ 🛡️ PROTOCOLO RGPD / ART. 13 ]
+                </button>
             </div>
         `;
 

@@ -64,6 +64,7 @@ export async function onRequestPost(context) {
     if (!action) {
         return new Response(JSON.stringify({ error: 'MISSING_ACTION' }), { status: 400, headers: CORS_HEADERS });
     }
+    const p = (payload.payload && typeof payload.payload === 'object') ? Object.assign({}, payload.payload, payload) : payload;
 
     try {
         // Asegurar que la tabla particionada company_state existe
@@ -110,11 +111,21 @@ export async function onRequestPost(context) {
         co.orders = Array.isArray(co.orders) ? co.orders : [];
 
         const now = Date.now();
+        const TTL_MS = 72 * 60 * 60 * 1000;
+        if (Array.isArray(co.coordinatorReports)) {
+            co.coordinatorReports = co.coordinatorReports.filter(report => {
+                const reportTime = report.createdAt ? new Date(report.createdAt).getTime() : now;
+                return (now - reportTime) < TTL_MS;
+            });
+        }
 
         // 3. Ejecución de la acción atómica
         switch(action) {
             case 'EXECUTE_PURCHASE': {
-                const items = Array.isArray(payload.items) ? payload.items : co.cart;
+                if (p.driveUrl && !GOOGLE_DRIVE_REGEX.test(p.driveUrl)) {
+                    return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL' }), { status: 400, headers: CORS_HEADERS });
+                }
+                const items = Array.isArray(p.items) ? p.items : co.cart;
                 if (!items || items.length === 0) {
                     return new Response(JSON.stringify({ error: 'EMPTY_CART_OR_ITEMS' }), { status: 400, headers: CORS_HEADERS });
                 }
@@ -157,6 +168,7 @@ export async function onRequestPost(context) {
                     id: orderId,
                     items: JSON.parse(JSON.stringify(items)),
                     total: totalPurchase,
+                    driveUrl: p.driveUrl || '',
                     date: new Date().toISOString(),
                     status: 'ENTREGADO'
                 });
@@ -183,8 +195,11 @@ export async function onRequestPost(context) {
 
             case 'UPDATE_MARKETING': {
                 co.marketingCampaigns = Array.isArray(co.marketingCampaigns) ? co.marketingCampaigns : [];
-                if (payload.campaign) {
-                    co.marketingCampaigns.unshift(payload.campaign);
+                if (p.campaign) {
+                    if (p.campaign.driveUrl && !GOOGLE_DRIVE_REGEX.test(p.campaign.driveUrl)) {
+                        return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL' }), { status: 400, headers: CORS_HEADERS });
+                    }
+                    co.marketingCampaigns.unshift(p.campaign);
                 }
                 break;
             }
@@ -211,17 +226,55 @@ export async function onRequestPost(context) {
 
             case 'SAVE_PROMPTS': {
                 co.aiPrompts = Array.isArray(co.aiPrompts) ? co.aiPrompts : [];
-                if (payload.prompt) {
-                    co.aiPrompts.unshift(payload.prompt);
+                if (p.prompt) {
+                    const bitUrl = p.prompt.bitacoraUrl || p.prompt.driveUrl || '';
+                    if (bitUrl && !GOOGLE_DRIVE_REGEX.test(bitUrl)) {
+                        return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL' }), { status: 400, headers: CORS_HEADERS });
+                    }
+                    co.aiPrompts.unshift(p.prompt);
                 }
+                break;
+            }
+
+            case 'SUBMIT_MOTION': {
+                co.votingMotions = Array.isArray(co.votingMotions) ? co.votingMotions : [];
+                if (p.motion) {
+                    if (p.motion.driveUrl && !GOOGLE_DRIVE_REGEX.test(p.motion.driveUrl)) {
+                        return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL' }), { status: 400, headers: CORS_HEADERS });
+                    }
+                    co.votingMotions.unshift(p.motion);
+                }
+                break;
+            }
+
+            case 'SUBMIT_COORDINATOR_REPORT': {
+                const driveUrl = String(p.driveUrl || p.url || '').trim();
+                if (driveUrl && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+                    return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL', message: 'Solo se admiten enlaces válidos a recursos de Google Drive.' }), { status: 400, headers: CORS_HEADERS });
+                }
+                const newReport = {
+                    id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('REP-' + now + '-' + Math.random().toString(36).substr(2, 6)),
+                    fromRole: String(p.fromRole || auth.role || 'UNKNOWN'),
+                    driveUrl: driveUrl,
+                    createdAt: new Date().toISOString()
+                };
+                co.coordinatorReports = Array.isArray(co.coordinatorReports) ? co.coordinatorReports : [];
+                co.coordinatorReports.unshift(newReport);
                 break;
             }
 
             case 'GENERIC_PATCH': {
                 const allowed = ['slogan', 'valueProposition', 'cart', 'votingMotions', 'flightTests', 'bom'];
                 for (const k of allowed) {
-                    if (payload[k] !== undefined) {
-                        co[k] = payload[k];
+                    if (p[k] !== undefined) {
+                        if (k === 'votingMotions' && Array.isArray(p[k])) {
+                            for (const m of p[k]) {
+                                if (m && m.driveUrl && !GOOGLE_DRIVE_REGEX.test(m.driveUrl)) {
+                                    return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL' }), { status: 400, headers: CORS_HEADERS });
+                                }
+                            }
+                        }
+                        co[k] = p[k];
                     }
                 }
                 break;

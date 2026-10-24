@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.02) ---
 
-const APP_VERSION = "1.1.16";
+const APP_VERSION = "1.1.17";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const REGULATORY_AGENCIES = {
@@ -159,6 +159,23 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.17",
+      date: new Date().toISOString().split('T')[0],
+      title: "Blindaje RGPD Integral & Enlaces Corporativos Drive",
+      items: [
+        "Despliegue de privacidad RGPD por capas en login mediante modal accesible",
+        "Cuaderno de Bitácora y prompts IA migrados a enlaces de Google Docs/Drive",
+        "Erradicación de campos de texto libre en Órdenes, Mociones y Marketing",
+        "Ciclo de vida efímero con TTL de 72h para reportes de coordinación en D1"
+      ],
+      highlights: [
+        { type: "RGPD", text: "Privacidad por capas en login con modal informativo accesible (Art. 13)." },
+        { type: "DOCS", text: "Cuaderno de bitácora y prompts IA migrados a enlaces de Google Docs/Drive." },
+        { type: "SEGURIDAD", text: "Erradicación de campos de texto libre en Órdenes, Mociones y Marketing." },
+        { type: "SISTEMA", text: "Purga automática de reportes de coordinación con TTL efímero de 72h." }
+      ]
+    },
     {
       version: "1.1.16",
       date: new Date().toISOString().split('T')[0],

@@ -182,7 +182,12 @@ Object.assign(ui, {
                             <div class="terminal-border bg-slate-900 p-4 border-l-4 ${m.status === 'ABIERTA' ? 'border-l-mars-yellow' : (m.result === 'APROBADA' ? 'border-l-mars-green' : 'border-l-mars-magenta')} w-full">
                                 ${ui.renderWorkflowTracker(['Propuesta', 'Votación', 'Cierre (Acta)'], m.status === 'ABIERTA' ? (total > 0 ? 1 : 0) : 2)}
                                 <div class="flex flex-wrap justify-between gap-2 mb-2 mt-3"><h3 class="text-white font-bold uppercase text-xs sm:text-sm break-words">${this.escapeHTML(m.title)}</h3><span class="text-xs text-slate-300">${this.escapeHTML(m.date)}</span></div>
-                                <p class="text-xs text-slate-200 italic mb-3 break-words">"${this.escapeHTML(m.desc)}"</p>
+                                <div class="mb-3">
+                                    ${(m.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(m.driveUrl))
+                                        ? `<a href="${encodeURI(m.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Propuesta en Docs ↗</span></a>`
+                                        : `<span class="text-xs text-amber-500/80 font-mono italic">[Propuesta legacy archivada por protocolo RGPD]</span>`
+                                    }
+                                </div>
                                 <div class="w-full bg-black h-2.5 flex rounded-sm overflow-hidden mb-1.5">
                                     <div class="bg-mars-green h-full transition-all" style="width: ${totalRoles>0?(y/totalRoles)*100:0}%"></div>
                                     <div class="bg-mars-magenta h-full transition-all" style="width: ${totalRoles>0?(n/totalRoles)*100:0}%"></div>
@@ -344,8 +349,9 @@ Object.assign(ui, {
         const html = `
             <label for="motion-title" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Título de la Moción</label>
             <input type="text" id="motion-title" placeholder="Título de la moción..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white mb-3 outline-none focus:border-mars-yellow">
-            <label for="motion-desc" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Descripción y Justificación</label>
-            <textarea id="motion-desc" placeholder="Descripción y justificación..." class="w-full bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white h-24 mb-2 outline-none focus:border-mars-yellow"></textarea>
+            <label for="motion-drive-url" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Enlace al Documento de la Propuesta (Google Docs)</label>
+            <input type="url" id="motion-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white mb-2 outline-none focus:border-mars-yellow font-mono">
+            <p class="text-[10px] text-slate-400 mb-2">La memoria y argumentario de la moción se desarrolla en el Google Doc oficial con permisos de lectura.</p>
         `;
         const actions = `<button type="button" onclick="ui.submitMotion()" class="min-h-[44px] bg-mars-yellow text-black px-5 py-2.5 text-xs font-bold uppercase hover:bg-white transition-colors">Registrar Moción</button>`;
         this.showModal("Proponer Moción de Gobernanza", html, actions);
@@ -354,13 +360,16 @@ Object.assign(ui, {
     submitMotion() {
         if (!state.user) return;
         const elTitle = document.getElementById('motion-title');
-        const elDesc = document.getElementById('motion-desc');
-        if (!elTitle || !elDesc) return;
+        const elUrl = document.getElementById('motion-drive-url');
+        if (!elTitle || !elUrl) return;
         
         const title = this.cleanInput(elTitle.value);
-        const desc = this.cleanInput(elDesc.value);
-        if(!title || !desc) return this.notify("Rellene todos los campos.", "warning");
-        if(ui.hasForbiddenWords && (ui.hasForbiddenWords(title, 'Título Moción Gobernanza') || ui.hasForbiddenWords(desc, 'Descripción Moción Gobernanza'))) {
+        const driveUrl = this.cleanInput(elUrl.value);
+        if(!title || !driveUrl) return this.notify("Rellene todos los campos.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+        }
+        if(ui.hasForbiddenWords && ui.hasForbiddenWords(title, 'Título Moción Gobernanza', elTitle)) {
             return;
         }
         
@@ -368,7 +377,15 @@ Object.assign(ui, {
         if (!co) return auth.logout();
         co.votingMotions = co.votingMotions || [];
         
-        co.votingMotions.unshift({ id: 'MOT-'+Date.now(), title, desc, authorRole: state.user.role, date: new Date().toLocaleString(), status: 'ABIERTA', votes: {} });
+        co.votingMotions.unshift({ 
+            id: 'MOT-'+Date.now(), 
+            title, 
+            driveUrl, 
+            authorRole: state.user.role, 
+            date: new Date().toLocaleString(), 
+            status: 'ABIERTA', 
+            votes: {} 
+        });
         ui.pushNotification(state.user.coId, 'CEO', `Nueva moción propuesta por ${state.user.role}.`, 'info');
         state.save(); 
         this.closeModal(); 
@@ -530,7 +547,12 @@ Object.assign(ui, {
                         <span class="text-mars-cyan font-bold uppercase text-xs break-words">${this.escapeHTML(c.title)}</span>
                         <span class="text-xs text-slate-300">${this.escapeHTML(c.date)}</span>
                     </div>
-                    <p class="text-xs text-slate-200 italic mb-2 break-words">"${this.escapeHTML(c.desc)}"</p>
+                    <div class="mb-2">
+                        ${(c.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(c.driveUrl))
+                            ? `<a href="${encodeURI(c.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Dossier ROI en Docs ↗</span></a>`
+                            : `<span class="text-xs text-amber-500/80 font-mono italic">[Dossier legacy archivado por protocolo RGPD]</span>`
+                        }
+                    </div>
                     ${c.url ? `<a href="${this.escapeHTML(c.url)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center text-xs text-mars-yellow hover:underline">🔗 Ver Creatividad</a>` : ''}
                 </div>`;
             }
@@ -566,7 +588,12 @@ Object.assign(ui, {
                         <span class="block text-xs text-slate-300">${this.escapeHTML(c.date)}</span>
                     </div>
                 </div>
-                <p class="text-xs text-slate-300 italic mb-3 break-words">Justificación ROI: "${this.escapeHTML(c.desc)}"</p>
+                <div class="mb-3">
+                    ${(c.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(c.driveUrl))
+                        ? `<a href="${encodeURI(c.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Dossier ROI en Docs ↗</span></a>`
+                        : `<span class="text-xs text-amber-500/80 font-mono italic">[Dossier legacy archivado por protocolo RGPD]</span>`
+                    }
+                </div>
                 
                 ${status === 'ACTIVO' ? `
                 <div class="bg-slate-950 border border-slate-800 p-3 mt-2">
@@ -645,7 +672,7 @@ Object.assign(ui, {
                         <h2 class="font-orbitron text-mars-yellow text-base sm:text-lg uppercase tracking-tighter">Contratación de Paquetes Publicitarios</h2>
                         <span class="text-xs bg-mars-yellow/10 text-mars-yellow border border-mars-yellow px-2.5 py-0.5 font-bold uppercase">Requiere Aprobación Finanzas</span>
                     </div>
-                    <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Selecciona un paquete para solicitar presupuesto a Finanzas. Una vez aprobado, podrás registrar tus acciones promocionales con enlaces Drive/Canva.</p>
+                    <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Selecciona un paquete para solicitar presupuesto a Finanzas. Una vez aprobado, podrás registrar tus acciones promocionales con enlaces verificados de Google Drive.</p>
                     
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
                         ${packagesGridHtml}
@@ -709,8 +736,9 @@ Object.assign(ui, {
                     <input type="text" id="mkt-req-title" placeholder="Ej: Campaña Lanzamiento Fase I..." class="w-full min-h-[44px] bg-black border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan">
                 </div>
                 <div>
-                    <label for="mkt-req-desc" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Justificación de Retorno de Inversión (Para Finanzas)</label>
-                    <textarea id="mkt-req-desc" placeholder="Explica a Finanzas por qué merece la pena invertir ${Number(pkg.price)} €v en este paquete..." class="w-full bg-black border border-mars-border p-2.5 text-base sm:text-xs text-white h-24 outline-none focus:border-mars-cyan"></textarea>
+                    <label for="mkt-req-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Enlace al Dossier / Justificación ROI (Google Docs / Drive)</label>
+                    <input type="url" id="mkt-req-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-black border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono">
+                    <p class="text-[10px] text-slate-400 mt-1">El dossier y justificación ROI se elabora en el Google Doc oficial con permisos de lectura.</p>
                 </div>
             </div>
         `;
@@ -725,13 +753,16 @@ Object.assign(ui, {
         if (!pkg) return;
 
         const elTitle = document.getElementById('mkt-req-title');
-        const elDesc = document.getElementById('mkt-req-desc');
-        if (!elTitle || !elDesc) return;
+        const elUrl = document.getElementById('mkt-req-url');
+        if (!elTitle || !elUrl) return;
 
         const title = this.cleanInput(elTitle.value);
-        const desc = this.cleanInput(elDesc.value);
-        if (!title || !desc) return this.notify("Debes indicar un título de campaña y la justificación presupuestaria para Finanzas.", "warning");
-        if (ui.hasForbiddenWords && (ui.hasForbiddenWords(title, 'Título Paquete Marketing', elTitle) || ui.hasForbiddenWords(desc, 'Justificación Paquete Marketing', elDesc))) {
+        const driveUrl = this.cleanInput(elUrl.value);
+        if (!title || !driveUrl) return this.notify("Debes indicar un título de campaña y el enlace Drive del dossier.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+        }
+        if (ui.hasForbiddenWords && ui.hasForbiddenWords(title, 'Título Paquete Marketing', elTitle)) {
             return;
         }
 
@@ -747,7 +778,7 @@ Object.assign(ui, {
             totalActions: pkg.actions,
             executedActions: [],
             title: title,
-            desc: desc,
+            driveUrl: driveUrl,
             status: 'PENDIENTE_FINANZAS',
             date: new Date().toLocaleString()
         };
@@ -784,8 +815,8 @@ Object.assign(ui, {
                     <textarea id="mkt-act-desc" placeholder="Descripción del impacto y contenido de la creatividad..." class="w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white h-20 outline-none focus:border-mars-cyan"></textarea>
                 </div>
                 <div>
-                    <label for="mkt-act-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Enlace a Evidencia (Canva / Drive)</label>
-                    <input type="url" id="mkt-act-url" placeholder="Enlace obligatorio a la evidencia en Canva o Drive (https://...)" class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan">
+                    <label for="mkt-act-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Enlace a Evidencia Oficial (Google Drive)</label>
+                    <input type="url" id="mkt-act-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono">
                 </div>
             </div>
         `;
@@ -805,8 +836,8 @@ Object.assign(ui, {
         const url = this.cleanInput(elUrl.value);
 
         if (!title || !desc || !url) return this.notify("El título, la descripción y el enlace (URL) de la acción son obligatorios.", "warning");
-        if (!url.toLowerCase().startsWith('http://') && !url.toLowerCase().startsWith('https://')) {
-            return this.notify("El enlace de la creatividad debe comenzar por http:// o https://", "error");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(url)) {
+            return this.notify("El enlace de la creatividad debe ser una URL válida de Google Drive.", "error");
         }
         if (ui.hasForbiddenWords && (ui.hasForbiddenWords(title, 'Acción Publicitaria Marketing', elTitle) || ui.hasForbiddenWords(desc, 'Descripción Acción Marketing', elDesc))) {
             return;

@@ -133,10 +133,12 @@ Object.assign(ui, {
                     ${pendingPrompts.map(p => `
                         <div class="bg-slate-900 border border-mars-yellow/50 p-4 text-xs">
                             <div class="flex flex-wrap justify-between gap-2 mb-2"><span class="text-mars-cyan font-bold uppercase">Autor: ${this.escapeHTML(p.role)} | Herramienta: ${this.escapeHTML(p.tool)}</span><span class="text-slate-300">${this.escapeHTML(p.date)}</span></div>
-                            <p class="text-white font-bold mb-1">Prompt:</p>
-                            <p class="text-slate-200 italic bg-black p-2.5 border border-slate-800 mb-2 break-words">"${this.escapeHTML(p.prompt)}"</p>
-                            <p class="text-white font-bold mb-1">Verificación Humana:</p>
-                            <p class="text-slate-200 bg-black p-2.5 border border-slate-800 mb-3 break-words">${this.escapeHTML(p.verification)}</p>
+                            <div class="mb-3">
+                                ${(p.bitacoraUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(p.bitacoraUrl)) || (p.prompt && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(p.prompt))
+                                    ? `<a href="${encodeURI(p.bitacoraUrl || p.prompt).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Bitácora en Docs ↗</span></a>`
+                                    : `<span class="text-xs text-amber-500/80 font-mono italic">[Bitácora legacy archivada por protocolo RGPD]</span>`
+                                }
+                            </div>
                             <div class="flex flex-wrap gap-2">
                                 <button type="button" onclick="ui.validateAIPrompt('${this.escapeHTML(p.id)}', true)" class="min-h-[44px] bg-mars-green text-black px-4 py-2 text-xs font-bold uppercase hover:bg-white transition-colors">Aprobar y Registrar</button>
                                 <button type="button" onclick="ui.validateAIPrompt('${this.escapeHTML(p.id)}', false)" class="min-h-[44px] bg-mars-magenta text-white px-4 py-2 text-xs font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Rechazar</button>
@@ -176,8 +178,12 @@ Object.assign(ui, {
                                 <span class="text-blue-400 font-bold uppercase">${this.escapeHTML(p.role)} • ${this.escapeHTML(p.tool)}</span>
                                 <span class="text-slate-300">${this.escapeHTML(p.date)}</span>
                             </div>
-                            <p class="text-slate-200 mb-1.5 break-words"><strong class="text-white">Prompt:</strong> "${this.escapeHTML(p.prompt)}"</p>
-                            <p class="text-mars-green break-words"><strong class="text-white">Validación Humana:</strong> ${this.escapeHTML(p.verification)}</p>
+                            <div class="mt-2">
+                                ${(p.bitacoraUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(p.bitacoraUrl)) || (p.prompt && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(p.prompt))
+                                    ? `<a href="${encodeURI(p.bitacoraUrl || p.prompt).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Bitácora en Docs ↗</span></a>`
+                                    : `<span class="text-xs text-amber-500/80 font-mono italic">[Bitácora legacy archivada por protocolo RGPD]</span>`
+                                }
+                            </div>
                         </div>
                     `).join('') || '<p class="text-slate-300 italic text-xs">No hay registros de IA aprobados todavía.</p>'}
                 </div>
@@ -189,13 +195,27 @@ Object.assign(ui, {
     modalReportAI() {
         if (!state.user) return;
         const html = `
-            <p class="text-xs text-slate-300 mb-3 leading-relaxed">Todo uso de IA generativa debe ser declarado y verificado por un humano antes de incluirse en el proyecto.</p>
-            <label for="ai-tool" class="text-xs text-blue-400 font-bold uppercase block mb-1">Herramienta IA</label>
-            <input type="text" id="ai-tool" placeholder="Herramienta IA (Ej: ChatGPT, Claude, Gemini)..." class="w-full min-h-[44px] bg-slate-900 border border-blue-500/50 p-2.5 text-base sm:text-xs text-white mb-3 outline-none focus:border-blue-400">
-            <label for="ai-prompt" class="text-xs text-blue-400 font-bold uppercase block mb-1">Prompt Utilizado</label>
-            <textarea id="ai-prompt" placeholder="Copia o resume el Prompt utilizado..." class="w-full bg-slate-900 border border-blue-500/50 p-2.5 text-base sm:text-xs text-white h-20 mb-3 outline-none focus:border-blue-400"></textarea>
-            <label for="ai-verify" class="text-xs text-blue-400 font-bold uppercase block mb-1">Verificación y Cambios Humanos</label>
-            <textarea id="ai-verify" placeholder="¿Cómo has verificado que la respuesta de la IA es correcta y qué cambios humanos has aplicado?..." class="w-full bg-slate-900 border border-blue-500/50 p-2.5 text-base sm:text-xs text-white h-20 mb-2 outline-none focus:border-blue-400"></textarea>
+            <p class="text-xs text-slate-300 mb-3 leading-relaxed">Todo uso de IA generativa debe registrarse en el Cuaderno de Bitácora oficial (Google Docs) con permisos de lectura antes de integrarse en el proyecto.</p>
+            <div class="space-y-3">
+                <div>
+                    <label for="ai-tool" class="text-xs text-blue-400 font-bold uppercase block mb-1">Herramienta IA</label>
+                    <input type="text" id="ai-tool" placeholder="Herramienta IA (Ej: ChatGPT, Claude, Gemini)..." class="w-full min-h-[44px] bg-slate-900 border border-blue-500/50 p-2.5 text-base sm:text-xs text-white outline-none focus:border-blue-400">
+                </div>
+                <div class="space-y-1.5 mb-3">
+                    <label for="input-bitacora-url" class="text-[11px] font-mono text-slate-300 uppercase tracking-wide block">
+                        Enlace a Cuaderno de Bitácora Oficial (Google Docs)
+                    </label>
+                    <input type="url" 
+                           id="input-bitacora-url" 
+                           name="bitacoraUrl" 
+                           required 
+                           placeholder="https://docs.google.com/document/d/..." 
+                           class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white rounded font-mono outline-none focus:border-cyan-400 min-h-[44px]">
+                    <p class="text-[10px] text-slate-400">
+                        El registro se realiza en el Google Doc corporativo con permisos de lectura.
+                    </p>
+                </div>
+            </div>
         `;
         const actions = `<button type="button" onclick="ui.submitReportAI()" class="min-h-[44px] bg-blue-600 text-white px-5 py-2.5 text-xs font-bold uppercase hover:bg-blue-500 transition-colors">Enviar a Operaciones IA</button>`;
         this.showModal("Declaración de Uso de IA", html, actions);
@@ -204,17 +224,17 @@ Object.assign(ui, {
     submitReportAI() {
         if (!state.user) return;
         const elTool = document.getElementById('ai-tool');
-        const elPrompt = document.getElementById('ai-prompt');
-        const elVerify = document.getElementById('ai-verify');
-        if (!elTool || !elPrompt || !elVerify) return;
+        const elUrl = document.getElementById('input-bitacora-url');
+        if (!elTool || !elUrl) return;
         
         const tool = this.cleanInput(elTool.value);
-        const prompt = this.cleanInput(elPrompt.value);
-        const verification = this.cleanInput(elVerify.value);
+        const bitacoraUrl = this.cleanInput(elUrl.value);
         
-        if(!tool || !prompt || !verification) return this.notify("Completa todos los campos de trazabilidad IA.", "warning");
-        // FASE 2: Auditar textos IA con el filtro léxico
-        if(this.hasForbiddenWords(tool, 'Herramienta IA', elTool) || this.hasForbiddenWords(prompt, 'Prompt IA', elPrompt) || this.hasForbiddenWords(verification, 'Verificación IA', elVerify)) {
+        if (!tool || !bitacoraUrl) return this.notify("Completa todos los campos obligatorios.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(bitacoraUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+        }
+        if (this.hasForbiddenWords(tool, 'Herramienta IA', elTool)) {
             return;
         }
         
@@ -223,15 +243,15 @@ Object.assign(ui, {
         co.aiPrompts = co.aiPrompts || [];
         
         const autoApprove = state.user.role === 'OPERACIONES_IA';
-        co.aiPrompts.unshift({
+        const newPrompt = {
             id: 'AI-' + Date.now(),
             role: state.user.role,
             tool,
-            prompt,
-            verification,
+            bitacoraUrl,
             date: new Date().toLocaleString(),
             status: autoApprove ? 'APROBADO' : 'PENDIENTE_VALIDACION'
-        });
+        };
+        co.aiPrompts.unshift(newPrompt);
         
         if (!autoApprove) {
             ui.pushNotification(state.user.coId, 'OPERACIONES_IA', `Nuevo uso de IA reportado por ${state.user.role} pendiente de tu validación.`, 'info');

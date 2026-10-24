@@ -207,6 +207,23 @@ const state = {
         d.telemetry.sessions = Array.isArray(d.telemetry.sessions) ? d.telemetry.sessions : [];
 
         d.suggestionsToAlex = Array.isArray(d.suggestionsToAlex) ? d.suggestionsToAlex : [];
+        const TTL_MS = 72 * 60 * 60 * 1000;
+        const now = Date.now();
+        if (Array.isArray(d.coordinatorReports)) {
+            d.coordinatorReports = d.coordinatorReports.filter(report => {
+                const reportTime = report.createdAt ? new Date(report.createdAt).getTime() : (report.timestamp || now);
+                return (now - reportTime) < TTL_MS;
+            });
+        }
+        Object.keys(d.companies || {}).forEach(cid => {
+            const co = d.companies[cid];
+            if (Array.isArray(co.coordinatorReports)) {
+                co.coordinatorReports = co.coordinatorReports.filter(report => {
+                    const reportTime = report.createdAt ? new Date(report.createdAt).getTime() : (report.timestamp || now);
+                    return (now - reportTime) < TTL_MS;
+                });
+            }
+        });
         d.pendingCustom = Array.isArray(d.pendingCustom) ? d.pendingCustom : [];
         d.b2bMarket = Array.isArray(d.b2bMarket) ? d.b2bMarket : [];
         d.b2bContracts = Array.isArray(d.b2bContracts) ? d.b2bContracts : [];
@@ -448,7 +465,7 @@ const state = {
                         const missingInLocal = arrServer.filter(i => i && i.id && !localIds.has(String(i.id)));
                         return [...mergedLocal, ...missingInLocal];
                     };
-                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'cart', 'bom'];
+                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'cart', 'bom', 'coordinatorReports'];
                     arraysToMerge.forEach(arrName => {
                         merged.companies[k][arrName] = mergeArraysLocalDominant(lCo[arrName], sCo[arrName]);
                     });
@@ -521,7 +538,7 @@ const state = {
                         return [...missingInServer, ...mergedServer];
                     };
 
-                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'cart', 'bom'];
+                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'cart', 'bom', 'coordinatorReports'];
                     arraysToMerge.forEach(arrName => {
                         sCo[arrName] = mergeArrays(sCo[arrName], lCo[arrName]);
                     });

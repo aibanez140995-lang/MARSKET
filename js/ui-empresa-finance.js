@@ -192,7 +192,12 @@ Object.assign(ui, {
                             <span class="block text-xs text-slate-300 font-mono">${this.escapeHTML(order.date)}</span>
                         </div>
                     </div>
-                    <p class="hidden sm:block text-slate-200 italic mb-2 break-words">Justificación Técnica: "${this.escapeHTML(order.justification || 'Sin justificación')}"</p>
+                    <div class="hidden sm:block mb-2">
+                        ${(order.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(order.driveUrl))
+                            ? `<a href="${encodeURI(order.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Informe Técnico en Docs ↗</span></a>`
+                            : `<span class="text-xs text-amber-500/80 font-mono italic">[Memoria técnica legacy archivada por protocolo RGPD]</span>`
+                        }
+                    </div>
                     <div class="hidden sm:block space-y-1.5 mb-2 bg-black/60 p-2.5 border border-slate-800">
                         ${(order.items || []).map(it => `
                             <div class="flex justify-between text-xs text-slate-300 gap-2">
@@ -225,7 +230,12 @@ Object.assign(ui, {
                         </div>
                     </div>
                     <p class="text-slate-200 italic mb-1 break-words"><strong class="text-mars-cyan">Campaña:</strong> "${this.escapeHTML(campTitle)}"</p>
-                    <p class="hidden sm:block text-slate-300 italic mb-2 break-words"><strong class="text-mars-yellow">Justificación ROI:</strong> "${this.escapeHTML(campDesc)}"</p>
+                    <div class="hidden sm:block mb-2">
+                        ${(camp.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(camp.driveUrl))
+                            ? `<a href="${encodeURI(camp.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Dossier ROI en Docs ↗</span></a>`
+                            : `<span class="text-xs text-amber-500/80 font-mono italic">[Justificación ROI legacy archivada por protocolo RGPD]</span>`
+                        }
+                    </div>
                     <button type="button" onclick="ui.inspectMktCampDrawer('${this.escapeHTML(camp.id)}')" class="sm:hidden w-full min-h-[44px] mb-2 bg-slate-950 border border-mars-yellow/60 text-mars-yellow font-black uppercase text-xs py-2 px-3">[ 🔍 VER JUSTIFICACIÓN ROI ]</button>
                     ${isFinanzas ? `
                     <div class="flex flex-col sm:flex-row gap-2 mt-3 pt-2 border-t border-slate-800">
@@ -274,6 +284,80 @@ Object.assign(ui, {
             ${bovedaSection}
         `;
         el.appendChild(wrapper);
+    },
+
+    modalCheckout() {
+        const co = state.data.companies[state.user.coId];
+        if (!co || !co.cart || co.cart.length === 0) {
+            return this.showModal("Borrador Técnico", "<p class='text-slate-300 text-xs sm:text-sm'>El borrador está vacío.</p>", "");
+        }
+
+        let total = 0;
+        let html = `<div class="max-h-60 overflow-y-auto mb-4 border-b border-mars-border pb-2 space-y-2 pr-1">`;
+        co.cart.forEach(item => {
+            const sum = item.price * item.qty;
+            total += sum;
+            html += `
+            <div class="flex flex-wrap justify-between items-center gap-2 text-xs bg-black p-2.5 border border-slate-800">
+                <div class="flex-grow min-w-0">
+                    <span class="text-mars-cyan font-bold uppercase block break-words">${this.escapeHTML(item.name)}</span>
+                    <span class="text-slate-300 block">${Number(item.price).toFixed(2)} €v / ${this.escapeHTML(item.unit)}</span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button type="button" aria-label="Disminuir cantidad de ${this.escapeHTML(item.name)}" onclick="ui.removeFromCart('${this.escapeHTML(item.id)}')" class="min-h-[44px] min-w-[44px] border border-mars-magenta/50 text-mars-magenta font-black px-2 hover:bg-mars-magenta/20">-</button>
+                    <span class="text-white font-mono w-6 text-center font-bold">${Number(item.qty)}</span>
+                    <button type="button" aria-label="Aumentar cantidad de ${this.escapeHTML(item.name)}" onclick="ui.addToCart('${this.escapeHTML(item.id)}'); ui.modalCheckout()" class="min-h-[44px] min-w-[44px] border border-mars-green/50 text-mars-green font-black px-2 hover:bg-mars-green/20">+</button>
+                    <span class="text-mars-green font-mono font-bold w-20 text-right">${sum.toFixed(2)} €v</span>
+                </div>
+            </div>`;
+        });
+        html += `</div>
+        <div class="flex justify-between items-center bg-slate-900 p-3 mb-4 border border-mars-cyan">
+            <span class="text-xs text-slate-300 uppercase font-bold">Presupuesto Estimado</span>
+            <span class="text-lg font-orbitron font-black text-mars-cyan">${total.toFixed(2)} €v</span>
+        </div>
+        <div class="space-y-1.5 mb-2">
+            <label for="order-drive-url" class="text-xs text-mars-cyan font-bold uppercase block">Informe Técnico de Especificación (Google Drive / Docs)</label>
+            <input type="url" id="order-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono min-h-[44px]">
+            <p class="text-[10px] text-slate-400">La justificación técnica de la compra se aloja en el Google Doc corporativo con permisos de lectura.</p>
+        </div>
+        `;
+        
+        const actions = `<button type="button" onclick="ui.confirmCart(${total})" class="min-h-[44px] bg-mars-cyan text-black px-5 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all w-full sm:w-auto">Transmitir a Finanzas</button>`;
+        this.showModal("Revisión de Orden I+D", html, actions);
+    },
+
+    confirmCart(total) {
+        const elUrl = document.getElementById('order-drive-url');
+        if (!elUrl) return;
+        const driveUrl = this.cleanInput(elUrl.value);
+        if (!driveUrl) return this.notify("Debes indicar el enlace Drive del informe técnico.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+        }
+
+        const co = state.data.companies[state.user.coId];
+        if (!co) return;
+
+        co.orders = co.orders || [];
+        const newOrder = {
+            id: 'ORD-' + Date.now().toString().slice(-4),
+            items: JSON.parse(JSON.stringify(co.cart)),
+            total: total,
+            driveUrl: driveUrl,
+            status: 'PENDIENTE_FINANZAS',
+            date: new Date().toLocaleString()
+        };
+
+        co.orders.unshift(newOrder);
+        co.cart = [];
+        
+        ui.pushNotification(state.user.coId, 'FINANZAS', `Nueva orden #${newOrder.id} (${total.toFixed(2)} €v) recibida de I+D. Requiere validación urgente.`, 'warning');
+        telemetry.log("ORDEN ENVIADA", `I+D generó orden #${newOrder.id}`);
+        state.save();
+        this.closeModal();
+        this.notify(`✅ Orden #${newOrder.id} transmitida al Departamento Financiero.`, "success");
+        this.render();
     },
 
     approveOrder(oid) {
