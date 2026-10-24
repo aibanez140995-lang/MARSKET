@@ -324,6 +324,7 @@ const state = {
             co.auxRoleRequest = co.auxRoleRequest || { status: co.roles['AUXILIAR'] ? 'APROBADO' : 'INACTIVO', dept: co.auxRoleDept || '', pin: this.getRolePin(co, 'AUXILIAR') || '' };
             co.deliverables = co.deliverables || {};
             
+            const validHojaStatuses = ['DRAFT_TECNICO', 'EN_TALLER_OPERARIO', 'DEVUELTO_A_TECNICO', 'SUBMITTED_TO_CEO', 'DELIVERED_TO_TEACHER'];
             for (let docKey in defDocs) {
                 if (co.deliverables[docKey] === undefined) {
                     co.deliverables[docKey] = null;
@@ -336,8 +337,14 @@ const state = {
                             returnReason: null,
                             updatedAt: new Date().toISOString()
                         };
-                    } else if (typeof co.deliverables[docKey] === 'object' && !co.deliverables[docKey].status) {
-                        co.deliverables[docKey].status = 'DELIVERED_TO_TEACHER';
+                    } else if (typeof co.deliverables[docKey] === 'object') {
+                        if (docKey === 'hoja_taller_fyq') {
+                            if (!validHojaStatuses.includes(co.deliverables[docKey].status)) {
+                                co.deliverables[docKey].status = 'DRAFT_TECNICO';
+                            }
+                        } else if (!co.deliverables[docKey].status) {
+                            co.deliverables[docKey].status = 'DELIVERED_TO_TEACHER';
+                        }
                         co.deliverables[docKey].updatedAt = co.deliverables[docKey].updatedAt || new Date().toISOString();
                     }
                 }
@@ -1159,6 +1166,99 @@ const state = {
             });
         } catch(e) {
             console.warn("[ACTION] Error sincronizando entrega:", e);
+        }
+    },
+
+    async sendHojaTallerToWorkshop(driveUrl) {
+        if (!this.user || !this.user.coId) return;
+        const co = this.data.companies?.[this.user.coId];
+        if (!co) return;
+
+        co.deliverables = co.deliverables || {};
+        co.deliverables.hoja_taller_fyq = {
+            driveUrl: driveUrl,
+            status: 'EN_TALLER_OPERARIO',
+            returnReasonId: null,
+            returnReason: null,
+            updatedAt: new Date().toISOString()
+        };
+
+        if (typeof telemetry !== 'undefined' && telemetry.log) {
+            telemetry.log("TALLER_FYQ", "Hoja de Taller y BOM remitidos a Taller: " + driveUrl);
+        }
+        ui.pushNotification(this.user.coId, 'OPERACIONES_IA', 'Técnico ha enviado la Hoja de Taller (BOM) a Taller para validación física.', 'info');
+        this.save();
+        if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
+            ui.render();
+            ui.notify("🚀 Hoja de Taller remitida al Operario de Taller para verificación de ensamble.", "success");
+        }
+
+        try {
+            await this.executeAction('SUBMIT_DELIVERABLE', {
+                key: 'hoja_taller_fyq',
+                driveUrl: driveUrl,
+                status: 'EN_TALLER_OPERARIO'
+            });
+        } catch(e) {
+            console.warn("[ACTION] Error sincronizando Hoja de Taller:", e);
+        }
+    },
+
+    async validateHojaTallerByOperator() {
+        if (!this.user || !this.user.coId) return;
+        const co = this.data.companies?.[this.user.coId];
+        if (!co || !co.deliverables?.hoja_taller_fyq) return;
+
+        const hoja = co.deliverables.hoja_taller_fyq;
+        hoja.status = 'SUBMITTED_TO_CEO';
+        delete hoja.returnReasonId;
+        delete hoja.returnReason;
+        hoja.updatedAt = new Date().toISOString();
+
+        if (typeof telemetry !== 'undefined' && telemetry.log) {
+            telemetry.log("TALLER_VALIDADO", "Operario validó ensamble físico de Hoja de Taller.");
+        }
+        ui.pushNotification(this.user.coId, 'CEO', 'El Operario ha validado el ensamble físico de la Hoja de Taller. Pendiente de tu visado final.', 'warning');
+        this.save();
+
+        try {
+            await this.executeAction('SUBMIT_DELIVERABLE', {
+                key: 'hoja_taller_fyq',
+                driveUrl: hoja.driveUrl,
+                status: 'SUBMITTED_TO_CEO'
+            });
+        } catch(e) {
+            console.warn("[ACTION] Error sincronizando validación de taller:", e);
+        }
+    },
+
+    async returnHojaTallerByOperator(reasonId, reasonLabel) {
+        if (!this.user || !this.user.coId) return;
+        const co = this.data.companies?.[this.user.coId];
+        if (!co || !co.deliverables?.hoja_taller_fyq) return;
+
+        const hoja = co.deliverables.hoja_taller_fyq;
+        hoja.status = 'DEVUELTO_A_TECNICO';
+        hoja.returnReasonId = reasonId;
+        hoja.returnReason = reasonLabel;
+        hoja.updatedAt = new Date().toISOString();
+
+        if (typeof telemetry !== 'undefined' && telemetry.log) {
+            telemetry.log("TALLER_DEVUELTO", "Operario devolvió Hoja de Taller por: " + reasonId);
+        }
+        ui.pushNotification(this.user.coId, 'TECNICO', 'Operaciones ha DEVUELTO la Hoja de Taller por incidencia: "' + reasonLabel + '". Revisa el BOM y actualiza el Google Doc.', 'error');
+        this.save();
+
+        try {
+            await this.executeAction('SUBMIT_DELIVERABLE', {
+                key: 'hoja_taller_fyq',
+                driveUrl: hoja.driveUrl,
+                status: 'DEVUELTO_A_TECNICO',
+                returnReasonId: reasonId,
+                returnReason: reasonLabel
+            });
+        } catch(e) {
+            console.warn("[ACTION] Error sincronizando devolución de taller:", e);
         }
     },
 

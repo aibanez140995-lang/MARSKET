@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.02) ---
 
-const APP_VERSION = "1.1.20";
+const APP_VERSION = "1.1.21";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const GOOGLE_DRIVE_REGEX = /^https:\/\/(docs|drive)\.google\.com\/(document|spreadsheets|presentation|file|drive\/folders)\/(d\/)?[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_.-]+)*(\?[^"'\s<>]*)?(#[^"'\s<>]*)?$/;
@@ -14,6 +14,15 @@ const CEO_RETURN_REASONS = [
   { id: "DISCREPANCIA_DATOS", label: "Discrepancia entre datos de la app y el documento adjunto" },
   { id: "REVISION_PENDIENTE", label: "Requiere subsanación técnica interna antes de elevar a evaluación" }
 ];
+
+const WORKSHOP_INCIDENCE_REASONS = Object.freeze([
+  { id: "INCOMPATIBILIDAD_PIEZAS", label: "Incompatibilidad dimensional o mecánica de piezas" },
+  { id: "FALLO_ESTRUCTURAL_PROPULSOR", label: "Fallo estructural en tobera o cámara de propulsión" },
+  { id: "FALTA_ESTANQUEIDAD", label: "Falta de estanqueidad o fugas en sellado de presión" },
+  { id: "DESVIACION_CENTRO_MASAS", label: "Desviación crítica en centro de gravedad / alerones" },
+  { id: "BOM_DISCREPANTE", label: "Discrepancia entre piezas reales disponibles y el BOM diseñado" },
+  { id: "RIESGO_SEGURIDAD_TALLER", label: "Incumplimiento de checklist de seguridad en banco de pruebas" }
+]);
 
 const AUTHORIZED_AI_PROVIDERS = [
   "Google Gemini", "OpenAI ChatGPT", "Anthropic Claude", "Microsoft Copilot", "Perplexity AI", "DeepSeek", "Otro autorizado por Coordinación"
@@ -130,12 +139,12 @@ const DELIVERABLES_DEF = [
     { key: 'writtenEssays', subject: 'ING', name: '2. Redacciones Escritas y Ensayos Técnicos en Inglés', shortName: 'Essays (ING)', role: 'MARKETING', defaultDate: '2027-04-25T23:59', weight: '30% ING', defaultOpenDate: null, defaultGuideDocUrl: "" }
 ];
 
-const MARKETING_PACKAGES = [
+const MARKETING_PACKAGES = Object.freeze([
     { id: 'MK-SAT', name: 'Pack Satélite', type: '100% Online', price: 200, actions: 3, desc: 'Alcance digital rápido (Redes sociales, Banners, Mailing).' },
     { id: 'MK-TRA', name: 'Prensa Tradicional', type: '100% Físico', price: 300, actions: 3, desc: 'Impacto tangible (Diseño de pósters, flyers físicos, prensa).' },
     { id: 'MK-HYB', name: 'Despegue Híbrido', type: 'Mixto Básico', price: 450, actions: 4, desc: 'Estrategia estándar (2 Acciones Online + 2 Físicas).' },
     { id: 'MK-SUP', name: 'Cobertura Supernova', type: 'Premium', price: 750, actions: 6, desc: 'Saturación publicitaria máxima. Requiere fuerte justificación financiera.' }
-];
+]);
 
 const FORBIDDEN_WORDS = [
     'puta', 'puto', 'mierda', 'joder', 'cabron', 'cabrón', 'gilipollas', 
@@ -197,6 +206,25 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.21",
+      date: new Date().toISOString().split('T')[0],
+      title: "Workflow de Taller FyQ, Precios Inmutables MKT, Compra Física Exclusiva y Navegación Contextual",
+      items: [
+        "Máquina de estados de taller para Hoja de Taller (FyQ): Flujo Técnico -> Operario -> CEO -> Docente",
+        "Catálogo tipificado de incidencias técnicas de taller (WORKSHOP_INCIDENCE_REASONS) sin texto libre",
+        "Inmutabilidad de precios en paquetes de Marketing y justificaciones vía enlace Google Drive",
+        "Reserva exclusiva de compra real física y escandallo en taller para el rol de Operaciones",
+        "Retirada definitiva de texto libre en venta de excedentes B2B hacia informes técnicos en Google Drive",
+        "Navegación contextual con salto directo por IDs canónicos y activación automática de rol en la Guía"
+      ],
+      highlights: [
+        { type: "TALLER", text: "Pipeline bidireccional de control de calidad físico y BOM para Física y Química." },
+        { type: "MARKETING", text: "Precios congelados inmutables y reporte de acciones publicitarias vía Google Drive." },
+        { type: "LOGÍSTICA", text: "Gasto real en euros y comprobantes físicos restringidos a Operaciones." },
+        { type: "RGPD", text: "Denominación legal oficial del Colegio Miravalles-El Redín como Responsable del Tratamiento." }
+      ]
+    },
     {
       version: "1.1.20",
       date: new Date().toISOString().split('T')[0],

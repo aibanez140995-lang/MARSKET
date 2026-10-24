@@ -767,10 +767,52 @@ try {
                 ]);
                 break;
 
+            case 'RECORD_REAL_SPEND':
+            case 'EXECUTE_PHYSICAL_ORDER':
+                if (($auth['role'] ?? '') !== 'OPERACIONES_IA' && ($auth['role'] ?? '') !== 'OPERACIONES' && empty($auth['isAdmin']) && empty($auth['isCoordinator'])) {
+                    http_response_code(403);
+                    echo json_encode(['error' => 'FORBIDDEN_ROLE', 'message' => 'Acceso restringido: Solo Operaciones o Administrador puede registrar compras físicas reales.']);
+                    exit;
+                }
+                if (!empty($payload['realCosts']) && is_array($payload['realCosts'])) {
+                    $co['realCosts'] = is_array($co['realCosts'] ?? null) ? $co['realCosts'] : [];
+                    foreach ($payload['realCosts'] as $rc) {
+                        $co['realCosts'][] = $rc;
+                    }
+                }
+                if (!empty($payload['orderId'])) {
+                    $co['orders'] = is_array($co['orders'] ?? null) ? $co['orders'] : [];
+                    foreach ($co['orders'] as &$ord) {
+                        if (String($ord['id'] ?? '') === String($payload['orderId'])) {
+                            $ord['status'] = 'EJECUTADO';
+                        }
+                    }
+                }
+                break;
+
             case 'UPDATE_MARKETING':
                 $co['marketingCampaigns'] = is_array($co['marketingCampaigns'] ?? null) ? $co['marketingCampaigns'] : [];
+                $mktPackages = [
+                    'MK-SAT' => ['price' => 200, 'actions' => 3],
+                    'MK-TRA' => ['price' => 300, 'actions' => 3],
+                    'MK-HYB' => ['price' => 450, 'actions' => 4],
+                    'MK-SUP' => ['price' => 750, 'actions' => 6]
+                ];
                 if (!empty($payload['campaign'])) {
-                    array_unshift($co['marketingCampaigns'], $payload['campaign']);
+                    $camp = $payload['campaign'];
+                    if (isset($camp['packageId'], $mktPackages[$camp['packageId']])) {
+                        $camp['price'] = $mktPackages[$camp['packageId']]['price'];
+                        $camp['totalActions'] = $mktPackages[$camp['packageId']]['actions'];
+                    }
+                    array_unshift($co['marketingCampaigns'], $camp);
+                }
+                if (!empty($payload['actionItem']) && !empty($payload['campaignId'])) {
+                    foreach ($co['marketingCampaigns'] as &$c) {
+                        if (String($c['id'] ?? '') === String($payload['campaignId'])) {
+                            $c['executedActions'] = is_array($c['executedActions'] ?? null) ? $c['executedActions'] : [];
+                            $c['executedActions'][] = $payload['actionItem'];
+                        }
+                    }
                 }
                 break;
 
@@ -781,11 +823,28 @@ try {
                     $driveUrl = trim((string)($payload['driveUrl'] ?? $payload['url'] ?? ''));
                     $isCEO = ($auth['role'] ?? '') === 'CEO' || !empty($auth['isCoordinator']);
                     $status = $isCEO ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
+                    $returnReasonId = null;
+                    $returnReason = null;
+
+                    if ($rawKey === 'hoja_taller_fyq') {
+                        $reqStatus = trim((string)($payload['status'] ?? ''));
+                        $validWorkshop = ['DRAFT_TECNICO', 'EN_TALLER_OPERARIO', 'DEVUELTO_A_TECNICO', 'SUBMITTED_TO_CEO', 'DELIVERED_TO_TEACHER'];
+                        if (in_array($reqStatus, $validWorkshop, true)) {
+                            $status = $reqStatus;
+                        } elseif ($isCEO) {
+                            $status = 'DELIVERED_TO_TEACHER';
+                        } else {
+                            $status = 'EN_TALLER_OPERARIO';
+                        }
+                        $returnReasonId = $payload['returnReasonId'] ?? null;
+                        $returnReason = $payload['returnReason'] ?? null;
+                    }
+
                     $co['deliverables'][$rawKey] = [
                         'driveUrl' => $driveUrl,
                         'status' => $status,
-                        'returnReasonId' => null,
-                        'returnReason' => null,
+                        'returnReasonId' => $returnReasonId,
+                        'returnReason' => $returnReason,
                         'updatedAt' => date('c')
                     ];
                 }

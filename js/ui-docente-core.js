@@ -197,7 +197,9 @@ Object.assign(ui, {
 
             defs.forEach(def => {
                 const item = coDeliverables[def.key];
-                const isDelivered = item && (item.status === 'DELIVERED_TO_TEACHER' || (typeof item === 'string' && item.length > 0));
+                const isDelivered = (def.key === 'hoja_taller_fyq')
+                    ? (item && item.status === 'DELIVERED_TO_TEACHER')
+                    : (item && (item.status === 'DELIVERED_TO_TEACHER' || (typeof item === 'string' && item.length > 0)));
                 if (isDelivered) {
                     const driveUrl = typeof item === 'object' ? item.driveUrl : item;
                     const updatedAt = (typeof item === 'object' && item.updatedAt) ? String(item.updatedAt).slice(0, 10) : '--';

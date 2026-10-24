@@ -6,6 +6,13 @@ import { verifySession } from '../../_auth.js';
 
 const GOOGLE_DRIVE_REGEX = /^https:\/\/(docs|drive)\.google\.com\/(document|spreadsheets|presentation|file|drive\/folders)\/(d\/)?[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_.-]+)*(\?[^"'\s<>]*)?(#[^"'\s<>]*)?$/;
 
+const MARKETING_PACKAGES_SERVER = {
+  'MK-SAT': { price: 200, name: 'Pack Satélite', actions: 3 },
+  'MK-TRA': { price: 300, name: 'Prensa Tradicional', actions: 3 },
+  'MK-HYB': { price: 450, name: 'Despegue Híbrido', actions: 4 },
+  'MK-SUP': { price: 750, name: 'Cobertura Supernova', actions: 6 }
+};
+
 const CEO_RETURN_REASONS = [
   { id: "ENLACE_INVALIDO", label: "Enlace a Google Drive inexistente o con formato incorrecto" },
   { id: "PERMISOS_BLOQUEADOS", label: "Documento sin permisos de acceso/lectura para el equipo docente" },
@@ -188,6 +195,32 @@ export async function onRequestPost(context) {
                 break;
             }
 
+            case 'RECORD_REAL_SPEND':
+            case 'EXECUTE_PHYSICAL_ORDER': {
+                if (auth.role !== 'OPERACIONES_IA' && auth.role !== 'OPERACIONES' && !auth.admin && !auth.isCoordinator) {
+                    return new Response(JSON.stringify({ 
+                        error: 'FORBIDDEN_ROLE', 
+                        message: 'Acceso restringido: Solo Operaciones/Operario o Administrador puede registrar compras físicas reales.' 
+                    }), { status: 403, headers: CORS_HEADERS });
+                }
+                if (Array.isArray(p.realCosts)) {
+                    for (const rc of p.realCosts) {
+                        if (rc.ticketUrl && !GOOGLE_DRIVE_REGEX.test(rc.ticketUrl)) {
+                            return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL' }), { status: 400, headers: CORS_HEADERS });
+                        }
+                    }
+                    co.realCosts = Array.isArray(co.realCosts) ? co.realCosts : [];
+                    co.realCosts.push(...p.realCosts);
+                }
+                if (p.orderId) {
+                    const ord = (co.orders || []).find(o => String(o.id) === String(p.orderId));
+                    if (ord) {
+                        ord.status = 'EJECUTADO';
+                    }
+                }
+                break;
+            }
+
             case 'ADD_LEDGER_TX': {
                 const deltaNum = Math.round((Number(payload.delta || 0) + Number.EPSILON) * 100) / 100;
                 const txId = payload.txId || ('TX-' + now.toString(36).toUpperCase() + '-' + Math.random().toString(36).substr(2, 4).toUpperCase());
@@ -209,10 +242,28 @@ export async function onRequestPost(context) {
                     return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL' }), { status: 400, headers: CORS_HEADERS });
                 }
                 if (p.campaign) {
-                    if (p.campaign.driveUrl && !GOOGLE_DRIVE_REGEX.test(p.campaign.driveUrl)) {
-                        return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL' }), { status: 400, headers: CORS_HEADERS });
+                    if (!p.campaign.driveUrl || !GOOGLE_DRIVE_REGEX.test(p.campaign.driveUrl)) {
+                        return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL', message: 'URL de Google Drive obligatoria para campaña de marketing.' }), { status: 400, headers: CORS_HEADERS });
+                    }
+                    const sPkg = MARKETING_PACKAGES_SERVER[p.campaign.packageId];
+                    if (sPkg) {
+                        p.campaign.price = sPkg.price;
+                        p.campaign.totalActions = sPkg.actions;
                     }
                     co.marketingCampaigns.unshift(p.campaign);
+                }
+                if (p.actionItem) {
+                    const actUrl = p.actionItem.url || p.actionItem.driveUrl;
+                    if (!actUrl || !GOOGLE_DRIVE_REGEX.test(actUrl)) {
+                        return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL', message: 'URL de Google Drive obligatoria para la acción de marketing.' }), { status: 400, headers: CORS_HEADERS });
+                    }
+                    if (p.campaignId) {
+                        const camp = co.marketingCampaigns.find(c => String(c.id) === String(p.campaignId));
+                        if (camp) {
+                            camp.executedActions = Array.isArray(camp.executedActions) ? camp.executedActions : [];
+                            camp.executedActions.push(p.actionItem);
+                        }
+                    }
                 }
                 break;
             }
@@ -234,12 +285,29 @@ export async function onRequestPost(context) {
                 }
                 co.deliverables = co.deliverables || {};
                 const isCEO = auth.role === 'CEO' || auth.isCoordinator;
-                const status = isCEO ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
+                let status = isCEO ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
+                let returnReasonId = null;
+                let returnReason = null;
+
+                if (rawKey === 'hoja_taller_fyq') {
+                    const reqStatus = String(payload.status || p.status || '').trim();
+                    const validWorkshopStatuses = ['DRAFT_TECNICO', 'EN_TALLER_OPERARIO', 'DEVUELTO_A_TECNICO', 'SUBMITTED_TO_CEO', 'DELIVERED_TO_TEACHER'];
+                    if (validWorkshopStatuses.includes(reqStatus)) {
+                        status = reqStatus;
+                    } else if (isCEO) {
+                        status = 'DELIVERED_TO_TEACHER';
+                    } else {
+                        status = 'EN_TALLER_OPERARIO';
+                    }
+                    returnReasonId = payload.returnReasonId || p.returnReasonId || null;
+                    returnReason = payload.returnReason || p.returnReason || null;
+                }
+
                 co.deliverables[rawKey] = { 
                     driveUrl, 
                     status,
-                    returnReasonId: null,
-                    returnReason: null,
+                    returnReasonId,
+                    returnReason,
                     updatedAt: new Date().toISOString() 
                 };
                 break;

@@ -8,6 +8,7 @@ Object.assign(ui, {
         if (!co) return auth.logout(); 
         
         co.orders = co.orders || []; 
+        const isOperario = (state.user.role === 'OPERACIONES_IA' || state.user.role === 'OPERACIONES' || state.user.admin);
         
         const approvedOrders = co.orders.filter(o => o.status === 'APROBADO_FINANZAS');
         const wrapper = document.createElement('div');
@@ -25,47 +26,118 @@ Object.assign(ui, {
                         <p class="text-xs text-slate-300 uppercase">${this.escapeHTML(order.date)}</p>
                     </div>
                 </div>
-                <p class="text-xs text-mars-yellow uppercase font-bold mb-3">Registra el coste real físico (€) y marca las piezas que se han ensamblado:</p>
+                <p class="text-xs text-mars-yellow uppercase font-bold mb-3">Registra el coste real físico (€), el comercio oficial y el ticket en Google Drive:</p>
                 <div class="space-y-3 mb-6">
                     ${(order.items || []).map((item, idx) => `
                         <div class="bg-slate-900 p-3 border border-mars-border flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                             <label class="mars-checkbox-label flex items-center gap-2.5 text-xs text-white font-bold cursor-pointer flex-grow min-h-[44px]">
-                                <input type="checkbox" id="assembled-${this.escapeHTML(order.id)}-${idx}" class="mars-touch-input" checked>
+                                <input type="checkbox" id="assembled-${this.escapeHTML(order.id)}-${idx}" class="mars-touch-input" checked ${isOperario ? '' : 'disabled'}>
                                 <span class="mars-checkbox-visual"></span>
                                 <span class="break-words">${this.escapeHTML(item.name)} (x${Number(item.qty)||1}) - <span class="text-mars-cyan font-mono">${Number(item.price).toFixed(2)} €v</span></span>
                             </label>
                             <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                                <input type="number" id="real-eur-${this.escapeHTML(order.id)}-${idx}" aria-label="Coste real en euros de ${this.escapeHTML(item.name)}" placeholder="Coste Real (€)" step="0.01" class="min-h-[44px] bg-black border border-mars-magenta p-2.5 text-base sm:text-xs text-white w-full sm:w-32 outline-none focus:border-mars-cyan">
-                                <input type="text" id="real-shop-${this.escapeHTML(order.id)}-${idx}" aria-label="Tienda de compra de ${this.escapeHTML(item.name)}" placeholder="Tienda (Ej: Bazar)" class="min-h-[44px] bg-black border border-slate-700 p-2.5 text-base sm:text-xs text-white w-full sm:w-40 outline-none focus:border-mars-cyan">
+                                <input type="number" id="real-eur-${this.escapeHTML(order.id)}-${idx}" aria-label="Coste real en euros de ${this.escapeHTML(item.name)}" placeholder="Coste Real (€)" step="0.01" min="0" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-mars-magenta p-2.5 text-base sm:text-xs text-white w-full sm:w-28 outline-none focus:border-mars-cyan font-mono">
+                                <select id="real-shop-${this.escapeHTML(order.id)}-${idx}" aria-label="Comercio de adquisición de ${this.escapeHTML(item.name)}" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-slate-700 p-2.5 text-base sm:text-xs text-white w-full sm:w-44 outline-none focus:border-mars-cyan">
+                                    <option value="Comercio Local / Bazar">Comercio Local / Bazar</option>
+                                    <option value="Ferretería / Suministros">Ferretería / Suministros</option>
+                                    <option value="Papelería / Imprenta">Papelería / Imprenta</option>
+                                    <option value="Supermercado / Gran Superficie">Supermercado / Gran Superficie</option>
+                                    <option value="Proveedor Online Autorizado">Proveedor Online Autorizado</option>
+                                    <option value="Material Reciclado / Taller">Material Reciclado / Taller</option>
+                                </select>
+                                <input type="url" id="real-ticket-${this.escapeHTML(order.id)}-${idx}" aria-label="Ticket Drive de ${this.escapeHTML(item.name)}" placeholder="URL Ticket Drive" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-mars-cyan/60 p-2 text-base sm:text-xs text-white w-full sm:w-44 outline-none focus:border-mars-cyan font-mono">
                             </div>
                         </div>
                     `).join('')}
                 </div>
-                <button type="button" onclick="ui.executePhysicalOrder('${this.escapeHTML(order.id)}')" class="w-full min-h-[48px] bg-mars-cyan text-black font-black py-3 px-4 text-xs uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)]">[ CONFIRMAR COMPRA FÍSICA Y ENSAMBLAJE ]</button>
+                ${isOperario
+                    ? `<button type="button" onclick="ui.executePhysicalOrder('${this.escapeHTML(order.id)}')" class="w-full min-h-[48px] bg-mars-cyan text-black font-black py-3 px-4 text-xs uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)]">[ CONFIRMAR COMPRA FÍSICA Y ENSAMBLAJE ]</button>`
+                    : `<div class="p-3 bg-slate-950 border border-slate-800 text-center text-xs text-slate-400 uppercase font-mono">🔒 Vista de Sólo Lectura: Registro de compra física reservado exclusivamente al Operario de Taller.</div>`
+                }
             </div>
         `).join('') || `<div class="terminal-border border-dashed p-10 text-center text-slate-300 italic text-xs">No hay órdenes aprobadas pendientes de ejecución logística.</div>`;
 
         const currentHoja = co.deliverables?.hoja_taller_fyq;
-        const hojaHtml = `
-        <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-cyan-400 mb-6 w-full">
-            <div class="flex justify-between items-start mb-2">
-                <div>
-                    <span class="text-xs font-bold uppercase text-cyan-400 bg-cyan-950/40 border border-cyan-500/40 px-2.5 py-1 tracking-wider">[ENTREGABLE OFICIAL FYQ // 10%]</span>
-                    <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM y Control de Ensamble</h3>
+        const hojaStatus = currentHoja?.status || 'DRAFT_TECNICO';
+        const hojaUrl = currentHoja?.driveUrl || '';
+
+        let hojaWorkshopHtml = '';
+        if (!currentHoja || hojaStatus === 'DRAFT_TECNICO') {
+            hojaWorkshopHtml = `
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-slate-600 mb-6 w-full">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <span class="text-xs font-bold uppercase text-slate-400 bg-slate-800 px-2.5 py-1 tracking-wider">[ENTREGABLE OFICIAL FYQ // 10%]</span>
+                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM y Control de Ensamble</h3>
+                    </div>
+                    <span class="text-xs font-mono font-bold text-slate-400 bg-slate-900 border border-slate-700 px-2.5 py-1 rounded">⏳ EN DISEÑO POR TÉCNICO</span>
                 </div>
-            </div>
-            <p class="text-xs text-slate-300 mb-3">Registro de desglose de materiales (BOM) y control de calidad físico supervisado para Física y Química.</p>
-            ${this.renderDocBadge("Hoja de Taller: BOM y Control de Ensamble", currentHoja)}
-            <div class="bg-slate-900 border border-slate-700 p-3 mt-3 space-y-2">
-                <label for="hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Enlace Drive Hoja de Taller (BOM & Control Físico)</label>
-                <input type="url" id="hoja-taller-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white rounded font-mono outline-none focus:border-mars-cyan min-h-[44px]">
-                <p class="text-[10px] text-slate-400">Pega el enlace a la hoja de cálculo o documento en Google Drive con permisos de lectura.</p>
-                <div class="flex justify-end pt-1">
-                    <button type="button" onclick="ui.submitHojaTallerDrive()" class="bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white min-h-[44px] w-full sm:w-auto">[ Entregar Hoja de Taller ]</button>
+                <p class="text-xs text-slate-300">El departamento Técnico (I+D) está configurando el BOM y la especificación inicial. En cuanto lo envíe a taller, podrás verificar el montaje físico.</p>
+            </div>`;
+        } else if (hojaStatus === 'DEVUELTO_A_TECNICO') {
+            hojaWorkshopHtml = `
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-amber-500 mb-6 w-full">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <span class="text-xs font-bold uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2.5 py-1 tracking-wider">[ENTREGABLE OFICIAL FYQ // 10%]</span>
+                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM y Control de Ensamble</h3>
+                    </div>
+                    <span class="text-xs font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-500 px-2.5 py-1 rounded">⚠️ DEVUELTO A TÉCNICO</span>
                 </div>
-            </div>
-        </div>
-        `;
+                <div class="bg-amber-950/40 border border-amber-500/50 p-2.5 my-2 text-xs text-amber-300 font-mono">
+                    <strong>Incidencia reportada a I+D:</strong> ${this.escapeHTML(currentHoja.returnReason || currentHoja.returnReasonId || 'Incidencia de taller')}
+                </div>
+                <p class="text-xs text-slate-300">Esperando que el departamento Técnico subsane el BOM en Google Docs y lo reenvíe a Taller.</p>
+            </div>`;
+        } else if (hojaStatus === 'EN_TALLER_OPERARIO') {
+            hojaWorkshopHtml = `
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-cyan-400 mb-6 w-full">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <span class="text-xs font-bold uppercase text-cyan-400 bg-cyan-950/40 border border-cyan-500/40 px-2.5 py-1 tracking-wider">[FASE 2: EN TALLER FÍSICO // FYQ 10%]</span>
+                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM y Control de Ensamble</h3>
+                    </div>
+                    <span class="text-xs font-mono font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-500 px-2.5 py-1 rounded">⚙️ EN TALLER (OPERARIO)</span>
+                </div>
+                <p class="text-xs text-slate-300 mb-3">Revisa el montaje físico del cohete con respecto al BOM documentado por el departamento Técnico.</p>
+                <div class="mb-4">
+                    <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/60 transition-colors">
+                        <span>📄 Inspeccionar Hoja de Taller y BOM en Docs ↗</span>
+                    </a>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3 pt-2 border-t border-slate-800">
+                    <button type="button" onclick="ui.opsValidateHojaTaller()" class="min-h-[44px] flex-1 bg-mars-green text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">[ ✓ VALIDAR ENSAMBLE Y REMITIR A CEO ]</button>
+                    <button type="button" onclick="ui.modalTallerReturnReason()" class="min-h-[44px] flex-1 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-4 py-2.5 hover:bg-mars-magenta hover:text-white transition-all">[ ↩ DEVOLVER POR INCIDENCIA ]</button>
+                </div>
+            </div>`;
+        } else if (hojaStatus === 'SUBMITTED_TO_CEO') {
+            hojaWorkshopHtml = `
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-purple-500 mb-6 w-full">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <span class="text-xs font-bold uppercase text-purple-400 bg-purple-950/40 border border-purple-500/40 px-2.5 py-1 tracking-wider">[FASE 4: VISADO CEO // FYQ 10%]</span>
+                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM y Control de Ensamble</h3>
+                    </div>
+                    <span class="text-xs font-mono font-bold text-purple-300 bg-purple-950/60 border border-purple-500 px-2.5 py-1 rounded">⏳ REMITIDO AL CEO</span>
+                </div>
+                <p class="text-xs text-slate-300 mb-2">Has validado el ensamble físico en taller. El entregable está pendiente de visado formal por el CEO hacia el profesor de FyQ.</p>
+                <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-purple-950/40 text-purple-300 border border-purple-500/30 rounded font-mono"><span>Ver Documento Drive ↗</span></a>
+            </div>`;
+        } else if (hojaStatus === 'DELIVERED_TO_TEACHER') {
+            hojaWorkshopHtml = `
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-green mb-6 w-full">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <span class="text-xs font-bold uppercase text-mars-green bg-mars-green/10 border border-mars-green/40 px-2.5 py-1 tracking-wider">[EVALUACIÓN OFICIAL FYQ // 10%]</span>
+                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM y Control de Ensamble</h3>
+                    </div>
+                    <span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2.5 py-1 rounded">✓ VISADO Y ENTREGADO A FYQ</span>
+                </div>
+                <p class="text-xs text-slate-300 mb-2">El CEO ha visado y remitido la Hoja de Taller al profesor de Física y Química para su evaluación oficial.</p>
+                <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Abrir Documento Oficial Drive ↗</span></a>
+            </div>`;
+        }
+        const hojaHtml = hojaWorkshopHtml;
 
         wrapper.innerHTML = `
             <div class="flex justify-between items-center mb-6">
@@ -79,6 +151,11 @@ Object.assign(ui, {
 
     executePhysicalOrder(oid) {
         if (!state.user) return;
+        const isOperario = (state.user.role === 'OPERACIONES_IA' || state.user.role === 'OPERACIONES' || state.user.admin);
+        if (!isOperario) {
+            return this.notify("Acceso restringido: Solo Operaciones/Operario puede registrar compras reales físicas.", "error");
+        }
+
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
         
@@ -96,22 +173,25 @@ Object.assign(ui, {
             const cb = document.getElementById(`assembled-${order.id}-${i}`);
             const eurInput = document.getElementById(`real-eur-${order.id}-${i}`);
             const shopInput = document.getElementById(`real-shop-${order.id}-${i}`);
+            const ticketInput = document.getElementById(`real-ticket-${order.id}-${i}`);
             
             if(cb && cb.checked) {
                 const valEur = parseFloat(eurInput ? eurInput.value : 0);
                 const valShop = shopInput ? this.cleanInput(shopInput.value) : '';
+                const ticketUrl = ticketInput ? this.cleanInput(ticketInput.value) : '';
+                
                 if(isNaN(valEur) || valEur < 0 || !valShop) {
-                    return this.notify(`Falta indicar el coste real (€) o la tienda para: ${order.items[i].name}`, "warning");
+                    return this.notify(`Falta indicar el coste real (€) o el comercio para: ${order.items[i].name}`, "warning");
                 }
-                // FASE 2: Auditar el texto de la tienda con el filtro léxico
-                if(this.hasForbiddenWords(valShop, 'Registro Comercio I+D', shopInput)) {
-                    return;
+                if(ticketUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(ticketUrl)) {
+                    return this.notify(`El comprobante de ${order.items[i].name} debe ser una URL válida de Google Drive.`, "error");
                 }
                 order.items[i].realEur = valEur;
                 order.items[i].realShop = valShop;
+                order.items[i].ticketUrl = ticketUrl;
                 finalItems.push(order.items[i]);
                 finalTotalEurV += Number(order.items[i].price) || 0;
-                realCostsToLog.push({ id: 'RC-'+Date.now()+'-'+i, date: new Date().toLocaleDateString(), item: order.items[i].name, eur: valEur, shop: valShop });
+                realCostsToLog.push({ id: 'RC-'+Date.now()+'-'+i, date: new Date().toLocaleDateString(), item: order.items[i].name, eur: valEur, shop: valShop, ticketUrl: ticketUrl });
             }
         }
 
@@ -215,15 +295,50 @@ Object.assign(ui, {
         el.appendChild(wrapper);
     },
 
-    submitHojaTallerDrive() {
-        const el = document.getElementById('hoja-taller-drive-url');
-        if (!el) return;
-        const url = this.cleanInput(el.value);
-        if (!url) return this.notify("Debes introducir el enlace de Google Drive.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(url)) {
-            return this.notify("Solo se admiten enlaces válidos a recursos de Google Drive.", "error");
+    opsValidateHojaTaller() {
+        if (!state.user || (state.user.role !== 'OPERACIONES_IA' && state.user.role !== 'OPERACIONES' && !state.user.admin)) {
+            return this.notify("Acceso restringido: Solo Operaciones/Operario puede visar el ensamble en taller.", "error");
         }
-        state.submitDeliverable('hoja_taller_fyq', { driveUrl: url });
+        state.validateHojaTallerByOperator();
+        this.notify("✅ Ensamble físico validado. Remitido al CEO para visado docente.", "success");
+        this.render();
+    },
+
+    modalTallerReturnReason() {
+        if (!state.user || (state.user.role !== 'OPERACIONES_IA' && state.user.role !== 'OPERACIONES' && !state.user.admin)) {
+            return this.notify("Acceso restringido: Solo Operaciones/Operario puede reportar incidencias de taller.", "error");
+        }
+        const reasons = typeof WORKSHOP_INCIDENCE_REASONS !== 'undefined' ? WORKSHOP_INCIDENCE_REASONS : [];
+        const optionsHtml = reasons.map(r => `<option value="${this.escapeHTML(r.id)}">${this.escapeHTML(r.label)}</option>`).join('');
+
+        const html = `
+            <p class="text-xs text-slate-300 mb-3 leading-relaxed">Selecciona la incidencia técnica detectada durante la verificación física en el banco de trabajo. Prohibido el texto libre.</p>
+            <div class="space-y-3">
+                <div>
+                    <label for="taller-return-reason" class="text-xs text-amber-400 font-bold uppercase block mb-1.5">Causa de Incidencia Tipificada</label>
+                    <select id="taller-return-reason" class="w-full min-h-[44px] bg-slate-900 border border-amber-500/50 p-2.5 text-base sm:text-xs text-white outline-none focus:border-amber-400">
+                        ${optionsHtml}
+                    </select>
+                </div>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.confirmTallerReturnReason()" class="min-h-[44px] bg-amber-400 text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-all w-full sm:w-auto">Confirmar Devolución a I+D</button>`;
+        this.showModal("Devolver Hoja de Taller por Incidencia", html, actions);
+    },
+
+    confirmTallerReturnReason() {
+        if (!state.user || (state.user.role !== 'OPERACIONES_IA' && state.user.role !== 'OPERACIONES' && !state.user.admin)) return;
+        const el = document.getElementById('taller-return-reason');
+        if (!el) return;
+        const reasonId = el.value;
+        const reasons = typeof WORKSHOP_INCIDENCE_REASONS !== 'undefined' ? WORKSHOP_INCIDENCE_REASONS : [];
+        const reasonObj = reasons.find(r => r.id === reasonId);
+        const label = reasonObj ? reasonObj.label : reasonId;
+
+        state.returnHojaTallerByOperator(reasonId, label);
+        this.closeModal();
+        this.notify("⚠️ Hoja de Taller devuelta al departamento Técnico para subsanación.", "warning");
+        this.render();
     },
 
     modalReportAI() {

@@ -893,8 +893,9 @@ const ui = {
                     <p><strong class="text-white">Aprobación Jerárquica:</strong> Audita los entregables antes de elevarlos a los docentes y valida o devuelve con motivo justificado.</p>
                     <p><strong class="text-white">Gabinete de Crisis:</strong> Difunde el Comunicado Oficial Inmutable ante expedientes sancionadores de la AEE.</p>
                     <div class="pt-2 flex flex-wrap gap-2">
-                        <button type="button" data-action="dossier" onclick="ui.navigate('dossier'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-mars-cyan text-black font-black uppercase text-xs hover:bg-white transition-all">[ Dossier Corporativo ]</button>
-                        <button type="button" data-action="orders" onclick="ui.navigate('orders'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-slate-800 text-mars-cyan border border-mars-cyan text-xs font-bold uppercase hover:bg-mars-cyan hover:text-black transition-all">[ Bóveda de Órdenes ]</button>
+                        <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier y Cronograma</button>
+                        <button type="button" onclick="ui.navigate('orders'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bóveda de Órdenes</button>
+                        <button type="button" onclick="ui.navigate('brand'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Marca & Campañas</button>
                     </div>
                 </div>`;
                 roleCollabHtml = `El CEO supervisa el semáforo temporal en el Dossier, coordina las compras iniciadas por I+D y aprobadas por Finanzas, y garantiza la entrega a tiempo de todas las áreas.`;
@@ -906,8 +907,8 @@ const ui = {
                     <p><strong class="text-white">Mercado Secundario (B2B):</strong> Vende componentes sobrantes y compra ofertas de otras startups con control de precio estricto.</p>
                     <p><strong class="text-white">Banco de Pruebas:</strong> Registra las mediciones de apogeo y calcula la eficiencia aeroespacial del propulsor.</p>
                     <div class="pt-2 flex flex-wrap gap-2">
-                        <button type="button" data-action="market" onclick="ui.navigate('market'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-mars-cyan text-black font-black uppercase text-xs hover:bg-white transition-all">[ Catálogo & B2B ]</button>
-                        <button type="button" data-action="tech" onclick="ui.navigate('tech'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-slate-800 text-mars-cyan border border-mars-cyan text-xs font-bold uppercase hover:bg-mars-cyan hover:text-black transition-all">[ Banco de Pruebas ]</button>
+                        <button type="button" onclick="ui.navigate('tech'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a I+D & Vuelos</button>
+                        <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier y Cronograma</button>
                     </div>
                 </div>`;
                 roleCollabHtml = `I+D solicita componentes a Finanzas; una vez aprobados, Operaciones los recibe en el taller y verifica el coste real físico.`;
@@ -919,8 +920,9 @@ const ui = {
                     <p><strong class="text-white">Libro Mayor Inmutable:</strong> Monitoriza ingresos por patrocinio, cargos de adquisiciones y retenciones B2B en Aduana.</p>
                     <p><strong class="text-white">Entregables de Economía:</strong> Elabora en Google Sheets y entrega los balances y cuentas de resultados oficiales.</p>
                     <div class="pt-2 flex flex-wrap gap-2">
-                        <button type="button" data-action="finance" onclick="ui.navigate('finance'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-mars-cyan text-black font-black uppercase text-xs hover:bg-white transition-all">[ Panel Financiero ]</button>
-                        <button type="button" data-action="orders" onclick="ui.navigate('orders'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-slate-800 text-mars-cyan border border-mars-cyan text-xs font-bold uppercase hover:bg-mars-cyan hover:text-black transition-all">[ Autorizar Órdenes ]</button>
+                        <button type="button" onclick="ui.navigate('finance'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Finanzas & Balances</button>
+                        <button type="button" onclick="ui.navigate('orders'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bóveda de Órdenes</button>
+                        <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier y Cronograma</button>
                     </div>
                 </div>`;
                 roleCollabHtml = `Finanzas garantiza la solvencia de la startup impidiendo sobrecostes y audita las partidas de inversión propuestas por I+D y Marketing.`;
@@ -932,8 +934,8 @@ const ui = {
                     <p><strong class="text-white">Campañas Publicitarias:</strong> Contrata paquetes predefinidos con enlace de justificación en Google Drive (cero texto libre).</p>
                     <p><strong class="text-white">Dossier y Pitch:</strong> Sube las evidencias en Drive de LyE (40%), Lengua (15%) e Inglés (5%).</p>
                     <div class="pt-2 flex flex-wrap gap-2">
-                        <button type="button" data-action="brand" onclick="ui.navigate('brand'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-mars-cyan text-black font-black uppercase text-xs hover:bg-white transition-all">[ Identidad & Campañas ]</button>
-                        <button type="button" data-action="dossier" onclick="ui.navigate('dossier'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-slate-800 text-mars-cyan border border-mars-cyan text-xs font-bold uppercase hover:bg-mars-cyan hover:text-black transition-all">[ Entregables de Marca ]</button>
+                        <button type="button" onclick="ui.navigate('brand'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Marca & Campañas</button>
+                        <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier y Cronograma</button>
                     </div>
                 </div>`;
                 roleCollabHtml = `Marketing diseña la identidad y solicita fondos a Finanzas para campañas; coordina con CEO la defensa del modelo de negocio.`;
@@ -945,8 +947,9 @@ const ui = {
                     <p><strong class="text-white">Bitácora Ética IA:</strong> Registra y audita todos los prompts generativos con validación humana explícita.</p>
                     <p><strong class="text-white">Hoja de Taller (BOM):</strong> Configura el escandallo de materiales oficial para Física y Química.</p>
                     <div class="pt-2 flex flex-wrap gap-2">
-                        <button type="button" data-action="cart" onclick="ui.navigate('cart'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-mars-cyan text-black font-black uppercase text-xs hover:bg-white transition-all">[ Logística de Taller ]</button>
-                        <button type="button" data-action="ailog" onclick="ui.navigate('ailog'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-slate-800 text-mars-cyan border border-mars-cyan text-xs font-bold uppercase hover:bg-mars-cyan hover:text-black transition-all">[ Bitácora Ética IA ]</button>
+                        <button type="button" onclick="ui.navigate('cart'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Logística Física</button>
+                        <button type="button" onclick="ui.navigate('ailog'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bitácora IA</button>
+                        <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier y Cronograma</button>
                     </div>
                 </div>`;
                 roleCollabHtml = `Operaciones une el plano virtual con el taller físico y custodia la integridad documental y ética del uso de Inteligencia Artificial.`;
@@ -955,8 +958,9 @@ const ui = {
                 roleActionsHtml = `
                 <div class="space-y-2">
                     <p><strong class="text-white">Veeduría y Apoyo:</strong> Participa en las asambleas, apoya al departamento al que estás vinculado y audita el avance global.</p>
-                    <div class="pt-2">
-                        <button type="button" data-action="dossier" onclick="ui.navigate('dossier'); ui.closeModal();" class="min-h-[44px] px-3 py-1.5 bg-mars-cyan text-black font-black uppercase text-xs hover:bg-white transition-all">[ Inspeccionar Dossier ]</button>
+                    <div class="pt-2 flex flex-wrap gap-2">
+                        <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier y Cronograma</button>
+                        <button type="button" onclick="ui.navigate('market'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Catálogo & B2B</button>
                     </div>
                 </div>`;
                 roleCollabHtml = `El rol auxiliar colabora activamente en la gobernanza y aporta visión externa para resolver cuellos de botella.`;
@@ -1276,6 +1280,11 @@ const ui = {
         </div>`;
 
         this.showModal("Manual Táctico y Guía de Usuario", html, "");
+        setTimeout(() => {
+            if (typeof ui.switchGuideRole === 'function') {
+                ui.switchGuideRole(initialRole);
+            }
+        }, 20);
     },
 
     modalSuggestion() {
@@ -2299,7 +2308,7 @@ const ui = {
         const html = `
             <div class="space-y-3 text-xs text-slate-200 font-mono leading-relaxed">
                 <div class="p-2.5 bg-slate-900 border border-cyan-500/30">
-                    <p><strong class="text-cyan-400">RESPONSABLE:</strong> Centro Educativo / Coordinación MARS-KET.</p>
+                    <p><strong class="text-cyan-400">RESPONSABLE DEL TRATAMIENTO:</strong> Colegio Miravalles-El Redín</p>
                     <p class="mt-1"><strong class="text-cyan-400">FINALIDAD:</strong> Simulación aeroespacial y evaluación pedagógica competencial del alumnado.</p>
                     <p class="mt-1"><strong class="text-cyan-400">LEGITIMACIÓN:</strong> Misión de interés público y función docente (Art. 6.1.e RGPD).</p>
                     <p class="mt-1"><strong class="text-cyan-400">DESTINATARIOS:</strong> Sin cesión de datos a terceros ni transferencias internacionales.</p>

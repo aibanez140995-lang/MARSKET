@@ -7,6 +7,18 @@ Object.assign(ui, {
         this.render();
     },
 
+    techSendHojaTaller() {
+        if (!state.user) return;
+        const el = document.getElementById('tech-hoja-taller-drive-url');
+        if (!el) return;
+        const url = this.cleanInput(el.value);
+        if (!url) return this.notify("Debes introducir el enlace de Google Drive con la Hoja de Taller y BOM.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(url)) {
+            return this.notify("Solo se admiten enlaces válidos a recursos de Google Drive.", "error");
+        }
+        state.sendHojaTallerToWorkshop(url);
+    },
+
     viewTech(el) {
         if (!el || !state.user) return;
         const co = state.data.companies[state.user.coId];
@@ -193,6 +205,77 @@ Object.assign(ui, {
 
                     <div class="max-h-60 overflow-y-auto pr-1">
                         ${bomHtml}
+                        ${(() => {
+                            const hojaFyq = co.deliverables?.hoja_taller_fyq;
+                            const hojaStatus = hojaFyq?.status || 'DRAFT_TECNICO';
+                            const hojaUrl = hojaFyq?.driveUrl || '';
+
+                            if (!hojaFyq || hojaStatus === 'DRAFT_TECNICO') {
+                                return `
+                                <div class="bg-slate-900 border border-cyan-500/50 p-3 mt-4 space-y-2 rounded">
+                                    <div class="flex justify-between items-center flex-wrap gap-2">
+                                        <span class="text-xs font-bold uppercase text-cyan-400">[FASE 1: ESPECIFICACIÓN Y BOM]</span>
+                                        <span class="text-xs font-mono font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded">BORRADOR TÉCNICO</span>
+                                    </div>
+                                    <p class="text-xs text-slate-300">Genera el escandallo (BOM) arriba, redacta la Hoja de Taller en Google Docs y envíala al Taller para montaje físico.</p>
+                                    <label for="tech-hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Enlace Drive Hoja de Taller (BOM & Control Físico)</label>
+                                    <input type="url" id="tech-hoja-taller-drive-url" value="${this.escapeAttr(hojaUrl)}" placeholder="https://docs.google.com/..." class="w-full bg-black border border-slate-700 p-2 text-xs text-white font-mono outline-none focus:border-mars-cyan min-h-[44px]">
+                                    <div class="flex justify-end pt-1">
+                                        <button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ 🚀 ENVIAR A TALLER ]</button>
+                                    </div>
+                                </div>`;
+                            } else if (hojaStatus === 'EN_TALLER_OPERARIO') {
+                                return `
+                                <div class="bg-slate-900 border border-blue-500/50 p-3 mt-4 space-y-2 rounded">
+                                    <div class="flex justify-between items-center flex-wrap gap-2">
+                                        <span class="text-xs font-bold uppercase text-blue-400">[FASE 2: EN TALLER FÍSICO]</span>
+                                        <span class="text-xs font-mono font-bold text-blue-300 bg-blue-900/40 border border-blue-500 px-2 py-0.5 rounded">EN TALLER (OPERARIO)</span>
+                                    </div>
+                                    <p class="text-xs text-slate-300">La Hoja de Taller ha sido remitida a Operaciones. El Operario está ensamblando y verificando la tolerancia física.</p>
+                                    <div class="pt-1 flex gap-2 items-center flex-wrap">
+                                        <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Ver Documento Drive ↗</span></a>
+                                    </div>
+                                </div>`;
+                            } else if (hojaStatus === 'DEVUELTO_A_TECNICO') {
+                                return `
+                                <div class="bg-slate-900 border border-amber-500 p-3 mt-4 space-y-2 rounded">
+                                    <div class="flex justify-between items-center flex-wrap gap-2">
+                                        <span class="text-xs font-bold uppercase text-amber-400">[FASE 3: SUBSANACIÓN TÉCNICA]</span>
+                                        <span class="text-xs font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-500 px-2 py-0.5 rounded">⚠️ DEVUELTO POR INCIDENCIA EN TALLER</span>
+                                    </div>
+                                    <div class="bg-amber-950/40 border border-amber-500/50 p-2.5 my-1 text-xs text-amber-300 font-mono">
+                                        <strong>Motivo de Incidencia Tipificado:</strong> ${this.escapeHTML(hojaFyq.returnReason || hojaFyq.returnReasonId || 'Incidencia de taller')}
+                                    </div>
+                                    <p class="text-xs text-slate-300">Corrige las tolerancias o sustituye las piezas en el Google Doc y vuelve a remitir a taller.</p>
+                                    <label for="tech-hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Actualizar Enlace Drive Hoja de Taller</label>
+                                    <input type="url" id="tech-hoja-taller-drive-url" value="${this.escapeAttr(hojaUrl)}" class="w-full bg-black border border-amber-500/60 p-2 text-xs text-white font-mono outline-none focus:border-amber-400 min-h-[44px]">
+                                    <div class="flex justify-end pt-1">
+                                        <button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-amber-400 text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ 🔄 REENVIAR A TALLER ]</button>
+                                    </div>
+                                </div>`;
+                            } else if (hojaStatus === 'SUBMITTED_TO_CEO') {
+                                return `
+                                <div class="bg-slate-900 border border-purple-500/50 p-3 mt-4 space-y-2 rounded">
+                                    <div class="flex justify-between items-center flex-wrap gap-2">
+                                        <span class="text-xs font-bold uppercase text-purple-400">[FASE 4: SUPERVISIÓN CEO]</span>
+                                        <span class="text-xs font-mono font-bold text-purple-300 bg-purple-900/40 border border-purple-500 px-2 py-0.5 rounded">VALIDADO EN TALLER // EN REVISIÓN CEO</span>
+                                    </div>
+                                    <p class="text-xs text-slate-300">Operaciones ha validado el montaje físico. La Hoja de Taller está pendiente del visado final del CEO hacia el profesor de FyQ.</p>
+                                    <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Ver Documento Drive ↗</span></a>
+                                </div>`;
+                            } else if (hojaStatus === 'DELIVERED_TO_TEACHER') {
+                                return `
+                                <div class="bg-slate-900 border border-mars-green/50 p-3 mt-4 space-y-2 rounded">
+                                    <div class="flex justify-between items-center flex-wrap gap-2">
+                                        <span class="text-xs font-bold uppercase text-mars-green">[COMPLETADO: ENTREGADO A DOCENTE]</span>
+                                        <span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">✓ VISADO Y ENTREGADO A FYQ</span>
+                                    </div>
+                                    <p class="text-xs text-slate-300">El CEO ha visado y remitido la Hoja de Taller al profesor de Física y Química para su evaluación oficial (10%).</p>
+                                    <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Abrir Documento Oficial Drive ↗</span></a>
+                                </div>`;
+                            }
+                            return '';
+                        })()}
                     </div>
                 </div>
             </div>
@@ -234,8 +317,9 @@ Object.assign(ui, {
                     <input type="number" id="b2b-sell-price" value="${Number(item.price).toFixed(0)}" min="1" step="1" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold outline-none">
                 </div>
                 <div>
-                    <label for="b2b-sell-notes" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Estado / Observaciones Técnicas</label>
-                    <input type="text" id="b2b-sell-notes" placeholder="Ej: Sin usar, excedente de diseño Fase I..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan">
+                    <label for="b2b-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Informe Técnico de Excedentes (Google Drive / Docs)</label>
+                    <input type="url" id="b2b-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono" required>
+                    <p class="text-[10px] text-slate-400 mt-1">Adjunta la memoria técnica en Google Drive justificando el excedente para autorización en Aduana Docente.</p>
                 </div>
             </div>
         `;
@@ -246,15 +330,16 @@ Object.assign(ui, {
     confirmSellB2B(orderId, itemIdx) {
         if (!state.user || state.user.admin) return;
         const elPrice = document.getElementById('b2b-sell-price');
-        const elNotes = document.getElementById('b2b-sell-notes');
+        const elDriveUrl = document.getElementById('b2b-drive-url');
         if (!elPrice) return;
 
         const price = parseFloat(elPrice.value);
-        const notes = elNotes ? this.cleanInput(elNotes.value) : '';
+        const driveUrl = elDriveUrl ? this.cleanInput(elDriveUrl.value) : '';
 
         if (isNaN(price) || price <= 0) return this.notify("Introduce un precio en €v válido mayor que cero.", "warning");
-        if (this.hasForbiddenWords(notes, 'Mercado B2B (Notas)', elNotes)) {
-            return;
+        if (!driveUrl) return this.notify("Debes indicar el enlace Drive del informe técnico de excedentes.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
         }
 
         const co = state.data.companies[state.user.coId];
@@ -278,8 +363,9 @@ Object.assign(ui, {
             category: item.category || 'Componente',
             qty: item.qty || 1,
             price: price,
-            obs: notes || 'Excedente de inventario I+D en perfecto estado.',
-            notes: notes || 'Excedente de inventario I+D en perfecto estado.',
+            driveUrl: driveUrl,
+            obs: 'Informe técnico de excedentes: ' + driveUrl,
+            notes: 'Informe técnico de excedentes: ' + driveUrl,
             status: 'EN_VENTA',
             sourceOrderKey: itemKey,
             date: new Date().toLocaleDateString()

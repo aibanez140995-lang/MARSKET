@@ -769,14 +769,16 @@ Object.assign(ui, {
             <div class="space-y-3">
                 <div>
                     <label for="campaign-tier" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Paquete / Tier Publicitario Predefinido</label>
-                    <select id="campaign-tier" onchange="const opt = this.options[this.selectedIndex]; const pEl = document.getElementById('campaign-budget'); if(pEl) pEl.value = opt.getAttribute('data-price') || 0;" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow">
+                    <select id="campaign-tier" onchange="const p = (typeof MARKETING_PACKAGES !== 'undefined' ? MARKETING_PACKAGES : []).find(x => x.id === this.value); const sEl = document.getElementById('campaign-price-display'); if(sEl && p) sEl.textContent = p.price + ' €v';" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow">
                         ${optionsHtml}
                     </select>
                 </div>
-                <div>
-                    <label for="campaign-budget" class="text-xs text-mars-green uppercase font-bold block mb-1.5">Presupuesto Asignado (€v)</label>
-                    <input type="number" id="campaign-budget" min="0" step="1" value="${selectedPkg ? selectedPkg.price : 0}" class="w-full min-h-[44px] bg-black border border-mars-green/50 p-2.5 text-base sm:text-xs text-mars-green font-mono font-bold outline-none focus:border-mars-green">
-                    <p class="text-[10px] text-slate-400 mt-1">Coste tarifario estipulado para la contratación del paquete.</p>
+                <div class="bg-slate-900/80 border border-slate-800 p-3 flex justify-between items-center rounded">
+                    <div>
+                        <span class="text-xs text-slate-300 uppercase font-bold block">Coste Tarifario Oficial Inmutable</span>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Precio congelado estipulado para la contratación del paquete.</p>
+                    </div>
+                    <span id="campaign-price-display" class="text-cyan-400 font-mono font-bold text-base sm:text-lg">${selectedPkg ? selectedPkg.price : 0} €v</span>
                 </div>
                 <div>
                     <label for="campaign-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Brief Creativo y Justificación ROI (Google Drive / Docs)</label>
@@ -794,21 +796,17 @@ Object.assign(ui, {
         const mktPackages = typeof MARKETING_PACKAGES !== 'undefined' ? MARKETING_PACKAGES : [];
         const elTier = document.getElementById('campaign-tier');
         const elUrl = document.getElementById('campaign-drive-url');
-        const elBudget = document.getElementById('campaign-budget');
 
         const finalPkgId = (elTier ? elTier.value : pkgId) || mktPackages[0]?.id;
         const pkg = mktPackages.find(p => p.id === finalPkgId);
         if (!pkg) return this.notify("Paquete publicitario no encontrado.", "error");
 
         const driveUrl = elUrl ? this.cleanInput(elUrl.value) : '';
-        const budget = elBudget ? parseFloat(elBudget.value) : pkg.price;
+        const budget = pkg.price;
 
         if (!driveUrl) return this.notify("Debes indicar el enlace Drive del brief publicitario.", "warning");
         if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
             return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
-        }
-        if (isNaN(budget) || budget < 0) {
-            return this.notify("El presupuesto debe ser un número mayor o igual a cero.", "warning");
         }
 
         const co = state.data.companies[state.user.coId];
@@ -841,6 +839,10 @@ Object.assign(ui, {
         } catch(e) {}
     },
 
+    modalAddMktAction(campId) {
+        return this.modalConsumeMktAction(campId);
+    },
+
     modalConsumeMktAction(campId) {
         if (!state.user) return;
         const co = state.data.companies[state.user.coId];
@@ -853,20 +855,63 @@ Object.assign(ui, {
         const total = camp.totalActions || 3;
         if (used >= total) return this.notify("Ya has agotado todas las acciones de este paquete.", "warning");
 
+        let standardizedActions = [
+            "Campaña en Redes Sociales (Reel / Post Oficial)",
+            "Cartelera / Póster Físico para Pasillos del Centro",
+            "Folleto Informativo / Flyer Impreso de Stand",
+            "Banner Digital Promocional en Web / Portal",
+            "Nota de Prensa Oficial / Entrevista Boletín Escolar",
+            "Pitch / Vídeo Promocional del Prototipo Aeroespacial",
+            "Merchandising y Ambientación de Stand de Venta",
+            "Cuña Publicitaria de Audio / Emisión por Megafonía"
+        ];
+        if (camp.packageId === 'MK-SAT') {
+            standardizedActions = [
+                "Publicación Digital en Redes Sociales (Post / Reel)",
+                "Banner Promocional Digital para Web / Plataforma",
+                "Campaña de Mailing y Difusión Digital",
+                "Teaser / Vídeo Corto de Lanzamiento"
+            ];
+        } else if (camp.packageId === 'MK-TRA') {
+            standardizedActions = [
+                "Diseño e Impresión de Póster de Pasillos",
+                "Reparto de Flyers y Folletos Físicos",
+                "Nota de Prensa en Tablón Escolar",
+                "Cartelería Física para Stand de Venta"
+            ];
+        } else if (camp.packageId === 'MK-HYB') {
+            standardizedActions = [
+                "[Online] Campaña en Redes Sociales",
+                "[Online] Banner Promocional Digital",
+                "[Físico] Póster Gran Formato para Pasillos",
+                "[Físico] Flyers y Trípticos Informativos"
+            ];
+        } else if (camp.packageId === 'MK-SUP') {
+            standardizedActions = [
+                "Campaña Multiplataforma Integral",
+                "Vídeo / Teaser Oficial de Apogeo",
+                "Rueda de Prensa y Nota Institucional",
+                "Merchandising Oficial y Stand Premium",
+                "Emisión de Cuña de Audio por Megafonía",
+                "Presentación en Directo y Pitch Escolar"
+            ];
+        }
+
+        const actionsOpts = standardizedActions.map(act => `<option value="${this.escapeHTML(act)}">${this.escapeHTML(act)}</option>`).join('');
+
         const html = `
             <p class="text-xs text-slate-200 mb-3">Registrando acción <strong>#${used + 1} de ${total}</strong> del paquete <span class="text-mars-yellow font-bold">${this.escapeHTML(camp.packageName)}</span>.</p>
             <div class="space-y-3">
                 <div>
-                    <label for="mkt-act-title" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Título de la Acción</label>
-                    <input type="text" id="mkt-act-title" placeholder="Título de la acción (Ej: Reel Instagram / Póster Pasillo)..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan">
+                    <label for="mkt-action-type" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Acción Estandarizada del Paquete</label>
+                    <select id="mkt-action-type" class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan">
+                        ${actionsOpts}
+                    </select>
                 </div>
                 <div>
-                    <label for="mkt-act-desc" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Descripción de la Creatividad</label>
-                    <textarea id="mkt-act-desc" placeholder="Descripción del impacto y contenido de la creatividad..." class="w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white h-20 outline-none focus:border-mars-cyan"></textarea>
-                </div>
-                <div>
-                    <label for="mkt-act-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Enlace a Evidencia Oficial (Google Drive)</label>
-                    <input type="url" id="mkt-act-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono">
+                    <label for="mkt-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Enlace a Evidencia Oficial (Google Drive / Docs)</label>
+                    <input type="url" id="mkt-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono" required>
+                    <p class="text-[10px] text-slate-400 mt-1">Adjunta exclusivamente la URL verificada de Google Drive con permisos de lectura.</p>
                 </div>
             </div>
         `;
@@ -876,21 +921,16 @@ Object.assign(ui, {
 
     confirmConsumeMktAction(campId) {
         if (!state.user) return;
-        const elTitle = document.getElementById('mkt-act-title');
-        const elDesc = document.getElementById('mkt-act-desc');
-        const elUrl = document.getElementById('mkt-act-url');
-        if (!elTitle || !elDesc || !elUrl) return;
+        const elType = document.getElementById('mkt-action-type');
+        const elUrl = document.getElementById('mkt-drive-url');
+        if (!elType || !elUrl) return;
 
-        const title = this.cleanInput(elTitle.value);
-        const desc = this.cleanInput(elDesc.value);
+        const actionType = this.cleanInput(elType.value);
         const url = this.cleanInput(elUrl.value);
 
-        if (!title || !desc || !url) return this.notify("El título, la descripción y el enlace (URL) de la acción son obligatorios.", "warning");
+        if (!actionType || !url) return this.notify("Debes seleccionar la acción estandarizada e indicar la URL de Google Drive.", "warning");
         if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(url)) {
             return this.notify("El enlace de la creatividad debe ser una URL válida de Google Drive.", "error");
-        }
-        if (ui.hasForbiddenWords && (ui.hasForbiddenWords(title, 'Acción Publicitaria Marketing', elTitle) || ui.hasForbiddenWords(desc, 'Descripción Acción Marketing', elDesc))) {
-            return;
         }
 
         const co = state.data.companies[state.user.coId];
@@ -902,8 +942,8 @@ Object.assign(ui, {
         camp.executedActions = camp.executedActions || [];
         camp.executedActions.push({
             id: 'ACT-' + Date.now(),
-            title: title,
-            desc: desc,
+            title: actionType,
+            desc: 'Acción oficial de marketing: ' + actionType,
             url: url,
             date: new Date().toLocaleDateString()
         });
