@@ -1,5 +1,5 @@
 // js/state.js
-// --- GESTIÓN DE ESTADO ZERO-TRUST, MIGRACIÓN Y PERSISTENCIA ATÓMICA (v1.1.23) ---
+// --- GESTIÓN DE ESTADO ZERO-TRUST, MIGRACIÓN Y PERSISTENCIA ATÓMICA (v1.1.24) ---
 
 const DEFAULT_STATE = {
     version: 1,
@@ -53,6 +53,7 @@ const state = {
     pausePolling: false, _broadcastChannel: null, lastETag: null, lastCompanyETag: null,
     consecutiveNetworkFailures: 0, isOfflineContained: false, _listenersAttached: false,
     _hasWarnedCloudNetwork: false,
+    _clockInterval: null,
     _vaultKey: 'MARS_AEE_2026_SECRET_KEY',
 
     // WP5: Acceso encapsulado a la estructura reactiva sin congelar state.data

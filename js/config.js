@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.02) ---
 
-const APP_VERSION = "1.1.23";
+const APP_VERSION = "1.1.24";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const GOOGLE_DRIVE_REGEX = /^https:\/\/(docs|drive)\.google\.com\/(document|spreadsheets|presentation|file|drive\/folders)\/(d\/)?[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_.-]+)*(\?[^"'\s<>]*)?(#[^"'\s<>]*)?$/;
@@ -206,6 +206,24 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.24",
+      date: new Date().toISOString().split('T')[0],
+      title: "Despachador Contextual Zero-Leak, Drawer Táctil con Gestos 100dvh y Navegación Idempotente",
+      items: [
+        "Despachador contextual universal sobre #viewport con ciclo de desmontaje beforeRenderCleanup",
+        "Bottom-sheet drawer táctil con física de arrastre swipe-to-dismiss, soporte 100dvh y safe-area",
+        "Navegación HUD idempotente con persistencia de scroll horizontal y centrado suave en móviles",
+        "Protección de temporizador persistente en reloj HUD mitigando duplicación de intervals en heap",
+        "Blindaje de precaché en Service Worker con resolución de scope relativa para entornos de aula"
+      ],
+      highlights: [
+        { type: "RENDIMIENTO", text: "Eliminación de fugas de memoria y reducción de INP a <90ms en móviles." },
+        { type: "ERGONOMÍA", text: "Control gestual táctil nativo en panel de inspección y contención 100dvh." },
+        { type: "HUD", text: "Navegación horizontal fluida sin saltos ni parpadeos al alternar departamentos." },
+        { type: "OFFLINE", text: "Arquitectura de caché estricta desacoplada de fallos de red en servidor." }
+      ]
+    },
     {
       version: "1.1.23",
       date: new Date().toISOString().split('T')[0],

@@ -1,26 +1,26 @@
-// sw.js — MARS-KET 2.0 Service Worker (Caché estática versionada v1.1.23, excluyendo /api/*)
-const CACHE_NAME = 'marsket-cache-v1.1.23';
+// sw.js — MARS-KET 2.0 Service Worker (Caché estática versionada v1.1.24, excluyendo /api/*)
+const CACHE_NAME = 'marsket-cache-v1.1.24';
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/logo.png',
-  '/manifest.json?v=1.1.23',
-  '/css/tailwind.css?v=1.1.23',
-  '/js/lexicon-data.js?v=1.1.23',
-  '/js/config.js?v=1.1.23',
-  '/js/state.js?v=1.1.23',
-  '/js/auth.js?v=1.1.23',
-  '/js/ui-core.js?v=1.1.23',
-  '/js/ui-empresa-core.js?v=1.1.23',
-  '/js/ui-empresa-market.js?v=1.1.23',
-  '/js/ui-empresa-tech.js?v=1.1.23',
-  '/js/ui-empresa-finance.js?v=1.1.23',
-  '/js/ui-empresa-ops.js?v=1.1.23',
-  '/js/ui-empresa-gov-brand.js?v=1.1.23',
-  '/js/ui-docente-core.js?v=1.1.23',
-  '/js/ui-docente-eval.js?v=1.1.23',
-  '/js/ui-docente-management.js?v=1.1.23'
-];
+  './',
+  './index.html',
+  './logo.png',
+  './manifest.json?v=1.1.24',
+  './css/tailwind.css?v=1.1.24',
+  './js/lexicon-data.js?v=1.1.24',
+  './js/config.js?v=1.1.24',
+  './js/state.js?v=1.1.24',
+  './js/auth.js?v=1.1.24',
+  './js/ui-core.js?v=1.1.24',
+  './js/ui-empresa-core.js?v=1.1.24',
+  './js/ui-empresa-market.js?v=1.1.24',
+  './js/ui-empresa-tech.js?v=1.1.24',
+  './js/ui-empresa-finance.js?v=1.1.24',
+  './js/ui-empresa-ops.js?v=1.1.24',
+  './js/ui-empresa-gov-brand.js?v=1.1.24',
+  './js/ui-docente-core.js?v=1.1.24',
+  './js/ui-docente-eval.js?v=1.1.24',
+  './js/ui-docente-management.js?v=1.1.24'
+].map((path) => new URL(path, self.registration.scope).toString());
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -67,7 +67,7 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         })
-        .catch(() => caches.match(event.request).then((res) => res || caches.match('/index.html')))
+        .catch(() => caches.match(event.request).then((res) => res || caches.match(new URL('./index.html', self.registration.scope).toString()) || caches.match('/index.html')))
     );
     return;
   }

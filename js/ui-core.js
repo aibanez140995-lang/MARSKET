@@ -1,5 +1,5 @@
 // js/ui-core.js
-// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.0.19) ---
+// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.24) ---
 
 // Constante global GOOGLE_DRIVE_REGEX centralizada en js/config.js
 
@@ -327,13 +327,16 @@ const ui = {
             window.removeEventListener('touchend', this._boundTouchEnd);
         };
 
-        handle.addEventListener('touchstart', (e) => {
+        if (this._boundTouchStart && this._drawerHandleEl) {
+            this._drawerHandleEl.removeEventListener('touchstart', this._boundTouchStart);
+        }
+        this._drawerHandleEl = handle;
+        this._boundTouchStart = (e) => {
             this._touchStartY = e.touches[0].clientY;
             this._lastDeltaY = 0;
             sheet.style.transition = '';
-            window.addEventListener('touchmove', this._boundTouchMove, { passive: true });
-            window.addEventListener('touchend', this._boundTouchEnd);
-        }, { passive: true });
+        };
+        handle.addEventListener('touchstart', this._boundTouchStart, { passive: true });
 
         window.addEventListener('touchmove', this._boundTouchMove, { passive: true });
         window.addEventListener('touchend', this._boundTouchEnd);
@@ -348,6 +351,11 @@ const ui = {
     closeDrawer(skipHistory = false) {
         if (this._boundTouchMove) window.removeEventListener('touchmove', this._boundTouchMove);
         if (this._boundTouchEnd) window.removeEventListener('touchend', this._boundTouchEnd);
+        if (this._boundTouchStart && this._drawerHandleEl) {
+            this._drawerHandleEl.removeEventListener('touchstart', this._boundTouchStart);
+            this._boundTouchStart = null;
+            this._drawerHandleEl = null;
+        }
         const sheet = document.getElementById('hud-drawer-sheet');
         if (sheet) {
             sheet.style.transform = '';
@@ -1743,9 +1751,9 @@ const ui = {
             }
         });
 
-        const activeEl = document.querySelector(`.nav-tab[data-tab-id="${this.current}"]`);
-        if (activeEl && typeof window !== 'undefined' && window.innerWidth <= 640) {
-            activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        const activeTabEl = document.querySelector(`.nav-tab[data-tab-id="${this.current}"]`);
+        if (activeTabEl && typeof window !== 'undefined' && window.innerWidth <= 640) {
+            activeTabEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
 
         this.updateBadges();

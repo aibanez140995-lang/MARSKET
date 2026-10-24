@@ -1,5 +1,5 @@
 // js/auth.js
-// --- MÓDULO DE AUTENTICACIÓN ZERO-TRUST Y AISLAMIENTO DE ÁMBITO GLOBAL (v1.1.03) ---
+// --- MÓDULO DE AUTENTICACIÓN ZERO-TRUST Y AISLAMIENTO DE ÁMBITO GLOBAL (v1.1.24) ---
 
 const auth = (function() {
     const MASTER_SALT = "MARSKET_VAULT_MISSION_2026";
@@ -445,9 +445,10 @@ const auth = (function() {
             const auxDept = (role === 'AUXILIAR') ? (state.data?.companies?.[coId]?.auxRoleDept || '') : '';
             const sig = `${isAdmin ? 'ADMIN' : 'USER'}:${role}:${coId}:${auxDept}`;
 
-            if (_lastNavSignature === sig && nav.children.length > 0) {
+            if ((this._lastNavSignature === sig || _lastNavSignature === sig) && nav.children.length > 0) {
                 return;
             }
+            this._lastNavSignature = sig;
             _lastNavSignature = sig;
 
             if (isAdmin) {
@@ -503,6 +504,7 @@ const auth = (function() {
         },
 
         logout() {
+            this._lastNavSignature = null;
             _lastNavSignature = null;
             state.user = null;
             state.currentUser = null;
