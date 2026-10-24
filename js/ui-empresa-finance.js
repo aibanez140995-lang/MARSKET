@@ -1,5 +1,5 @@
 // js/ui-empresa-finance.js
-// --- MÓDULO FINANCIERO Y BÓVEDA DE ÓRDENES: CRONOGRAMA MAESTRO (19 PLAZOS), AUDITORÍA Y LEDGER (v1.0.17) ---
+// --- MÓDULO FINANCIERO Y BÓVEDA DE ÓRDENES: CRONOGRAMA MAESTRO (19 PLAZOS), AUDITORÍA Y LEDGER (v1.1.22) ---
 
 Object.assign(ui, {
     cronogramaFilter: 'ALL',

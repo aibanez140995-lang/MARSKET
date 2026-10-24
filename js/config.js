@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.02) ---
 
-const APP_VERSION = "1.1.21";
+const APP_VERSION = "1.1.22";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const GOOGLE_DRIVE_REGEX = /^https:\/\/(docs|drive)\.google\.com\/(document|spreadsheets|presentation|file|drive\/folders)\/(d\/)?[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_.-]+)*(\?[^"'\s<>]*)?(#[^"'\s<>]*)?$/;
@@ -206,6 +206,25 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.22",
+      date: new Date().toISOString().split('T')[0],
+      title: "Reestructuración UI: 3 Pestañas Alumnos, HUD Táctico <=64px y Panel Docente Dual",
+      items: [
+        "Reingeniería de navegación de alumnos en 3 pestañas principales: Mi Trabajo, Dossier & Rúbricas y Mi Empresa",
+        "Modo HUD táctico ultra-compacto (<=64px) con saldo neón y botón de acceso directo a IA",
+        "Panel docente dual segmentado: Modo Aula (Rúbricas y Aduana) vs. Modo Coordinación TIC avanzado",
+        "Filtro reactivo por defecto en Dossier para entregables de la fase activa o próximos 15 días con histórico ampliable",
+        "Sub-tabs modulares en Mi Empresa: Gobernanza y Asamblea, Historial de Órdenes y SUPERMARS-KET",
+        "Blindaje de flujos: Taller FyQ, inmutabilidad de precios en marketing y compra física exclusiva de Operario"
+      ],
+      highlights: [
+        { type: "UI/UX", text: "Navegación compacta y optimizada a 3 pestañas operativas para empresas." },
+        { type: "HUD", text: "Hero Banner reducido a barra táctica horizontal fija de 64px." },
+        { type: "DOCENTE", text: "División funcional entre calificación diaria de aula y administración avanzada TIC." },
+        { type: "SEGURIDAD", text: "Cumplimiento estricto RGPD, validación Google Drive y trazabilidad curricular." }
+      ]
+    },
     {
       version: "1.1.21",
       date: new Date().toISOString().split('T')[0],

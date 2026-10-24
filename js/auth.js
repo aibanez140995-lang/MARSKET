@@ -96,27 +96,8 @@ const auth = (function() {
             if (userObj.admin) {
                 ui.current = 'admin';
             } else {
-                const co = state.data.companies[userObj.coId];
-                const primaryRouteByRole = {
-                    'CEO': 'orders',
-                    'TECNICO': 'tech',
-                    'FINANZAS': 'finance',
-                    'MARKETING': 'brand',
-                    'OPERACIONES_IA': 'cart'
-                };
-                if (userObj.role === 'AUXILIAR') {
-                    const auxDept = co?.auxRoleDept;
-                    const auxMap = {
-                        'CEO': 'orders',
-                        'TECNICO': 'tech',
-                        'FINANZAS': 'finance',
-                        'MARKETING': 'brand',
-                        'OPERACIONES_IA': 'cart'
-                    };
-                    ui.current = auxMap[auxDept] || 'resolutions';
-                } else {
-                    ui.current = primaryRouteByRole[userObj.role] || 'orders';
-                }
+                ui.current = 'work';
+                ui.workSubView = null;
             }
 
             ui.render();
@@ -464,52 +445,25 @@ const auth = (function() {
                 return;
             }
 
-            const co = (state.user && !state.user.admin) ? state.data.companies[state.user.coId] : null;
-
-            const tabDefs = {
-                'orders': { id: 'orders', label: '🔐 Bóveda Órdenes', badge: 'badge-orders' },
-                'resolutions': { id: 'resolutions', label: '⚖️ Gobernanza', badge: 'badge-resolutions' },
-                'finance': { id: 'finance', label: '💰 Finanzas & ECO' },
-                'dossier': { id: 'dossier', label: '📁 Dossier (19)' },
-                'market': { id: 'market', label: '🛒 SUPERMARS-KET' },
-                'tech': { id: 'tech', label: '🧪 I+D & Vuelos' },
-                'cart': { id: 'cart', label: '📦 Logística Física', badge: 'badge-cart' },
-                'brand': { id: 'brand', label: '🎨 Marca & LyE' },
-                'ailog': { id: 'ailog', label: '🤖 Bitácora IA', badge: 'badge-ailog' }
-            };
-
-            const roleOrders = {
-                'CEO': ['orders', 'resolutions', 'finance', 'dossier', 'market'],
-                'TECNICO': ['tech', 'market', 'cart', 'orders', 'dossier', 'resolutions'],
-                'FINANZAS': ['finance', 'orders', 'dossier', 'market', 'resolutions'],
-                'MARKETING': ['brand', 'dossier', 'market', 'resolutions'],
-                'OPERACIONES_IA': ['cart', 'ailog', 'dossier', 'market', 'resolutions']
-            };
-
-            let activeTabIds = [];
-
-            if (role === 'AUXILIAR') {
-                const auxMap = {
-                    'CEO': ['orders', 'resolutions', 'finance', 'dossier', 'market'],
-                    'TECNICO': ['tech', 'market', 'cart', 'resolutions', 'dossier'],
-                    'FINANZAS': ['finance', 'orders', 'resolutions', 'dossier', 'market'],
-                    'MARKETING': ['brand', 'resolutions', 'dossier', 'market'],
-                    'OPERACIONES_IA': ['cart', 'ailog', 'resolutions', 'dossier', 'market']
-                };
-                activeTabIds = auxMap[auxDept] || ['resolutions', 'dossier', 'market'];
-            } else {
-                activeTabIds = roleOrders[role] || ['orders', 'market', 'dossier', 'resolutions'];
-            }
-
-            nav.innerHTML = activeTabIds.map(tid => {
-                const t = tabDefs[tid];
-                if (!t) return '';
-                return `
-                <button type="button" role="tab" data-tab-id="${t.id}" onclick="ui.navigate('${t.id}')" class="nav-tab relative min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center gap-1.5">
-                    ${t.label}
-                    ${t.badge ? `<span id="${t.badge}" class="hidden bg-mars-magenta text-white text-xs font-black px-1.5 py-0.5 rounded-full animate-pulse">0</span>` : ''}
-                </button>`;
-            }).join('');
+            // EXACTAMENTE 3 PESTAÑAS PRINCIPALES PARA ALUMNOS (v1.1.22)
+            nav.innerHTML = `
+                <button type="button" role="tab" data-tab-id="work" onclick="ui.navigate('work')" class="nav-tab relative min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center gap-1.5">
+                    🛠️ MI TRABAJO
+                    <span id="badge-work" class="hidden bg-mars-magenta text-white text-xs font-black px-1.5 py-0.5 rounded-full animate-pulse">0</span>
+                    <span id="badge-orders" class="hidden"></span>
+                    <span id="badge-cart" class="hidden"></span>
+                    <span id="badge-ailog" class="hidden"></span>
+                </button>
+                <button type="button" role="tab" data-tab-id="dossier" onclick="ui.navigate('dossier')" class="nav-tab relative min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center gap-1.5">
+                    📋 DOSSIER & RÚBRICAS
+                    <span id="badge-dossier" class="hidden bg-mars-cyan text-black text-xs font-black px-1.5 py-0.5 rounded-full animate-pulse">0</span>
+                </button>
+                <button type="button" role="tab" data-tab-id="company" onclick="ui.navigate('company')" class="nav-tab relative min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center gap-1.5">
+                    🏢 MI EMPRESA
+                    <span id="badge-company" class="hidden bg-mars-yellow text-black text-xs font-black px-1.5 py-0.5 rounded-full animate-pulse">0</span>
+                    <span id="badge-resolutions" class="hidden"></span>
+                </button>
+            `;
         },
 
         getSessionToken() {

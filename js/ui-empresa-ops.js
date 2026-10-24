@@ -1,5 +1,5 @@
 // js/ui-empresa-ops.js
-// --- MÓDULO OPERACIONES E IA: LOGÍSTICA FÍSICA, BITÁCORA IA Y DIARIO DE DECISIONES (v1.0.16) ---
+// --- MÓDULO OPERACIONES E IA: LOGÍSTICA FÍSICA, BITÁCORA IA Y DIARIO DE DECISIONES (v1.1.22) ---
 
 Object.assign(ui, {
     viewCart(el) {

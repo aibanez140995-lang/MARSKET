@@ -208,9 +208,109 @@ const ui = {
     },
 
     navigate(view) {
-        this.current = view;
-        this.currentSubView = null;
+        if (!state.user) {
+            this.current = view;
+            this.currentSubView = null;
+            this.render();
+            return;
+        }
+
+        if (state.user.admin) {
+            this.current = view;
+            this.currentSubView = null;
+            this.render();
+            return;
+        }
+
+        const role = state.user.role;
+        if (view === 'work') {
+            this.current = 'work';
+            this.currentSubView = null;
+        } else if (view === 'dossier') {
+            this.current = 'dossier';
+            this.currentSubView = null;
+        } else if (view === 'company') {
+            this.current = 'company';
+            if (!this.companySubTab) this.companySubTab = 'resolutions';
+            this.currentSubView = null;
+        } else if (view === 'resolutions') {
+            this.current = 'company';
+            this.companySubTab = 'resolutions';
+            this.currentSubView = null;
+        } else if (view === 'market') {
+            this.current = 'company';
+            this.companySubTab = 'market';
+            this.currentSubView = null;
+        } else if (view === 'orders') {
+            if (role === 'CEO') {
+                this.current = 'work';
+                this.workSubView = 'orders';
+            } else {
+                this.current = 'company';
+                this.companySubTab = 'orders';
+            }
+            this.currentSubView = null;
+        } else if (['tech', 'finance', 'brand', 'cart', 'ailog'].includes(view)) {
+            this.current = 'work';
+            this.workSubView = view;
+            this.currentSubView = null;
+        } else {
+            this.current = view;
+            this.currentSubView = null;
+        }
         this.render();
+    },
+
+    setCompanySubTab(tab) {
+        this.companySubTab = tab;
+        this.render();
+    },
+
+    toggleDossierShowAll() {
+        this.dossierShowAll = !this.dossierShowAll;
+        this.render();
+    },
+
+    viewCompany(vp) {
+        const subTab = this.companySubTab || 'resolutions';
+        const subTabs = [
+            { id: 'resolutions', label: '⚖️ Gobernanza & Asamblea' },
+            { id: 'orders', label: '📋 Historial de Órdenes' },
+            { id: 'market', label: '🛒 SUPERMARS-KET' }
+        ];
+
+        const navHtml = `
+        <div class="mb-6 flex flex-wrap gap-2 border-b border-slate-800 pb-3" role="tablist">
+            ${subTabs.map(t => {
+                const isActive = (subTab === t.id);
+                return `
+                <button type="button" role="tab" aria-selected="${isActive}" onclick="ui.setCompanySubTab('${t.id}')"
+                    class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all rounded-sm flex items-center gap-2 ${
+                        isActive
+                            ? 'bg-mars-cyan text-black shadow-[0_0_12px_rgba(0,240,255,0.4)]'
+                            : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+                    }">
+                    ${t.label}
+                </button>
+                `;
+            }).join('')}
+        </div>
+        <div id="company-subtab-container" class="w-full"></div>
+        `;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'w-full animate-in fade-in duration-300';
+        wrapper.innerHTML = navHtml;
+        vp.appendChild(wrapper);
+
+        const subContainer = wrapper.querySelector('#company-subtab-container');
+        if (subTab === 'resolutions') {
+            this.viewResolutions(subContainer);
+        } else if (subTab === 'orders') {
+            this.viewOrders(subContainer);
+        } else if (subTab === 'market') {
+            this.viewMarket(subContainer);
+        }
     },
 
     setSubView(subView, skipHistory = false) {
@@ -1489,47 +1589,39 @@ const ui = {
         if (!co) { auth.logout(); return ''; }
 
         const isBrandPending = co.brandApproval && co.brandApproval.status === 'PENDIENTE';
-        let sponsorBadge = '';
-        if(co.sponsorAwarded) {
-            const color = co.sponsorAwarded==='ORO'?'text-[#ffd700] border-[#ffd700] bg-[#ffd700]/10':co.sponsorAwarded==='PLATA'?'text-[#c0c0c0] border-[#c0c0c0] bg-[#c0c0c0]/10':'text-[#cd7f32] border-[#cd7f32] bg-[#cd7f32]/10';
-            const spName = co.sponsorData?.name ? ` - ${this.escapeHTML(co.sponsorData.name)}` : '';
-            const spLogo = co.sponsorData?.logo ? `<img src="${this.escapeHTML(co.sponsorData.logo)}" alt="Logo patrocinador" width="16" height="16" class="h-4 inline-block ml-2 rounded-sm object-contain">` : '';
-            sponsorBadge = `<span class="${color} border px-2 py-1 font-black shadow-[0_0_10px_currentColor] flex items-center gap-1 text-xs">[PATROCINIO ${this.escapeHTML(co.sponsorAwarded)}${spName}] ${spLogo}</span>`;
-        }
-
-        // Blindaje del Logo Global v1.0.18: Si no hay logo de startup aprobado, siempre renderizar logo.png con fallback onerror
         const hasApprovedLogo = co.logo && (!co.brandApproval || co.brandApproval.status === 'APROBADO');
         const activeLogoSrc = hasApprovedLogo ? this.escapeHTML(co.logo) : 'logo.png';
-        const imgHtml = `
-            <img src="${activeLogoSrc}" alt="Logo de ${this.escapeHTML(co.name)}" width="96" height="96" onerror="this.onerror=null;this.src='logo.png';" class="w-full h-full ${hasApprovedLogo ? 'object-cover' : 'object-contain p-2 bg-black'}">
-            ${isBrandPending ? `<span class="absolute bottom-0 inset-x-0 bg-mars-magenta/90 text-white text-xs font-black text-center py-0.5 uppercase tracking-tighter" title="Marca en revisión">⏳</span>` : ''}
-        `;
-
-        let sloganHtml = '';
-        if (isBrandPending) {
-            sloganHtml = `<p class="font-orbitron text-mars-magenta font-bold text-xs mt-1.5 tracking-wider uppercase bg-mars-magenta/10 border border-mars-magenta px-2 py-0.5 inline-block animate-pulse">⚠️ MARCA EN REVISIÓN DOCENTE</p>`;
-        } else if (co.slogan) {
-            sloganHtml = `<p class="font-orbitron text-mars-yellow text-xs mt-1.5 tracking-wider italic break-words">"${this.escapeHTML(co.slogan)}"</p>`;
-        }
+        const roleLabel = this.escapeHTML(state.user.role.replace('_', ' '));
+        const coName = this.escapeHTML(co.name);
+        const balanceStr = Number(co.balance || 0).toFixed(2);
 
         return `
-        <div class="terminal-border bg-mars-card p-4 sm:p-5 mb-6 flex flex-col md:flex-row items-center md:items-start gap-4 sm:gap-6 relative overflow-hidden animate-in fade-in duration-500">
-            <div class="w-full md:w-auto md:absolute md:top-3 md:right-3 flex justify-end gap-2">
-                <button type="button" onclick="ui.modalReportAI()" class="bg-blue-600/20 border border-blue-500 text-blue-300 px-3 py-2 text-xs font-bold uppercase hover:bg-blue-500 hover:text-white transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)] min-h-[44px] flex items-center justify-center">[🤖 REPORTAR USO IA]</button>
-            </div>
-            <div class="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 p-0.5 hex-clip bg-mars-bg ${isBrandPending ? 'border-2 border-mars-magenta shadow-[0_0_15px_rgba(255,0,85,0.4)]' : 'border-2 border-mars-cyan shadow-neon-cyan'}">
-                <div class="w-full h-full hex-clip overflow-hidden relative">
-                    ${imgHtml}
+        <div class="h-16 max-h-16 flex items-center justify-between px-4 bg-[#07090E]/90 border-b border-cyan-500/20 backdrop-blur w-full mb-4 terminal-border overflow-hidden">
+            <!-- Extremo Izquierdo: Hex Logo (40x40px) + Nombre Orbitron + Rol -->
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="relative w-10 h-10 flex-shrink-0 p-0.5 hex-clip bg-mars-bg ${isBrandPending ? 'border border-mars-magenta shadow-[0_0_10px_rgba(255,0,85,0.4)]' : 'border border-mars-cyan shadow-neon-cyan'}">
+                    <div class="w-full h-full hex-clip overflow-hidden">
+                        <img src="${activeLogoSrc}" alt="Logo de ${coName}" width="40" height="40" onerror="this.onerror=null;this.src='logo.png';" class="w-full h-full ${hasApprovedLogo ? 'object-cover' : 'object-contain p-1 bg-black'}">
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 truncate">
+                    <span class="font-orbitron font-black text-sm sm:text-base text-mars-cyan tracking-wider uppercase truncate" title="${coName}">${coName}</span>
+                    <span class="bg-mars-cyan/10 border border-mars-cyan/40 text-mars-cyan text-[10px] sm:text-xs font-bold px-2 py-0.5 uppercase tracking-wider whitespace-nowrap">${roleLabel}</span>
                 </div>
             </div>
-            <div class="flex-grow text-center md:text-left flex flex-col justify-center min-w-0 w-full md:pr-44">
-                <h2 class="font-orbitron text-lg sm:text-2xl md:text-3xl font-black text-mars-cyan tracking-widest uppercase break-words leading-tight" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)}</h2>
-                ${sloganHtml}
-                <div class="flex flex-wrap justify-center md:justify-start gap-2 mt-3 text-xs font-bold uppercase tracking-wider">
-                    <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-2.5 py-1 flex items-center">AUTH: ${this.escapeHTML(state.user.role.replace('_',' '))}</span>
-                    <span class="bg-mars-green/10 border border-mars-green/60 text-mars-green px-2.5 py-1 flex items-center font-mono">SALDO: ${Number(co.balance).toFixed(2)} €v</span>
-                    ${sponsorBadge}
-                </div>
+
+            <!-- Centro: Saldo en verde neón font-mono -->
+            <div class="flex items-center justify-center px-2">
+                <span class="text-mars-green font-mono font-bold text-sm sm:text-base tracking-wider whitespace-nowrap bg-mars-green/10 border border-mars-green/30 px-3 py-1 rounded-sm shadow-[0_0_10px_rgba(0,255,150,0.2)]">
+                    ${balanceStr} €v
+                </span>
+            </div>
+
+            <!-- Extremo Derecho: Botón compacto [ 🤖 IA ] -->
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <button type="button" onclick="ui.modalReportAI()" class="bg-blue-600/20 border border-blue-500 text-blue-300 hover:bg-blue-500 hover:text-white px-2.5 sm:px-3 py-1.5 text-xs font-bold uppercase transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)] min-h-[36px] flex items-center gap-1" title="Bitácora y Registro de Prompts IA">
+                    <span>🤖</span> <span class="hidden sm:inline">IA</span>
+                </button>
             </div>
         </div>`;
     },
@@ -1615,6 +1707,35 @@ const ui = {
             if (pendingAI > 0) { elAILog.innerText = pendingAI; elAILog.classList.remove('hidden'); }
             else { elAILog.classList.add('hidden'); }
         }
+    
+
+        // Badges v1.1.22 para las 3 pestañas principales de alumnos
+        const badgeWork = document.getElementById('badge-work');
+        if (badgeWork) {
+            let workCount = 0;
+            if (state.user.role === 'FINANZAS') {
+                workCount = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS').length + (co.marketingCampaigns || []).filter(m => m.status === 'PENDIENTE_FINANZAS').length;
+            } else if (state.user.role === 'OPERACIONES_IA' || state.user.role === 'OPERACIONES') {
+                workCount = (co.orders || []).filter(o => o.status === 'APROBADO_FINANZAS' && o.type !== 'MARKETING').length + (co.aiPrompts || []).filter(p => p.status === 'PENDIENTE_VALIDACION').length;
+            }
+            if (workCount > 0) {
+                badgeWork.innerText = workCount;
+                badgeWork.classList.remove('hidden');
+            } else {
+                badgeWork.classList.add('hidden');
+            }
+        }
+
+        const badgeCompany = document.getElementById('badge-company');
+        if (badgeCompany) {
+            const pendingMotions = (co.votingMotions || []).filter(m => m.status === 'ABIERTA' && (!m.votes || !m.votes[state.user.role])).length;
+            if (pendingMotions > 0) {
+                badgeCompany.innerText = pendingMotions;
+                badgeCompany.classList.remove('hidden');
+            } else {
+                badgeCompany.classList.add('hidden');
+            }
+        }
     },
 
     updateHUD() {
@@ -1691,8 +1812,19 @@ const ui = {
         document.querySelectorAll('.nav-tab').forEach(t => {
             t.classList.remove('tab-active', 'text-mars-cyan');
             t.setAttribute('aria-selected', 'false');
-            const oc = t.getAttribute('onclick');
-            if(oc && oc.includes(`('${this.current}')`)) {
+            const tabId = t.getAttribute('data-tab-id') || '';
+            const oc = t.getAttribute('onclick') || '';
+            let isActive = false;
+            if (this.current === 'work' || ['tech', 'finance', 'brand', 'cart', 'ailog'].includes(this.current) || (this.current === 'orders' && state.user?.role === 'CEO')) {
+                isActive = (tabId === 'work' || oc.includes("'work'"));
+            } else if (this.current === 'dossier') {
+                isActive = (tabId === 'dossier' || oc.includes("'dossier'"));
+            } else if (this.current === 'company' || ['resolutions', 'market'].includes(this.current) || (this.current === 'orders' && state.user?.role !== 'CEO')) {
+                isActive = (tabId === 'company' || oc.includes("'company'"));
+            } else {
+                isActive = (tabId === this.current || oc.includes(`('${this.current}')`));
+            }
+            if (isActive) {
                 t.classList.add('tab-active', 'text-mars-cyan');
                 t.setAttribute('aria-selected', 'true');
             }
@@ -1792,20 +1924,9 @@ const ui = {
         if (state.user.admin) {
             currentAllowed = ['admin', 'market', 'dossier'];
             if (!currentAllowed.includes(this.current)) this.current = 'admin';
-        } else if (role === 'AUXILIAR') {
-            const auxDept = co?.auxRoleDept;
-            const auxAllowed = {
-                'CEO': ['orders', 'resolutions', 'finance', 'dossier', 'market'],
-                'TECNICO': ['tech', 'market', 'cart', 'resolutions', 'dossier'],
-                'FINANZAS': ['finance', 'orders', 'resolutions', 'dossier', 'market'],
-                'MARKETING': ['brand', 'resolutions', 'dossier', 'market'],
-                'OPERACIONES_IA': ['cart', 'ailog', 'resolutions', 'dossier', 'market']
-            };
-            currentAllowed = auxAllowed[auxDept] || ['resolutions', 'dossier', 'market'];
-            if (!currentAllowed.includes(this.current)) this.current = currentAllowed[0];
         } else {
-            currentAllowed = roleAllowedMap[role] || ['orders', 'market', 'dossier', 'resolutions'];
-            if (!currentAllowed.includes(this.current)) this.current = currentAllowed[0];
+            currentAllowed = ['work', 'dossier', 'company', 'orders', 'tech', 'finance', 'brand', 'cart', 'ailog', 'resolutions', 'market'];
+            if (!currentAllowed.includes(this.current)) this.current = 'work';
         }
         
         this.updateHUD();
@@ -1813,6 +1934,36 @@ const ui = {
         const notifs = state.user.admin ? '' : (this.renderNotifications ? this.renderNotifications() : '');
         
         switch(this.current) {
+            case 'work': {
+                vp.innerHTML = hero + notifs;
+                let tool = this.workSubView;
+                if (!tool) {
+                    if (role === 'CEO') tool = 'orders';
+                    else if (role === 'TECNICO') tool = 'tech';
+                    else if (role === 'FINANZAS') tool = 'finance';
+                    else if (role === 'MARKETING') tool = 'brand';
+                    else if (role === 'OPERACIONES_IA' || role === 'OPERACIONES') tool = 'cart';
+                    else if (role === 'AUXILIAR') {
+                        const auxMap = { 'CEO': 'orders', 'TECNICO': 'tech', 'FINANZAS': 'finance', 'MARKETING': 'brand', 'OPERACIONES_IA': 'cart' };
+                        tool = auxMap[co?.auxRoleDept] || 'orders';
+                    } else {
+                        tool = 'orders';
+                    }
+                }
+                if (tool === 'orders') this.viewOrders(vp);
+                else if (tool === 'tech') this.viewTech(vp);
+                else if (tool === 'finance') this.viewFinance(vp);
+                else if (tool === 'brand') this.viewBrand(vp);
+                else if (tool === 'cart') this.viewCart(vp);
+                else if (tool === 'ailog') this.viewAILog(vp);
+                else this.viewOrders(vp);
+                break;
+            }
+            case 'company': {
+                vp.innerHTML = hero + notifs;
+                this.viewCompany(vp);
+                break;
+            }
             case 'market': vp.innerHTML = hero + notifs; this.viewMarket(vp); break;
             case 'cart': vp.innerHTML = hero + notifs; this.viewCart(vp); break;
             case 'orders': vp.innerHTML = hero + notifs; this.viewOrders(vp); break;
@@ -1833,6 +1984,11 @@ const ui = {
             case 'ailog': vp.innerHTML = hero + notifs; this.viewAILog(vp); break;
             case 'tech': vp.innerHTML = hero + notifs; this.viewTech(vp); break;
             case 'resolutions': vp.innerHTML = hero + notifs; this.viewResolutions(vp); break;
+            default: {
+                vp.innerHTML = hero + notifs;
+                this.viewOrders(vp);
+                break;
+            }
         }
 
         if (activeId) {
@@ -1860,8 +2016,26 @@ const ui = {
         const co = (state.user && state.user.coId && state.data.companies) ? state.data.companies[state.user.coId] : null;
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
         const activeSubj = this.cronogramaFilter || 'ALL';
-        const filteredDefs = activeSubj === 'ALL' ? defs : defs.filter(d => d.subject === activeSubj);
+        let filteredDefs = activeSubj === 'ALL' ? defs : defs.filter(d => d.subject === activeSubj);
         const deadlinesData = (state.data.config && state.data.config.deadlines) ? state.data.config.deadlines : {};
+
+        const showAll = !!this.dossierShowAll;
+        const now = Date.now();
+        const fifteenDaysAhead = now + (15 * 24 * 60 * 60 * 1000);
+
+        if (!showAll) {
+            const reactiveDefs = filteredDefs.filter(d => {
+                const dateStr = deadlinesData[d.key] || d.defaultDate;
+                const dTime = new Date(dateStr).getTime();
+                if (!isNaN(dTime) && dTime <= fifteenDaysAhead) return true;
+                const item = co?.deliverables?.[d.key];
+                if (item && item.status !== 'DELIVERED_TO_TEACHER') return true;
+                return false;
+            });
+            if (reactiveDefs.length > 0) {
+                filteredDefs = reactiveDefs;
+            }
+        }
 
         const subjectColors = {
             'FYQ': 'text-mars-cyan border-mars-cyan bg-mars-cyan/10',
@@ -1924,7 +2098,12 @@ const ui = {
                     <h3 class="font-orbitron text-mars-yellow text-sm sm:text-base uppercase tracking-tighter font-black">Cronograma Maestro Curricular</h3>
                     <p class="text-xs text-slate-300 uppercase mt-1">Hoja de ruta estratégica de entregables curriculares y plazos de entrega.</p>
                 </div>
-                ${(state.user && state.user.role === 'CEO') ? `<button type="button" onclick="ui.modalCreateAuxRole()" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase tracking-wider hover:bg-mars-cyan hover:text-black transition-all shrink-0 w-full sm:w-auto">Gestionar Rol Observador</button>` : ''}
+                <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                    <button type="button" onclick="ui.toggleDossierShowAll()" class="min-h-[44px] px-3.5 py-2 text-xs font-black uppercase tracking-wider border transition-all ${showAll ? 'bg-mars-yellow text-black border-mars-yellow' : 'bg-slate-900 text-mars-cyan border-mars-cyan hover:bg-mars-cyan hover:text-black'}">
+                        ${showAll ? '🎯 Filtrar Próximos 15 Días / Fase Activa' : `🔍 Expandir Histórico Completo (${defs.length})`}
+                    </button>
+                    ${(state.user && state.user.role === 'CEO') ? `<button type="button" onclick="ui.modalCreateAuxRole()" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase tracking-wider hover:bg-mars-cyan hover:text-black transition-all shrink-0 w-full sm:w-auto">Gestionar Rol Observador</button>` : ''}
+                </div>
             </div>
 
             <!-- Filtros por Materia -->

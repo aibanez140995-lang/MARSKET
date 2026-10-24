@@ -1,5 +1,5 @@
 // js/ui-empresa-gov-brand.js
-// --- MÓDULO GOBERNANZA Y MARCA: MOCIONES, HR, REGISTRO MERCANTIL Y PAQUETES MARKETING (v1.0.17) ---
+// --- MÓDULO GOBERNANZA Y MARCA: MOCIONES, HR, REGISTRO MERCANTIL Y PAQUETES MARKETING (v1.1.22) ---
 
 Object.assign(ui, {
     setBrandDocTab(tab) {

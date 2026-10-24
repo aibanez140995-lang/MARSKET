@@ -6,8 +6,9 @@ Object.assign(ui, {
         if (!el || !state.user || !state.user.admin) return auth.logout();
         
         const wrapper = document.createElement('div');
-        const currentTab = this.adminTab || 'dash';
         const isCoord = state.user.role.startsWith('COORD');
+        this.adminMode = this.adminMode || 'aula'; // 'aula' | 'coord'
+        const currentTab = this.adminTab || (this.adminMode === 'coord' ? 'startups' : 'eval');
         const activeSuggsCount = (state.data.suggestionsToAlex || []).filter(s => s.status !== 'IMPLEMENTADO' && s.status !== 'RESUELTO' && !s.resolved).length;
         
         let deliveredCount = 0;
@@ -21,46 +22,124 @@ Object.assign(ui, {
             }
         }
 
-        const tabsHtml = `
-        <div role="tablist" aria-label="Pestañas del Panel Docente" class="flex flex-wrap gap-2 mb-6 border-b border-mars-border pb-3">
-            <button role="tab" aria-selected="${currentTab==='dash'}" onclick="ui.adminTab='dash'; ui.render()" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all ${currentTab==='dash'?'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]':'bg-mars-card text-slate-300 border-mars-border hover:text-white'}">
-                📊 Visión Global & Aduana
-            </button>
-            <button role="tab" aria-selected="${currentTab==='eval'}" onclick="ui.adminTab='eval'; ui.render()" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all flex items-center gap-1.5 ${currentTab==='eval'?'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]':'bg-mars-card text-slate-300 border-mars-border hover:text-white'}">
-                <span>🎖️ Rúbricas & Entregas (100%)</span>
-                ${deliveredCount > 0 ? `<span class="bg-mars-green text-black px-1.5 py-0.5 rounded text-[10px] font-mono font-black">${deliveredCount}</span>` : ''}
-            </button>
-            <button role="tab" aria-selected="${currentTab==='startups'}" onclick="ui.adminTab='startups'; ui.render()" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all ${currentTab==='startups'?'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]':'bg-mars-card text-slate-300 border-mars-border hover:text-white'}">
-                🚀 Startups & PINs
-            </button>
-            <button role="tab" aria-selected="${currentTab==='telemetry'}" onclick="ui.adminTab='telemetry'; ui.render()" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all ${currentTab==='telemetry'?'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]':'bg-mars-card text-slate-300 border-mars-border hover:text-white'}">
-                📈 Telemetría & Conexiones
-            </button>
-            ${isCoord ? `
-            <button role="tab" aria-selected="${currentTab==='hr'}" onclick="ui.adminTab='hr'; ui.render()" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all ${currentTab==='hr'?'bg-mars-magenta text-white border-mars-magenta shadow-[0_0_10px_rgba(255,0,85,0.3)]':'bg-mars-card text-slate-300 border-mars-border hover:text-white'}">
-                ⚖️ Alertas HR
-            </button>
-            <button role="tab" aria-selected="${currentTab==='catalog'}" onclick="ui.adminTab='catalog'; ui.render()" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all ${currentTab==='catalog'?'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]':'bg-mars-card text-slate-300 border-mars-border hover:text-white'}">
-                🛒 SUPERMARS-KET
-            </button>
-            <button role="tab" aria-selected="${currentTab==='settings'}" onclick="ui.adminTab='settings'; ui.render()" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all flex items-center gap-1.5 ${currentTab==='settings'?'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]':'bg-mars-card text-slate-300 border-mars-border hover:text-white'}">
-                <span>⚙️ Ajustes & Buzón Dev</span>
-                ${activeSuggsCount > 0 ? `<span id="tab-badge-settings" class="bg-mars-yellow text-black px-1.5 py-0.5 rounded text-[10px] font-mono font-black animate-pulse shadow-[0_0_8px_rgba(255,200,0,0.6)]">${activeSuggsCount}</span>` : `<span id="tab-badge-settings" class="hidden"></span>`}
-            </button>
-            <button role="tab" aria-selected="${currentTab==='backups'}" onclick="ui.adminTab='backups'; ui.render()" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all ${currentTab==='backups'?'bg-blue-500 text-white border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]':'bg-mars-card text-slate-300 border-mars-border hover:text-white'}">
-                💾 Backups & D1
-            </button>
-            <button type="button" onclick="ui.modalModerationIncidents()" title="Registro de Infracciones Léxicas" class="min-h-[44px] px-3 py-2 text-xs font-bold uppercase tracking-widest border border-[#FF0055]/60 bg-[#FF0055]/10 text-[#FF0055] hover:bg-[#FF0055] hover:text-white transition-all flex items-center gap-2 shadow-[0_0_10px_rgba(255,0,85,0.25)] ml-auto">
-                <span class="relative flex h-2.5 w-2.5">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF0055] opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#FF0055]"></span>
-                </span>
-                <span>🚨 INFRACCIONES</span>
-                <span class="bg-[#FF0055] text-white px-1.5 py-0.5 rounded text-[10px] font-mono font-bold">${(state.data.securityIncidents || []).length}</span>
-            </button>` : ''}
-        </div>`;
+        let modeSwitchHtml = '';
+        if (isCoord) {
+            modeSwitchHtml = `
+            <div class="flex flex-wrap gap-2 mb-4 border-b border-cyan-500/30 pb-3" role="tablist">
+                <button type="button" role="tab" aria-selected="${this.adminMode === 'aula'}"
+                    onclick="ui.adminMode = 'aula'; ui.adminTab = 'eval'; ui.render();"
+                    class="min-h-[44px] px-4 py-2 text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                        this.adminMode === 'aula'
+                            ? 'bg-mars-cyan text-black shadow-[0_0_12px_rgba(0,240,255,0.4)]'
+                            : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-700'
+                    }">
+                    🏫 MODO AULA // CALIFICACIÓN DIARIA
+                </button>
+                <button type="button" role="tab" aria-selected="${this.adminMode === 'coord'}"
+                    onclick="ui.adminMode = 'coord'; ui.adminTab = 'startups'; ui.render();"
+                    class="min-h-[44px] px-4 py-2 text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                        this.adminMode === 'coord'
+                            ? 'bg-amber-400 text-black shadow-[0_0_12px_rgba(251,191,36,0.4)]'
+                            : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-700'
+                    }">
+                    ⚙️ ADMINISTRACIÓN DEL CENTRO (TIC)
+                </button>
+            </div>
+            `;
+        }
 
-        wrapper.innerHTML = tabsHtml;
+        let tabsHtml = '';
+        if (!isCoord || this.adminMode === 'aula') {
+            // MODO AULA / CALIFICACIÓN DIARIA (Visible para todo profesor: exactamente 2 botones prioritarios)
+            const isEval = (currentTab === 'eval');
+            const isDash = (currentTab === 'dash');
+            tabsHtml = `
+            <div role="tablist" aria-label="Navegación Docente Aula" class="flex flex-wrap gap-3 mb-6 border-b border-mars-border pb-3">
+                <button type="button" role="tab" aria-selected="${isEval}"
+                    onclick="ui.adminTab = 'eval'; ui.render();"
+                    class="min-h-[44px] px-5 py-2.5 text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-2 ${
+                        isEval
+                            ? 'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]'
+                            : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
+                    }">
+                    <span>📝 Rúbricas y Entregas</span>
+                    ${deliveredCount > 0 ? `<span class="bg-mars-green text-black px-1.5 py-0.5 rounded text-[10px] font-mono font-black">${deliveredCount}</span>` : ''}
+                </button>
+                <button type="button" role="tab" aria-selected="${isDash}"
+                    onclick="ui.adminTab = 'dash'; ui.render();"
+                    class="min-h-[44px] px-5 py-2.5 text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-2 ${
+                        isDash
+                            ? 'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]'
+                            : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
+                    }">
+                    <span>🛃 Validaciones y Aduana</span>
+                </button>
+            </div>
+            `;
+        } else {
+            // MODO COORDINACIÓN Y TIC
+            tabsHtml = `
+            <div role="tablist" aria-label="Administración del Centro TIC" class="flex flex-wrap gap-2 mb-6 border-b border-mars-border pb-3">
+                <button type="button" role="tab" aria-selected="${currentTab === 'startups'}"
+                    onclick="ui.adminTab = 'startups'; ui.render();"
+                    class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-all ${
+                        currentTab === 'startups'
+                            ? 'bg-amber-400 text-black border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.3)]'
+                            : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
+                    }">
+                    🚀 Startups & Llavero Maestro (PINs)
+                </button>
+                <button type="button" role="tab" aria-selected="${currentTab === 'settings'}"
+                    onclick="ui.adminTab = 'settings'; ui.render();"
+                    class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-1.5 ${
+                        currentTab === 'settings'
+                            ? 'bg-amber-400 text-black border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.3)]'
+                            : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
+                    }">
+                    <span>⏳ Cronograma Maestro (Plazos)</span>
+                    ${activeSuggsCount > 0 ? `<span id="tab-badge-settings" class="bg-mars-yellow text-black px-1.5 py-0.5 rounded text-[10px] font-mono font-black animate-pulse">${activeSuggsCount}</span>` : `<span id="tab-badge-settings" class="hidden"></span>`}
+                </button>
+                <button type="button" role="tab" aria-selected="${currentTab === 'backups'}"
+                    onclick="ui.adminTab = 'backups'; ui.render();"
+                    class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-all ${
+                        currentTab === 'backups'
+                            ? 'bg-blue-500 text-white border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]'
+                            : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
+                    }">
+                    💾 Copias de Seguridad (D1)
+                </button>
+                <button type="button" role="tab" aria-selected="${currentTab === 'hr'}"
+                    onclick="ui.adminTab = 'hr'; ui.render();"
+                    class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-all ${
+                        currentTab === 'hr'
+                            ? 'bg-mars-magenta text-white border-mars-magenta shadow-[0_0_10px_rgba(255,0,85,0.3)]'
+                            : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
+                    }">
+                    🚨 Monitor de Infracciones Léxicas
+                </button>
+                <button type="button" role="tab" aria-selected="${currentTab === 'telemetry'}"
+                    onclick="ui.adminTab = 'telemetry'; ui.render();"
+                    class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-all ${
+                        currentTab === 'telemetry'
+                            ? 'bg-amber-400 text-black border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.3)]'
+                            : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
+                    }">
+                    📈 Telemetría de Red y Accesos
+                </button>
+                <button type="button" role="tab" aria-selected="${currentTab === 'catalog'}"
+                    onclick="ui.adminTab = 'catalog'; ui.render();"
+                    class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-all ${
+                        currentTab === 'catalog'
+                            ? 'bg-amber-400 text-black border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.3)]'
+                            : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
+                    }">
+                    🛒 Gestión Catálogo
+                </button>
+            </div>
+            `;
+        }
+
+        wrapper.innerHTML = modeSwitchHtml + tabsHtml;
         const subContainer = document.createElement('div');
         subContainer.setAttribute('role', 'tabpanel');
 

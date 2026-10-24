@@ -1,5 +1,5 @@
 // functions/api/company/[cid]/action.js
-// Endpoint de Mutaciones Atómicas Particionadas para Startups en Cloudflare D1 (v1.1.11)
+// Endpoint de Mutaciones Atómicas Particionadas para Startups en Cloudflare D1 (v1.1.22)
 // Erradica los megadocumentos monolíticos y las colisiones OCC HTTP 409 entre empresas.
 
 import { verifySession } from '../../_auth.js';

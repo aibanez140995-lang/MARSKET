@@ -1,5 +1,5 @@
 // js/ui-empresa-tech.js
-// --- MÓDULO I+D: BANCO DE PRUEBAS (en mm), BOM, MATEMÁTICAS E INVENTARIO B2B (v1.0.16) ---
+// --- MÓDULO I+D: BANCO DE PRUEBAS (en mm), BOM, MATEMÁTICAS E INVENTARIO B2B (v1.1.22) ---
 
 Object.assign(ui, {
     setTechDocTab(tab) {
