@@ -486,6 +486,56 @@ const ui = {
         return { valid: true, reason: '', matches: [] };
     },
 
+    validateZeroPII(text) {
+        if (!text || !String(text).trim()) {
+            return { pass: true, clean: true, valid: true, matches: [], reason: '' };
+        }
+        const str = String(text);
+        const piiMatches = [];
+
+        // 1. Detección de Correos Electrónicos
+        const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
+        const emailMatches = str.match(emailRegex);
+        if (emailMatches) {
+            piiMatches.push(...emailMatches);
+        }
+
+        // 2. Detección de Teléfonos (fijos, móviles, secuencias de 9 dígitos con o sin prefijo)
+        const phoneRegex = /(?:(?:\+|00)34[\s.-]?)?(?:\b[6789]\d{2}[\s.-]?\d{3}[\s.-]?\d{3}\b|\b[6789]\d{8}\b)/g;
+        const phoneMatches = str.match(phoneRegex);
+        if (phoneMatches) {
+            piiMatches.push(...phoneMatches);
+        }
+
+        // 3. Detección de Documentos de Identidad (DNI/NIE español)
+        const dniRegex = /\b(?:\d{8}[- ]?[A-HJ-NP-TV-Z]|[XYZ][- ]?\d{7}[- ]?[A-HJ-NP-TV-Z])\b/gi;
+        const dniMatches = str.match(dniRegex);
+        if (dniMatches) {
+            piiMatches.push(...dniMatches);
+        }
+
+        // 4. Detección de Nombres y Apellidos personales mediante motor LOPD
+        const safeCheck = this.validateSafeText(str);
+        if (!safeCheck.valid) {
+            if (safeCheck.matches && safeCheck.matches.length > 0) {
+                piiMatches.push(...safeCheck.matches);
+            } else {
+                piiMatches.push('DATOS_IDENTIFICATIVOS');
+            }
+        }
+
+        const uniqueMatches = Array.from(new Set(piiMatches));
+        const isClean = uniqueMatches.length === 0;
+
+        return {
+            pass: isClean,
+            clean: isClean,
+            valid: isClean,
+            matches: uniqueMatches,
+            reason: isClean ? '' : 'Se han detectado datos identificativos personales'
+        };
+    },
+
     highlightInvalidField(rawText, targetEl = null) {
         let field = null;
         if (targetEl && typeof targetEl === 'string') {
@@ -914,7 +964,7 @@ const ui = {
             dynamicStatusHtml = `
             <div class="bg-slate-950 border border-mars-cyan/60 p-3.5 space-y-2.5 mt-2">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-1.5 flex-wrap gap-2">
-                    <span class="text-xs font-orbitron font-black text-mars-cyan uppercase tracking-wider">📡 Telemetría en Vivo del Aula (v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.01'})</span>
+                    <span class="text-xs font-orbitron font-black text-mars-cyan uppercase tracking-wider">📡 Telemetría en Vivo del Aula (v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.15'})</span>
                     <span class="text-xs font-bold uppercase px-2 py-0.5 border ${d1StatusColor}">[D1: ${d1StatusText}]</span>
                 </div>
                 <div class="grid grid-cols-3 gap-2 text-center text-xs">
@@ -951,7 +1001,7 @@ const ui = {
             <div class="bg-slate-950 border border-mars-cyan/60 p-3.5 space-y-2 mt-2 text-xs">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-1.5 flex-wrap gap-1">
                     <span class="font-orbitron font-black text-mars-cyan uppercase">🔐 Estado Operativo y Custodia de Credenciales</span>
-                    <span class="text-mars-green font-bold uppercase">[TOKEN ACTIVO v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.01'}]</span>
+                    <span class="text-mars-green font-bold uppercase">[TOKEN ACTIVO v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.15'}]</span>
                 </div>
                 <p class="text-slate-200 leading-relaxed">
                     <strong>Custodia de PIN:</strong> Tu sesión está protegida mediante huella criptográfica (<code class="text-mars-cyan">authToken</code>). Si Coordinación modifica el PIN de tu puesto o el código de empresa, esta terminal cerrará la sesión en caliente de forma inmediata.
@@ -969,7 +1019,7 @@ const ui = {
         content += `
         ${dynamicStatusHtml}
         <div class="bg-slate-900 border border-slate-700 p-3 text-xs text-slate-300 uppercase mt-2 space-y-1">
-            <p>🛡️ <strong class="text-mars-yellow">Norma de Seguridad y LOPD Activa (v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.01'}):</strong> Todos los formularios cuentan con validación LOPD contextual no destructiva (<code class="text-mars-cyan">ui.validateSafeText</code>). Los nombres personales o términos indebidos se señalan con borde neón rojo sin borrar el texto.</p>
+            <p>🛡️ <strong class="text-mars-yellow">Norma de Seguridad y LOPD Activa (v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.15'}):</strong> Todos los formularios cuentan con validación LOPD contextual no destructiva (<code class="text-mars-cyan">ui.validateSafeText</code>). Los nombres personales o términos indebidos se señalan con borde neón rojo sin borrar el texto.</p>
             <p>📱 <strong class="text-mars-cyan">Ergonomía Táctil y Bóveda Descongestionada:</strong> Entradas tipográficas a 16px (anti-zoom móvil), acordeones por hitos con detalle en Drawer táctil y pasarela docente oculta Web Crypto SHA-256.</p>
         </div>
         </div>`;
@@ -1059,7 +1109,7 @@ const ui = {
     },
 
     showGuide(defaultRole = null) {
-        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.13beta';
+        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.15';
         let initialRole = defaultRole;
         if (!initialRole) {
             if (state.user) {
@@ -1117,8 +1167,8 @@ const ui = {
                         <span>Todo uso de IA generativa debe quedar documentado en la Bitácora IA con verificación y validación humana explícita.</span>
                     </div>
                     <div class="border border-slate-800 p-2 bg-slate-950">
-                        <strong class="text-white block mb-0.5">⚖️ Convivencia y Filtro Léxico AEE:</strong>
-                        <span>Protección de privacidad (LOPD) y respeto mutuo. Las infracciones léxicas generan alertas automáticas a Coordinación.</span>
+                        <strong class="text-white block mb-0.5">⚖️ Convivencia, Privacidad RGPD y Filtro Léxico AEE:</strong>
+                        <span>Protección de privacidad (RGPD/LOPD): Prohibido introducir nombres reales, apellidos, correos o teléfonos. Alumnos: operar exclusivamente bajo alias de equipo. Docentes: gestión y trazabilidad de incidencias mediante identificadores seudonimizados.</span>
                     </div>
                 </div>
             </div>
@@ -1186,6 +1236,9 @@ const ui = {
                     <option value="REGLAS">⚖️ Consulta sobre Normativa / Rúbricas</option>
                 </select>
             </div>
+            <div class="mb-2 p-2 bg-mars-magenta/10 border border-mars-magenta/40 text-[11px] font-mono text-mars-magenta font-bold">
+                ⚠️ ALERTA DE SEGURIDAD: Prohibido introducir nombres reales, apellidos, correos o teléfonos. Utiliza únicamente tu alias de equipo.
+            </div>
             <label for="sugg-text" class="sr-only">Descripción del reporte</label>
             <textarea id="sugg-text" class="w-full bg-slate-900 border border-mars-yellow/50 p-3 text-base sm:text-xs text-white h-24 focus:border-mars-yellow outline-none mb-4" placeholder="Describe el reporte... (El uso de lenguaje ofensivo o nombres propios bloqueará el envío)"></textarea>
             <div class="bg-black/60 border border-slate-800 p-3 max-h-44 overflow-y-auto">
@@ -1204,6 +1257,15 @@ const ui = {
         const text = this.cleanInput(elText.value);
         const category = elCat ? elCat.value : 'MEJORA';
         if(text.length < 5) return this.notify("Describe tu reporte con más detalle (mínimo 5 caracteres).", "warning");
+
+        // WP3: Filtro activo anti-PII en Cliente (Nombres, emails, teléfonos, DNIs)
+        const piiCheck = this.validateZeroPII(text);
+        if (!piiCheck.clean) {
+            this.highlightInvalidField(text, elText);
+            this.notify("Envío bloqueado: Se han detectado datos identificativos personales", "error");
+            return;
+        }
+
         if(this.hasForbiddenWords(text, 'Buzón de Sugerencias', elText)) return;
         
         const isDocente = state.user && state.user.admin;

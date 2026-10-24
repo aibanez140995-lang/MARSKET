@@ -12,6 +12,7 @@ const auth = (function() {
     let _verifiedCoId = null;
     let _serverCompanyMeta = null;
     let _internalExecutionGuard = false;
+    let _lastNavSignature = null;
 
     async function _generateAuthProof(role, coId, exp, credential) {
         const payload = `${role || ''}|${coId || ''}|${exp || 0}|${credential || ''}|${AUTH_PROOF_SALT}`;
@@ -449,10 +450,10 @@ const auth = (function() {
             const auxDept = (role === 'AUXILIAR') ? (state.data?.companies?.[coId]?.auxRoleDept || '') : '';
             const sig = `${isAdmin ? 'ADMIN' : 'USER'}:${role}:${coId}:${auxDept}`;
 
-            if (this._lastNavSignature === sig && nav.children.length > 0) {
+            if (_lastNavSignature === sig && nav.children.length > 0) {
                 return;
             }
-            this._lastNavSignature = sig;
+            _lastNavSignature = sig;
 
             if (isAdmin) {
                 nav.innerHTML = `
@@ -516,14 +517,14 @@ const auth = (function() {
         },
 
         logout() {
-            this._lastNavSignature = null;
+            _lastNavSignature = null;
             state.user = null;
             state.currentUser = null;
             state.pin = '';
             _verifiedCoId = null;
-            try { sessionStorage.removeItem(state.sessionKey); } catch(e) {}
-            try { localStorage.removeItem(state.sessionKey); } catch(e) {}
+            // WP1: Purga total inmediata de sesiones y almacenamiento en cliente
             try { sessionStorage.clear(); } catch(e) {}
+            try { localStorage.clear(); } catch(e) {}
 
             const appContainer = document.getElementById('app-container') || document.querySelector('.max-w-7xl');
             if (appContainer) {

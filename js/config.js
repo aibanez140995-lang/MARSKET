@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.02) ---
 
-const APP_VERSION = "1.1.14";
+const APP_VERSION = "1.1.15";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const REGULATORY_AGENCIES = {
@@ -159,6 +159,23 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.15",
+      date: new Date().toISOString().split('T')[0],
+      title: "Blindaje de Privacidad Zero-Trust, Anonimización de IP y Cumplimiento RGPD",
+      items: [
+        "Eliminación total de registro de direcciones IP y anonimización en capa de red",
+        "Filtro activo anti-PII en formularios y cláusula informativa de 1ª capa (Art. 13)",
+        "Aislamiento HTTP hermético (Referrer-Policy: no-referrer) y CSP estricta local",
+        "Sellado de prototipos de autenticación y persistencia limpia de estado"
+      ],
+      highlights: [
+        { type: "PRIVACIDAD", text: "Eliminación total de registro de direcciones IP y anonimización en capa de red." },
+        { type: "RGPD", text: "Filtro activo anti-PII en formularios y cláusula informativa de 1ª capa (Art. 13)." },
+        { type: "SEGURIDAD", text: "Aislamiento HTTP hermético (Referrer-Policy: no-referrer) y CSP estricta local." },
+        { type: "ARQUITECTURA", text: "Sellado de prototipos de autenticación y persistencia limpia de estado." }
+      ]
+    },
     {
       version: "1.1.14",
       date: new Date().toISOString().split('T')[0],

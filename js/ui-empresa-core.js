@@ -17,6 +17,17 @@ Object.assign(ui, {
             </div>
         `;
 
+        const rgpdClauseHtml = `
+            <div class="rgpd-clause-13 mt-3 pt-2.5 border-t border-mars-border/60 text-[10px] text-slate-400 font-mono leading-relaxed space-y-1">
+                <p class="text-mars-cyan font-bold uppercase tracking-wider text-center text-[10px]">[ CLÁUSULA INFORMATIVA RGPD (ART. 13) ]</p>
+                <p><strong class="text-slate-300">RESPONSABLE:</strong> Centro Educativo / Coordinación MARS-KET.</p>
+                <p><strong class="text-slate-300">FINALIDAD:</strong> Simulación aeroespacial y evaluación pedagógica competencial.</p>
+                <p><strong class="text-slate-300">LEGITIMACIÓN:</strong> Misión de interés público / función docente (Art. 6.1.e RGPD).</p>
+                <p><strong class="text-slate-300">DESTINATARIOS:</strong> Sin cesión a terceros ni transferencias internacionales.</p>
+                <p><strong class="text-slate-300">DERECHOS:</strong> Acceso, rectificación y supresión ante la dirección o profesorado del centro.</p>
+            </div>
+        `;
+
         // PASO 1: Solicitud de Código Privado de Empresa (Pasarela Docente oculta tras doble clic/tap en #marsket-logo)
         if (!verifiedCoId) {
             el.innerHTML = `
@@ -31,6 +42,7 @@ Object.assign(ui, {
                     <input type="text" id="login-company-code" autocomplete="off" placeholder="EJ: AST-1010" style="touch-action: manipulation; font-size: 16px;" onkeydown="if(event.key==='Enter') auth.validateCompanyCode()" onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="w-full bg-slate-900 border border-mars-cyan/60 p-2.5 sm:p-3 text-center font-orbitron font-black uppercase tracking-widest text-mars-yellow outline-none focus:border-mars-cyan mb-3 min-h-[48px]">
                     <button type="button" onclick="auth.validateCompanyCode()" style="touch-action: manipulation;" class="w-full min-h-[48px] bg-mars-cyan text-black font-black py-3 px-3 text-xs uppercase tracking-normal sm:tracking-wider hover:bg-white transition-all shadow-[0_0_12px_rgba(0,240,255,0.3)] whitespace-nowrap">[ VALIDAR CÓDIGO ]</button>
                 </div>
+                ${rgpdClauseHtml}
                 ${offlineHtml}
             </div>`;
             setTimeout(() => document.getElementById('login-company-code')?.focus(), 50);
@@ -72,6 +84,7 @@ Object.assign(ui, {
                 <button type="button" aria-label="Confirmar PIN" onclick="auth.verify()" style="touch-action: manipulation;" class="min-h-[44px] bg-mars-green/20 border border-mars-green text-mars-green p-2 text-xs font-black hover:bg-mars-green hover:text-mars-bg transition-all active:scale-95">ENT</button>
             </div>
             <p class="text-xs text-slate-400 text-center uppercase mt-2.5">Soporta teclado numérico físico (0-9, Backspace, Enter)</p>
+            ${rgpdClauseHtml}
             ${offlineHtml}
         </div>`;
         setTimeout(() => auth.updateRoleOptions(), 30);

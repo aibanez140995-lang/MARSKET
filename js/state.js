@@ -54,6 +54,33 @@ const state = {
     _hasWarnedCloudNetwork: false,
     _vaultKey: 'MARS_AEE_2026_SECRET_KEY',
 
+    // WP5: Acceso encapsulado a la estructura reactiva sin congelar state.data
+    get(path) {
+        if (!path) return this.data;
+        const keys = Array.isArray(path) ? path : String(path).split('.');
+        let curr = this.data;
+        for (const k of keys) {
+            if (curr == null) return undefined;
+            curr = curr[k];
+        }
+        return curr;
+    },
+
+    set(path, value) {
+        if (!path) return false;
+        const keys = Array.isArray(path) ? path : String(path).split('.');
+        let curr = this.data;
+        for (let i = 0; i < keys.length - 1; i++) {
+            const k = keys[i];
+            if (curr[k] == null || typeof curr[k] !== 'object') {
+                curr[k] = {};
+            }
+            curr = curr[k];
+        }
+        curr[keys[keys.length - 1]] = value;
+        return true;
+    },
+
     calculateBalance(co) {
         if (!co) return 2400.0;
         const INITIAL_CAPITAL = 2400.0;
@@ -1167,13 +1194,60 @@ const state = {
         }
     },
 
+    // WP1: Sanitizar payload local para contener ÚNICAMENTE variables de simulación aeroespacial y alias tácticos
+    sanitizeForLocalStorage(data) {
+        if (!data || typeof data !== 'object') return data;
+        let clean;
+        try {
+            clean = JSON.parse(JSON.stringify(data));
+        } catch(e) {
+            return data;
+        }
+
+        // Erradicar PINs docentes
+        if (clean.config && clean.config.teachers) {
+            for (const tRole in clean.config.teachers) {
+                if (clean.config.teachers[tRole]) {
+                    delete clean.config.teachers[tRole].pin;
+                }
+            }
+        }
+
+        // Erradicar bóvedas, accessCode y secretos de startups
+        if (clean.companies) {
+            for (const cid in clean.companies) {
+                const co = clean.companies[cid];
+                if (co) {
+                    delete co.authVault;
+                    delete co.accessCode;
+                    if (co.roles) {
+                        for (const r in co.roles) {
+                            if (typeof co.roles[r] === 'string' && /^\d{4,6}$/.test(co.roles[r])) {
+                                co.roles[r] = 'PROTECTED';
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        delete clean.session;
+        delete clean.token;
+        delete clean.authToken;
+        delete clean.clientIp;
+        delete clean.userAgent;
+
+        return clean;
+    },
+
     saveToLocal() {
         this.saveLocalOnly();
     },
 
     saveLocalOnly() {
         try {
-            localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+            const clean = this.sanitizeForLocalStorage(this.data);
+            localStorage.setItem(this.storageKey, JSON.stringify(clean));
         } catch (e) {
             console.error("Aviso: almacenamiento local lleno o restringido:", e);
         }
@@ -1260,10 +1334,13 @@ const state = {
             } else {
                 this.isCloudOnline = false;
                 this.consecutiveNetworkFailures = 0;
-                if (res.status === 403) {
-                    console.warn("[SECURITY] Petición pushToCloud rechazada por permisos (HTTP 403).");
+                if (res.status === 401 || res.status === 403) {
+                    console.warn(`[SECURITY] Petición pushToCloud rechazada por permisos (HTTP ${res.status}). Ejecutando purga total de sesión.`);
                     if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
-                        ui.notify("⛔ Error de sincronización (HTTP 403): Sesión no autorizada para persistir en la nube. Recarga o inicia sesión de nuevo.", "error");
+                        ui.notify(`⛔ Error de autenticación (HTTP ${res.status}): Sesión no autorizada o expirada.`, "error");
+                    }
+                    if (typeof auth !== 'undefined' && typeof auth.logout === 'function') {
+                        auth.logout();
                     }
                 }
             }
