@@ -280,7 +280,6 @@ Object.assign(ui, {
 
         wrapper.innerHTML = `
             ${crisisHtml}
-            ${cronogramaSection}
             ${bovedaSection}
         `;
         el.appendChild(wrapper);

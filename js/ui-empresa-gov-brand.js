@@ -502,12 +502,14 @@ Object.assign(ui, {
         const wrapper = document.createElement('div');
         
         let brandApprovalAlert = '';
-        if (co.brandApproval.status === 'PENDIENTE') {
+        const isPendingBrand = (co.brandStatus === 'PENDING_APPROVAL' || co.brandApproval?.status === 'PENDIENTE');
+        if (isPendingBrand) {
             brandApprovalAlert = `
-            <div class="bg-mars-yellow/15 border border-mars-yellow p-3 mb-4 text-xs">
-                <span class="text-mars-yellow font-black uppercase block mb-1">⏳ Identidad de Marca en Revisión por Coordinación</span>
-                <p class="text-slate-200 leading-relaxed">Tu propuesta de Eslogan o Logotipo ha sido enviada y está pendiente de validación docente antes de hacerse pública en el HUD.</p>
-                ${co.brandApproval.pendingSlogan ? `<p class="text-white mt-1.5 break-words"><strong>Eslogan propuesto:</strong> "${this.escapeHTML(co.brandApproval.pendingSlogan)}"</p>` : ''}
+            <div class="bg-amber-500/15 border border-amber-500/60 p-3 mb-4 text-xs">
+                <span class="bg-amber-500/20 text-amber-400 border border-amber-500/50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider block mb-2">[Eslogan/Misión en revisión por Coordinación]</span>
+                <p class="text-slate-200 leading-relaxed">Tu propuesta de Eslogan y Misión ha sido enviada a Coordinación Docente y se encuentra en proceso de validación previa antes de su publicación en el HUD.</p>
+                ${(co.pendingSlogan || co.brandApproval?.pendingSlogan) ? `<p class="text-white mt-1.5 break-words"><strong>Eslogan propuesto:</strong> "${this.escapeHTML(co.pendingSlogan || co.brandApproval?.pendingSlogan)}"</p>` : ''}
+                ${(co.pendingMission || co.valueProposition) ? `<p class="text-white mt-1.5 break-words"><strong>Misión propuesta:</strong> "${this.escapeHTML(co.pendingMission || co.valueProposition)}"</p>` : ''}
             </div>`;
         } else if (co.brandApproval.status === 'RECHAZADO') {
             brandApprovalAlert = `
@@ -674,9 +676,14 @@ Object.assign(ui, {
             `;
         }
 
-        const displaySloganInput = co.brandApproval.status === 'PENDIENTE' && co.brandApproval.pendingSlogan 
-            ? co.brandApproval.pendingSlogan 
-            : (co.slogan || '');
+        const displaySloganInput = (co.pendingSlogan !== null && co.pendingSlogan !== undefined)
+            ? co.pendingSlogan
+            : ((co.brandApproval && co.brandApproval.status === 'PENDIENTE' && co.brandApproval.pendingSlogan)
+                ? co.brandApproval.pendingSlogan
+                : (co.slogan || ''));
+        const displayMissionInput = (co.pendingMission !== null && co.pendingMission !== undefined)
+            ? co.pendingMission
+            : (co.valueProposition || co.mission || '');
 
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -687,7 +694,7 @@ Object.assign(ui, {
                     <label for="brand-slogan" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Eslogan Corporativo (Requiere Aprobación Docente)</label>
                     <input type="text" id="brand-slogan" value="${this.escapeHTML(displaySloganInput)}" placeholder="Eslogan corto corporativo (Tagline)..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-mars-yellow font-bold uppercase mb-3 focus:border-mars-magenta outline-none">
                     <label for="val-prop-text" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Misión, Visión y Propuesta de Valor</label>
-                    <textarea id="val-prop-text" class="w-full bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-white h-24 outline-none focus:border-mars-cyan mb-3 leading-relaxed" placeholder="Redacte la misión, visión y propuesta de valor corporativa...">${this.escapeHTML(co.valueProposition || '')}</textarea>
+                    <textarea id="val-prop-text" class="w-full bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-white h-24 outline-none focus:border-mars-cyan mb-3 leading-relaxed" placeholder="Redacte la misión, visión y propuesta de valor corporativa...">${this.escapeHTML(displayMissionInput)}</textarea>
                     <label for="company-logo-drive" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Enlace al Escudo / Logo Corporativo (Google Drive)</label>
                     <input type="url" id="company-logo-drive" value="${this.escapeHTML((co.brandApproval && co.brandApproval.pendingLogo) ? co.brandApproval.pendingLogo : (co.logo || ''))}" placeholder="https://drive.google.com/file/d/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-white font-mono mb-2 focus:border-mars-magenta outline-none">
                     <p class="text-[10px] text-slate-400 mb-3">Pega el enlace a la imagen del logotipo en Google Drive con permisos de lectura.</p>
@@ -746,54 +753,62 @@ Object.assign(ui, {
         el.appendChild(wrapper);
     },
 
-    modalRequestMktPackage(pkgId) {
+    modalRequestMktPackage(pkgId = null) {
         if (!state.user) return;
         const mktPackages = typeof MARKETING_PACKAGES !== 'undefined' ? MARKETING_PACKAGES : [];
-        const pkg = mktPackages.find(p => p.id === pkgId);
-        if (!pkg) return this.notify("Paquete no encontrado.", "error");
+        const selectedId = pkgId || mktPackages[0]?.id;
+        const selectedPkg = mktPackages.find(p => p.id === selectedId) || mktPackages[0];
+
+        const optionsHtml = mktPackages.map(p => `
+            <option value="${this.escapeHTML(p.id)}" data-price="${p.price}" ${p.id === selectedId ? 'selected' : ''}>
+                ${this.escapeHTML(p.name)} (${this.escapeHTML(p.type)}) - ${p.price} €v [${p.actions} acciones]
+            </option>
+        `).join('');
 
         const html = `
-            <div class="bg-slate-900 border border-mars-yellow p-3 mb-4">
-                <div class="flex justify-between items-center gap-2">
-                    <span class="font-orbitron text-mars-yellow font-bold text-xs uppercase">${this.escapeHTML(pkg.name)} (${this.escapeHTML(pkg.type)})</span>
-                    <span class="text-mars-green font-mono font-black text-sm">${Number(pkg.price)} €v</span>
-                </div>
-                <p class="text-xs text-slate-300 mt-1">Incluye cupo para <strong>${Number(pkg.actions)} acciones publicitarias</strong>.</p>
-            </div>
             <div class="space-y-3">
                 <div>
-                    <label for="mkt-req-title" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Nombre de la Campaña General</label>
-                    <input type="text" id="mkt-req-title" placeholder="Ej: Campaña Lanzamiento Fase I..." class="w-full min-h-[44px] bg-black border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan">
+                    <label for="campaign-tier" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Paquete / Tier Publicitario Predefinido</label>
+                    <select id="campaign-tier" onchange="const opt = this.options[this.selectedIndex]; const pEl = document.getElementById('campaign-budget'); if(pEl) pEl.value = opt.getAttribute('data-price') || 0;" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow">
+                        ${optionsHtml}
+                    </select>
                 </div>
                 <div>
-                    <label for="mkt-req-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Enlace al Dossier / Justificación ROI (Google Docs / Drive)</label>
-                    <input type="url" id="mkt-req-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-black border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono">
-                    <p class="text-[10px] text-slate-400 mt-1">El dossier y justificación ROI se elabora en el Google Doc oficial con permisos de lectura.</p>
+                    <label for="campaign-budget" class="text-xs text-mars-green uppercase font-bold block mb-1.5">Presupuesto Asignado (€v)</label>
+                    <input type="number" id="campaign-budget" min="0" step="1" value="${selectedPkg ? selectedPkg.price : 0}" class="w-full min-h-[44px] bg-black border border-mars-green/50 p-2.5 text-base sm:text-xs text-mars-green font-mono font-bold outline-none focus:border-mars-green">
+                    <p class="text-[10px] text-slate-400 mt-1">Coste tarifario estipulado para la contratación del paquete.</p>
+                </div>
+                <div>
+                    <label for="campaign-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Brief Creativo y Justificación ROI (Google Drive / Docs)</label>
+                    <input type="url" id="campaign-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-black border border-mars-cyan/50 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono" required>
+                    <p class="text-[10px] text-slate-400 mt-1">El brief creativo y la estimación de retorno residen en el Google Doc corporativo con permisos de lectura.</p>
                 </div>
             </div>
         `;
-        const actions = `<button type="button" onclick="ui.confirmRequestMktPackage('${this.escapeHTML(pkg.id)}')" class="min-h-[44px] bg-mars-yellow text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-all">Enviar Solicitud a Finanzas</button>`;
+        const actions = `<button type="button" onclick="ui.confirmRequestMktPackage()" class="min-h-[44px] bg-mars-yellow text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-all w-full sm:w-auto">Enviar Solicitud a Finanzas</button>`;
         this.showModal("Contratar Paquete Publicitario", html, actions);
     },
 
-    confirmRequestMktPackage(pkgId) {
+    confirmRequestMktPackage(pkgId = null) {
         if (!state.user) return;
         const mktPackages = typeof MARKETING_PACKAGES !== 'undefined' ? MARKETING_PACKAGES : [];
-        const pkg = mktPackages.find(p => p.id === pkgId);
-        if (!pkg) return;
+        const elTier = document.getElementById('campaign-tier');
+        const elUrl = document.getElementById('campaign-drive-url');
+        const elBudget = document.getElementById('campaign-budget');
 
-        const elTitle = document.getElementById('mkt-req-title');
-        const elUrl = document.getElementById('mkt-req-url');
-        if (!elTitle || !elUrl) return;
+        const finalPkgId = (elTier ? elTier.value : pkgId) || mktPackages[0]?.id;
+        const pkg = mktPackages.find(p => p.id === finalPkgId);
+        if (!pkg) return this.notify("Paquete publicitario no encontrado.", "error");
 
-        const title = this.cleanInput(elTitle.value);
-        const driveUrl = this.cleanInput(elUrl.value);
-        if (!title || !driveUrl) return this.notify("Debes indicar un título de campaña y el enlace Drive del dossier.", "warning");
+        const driveUrl = elUrl ? this.cleanInput(elUrl.value) : '';
+        const budget = elBudget ? parseFloat(elBudget.value) : pkg.price;
+
+        if (!driveUrl) return this.notify("Debes indicar el enlace Drive del brief publicitario.", "warning");
         if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
             return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
         }
-        if (ui.hasForbiddenWords && ui.hasForbiddenWords(title, 'Título Paquete Marketing', elTitle)) {
-            return;
+        if (isNaN(budget) || budget < 0) {
+            return this.notify("El presupuesto debe ser un número mayor o igual a cero.", "warning");
         }
 
         const co = state.data.companies[state.user.coId];
@@ -804,21 +819,26 @@ Object.assign(ui, {
             id: 'MKT-' + Date.now(),
             packageId: pkg.id,
             packageName: pkg.name,
-            price: pkg.price,
+            packageTier: pkg.type,
+            price: budget,
             totalActions: pkg.actions,
             executedActions: [],
-            title: title,
+            title: `Campaña ${pkg.name} (${pkg.type})`,
             driveUrl: driveUrl,
             status: 'PENDIENTE_FINANZAS',
             date: new Date().toLocaleString()
         };
 
         co.marketingCampaigns.unshift(newCamp);
-        ui.pushNotification(state.user.coId, 'FINANZAS', `Marketing solicita aprobar el paquete "${pkg.name}" por ${pkg.price} €v.`, 'warning');
+        ui.pushNotification(state.user.coId, 'FINANZAS', `Marketing solicita aprobar el paquete "${pkg.name}" por ${budget} €v.`, 'warning');
         state.save();
         this.closeModal();
         this.notify(`✅ Solicitud del ${pkg.name} enviada a Finanzas para su aprobación.`, "success");
         this.render();
+
+        try {
+            state.executeAction('UPDATE_MARKETING', { campaign: newCamp, driveUrl: driveUrl });
+        } catch(e) {}
     },
 
     modalConsumeMktAction(campId) {
@@ -903,26 +923,32 @@ Object.assign(ui, {
         if (!co) return auth.logout();
         
         const newSlogan = elSlogan ? this.cleanInput(elSlogan.value) : '';
-        const newValProp = elText ? this.cleanInput(elText.value) : '';
+        const newMission = elText ? this.cleanInput(elText.value) : '';
 
-        if (ui.hasForbiddenWords && (ui.hasForbiddenWords(newSlogan, 'Eslogan Corporativo', elSlogan) || ui.hasForbiddenWords(newValProp, 'Misión y Visión Corporativa', elText))) {
+        if (ui.hasForbiddenWords && (ui.hasForbiddenWords(newSlogan, 'Eslogan Corporativo', elSlogan) || ui.hasForbiddenWords(newMission, 'Misión y Visión Corporativa', elText))) {
             return;
         }
 
-        co.valueProposition = newValProp;
-        co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
+        co.pendingSlogan = newSlogan;
+        co.pendingMission = newMission;
+        co.brandStatus = 'PENDING_APPROVAL';
 
-        if (newSlogan !== co.slogan) {
-            co.brandApproval.pendingSlogan = newSlogan;
-            co.brandApproval.status = 'PENDIENTE';
-            co.brandApproval.feedback = '';
-            this.notify("⏳ Tu nuevo Eslogan se ha enviado a Coordinación para su validación previa. La Misión/Visión ha quedado guardada.", "info");
-        } else {
-            this.notify("✅ Misión y Propuesta de Valor actualizadas.", "success");
-        }
-        
+        co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
+        co.brandApproval.pendingSlogan = newSlogan;
+        co.brandApproval.status = 'PENDIENTE';
+        co.brandApproval.feedback = '';
+
+        this.notify("⏳ Propuesta de Eslogan y Misión enviada a Coordinación para su aprobación.", "info");
         state.save();
         this.render();
+
+        try {
+            state.executeAction('GENERIC_PATCH', {
+                pendingSlogan: newSlogan,
+                pendingMission: newMission,
+                brandStatus: 'PENDING_APPROVAL'
+            });
+        } catch(e) {}
     },
 
     saveCompanyLogoDrive() {

@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.02) ---
 
-const APP_VERSION = "1.1.18";
+const APP_VERSION = "1.1.19";
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const GOOGLE_DRIVE_REGEX = /^https:\/\/(docs|drive)\.google\.com\/(document|spreadsheets|presentation|file|drive\/folders)\/(d\/)?[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_.-]+)*(\?[^"'\s<>]*)?(#[^"'\s<>]*)?$/;
@@ -195,6 +195,24 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.19",
+      date: new Date().toISOString().split('T')[0],
+      title: "Contención de Precios B2B, Desacoplamiento de Bóveda y Validación Docente de Marca",
+      items: [
+        "Control numérico y validación estricta de precios en Mercado Secundario (B2B)",
+        "Desacoplamiento del Cronograma Maestro hacia el Dossier Corporativo",
+        "Circuito de aprobación docente de Eslogan y Misión en Coordinación",
+        "Erradicación de campos de texto libre en contratación de Campañas Publicitarias hacia Google Drive",
+        "Pipeline centralizado de descarte y purga de propuestas en staging"
+      ],
+      highlights: [
+        { type: "MERCADO", text: "Validación y sanitización numérica estricta en ofertas de mercado B2B." },
+        { type: "DOSSIER", text: "Cronograma curricular reubicado como hoja de ruta en el Dossier Corporativo." },
+        { type: "MARCA", text: "Circuito de aprobación previa de eslogan y misión en panel de Coordinador." },
+        { type: "MARKETING", text: "Brief publicitario exclusivo vía Google Drive sin texto libre." }
+      ]
+    },
     {
       version: "1.1.18",
       date: new Date().toISOString().split('T')[0],

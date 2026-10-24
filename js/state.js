@@ -314,6 +314,9 @@ const state = {
             co.loginStats.roles = co.loginStats.roles || {};
             co.classGroup = co.classGroup || 'A';
             co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
+            co.pendingSlogan = co.pendingSlogan || null;
+            co.pendingMission = co.pendingMission || null;
+            co.brandStatus = co.brandStatus || 'APPROVED';
             co.auxRoleRequest = co.auxRoleRequest || { status: co.roles['AUXILIAR'] ? 'APROBADO' : 'INACTIVO', dept: co.auxRoleDept || '', pin: this.getRolePin(co, 'AUXILIAR') || '' };
             co.deliverables = co.deliverables || {};
             
@@ -1078,6 +1081,36 @@ const state = {
             this.isSyncing = false;
             try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
         }
+    },
+
+    discardPendingProposal(coId, proposalType, proposalId = null) {
+        if (!coId || !this.data.companies?.[coId]) return;
+        const co = this.data.companies[coId];
+
+        if (proposalType === 'BRAND') {
+            delete co.pendingSlogan;
+            delete co.pendingMission;
+            co.brandStatus = 'REJECTED';
+            if (co.brandApproval) {
+                co.brandApproval.status = 'RECHAZADO';
+                delete co.brandApproval.pendingSlogan;
+                delete co.brandApproval.pendingLogo;
+                co.brandApproval.feedback = 'Propuesta de marca rechazada por Coordinación.';
+            }
+        } else if (proposalType === 'DELIVERABLE' && proposalId) {
+            if (co.deliverables?.[proposalId]) {
+                co.deliverables[proposalId].status = 'CEO_REVISION';
+            }
+        } else if (proposalType === 'MARKETING' && proposalId) {
+            const camp = (co.marketingCampaigns || []).find(c => c.id === proposalId);
+            if (camp) camp.status = 'DENEGADO';
+        } else if (proposalType === 'NAME_CHANGE') {
+            delete co.pendingName;
+            delete co.nameChangeReason;
+            co.nameChangeStatus = 'REJECTED';
+        }
+
+        this.save();
     },
 
     async submitDeliverable(docType, payload) {

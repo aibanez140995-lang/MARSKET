@@ -234,8 +234,13 @@ Object.assign(ui, {
                 <span class="text-white font-bold uppercase break-words">${this.escapeHTML(item.name)} (x${Number(item.qty)||1})</span>
                 <span class="text-slate-300 line-through shrink-0">${Number(item.price).toFixed(2)} €v (Base)</span>
             </div>
-            <label for="b2b-price" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Precio de Venta Propuesto (€v)</label>
-            <input type="number" id="b2b-price" value="${(item.price * 0.8).toFixed(2)}" step="0.5" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold mb-3 outline-none focus:border-mars-yellow">
+            <label for="market-category" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Segmento de Mercado</label>
+            <select id="market-category" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-xs text-white mb-3 outline-none focus:border-mars-yellow">
+                <option value="B2B" selected>B2B (Mercado Secundario entre Startups)</option>
+                <option value="B2C">B2C (Catálogo Oficial)</option>
+            </select>
+            <label for="input-unit-price" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Precio de Venta Propuesto (€v)</label>
+            <input type="number" id="input-unit-price" min="0.01" step="0.01" required value="${(item.price * 0.8).toFixed(2)}" oninput="if(parseFloat(this.value)<0) this.value='';" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold mb-3 outline-none focus:border-mars-yellow">
             <label for="b2b-obs" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Observaciones Técnicas</label>
             <textarea id="b2b-obs" placeholder="Observaciones técnicas de la pieza (estado, uso previo...)" class="w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white h-20 outline-none focus:border-mars-yellow"></textarea>
         `;
@@ -245,8 +250,11 @@ Object.assign(ui, {
 
     confirmPublishB2B(orderId, itemIndex) {
         const elObs = document.getElementById('b2b-obs');
-        const price = parseFloat(document.getElementById('b2b-price').value);
-        if(isNaN(price) || price <= 0) return this.notify("Precio inválido.", "warning");
+        const elPrice = document.getElementById('input-unit-price');
+        const price = elPrice ? parseFloat(elPrice.value) : NaN;
+        if(isNaN(price) || price <= 0) return this.notify("Precio unitario inválido. Debe ser un número estrictamente positivo.", "warning");
+        const elCat = document.getElementById('market-category');
+        const selectedMarket = (elCat && elCat.value) ? elCat.value : 'B2B';
         const obs = elObs ? this.cleanInput(elObs.value) : '';
 
         // FASE 4: Guardián Léxico Universal en Venta B2B

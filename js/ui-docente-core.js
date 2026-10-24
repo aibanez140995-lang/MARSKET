@@ -69,7 +69,8 @@ Object.assign(ui, {
                 case 'dash': {
                     const isFyqOrCoord = state.user.role === 'FYQ' || state.user.role.startsWith('COORD');
                     const fyqPanel = isFyqOrCoord ? this.renderFyqReceptionPanel() : '';
-                    subContainer.innerHTML = fyqPanel + this.renderAdminDash();
+                    const brandPanel = isCoord ? this.renderAdminBrandReview() : '';
+                    subContainer.innerHTML = brandPanel + fyqPanel + this.renderAdminDash();
                     break;
                 }
                 case 'eval': subContainer.innerHTML = this.renderAdminEval(); break;
@@ -87,6 +88,101 @@ Object.assign(ui, {
 
         wrapper.appendChild(subContainer);
         el.appendChild(wrapper);
+    },
+
+    renderAdminBrandReview() {
+        const companies = state.data.companies || {};
+        const pendingCos = Object.keys(companies).filter(cid => {
+            const co = companies[cid];
+            return co && (co.brandStatus === 'PENDING_APPROVAL' || (co.brandApproval && co.brandApproval.status === 'PENDIENTE' && co.brandApproval.pendingSlogan));
+        });
+
+        if (pendingCos.length === 0) return '';
+
+        const cardsHtml = pendingCos.map(cid => {
+            const co = companies[cid];
+            const coName = co.name || cid.toUpperCase();
+            const pSlogan = co.pendingSlogan || co.brandApproval?.pendingSlogan || '--';
+            const pMission = co.pendingMission || co.valueProposition || co.mission || '--';
+
+            return `
+            <div class="bg-slate-900 border border-amber-500/60 p-4 rounded mb-3 text-xs">
+                <div class="flex justify-between items-center mb-2 flex-wrap gap-2 border-b border-slate-800 pb-2">
+                    <span class="text-mars-cyan font-bold uppercase text-sm">${this.escapeHTML(coName)}</span>
+                    <span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 text-[10px] font-black uppercase">[PENDIENTE REVISIÓN MARCA]</span>
+                </div>
+                <div class="space-y-1.5 mb-3 text-slate-200">
+                    <p><strong class="text-mars-yellow uppercase">Eslogan Propuesto:</strong> "${this.escapeHTML(pSlogan)}"</p>
+                    <p><strong class="text-mars-cyan uppercase">Misión Propuesta:</strong> "${this.escapeHTML(pMission)}"</p>
+                </div>
+                <div class="flex gap-2 justify-end">
+                    <button type="button" onclick="ui.decideBrand('${this.escapeHTML(cid)}', true)" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ APROBAR ]</button>
+                    <button type="button" onclick="ui.decideBrand('${this.escapeHTML(cid)}', false)" class="min-h-[44px] bg-red-700 text-white font-black uppercase text-xs px-4 py-2 hover:bg-white hover:text-red-700 transition-all border border-red-500">[ RECHAZAR ]</button>
+                </div>
+            </div>
+            `;
+        }).join('');
+
+        return `
+        <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-amber-400 mb-6">
+            <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
+                <div>
+                    <h3 class="font-orbitron text-amber-400 text-xs sm:text-sm uppercase tracking-wider font-bold">Revisión de Marca de Startups</h3>
+                    <p class="text-[11px] text-slate-300">Validación obligatoria de eslogan y misión corporativa antes de publicación oficial.</p>
+                </div>
+                <span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2.5 py-1 text-xs font-black uppercase font-mono">${pendingCos.length} PENDIENTES</span>
+            </div>
+            ${cardsHtml}
+        </div>
+        `;
+    },
+
+    async decideBrand(cid, approved) {
+        if (!state.user || !state.user.admin) return;
+        const co = state.data.companies?.[cid];
+        if (!co) return;
+
+        if (approved) {
+            co.slogan = co.pendingSlogan || co.brandApproval?.pendingSlogan || co.slogan;
+            co.mission = co.pendingMission || co.valueProposition || co.mission;
+            co.valueProposition = co.mission;
+            delete co.pendingSlogan;
+            delete co.pendingMission;
+            co.brandStatus = 'APPROVED';
+            if (co.brandApproval) {
+                co.brandApproval.status = 'APROBADO';
+                delete co.brandApproval.pendingSlogan;
+            }
+            this.notify(`✅ Marca de ${co.name || cid} aprobada con éxito.`, "success");
+            ui.pushNotification(cid, 'MARKETING', 'La Coordinación ha APROBADO el eslogan y la misión corporativa.', 'success');
+        } else {
+            state.discardPendingProposal(cid, 'BRAND');
+            this.notify(`❌ Marca de ${co.name || cid} rechazada.`, "info");
+            ui.pushNotification(cid, 'MARKETING', 'La Coordinación ha descartado la propuesta de marca. Podéis reiniciar el flujo con una nueva propuesta adaptada a los criterios.', 'error');
+            if (typeof telemetry !== 'undefined' && telemetry.log) {
+                telemetry.log("PROPUESTA_DESCARTADA", `Propuesta de marca de ${cid} descartada por Coordinación.`);
+            }
+        }
+
+        state.save();
+        this.render();
+
+        try {
+            const token = state.getAuthToken(state.user, state.data);
+            await fetch(`/api/company/${cid}/action`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Marsket-Auth': token
+                },
+                body: JSON.stringify({
+                    action: 'COORDINATOR_DECIDE_BRAND',
+                    payload: { approved: Boolean(approved) }
+                })
+            });
+        } catch(e) {
+            console.warn("[ACTION] Error notificando decisión de marca al servidor:", e);
+        }
     },
 
     renderFyqReceptionPanel() {

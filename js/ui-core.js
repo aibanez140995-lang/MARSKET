@@ -1732,7 +1732,17 @@ const ui = {
             case 'orders': vp.innerHTML = hero + notifs; this.viewOrders(vp); break;
             case 'finance': vp.innerHTML = hero + notifs; this.viewFinance(vp); break;
             case 'admin': this.viewAdmin(vp); break;
-            case 'dossier': vp.innerHTML = hero + notifs; this.viewDossier(vp); break;
+            case 'dossier': {
+                vp.innerHTML = hero + notifs;
+                this.viewDossier(vp);
+                if (this.renderCronogramaSection) {
+                    const cronoDiv = document.createElement('div');
+                    cronoDiv.className = 'mt-6';
+                    cronoDiv.innerHTML = this.renderCronogramaSection();
+                    vp.appendChild(cronoDiv);
+                }
+                break;
+            }
             case 'brand': vp.innerHTML = hero + notifs; this.viewBrand(vp); break;
             case 'ailog': vp.innerHTML = hero + notifs; this.viewAILog(vp); break;
             case 'tech': vp.innerHTML = hero + notifs; this.viewTech(vp); break;
@@ -1748,6 +1758,101 @@ const ui = {
         if (typeof window !== 'undefined' && prevScrollY > 0) {
             window.scrollTo({ top: prevScrollY, behavior: 'instant' });
         }
+    },
+
+    setCronogramaSubjectFilter(subj) {
+        this.cronogramaFilter = subj;
+        this.render();
+    },
+
+    toggleCronograma() {
+        this.cronogramaExpanded = !this.cronogramaExpanded;
+        this.render();
+    },
+
+    renderCronogramaSection() {
+        const co = (state.user && state.user.coId && state.data.companies) ? state.data.companies[state.user.coId] : null;
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const activeSubj = this.cronogramaFilter || 'ALL';
+        const filteredDefs = activeSubj === 'ALL' ? defs : defs.filter(d => d.subject === activeSubj);
+        const deadlinesData = (state.data.config && state.data.config.deadlines) ? state.data.config.deadlines : {};
+
+        const subjectColors = {
+            'FYQ': 'text-mars-cyan border-mars-cyan bg-mars-cyan/10',
+            'LYE': 'text-mars-yellow border-mars-yellow bg-mars-yellow/10',
+            'ECO': 'text-mars-green border-mars-green bg-mars-green/10',
+            'MAT': 'text-amber-400 border-amber-400 bg-amber-400/10',
+            'LEN': 'text-mars-magenta border-mars-magenta bg-mars-magenta/10',
+            'ING': 'text-blue-400 border-blue-400 bg-blue-400/10'
+        };
+
+        const subjectNavButtons = [
+            { id: 'ALL', label: `TODOS (${defs.length})` },
+            { id: 'FYQ', label: 'FYQ' },
+            { id: 'LYE', label: 'LYE' },
+            { id: 'ECO', label: 'ECO' },
+            { id: 'MAT', label: 'MAT' },
+            { id: 'LEN', label: 'LEN' },
+            { id: 'ING', label: 'ING' }
+        ].map(btn => `
+            <button type="button" role="tab" aria-selected="${activeSubj === btn.id}" onclick="ui.setCronogramaSubjectFilter('${btn.id}')" class="min-h-[44px] px-3 py-2 text-xs font-bold uppercase transition-colors whitespace-nowrap ${activeSubj === btn.id ? 'bg-mars-cyan text-black' : 'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'}">
+                ${btn.label}
+            </button>
+        `).join('');
+
+        const deadlineCardsHtml = filteredDefs.map(d => {
+            const dateStr = deadlinesData[d.key] || d.defaultDate;
+            const st = this.getDeadlineStatus(dateStr);
+            const isDelivered = !!(co && co.deliverables && co.deliverables[d.key]);
+            const sBadge = subjectColors[d.subject] || 'text-white border-white bg-white/10';
+            const displayDate = String(dateStr).replace('T', ' ');
+
+            return `
+            <div class="terminal-border bg-slate-950 p-3.5 sm:p-4 border border-slate-800 flex flex-col justify-between hover:border-mars-cyan/60 transition-all">
+                <div>
+                    <div class="flex justify-between items-center mb-2 flex-wrap gap-1.5">
+                        <span class="text-xs font-black uppercase px-2 py-0.5 border ${sBadge}">${this.escapeHTML(d.subject)} • ${this.escapeHTML(d.weight)}</span>
+                        ${isDelivered 
+                            ? `<span class="text-xs font-black uppercase text-mars-green bg-mars-green/10 border border-mars-green/50 px-2 py-0.5">✓ ENTREGADO</span>`
+                            : `<span class="text-xs font-bold uppercase text-slate-300 bg-black border border-slate-700 px-2 py-0.5">PENDIENTE</span>`}
+                    </div>
+                    <h4 class="text-white font-bold text-xs sm:text-sm uppercase leading-snug mb-1.5 break-words">${this.escapeHTML(d.name)}</h4>
+                    <span class="text-xs text-slate-300 block mb-2.5 uppercase font-mono">Resp: ${this.escapeHTML(d.role.replace('_',' '))}</span>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center text-xs font-mono text-white mb-2 pt-2 border-t border-slate-800 gap-2">
+                        <span class="text-slate-300 text-xs uppercase">Límite:</span>
+                        <span class="font-bold tracking-tight">${this.escapeHTML(displayDate)}</span>
+                    </div>
+                    <div class="w-full text-center py-1.5 text-xs font-black uppercase tracking-wider ${st.class}">
+                        ${this.escapeHTML(st.text)}
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+
+        return `
+        <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow mb-8">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 border-b border-mars-border pb-3">
+                <div>
+                    <h3 class="font-orbitron text-mars-yellow text-sm sm:text-base uppercase tracking-tighter font-black">Cronograma Maestro Curricular</h3>
+                    <p class="text-xs text-slate-300 uppercase mt-1">Hoja de ruta estratégica de entregables curriculares y plazos de entrega.</p>
+                </div>
+                ${(state.user && state.user.role === 'CEO') ? `<button type="button" onclick="ui.modalCreateAuxRole()" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase tracking-wider hover:bg-mars-cyan hover:text-black transition-all shrink-0 w-full sm:w-auto">Gestionar Rol Observador</button>` : ''}
+            </div>
+
+            <!-- Filtros por Materia -->
+            <div role="tablist" aria-label="Filtrar entregables por asignatura" class="flex flex-wrap gap-2 pb-2 mb-4">
+                ${subjectNavButtons}
+            </div>
+
+            <button type="button" aria-expanded="${!!this.cronogramaExpanded}" onclick="ui.toggleCronograma()" class="sm:hidden w-full min-h-[44px] mb-3 bg-slate-900 border border-mars-yellow/60 text-mars-yellow font-black uppercase text-xs py-2 px-3">
+                ${this.cronogramaExpanded ? '▲ PLEGAR PLAZOS' : `▼ DESPLEGAR ${filteredDefs.length} PLAZOS`}
+            </button>
+            <div class="${this.cronogramaExpanded ? 'grid' : 'hidden sm:grid'} grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                ${deadlineCardsHtml}
+            </div>
+        </div>`;
     },
 
     renderDocBadge(title, docObj, short=false) {

@@ -205,6 +205,9 @@ export async function onRequestPost(context) {
 
             case 'UPDATE_MARKETING': {
                 co.marketingCampaigns = Array.isArray(co.marketingCampaigns) ? co.marketingCampaigns : [];
+                if (p.driveUrl && !GOOGLE_DRIVE_REGEX.test(p.driveUrl)) {
+                    return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL' }), { status: 400, headers: CORS_HEADERS });
+                }
                 if (p.campaign) {
                     if (p.campaign.driveUrl && !GOOGLE_DRIVE_REGEX.test(p.campaign.driveUrl)) {
                         return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL' }), { status: 400, headers: CORS_HEADERS });
@@ -287,6 +290,35 @@ export async function onRequestPost(context) {
                 break;
             }
 
+            case 'COORDINATOR_DECIDE_BRAND': {
+                if (!auth.isCoordinator && !auth.admin) {
+                    return new Response(JSON.stringify({ error: 'UNAUTHORIZED_ROLE', message: 'Solo Coordinación puede validar marcas.' }), { status: 403, headers: CORS_HEADERS });
+                }
+                const approved = Boolean(p.approved);
+                if (approved) {
+                    co.slogan = co.pendingSlogan || co.brandApproval?.pendingSlogan || co.slogan || '';
+                    co.mission = co.pendingMission || co.valueProposition || co.mission || '';
+                    co.valueProposition = co.mission;
+                    delete co.pendingSlogan;
+                    delete co.pendingMission;
+                    delete co.brandStatus;
+                    if (co.brandApproval) {
+                        co.brandApproval.status = 'APROBADO';
+                        delete co.brandApproval.pendingSlogan;
+                    }
+                } else {
+                    delete co.pendingSlogan;
+                    delete co.pendingMission;
+                    co.brandStatus = 'REJECTED';
+                    if (co.brandApproval) {
+                        co.brandApproval.status = 'RECHAZADO';
+                        delete co.brandApproval.pendingSlogan;
+                        co.brandApproval.feedback = 'Propuesta de marca rechazada por Coordinación.';
+                    }
+                }
+                break;
+            }
+
             case 'VOTE_MOTION': {
                 const motionId = String(p.id || p.motionId || '').trim();
                 const voteValue = String(p.vote || '').trim();
@@ -343,7 +375,7 @@ export async function onRequestPost(context) {
             }
 
             case 'GENERIC_PATCH': {
-                const allowed = ['slogan', 'valueProposition', 'cart', 'votingMotions', 'flightTests', 'bom', 'brandApproval'];
+                const allowed = ['slogan', 'valueProposition', 'cart', 'votingMotions', 'flightTests', 'bom', 'brandApproval', 'pendingSlogan', 'pendingMission', 'brandStatus'];
                 for (const k of allowed) {
                     if (p[k] !== undefined) {
                         if (k === 'votingMotions' && Array.isArray(p[k])) {
