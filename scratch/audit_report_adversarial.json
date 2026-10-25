@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-24T06:52:41.735Z",
+  "timestamp": "2026-10-25T13:02:49.950Z",
   "environment": "HTTP standard http://127.0.0.1:3000/ (Tailwind compilado css/tailwind.css)",
   "gates": {
     "G8": {
@@ -36,86 +36,8 @@
     },
     "G16": {
       "status": "CORRECTO",
-      "clsScore": 0.00003033592995440354,
-      "clsTopShifts": [
-        {
-          "value": 0.00003033592995440354,
-          "sources": [
-            {
-              "nodeTag": "SPAN",
-              "nodeId": "hud-balance",
-              "previousRect": {
-                "x": 359.46875,
-                "y": 156,
-                "width": 72.796875,
-                "height": 16,
-                "top": 156,
-                "right": 432.265625,
-                "bottom": 172,
-                "left": 359.46875
-              },
-              "currentRect": {
-                "x": 352.265625,
-                "y": 156,
-                "width": 80,
-                "height": 16,
-                "top": 156,
-                "right": 432.265625,
-                "bottom": 172,
-                "left": 352.265625
-              }
-            },
-            {
-              "nodeTag": "SPAN",
-              "nodeId": "",
-              "previousRect": {
-                "x": 308.25,
-                "y": 156,
-                "width": 43.21875,
-                "height": 16,
-                "top": 156,
-                "right": 351.46875,
-                "bottom": 172,
-                "left": 308.25
-              },
-              "currentRect": {
-                "x": 301.046875,
-                "y": 156,
-                "width": 43.21875,
-                "height": 16,
-                "top": 156,
-                "right": 344.265625,
-                "bottom": 172,
-                "left": 301.046875
-              }
-            },
-            {
-              "nodeTag": "SPAN",
-              "nodeId": "",
-              "previousRect": {
-                "x": 293.046875,
-                "y": 156,
-                "width": 7.203125,
-                "height": 16,
-                "top": 156,
-                "right": 300.25,
-                "bottom": 172,
-                "left": 293.046875
-              },
-              "currentRect": {
-                "x": 285.84375,
-                "y": 156,
-                "width": 7.203125,
-                "height": 16,
-                "top": 156,
-                "right": 293.046875,
-                "bottom": 172,
-                "left": 285.84375
-              }
-            }
-          ]
-        }
-      ],
+      "clsScore": 0,
+      "clsTopShifts": [],
       "touchViolationsCount": 0,
       "touchViolations": [],
       "sampleCompliant": [

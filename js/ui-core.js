@@ -1,5 +1,5 @@
 // js/ui-core.js
-// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.25) ---
+// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.26) ---
 
 // Constante global GOOGLE_DRIVE_REGEX centralizada en js/config.js
 
@@ -888,15 +888,39 @@ const ui = {
         if (isDocente) {
             const isCoord = Boolean(state.user && state.user.role && state.user.role.startsWith('COORD_'));
             return `
-            <div class="space-y-2 font-mono text-xs leading-relaxed text-slate-200">
+            <div class="space-y-3 font-mono text-xs leading-relaxed text-slate-200">
+                <!-- Tarjeta de Misión del Rol -->
+                <div class="bg-mars-cyan/10 border-l-4 border-mars-cyan p-3 bg-slate-950">
+                    <div class="flex items-center justify-between gap-2 flex-wrap mb-1">
+                        <span class="text-xs font-black uppercase text-mars-cyan tracking-wider">🎓 PUESTO: CLAUSTRO DOCENTE / EVALUADOR</span>
+                        <span class="text-[10px] bg-black text-mars-green border border-mars-green/40 px-2 py-0.5 font-bold uppercase">MANDO EDUCATIVO</span>
+                    </div>
+                    <p class="text-white text-xs font-semibold leading-relaxed">
+                        <strong>Orden de Misión:</strong> Supervisar el aprendizaje competencial interdisciplinar de las 6 materias LOMLOE, calificar evidencias en Google Drive mediante rúbricas y regular el ecosistema mercantil y aduanero.
+                    </p>
+                </div>
+
+                <!-- Checklist Táctico de 3 Minutos -->
+                <div class="bg-slate-900 border border-slate-800 p-3">
+                    <p class="text-mars-yellow font-bold uppercase text-xs mb-2 flex items-center gap-1.5">
+                        <span>⏱️ Checklist Rápido de Aula (3 Minutos):</span>
+                    </p>
+                    <ol class="space-y-1.5 text-xs text-slate-300 pl-4 list-decimal">
+                        <li><strong>Revisar Aduana B2B y Solicitudes I+D:</strong> Aprueba transferencias entre startups o valida componentes externos revisando su memoria Drive.</li>
+                        <li><strong>Evaluar Entregables de tu Materia:</strong> Entra en Evaluación Curricular, abre el enlace verificado de Google Drive y aplica la rúbrica oficial.</li>
+                        <li><strong>Monitorear Convivencia:</strong> Consulta las alertas léxicas y responde a las dudas del buzón de alumnos.</li>
+                    </ol>
+                </div>
+
                 <!-- 1. Atención Rápida en Aula -->
                 <details open class="group bg-slate-900/80 border border-slate-800 rounded p-3 mb-2 transition-colors">
                     <summary class="cursor-pointer font-bold text-xs uppercase flex justify-between items-center text-mars-cyan select-none min-h-[44px]">
-                        <span>⚡ 1. Atención Rápida en Aula</span>
+                        <span>⚡ 1. Atención Rápida en Aula & Aduana</span>
                         <span class="text-slate-400 group-open:rotate-180 transition-transform font-mono text-sm">▼</span>
                     </summary>
                     <div class="pt-3 border-t border-slate-800/60 mt-2 space-y-2 text-slate-300">
                         <p><strong class="text-white">Aduana B2B:</strong> Supervisa y aprueba transferencias de material secundario entre startups para liberar fondos retenidos en el Libro Mayor.</p>
+                        <p><strong class="text-white">Solicitudes I+D Especiales:</strong> Examina la memoria técnica en Google Drive presentada por el rol Técnico antes de fijar el precio e integrarla al catálogo.</p>
                         <p><strong class="text-white">Identidades de Marca:</strong> Revisa propuestas de eslogan y misión corporativa antes de su proyección pública en el HUD.</p>
                         <p><strong class="text-white">Alertas Léxicas y Régimen AEE:</strong> Monitoriza incidencias en tiempo real (nombres propios o lenguaje soez) con imposición de sanciones disciplinarias.</p>
                     </div>
@@ -928,10 +952,22 @@ const ui = {
                         <p><strong class="text-white">Backups Cloudflare D1:</strong> Gestión de instantáneas del estado global y descargas de seguridad JSON.</p>
                     </div>
                 </details>` : ''}
+
+                <!-- 4. Pautas y Errores Frecuentes Docentes -->
+                <details class="group bg-slate-900/80 border border-slate-800 rounded p-3 mb-2 transition-colors">
+                    <summary class="cursor-pointer font-bold text-xs uppercase flex justify-between items-center text-amber-400 select-none min-h-[44px]">
+                        <span>⚠️ 4. Pautas de Calidad y Avisos Docentes</span>
+                        <span class="text-slate-400 group-open:rotate-180 transition-transform font-mono text-sm">▼</span>
+                    </summary>
+                    <div class="pt-3 border-t border-slate-800/60 mt-2 space-y-2 text-slate-300">
+                        <p><strong class="text-white">Permisos de Google Drive:</strong> Si un alumno envía un enlace cerrado sin permisos de lectura ("Acceso denegado"), indícaselo para que habilite <em>"Cualquiera con el enlace puede ver"</em>.</p>
+                        <p><strong class="text-white">Política Zero-PII:</strong> Verifica que en los documentos y memorias los alumnos utilicen sus alias de equipo y roles corporativos, salvaguardando la privacidad según RGPD.</p>
+                    </div>
+                </details>
             </div>`;
         }
 
-        // Estructura para Alumnos segmentada en 4 Acordeones Interactivos
+        // Estructura para Alumnos segmentada en Acordeones Interactivos y Tarjeta de Misión
         const roleDeliverables = defs.filter(d => d.role === role);
         const roleDeliverablesHtml = roleDeliverables.length > 0 ? roleDeliverables.map(d => {
             const docObj = docs[d.key];
@@ -943,10 +979,21 @@ const ui = {
             return `<li class="border-b border-slate-800/80 pb-1.5 flex justify-between items-center gap-2 flex-wrap"><span><strong class="text-white">${this.escapeHTML(d.shortName || d.name)}</strong> (${this.escapeHTML(d.subject)}): ${statusLabel}</span>${lockLabel}</li>`;
         }).join('') : '<li class="text-slate-400 italic">No tienes entregables curriculares asignados directamente a tu rol. Supervisa o asiste al equipo en el Dossier.</li>';
 
+        let roleMissionHtml = '';
+        let roleChecklistHtml = '';
         let roleActionsHtml = '';
         let roleCollabHtml = '';
+        let roleErrorsHtml = '';
+
         switch(role) {
             case 'CEO':
+                roleMissionHtml = `<strong>Orden de Misión:</strong> Liderar la startup marciana, arbitrar las asambleas, coordinar compras y visar todos los entregables antes de elevarlos a los profesores.`;
+                roleChecklistHtml = `
+                <ol class="space-y-1.5 text-xs text-slate-300 pl-4 list-decimal">
+                    <li><strong>Comprobar Saldo y HUD:</strong> Consulta el balance financiero y el estado de la nave en la barra superior.</li>
+                    <li><strong>Auditar Entregables en Dossier:</strong> Revisa las memorias en Google Drive antes de visar; si faltan datos, devuélvelo con motivo claro.</li>
+                    <li><strong>Convocar Asamblea:</strong> Coordina prioridades con I+D, Finanzas, Marketing y Operaciones; vota mociones si surge algún conflicto.</li>
+                </ol>`;
                 roleActionsHtml = `
                 <div class="space-y-2">
                     <p><strong class="text-white">Supervisión y Gobernanza:</strong> Modera la asamblea general, ejerce tu voto de calidad en empates y tramita mociones colegiadas.</p>
@@ -959,8 +1006,22 @@ const ui = {
                     </div>
                 </div>`;
                 roleCollabHtml = `El CEO supervisa el semáforo temporal en el Dossier, coordina las compras iniciadas por I+D y aprobadas por Finanzas, y garantiza la entrega a tiempo de todas las áreas.`;
+                roleErrorsHtml = `
+                <div class="space-y-1.5 text-xs text-slate-300">
+                    <p><strong class="text-white">1. Visado a ciegas:</strong> Nunca apruebes un entregable sin abrir el enlace de Google Drive y comprobar que la plantilla está completa y visible.</p>
+                    <p><strong class="text-white">2. Motivos de devolución:</strong> Si devuelves un trabajo, selecciona el motivo exacto para que el responsable lo subsane rápidamente.</p>
+                    <p><strong class="text-white">3. Convivencia y PINs:</strong> Los PINs son personales e intransferibles. Queda prohibido compartir accesos.</p>
+                </div>`;
                 break;
+
             case 'TECNICO':
+                roleMissionHtml = `<strong>Orden de Misión:</strong> Diseñar y ensayar el propulsor aeroespacial, optimizar la relación altura/coste en el banco de pruebas y solicitar materiales de I+D exclusivamente mediante memoria en Google Drive.`;
+                roleChecklistHtml = `
+                <ol class="space-y-1.5 text-xs text-slate-300 pl-4 list-decimal">
+                    <li><strong>Comprobar Banco de Pruebas:</strong> Introduce los mililitros de vinagre, gramos de NaHCO3 y mide la altura alcanzada en milímetros (mm).</li>
+                    <li><strong>Actualizar Hoja de Taller BOM:</strong> Vincula el enlace Drive oficial con los componentes del prototipo para Física y Química.</li>
+                    <li><strong>Solicitud de Piezas Especiales:</strong> Si requieres un componente fuera de catálogo, prepara la ficha técnica en Google Drive/Docs y envía el enlace (cero texto libre).</li>
+                </ol>`;
                 roleActionsHtml = `
                 <div class="space-y-2">
                     <p><strong class="text-white">Aprovisionamiento I+D:</strong> Explora el catálogo SUPERMARS-KET y añade piezas al borrador técnico adjuntando la memoria técnica en Google Drive.</p>
@@ -972,8 +1033,22 @@ const ui = {
                     </div>
                 </div>`;
                 roleCollabHtml = `I+D solicita componentes a Finanzas; una vez aprobados, Operaciones los recibe en el taller y verifica el coste real físico.`;
+                roleErrorsHtml = `
+                <div class="space-y-1.5 text-xs text-slate-300">
+                    <p><strong class="text-white">1. Cero Texto Libre en Piezas Especiales:</strong> No intentes describir la pieza con texto libre en la app. Toda la descripción técnica, medidas y planos deben ir en tu documento oficial de Google Drive o Google Docs.</p>
+                    <p><strong class="text-white">2. Permisos de Enlace:</strong> Configura el enlace de Drive como <em>"Cualquiera con el enlace puede ver"</em> antes de enviarlo.</p>
+                    <p><strong class="text-white">3. Unidades en Banco de Pruebas:</strong> La altura debe introducirse siempre en milímetros (mm), no en centímetros ni metros.</p>
+                </div>`;
                 break;
+
             case 'FINANZAS':
+                roleMissionHtml = `<strong>Orden de Misión:</strong> Custodiar la solvencia de la startup marciana, autorizar compras de I+D y marketing, auditar el Libro Mayor y elaborar los balances económicos oficiales.`;
+                roleChecklistHtml = `
+                <ol class="space-y-1.5 text-xs text-slate-300 pl-4 list-decimal">
+                    <li><strong>Revisar Bóveda de Órdenes:</strong> Comprueba si I+D o Marketing tienen pedidos pendientes de aprobación financiera.</li>
+                    <li><strong>Auditar Saldo en HUD:</strong> Verifica que la startup tenga liquidez suficiente antes de autorizar cualquier compra.</li>
+                    <li><strong>Comprobar Libro Mayor:</strong> Inspecciona cobros de patrocinio, pagos de taller y retenciones aduaneras.</li>
+                </ol>`;
                 roleActionsHtml = `
                 <div class="space-y-2">
                     <p><strong class="text-white">Auditoría Presupuestaria:</strong> Aprueba o rechaza solicitudes de componentes de I+D y campañas de marketing según liquidez disponible.</p>
@@ -986,8 +1061,21 @@ const ui = {
                     </div>
                 </div>`;
                 roleCollabHtml = `Finanzas garantiza la solvencia de la startup impidiendo sobrecostes y audita las partidas de inversión propuestas por I+D y Marketing.`;
+                roleErrorsHtml = `
+                <div class="space-y-1.5 text-xs text-slate-300">
+                    <p><strong class="text-white">1. Saldo Negativo:</strong> Nunca apruebes órdenes que excedan los fondos disponibles; el sistema bloqueará la operación por insolvencia.</p>
+                    <p><strong class="text-white">2. Formato de Balances:</strong> Entrega las cuentas de resultados y balances en Google Sheets con fórmulas automáticas sin datos inventados.</p>
+                </div>`;
                 break;
+
             case 'MARKETING':
+                roleMissionHtml = `<strong>Orden de Misión:</strong> Construir la identidad corporativa, contratar campañas publicitarias predefinidas y liderar la defensa pública del modelo de negocio.`;
+                roleChecklistHtml = `
+                <ol class="space-y-1.5 text-xs text-slate-300 pl-4 list-decimal">
+                    <li><strong>Proponer Eslogan y Misión:</strong> Envía tu propuesta corporativa a Coordinación para su homologación oficial.</li>
+                    <li><strong>Contratar Campañas Publicitarias:</strong> Elige entre los 4 paquetes oficiales (Satélite, Tradicional, Híbrido, Supernova) y adjunta justificación Drive.</li>
+                    <li><strong>Dossier y Presentación:</strong> Prepara el pitch oral de Lengua e Inglés en Google Slides.</li>
+                </ol>`;
                 roleActionsHtml = `
                 <div class="space-y-2">
                     <p><strong class="text-white">Identidad Corporativa:</strong> Propón el eslogan y la misión en el HUD; el envío queda en staging hasta su aprobación en Coordinación.</p>
@@ -999,8 +1087,21 @@ const ui = {
                     </div>
                 </div>`;
                 roleCollabHtml = `Marketing diseña la identidad y solicita fondos a Finanzas para campañas; coordina con CEO la defensa del modelo de negocio.`;
+                roleErrorsHtml = `
+                <div class="space-y-1.5 text-xs text-slate-300">
+                    <p><strong class="text-white">1. Propiedad Intelectual:</strong> No utilices marcas registradas reales ni eslóganes comerciales protegidos.</p>
+                    <p><strong class="text-white">2. Justificación de Campañas:</strong> Cada acción publicitaria debe estar respaldada por un documento en Google Drive con bocetos o métricas.</p>
+                </div>`;
                 break;
+
             case 'OPERACIONES_IA':
+                roleMissionHtml = `<strong>Orden de Misión:</strong> Unir el diseño digital con el taller físico mediante el control de recepción de piezas y BOM, y supervisar el uso ético y documentado de la Inteligencia Artificial.`;
+                roleChecklistHtml = `
+                <ol class="space-y-1.5 text-xs text-slate-300 pl-4 list-decimal">
+                    <li><strong>Logística en Taller:</strong> Comprueba los pedidos aprobados por Finanzas e introduce el coste real en euros del ticket/comercio físico.</li>
+                    <li><strong>Hoja de Taller (FyQ):</strong> Valida el estado de estanqueidad y dimensiones de las piezas del cohete.</li>
+                    <li><strong>Registrar en Bitácora IA:</strong> Todo uso de IA generativa debe registrarse con su prompt exacto y validación crítica humana.</li>
+                </ol>`;
                 roleActionsHtml = `
                 <div class="space-y-2">
                     <p><strong class="text-white">Logística en Taller:</strong> Valida pedidos aprobados registrando el coste real (€) y las piezas físicas recibidas.</p>
@@ -1013,8 +1114,21 @@ const ui = {
                     </div>
                 </div>`;
                 roleCollabHtml = `Operaciones une el plano virtual con el taller físico y custodia la integridad documental y ética del uso de Inteligencia Artificial.`;
+                roleErrorsHtml = `
+                <div class="space-y-1.5 text-xs text-slate-300">
+                    <p><strong class="text-white">1. Comercios Oficiales:</strong> Selecciona el comercio exacto donde se adquirió el producto (Mercadona, Carrefour, Eroski, Dia, Ferretería, Bazar o Genérico).</p>
+                    <p><strong class="text-white">2. Transparencia IA:</strong> El uso no declarado de IA conllevará penalización AEE; adjunta siempre el enlace a Google Docs con el prompt.</p>
+                </div>`;
                 break;
-            default:
+
+            default: // AUXILIAR
+                roleMissionHtml = `<strong>Orden de Misión:</strong> Ejercer veeduría y apoyo transversal en la startup, colaborar con el departamento asignado y participar con voz y voto en la asamblea general.`;
+                roleChecklistHtml = `
+                <ol class="space-y-1.5 text-xs text-slate-300 pl-4 list-decimal">
+                    <li><strong>Consultar Asignación:</strong> Verifica a qué departamento das apoyo en esta sesión (I+D, Finanzas, Marketing u Operaciones).</li>
+                    <li><strong>Veeduría en Asamblea:</strong> Participa activamente en la votación de mociones y resoluciones corporativas.</li>
+                    <li><strong>Control de Enlaces Drive:</strong> Abre todos los enlaces en modo incógnito para verificar que el docente no tendrá bloqueos de acceso.</li>
+                </ol>`;
                 roleActionsHtml = `
                 <div class="space-y-2">
                     <p><strong class="text-white">Veeduría y Apoyo:</strong> Participa en las asambleas, apoya al departamento al que estás vinculado y audita el avance global.</p>
@@ -1024,15 +1138,37 @@ const ui = {
                     </div>
                 </div>`;
                 roleCollabHtml = `El rol auxiliar colabora activamente en la gobernanza y aporta visión externa para resolver cuellos de botella.`;
+                roleErrorsHtml = `
+                <div class="space-y-1.5 text-xs text-slate-300">
+                    <p><strong class="text-white">1. Enlaces Privados:</strong> Ayuda a tu equipo revisando que ningún enlace a Google Drive pida iniciar sesión o tenga permisos restringidos.</p>
+                    <p><strong class="text-white">2. Participación en Asamblea:</strong> En caso de empate, tu voto y sugerencias ayudan a desbloquear decisiones del CEO.</p>
+                </div>`;
                 break;
         }
 
         return `
-        <div class="space-y-2 font-mono text-xs leading-relaxed text-slate-200">
+        <div class="space-y-3 font-mono text-xs leading-relaxed text-slate-200">
+            <!-- Tarjeta de Misión del Rol -->
+            <div class="bg-mars-cyan/10 border-l-4 border-mars-cyan p-3 bg-slate-950">
+                <div class="flex items-center justify-between gap-2 flex-wrap mb-1">
+                    <span class="text-xs font-black uppercase text-mars-cyan tracking-wider">🎯 PUESTO: ${role.replace('_', ' ')}</span>
+                    <span class="text-[10px] bg-black text-mars-green border border-mars-green/40 px-2 py-0.5 font-bold uppercase">ORDEN DE MISIÓN</span>
+                </div>
+                <p class="text-white text-xs font-semibold leading-relaxed">${roleMissionHtml}</p>
+            </div>
+
+            <!-- Checklist Táctico de 3 Minutos -->
+            <div class="bg-slate-900 border border-slate-800 p-3">
+                <p class="text-mars-yellow font-bold uppercase text-xs mb-2 flex items-center gap-1.5">
+                    <span>⏱️ Checklist Táctico de 3 Minutos (Al Iniciar Sesión):</span>
+                </p>
+                ${roleChecklistHtml}
+            </div>
+
             <!-- 1. ¿Qué puedo hacer yo en mi puesto? -->
             <details open class="group bg-slate-900/80 border border-slate-800 rounded p-3 mb-2 transition-colors">
                 <summary class="cursor-pointer font-bold text-xs uppercase flex justify-between items-center text-mars-cyan select-none min-h-[44px]">
-                    <span>🎯 1. ¿Qué puedo hacer yo en mi puesto?</span>
+                    <span>🛠️ 1. ¿Qué puedo hacer yo en mi puesto?</span>
                     <span class="text-slate-400 group-open:rotate-180 transition-transform font-mono text-sm">▼</span>
                 </summary>
                 <div class="pt-3 border-t border-slate-800/60 mt-2 space-y-2 text-slate-300">
@@ -1065,10 +1201,21 @@ const ui = {
                 </div>
             </details>
 
-            <!-- 4. Reglas de Oro AEE -->
+            <!-- 4. Avisos de Errores Frecuentes y Cómo Evitarlos -->
+            <details class="group bg-slate-900/80 border border-slate-800 rounded p-3 mb-2 transition-colors">
+                <summary class="cursor-pointer font-bold text-xs uppercase flex justify-between items-center text-amber-400 select-none min-h-[44px]">
+                    <span>⚠️ 4. Avisos de Errores Frecuentes y Cómo Evitarlos</span>
+                    <span class="text-slate-400 group-open:rotate-180 transition-transform font-mono text-sm">▼</span>
+                </summary>
+                <div class="pt-3 border-t border-slate-800/60 mt-2 space-y-2 text-slate-300">
+                    ${roleErrorsHtml}
+                </div>
+            </details>
+
+            <!-- 5. Reglas de Oro AEE -->
             <details class="group bg-slate-900/80 border border-slate-800 rounded p-3 mb-2 transition-colors">
                 <summary class="cursor-pointer font-bold text-xs uppercase flex justify-between items-center text-mars-cyan select-none min-h-[44px]">
-                    <span>⚖️ 4. Reglas de Oro AEE</span>
+                    <span>⚖️ 5. Reglas de Oro AEE</span>
                     <span class="text-slate-400 group-open:rotate-180 transition-transform font-mono text-sm">▼</span>
                 </summary>
                 <div class="pt-3 border-t border-slate-800/60 mt-2 space-y-2 text-slate-300">
@@ -1252,7 +1399,7 @@ const ui = {
     },
 
     showGuide(defaultRole = null) {
-        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.16';
+        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.26';
         let initialRole = defaultRole;
         if (!initialRole) {
             if (state.user) {
@@ -1755,8 +1902,10 @@ const ui = {
         });
 
         const activeTabEl = document.querySelector(`.nav-tab[data-tab-id="${this.current}"]`);
-        if (activeTabEl && typeof window !== 'undefined' && window.innerWidth <= 640) {
-            activeTabEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        const navContainer = document.getElementById('hud-nav');
+        if (activeTabEl && navContainer && typeof window !== 'undefined' && window.innerWidth <= 640) {
+            const scrollTarget = activeTabEl.offsetLeft - (navContainer.clientWidth / 2) + (activeTabEl.clientWidth / 2);
+            navContainer.scrollTo({ left: Math.max(0, scrollTarget), behavior: 'smooth' });
         }
 
         this.updateBadges();

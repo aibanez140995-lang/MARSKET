@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.02) ---
 
-const APP_VERSION = "1.1.25";
+const APP_VERSION = "1.1.26";
 
 const COMMERCIAL_SHOPS_DEF = [
   { id: 'mercadona', name: 'Mercadona' },
@@ -216,6 +216,24 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.26",
+      date: new Date().toISOString().split('T')[0],
+      title: "Guía Táctica Interactiva 7 Roles, Blindaje RGPD en I+D y Neutralización de Salto de Scroll",
+      items: [
+        "Guía de usuario táctica rediseñada con Órdenes de Misión, Checklist de 3 minutos, acciones rápidas y avisos de errores frecuentes para los 7 roles",
+        "Erradicación total de campos de texto libre en solicitud de ítems especiales I+D (rol Técnico): justificación exclusiva vía enlace Google Drive / Google Docs",
+        "Panel docente de homologación de piezas I+D con visualización directa de memoria técnica en Drive y asignación oficial de precio y catálogo",
+        "Neutralización absoluta del scroll jumping: erradicación de scrollIntoView en actualización HUD y contención de altura mínima en el ciclo de render",
+        "Preservación estricta de posición vertical de scroll entre ciclos reactivos de sincronización y heartbeat"
+      ],
+      highlights: [
+        { type: "GUÍA", text: "Manuales tácticos orientados a secundaria con checklist de 3 minutos, misión en 1 frase y avisos de error frecuente." },
+        { type: "RGPD & I+D", text: "Supresión de texto libre en solicitud de piezas de I+D; canal exclusivo mediante Google Docs/Drive." },
+        { type: "DOCENTE", text: "Inspección directa de memorias técnicas de piezas especiales en Google Drive y fijación de precios en catálogo." },
+        { type: "ESTABILIDAD", text: "Eliminación de saltos indeseados de scroll hacia arriba durante el refresco automático y retención de viewport." }
+      ]
+    },
     {
       version: "1.1.25",
       date: new Date().toISOString().split('T')[0],

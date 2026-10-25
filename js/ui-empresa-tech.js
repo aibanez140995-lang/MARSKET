@@ -1,5 +1,5 @@
 // js/ui-empresa-tech.js
-// --- MÓDULO I+D: BANCO DE PRUEBAS (en mm), BOM, MATEMÁTICAS E INVENTARIO B2B (v1.1.25) ---
+// --- MÓDULO I+D: BANCO DE PRUEBAS (en mm), BOM, MATEMÁTICAS E INVENTARIO B2B (v1.1.26) ---
 
 Object.assign(ui, {
     setTechDocTab(tab) {
@@ -433,44 +433,56 @@ Object.assign(ui, {
     modalSpecialItem() {
         if (!state.user) return;
         const html = `
-            <div class="space-y-3">
-                <div>
-                    <label for="special-item-name" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Nombre técnico de la pieza</label>
-                    <input type="text" id="special-item-name" placeholder="Nombre técnico de la pieza" class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan">
+            <div class="space-y-4 font-mono">
+                <div class="bg-mars-cyan/10 border border-mars-cyan/40 p-3">
+                    <p class="text-xs text-mars-cyan font-black uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                        <span>🔒 Directiva RGPD / Cero Texto Libre</span>
+                    </p>
+                    <p class="text-[11px] text-slate-300 leading-relaxed font-sans">
+                        Para salvaguardar la privacidad y evitar filtraciones, no se admite descripción libre en la app. Describe el nombre técnico de la pieza, sus especificaciones, planos y justificación directamente en tu documento oficial de Google Drive o Google Docs.
+                    </p>
                 </div>
                 <div>
-                    <label for="special-item-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Memoria Técnica en Google Drive (URL)</label>
-                    <input type="url" id="special-item-drive-url" placeholder="https://docs.google.com/..." required class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-cyan">
-                    <p class="text-[10px] text-slate-400 mt-1">Adjunta la memoria técnica en Google Drive justificando la necesidad técnica de la pieza fuera de catálogo.</p>
+                    <label for="special-item-drive-url" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">
+                        📄 Memoria Técnica / Ficha de Pieza en Google Drive o Docs (URL)
+                    </label>
+                    <input type="url" id="special-item-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." required class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow">
+                    <p class="text-[10px] text-slate-400 mt-1 font-sans">
+                        Configura los permisos del documento en Google Drive como <em>"Cualquiera con el enlace puede ver"</em> para que el claustro docente examine los planos y especificaciones.
+                    </p>
                 </div>
             </div>
         `;
-        const actions = `<button type="button" onclick="ui.submitSpecialItem()" class="min-h-[44px] bg-mars-magenta text-white px-5 py-2.5 text-xs font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Enviar a Claustro</button>`;
+        const actions = `<button type="button" onclick="ui.submitSpecialItem()" class="min-h-[44px] bg-mars-magenta text-white px-5 py-2.5 text-xs font-black uppercase hover:bg-white hover:text-mars-magenta transition-colors tracking-wider">Enviar a Claustro</button>`;
         this.showModal("Solicitar Ítem Especial / Fuera de Mercado", html, actions);
     },
 
     submitSpecialItem() {
         if (!state.user) return;
-        const elName = document.getElementById('special-item-name');
         const elUrl = document.getElementById('special-item-drive-url');
-        if (!elName || !elUrl) return; 
+        if (!elUrl) return; 
         
-        const name = this.cleanInput(elName.value);
         const driveUrl = this.cleanInput(elUrl.value);
-        if (!name) return this.notify("Debes indicar el nombre técnico de la pieza.", "warning");
-        if (!driveUrl) return this.notify("Debes incluir el enlace a la memoria técnica en Google Drive.", "warning");
+        if (!driveUrl) return this.notify("Debes incluir el enlace a la memoria técnica en Google Drive o Google Docs.", "warning");
         if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive.", "error");
+            return this.notify("El enlace debe ser una URL válida de Google Drive o Google Docs.", "error");
         }
-        if(this.hasForbiddenWords(name, 'Ítem Especial (Nombre)', elName)) {
-            return;
-        }
+        
+        const coId = state.user.coId;
+        const coName = state.data.companies?.[coId]?.name || 'STARTUP';
+        const defaultName = `Componente Especial I+D (${coName})`;
         
         state.data.pendingCustom = state.data.pendingCustom || [];
-        state.data.pendingCustom.push({ id: Date.now(), company: state.user.coId, name, driveUrl, date: new Date().toLocaleDateString() });
+        state.data.pendingCustom.push({ 
+            id: Date.now(), 
+            company: coId, 
+            name: defaultName, 
+            driveUrl: driveUrl, 
+            date: new Date().toLocaleDateString() 
+        });
         state.save();
         this.closeModal();
-        this.notify("Solicitud de ítem especial enviada al claustro para su valoración.", "success");
+        this.notify("✅ Solicitud de ítem especial enviada al claustro mediante enlace Drive.", "success");
     },
 
     modalCustom() {

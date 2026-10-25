@@ -1,5 +1,5 @@
 // js/ui-docente-management.js
-// --- MÓDULO DOCENTE: GESTIÓN, LLAVERO MAESTRO, ADUANAS Y REGISTRO MERCANTIL (v1.1.25) ---
+// --- MÓDULO DOCENTE: GESTIÓN, LLAVERO MAESTRO, ADUANAS Y REGISTRO MERCANTIL (v1.1.26) ---
 
 Object.assign(ui, {
     pinsVisible: false,
@@ -920,12 +920,24 @@ Object.assign(ui, {
             <h3 class="font-orbitron text-blue-400 text-xs mb-4 uppercase tracking-widest">Solicitudes de Material Externo / I+D</h3>
             <div class="space-y-3">
                 ${(state.data.pendingCustom || []).map(p => `
-                <div class="bg-slate-900 border border-mars-border p-3 flex justify-between items-center text-xs flex-wrap gap-2">
-                    <div class="flex-grow min-w-[200px]"><p class="text-mars-yellow font-bold uppercase">${this.escapeHTML(state.data.companies[p.company]?.name || 'Desconocida')}</p><p class="text-white font-bold text-xs uppercase break-words">${this.escapeHTML(p.name)}</p><p class="text-slate-300 italic break-words">"${this.escapeHTML(p.reason)}"</p></div>
-                    <div class="flex gap-2 items-center flex-shrink-0">
-                        <input type="number" id="val-price-${this.escapeHTML(p.id)}" aria-label="Precio €v" class="min-h-[44px] w-20 bg-black border border-mars-border p-2 text-mars-green text-center font-bold" placeholder="€v">
-                        <button onclick="ui.teacherValidate('${this.escapeHTML(p.id)}', true)" class="min-h-[44px] bg-mars-green text-black px-4 py-2 font-black hover:bg-white transition-colors">OK</button>
-                        <button onclick="ui.teacherValidate('${this.escapeHTML(p.id)}', false)" class="min-h-[44px] text-mars-magenta font-bold px-3 py-2 border border-mars-magenta hover:bg-mars-magenta hover:text-white transition-colors">X</button>
+                <div class="bg-slate-900 border border-mars-border p-3 flex justify-between items-center text-xs flex-wrap gap-3">
+                    <div class="flex-grow min-w-[220px]">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-mars-yellow font-black uppercase text-xs">${this.escapeHTML(state.data.companies[p.company]?.name || 'Desconocida')}</span>
+                            <span class="text-[10px] text-slate-400 font-mono">${this.escapeHTML(p.date || '')}</span>
+                        </div>
+                        <p class="text-white font-bold text-xs uppercase mb-1.5">${this.escapeHTML(p.name || 'Componente Especial I+D')}</p>
+                        ${p.driveUrl ? `
+                            <a href="${this.escapeHTML(p.driveUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-mars-cyan hover:underline font-mono bg-mars-cyan/10 px-2.5 py-1.5 border border-mars-cyan/40 min-h-[36px]">
+                                <span>📄 Abrir Memoria Técnica en Google Drive ↗</span>
+                            </a>
+                        ` : '<span class="text-slate-400 italic text-[11px]">Sin enlace de Drive adjunto</span>'}
+                    </div>
+                    <div class="flex gap-2 items-center flex-wrap sm:flex-nowrap flex-shrink-0">
+                        <input type="text" id="val-name-${this.escapeHTML(p.id)}" aria-label="Nombre oficial en catálogo" class="min-h-[44px] w-40 sm:w-48 bg-black border border-slate-700 p-2 text-white text-xs" placeholder="Nombre en Catálogo" value="${this.escapeAttr(p.name || 'Pieza Especial')}">
+                        <input type="number" id="val-price-${this.escapeHTML(p.id)}" aria-label="Precio €v" class="min-h-[44px] w-20 bg-black border border-mars-border p-2 text-mars-green text-center font-bold text-xs" placeholder="€v" min="1" step="0.5">
+                        <button onclick="ui.teacherValidate('${this.escapeHTML(p.id)}', true)" class="min-h-[44px] bg-mars-green text-black px-4 py-2 font-black text-xs hover:bg-white transition-colors" title="Aprobar e integrar en catálogo">OK</button>
+                        <button onclick="ui.teacherValidate('${this.escapeHTML(p.id)}', false)" class="min-h-[44px] text-mars-magenta font-bold px-3 py-2 text-xs border border-mars-magenta hover:bg-mars-magenta hover:text-white transition-colors" title="Denegar solicitud">X</button>
                     </div>
                 </div>`).join('') || '<p class="text-slate-300 text-xs italic">Nada pendiente.</p>'}
             </div>
@@ -1155,23 +1167,28 @@ Object.assign(ui, {
         
         if(ok) {
             const elPrice = document.getElementById(`val-price-${pid}`);
+            const elName = document.getElementById(`val-name-${pid}`);
             if (!elPrice) return;
             const price = parseFloat(elPrice.value);
-            if(!price) return this.notify("Falta precio €v.", "warning");
+            if(isNaN(price) || price <= 0) return this.notify("Introduce un precio €v válido mayor que cero.", "warning");
+            
+            const rawOfficialName = elName && elName.value.trim() ? elName.value.trim() : (req.name || 'Componente Especial I+D');
+            const cleanOfficialName = this.cleanInput(rawOfficialName);
             
             state.data.catalog.unshift({ 
                 id: 'CUST-' + pid, 
-                name: `[ESP] ${req.name}`, 
+                name: `[ESP] ${cleanOfficialName}`, 
                 price: price, 
                 unit: 'Especial', 
                 category: 'Externo',
                 origin: 'I+D Local',
-                exclusiveFor: coId
+                exclusiveFor: coId,
+                driveUrl: req.driveUrl || ''
             });
             
-            ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial "${req.name}" ha sido APROBADA e integrada al catálogo por ${price} €v.`, 'success');
+            ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial "${cleanOfficialName}" ha sido APROBADA e integrada al catálogo por ${price} €v.`, 'success');
         } else {
-            ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial "${req.name}" ha sido DENEGADA por el Claustro.`, 'error');
+            ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial ha sido DENEGADA por el Claustro.`, 'error');
         }
         
         state.data.pendingCustom.splice(reqIdx, 1); 
