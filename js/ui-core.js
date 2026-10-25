@@ -1,5 +1,5 @@
 // js/ui-core.js
-// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.24) ---
+// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.25) ---
 
 // Constante global GOOGLE_DRIVE_REGEX centralizada en js/config.js
 
@@ -1556,30 +1556,30 @@ const ui = {
         const balanceStr = Number(co.balance || 0).toFixed(2);
 
         return `
-        <div class="h-16 max-h-16 flex items-center justify-between px-4 bg-[#07090E]/90 border-b border-cyan-500/20 backdrop-blur sticky top-0 z-30 w-full mb-4 terminal-border overflow-hidden">
+        <div class="h-16 max-h-16 flex items-center justify-between px-2 sm:px-4 bg-[#07090E]/90 border-b border-cyan-500/20 backdrop-blur sticky top-0 z-30 w-full mb-4 terminal-border overflow-hidden">
             <!-- Izquierda: Miniatura del logotipo (40x40px) + Nombre Orbitron + Badge Rol Activo -->
-            <div class="flex items-center gap-3 min-w-0">
-                <div class="relative w-10 h-10 flex-shrink-0 p-0.5 hex-clip bg-mars-bg ${isBrandPending ? 'border border-mars-magenta shadow-[0_0_10px_rgba(255,0,85,0.4)]' : 'border border-mars-cyan shadow-neon-cyan'}">
+            <div class="flex items-center gap-1.5 sm:gap-3 min-w-0 shrink">
+                <div class="relative w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 p-0.5 hex-clip bg-mars-bg ${isBrandPending ? 'border border-mars-magenta shadow-[0_0_10px_rgba(255,0,85,0.4)]' : 'border border-mars-cyan shadow-neon-cyan'}">
                     <div class="w-full h-full hex-clip overflow-hidden">
                         <img src="${activeLogoSrc}" alt="Logo de ${coName}" width="40" height="40" onerror="this.onerror=null;this.src='logo.png';" class="w-full h-full ${hasApprovedLogo ? 'object-cover' : 'object-contain p-1 bg-black'}">
                     </div>
                 </div>
-                <div class="flex items-center gap-2 truncate">
-                    <span class="font-orbitron font-black text-sm sm:text-base text-mars-cyan tracking-wider uppercase truncate" title="${coName}">${coName}</span>
-                    <span class="bg-mars-cyan/10 border border-mars-cyan/40 text-mars-cyan text-[10px] sm:text-xs font-bold px-2 py-0.5 uppercase tracking-wider whitespace-nowrap">${roleLabel}</span>
+                <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                    <span class="font-orbitron font-black text-xs sm:text-base text-mars-cyan tracking-wider uppercase truncate max-w-[150px]" title="${coName}">${coName}</span>
+                    <span class="bg-mars-cyan/10 border border-mars-cyan/40 text-mars-cyan text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 uppercase tracking-wider whitespace-nowrap shrink-0">${roleLabel}</span>
                 </div>
             </div>
 
             <!-- Centro: Saldo corporativo disponible en verde neón font-mono -->
-            <div class="flex items-center justify-center px-2">
-                <span class="text-mars-green font-mono font-bold text-sm sm:text-base tracking-wider whitespace-nowrap bg-mars-green/10 border border-mars-green/30 px-3 py-1 rounded-sm shadow-[0_0_10px_rgba(0,255,150,0.2)]">
+            <div class="flex items-center justify-center px-1 sm:px-2 shrink-0">
+                <span id="hud-balance" class="text-mars-green font-mono font-bold text-xs sm:text-sm md:text-base tracking-wider whitespace-nowrap bg-mars-green/10 border border-mars-green/30 px-2 sm:px-3 py-1 rounded-sm shadow-[0_0_10px_rgba(0,255,150,0.2)] shrink-0">
                     ${balanceStr} €v
                 </span>
             </div>
 
             <!-- Derecha: Acceso directo a la bitácora de IA [ 🤖 IA ] que invoca ui.navigate('ailog') -->
-            <div class="flex items-center gap-2 flex-shrink-0">
-                <button type="button" onclick="ui.navigate('ailog')" class="bg-blue-600/20 border border-blue-500 text-blue-300 hover:bg-blue-500 hover:text-white px-2.5 sm:px-3 py-1.5 text-xs font-bold uppercase transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)] min-h-[36px] flex items-center gap-1" title="Bitácora y Registro de Prompts IA">
+            <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                <button type="button" onclick="ui.navigate('ailog')" class="bg-blue-600/20 border border-blue-500 text-blue-300 hover:bg-blue-500 hover:text-white px-2 sm:px-3 py-1.5 text-xs font-bold uppercase transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)] min-h-[36px] flex items-center gap-1 shrink-0" title="Bitácora y Registro de Prompts IA">
                     <span>🤖</span> <span class="hidden sm:inline">IA</span>
                 </button>
             </div>
@@ -1678,8 +1678,10 @@ const ui = {
         const infoEl = document.getElementById('hud-info');
         const cloudEl = document.getElementById('hud-cloud-status');
         const miniLogo = document.getElementById('hud-mini-logo');
+        const tacticalRow = document.getElementById('hud-tactical-row');
         
         if (state.user.admin) {
+            if(tacticalRow) tacticalRow.classList.remove('hidden');
             if(balEl) balEl.innerText = '∞ €v';
             if(infoEl) {
                 const teacherInfo = `ENTITY: CLAUSTRO | ROLE: ${state.data.config.teachers[state.user.role]?.name.toUpperCase() || 'ROOT'}`;
@@ -1692,6 +1694,7 @@ const ui = {
             }
         } else {
             const co = state.data.companies[state.user.coId];
+            if(tacticalRow) tacticalRow.classList.add('hidden');
             if(co && balEl) balEl.innerText = `${co.balance.toFixed(2)} €v`;
             if(co && infoEl) {
                 const entityInfo = `ENTITY: ${co.name.toUpperCase()} | ROLE: ${state.user.role.replace('_',' ')}`;
@@ -1783,6 +1786,7 @@ const ui = {
             const infoEl = document.getElementById('hud-info');
             const balEl = document.getElementById('hud-balance');
             const miniLogo = document.getElementById('hud-mini-logo');
+        const tacticalRow = document.getElementById('hud-tactical-row');
             if (infoEl) {
                 infoEl.innerText = 'ENTITY: -- | ROLE: --';
                 infoEl.title = 'ENTITY: -- | ROLE: --';
@@ -1800,7 +1804,7 @@ const ui = {
         this.initEventDelegation();
         const vp = document.getElementById('viewport');
         if(!vp) return;
-        const prevScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+        const savedScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
         const activeId = typeof document !== 'undefined' && document.activeElement && document.activeElement.id ? document.activeElement.id : null;
 
         vp.innerHTML = '';
@@ -1900,8 +1904,12 @@ const ui = {
                 try { restoredEl.focus({ preventScroll: true }); } catch (e) {}
             }
         }
-        if (typeof window !== 'undefined' && prevScrollY > 0) {
-            window.scrollTo({ top: prevScrollY, behavior: 'instant' });
+        if (typeof window !== 'undefined') {
+            requestAnimationFrame(() => {
+                if (Math.abs(window.scrollY - savedScrollY) > 5) {
+                    window.scrollTo({ top: savedScrollY, behavior: 'instant' });
+                }
+            });
         }
     },
 

@@ -1,5 +1,5 @@
 // js/state.js
-// --- GESTIÓN DE ESTADO ZERO-TRUST, MIGRACIÓN Y PERSISTENCIA ATÓMICA (v1.1.24) ---
+// --- GESTIÓN DE ESTADO ZERO-TRUST, MIGRACIÓN Y PERSISTENCIA ATÓMICA (v1.1.25) ---
 
 const DEFAULT_STATE = {
     version: 1,
@@ -31,6 +31,7 @@ const DEFAULT_STATE = {
             LEN: { name: "Lengua Castellana", canSponsor: false },
             MAT: { name: "Matemáticas", canSponsor: false },
             ING: { name: "Inglés", canSponsor: false },
+            BIO: { name: "Biología y Geología", canSponsor: false },
             COORD_MARIO: { name: "Coordinación - Mario", canSponsor: true },
             COORD_ALEX: { name: "Coordinación - Alex", canSponsor: true }
         }
@@ -647,8 +648,10 @@ const state = {
         }
 
         // 2. Comprobar que la entidad siga existiendo en el estado del servidor
-        const isEntityValid = this.user.admin
-            ? !!(serverOrMergedData?.config?.teachers?.[this.user.role])
+        const teacherRoles = ['FYQ', 'ECO', 'BIO', 'MAT', 'LEN', 'ING', 'LYE'];
+        const isDocente = Boolean(this.user.admin || (this.user.role && (teacherRoles.includes(this.user.role) || this.user.role.startsWith('COORD_'))));
+        const isEntityValid = isDocente
+            ? !!(serverOrMergedData?.config?.teachers?.[this.user.role] || this.user.admin)
             : !!(serverOrMergedData?.companies?.[this.user.coId]);
 
         if (!isEntityValid) {
@@ -657,7 +660,7 @@ const state = {
         }
 
         // 3. Comprobar si Coordinación modificó las credenciales después del inicio de sesión
-        if (this.user.admin) {
+        if (isDocente) {
             const serverPinStamp = serverOrMergedData?.config?.teachers?.[this.user.role]?.pinUpdatedAt || 0;
             if (this.user.pinStamp && serverPinStamp > this.user.pinStamp) {
                 this.revokeSession("Sesión finalizada: Las credenciales de acceso han sido modificadas por coordinación.");
@@ -1444,7 +1447,15 @@ const state = {
                 const activeEl = typeof document !== 'undefined' ? document.activeElement : null;
                 const isEditingInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
                 if (!isEditingInput) {
+                    const savedScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
                     ui.render();
+                    if (typeof window !== 'undefined') {
+                        requestAnimationFrame(() => {
+                            if (Math.abs(window.scrollY - savedScrollY) > 5) {
+                                window.scrollTo({ top: savedScrollY, behavior: 'instant' });
+                            }
+                        });
+                    }
                 } else if (ui.updateHUD) {
                     ui.updateHUD();
                 }

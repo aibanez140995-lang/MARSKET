@@ -162,14 +162,18 @@ export async function verifySession(request, env) {
         return { valid: false, authorized: false, status: 403, error: 'TOKEN_EXPIRED' };
     }
 
-    // 6. Contrato compatible con MARS-KET
+    // 6. Contrato compatible con MARS-KET (v1.1.25)
     const isCoord = Boolean(payload.admin && (payload.role?.startsWith('COORD') || payload.role === 'COORDINADOR'));
+    const teacherRoles = ['FYQ', 'ECO', 'BIO', 'MAT', 'LEN', 'ING', 'LYE'];
+    const isTeacherRole = Boolean(payload.role && (teacherRoles.includes(payload.role) || payload.role.startsWith('COORD')));
+    const isAdmin = Boolean(payload.admin || isTeacherRole);
     return {
         valid: true,
-        authorized: isCoord,
-        isAdmin: Boolean(payload.admin),
+        authorized: isAdmin || isCoord,
+        isAdmin: isAdmin,
         isCoordinator: isCoord,
-        isStudent: Boolean(!payload.admin && payload.coId),
+        isTeacher: isAdmin,
+        isStudent: Boolean(!payload.admin && !isTeacherRole && payload.coId),
         coId: payload.coId || null,
         role: payload.role || null,
         user: payload

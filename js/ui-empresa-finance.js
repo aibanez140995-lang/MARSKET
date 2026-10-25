@@ -1,5 +1,5 @@
 // js/ui-empresa-finance.js
-// --- MÓDULO FINANCIERO Y BÓVEDA DE ÓRDENES: CRONOGRAMA MAESTRO (19 PLAZOS), AUDITORÍA Y LEDGER (v1.1.23) ---
+// --- MÓDULO FINANCIERO Y BÓVEDA DE ÓRDENES: CRONOGRAMA MAESTRO (19 PLAZOS), AUDITORÍA Y LEDGER (v1.1.25) ---
 
 Object.assign(ui, {
     cronogramaFilter: 'ALL',
@@ -289,32 +289,32 @@ Object.assign(ui, {
     modalCheckout() {
         const co = state.data.companies[state.user.coId];
         if (!co || !co.cart || co.cart.length === 0) {
-            return this.showModal("Borrador Técnico", "<p class='text-slate-300 text-xs sm:text-sm'>El borrador está vacío.</p>", "");
+            return this.showModal("Carrito de la compra", "<p class='text-slate-300 text-xs sm:text-sm'>El carrito de la compra está vacío.</p>", "");
         }
 
         let total = 0;
-        let html = `<div class="max-h-60 overflow-y-auto mb-4 border-b border-mars-border pb-2 space-y-2 pr-1">`;
+        let html = `<div id="cart-modal-items" class="max-h-60 overflow-y-auto mb-4 border-b border-mars-border pb-2 space-y-2 pr-1">`;
         co.cart.forEach(item => {
             const sum = item.price * item.qty;
             total += sum;
             html += `
-            <div class="flex flex-wrap justify-between items-center gap-2 text-xs bg-black p-2.5 border border-slate-800">
+            <div data-cart-item="${this.escapeHTML(item.id)}" class="flex flex-wrap justify-between items-center gap-2 text-xs bg-black p-2.5 border border-slate-800 transition-all duration-300">
                 <div class="flex-grow min-w-0">
                     <span class="text-mars-cyan font-bold uppercase block break-words">${this.escapeHTML(item.name)}</span>
                     <span class="text-slate-300 block">${Number(item.price).toFixed(2)} €v / ${this.escapeHTML(item.unit)}</span>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                     <button type="button" aria-label="Disminuir cantidad de ${this.escapeHTML(item.name)}" onclick="ui.removeFromCart('${this.escapeHTML(item.id)}')" class="min-h-[44px] min-w-[44px] border border-mars-magenta/50 text-mars-magenta font-black px-2 hover:bg-mars-magenta/20">-</button>
-                    <span class="text-white font-mono w-6 text-center font-bold">${Number(item.qty)}</span>
+                    <span class="cart-item-qty text-white font-mono w-6 text-center font-bold">${Number(item.qty)}</span>
                     <button type="button" aria-label="Aumentar cantidad de ${this.escapeHTML(item.name)}" onclick="ui.addToCart('${this.escapeHTML(item.id)}'); ui.modalCheckout()" class="min-h-[44px] min-w-[44px] border border-mars-green/50 text-mars-green font-black px-2 hover:bg-mars-green/20">+</button>
-                    <span class="text-mars-green font-mono font-bold w-20 text-right">${sum.toFixed(2)} €v</span>
+                    <span class="cart-item-subtotal text-mars-green font-mono font-bold w-20 text-right">${sum.toFixed(2)} €v</span>
                 </div>
             </div>`;
         });
         html += `</div>
         <div class="flex justify-between items-center bg-slate-900 p-3 mb-4 border border-mars-cyan">
             <span class="text-xs text-slate-300 uppercase font-bold">Presupuesto Estimado</span>
-            <span class="text-lg font-orbitron font-black text-mars-cyan">${total.toFixed(2)} €v</span>
+            <span id="cart-total-badge" class="text-lg font-orbitron font-black text-mars-cyan">${total.toFixed(2)} €v</span>
         </div>
         <div class="space-y-1.5 mb-2">
             <label for="order-drive-url" class="text-xs text-mars-cyan font-bold uppercase block">Informe Técnico de Especificación (Google Drive / Docs)</label>
@@ -323,8 +323,8 @@ Object.assign(ui, {
         </div>
         `;
         
-        const actions = `<button type="button" onclick="ui.confirmCart(${total})" class="min-h-[44px] bg-mars-cyan text-black px-5 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all w-full sm:w-auto">Transmitir a Finanzas</button>`;
-        this.showModal("Revisión de Orden I+D", html, actions);
+        const actions = `<button type="button" id="btn-transmit-cart" onclick="ui.confirmCart(${total})" class="min-h-[44px] bg-mars-cyan text-black px-5 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all w-full sm:w-auto">Transmitir a Finanzas</button>`;
+        this.showModal("Carrito de la compra (I+D)", html, actions);
     },
 
     confirmCart(total) {

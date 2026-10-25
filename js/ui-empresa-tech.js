@@ -1,5 +1,5 @@
 // js/ui-empresa-tech.js
-// --- MÓDULO I+D: BANCO DE PRUEBAS (en mm), BOM, MATEMÁTICAS E INVENTARIO B2B (v1.1.23) ---
+// --- MÓDULO I+D: BANCO DE PRUEBAS (en mm), BOM, MATEMÁTICAS E INVENTARIO B2B (v1.1.25) ---
 
 Object.assign(ui, {
     setTechDocTab(tab) {
@@ -189,7 +189,11 @@ Object.assign(ui, {
                             <h2 class="font-orbitron text-mars-magenta text-sm sm:text-base uppercase tracking-tighter">Inventario Físico, BOM & Ventas B2B</h2>
                             <p class="text-xs text-slate-300 uppercase mt-1">Marca las piezas que integran el cohete final o vende el excedente a otras empresas.</p>
                         </div>
-                        <button type="button" onclick="ui.setMarketTab('b2b'); ui.navigate('market')" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-4 py-2 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-all whitespace-nowrap">Ver Mercado B2B</button>
+                        <div class="flex items-center gap-2 flex-wrap shrink-0">
+                            <button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta hover:bg-mars-magenta hover:text-white px-3 py-2 text-xs font-bold uppercase transition-all whitespace-nowrap">[ Solicitar Ítem Especial / Fuera de Mercado ]</button>
+                            <button type="button" onclick="ui.navigate('dossier')" class="min-h-[44px] bg-mars-cyan/10 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-3 py-2 text-xs font-bold uppercase transition-all whitespace-nowrap">[ Ver Dossier Inversores ↗ ]</button>
+                            <button type="button" onclick="ui.setMarketTab('b2b'); ui.navigate('market')" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-4 py-2 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-all whitespace-nowrap">Ver Mercado B2B</button>
+                        </div>
                     </div>
                     
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 bg-black p-3 border border-mars-border">
@@ -426,35 +430,54 @@ Object.assign(ui, {
         this.render();
     },
 
-    modalCustom() {
+    modalSpecialItem() {
         if (!state.user) return;
         const html = `
-            <label for="custom-name" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Nombre del Componente</label>
-            <input type="text" id="custom-name" placeholder="Nombre del componente..." class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white mb-3 outline-none focus:border-mars-cyan">
-            <label for="custom-reason" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Justificación Técnica</label>
-            <textarea id="custom-reason" placeholder="Justificación técnica..." class="w-full bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white h-24 mb-2 outline-none focus:border-mars-cyan"></textarea>
+            <div class="space-y-3">
+                <div>
+                    <label for="special-item-name" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Nombre técnico de la pieza</label>
+                    <input type="text" id="special-item-name" placeholder="Nombre técnico de la pieza" class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan">
+                </div>
+                <div>
+                    <label for="special-item-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Memoria Técnica en Google Drive (URL)</label>
+                    <input type="url" id="special-item-drive-url" placeholder="https://docs.google.com/..." required class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-cyan">
+                    <p class="text-[10px] text-slate-400 mt-1">Adjunta la memoria técnica en Google Drive justificando la necesidad técnica de la pieza fuera de catálogo.</p>
+                </div>
+            </div>
         `;
-        const actions = `<button type="button" onclick="ui.submitCustom()" class="min-h-[44px] bg-mars-magenta text-white px-5 py-2.5 text-xs font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Enviar a Claustro</button>`;
-        this.showModal("Solicitar I+D Especial", html, actions);
+        const actions = `<button type="button" onclick="ui.submitSpecialItem()" class="min-h-[44px] bg-mars-magenta text-white px-5 py-2.5 text-xs font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Enviar a Claustro</button>`;
+        this.showModal("Solicitar Ítem Especial / Fuera de Mercado", html, actions);
     },
 
-    submitCustom() {
+    submitSpecialItem() {
         if (!state.user) return;
-        const elName = document.getElementById('custom-name');
-        const elReason = document.getElementById('custom-reason');
-        if (!elName || !elReason) return; 
+        const elName = document.getElementById('special-item-name');
+        const elUrl = document.getElementById('special-item-drive-url');
+        if (!elName || !elUrl) return; 
         
         const name = this.cleanInput(elName.value);
-        const reason = this.cleanInput(elReason.value);
-        if(!name || !reason) return this.notify("Rellene todos los campos.", "warning");
-        if(this.hasForbiddenWords(name, 'I+D Especial (Nombre)', elName) || this.hasForbiddenWords(reason, 'I+D Especial (Justificación)', elReason)) {
+        const driveUrl = this.cleanInput(elUrl.value);
+        if (!name) return this.notify("Debes indicar el nombre técnico de la pieza.", "warning");
+        if (!driveUrl) return this.notify("Debes incluir el enlace a la memoria técnica en Google Drive.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive.", "error");
+        }
+        if(this.hasForbiddenWords(name, 'Ítem Especial (Nombre)', elName)) {
             return;
         }
         
         state.data.pendingCustom = state.data.pendingCustom || [];
-        state.data.pendingCustom.push({ id: Date.now(), company: state.user.coId, name, reason });
+        state.data.pendingCustom.push({ id: Date.now(), company: state.user.coId, name, driveUrl, date: new Date().toLocaleDateString() });
         state.save();
         this.closeModal();
-        this.notify("Solicitud enviada al claustro para su valoración.", "success");
+        this.notify("Solicitud de ítem especial enviada al claustro para su valoración.", "success");
+    },
+
+    modalCustom() {
+        return this.modalSpecialItem();
+    },
+
+    submitCustom() {
+        return this.submitSpecialItem();
     }
 });

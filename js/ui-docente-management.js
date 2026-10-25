@@ -1,5 +1,5 @@
 // js/ui-docente-management.js
-// --- MÓDULO DOCENTE: GESTIÓN, LLAVERO MAESTRO, ADUANAS Y REGISTRO MERCANTIL (v1.1.00) ---
+// --- MÓDULO DOCENTE: GESTIÓN, LLAVERO MAESTRO, ADUANAS Y REGISTRO MERCANTIL (v1.1.25) ---
 
 Object.assign(ui, {
     pinsVisible: false,
@@ -288,42 +288,8 @@ Object.assign(ui, {
             </div>`;
         }
 
-        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
-        const dl = state.data.config.deadlines || {};
-
         let coordSettingsHtml = '';
         if (isCoord) {
-            const schedule = state.data.config?.deliverableSchedule || {};
-            const deadlinesInputs = defs.map(d => {
-                const sched = schedule[d.key] || {};
-                const openVal = sched.openDate || d.defaultOpenDate || '';
-                const deadVal = sched.deadline || dl[d.key] || d.defaultDate || '';
-                const guideVal = sched.guideDocUrl || d.defaultGuideDocUrl || '';
-
-                return `
-                <div class="bg-slate-900 border border-slate-800 p-3.5 flex flex-col justify-between space-y-2.5 rounded">
-                    <div>
-                        <div class="flex justify-between items-center mb-1">
-                            <span class="text-xs font-black uppercase px-2 py-0.5 bg-mars-cyan/10 text-mars-cyan border border-mars-cyan/40">${this.escapeHTML(d.subject)} • ${this.escapeHTML(d.weight)}</span>
-                            <span class="text-[10px] text-slate-400 font-mono uppercase">${this.escapeHTML(d.key)}</span>
-                        </div>
-                        <h4 class="text-xs text-white font-bold uppercase leading-snug">${this.escapeHTML(d.name)}</h4>
-                    </div>
-                    <div class="space-y-1">
-                        <label for="sched-open-${this.escapeHTML(d.key)}" class="text-[10px] text-mars-cyan uppercase font-bold block">1. Apertura (Desbloqueo)</label>
-                        <input type="datetime-local" id="sched-open-${this.escapeHTML(d.key)}" value="${this.escapeHTML(openVal)}" onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')" class="input-open-date min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-cyan">
-                    </div>
-                    <div class="space-y-1">
-                        <label for="sched-dead-${this.escapeHTML(d.key)}" class="text-[10px] text-mars-yellow uppercase font-bold block">2. Cierre (Límite Entrega)</label>
-                        <input type="datetime-local" id="sched-dead-${this.escapeHTML(d.key)}" value="${this.escapeHTML(deadVal)}" onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')" class="input-deadline min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-mars-yellow font-mono outline-none focus:border-mars-yellow">
-                    </div>
-                    <div class="space-y-1">
-                        <label for="sched-guide-${this.escapeHTML(d.key)}" class="text-[10px] text-mars-green uppercase font-bold block">3. Plantilla Oficial Drive (Opcional)</label>
-                        <input type="url" id="sched-guide-${this.escapeHTML(d.key)}" value="${this.escapeAttr(guideVal)}" placeholder="https://docs.google.com/document/d/..." onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')" class="input-guide-url min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-mars-green font-mono outline-none focus:border-mars-green">
-                    </div>
-                </div>`;
-            }).join('');
-
             const teacherPins = Object.keys(state.data.config.teachers || {}).map(tk => {
                 const t = state.data.config.teachers[tk];
                 return `
@@ -337,18 +303,10 @@ Object.assign(ui, {
             }).join('');
 
             coordSettingsHtml = `
-            <div class="terminal-border bg-mars-card p-6 mt-6 border-t-4 border-t-mars-yellow">
-                <div class="mb-4 border-b border-mars-border pb-2">
-                    <h3 class="font-orbitron text-mars-yellow text-xs sm:text-sm uppercase tracking-widest">🗓️ Gestión de Fechas Límite: Cronograma Maestro (19 Entregables)</h3>
-                    <p class="text-xs text-slate-300 uppercase mt-0.5">Cualquier ajuste actualiza inmediatamente el semáforo temporal en todas las startups.</p>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
-                    ${deadlinesInputs}
-                </div>
-
+            <div class="terminal-border bg-mars-card p-6 mt-6 border-t-4 border-t-mars-cyan">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-2 gap-2">
                     <div>
-                        <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase tracking-widest">🔐 Credenciales del Claustro Docente</h3>
+                        <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase tracking-widest font-bold">🔐 Credenciales del Claustro Docente</h3>
                         <p class="text-xs text-slate-400 uppercase mt-0.5">Gestión desacoplada y persistencia atómica en servidor D1.</p>
                     </div>
                     ${isCoord ? `<button onclick="ui.exportTeacherBadgesPDF()" class="min-h-[44px] bg-[#00F0FF] text-black px-4 py-1.5 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">[🪪 Credenciales Claustro PDF]</button>` : ''}
@@ -515,6 +473,117 @@ Object.assign(ui, {
         this.notify("Plazo actualizado en el Cronograma Maestro.", "success");
     },
 
+    renderAdminSettings() {
+        const isCoord = state.user && state.user.role && state.user.role.startsWith('COORD');
+        const dl = state.data.config.deadlines || {};
+        const schedule = state.data.config?.deliverableSchedule || {};
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const suggestions = state.data.suggestionsToAlex || [];
+        const isResolvedStatus = (s) => s.status === 'IMPLEMENTADO' || s.status === 'RESUELTO' || s.resolved === true;
+        const activeSuggs = suggestions.filter(s => !isResolvedStatus(s));
+        const resolvedSuggs = suggestions.filter(s => isResolvedStatus(s));
+
+        const renderSuggItem = (sugg) => {
+            const cat = sugg.category || 'MEJORA';
+            const status = sugg.status || 'RECIBIDO';
+            const catBadge = cat === 'BUG' ? 'text-mars-magenta border-mars-magenta bg-mars-magenta/10' : (cat === 'REGLAS' ? 'text-mars-cyan border-mars-cyan bg-mars-cyan/10' : 'text-mars-yellow border-mars-yellow bg-mars-yellow/10');
+            
+            return `
+            <div class="bg-slate-900 border border-mars-border p-4 text-xs mb-2">
+                <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-black uppercase px-2 py-0.5 border ${catBadge}">${this.escapeHTML(cat)}</span>
+                        <span class="text-white font-bold uppercase break-words">${this.escapeHTML(sugg.author)}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <select aria-label="Estado de sugerencia" onchange="ui.updateSuggestionStatus('${this.escapeHTML(sugg.id)}', this.value)" class="min-h-[44px] bg-black border border-slate-700 text-white p-1.5 text-xs uppercase font-bold outline-none">
+                            <option value="RECIBIDO" ${status==='RECIBIDO'?'selected':''}>Recibido</option>
+                            <option value="EN_REVISION" ${status==='EN_REVISION'?'selected':''}>En Revisión</option>
+                            <option value="IMPLEMENTADO" ${status==='IMPLEMENTADO'?'selected':''}>Implementado</option>
+                        </select>
+                        <button onclick="ui.deleteSuggestion('${this.escapeHTML(sugg.id)}')" aria-label="Eliminar sugerencia" class="min-h-[44px] min-w-[44px] text-mars-magenta hover:text-white font-bold px-2 border border-mars-magenta/40">X</button>
+                    </div>
+                </div>
+                <p class="text-slate-200 italic mb-2 bg-black/50 p-2 border border-slate-800 break-words">"${this.escapeHTML(sugg.text)}"</p>
+                <span class="text-xs text-slate-300 block text-right">${this.escapeHTML(sugg.date)}</span>
+            </div>`;
+        };
+
+        const activeHtml = activeSuggs.map(renderSuggItem).join('') || '<p class="text-slate-300 italic text-xs">No hay consultas activas pendientes en el buzón.</p>';
+        const resolvedHtml = resolvedSuggs.map(renderSuggItem).join('') || '<p class="text-slate-400 italic text-xs">No hay consultas resueltas registradas.</p>';
+
+        const scheduleCards = defs.map(d => {
+            const sched = schedule[d.key] || {};
+            const openVal = sched.openDate || d.defaultOpenDate || '';
+            const deadVal = sched.deadline || dl[d.key] || d.defaultDate || '';
+            const guideVal = sched.guideDocUrl || d.defaultGuideDocUrl || '';
+
+            return `
+            <div class="bg-slate-900 border border-slate-800 p-3.5 flex flex-col justify-between space-y-2.5 rounded">
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-black uppercase px-2 py-0.5 bg-mars-cyan/10 text-mars-cyan border border-mars-cyan/40">${this.escapeHTML(d.subject)} • ${this.escapeHTML(d.weight)}</span>
+                        <span class="text-[10px] text-slate-400 font-mono uppercase">${this.escapeHTML(d.key)}</span>
+                    </div>
+                    <h4 class="text-xs text-white font-bold uppercase leading-snug">${this.escapeHTML(d.name)}</h4>
+                </div>
+                <div class="space-y-1">
+                    <label for="sched-open-${this.escapeHTML(d.key)}" class="text-[10px] text-mars-cyan uppercase font-bold block">1. Apertura (Desbloqueo)</label>
+                    <input type="datetime-local" id="sched-open-${this.escapeHTML(d.key)}" value="${this.escapeHTML(openVal)}" ${isCoord ? `onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')"` : 'disabled'} class="input-open-date min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-cyan">
+                </div>
+                <div class="space-y-1">
+                    <label for="sched-dead-${this.escapeHTML(d.key)}" class="text-[10px] text-mars-yellow uppercase font-bold block">2. Cierre (Límite Entrega)</label>
+                    <input type="datetime-local" id="sched-dead-${this.escapeHTML(d.key)}" value="${this.escapeHTML(deadVal)}" ${isCoord ? `onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')"` : 'disabled'} class="input-deadline min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-mars-yellow font-mono outline-none focus:border-mars-yellow">
+                </div>
+                <div class="space-y-1">
+                    <label for="sched-guide-${this.escapeHTML(d.key)}" class="text-[10px] text-mars-green uppercase font-bold block">3. Plantilla Oficial Drive (Opcional)</label>
+                    <input type="url" id="sched-guide-${this.escapeHTML(d.key)}" value="${this.escapeAttr(guideVal)}" placeholder="https://docs.google.com/document/d/..." ${isCoord ? `onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')"` : 'disabled'} class="input-guide-url min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-mars-green font-mono outline-none focus:border-mars-green">
+                </div>
+            </div>`;
+        }).join('');
+
+        return `
+        <div class="space-y-6">
+            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-2">
+                    <div>
+                        <h3 class="font-orbitron text-mars-cyan text-sm uppercase tracking-widest font-bold">⏳ Cronograma Maestro: Entregables Curriculares y Candados</h3>
+                        <p class="text-xs text-slate-300 uppercase mt-0.5">Control centralizado de aperturas automáticas, plazos de entrega y plantillas Google Docs (${defs.length} Hitos).</p>
+                    </div>
+                    <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-3 py-1 text-xs font-black uppercase font-mono">${defs.length} Entregables</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[700px] overflow-y-auto pr-2">
+                    ${scheduleCards}
+                </div>
+            </div>
+
+            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow">
+                <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-2 flex-wrap gap-2">
+                    <h3 class="font-orbitron text-mars-yellow text-xs uppercase tracking-widest">Buzón de Consultas & Feedback</h3>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-mars-cyan font-bold font-mono">${activeSuggs.length} Activas</span>
+                        <span class="text-xs text-slate-400 font-mono">/ ${suggestions.length} Total</span>
+                    </div>
+                </div>
+                <div class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                    <div class="space-y-2">
+                        ${activeHtml}
+                    </div>
+
+                    <details class="border border-cyan-500/20 bg-[#0A0E17] rounded-lg mt-4 p-3">
+                        <summary class="cursor-pointer font-orbitron text-xs text-mars-cyan uppercase tracking-wider font-bold select-none flex items-center justify-between">
+                            <span>CONSULTAS Y SUGERENCIAS RESUELTAS</span>
+                            <span class="bg-cyan-950/80 text-mars-cyan border border-cyan-500/30 px-2 py-0.5 rounded text-[11px] font-mono">[${resolvedSuggs.length} RESUELTAS]</span>
+                        </summary>
+                        <div class="space-y-2 mt-3 pt-2 border-t border-cyan-500/20">
+                            ${resolvedHtml}
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </div>`;
+    },
+
     // TODO: En la versión v1.1.04 se deberá crear un panel exclusivo y un endpoint (/api/admin/credentials) para que solo los Coordinadores puedan ver y editar estos PINs, ya que actualmente están blindados y son inmutables desde el cliente.
     async updateTeacherPin(tk, val) {
         if (!state.user || !state.user.role.startsWith('COORD')) return;
@@ -621,16 +690,23 @@ Object.assign(ui, {
         this.render();
     },
 
-    renderAdminTelemetry() {
-        if (!state.user || !state.user.role.startsWith('COORD_')) {
-            return '<div class="terminal-border bg-mars-card p-8 text-center text-amber-400 font-mono text-xs uppercase font-bold border-l-4 border-l-amber-400">⚠️ Acceso Restringido: La telemetría global está reservada a roles de Coordinación (COORD_*).</div>';
-        }
+    renderTelemetryMatrixRows(filterClass = 'ALL') {
         let matRows = '';
-        Object.keys(state.data.companies).forEach(cid => {
+        const targetClass = filterClass || 'ALL';
+        const companies = Object.keys(state.data.companies || {}).filter(cid => {
+            if (targetClass === 'ALL') return true;
+            return state.data.companies[cid].classGroup === targetClass;
+        });
+
+        if (companies.length === 0) {
+            return `<tr><td colspan="7" class="py-4 text-center text-slate-400 italic text-xs">No hay startups registradas en el grupo seleccionado.</td></tr>`;
+        }
+
+        companies.forEach(cid => {
             const co = state.data.companies[cid];
             const s = co.loginStats || { totalLogins:0, roles:{} }; 
             matRows += `<tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
-                <td class="py-3 font-orbitron text-white font-bold pr-4 max-w-[220px] truncate" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)}</td>
+                <td class="py-3 font-orbitron text-white font-bold pr-4 max-w-[220px] truncate" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)} <span class="text-[10px] text-slate-400 font-mono">[Clase ${this.escapeHTML(co.classGroup || 'A')}]</span></td>
                 <td class="py-3 font-mono text-mars-cyan font-bold pr-4 text-center border-r border-mars-border/50">${s.totalLogins}</td>`;
             ['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA'].forEach(r => {
                 const count = s.roles[r]?.count || 0;
@@ -639,6 +715,30 @@ Object.assign(ui, {
             });
             matRows += `</tr>`;
         });
+        return matRows;
+    },
+
+    onTelemetryClassFilterChange(cls) {
+        this.telemetryClassFilter = cls;
+        const tbody = document.getElementById('telemetry-matrix-tbody');
+        if (tbody) {
+            tbody.innerHTML = this.renderTelemetryMatrixRows(cls);
+        }
+    },
+
+    renderAdminTelemetry() {
+        if (!state.user || !state.user.role.startsWith('COORD_')) {
+            return '<div class="terminal-border bg-mars-card p-8 text-center text-amber-400 font-mono text-xs uppercase font-bold border-l-4 border-l-amber-400">⚠️ Acceso Restringido: La telemetría global está reservada a roles de Coordinación (COORD_*).</div>';
+        }
+
+        const currentFilter = this.telemetryClassFilter || 'ALL';
+        const rawClasses = Object.values(state.data.companies || {}).map(c => c.classGroup).filter(Boolean);
+        const uniqueClasses = [...new Set(['A', 'B', ...rawClasses])].sort();
+
+        const classOptions = `
+            <option value="ALL" ${currentFilter === 'ALL' ? 'selected' : ''}>Todas las Clases</option>
+            ${uniqueClasses.map(cls => `<option value="${this.escapeHTML(cls)}" ${currentFilter === cls ? 'selected' : ''}>Clase ${this.escapeHTML(cls)}</option>`).join('')}
+        `;
 
         const allSessions = Array.isArray(state.data.telemetry?.sessions) ? state.data.telemetry.sessions : [];
         const visibleSessions = allSessions.slice(0, 100);
@@ -646,15 +746,23 @@ Object.assign(ui, {
         return `
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
             <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan text-center flex flex-col justify-center">
-                <p class="text-5xl font-orbitron text-mars-cyan">${state.data.telemetry.totalLogins}</p>
+                <p class="text-5xl font-orbitron text-mars-cyan">${state.data.telemetry?.totalLogins || 0}</p>
                 <p class="text-xs text-slate-300 uppercase mt-2 font-bold tracking-widest">Logins Globales</p>
             </div>
             <div class="md:col-span-3 terminal-border bg-mars-card p-6 w-full overflow-hidden">
-                <h3 class="font-orbitron text-mars-yellow text-xs mb-4 uppercase tracking-widest">Matriz de Conexiones por Departamento</h3>
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                    <h3 class="font-orbitron text-mars-yellow text-xs uppercase tracking-widest font-bold">Matriz de Conexiones por Departamento</h3>
+                    <div class="flex items-center gap-2">
+                        <label for="telemetry-class-filter" class="text-xs text-slate-300 font-bold uppercase">Filtrar por Clase:</label>
+                        <select id="telemetry-class-filter" onchange="ui.onTelemetryClassFilterChange(this.value)" class="min-h-[44px] bg-black border border-mars-yellow text-mars-yellow text-xs p-2 uppercase font-bold outline-none cursor-pointer">
+                            ${classOptions}
+                        </select>
+                    </div>
+                </div>
                 <div class="overflow-x-auto w-full">
                     <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
                         <thead class="text-slate-300 uppercase border-b border-mars-border"><tr><th class="py-2 pr-4">Startup</th><th class="pr-4 text-center border-r border-mars-border/50">Total</th><th class="text-center px-2">CEO</th><th class="text-center px-2">TEC</th><th class="text-center px-2">FIN</th><th class="text-center px-2">MKT</th><th class="text-center px-2">OP_IA</th></tr></thead>
-                        <tbody>${matRows}</tbody>
+                        <tbody id="telemetry-matrix-tbody">${this.renderTelemetryMatrixRows(currentFilter)}</tbody>
                     </table>
                 </div>
             </div>

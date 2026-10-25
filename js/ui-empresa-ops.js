@@ -1,5 +1,5 @@
 // js/ui-empresa-ops.js
-// --- MÓDULO OPERACIONES E IA: LOGÍSTICA FÍSICA, BITÁCORA IA Y DIARIO DE DECISIONES (v1.1.23) ---
+// --- MÓDULO OPERACIONES E IA: LOGÍSTICA FÍSICA, BITÁCORA IA Y DIARIO DE DECISIONES (v1.1.25) ---
 
 Object.assign(ui, {
     viewCart(el) {
@@ -38,12 +38,20 @@ Object.assign(ui, {
                             <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                                 <input type="number" id="real-eur-${this.escapeHTML(order.id)}-${idx}" aria-label="Coste real en euros de ${this.escapeHTML(item.name)}" placeholder="Coste Real (€)" step="0.01" min="0" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-mars-magenta p-2.5 text-base sm:text-xs text-white w-full sm:w-28 outline-none focus:border-mars-cyan font-mono">
                                 <select id="real-shop-${this.escapeHTML(order.id)}-${idx}" aria-label="Comercio de adquisición de ${this.escapeHTML(item.name)}" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-slate-700 p-2.5 text-base sm:text-xs text-white w-full sm:w-44 outline-none focus:border-mars-cyan">
-                                    <option value="Comercio Local / Bazar">Comercio Local / Bazar</option>
-                                    <option value="Ferretería / Suministros">Ferretería / Suministros</option>
-                                    <option value="Papelería / Imprenta">Papelería / Imprenta</option>
-                                    <option value="Supermercado / Gran Superficie">Supermercado / Gran Superficie</option>
-                                    <option value="Proveedor Online Autorizado">Proveedor Online Autorizado</option>
-                                    <option value="Material Reciclado / Taller">Material Reciclado / Taller</option>
+                                    ${(typeof COMMERCIAL_SHOPS_DEF !== 'undefined' ? COMMERCIAL_SHOPS_DEF : [
+                                        { id: 'mercadona', name: 'Mercadona' },
+                                        { id: 'carrefour', name: 'Carrefour' },
+                                        { id: 'eroski', name: 'Eroski' },
+                                        { id: 'dia', name: 'Dia' },
+                                        { id: 'ferreteria', name: 'Ferretería' },
+                                        { id: 'bazar', name: 'Bazar' },
+                                        { id: 'comercio_generico', name: 'Comercio genérico' }
+                                    ]).map(shop => `<option value="${this.escapeHTML(shop.name)}">${this.escapeHTML(shop.name)}</option>`).join('')}
+
+
+
+
+
                                 </select>
                                 <input type="url" id="real-ticket-${this.escapeHTML(order.id)}-${idx}" aria-label="Ticket Drive de ${this.escapeHTML(item.name)}" placeholder="URL Ticket Drive" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-mars-cyan/60 p-2 text-base sm:text-xs text-white w-full sm:w-44 outline-none focus:border-mars-cyan font-mono">
                             </div>

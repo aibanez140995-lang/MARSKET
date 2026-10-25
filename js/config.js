@@ -1,7 +1,17 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.02) ---
 
-const APP_VERSION = "1.1.24";
+const APP_VERSION = "1.1.25";
+
+const COMMERCIAL_SHOPS_DEF = [
+  { id: 'mercadona', name: 'Mercadona' },
+  { id: 'carrefour', name: 'Carrefour' },
+  { id: 'eroski', name: 'Eroski' },
+  { id: 'dia', name: 'Dia' },
+  { id: 'ferreteria', name: 'Ferretería' },
+  { id: 'bazar', name: 'Bazar' },
+  { id: 'comercio_generico', name: 'Comercio genérico' }
+];
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const GOOGLE_DRIVE_REGEX = /^https:\/\/(docs|drive)\.google\.com\/(document|spreadsheets|presentation|file|drive\/folders)\/(d\/)?[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_.-]+)*(\?[^"'\s<>]*)?(#[^"'\s<>]*)?$/;
@@ -206,6 +216,24 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.25",
+      date: new Date().toISOString().split('T')[0],
+      title: "Estabilidad de Mutaciones Docentes, Retención de Scroll, Comercios Oficiales y Carrito Reactivo",
+      items: [
+        "Permisos de mutación docente ampliados por materia (FYQ, ECO, BIO, MAT, LEN, ING y COORD_*) para salvaguardar evaluaciones",
+        "Retención estricta de posición de scroll en telemetría y ciclos de refresco automático reactivo",
+        "Estandarización del catálogo oficial de comercios para registro de compras físicas (COMMERCIAL_SHOPS_DEF)",
+        "Carrito de la compra reactivo in-situ sin parpadeos, actualizaciones numéricas atómicas y animaciones CSS",
+        "Filtrado selectivo de ítems de mercado exclusivos por startup y solicitud de componentes especiales vía Google Drive"
+      ],
+      highlights: [
+        { type: "DOCENCIA", text: "Desbloqueo de persistencia de estado para docentes de materia preservando el reseteo exclusivo para coordinación." },
+        { type: "TELEMETRÍA", text: "Filtro dinámico de aula por clase con retención de scroll y actualización focalizada de tabla." },
+        { type: "OPERACIONES", text: "Comercios oficiales estandarizados (Mercadona, Carrefour, Eroski, Dia, Ferretería, Bazar y genérico)." },
+        { type: "MERCADO", text: "Carrito reactivo in-situ sin parpadeos y gestión de ítems exclusivos y especiales mediante Drive." }
+      ]
+    },
     {
       version: "1.1.24",
       date: new Date().toISOString().split('T')[0],

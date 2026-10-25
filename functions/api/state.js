@@ -273,7 +273,7 @@ export async function onRequest(context) {
             // Verificación de PIN docente atómica quirúrgica con json_extract (< 1 KB)
             if (payload.action === 'verify_teacher_login') {
                 const { role, pin } = payload;
-                if (!role || pin === undefined || !/^(COORD_[A-Z0-9_]{2,20}|FYQ|ECO|LYE|LEN|MAT|ING)$/.test(role) || !/^\d{4,6}$/.test(String(pin).trim())) {
+                if (!role || pin === undefined || !/^(COORD_[A-Z0-9_]{2,20}|FYQ|ECO|LYE|LEN|MAT|ING|BIO)$/.test(role) || !/^\d{4,6}$/.test(String(pin).trim())) {
                     return new Response(JSON.stringify({ verified: false, error: 'INVALID_PARAMETERS' }), { status: 400, headers });
                 }
 
@@ -285,7 +285,8 @@ export async function onRequest(context) {
                     'LYE': '0303',
                     'LEN': '0404',
                     'MAT': '0505',
-                    'ING': '0606'
+                    'ING': '0606',
+                    'BIO': '0707'
                 };
 
                 try {
@@ -328,8 +329,13 @@ export async function onRequest(context) {
                 });
             }
 
-            // Acción manual de backup interceptada desde el Panel Docente
+            // Acción manual de backup interceptada desde el Panel Docente (Exclusivo COORD_*)
             if (payload.action === 'force_backup') {
+                const auth = await verifySession(request, env);
+                const isCoord = Boolean(auth.valid && (auth.isCoordinator || (auth.role && (auth.role.startsWith('COORD') || auth.role === 'COORDINADOR'))));
+                if (!isCoord) {
+                    return new Response(JSON.stringify({ error: 'Solo perfiles COORD_* pueden ejecutar copias de seguridad.' }), { status: 403, headers });
+                }
                 if (env.TEACHER_MASTER_CODE && payload.teacherMasterCode && payload.teacherMasterCode !== env.TEACHER_MASTER_CODE) {
                     return new Response(JSON.stringify({ error: 'Autorización maestra docente inválida' }), { status: 403, headers });
                 }
@@ -350,12 +356,18 @@ export async function onRequest(context) {
                 return new Response(JSON.stringify({ error: 'No hay datos en estado corriente para respaldar' }), { status: 400, headers });
             }
 
-            // Control de Autorización y Particionado Zero-Trust (v1.1.09)
+            // Control de Autorización y Particionado Zero-Trust (v1.1.25)
             const auth = await verifySession(request, env);
+            const isCoord = Boolean(auth.isCoordinator || (auth.role && (auth.role.startsWith('COORD') || auth.role === 'COORDINADOR')));
+            const teacherRoles = ['FYQ', 'ECO', 'BIO', 'MAT', 'LEN', 'ING', 'LYE'];
+            const isTeacher = Boolean(auth.isAdmin === true || (auth.role && (teacherRoles.includes(auth.role) || isCoord)));
+
             if (auth.isStudent && !payload.coId) {
                 payload.coId = auth.coId;
             }
-            if (!auth.valid || (!auth.isCoordinator && (!auth.isStudent || auth.coId !== payload.coId))) {
+
+            // Permite la mutación de estado a cualquier usuario docente autenticado (auth.isAdmin === true o rol docente en ['FYQ','ECO','BIO','MAT','LEN','ING','COORD_*']), reservando únicamente el reseteo destructivo o backups a roles COORD_*.
+            if (!auth.valid || (!isTeacher && (!auth.isStudent || auth.coId !== payload.coId))) {
                 return new Response(JSON.stringify({
                     error: 'UNAUTHORIZED_MUTATION',
                     message: 'Guardado restringido a sesiones activas de la misión.'
@@ -371,9 +383,16 @@ export async function onRequest(context) {
                 } catch(e) {}
             }
 
-            // 2. Si es un alumno/empresa, blindar la configuración global y resto de empresas
-            const isCoord = Boolean(auth.isCoordinator);
-            if (!isCoord && currentState) {
+            // Reseteo destructivo reservado exclusivamente a roles COORD_*
+            if ((payload.action === 'reset' || (payload.resetEpoch && currentState && payload.resetEpoch !== currentState.resetEpoch)) && !isCoord) {
+                return new Response(JSON.stringify({
+                    error: 'UNAUTHORIZED_RESET',
+                    message: 'El reseteo destructivo está reservado exclusivamente a roles COORD_*.'
+                }), { status: 403, headers });
+            }
+
+            // 2. Si es un alumno/empresa (NO docente), blindar la configuración global y resto de empresas
+            if (!isTeacher && currentState) {
                 if (currentState.config) {
                     payload.config = currentState.config;
                 }

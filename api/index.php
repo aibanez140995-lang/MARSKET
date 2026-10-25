@@ -96,8 +96,16 @@ function verifySession(): array {
         $parts = explode('|', $decoded);
         $role = $parts[1] ?? '';
         $rLower = strtolower($role);
-        $isCoord = strpos($rLower, 'coord') !== false || $rLower === 'coordinador' || $rLower === 'docente';
-        return ['authorized' => $isCoord, 'isCoordinator' => $isCoord, 'role' => $role, 'isAdmin' => true];
+        $isCoord = strpos($rLower, 'coord') !== false || $rLower === 'coordinador';
+        $teacherRoles = ['FYQ', 'ECO', 'BIO', 'MAT', 'LEN', 'ING', 'LYE'];
+        $isTeacherRole = in_array(strtoupper($role), $teacherRoles, true) || $isCoord;
+        return [
+            'authorized' => true,
+            'isCoordinator' => $isCoord,
+            'isTeacher' => $isTeacherRole,
+            'role' => $role,
+            'isAdmin' => true
+        ];
     }
 
     if (strpos($decoded, 'S|') === 0) {
@@ -429,7 +437,8 @@ try {
                     'LYE' => '0303',
                     'LEN' => '0404',
                     'MAT' => '0505',
-                    'ING' => '0606'
+                    'ING' => '0606',
+                    'BIO' => '0707'
                 ];
 
                 $dbPin = $row ? $row['pin'] : null;
@@ -465,13 +474,14 @@ try {
                 exit;
             }
 
-            // Guardado de Estado: Autorización y Particionado Zero-Trust
+            // Guardado de Estado: Autorización y Particionado Zero-Trust (v1.1.25)
             $auth = verifySession();
-            $isCoord = !empty($auth['authorized']);
+            $isCoord = !empty($auth['isCoordinator']);
+            $isTeacher = !empty($auth['isAdmin']) || !empty($auth['isTeacher']);
             $isStudent = !empty($auth['isStudent']) || !empty($auth['coId']);
 
-            // Permitir guardado tanto a Coordinación docente como a Startups/Alumnos autenticados
-            if (!$isCoord && !$isStudent) {
+            // Permitir guardado a usuarios docentes (materias o coordinación) y a Startups/Alumnos autenticados
+            if (!$isTeacher && !$isStudent) {
                 http_response_code(403);
                 echo json_encode([
                     'error' => 'UNAUTHORIZED_MUTATION',
@@ -484,8 +494,18 @@ try {
             $row = $stmt->fetch();
             $currentState = $row ? json_decode($row['data'], true) : [];
 
-            // Si es un Alumno/Empresa, blindar la configuración global y resto de empresas
-            if (!$isCoord) {
+            // Reseteo destructivo reservado exclusivamente a roles COORD_*
+            if ((($payload['action'] ?? '') === 'reset' || (!empty($payload['resetEpoch']) && !empty($currentState['resetEpoch']) && $payload['resetEpoch'] !== $currentState['resetEpoch'])) && !$isCoord) {
+                http_response_code(403);
+                echo json_encode([
+                    'error' => 'UNAUTHORIZED_RESET',
+                    'message' => 'El reseteo destructivo está reservado exclusivamente a roles COORD_*.'
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            // Si es un Alumno/Empresa (NO docente), blindar la configuración global y resto de empresas
+            if (!$isTeacher) {
                 // 1. Prohibir a alumnos alterar la configuración y fechas límite
                 if (isset($currentState['config'])) {
                     $payload['config'] = $currentState['config'];

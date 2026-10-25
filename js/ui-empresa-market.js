@@ -1,5 +1,5 @@
 // js/ui-empresa-market.js
-// --- MÓDULO CATÁLOGO B2B Y B2C CON BLINDAJE LÉXICO EN COMPRAS (v1.0.17) ---
+// --- MÓDULO CATÁLOGO B2B Y B2C CON BLINDAJE LÉXICO EN COMPRAS (v1.1.25) ---
 
 Object.assign(ui, {
     marketTab: 'B2C',
@@ -31,14 +31,20 @@ Object.assign(ui, {
     renderCatalog() {
         const canBuy = state.user.role === 'TECNICO';
         const isDocente = state.user.admin;
-        const catalogData = state.data.catalog || [];
+        const catalog = state.data.catalog || [];
+        const visibleItems = catalog.filter(item => {
+            if (!item.exclusiveFor) return true;
+            const currentCoId = state.user?.coId;
+            const isTeacher = Boolean(state.user?.admin);
+            return item.exclusiveFor === currentCoId || isTeacher;
+        });
 
-        let categories = [...new Set(catalogData.map(i => i.category))];
+        let categories = [...new Set(visibleItems.map(i => i.category))];
         let groupsHtml = categories.map(cat => {
-            const items = catalogData.filter(i => i.category === cat);
+            const items = visibleItems.filter(i => i.category === cat);
             const itemsHtml = items.map(item => {
                 let actionBtn = canBuy 
-                    ? `<button type="button" onclick="ui.addToCart('${this.escapeHTML(item.id)}')" class="w-full min-h-[44px] bg-slate-800 text-mars-cyan border border-mars-cyan hover:bg-mars-cyan hover:text-black font-black py-2 px-3 text-xs uppercase tracking-wider transition-all">Añadir al Borrador</button>` 
+                    ? `<button type="button" onclick="ui.addToCart('${this.escapeHTML(item.id)}')" class="w-full min-h-[44px] bg-slate-800 text-mars-cyan border border-mars-cyan hover:bg-mars-cyan hover:text-black font-black py-2 px-3 text-xs uppercase tracking-wider transition-all">🛒 Añadir al Carrito</button>` 
                     : (isDocente ? `<span class="block text-center text-slate-300 text-xs uppercase font-bold py-2 border border-slate-800 bg-black/40">Modo Supervisión</span>` : `<span class="block text-center text-slate-300 text-xs uppercase font-bold border border-slate-700 p-2.5 bg-black/40">Solo Dpto. Técnico</span>`);
 
                 return `
@@ -71,7 +77,7 @@ Object.assign(ui, {
                 <h2 class="font-orbitron text-mars-cyan text-base sm:text-lg uppercase tracking-tighter">Catálogo Aeroespacial (B2C)</h2>
                 <p class="text-xs text-slate-300 uppercase mt-1">Suministro oficial regulado en €v.</p>
             </div>
-            ${canBuy ? `<button type="button" onclick="ui.modalCheckout()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 font-black uppercase text-xs tracking-wider shadow-[0_0_15px_#00f0ff] hover:bg-white transition-all w-full sm:w-auto text-center shrink-0">Borrador Técnico (${(state.data.companies[state.user.coId].cart || []).length})</button>` : ''}
+            ${canBuy ? `<button type="button" id="btn-cart-toggle" onclick="ui.modalCheckout()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 font-black uppercase text-xs tracking-wider shadow-[0_0_15px_#00f0ff] hover:bg-white transition-all w-full sm:w-auto text-center shrink-0">🛒 Carrito de la compra (${(state.data.companies[state.user.coId]?.cart || []).length})</button>` : ''}
         </div>`;
 
         return header + groupsHtml;
@@ -132,8 +138,8 @@ Object.assign(ui, {
         else { co.cart.push({ ...itemDef, qty: 1 }); }
 
         state.save();
-        ui.pushNotification(state.user.coId, 'FINANZAS', `I+D ha añadido "${itemDef.name}" al borrador del carrito.`, 'info');
-        this.notify(`Añadido al borrador: ${itemDef.name}`, 'info');
+        ui.pushNotification(state.user.coId, 'FINANZAS', `I+D ha añadido "${itemDef.name}" al carrito de la compra.`, 'info');
+        this.notify(`Añadido al carrito de la compra: ${itemDef.name}`, 'info');
         this.render();
     },
 
@@ -142,10 +148,50 @@ Object.assign(ui, {
         if (!co) return;
         const idx = co.cart.findIndex(i => i.id === itemId);
         if(idx > -1) {
+            const unitPrice = Number(co.cart[idx].price) || 0;
             co.cart[idx].qty--;
+            const remainingQty = co.cart[idx].qty;
             if(co.cart[idx].qty <= 0) co.cart.splice(idx, 1);
             state.save();
-            this.modalCheckout(); 
+            // Localizar la fila en el DOM sin cerrar ni reabrir el modal
+            const row = document.querySelector(`[data-cart-item="${itemId}"]`);
+            if (row) {
+                if (remainingQty <= 0) {
+                    row.style.transition = 'all 0.25s ease-out';
+                    row.style.opacity = '0';
+                    row.style.transform = 'translateX(-20px)';
+                    setTimeout(() => {
+                        row.remove();
+                        const container = document.getElementById('cart-modal-items');
+                        if (container && (!co.cart || co.cart.length === 0)) {
+                            container.innerHTML = "<p class='text-slate-300 text-xs sm:text-sm py-4 text-center'>El carrito de la compra está vacío.</p>";
+                            const btnTrans = document.getElementById('btn-transmit-cart');
+                            if (btnTrans) btnTrans.style.display = 'none';
+                        }
+                    }, 250);
+                } else {
+                    const qtyEl = row.querySelector('.cart-item-qty');
+                    if (qtyEl) qtyEl.textContent = String(remainingQty);
+                    const subtotalEl = row.querySelector('.cart-item-subtotal');
+                    if (subtotalEl) subtotalEl.textContent = `${(remainingQty * unitPrice).toFixed(2)} €v`;
+                }
+            }
+
+            // Actualizar el total general #cart-total-badge de forma atómica
+            const newTotal = co.cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.qty) || 0), 0);
+            const totalBadge = document.getElementById('cart-total-badge');
+            if (totalBadge) {
+                totalBadge.textContent = `${newTotal.toFixed(2)} €v`;
+            }
+
+            const marketBtn = document.getElementById('btn-cart-toggle');
+            if (marketBtn) {
+                marketBtn.textContent = `🛒 Carrito de la compra (${co.cart.length})`;
+            }
+            const btnTrans = document.getElementById('btn-transmit-cart');
+            if (btnTrans) {
+                btnTrans.setAttribute('onclick', `ui.confirmCart(${newTotal})`);
+            }
         }
     },
 
