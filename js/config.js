@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.02) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.27) ---
 
-const APP_VERSION = "1.1.26";
+const APP_VERSION = "1.1.27";
 
 const COMMERCIAL_SHOPS_DEF = [
   { id: 'mercadona', name: 'Mercadona' },
@@ -15,6 +15,119 @@ const COMMERCIAL_SHOPS_DEF = [
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
 const GOOGLE_DRIVE_REGEX = /^https:\/\/(docs|drive)\.google\.com\/(document|spreadsheets|presentation|file|drive\/folders)\/(d\/)?[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_.-]+)*(\?[^"'\s<>]*)?(#[^"'\s<>]*)?$/;
+
+// Diccionario Oficial Inmutable de los 11 Modelos de Google Docs (/copy)
+const OFFICIAL_DOC_TEMPLATES = Object.freeze({
+    DOC_1_DENOMINACION: {
+        id: 'DOC_1_DENOMINACION',
+        title: 'SOLICITUD DE CAMBIO DE DENOMINACIÓN SOCIAL',
+        flow: 'CEO ➔ Coordinación Docente',
+        copyUrl: 'https://docs.google.com/document/d/1nm5JLGaYqZCstS7NVyeHtnN3R1KTGO1Lgt8DdpetcCI/copy'
+    },
+    DOC_2_INACTIVIDAD_HR: {
+        id: 'DOC_2_INACTIVIDAD_HR',
+        title: 'EXPEDIENTE HR: REPORTE DE INACTIVIDAD DEPARTAMENTAL',
+        flow: 'Cualquier Dpto. ➔ Coordinación Docente',
+        copyUrl: 'https://docs.google.com/document/d/1ZZXK7bWALAII8XjB2hXyg4aLYzgDKxrEkNMklySDk4I/copy'
+    },
+    DOC_3_COMUNICADO_SANCION: {
+        id: 'DOC_3_COMUNICADO_SANCION',
+        title: 'COMUNICADO OFICIAL DE EXPEDIENTE SANCIONADOR',
+        flow: 'CEO ➔ Resto de departamentos',
+        copyUrl: 'https://docs.google.com/document/d/1kmJK4J2MvPyKKm9k6YhLtkoRb3ysoAcgFmMjgbUgZ1o/copy'
+    },
+    DOC_4_BITACORA_IA: {
+        id: 'DOC_4_BITACORA_IA',
+        title: 'CUADERNO DE BITÁCORA Y AUDITORÍA ÉTICA DE IA',
+        flow: 'Todos los Dptos. ➔ Dpto. Operaciones e IA',
+        copyUrl: 'https://docs.google.com/document/d/1QDzumCcDHLWcQJlkPSaA1Q16Kj0Ff9wsHiPf_clLau8/copy'
+    },
+    DOC_5_BRIEF_MKT: {
+        id: 'DOC_5_BRIEF_MKT',
+        title: 'BRIEF CREATIVO DE CAMPAÑA Y JUSTIFICACIÓN ROI',
+        flow: 'Marketing ➔ Financiero',
+        copyUrl: 'https://docs.google.com/document/d/1WA1dkWqsVmuwhXf2wnCvR4xWalJGIN3pi5WRH3h4XCo/copy'
+    },
+    DOC_6_MOCION_ASAMBLEA: {
+        id: 'DOC_6_MOCION_ASAMBLEA',
+        title: 'ACTA DE MOCIÓN ASAMBLEARIA',
+        flow: 'Dptos. Proponentes ➔ Todos los departamentos',
+        copyUrl: 'https://docs.google.com/document/d/1K6fmTDUxH7NNHsfoCIrB9vmMzhU0N0k7ROin13D6kvo/copy'
+    },
+    DOC_7_B2B_DESINVERSION: {
+        id: 'DOC_7_B2B_DESINVERSION',
+        title: 'ADUANA DOCENTE & MERCADO B2B — MEMORIA TÉCNICA DE DESINVERSIÓN Y DECLARACIÓN DE EXCEDENTES',
+        flow: 'Técnico/Financiero ➔ Mercado B2B & Aduana Docente',
+        copyUrl: 'https://docs.google.com/document/d/1V1amJQa0GkogTC2r8HPAJRUCVj3UlG0HIvjgHx4Csas/copy'
+    },
+    DOC_8_CONTROL_AERO: {
+        id: 'DOC_8_CONTROL_AERO',
+        title: 'PROTOCOLO DE ADQUISICIÓN Y CONTROL DE AERO-ESTRUCTURA',
+        flow: 'Financiero & Operaciones - Control de Calidad',
+        copyUrl: 'https://docs.google.com/document/d/1Y5dAyCQ92Avft0_kVCrJmcamc-J8g7G2Z23Euj1TLso/copy'
+    },
+    DOC_9_ORDEN_ADQUISICION: {
+        id: 'DOC_9_ORDEN_ADQUISICION',
+        title: 'ORDEN DE ADQUISICIÓN E INFORME TÉCNICO',
+        flow: 'Técnico Solicitante ➔ Financiero Autorizador',
+        copyUrl: 'https://docs.google.com/document/d/1WrkvVwEEi0uJ9pKNI6U2nlvRrxDbt75SU1oh6gUqM_o/copy'
+    },
+    DOC_10_HOJA_TALLER: {
+        id: 'DOC_10_HOJA_TALLER',
+        title: 'HOJA OFICIAL DE TALLER, BOM Y CONTROL DE CALIDAD [FYQ]',
+        flow: 'Técnico, Operario de Taller, CEO ➔ Evaluación Docente',
+        copyUrl: 'https://docs.google.com/document/d/1ehTeMTmHzY5Jl8dcVjvF-2AkfQQBNRR0tctTWdqSI1o/copy'
+    },
+    DOC_11_SLOGAN: {
+        id: 'DOC_11_SLOGAN',
+        title: 'REGISTRO MERCANTIL // SOLICITUD DE APROBACIÓN DE SLOGAN CORPORATIVO',
+        flow: 'Marketing ➔ CEO ➔ Coordinación Docente',
+        copyUrl: 'https://docs.google.com/document/d/1D_YeV9yiJX4Lr_yRA6fB8ew0DMCr54MYRXB0JXiDUdU/copy'
+    }
+});
+
+const NAME_CHANGE_REASONS_DEF = Object.freeze([
+    { id: 'REORIENTACION_ESTRATEGICA', label: 'Reorientación estratégica y pivotaje del modelo de negocio' },
+    { id: 'FUSION_DEPARTAMENTAL', label: 'Fusión o reestructuración de departamentos internos' },
+    { id: 'ALINEACION_AEE', label: 'Alineación con nuevos objetivos de la misión aeroespacial AEE' },
+    { id: 'MARCA_INTERNACIONAL', label: 'Homogeneización de identidad de marca y denominación internacional' },
+    { id: 'ASAMBLEA_SOCIOS', label: 'Resolución aprobada por mayoría en Asamblea General de Socios' }
+]);
+
+const INACTIVITY_REASONS_DEF = Object.freeze([
+    { id: 'AUSENCIA_SESIONES', label: 'Ausencia continuada o falta de conexión en sesiones de trabajo' },
+    { id: 'BLOQUEO_ENTREGABLES', label: 'Bloqueo en la entrega de memorias y documentación obligatoria' },
+    { id: 'FALTA_RESPUESTA_INTERNA', label: 'Falta de respuesta reiterada en canales internos de coordinación' },
+    { id: 'RETRASO_PRESUPUESTO', label: 'Negativa o retraso injustificado en la aprobación de órdenes/presupuestos' },
+    { id: 'INCUMPLIMIENTO_PLAZOS', label: 'Incumplimiento de los plazos establecidos en el cronograma maestro' }
+]);
+
+const BOTTLE_TYPES_DEF = Object.freeze([
+    "PET 1.5L Lisa Cilíndrica",
+    "PET 1.5L Acanalada Reforzada",
+    "PET 2.0L Alta Capacidad",
+    "PET 1.0L Estándar",
+    "PET 0.5L Ligera Suborbital",
+    "Fuselaje Bietapa / Empalmado"
+]);
+
+const STUDENT_SUGGESTION_TOPICS_DEF = Object.freeze([
+    { id: 'TELEMETRIA_SIMULADOR', label: 'Incidencia o duda en el cálculo de telemetría y simulador' },
+    { id: 'NORMATIVA_AEE', label: 'Consulta sobre normativa AEE, rúbricas o reglas de competición' },
+    { id: 'DRIVE_DOCS', label: 'Problema al vincular o visualizar enlace de Google Drive / Docs' },
+    { id: 'UI_ERGONOMIA', label: 'Propuesta de mejora en la interfaz o usabilidad de la plataforma' },
+    { id: 'CONTABILIDAD_LEDGER', label: 'Duda sobre Libro Mayor, contabilidad o compras de materiales' },
+    { id: 'BUG_SISTEMA', label: 'Reporte de error técnico o comportamiento inesperado del sistema' }
+]);
+
+const BRAND_CONCEPTS_DEF = Object.freeze([
+    { id: 'TRANSPORTE_PLANETARIO', label: 'Exploración y Transporte Planetario Marte-Tierra' },
+    { id: 'RECURSOS_ISRU', label: 'Minería de Recursos In Situ y Manufactura Espacial (ISRU)' },
+    { id: 'PROPULSION_SOSTENIBLE', label: 'Sistemas de Propulsión Sostenible y Eficiencia de Combustible' },
+    { id: 'SOPORTE_VITAL', label: 'Soporte Vital, Habitabilidad y Biología Marciana' },
+    { id: 'TELECOMUNICACIONES_ORBITA', label: 'Telecomunicaciones Orbitales y Redes de Satélites' },
+    { id: 'SENSORES_ATMOSFERICOS', label: 'Detección Remota, Sensores y Observación Atmosférica' }
+]);
 
 const CEO_RETURN_REASONS = [
   { id: "ENLACE_INVALIDO", label: "Enlace a Google Drive inexistente o con formato incorrecto" },
@@ -38,15 +151,15 @@ const AUTHORIZED_AI_PROVIDERS = [
   "Google Gemini", "OpenAI ChatGPT", "Anthropic Claude", "Microsoft Copilot", "Perplexity AI", "DeepSeek", "Otro autorizado por Coordinación"
 ];
 
-const GOVERNANCE_MOTION_TYPES = [
-  { id: "CESE_RELEVO", label: "[CESE/RELEVO] Cese o redistribución de rol por inactividad" },
-  { id: "REORGANIZACION_PINS", label: "[REORGANIZACIÓN] Reestructuración de cargos y PINs" },
-  { id: "PACTO_SOCIOS", label: "[CONVIVENCIA] Vulneración del Pacto de Socios" },
-  { id: "MEDIACION_DOCENTE", label: "[MEDIACIÓN] Solicitud formal de mediación docente" },
-  { id: "AUDITORIA_FINANZAS", label: "[AUDITORÍA] Petición de intervención a Tesorería" },
-  { id: "REPARTO_TRABAJO", label: "[REPARTO] Reasignación urgente de cargas de trabajo" },
-  { id: "JUNTA_GENERAL", label: "[EXTRAORDINARIA] Convocatoria de Junta General de Socios" }
-];
+const GOVERNANCE_MOTION_TYPES = Object.freeze([
+  { id: "DISCREPANCIA_DEPT", label: "[DISCREPANCIA] Discrepancia de criterio entre departamentos" },
+  { id: "CONSULTA_EQUIPO", label: "[CONSULTA] Consulta general al equipo para toma de decisión" },
+  { id: "PROPUESTA_ALTERNATIVA", label: "[ALTERNATIVA] Propuesta alternativa de diseño, presupuesto o enfoque" },
+  { id: "MODIFICAR_HOJA_RUTA", label: "[HOJA DE RUTA] Modificación de la hoja de ruta o plazos internos" },
+  { id: "IDEA_DEBATIR", label: "[IDEA A DEBATIR] Nueva propuesta o mejora para debatir en asamblea" },
+  { id: "REPARTO_TAREAS", label: "[ORGANIZACIÓN] Reajuste o apoyo en el reparto de tareas interdepartamentales" },
+  { id: "SOLICITUD_MEDIACION", label: "[MEDIACIÓN] Solicitud de orientación o mediación al equipo docente" }
+]);
 
 const REGULATORY_AGENCIES = {
     FYQ: "Agencia Estatal de Seguridad Aérea (AESA)",
@@ -65,10 +178,11 @@ const GLOBAL_WEIGHTS = {
 
 const RUBRIC_CONFIG = {
     FYQ: { name: "Física y Química", criteria: [
-        {id: 'c1', name: 'Informe Preliminar / Prototipo (Dic)', weight: 0.20}, 
-        {id: 'c2', name: 'Informe Técnico Final Exhaustivo (Abr)', weight: 0.30}, 
-        {id: 'c3', name: 'Prototipo Físico / Ensayos Cohete', weight: 0.30}, 
-        {id: 'c4', name: 'Defensa Técnica, Roles y Q&A', weight: 0.20}
+        {id: 'c1', name: '1. Informe Preliminar, Boceto y Foto (10%)', weight: 0.10}, 
+        {id: 'c_ws', name: '2. Hoja Oficial de Taller, BOM y Control de Calidad (10%)', weight: 0.10},
+        {id: 'c2', name: '3. Informe Técnico Final Exhaustivo (30%)', weight: 0.30}, 
+        {id: 'c3', name: '4. Prototipo Físico y Lanzamiento (30%)', weight: 0.30}, 
+        {id: 'c4', name: '5. Media de Test Rol y Defensa Q&A (20%)', weight: 0.20}
     ] },
     ECO: { name: "Economía", criteria: [
         {id: 'c1', name: 'Test Evaluación', weight: 0.20}, 
@@ -102,7 +216,7 @@ const RUBRIC_CONFIG = {
     ] }
 };
 
-// Definición Maestra Oficial de los 19 Entregables Curriculares
+// Definición Maestra Oficial de los 17 Entregables Curriculares en Google Drive
 const DELIVERABLES_DEF = [
     // Física y Química (3)
     {
@@ -116,9 +230,9 @@ const DELIVERABLES_DEF = [
       defaultDate: "2027-04-10T23:59",
       weight: "10% FYQ",
       defaultOpenDate: null,
-      defaultGuideDocUrl: ""
+      defaultGuideDocUrl: "https://docs.google.com/document/d/1ehTeMTmHzY5Jl8dcVjvF-2AkfQQBNRR0tctTWdqSI1o/copy"
     },
-    { key: 'preliminaryReport', subject: 'FYQ', name: '1. Informe Preliminar / Prototipo (Dic)', shortName: 'Preliminar FYQ (Dic)', role: 'TECNICO', defaultDate: '2026-12-15T23:59', weight: '20% FYQ', defaultOpenDate: null, defaultGuideDocUrl: "" },
+    { key: 'preliminaryReport', subject: 'FYQ', name: '1. Informe Preliminar, Boceto y Foto (Dic)', shortName: 'Preliminar FYQ (Dic)', role: 'TECNICO', defaultDate: '2026-12-15T23:59', weight: '10% FYQ', defaultOpenDate: null, defaultGuideDocUrl: "" },
     { key: 'technicalReport', subject: 'FYQ', name: '2. Informe Técnico Final Exhaustivo (Abr)', shortName: 'Técnico FYQ (Abr)', role: 'TECNICO', defaultDate: '2027-04-20T23:59', weight: '30% FYQ', defaultOpenDate: null, defaultGuideDocUrl: "" },
     
     // Liderazgo y Emprendimiento (6)
@@ -126,8 +240,8 @@ const DELIVERABLES_DEF = [
     { key: 'brandIdentity_apr', subject: 'LYE', name: '1B. Identidad de Marca y Misión — ABRIL', shortName: 'Marca Abr (LYE)', role: 'MARKETING', defaultDate: '2027-04-10T23:59', weight: '10% LYE', defaultOpenDate: null, defaultGuideDocUrl: "" },
     { key: 'businessModelDoc', subject: 'LYE', name: '2. Business Model — Documento Escrito', shortName: 'Business Model (Doc)', role: 'MARKETING', defaultDate: '2026-11-20T23:59', weight: '25% LYE', defaultOpenDate: null, defaultGuideDocUrl: "" },
     { key: 'businessModelCanvas', subject: 'LYE', name: '3. Business Model Canvas (Lienzo Estratégico)', shortName: 'Canvas (LYE)', role: 'MARKETING', defaultDate: '2026-11-25T23:59', weight: '15% LYE', defaultOpenDate: null, defaultGuideDocUrl: "" },
-    { key: 'decisionDiary_dec', subject: 'LYE', name: '4A. Diario Decisiones, Conflictos e IA — DICIEMBRE', shortName: 'Diario IA Dic (LYE)', role: 'OPERACIONES_IA', defaultDate: '2026-12-15T23:59', weight: '10% LYE', defaultOpenDate: null, defaultGuideDocUrl: "" },
-    { key: 'decisionDiary_apr', subject: 'LYE', name: '4B. Diario Decisiones, Conflictos e IA — ABRIL', shortName: 'Diario IA Abr (LYE)', role: 'OPERACIONES_IA', defaultDate: '2027-04-20T23:59', weight: '10% LYE', defaultOpenDate: null, defaultGuideDocUrl: "" },
+    { key: 'decisionDiary_dec', subject: 'LYE', name: '4A. Diario Decisiones, Conflictos e IA — DICIEMBRE', shortName: 'Diario IA Dic (LYE)', role: 'OPERACIONES_IA', defaultDate: '2026-12-15T23:59', weight: '10% LYE', defaultOpenDate: null, defaultGuideDocUrl: "https://docs.google.com/document/d/1QDzumCcDHLWcQJlkPSaA1Q16Kj0Ff9wsHiPf_clLau8/copy" },
+    { key: 'decisionDiary_apr', subject: 'LYE', name: '4B. Diario Decisiones, Conflictos e IA — ABRIL', shortName: 'Diario IA Abr (LYE)', role: 'OPERACIONES_IA', defaultDate: '2027-04-20T23:59', weight: '10% LYE', defaultOpenDate: null, defaultGuideDocUrl: "https://docs.google.com/document/d/1QDzumCcDHLWcQJlkPSaA1Q16Kj0Ff9wsHiPf_clLau8/copy" },
 
     // Economía (4)
     { key: 'budgetInitial', subject: 'ECO', name: '1. Presupuesto Inicial de Lanzamiento', shortName: 'Presupuesto Inicial', role: 'FINANZAS', defaultDate: '2026-11-10T23:59', weight: '20% ECO', defaultOpenDate: null, defaultGuideDocUrl: "" },
@@ -142,11 +256,7 @@ const DELIVERABLES_DEF = [
     { key: 'mathReportFinal', subject: 'MAT', name: '4. Informe Técnico Final Comparativo de Apogeo', shortName: 'Informe Final (MAT)', role: 'TECNICO', defaultDate: '2027-04-15T23:59', weight: '25% MAT', defaultOpenDate: null, defaultGuideDocUrl: "" },
 
     // Lengua Castellana (1)
-    { key: 'investorDossier', subject: 'LEN', name: '1. Dossier para Inversores (Texto Argumentativo)', shortName: 'Dossier Inversores (LEN)', role: 'MARKETING', defaultDate: '2026-12-05T23:59', weight: '50% LEN', defaultOpenDate: null, defaultGuideDocUrl: "" },
-
-    // Inglés (2)
-    { key: 'oralPresentation', subject: 'ING', name: '1. Expresión Oral: Presentación Prototipo (Slides/Vídeo)', shortName: 'Oral Pitch (ING)', role: 'MARKETING', defaultDate: '2027-04-25T23:59', weight: '70% ING', defaultOpenDate: null, defaultGuideDocUrl: "" },
-    { key: 'writtenEssays', subject: 'ING', name: '2. Redacciones Escritas y Ensayos Técnicos en Inglés', shortName: 'Essays (ING)', role: 'MARKETING', defaultDate: '2027-04-25T23:59', weight: '30% ING', defaultOpenDate: null, defaultGuideDocUrl: "" }
+    { key: 'investorDossier', subject: 'LEN', name: '1. Dossier para Inversores (Texto Argumentativo)', shortName: 'Dossier Inversores (LEN)', role: 'MARKETING', defaultDate: '2026-12-05T23:59', weight: '50% LEN', defaultOpenDate: null, defaultGuideDocUrl: "" }
 ];
 
 const MARKETING_PACKAGES = Object.freeze([
@@ -216,6 +326,25 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.27",
+      date: new Date().toISOString().split('T')[0],
+      title: "Modelos Oficiales Google Docs (/copy), Política Zero-Text 100%, Registro de Slogan en 3 Pasos y Ajuste Curricular LOMLOE",
+      items: [
+        "Integración de los 11 Modelos Oficiales de Google Docs con botón de acción destacado '📄 Modelo de documento (Hacer copia)' con terminación /copy para forzar copia en Drive del alumno",
+        "Política Zero-Text 100% en todos los formularios de alumnado: erradicación total de inputs de texto libre sustituidos por selectores tipificados y enlaces verificados a Google Drive",
+        "Nuevo flujo oficial de Registro Mercantil para Slogan Corporativo en 3 pasos: Marketing formula y presenta al CEO ➔ CEO avala y eleva a Coordinación ➔ Coordinación Docente aprueba y registra oficialmente",
+        "Nuevo procedimiento para cambio de denominación social: solicitud por CEO mediante modelo y motivos pregenerados, con asignación y bautizo oficial exclusivo por Coordinación Docente",
+        "Reestructuración realista de mociones asamblearias (GOVERNANCE_MOTION_TYPES) adaptadas a discrepancias de criterio, consultas de equipo y alternativas de diseño",
+        "Ajuste curricular oficial LOMLOE: evaluación presencial en aula para Inglés (sin entregables en Drive) y ponderación matemática exacta en FyQ (10% Preliminar + 10% Hoja Taller + 30% Final + 30% Prototipo + 20% Test/Q&A), consolidando 17 entregables de Drive"
+      ],
+      highlights: [
+        { type: "DOCS", text: "11 Modelos oficiales de Google Docs con botón '/copy' para auto-creación de copias en el Drive del alumno." },
+        { type: "ZERO-TEXT", text: "Cero campos de texto libre para alumnos: selectores predefinidos y enlaces a Google Drive con blindaje RGPD." },
+        { type: "SLOGAN", text: "Trámite de Slogan en 3 fases: Dpto. Marketing ➔ Aval CEO ➔ Resolución y Registro por Coordinación Docente." },
+        { type: "CURRÍCULO", text: "Consolidación de 17 entregables oficiales en Drive; rúbrica de Física y Química al 100% e Inglés en aula presencial." }
+      ]
+    },
     {
       version: "1.1.26",
       date: new Date().toISOString().split('T')[0],

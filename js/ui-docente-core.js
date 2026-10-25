@@ -1,5 +1,5 @@
 // js/ui-docente-core.js
-// --- MÓDULO DOCENTE CORE: ENRUTADOR, AJUSTES DE PLAZOS Y BACKUPS D1 (v1.1.00) ---
+// --- MÓDULO DOCENTE CORE: ENRUTADOR, AJUSTES DE PLAZOS Y BACKUPS D1 (v1.1.27) ---
 
 Object.assign(ui, {
     viewAdmin(el) {
@@ -173,7 +173,7 @@ Object.assign(ui, {
         const companies = state.data.companies || {};
         const pendingCos = Object.keys(companies).filter(cid => {
             const co = companies[cid];
-            return co && (co.brandStatus === 'PENDING_APPROVAL' || (co.brandApproval && co.brandApproval.status === 'PENDIENTE' && co.brandApproval.pendingSlogan));
+            return co && ((co.brandApproval && co.brandApproval.status === 'PENDIENTE') || co.brandStatus === 'PENDING_APPROVAL');
         });
 
         if (pendingCos.length === 0) return '';
@@ -181,22 +181,32 @@ Object.assign(ui, {
         const cardsHtml = pendingCos.map(cid => {
             const co = companies[cid];
             const coName = co.name || cid.toUpperCase();
-            const pSlogan = co.pendingSlogan || co.brandApproval?.pendingSlogan || '--';
-            const pMission = co.pendingMission || co.valueProposition || co.mission || '--';
+            const logoPreview = co.brandApproval?.pendingLogo ? `<img src="${this.escapeHTML(co.brandApproval.pendingLogo)}" alt="Logo" width="48" height="48" onerror="this.onerror=null;this.src='logo.png';" class="w-12 h-12 object-contain border border-slate-700 bg-black p-1 shrink-0">` : '';
 
             return `
             <div class="bg-slate-900 border border-amber-500/60 p-4 rounded mb-3 text-xs">
                 <div class="flex justify-between items-center mb-2 flex-wrap gap-2 border-b border-slate-800 pb-2">
                     <span class="text-mars-cyan font-bold uppercase text-sm">${this.escapeHTML(coName)}</span>
-                    <span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 text-[10px] font-black uppercase">[PENDIENTE REVISIÓN MARCA]</span>
+                    <span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 text-[10px] font-black uppercase">[PROPUESTA SLOGAN AVALADA POR CEO]</span>
                 </div>
-                <div class="space-y-1.5 mb-3 text-slate-200">
-                    <p><strong class="text-mars-yellow uppercase">Eslogan Propuesto:</strong> "${this.escapeHTML(pSlogan)}"</p>
-                    <p><strong class="text-mars-cyan uppercase">Misión Propuesta:</strong> "${this.escapeHTML(pMission)}"</p>
+                <div class="flex gap-3 items-center mb-3">
+                    ${logoPreview}
+                    <div class="space-y-1 text-slate-200 min-w-0">
+                        <p><strong class="text-mars-yellow uppercase">Enfoque:</strong> ${this.escapeHTML(co.brandApproval?.concept || 'Aeroespacial General')}</p>
+                        <p class="text-[10px] text-slate-400 font-mono">${this.escapeHTML(co.brandApproval?.expId || '')}</p>
+                    </div>
+                </div>
+                ${co.brandApproval?.driveUrl ? `
+                <div class="mb-3">
+                    <a href="${encodeURI(co.brandApproval.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50"><span>📄 Abrir Expediente Slogan en Google Drive ↗</span></a>
+                </div>` : ''}
+                <div class="mb-3">
+                    <label for="coord-review-official-slogan-${cid}" class="text-xs text-mars-yellow uppercase font-bold block mb-1">Slogan Oficial Aprobado (Extraído del Google Doc):</label>
+                    <input type="text" id="coord-review-official-slogan-${cid}" placeholder="Escribe el slogan aprobado que se fijará en el HUD..." value="${this.escapeHTML(co.brandApproval?.pendingSlogan || co.slogan || '')}" class="w-full min-h-[44px] bg-black border border-mars-yellow/50 p-2.5 text-xs text-mars-yellow font-bold uppercase outline-none focus:border-mars-yellow">
                 </div>
                 <div class="flex gap-2 justify-end">
-                    <button type="button" onclick="ui.decideBrand('${this.escapeHTML(cid)}', true)" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ APROBAR ]</button>
-                    <button type="button" onclick="ui.decideBrand('${this.escapeHTML(cid)}', false)" class="min-h-[44px] bg-red-700 text-white font-black uppercase text-xs px-4 py-2 hover:bg-white hover:text-red-700 transition-all border border-red-500">[ RECHAZAR ]</button>
+                    <button type="button" onclick="ui.decideBrand('${this.escapeHTML(cid)}', true)" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ ✅ APROBAR Y REGISTRAR SLOGAN ]</button>
+                    <button type="button" onclick="ui.decideBrand('${this.escapeHTML(cid)}', false)" class="min-h-[44px] bg-red-700 text-white font-black uppercase text-xs px-4 py-2 hover:bg-white hover:text-red-700 transition-all border border-red-500">[ ❌ RECHAZAR ]</button>
                 </div>
             </div>
             `;
@@ -206,8 +216,8 @@ Object.assign(ui, {
         <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-amber-400 mb-6">
             <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
                 <div>
-                    <h3 class="font-orbitron text-amber-400 text-xs sm:text-sm uppercase tracking-wider font-bold">Revisión de Marca de Startups</h3>
-                    <p class="text-[11px] text-slate-300">Validación obligatoria de eslogan y misión corporativa antes de publicación oficial.</p>
+                    <h3 class="font-orbitron text-amber-400 text-xs sm:text-sm uppercase tracking-wider font-bold">Revisión de Slogan Corporativo (Registro Mercantil)</h3>
+                    <p class="text-[11px] text-slate-300">Validación de expedientes avalados por CEO y registro oficial del slogan.</p>
                 </div>
                 <span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2.5 py-1 text-xs font-black uppercase font-mono">${pendingCos.length} PENDIENTES</span>
             </div>
@@ -222,24 +232,37 @@ Object.assign(ui, {
         if (!co) return;
 
         if (approved) {
-            co.slogan = co.pendingSlogan || co.brandApproval?.pendingSlogan || co.slogan;
-            co.mission = co.pendingMission || co.valueProposition || co.mission;
-            co.valueProposition = co.mission;
+            const inputEl = document.getElementById('coord-review-official-slogan-' + cid);
+            const officialSlogan = inputEl ? this.cleanInput(inputEl.value) : (co.brandApproval?.pendingSlogan || co.slogan || '');
+            if (!officialSlogan && !co.brandApproval?.pendingLogo) {
+                return this.notify("Debes escribir o confirmar el slogan oficial aprobado.", "warning");
+            }
+
+            if (officialSlogan) co.slogan = officialSlogan;
+            if (co.brandApproval?.pendingLogo) co.logo = co.brandApproval.pendingLogo;
+
             delete co.pendingSlogan;
             delete co.pendingMission;
             co.brandStatus = 'APPROVED';
             if (co.brandApproval) {
                 co.brandApproval.status = 'APROBADO';
                 delete co.brandApproval.pendingSlogan;
+                delete co.brandApproval.pendingLogo;
             }
-            this.notify(`✅ Marca de ${co.name || cid} aprobada con éxito.`, "success");
-            ui.pushNotification(cid, 'MARKETING', 'La Coordinación ha APROBADO el eslogan y la misión corporativa.', 'success');
+            this.notify(`✅ Slogan de ${co.name || cid} aprobado y registrado con éxito.`, "success");
+            ui.pushNotification(cid, 'MARKETING', `La Coordinación ha APROBADO el slogan oficial: "${co.slogan}".`, 'success');
+            ui.pushNotification(cid, 'CEO', `Slogan oficial registrado en el expediente: "${co.slogan}".`, 'success');
         } else {
-            state.discardPendingProposal(cid, 'BRAND');
-            this.notify(`❌ Marca de ${co.name || cid} rechazada.`, "info");
-            ui.pushNotification(cid, 'MARKETING', 'La Coordinación ha descartado la propuesta de marca. Podéis reiniciar el flujo con una nueva propuesta adaptada a los criterios.', 'error');
+            const reason = prompt("Indica el motivo del rechazo para que Marketing pueda corregirlo:") || "Incumplimiento de criterios oficiales.";
+            if (co.brandApproval) {
+                co.brandApproval.status = 'RECHAZADO';
+                co.brandApproval.feedback = reason;
+            }
+            co.brandStatus = 'REJECTED';
+            this.notify(`❌ Propuesta de slogan de ${co.name || cid} rechazada.`, "info");
+            ui.pushNotification(cid, 'MARKETING', `La Coordinación ha rechazado la propuesta de slogan. Motivo: ${reason}`, 'error');
             if (typeof telemetry !== 'undefined' && telemetry.log) {
-                telemetry.log("PROPUESTA_DESCARTADA", `Propuesta de marca de ${cid} descartada por Coordinación.`);
+                telemetry.log("PROPUESTA_DESCARTADA", `Propuesta de slogan de ${cid} descartada por Coordinación.`);
             }
         }
 

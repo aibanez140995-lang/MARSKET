@@ -1,5 +1,5 @@
 // js/ui-docente-management.js
-// --- MÓDULO DOCENTE: GESTIÓN, LLAVERO MAESTRO, ADUANAS Y REGISTRO MERCANTIL (v1.1.26) ---
+// --- MÓDULO DOCENTE: GESTIÓN, LLAVERO MAESTRO, ADUANAS Y REGISTRO MERCANTIL (v1.1.27) ---
 
 Object.assign(ui, {
     pinsVisible: false,
@@ -86,11 +86,16 @@ Object.assign(ui, {
                         <div class="bg-slate-900 border border-mars-yellow/40 p-4">
                             <p class="text-xs text-slate-300 uppercase font-bold mb-1">Empresa Actual:</p>
                             <h4 class="font-orbitron text-slate-200 font-bold text-xs uppercase mb-2 line-through decoration-mars-magenta break-words">${this.escapeHTML(co.name)}</h4>
-                            <p class="text-xs text-mars-green uppercase font-bold mb-1">Nuevo Nombre Propuesto:</p>
-                            <h4 class="font-orbitron text-mars-yellow font-black text-sm uppercase mb-2 break-words">${this.escapeHTML(req.proposedName)}</h4>
-                            <p class="text-slate-200 italic text-xs mb-3 break-words">"${this.escapeHTML(req.reason)}"</p>
+                            <p class="text-xs text-mars-yellow uppercase font-bold mb-1">Motivo del Renombramiento:</p>
+                            <p class="text-white text-xs mb-2 break-words">"${this.escapeHTML(req.reason || '')}"</p>
+                            ${req.driveUrl ? `
+                            <div class="mb-3">
+                                <a href="${encodeURI(req.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50"><span>📄 Abrir Solicitud Oficial en Google Drive ↗</span></a>
+                            </div>` : ''}
+                            <label for="coord-new-co-name-${cid}" class="text-xs text-mars-green uppercase font-bold block mb-1">Nueva Denominación Social Oficial:</label>
+                            <input type="text" id="coord-new-co-name-${cid}" placeholder="Escribe el nombre oficial aprobado..." value="${this.escapeHTML(req.proposedName !== 'Propuesta en Documento Drive' ? req.proposedName : '')}" class="w-full min-h-[44px] bg-black border border-mars-green/50 p-2 text-xs text-white font-orbitron uppercase outline-none focus:border-mars-green mb-3">
                             <div class="flex gap-2">
-                                <button onclick="ui.resolveNameChangeRequest('${this.escapeHTML(cid)}', true)" class="min-h-[44px] flex-1 bg-mars-green text-black px-3 py-2 font-black uppercase text-xs hover:bg-white transition-colors">Autorizar</button>
+                                <button onclick="ui.resolveNameChangeRequest('${this.escapeHTML(cid)}', true)" class="min-h-[44px] flex-1 bg-mars-green text-black px-3 py-2 font-black uppercase text-xs hover:bg-white transition-colors">Aprobar y Registrar Nombre</button>
                                 <button onclick="ui.resolveNameChangeRequest('${this.escapeHTML(cid)}', false)" class="min-h-[44px] flex-1 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 font-black uppercase text-xs hover:bg-mars-magenta hover:text-white transition-colors">Denegar</button>
                             </div>
                         </div>`;
@@ -108,7 +113,7 @@ Object.assign(ui, {
                 <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-2 flex-wrap gap-2">
                     <div>
                         <h3 class="font-orbitron text-mars-magenta text-xs sm:text-sm uppercase tracking-widest">🛡️ Aduana de Identidad Corporativa (Logos y Eslóganes)</h3>
-                        <p class="text-xs text-slate-300 uppercase mt-0.5">Auditoría previa de la imagen de marca de las startups.</p>
+                        <p class="text-xs text-slate-300 uppercase mt-0.5">Auditoría previa y registro oficial del slogan de las startups.</p>
                     </div>
                     <span class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta px-3 py-1 text-xs font-black uppercase">${pendingBrands.length} Pendiente(s)</span>
                 </div>
@@ -120,17 +125,26 @@ Object.assign(ui, {
                         <div class="bg-slate-900 border border-mars-magenta/50 p-4 flex flex-col gap-3">
                             <div class="flex justify-between items-start border-b border-slate-800 pb-2 gap-2">
                                 <h4 class="font-orbitron text-white font-bold text-xs uppercase break-words">${this.escapeHTML(co.name)} [Clase ${this.escapeHTML(co.classGroup)}]</h4>
-                                <span class="text-xs bg-mars-yellow/20 text-mars-yellow px-2 py-0.5 font-bold uppercase animate-pulse shrink-0">En Revisión</span>
+                                <span class="text-xs bg-mars-yellow/20 text-mars-yellow px-2 py-0.5 font-bold uppercase animate-pulse shrink-0">Avalado por CEO</span>
                             </div>
                             <div class="flex gap-4 items-center">
                                 ${logoPreview}
                                 <div class="flex-grow min-w-0">
-                                    <p class="text-xs text-slate-300 uppercase font-bold mb-1">Eslogan Propuesto:</p>
-                                    <p class="text-mars-yellow italic text-xs bg-black p-2 border border-slate-800 break-words">"${this.escapeHTML(co.brandApproval.pendingSlogan || 'No especificado')}"</p>
+                                    <p class="text-xs text-slate-300 uppercase font-bold mb-0.5">Enfoque Aeroespacial:</p>
+                                    <p class="text-mars-cyan text-xs font-bold mb-1 break-words">${this.escapeHTML(co.brandApproval.concept || 'General')}</p>
+                                    <span class="text-[10px] text-slate-400 font-mono">${this.escapeHTML(co.brandApproval.expId || '')}</span>
                                 </div>
                             </div>
+                            ${co.brandApproval.driveUrl ? `
+                            <div class="mb-1">
+                                <a href="${encodeURI(co.brandApproval.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50"><span>📄 Abrir Expediente Slogan en Google Drive ↗</span></a>
+                            </div>` : ''}
+                            <div>
+                                <label for="coord-official-slogan-${cid}" class="text-xs text-mars-yellow uppercase font-bold block mb-1">Slogan Oficial Aprobado (Extraído del Google Doc):</label>
+                                <input type="text" id="coord-official-slogan-${cid}" placeholder="Escribe el slogan aprobado que se fijará en el HUD..." value="${this.escapeHTML(co.brandApproval.pendingSlogan || co.slogan || '')}" class="w-full min-h-[44px] bg-black border border-mars-yellow/50 p-2.5 text-xs text-mars-yellow font-bold uppercase outline-none focus:border-mars-yellow">
+                            </div>
                             <div class="flex gap-2 mt-2">
-                                <button onclick="ui.resolveBrandApproval('${this.escapeHTML(cid)}')" class="min-h-[44px] flex-1 bg-mars-green text-black px-3 py-2 font-black uppercase text-xs hover:bg-white transition-colors">Aprobar Marca</button>
+                                <button onclick="ui.resolveBrandApproval('${this.escapeHTML(cid)}')" class="min-h-[44px] flex-1 bg-mars-green text-black px-3 py-2 font-black uppercase text-xs hover:bg-white transition-colors">Aprobar y Registrar Slogan</button>
                                 <button onclick="ui.promptDenyBrand('${this.escapeHTML(cid)}')" class="min-h-[44px] flex-1 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 font-black uppercase text-xs hover:bg-mars-magenta hover:text-white transition-colors">Rechazar (Feedback)</button>
                             </div>
                         </div>`;
@@ -160,6 +174,10 @@ Object.assign(ui, {
                             <p class="text-slate-200 uppercase text-xs break-words">
                                 Vendedor: <strong class="text-mars-cyan">${this.escapeHTML(c.sellerName)}</strong> ➔ Comprador: <strong class="text-mars-yellow">${this.escapeHTML(c.buyerName)}</strong>
                             </p>
+                            ${c.driveUrl ? `
+                            <div class="mt-2">
+                                <a href="${encodeURI(c.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50"><span>📄 Abrir Memoria de Desinversión en Google Drive ↗</span></a>
+                            </div>` : ''}
                         </div>
                         <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end shrink-0 border-t sm:border-t-0 border-slate-800 pt-2 sm:pt-0">
                             <span class="text-mars-green font-mono font-black text-base">${Number(c.price).toFixed(2)} €v</span>
@@ -505,6 +523,12 @@ Object.assign(ui, {
                     </div>
                 </div>
                 <p class="text-slate-200 italic mb-2 bg-black/50 p-2 border border-slate-800 break-words">"${this.escapeHTML(sugg.text)}"</p>
+                ${sugg.driveUrl ? `
+                <div class="mb-2">
+                    <a href="${this.escapeHTML(sugg.driveUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-mars-cyan hover:underline font-mono bg-mars-cyan/10 px-2.5 py-1.5 border border-mars-cyan/40 min-h-[36px]">
+                        <span>📄 Abrir Evidencia / Detalle en Google Drive ↗</span>
+                    </a>
+                </div>` : ''}
                 <span class="text-xs text-slate-300 block text-right">${this.escapeHTML(sugg.date)}</span>
             </div>`;
         };
@@ -812,6 +836,10 @@ Object.assign(ui, {
                         <span class="text-slate-300 uppercase">Emisor: ${this.escapeHTML((r.reportingRole || '').replace('_', ' '))}</span>
                     </div>
                     <p class="text-slate-200 italic bg-black p-3 border border-slate-800 mb-3 leading-relaxed break-words">"${this.escapeHTML(r.reason)}"</p>
+                    ${r.driveUrl ? `
+                    <div class="mb-3">
+                        <a href="${encodeURI(r.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50"><span>📄 Abrir Expediente HR en Google Drive ↗</span></a>
+                    </div>` : ''}
                     <div class="flex justify-between items-center mt-2 border-t border-slate-800 pt-3 flex-wrap gap-2">
                         <span class="text-xs font-bold uppercase ${r.status === 'PENDIENTE' ? 'text-mars-magenta animate-pulse' : 'text-mars-green'}">[ESTADO: ${this.escapeHTML(r.status)}]</span>
                         ${r.status === 'PENDIENTE' ? `<button onclick="ui.resolveInactivityReport('${this.escapeHTML(r.cid)}', '${this.escapeHTML(r.id)}')" class="min-h-[44px] bg-mars-magenta/20 text-mars-magenta border border-mars-magenta px-4 py-2 font-bold uppercase hover:bg-mars-magenta hover:text-white transition-colors">Marcar Resuelto por Claustro</button>` : ''}
@@ -1344,8 +1372,15 @@ Object.assign(ui, {
         const co = state.data.companies[cid];
         if(!co || !co.brandApproval) return;
 
-        if(co.brandApproval.pendingLogo) co.logo = co.brandApproval.pendingLogo;
-        if(co.brandApproval.pendingSlogan !== undefined) co.slogan = co.brandApproval.pendingSlogan;
+        const inputEl = document.getElementById('coord-official-slogan-' + cid);
+        const officialSlogan = inputEl ? this.cleanInput(inputEl.value) : (co.brandApproval.pendingSlogan || co.slogan || '');
+
+        if (!officialSlogan && !co.brandApproval.pendingLogo) {
+            return this.notify("Debes escribir o confirmar el slogan oficial aprobado.", "warning");
+        }
+
+        if (officialSlogan) co.slogan = officialSlogan;
+        if (co.brandApproval.pendingLogo) co.logo = co.brandApproval.pendingLogo;
 
         co.brandApproval.status = 'APROBADO';
         co.brandApproval.pendingLogo = null;
@@ -1354,11 +1389,11 @@ Object.assign(ui, {
         co.brandApproval.updatedAt = Date.now();
         co.updatedAt = Date.now();
 
-        ui.pushNotification(cid, 'MARKETING', `¡Enhorabuena! Tu logotipo y eslogan han sido APROBADOS por Coordinación y ya son públicos en el HUD.`, 'success');
-        ui.pushNotification(cid, 'CEO', `Identidad corporativa aprobada y visible para toda la flota.`, 'success');
+        ui.pushNotification(cid, 'MARKETING', `¡Enhorabuena! El logotipo y el eslogan oficial ("${co.slogan}") han sido APROBADOS por Coordinación y ya son públicos en el HUD.`, 'success');
+        ui.pushNotification(cid, 'CEO', `Identidad corporativa aprobada y visible para toda la flota. Slogan: "${co.slogan}".`, 'success');
 
         state.save();
-        this.notify(`Identidad corporativa de ${co.name} aprobada y publicada.`, "success");
+        this.notify(`Identidad corporativa de ${co.name} aprobada y registrada.`, "success");
         this.render();
     },
 
@@ -1576,12 +1611,20 @@ Object.assign(ui, {
         if (!co || !co.nameChangeRequest || co.nameChangeRequest.status !== 'PENDIENTE') return;
 
         if (isApproved) {
+            const inputEl = document.getElementById('coord-new-co-name-' + cid);
+            const officialName = inputEl ? this.cleanInput(inputEl.value) : (co.nameChangeRequest.proposedName || '');
+            if (!officialName || officialName === 'Propuesta en Documento Drive') {
+                return this.notify("Debes escribir la nueva denominación social oficial para la empresa.", "warning");
+            }
+            if (ui.hasForbiddenWords && ui.hasForbiddenWords(officialName, 'Registro Mercantil (Nombre Oficial)', inputEl)) return;
+
             const oldName = co.name;
-            co.name = co.nameChangeRequest.proposedName;
+            co.name = officialName;
+            co.nameChangeRequest.proposedName = officialName;
             ui.pushNotification(cid, 'CEO', `¡El Registro Mercantil ha aprobado vuestra nueva denominación social: "${co.name}"!`, 'success');
             this.notify(`La empresa ${oldName} ahora se llama ${co.name}.`, "success");
         } else {
-            ui.pushNotification(cid, 'CEO', `El Registro Mercantil ha RECHAZADO la solicitud de cambio a "${co.nameChangeRequest.proposedName}".`, 'error');
+            ui.pushNotification(cid, 'CEO', `El Registro Mercantil ha RECHAZADO la solicitud de cambio de denominación social.`, 'error');
             this.notify(`Solicitud de renombramiento denegada.`, "warning");
         }
         

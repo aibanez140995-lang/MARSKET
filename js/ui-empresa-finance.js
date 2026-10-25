@@ -1,8 +1,12 @@
 // js/ui-empresa-finance.js
-// --- MÓDULO FINANCIERO Y BÓVEDA DE ÓRDENES: CRONOGRAMA MAESTRO (19 PLAZOS), AUDITORÍA Y LEDGER (v1.1.26) ---
+// --- MÓDULO FINANCIERO Y BÓVEDA DE ÓRDENES: CRONOGRAMA MAESTRO (17 ENTREGABLES), AUDITORÍA Y LEDGER (v1.1.27) ---
 
 Object.assign(ui, {
     cronogramaFilter: 'ALL',
+
+    viewApprovals(el) {
+        return this.viewOrders(el);
+    },
 
     setCronogramaSubjectFilter(subj) {
         this.cronogramaFilter = subj;
@@ -318,6 +322,9 @@ Object.assign(ui, {
         </div>
         <div class="space-y-1.5 mb-2">
             <label for="order-drive-url" class="text-xs text-mars-cyan font-bold uppercase block">Informe Técnico de Especificación (Google Drive / Docs)</label>
+            <div class="mb-2">
+                ${this.renderDocTemplateBtn('DOC_9_ORDEN_ADQUISICION')}
+            </div>
             <input type="url" id="order-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono min-h-[44px]">
             <p class="text-[10px] text-slate-400">La justificación técnica de la compra se aloja en el Google Doc corporativo con permisos de lectura.</p>
         </div>
@@ -453,6 +460,15 @@ Object.assign(ui, {
                     <span class="text-xs font-mono font-black text-red-500 uppercase tracking-widest block">[REGISTRO DISCIPLINARIO INMUTABLE]</span>
                     <p class="text-xs sm:text-sm font-mono text-white leading-relaxed select-all">${this.escapeHTML(immutableText)}</p>
                 </div>
+                <div class="mb-2">
+                    <label class="text-xs text-mars-yellow uppercase font-bold block mb-1">Modelo Oficial de Comunicado</label>
+                    ${this.renderDocTemplateBtn('DOC_3_COMUNICADO_SANCION')}
+                </div>
+                <div>
+                    <label for="crisis-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Enlace Drive del Comunicado Oficial / Alegación (URL)</label>
+                    <input type="url" id="crisis-drive-url" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-red-500/70 p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-red-400" required>
+                    <p class="text-[10px] text-slate-400 mt-1">Adjunta el comunicado oficial redactado en Google Docs con permisos de lectura.</p>
+                </div>
                 <p class="text-[10px] text-slate-400">Por directiva de gobernanza y trazabilidad RGPD, el expediente no admite edición de texto libre. Cualquier alegación se formaliza mediante documento enlazado a Google Drive.</p>
             </div>
         `;
@@ -464,6 +480,13 @@ Object.assign(ui, {
         if (!state.user || state.user.role !== 'CEO') return;
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
+
+        const elDrive = document.getElementById('crisis-drive-url');
+        const driveUrl = elDrive ? this.cleanInput(elDrive.value) : '';
+        if (!driveUrl) return this.notify("Debes adjuntar el enlace Drive del Comunicado Oficial.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+        }
 
         const crisis = (co.crisisAlerts || []).find(a => String(a.id) === String(expId)) || (co.crisisAlerts || [])[0] || {};
         const expClean = expId || crisis.id || ('EXP-' + Date.now().toString().slice(-4));
@@ -484,6 +507,7 @@ Object.assign(ui, {
             expId: expClean,
             title: 'COMUNICADO OFICIAL DE SANCIÓN',
             desc: immutableText,
+            driveUrl: driveUrl,
             date: new Date().toLocaleString()
         });
 

@@ -9,12 +9,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MARS-KET 2.0">
-    <link rel="manifest" href="manifest.json?v=1.1.26">
+    <link rel="manifest" href="manifest.json?v=1.1.27">
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="apple-touch-icon" href="logo.png">
     
     <!-- Tailwind CSS (Compilado localmente v1.1.03 - Bloque T) -->
-    <link rel="stylesheet" href="css/tailwind.css?v=1.1.26">
+    <link rel="stylesheet" href="css/tailwind.css?v=1.1.27">
     <style>
         :root {
             color-scheme: dark;
@@ -421,7 +421,7 @@
                         <h1 class="font-orbitron font-black text-xs sm:text-lg text-white tracking-wider sm:tracking-widest leading-none flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
                             MARS-KET <span class="text-mars-cyan">2.0</span>
                         </h1>
-                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v1.1.26</span>
+                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v1.1.27</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -467,7 +467,7 @@
 
     <!-- FOOTER INSTITUCIONAL -->
     <footer id="hud-footer" class="hidden border-t border-mars-border/60 bg-black/60 py-3 px-4 text-center text-xs text-slate-300 uppercase font-mono">
-        <p>MARS-KET 2.0 (v1.1.26) • Plataforma Aeroespacial Interdisciplinar • AEE / ESA Simulación Académica • 2026-2027</p>
+        <p>MARS-KET 2.0 (v1.1.27) • Plataforma Aeroespacial Interdisciplinar • AEE / ESA Simulación Académica • 2026-2027</p>
     </footer>
 
     <!-- MODAL GLOBAL DE OPERACIONES -->
@@ -534,20 +534,20 @@
     <div id="credentials-print-area" class="hidden"></div>
 
     <!-- SCRIPTS ORDENADOS DEL SISTEMA -->
-    <script src="js/lexicon-data.js?v=1.1.26"></script>
-    <script src="js/config.js?v=1.1.26"></script>
-    <script src="js/state.js?v=1.1.26"></script>
-    <script src="js/auth.js?v=1.1.26"></script>
-    <script src="js/ui-core.js?v=1.1.26"></script>
-    <script src="js/ui-empresa-core.js?v=1.1.26"></script>
-    <script src="js/ui-empresa-market.js?v=1.1.26"></script>
-    <script src="js/ui-empresa-tech.js?v=1.1.26"></script>
-    <script src="js/ui-empresa-finance.js?v=1.1.26"></script>
-    <script src="js/ui-empresa-ops.js?v=1.1.26"></script>
-    <script src="js/ui-empresa-gov-brand.js?v=1.1.26"></script>
-    <script src="js/ui-docente-core.js?v=1.1.26"></script>
-    <script src="js/ui-docente-eval.js?v=1.1.26"></script>
-    <script src="js/ui-docente-management.js?v=1.1.26"></script>
+    <script src="js/lexicon-data.js?v=1.1.27"></script>
+    <script src="js/config.js?v=1.1.27"></script>
+    <script src="js/state.js?v=1.1.27"></script>
+    <script src="js/auth.js?v=1.1.27"></script>
+    <script src="js/ui-core.js?v=1.1.27"></script>
+    <script src="js/ui-empresa-core.js?v=1.1.27"></script>
+    <script src="js/ui-empresa-market.js?v=1.1.27"></script>
+    <script src="js/ui-empresa-tech.js?v=1.1.27"></script>
+    <script src="js/ui-empresa-finance.js?v=1.1.27"></script>
+    <script src="js/ui-empresa-ops.js?v=1.1.27"></script>
+    <script src="js/ui-empresa-gov-brand.js?v=1.1.27"></script>
+    <script src="js/ui-docente-core.js?v=1.1.27"></script>
+    <script src="js/ui-docente-eval.js?v=1.1.27"></script>
+    <script src="js/ui-docente-management.js?v=1.1.27"></script>
 
     <script>
         window.addEventListener('DOMContentLoaded', () => {
@@ -579,7 +579,7 @@
                 }).observe(loginScreenEl, { childList: true, subtree: true });
             }
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-                navigator.serviceWorker.register('sw.js?v=1.1.26').catch(() => {});
+                navigator.serviceWorker.register('sw.js?v=1.1.27').catch(() => {});
             }
         });
     </script>

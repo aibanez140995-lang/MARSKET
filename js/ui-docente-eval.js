@@ -1,5 +1,5 @@
 // js/ui-docente-eval.js
-// --- MÓDULO DOCENTE: RÚBRICAS PONDERADAS (100%), ACTAS Y ARCHIVO DOCUMENTAL (19 ENTREGABLES) (v1.0.18) ---
+// --- MÓDULO DOCENTE: RÚBRICAS PONDERADAS (100%), ACTAS Y ARCHIVO DOCUMENTAL OFICIAL (v1.1.27) ---
 
 Object.assign(ui, {
     renderAdminEval() {
@@ -12,7 +12,7 @@ Object.assign(ui, {
             adminHtml += `
             <select aria-label="Vista de evaluación de coordinación" onchange="ui.coordEvalView=this.value; ui.evalSelectedCo=''; ui.render()" class="min-h-[44px] w-full sm:w-auto max-w-full bg-black border border-mars-cyan text-mars-cyan text-xs p-2.5 uppercase font-bold outline-none cursor-pointer">
                 <option value="ACTA" ${this.coordEvalView==='ACTA'?'selected':''}>📊 Acta General Calificaciones (100% Ponderada)</option>
-                <option value="ARCHIVE" ${this.coordEvalView==='ARCHIVE'?'selected':''}>📁 Archivo Documental Central (19 Enlaces)</option>
+                <option value="ARCHIVE" ${this.coordEvalView==='ARCHIVE'?'selected':''}>📁 Archivo Documental Central (Entregables Drive)</option>
                 ${['FYQ','LYE','LEN','ECO','MAT','ING'].map(s => `<option value="${s}" ${this.coordEvalView===s?'selected':''}>Evaluar: ${this.escapeHTML(RUBRIC_CONFIG[s].name)} (${Math.round((weights[s]||0)*100)}%)</option>`).join('')}
             </select>
             ${this.coordEvalView === 'ACTA' ? `<button onclick="ui.exportActaCSV()" class="min-h-[44px] w-full sm:w-auto bg-mars-green text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors">Exportar Acta Ponderada CSV</button>` : ''}
@@ -91,7 +91,8 @@ Object.assign(ui, {
         } else if(isCoord && this.coordEvalView === 'ARCHIVE') {
             const docCols = [
                 { key: 'preliminaryReport', label: 'FYQ 1: Prelim' },
-                { key: 'technicalReport', label: 'FYQ 2: Informe' },
+                { key: 'hoja_taller_fyq', label: 'FYQ 2: Hoja Taller' },
+                { key: 'technicalReport', label: 'FYQ 3: Informe' },
                 { key: 'brandIdentity_dec', label: 'LYE 1A: Marca Dic' },
                 { key: 'brandIdentity_apr', label: 'LYE 1B: Marca Abr' },
                 { key: 'businessModelDoc', label: 'LYE 2: Bus. Model' },
@@ -106,16 +107,14 @@ Object.assign(ui, {
                 { key: 'goniometerEvidence', label: 'MAT 1: Gonióm.' },
                 { key: 'mathReportDist', label: 'MAT 2: Dist. Base' },
                 { key: 'mathReportTwoPoints', label: 'MAT 3: 2 Puntos' },
-                { key: 'mathReportFinal', label: 'MAT 4: Inf. Final' },
-                { key: 'oralPresentation', label: 'ING 1: Oral Pres.' },
-                { key: 'writtenEssays', label: 'ING 2: Redacc.' }
+                { key: 'mathReportFinal', label: 'MAT 4: Inf. Final' }
             ];
 
             adminHtml += `
             <div class="terminal-border bg-mars-card p-6 w-full overflow-hidden">
                 <div class="mb-4 border-b border-mars-border pb-2 flex justify-between items-center">
                     <div>
-                        <h4 class="font-orbitron text-mars-cyan text-xs uppercase tracking-widest">Auditoría del Archivo Documental Central (19 Entregables)</h4>
+                        <h4 class="font-orbitron text-mars-cyan text-xs uppercase tracking-widest">Auditoría del Archivo Documental Central (${docCols.length} Entregables Oficiales Drive)</h4>
                         <p class="text-xs text-slate-300 uppercase mt-0.5">Control de subida de enlaces en Google Drive (Desliza horizontalmente ➔)</p>
                     </div>
                 </div>
@@ -188,7 +187,8 @@ Object.assign(ui, {
                 
                 if (activeSubject === 'FYQ') {
                     evidenceHtml += this.renderDocBadge('1. Hoja Registro Preliminar (Dic)', docs.preliminaryReport);
-                    evidenceHtml += this.renderDocBadge('2. Informe Técnico Final (Abr)', docs.technicalReport);
+                    evidenceHtml += this.renderDocBadge('2. Hoja Oficial de Taller, BOM y Calidad', docs.hoja_taller_fyq);
+                    evidenceHtml += this.renderDocBadge('3. Informe Técnico Final (Abr)', docs.technicalReport);
                     if(co.flightTests && co.flightTests.length > 0) {
                         evidenceHtml += `<div class="mt-4 bg-black p-3 border border-slate-800"><span class="text-mars-yellow text-xs font-bold uppercase block mb-2">Ensayos en Banco de Pruebas:</span><div class="text-xs space-y-1 max-h-40 overflow-y-auto">`;
                         co.flightTests.forEach(f => {
@@ -219,8 +219,11 @@ Object.assign(ui, {
                     evidenceHtml += this.renderDocBadge('3. Informe Dos Mediciones (25%)', docs.mathReportTwoPoints);
                     evidenceHtml += this.renderDocBadge('4. Informe Técnico Final (25%)', docs.mathReportFinal);
                 } else if (activeSubject === 'ING') {
-                    evidenceHtml += this.renderDocBadge('1. Expresión Oral: Presentación (70%)', docs.oralPresentation);
-                    evidenceHtml += this.renderDocBadge('2. Redacciones Escritas (30%)', docs.writtenEssays);
+                    evidenceHtml += `
+                    <div class="bg-black/80 border border-mars-yellow/40 p-4 text-xs text-slate-300 space-y-2 mb-3">
+                        <p class="text-white font-bold uppercase text-xs">📢 Evaluación Directa en Aula (Inglés):</p>
+                        <p>100% evaluación docente directa en clase (Expresión Oral 70% / Redacciones Escritas 30%). No requiere evidencias de Google Drive en este panel.</p>
+                    </div>`;
                 }
 
                 adminHtml += `

@@ -1,7 +1,11 @@
 // js/ui-empresa-ops.js
-// --- MÓDULO OPERACIONES E IA: LOGÍSTICA FÍSICA, BITÁCORA IA Y DIARIO DE DECISIONES (v1.1.26) ---
+// --- MÓDULO OPERACIONES E IA: LOGÍSTICA FÍSICA, BITÁCORA IA Y DIARIO DE DECISIONES (v1.1.27) ---
 
 Object.assign(ui, {
+    modalLogAI() {
+        return this.modalReportAI();
+    },
+
     viewCart(el) {
         if (!el || !state.user) return; 
         const co = state.data.companies[state.user.coId];
@@ -148,8 +152,12 @@ Object.assign(ui, {
         const hojaHtml = hojaWorkshopHtml;
 
         wrapper.innerHTML = `
-            <div class="flex justify-between items-center mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
                 <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">Logística de Despliegue Físico</h2>
+                <div class="flex gap-2 flex-wrap">
+                    ${this.renderDocTemplateBtn('DOC_10_HOJA_TALLER')}
+                    ${this.renderDocTemplateBtn('DOC_8_CONTROL_AERO')}
+                </div>
             </div>
             ${hojaHtml}
             ${ordersHtml}
@@ -369,6 +377,9 @@ Object.assign(ui, {
                     <label for="input-bitacora-url" class="text-[11px] font-mono text-slate-300 uppercase tracking-wide block">
                         Enlace a Cuaderno de Bitácora Oficial (Google Docs)
                     </label>
+                    <div class="mb-2">
+                        ${this.renderDocTemplateBtn('DOC_4_BITACORA_IA')}
+                    </div>
                     <input type="url" 
                            id="input-bitacora-url" 
                            name="bitacoraUrl" 

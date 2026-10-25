@@ -1,5 +1,5 @@
 // js/ui-empresa-core.js
-// --- MÓDULO CORE: LOGIN EN 2 PASOS (ZERO-KNOWLEDGE), NOTIFICACIONES Y DOSSIER ACADÉMICO (v1.1.00) ---
+// --- MÓDULO CORE: LOGIN EN 2 PASOS (ZERO-KNOWLEDGE), NOTIFICACIONES Y DOSSIER ACADÉMICO (v1.1.27) ---
 
 Object.assign(ui, {
     viewLogin(el) {
@@ -308,7 +308,7 @@ Object.assign(ui, {
                     title: 'FASE 3: CONSOLIDACIÓN TÉCNICA, BALANCE Y DEFENSA FINAL (ABRIL 2027)',
                     badge: 'CIERRE DE MISIÓN',
                     accent: 'border-mars-magenta text-mars-magenta',
-                    keys: ['brandIdentity_apr', 'balanceSheet', 'mathReportFinal', 'technicalReport', 'decisionDiary_apr', 'oralPresentation', 'writtenEssays']
+                    keys: ['brandIdentity_apr', 'balanceSheet', 'mathReportFinal', 'technicalReport', 'hoja_taller_fyq', 'decisionDiary_apr']
                 }
             ];
 

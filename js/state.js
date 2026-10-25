@@ -1,5 +1,5 @@
 // js/state.js
-// --- GESTIÓN DE ESTADO ZERO-TRUST, MIGRACIÓN Y PERSISTENCIA ATÓMICA (v1.1.26) ---
+// --- GESTIÓN DE ESTADO ZERO-TRUST, MIGRACIÓN Y PERSISTENCIA ATÓMICA (v1.1.27) ---
 
 const DEFAULT_STATE = {
     version: 1,
@@ -39,7 +39,7 @@ const DEFAULT_STATE = {
     companies: {
         astra: {
             name: "Astra Dynamics", balance: 2400, classGroup: 'A', logo: null, slogan: "", valueProposition: "",
-            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" }, sponsorAwarded: null, sponsorData: { name: null, logo: null },
+            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "" }, sponsorAwarded: null, sponsorData: { name: null, logo: null },
             aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
             deliverables: {}
         }
@@ -319,7 +319,9 @@ const state = {
             co.loginStats = co.loginStats || { totalLogins: 0, roles: {} };
             co.loginStats.roles = co.loginStats.roles || {};
             co.classGroup = co.classGroup || 'A';
-            co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
+            co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "" };
+            co.brandApproval.driveUrl = co.brandApproval.driveUrl || "";
+            co.brandApproval.expId = co.brandApproval.expId || "";
             co.pendingSlogan = co.pendingSlogan || null;
             co.pendingMission = co.pendingMission || null;
             co.brandStatus = co.brandStatus || 'APPROVED';
@@ -1396,6 +1398,7 @@ const state = {
                         return true; // ABORTAR ejecución posterior de mergeData
                     }
 
+                    const prevDataStr = JSON.stringify(this.data);
                     const merged = this.mergeData(this.migrate(json), this.data);
                     this.data = merged;
                     this.data.version = json.version || this.data.version;
@@ -1406,7 +1409,8 @@ const state = {
                     if (sessionValid && this.isOfflineContained) {
                         this.setOfflineContainment(false);
                     }
-                    shouldRender = sessionValid;
+                    const hasDataChanged = JSON.stringify(this.data) !== prevDataStr;
+                    shouldRender = sessionValid && hasDataChanged;
                 } else if(json && json.status === 'empty') {
                     this.isCloudOnline = true;
                     if (this.verifySessionIntegrity(this.data) && this.isOfflineContained) {

@@ -1,5 +1,5 @@
 // js/ui-core.js
-// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.26) ---
+// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.27) ---
 
 // Constante global GOOGLE_DRIVE_REGEX centralizada en js/config.js
 
@@ -16,6 +16,17 @@ const ui = {
     _isPoppingState: false,
     _cleanupHooks: [],
     _delegationAttached: false,
+
+    renderDocTemplateBtn(docKey, customLabel = null) {
+        const tpl = (typeof OFFICIAL_DOC_TEMPLATES !== 'undefined' && OFFICIAL_DOC_TEMPLATES[docKey]) ? OFFICIAL_DOC_TEMPLATES[docKey] : null;
+        if (!tpl) return '';
+        const label = customLabel || '📄 Modelo de documento (Hacer copia)';
+        return `<a href="${encodeURI(tpl.copyUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 min-h-[44px] bg-slate-900 border border-blue-500/70 hover:border-blue-400 text-blue-300 hover:text-white px-3.5 py-2 text-xs font-bold uppercase transition-all shadow-sm group">
+            <span class="group-hover:scale-110 transition-transform">📄</span>
+            <span>${this.escapeHTML(label)}</span>
+            <span class="text-[10px] text-blue-400 font-mono">↗</span>
+        </a>`;
+    },
 
     onCleanup(fn) {
         if (typeof fn === 'function') {
@@ -987,29 +998,31 @@ const ui = {
 
         switch(role) {
             case 'CEO':
-                roleMissionHtml = `<strong>Orden de Misión:</strong> Liderar la startup marciana, arbitrar las asambleas, coordinar compras y visar todos los entregables antes de elevarlos a los profesores.`;
+                roleMissionHtml = `<strong>Orden de Misión:</strong> Liderar la startup marciana, arbitrar las asambleas, avalar el Slogan y mociones de la empresa, gestionar el cambio de denominación y visar todos los entregables antes de elevarlos a los profesores.`;
                 roleChecklistHtml = `
                 <ol class="space-y-1.5 text-xs text-slate-300 pl-4 list-decimal">
                     <li><strong>Comprobar Saldo y HUD:</strong> Consulta el balance financiero y el estado de la nave en la barra superior.</li>
+                    <li><strong>Auditar Slogan y Denominación:</strong> Revisa propuestas de Slogan de Marketing para avalarlas o devolverlas; tramita solicitudes de nombre oficial mediante el modelo oficial de Google Docs.</li>
                     <li><strong>Auditar Entregables en Dossier:</strong> Revisa las memorias en Google Drive antes de visar; si faltan datos, devuélvelo con motivo claro.</li>
-                    <li><strong>Convocar Asamblea:</strong> Coordina prioridades con I+D, Finanzas, Marketing y Operaciones; vota mociones si surge algún conflicto.</li>
+                    <li><strong>Convocar Asamblea:</strong> Coordina prioridades con I+D, Finanzas, Marketing y Operaciones; vota mociones tipificadas si surge algún conflicto.</li>
                 </ol>`;
                 roleActionsHtml = `
                 <div class="space-y-2">
-                    <p><strong class="text-white">Supervisión y Gobernanza:</strong> Modera la asamblea general, ejerce tu voto de calidad en empates y tramita mociones colegiadas.</p>
-                    <p><strong class="text-white">Aprobación Jerárquica:</strong> Audita los entregables antes de elevarlos a los docentes y valida o devuelve con motivo justificado.</p>
-                    <p><strong class="text-white">Gabinete de Crisis:</strong> Difunde el Comunicado Oficial Inmutable ante expedientes sancionadores de la AEE.</p>
+                    <p><strong class="text-white">Supervisión y Gobernanza:</strong> Modera la asamblea general, ejerce tu voto de calidad en empates y tramita mociones colegiadas con el modelo oficial <em>DOC_6_MOCION_ASAMBLEA</em>.</p>
+                    <p><strong class="text-white">Flujo de Slogan Corporativo:</strong> Avala la propuesta de Marketing para elevarla a Coordinación Docente o devuélvela con feedback para corrección.</p>
+                    <p><strong class="text-white">Aprobación Jerárquica:</strong> Audita los 17 entregables antes de elevarlos a los docentes y valida o devuelve con motivo justificado.</p>
+                    <p><strong class="text-white">Gabinete de Crisis:</strong> Difunde el Comunicado Oficial Inmutable con el modelo <em>DOC_3_COMUNICADO_SANCION</em> ante expedientes sancionadores de la AEE.</p>
                     <div class="pt-2 flex flex-wrap gap-2">
                         <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier y Cronograma</button>
                         <button type="button" onclick="ui.navigate('orders'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bóveda de Órdenes</button>
                         <button type="button" onclick="ui.navigate('brand'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Marca & Campañas</button>
                     </div>
                 </div>`;
-                roleCollabHtml = `El CEO supervisa el semáforo temporal en el Dossier, coordina las compras iniciadas por I+D y aprobadas por Finanzas, y garantiza la entrega a tiempo de todas las áreas.`;
+                roleCollabHtml = `El CEO supervisa el semáforo temporal en el Dossier, avala el Slogan formulado por Marketing hacia Coordinación, y coordina las compras iniciadas por I+D y aprobadas por Finanzas.`;
                 roleErrorsHtml = `
                 <div class="space-y-1.5 text-xs text-slate-300">
-                    <p><strong class="text-white">1. Visado a ciegas:</strong> Nunca apruebes un entregable sin abrir el enlace de Google Drive y comprobar que la plantilla está completa y visible.</p>
-                    <p><strong class="text-white">2. Motivos de devolución:</strong> Si devuelves un trabajo, selecciona el motivo exacto para que el responsable lo subsane rápidamente.</p>
+                    <p><strong class="text-white">1. Visado a ciegas:</strong> Nunca apruebes un entregable sin abrir el enlace de Google Drive y comprobar que la plantilla oficial está completa y visible.</p>
+                    <p><strong class="text-white">2. Política Zero-Text:</strong> Utiliza siempre los botones oficiales de "📄 Modelo de documento (Hacer copia)" para generar las copias oficiales en Drive.</p>
                     <p><strong class="text-white">3. Convivencia y PINs:</strong> Los PINs son personales e intransferibles. Queda prohibido compartir accesos.</p>
                 </div>`;
                 break;
@@ -1018,24 +1031,24 @@ const ui = {
                 roleMissionHtml = `<strong>Orden de Misión:</strong> Diseñar y ensayar el propulsor aeroespacial, optimizar la relación altura/coste en el banco de pruebas y solicitar materiales de I+D exclusivamente mediante memoria en Google Drive.`;
                 roleChecklistHtml = `
                 <ol class="space-y-1.5 text-xs text-slate-300 pl-4 list-decimal">
-                    <li><strong>Comprobar Banco de Pruebas:</strong> Introduce los mililitros de vinagre, gramos de NaHCO3 y mide la altura alcanzada en milímetros (mm).</li>
-                    <li><strong>Actualizar Hoja de Taller BOM:</strong> Vincula el enlace Drive oficial con los componentes del prototipo para Física y Química.</li>
+                    <li><strong>Comprobar Banco de Pruebas:</strong> Selecciona el fuselaje estandarizado (PET), introduce los mililitros de vinagre, gramos de NaHCO3 y mide la altura alcanzada en milímetros (mm).</li>
+                    <li><strong>Actualizar Hoja de Taller BOM:</strong> Utiliza el modelo oficial de Hoja de Taller (DOC_10_HOJA_TALLER) para Física y Química.</li>
                     <li><strong>Solicitud de Piezas Especiales:</strong> Si requieres un componente fuera de catálogo, prepara la ficha técnica en Google Drive/Docs y envía el enlace (cero texto libre).</li>
                 </ol>`;
                 roleActionsHtml = `
                 <div class="space-y-2">
-                    <p><strong class="text-white">Aprovisionamiento I+D:</strong> Explora el catálogo SUPERMARS-KET y añade piezas al borrador técnico adjuntando la memoria técnica en Google Drive.</p>
-                    <p><strong class="text-white">Mercado Secundario (B2B):</strong> Vende componentes sobrantes y compra ofertas de otras startups con control de precio estricto.</p>
-                    <p><strong class="text-white">Banco de Pruebas:</strong> Registra las mediciones de apogeo y calcula la eficiencia aeroespacial del propulsor.</p>
+                    <p><strong class="text-white">Aprovisionamiento I+D:</strong> Explora el catálogo SUPERMARS-KET y añade piezas al carrito adjuntando la orden con el modelo oficial <em>DOC_9_ORDEN_ADQUISICION</em>.</p>
+                    <p><strong class="text-white">Mercado Secundario (B2B):</strong> Vende componentes sobrantes adjuntando la memoria técnica con el modelo oficial <em>DOC_7_B2B_DESINVERSION</em>.</p>
+                    <p><strong class="text-white">Banco de Pruebas:</strong> Registra las mediciones de apogeo con fuselajes cerrados y calcula la eficiencia aeroespacial del propulsor.</p>
                     <div class="pt-2 flex flex-wrap gap-2">
                         <button type="button" onclick="ui.navigate('tech'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a I+D & Vuelos</button>
                         <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier y Cronograma</button>
                     </div>
                 </div>`;
-                roleCollabHtml = `I+D solicita componentes a Finanzas; una vez aprobados, Operaciones los recibe en el taller y verifica el coste real físico.`;
+                roleCollabHtml = `I+D solicita componentes a Finanzas; una vez aprobados, Operaciones los recibe en el taller y verifica el montaje físico con la Hoja de Taller.`;
                 roleErrorsHtml = `
                 <div class="space-y-1.5 text-xs text-slate-300">
-                    <p><strong class="text-white">1. Cero Texto Libre en Piezas Especiales:</strong> No intentes describir la pieza con texto libre en la app. Toda la descripción técnica, medidas y planos deben ir en tu documento oficial de Google Drive o Google Docs.</p>
+                    <p><strong class="text-white">1. Cero Texto Libre en Piezas Especiales y B2B:</strong> No intentes describir piezas con texto libre en la app. Toda la descripción técnica, medidas y planos deben ir en tu documento oficial de Google Drive o Google Docs.</p>
                     <p><strong class="text-white">2. Permisos de Enlace:</strong> Configura el enlace de Drive como <em>"Cualquiera con el enlace puede ver"</em> antes de enviarlo.</p>
                     <p><strong class="text-white">3. Unidades en Banco de Pruebas:</strong> La altura debe introducirse siempre en milímetros (mm), no en centímetros ni metros.</p>
                 </div>`;
@@ -1069,28 +1082,28 @@ const ui = {
                 break;
 
             case 'MARKETING':
-                roleMissionHtml = `<strong>Orden de Misión:</strong> Construir la identidad corporativa, contratar campañas publicitarias predefinidas y liderar la defensa pública del modelo de negocio.`;
+                roleMissionHtml = `<strong>Orden de Misión:</strong> Formular la propuesta de Slogan Corporativo en Google Docs para elevación al CEO y Coordinación, contratar campañas publicitarias predefinidas y liderar la defensa pública del modelo de negocio.`;
                 roleChecklistHtml = `
                 <ol class="space-y-1.5 text-xs text-slate-300 pl-4 list-decimal">
-                    <li><strong>Proponer Eslogan y Misión:</strong> Envía tu propuesta corporativa a Coordinación para su homologación oficial.</li>
-                    <li><strong>Contratar Campañas Publicitarias:</strong> Elige entre los 4 paquetes oficiales (Satélite, Tradicional, Híbrido, Supernova) y adjunta justificación Drive.</li>
-                    <li><strong>Dossier y Presentación:</strong> Prepara el pitch oral de Lengua e Inglés en Google Slides.</li>
+                    <li><strong>Flujo de Slogan en 3 Pasos:</strong> Pulsa '📄 Modelo de documento (Hacer copia)' (DOC_11_SLOGAN), redacta la propuesta, selecciona el enfoque aeroespacial y preséntala al CEO.</li>
+                    <li><strong>Contratar Campañas Publicitarias:</strong> Elige entre los 4 paquetes oficiales y adjunta el brief creativo con el modelo oficial (DOC_5_BRIEF_MKT) para solicitar presupuesto a Finanzas.</li>
+                    <li><strong>Dossier de Inversores:</strong> Prepara el dossier argumentativo de Lengua Castellana y el modelo de negocio en Google Drive.</li>
                 </ol>`;
                 roleActionsHtml = `
                 <div class="space-y-2">
-                    <p><strong class="text-white">Identidad Corporativa:</strong> Propón el eslogan y la misión en el HUD; el envío queda en staging hasta su aprobación en Coordinación.</p>
-                    <p><strong class="text-white">Campañas Publicitarias:</strong> Contrata paquetes predefinidos con enlace de justificación en Google Drive (cero texto libre).</p>
-                    <p><strong class="text-white">Dossier y Pitch:</strong> Sube las evidencias en Drive de LyE (40%), Lengua (15%) e Inglés (5%).</p>
+                    <p><strong class="text-white">Registro Mercantil // Slogan Corporativo:</strong> Trámite oficial en 3 pasos: Marketing formula en Google Docs ➔ CEO avala ➔ Coordinación Docente aprueba y registra el slogan en el expediente.</p>
+                    <p><strong class="text-white">Campañas Publicitarias:</strong> Contrata paquetes predefinidos con enlace de brief creativo en Google Drive (modelo DOC_5_BRIEF_MKT, cero texto libre).</p>
+                    <p><strong class="text-white">Dossier y Modelo de Negocio:</strong> Sube las evidencias en Drive de LyE (40%) y Lengua (15%). La materia de Inglés se evalúa de forma presencial en clase.</p>
                     <div class="pt-2 flex flex-wrap gap-2">
                         <button type="button" onclick="ui.navigate('brand'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Marca & Campañas</button>
                         <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier y Cronograma</button>
                     </div>
                 </div>`;
-                roleCollabHtml = `Marketing diseña la identidad y solicita fondos a Finanzas para campañas; coordina con CEO la defensa del modelo de negocio.`;
+                roleCollabHtml = `Marketing diseña la propuesta conceptual de Slogan y la presenta al CEO para su aval; solicita fondos a Finanzas para campañas publicitarias.`;
                 roleErrorsHtml = `
                 <div class="space-y-1.5 text-xs text-slate-300">
-                    <p><strong class="text-white">1. Propiedad Intelectual:</strong> No utilices marcas registradas reales ni eslóganes comerciales protegidos.</p>
-                    <p><strong class="text-white">2. Justificación de Campañas:</strong> Cada acción publicitaria debe estar respaldada por un documento en Google Drive con bocetos o métricas.</p>
+                    <p><strong class="text-white">1. Cero Texto Libre en Slogan:</strong> No intentes escribir el slogan directamente en la app; se redacta en el modelo de Google Docs y Coordinación lo registra tras el aval del CEO.</p>
+                    <p><strong class="text-white">2. Propiedad Intelectual:</strong> No utilices marcas registradas reales ni eslóganes comerciales protegidos.</p>
                 </div>`;
                 break;
 
@@ -1099,14 +1112,14 @@ const ui = {
                 roleChecklistHtml = `
                 <ol class="space-y-1.5 text-xs text-slate-300 pl-4 list-decimal">
                     <li><strong>Logística en Taller:</strong> Comprueba los pedidos aprobados por Finanzas e introduce el coste real en euros del ticket/comercio físico.</li>
-                    <li><strong>Hoja de Taller (FyQ):</strong> Valida el estado de estanqueidad y dimensiones de las piezas del cohete.</li>
-                    <li><strong>Registrar en Bitácora IA:</strong> Todo uso de IA generativa debe registrarse con su prompt exacto y validación crítica humana.</li>
+                    <li><strong>Hoja de Taller (FyQ):</strong> Supervisa el montaje físico con el modelo oficial (DOC_10_HOJA_TALLER) y protocolo DOC_8_CONTROL_AERO.</li>
+                    <li><strong>Registrar en Bitácora IA:</strong> Todo uso de IA generativa debe registrarse mediante el modelo oficial (DOC_4_BITACORA_IA) con permisos de lectura.</li>
                 </ol>`;
                 roleActionsHtml = `
                 <div class="space-y-2">
                     <p><strong class="text-white">Logística en Taller:</strong> Valida pedidos aprobados registrando el coste real (€) y las piezas físicas recibidas.</p>
-                    <p><strong class="text-white">Bitácora Ética IA:</strong> Registra y audita todos los prompts generativos con validación humana explícita.</p>
-                    <p><strong class="text-white">Hoja de Taller (BOM):</strong> Configura el escandallo de materiales oficial para Física y Química.</p>
+                    <p><strong class="text-white">Bitácora Ética IA:</strong> Registra y audita todos los prompts generativos con el modelo oficial <em>DOC_4_BITACORA_IA</em>.</p>
+                    <p><strong class="text-white">Hoja de Taller (BOM):</strong> Configura y valida el escandallo de materiales oficial para Física y Química.</p>
                     <div class="pt-2 flex flex-wrap gap-2">
                         <button type="button" onclick="ui.navigate('cart'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Logística Física</button>
                         <button type="button" onclick="ui.navigate('ailog'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bitácora IA</button>
@@ -1399,7 +1412,7 @@ const ui = {
     },
 
     showGuide(defaultRole = null) {
-        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.26';
+        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.27';
         let initialRole = defaultRole;
         if (!initialRole) {
             if (state.user) {
@@ -1449,8 +1462,8 @@ const ui = {
                         <span>I+D añade piezas al borrador → Finanzas aprueba presupuesto → Operaciones retira en taller registrando coste real.</span>
                     </div>
                     <div class="border border-slate-800 p-2 bg-slate-950">
-                        <strong class="text-white block mb-0.5">📁 Repositorio de 19 Entregables (Google Drive Exclusivo):</strong>
-                        <span>Canal corporativo verificado exclusivamente para URLs de Google Drive (Docs, Sheets, Slides, Carpetas) configuradas con permisos de lectura compartidos ("Cualquiera con el enlace puede ver"). Enlaces a plataformas no autorizadas (OneDrive, Canva u otros) quedan estrictamente bloqueados por directiva RGPD para mitigar fugas de datos.</span>
+                        <strong class="text-white block mb-0.5">📁 Repositorio de Entregables Oficiales (Google Drive Exclusivo):</strong>
+                        <span>Canal corporativo verificado exclusivamente para URLs de Google Drive (Docs, Sheets, Slides, Carpetas) configuradas con permisos de lectura compartidos ("Cualquiera con el enlace puede ver"). Enlaces a plataformas no autorizadas (OneDrive, Canva u otros) quedan estrictamente bloqueados por directiva RGPD para mitigar fugas de datos. Cada alumno cuenta con el botón directo "📄 Modelo de documento (Hacer copia)" para generar su documento oficial en 1 clic.</span>
                     </div>
                     <div class="border border-slate-800 p-2 bg-slate-950">
                         <strong class="text-white block mb-0.5">🤖 Gobernanza y Ética IA:</strong>
@@ -1497,8 +1510,9 @@ const ui = {
     modalSuggestion() {
         const allSuggs = state.data.suggestionsToAlex || [];
         const myCoId = state.user ? (state.user.admin ? 'DOCENTE' : state.user.coId) : 'ANON';
+        const isDocente = Boolean(state.user && state.user.admin);
         const filteredSuggs = allSuggs.filter(s => {
-            if (state.user && state.user.admin) return s.coId === 'DOCENTE' || (s.author && s.author.includes('DOCENTE'));
+            if (isDocente) return s.coId === 'DOCENTE' || (s.author && s.author.includes('DOCENTE'));
             return s.coId === myCoId || (s.author && state.data.companies[myCoId] && s.author.includes(state.data.companies[myCoId].name));
         });
 
@@ -1518,8 +1532,34 @@ const ui = {
                     <span class="text-xs font-bold uppercase ${stBadge}">[${this.escapeHTML(status)}] • ${this.escapeHTML(s.date)}</span>
                 </div>
                 <p class="text-slate-200 italic text-xs mt-1 pl-2 border-l-2 border-slate-700 break-words">"${this.escapeHTML(s.text)}"</p>
+                ${s.driveUrl ? `<a href="${this.escapeHTML(s.driveUrl)}" target="_blank" rel="noopener noreferrer" class="text-[11px] text-mars-cyan hover:underline font-mono inline-flex items-center gap-1 mt-1 pl-2">📄 Evidencia Drive ↗</a>` : ''}
             </div>`;
         }).join('') || '<p class="text-slate-300 italic text-xs">No has enviado reportes desde esta entidad todavía.</p>';
+
+        let inputFieldsHtml = '';
+        if (isDocente) {
+            inputFieldsHtml = `
+            <label for="sugg-text" class="text-xs text-mars-yellow font-bold uppercase block mb-1">Descripción del reporte</label>
+            <textarea id="sugg-text" class="w-full bg-slate-900 border border-mars-yellow/50 p-3 text-base sm:text-xs text-white h-24 focus:border-mars-yellow outline-none mb-3" placeholder="Describe el reporte... (El uso de lenguaje ofensivo o nombres propios bloqueará el envío)"></textarea>
+            <label for="sugg-drive-url" class="text-xs text-mars-cyan font-bold uppercase block mb-1">Enlace Opcional de Google Drive / Docs</label>
+            <input type="url" id="sugg-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan/50 p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-cyan mb-4">
+            `;
+        } else {
+            const topics = typeof STUDENT_SUGGESTION_TOPICS_DEF !== 'undefined' ? STUDENT_SUGGESTION_TOPICS_DEF : [];
+            inputFieldsHtml = `
+            <div class="mb-3">
+                <label for="sugg-topic" class="text-xs text-mars-yellow font-bold uppercase block mb-1.5">Motivo Estandarizado de la Consulta (Política Zero-Text)</label>
+                <select id="sugg-topic" class="w-full bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow min-h-[44px]">
+                    ${topics.map(t => `<option value="${this.escapeHTML(t.label)}">${this.escapeHTML(t.label)}</option>`).join('')}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="sugg-drive-url" class="text-xs text-mars-cyan font-bold uppercase block mb-1.5">Memoria / Captura Detallada en Google Drive (URL Obligatoria)</label>
+                <input type="url" id="sugg-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan/50 p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-cyan" required>
+                <p class="text-[10px] text-slate-400 mt-1">Por directiva de privacidad y política Zero-Text, no se admite texto libre. Desarrolla la consulta o adjunta la captura en tu Google Drive corporativo.</p>
+            </div>
+            `;
+        }
 
         const html = `
             <p class="text-xs text-slate-300 mb-3 uppercase leading-relaxed">¿Has detectado un fallo técnico (bug), tienes una idea o una duda normativa? El reporte es privado y pasa por filtro léxico antes de llegar a Coordinación.</p>
@@ -1534,8 +1574,7 @@ const ui = {
             <div class="mb-2 p-2 bg-mars-magenta/10 border border-mars-magenta/40 text-[11px] font-mono text-mars-magenta font-bold">
                 ⚠️ ALERTA DE SEGURIDAD: Prohibido introducir nombres reales, apellidos, correos o teléfonos. Utiliza únicamente tu alias de equipo.
             </div>
-            <label for="sugg-text" class="sr-only">Descripción del reporte</label>
-            <textarea id="sugg-text" class="w-full bg-slate-900 border border-mars-yellow/50 p-3 text-base sm:text-xs text-white h-24 focus:border-mars-yellow outline-none mb-4" placeholder="Describe el reporte... (El uso de lenguaje ofensivo o nombres propios bloqueará el envío)"></textarea>
+            ${inputFieldsHtml}
             <div class="bg-black/60 border border-slate-800 p-3 max-h-44 overflow-y-auto">
                 <h4 class="text-mars-cyan text-xs uppercase font-bold mb-2 border-b border-slate-800 pb-1">Mis Envíos Recientes (Privado)</h4>
                 ${history}
@@ -1546,24 +1585,41 @@ const ui = {
     },
 
     submitSuggestion() {
-        const elText = document.getElementById('sugg-text');
+        const isDocente = Boolean(state.user && state.user.admin);
         const elCat = document.getElementById('sugg-category');
-        if(!elText) return;
-        const text = this.cleanInput(elText.value);
+        const elUrl = document.getElementById('sugg-drive-url');
         const category = elCat ? elCat.value : 'MEJORA';
-        if(text.length < 5) return this.notify("Describe tu reporte con más detalle (mínimo 5 caracteres).", "warning");
+        const driveUrl = elUrl ? this.cleanInput(elUrl.value) : '';
 
-        // WP3: Filtro activo anti-PII en Cliente (Nombres, emails, teléfonos, DNIs)
-        const piiCheck = this.validateZeroPII(text);
-        if (!piiCheck.clean) {
-            this.highlightInvalidField(text, elText);
-            this.notify("Envío bloqueado: Se han detectado datos identificativos personales", "error");
-            return;
+        let text = '';
+        if (isDocente) {
+            const elText = document.getElementById('sugg-text');
+            if (!elText) return;
+            text = this.cleanInput(elText.value);
+            if (text.length < 5) return this.notify("Describe tu reporte con más detalle (mínimo 5 caracteres).", "warning");
+
+            // WP3: Filtro activo anti-PII en Cliente (Nombres, emails, teléfonos, DNIs)
+            const piiCheck = this.validateZeroPII(text);
+            if (!piiCheck.clean) {
+                this.highlightInvalidField(text, elText);
+                this.notify("Envío bloqueado: Se han detectado datos identificativos personales", "error");
+                return;
+            }
+            if (this.hasForbiddenWords(text, 'Buzón de Sugerencias', elText)) return;
+        } else {
+            const elTopic = document.getElementById('sugg-topic');
+            if (!elTopic) return;
+            text = this.cleanInput(elTopic.value);
+            if (!driveUrl) return this.notify("Debes adjuntar el enlace de Google Drive o Docs con la evidencia.", "warning");
+            if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+                return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+            }
         }
 
-        if(this.hasForbiddenWords(text, 'Buzón de Sugerencias', elText)) return;
+        if (driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace de Google Drive no tiene un formato válido.", "error");
+        }
         
-        const isDocente = state.user && state.user.admin;
         const coId = state.user ? (isDocente ? 'DOCENTE' : state.user.coId) : 'ANON';
         const entityName = isDocente ? 'CLAUSTRO DOCENTE' : (state.data.companies[coId]?.name || 'STARTUP');
         const author = state.user ? `${state.user.role} (${entityName})` : 'ANÓNIMO';
@@ -1571,7 +1627,7 @@ const ui = {
         state.data.suggestionsToAlex = state.data.suggestionsToAlex || [];
         state.data.suggestionsToAlex.unshift({ 
             id: 'SUG-' + Date.now(), coId: coId, category: category, status: 'RECIBIDO',
-            author: author, text: text, date: new Date().toLocaleString() 
+            author: author, text: text, driveUrl: driveUrl, date: new Date().toLocaleString() 
         });
         
         state.save();
@@ -1631,6 +1687,12 @@ const ui = {
                     </div>
                 </div>
                 <p class="text-slate-200 italic mb-2 bg-black/60 p-2.5 border border-slate-800 break-words font-mono">"${this.escapeHTML(sugg.text)}"</p>
+                ${sugg.driveUrl ? `
+                <div class="mb-2">
+                    <a href="${this.escapeHTML(sugg.driveUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-mars-cyan hover:underline font-mono bg-mars-cyan/10 px-2.5 py-1.5 border border-mars-cyan/40 min-h-[36px]">
+                        <span>📄 Abrir Evidencia / Detalle en Google Drive ↗</span>
+                    </a>
+                </div>` : ''}
                 <div class="flex justify-between items-center text-[10px] text-slate-400">
                     <span>ID: ${this.escapeHTML(sugg.id)}</span>
                     <span>${this.escapeHTML(sugg.date)}</span>
@@ -1926,12 +1988,12 @@ const ui = {
             if (actionBar) actionBar.style.visibility = 'visible';
             if (navContainer) navContainer.style.visibility = 'visible';
         } else {
-            if (appContainer) appContainer.classList.add('hidden');
+            if (ftr) ftr.classList.add('hidden');
             if (hdr) hdr.classList.add('hidden');
             if (nav) nav.classList.add('hidden');
-            if (ftr) ftr.classList.add('hidden');
             if (actionBar) actionBar.style.visibility = 'hidden';
             if (navContainer) navContainer.style.visibility = 'hidden';
+            if (appContainer) appContainer.classList.add('hidden');
             const infoEl = document.getElementById('hud-info');
             const balEl = document.getElementById('hud-balance');
             const miniLogo = document.getElementById('hud-mini-logo');
@@ -1953,7 +2015,11 @@ const ui = {
         this.initEventDelegation();
         const vp = document.getElementById('viewport');
         if(!vp) return;
-        const savedScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+        const savedScrollY = typeof window !== 'undefined' ? (window.scrollY || document.documentElement.scrollTop || 0) : 0;
+        const prevHeight = vp.offsetHeight;
+        if (prevHeight > 0) {
+            vp.style.minHeight = prevHeight + 'px';
+        }
         const activeId = typeof document !== 'undefined' && document.activeElement && document.activeElement.id ? document.activeElement.id : null;
 
         vp.innerHTML = '';
@@ -2055,7 +2121,10 @@ const ui = {
         }
         if (typeof window !== 'undefined') {
             requestAnimationFrame(() => {
-                if (Math.abs(window.scrollY - savedScrollY) > 5) {
+                if (prevHeight > 0) {
+                    vp.style.minHeight = '';
+                }
+                if (savedScrollY > 0) {
                     window.scrollTo({ top: savedScrollY, behavior: 'instant' });
                 }
             });

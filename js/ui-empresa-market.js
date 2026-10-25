@@ -1,8 +1,14 @@
 // js/ui-empresa-market.js
-// --- MÓDULO CATÁLOGO B2B Y B2C CON BLINDAJE LÉXICO EN COMPRAS (v1.1.26) ---
+// --- MÓDULO CATÁLOGO B2B Y B2C CON BLINDAJE LÉXICO EN COMPRAS (v1.1.27) ---
 
 Object.assign(ui, {
     marketTab: 'B2C',
+
+    modalCustomOrder() {
+        if (typeof this.modalCheckout === 'function') {
+            this.modalCheckout();
+        }
+    },
 
     setMarketTab(tab) {
         this.marketTab = String(tab || 'B2C').toUpperCase();
@@ -329,6 +335,7 @@ Object.assign(ui, {
             category: offer.category,
             price: offer.price,
             sourceOrderKey: offer.sourceOrderKey,
+            driveUrl: offer.driveUrl || '',
             status: 'PENDIENTE_ADUANA',
             date: new Date().toLocaleString()
         });

@@ -1,5 +1,5 @@
 // js/ui-empresa-tech.js
-// --- MÓDULO I+D: BANCO DE PRUEBAS (en mm), BOM, MATEMÁTICAS E INVENTARIO B2B (v1.1.26) ---
+// --- MÓDULO I+D: BANCO DE PRUEBAS (en mm), BOM, MATEMÁTICAS E INVENTARIO B2B (v1.1.27) ---
 
 Object.assign(ui, {
     setTechDocTab(tab) {
@@ -151,7 +151,16 @@ Object.assign(ui, {
                     <div class="bg-black border border-mars-border p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                         <div>
                             <label for="ft-bottle" class="text-xs text-slate-300 uppercase block mb-1">Fuselaje / Botella</label>
-                            <input type="text" id="ft-bottle" placeholder="Ej: 1.5L Lisa" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow w-full">
+                            <select id="ft-bottle" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow w-full">
+                                ${(typeof BOTTLE_TYPES_DEF !== 'undefined' ? BOTTLE_TYPES_DEF : [
+                                    "PET 1.5L Lisa Cilíndrica",
+                                    "PET 1.5L Acanalada Reforzada",
+                                    "PET 2.0L Alta Capacidad",
+                                    "PET 1.0L Estándar",
+                                    "PET 0.5L Ligera Suborbital",
+                                    "Fuselaje Bietapa / Empalmado"
+                                ]).map(b => `<option value="${this.escapeHTML(b)}">${this.escapeHTML(b)}</option>`).join('')}
+                            </select>
                         </div>
                         <div>
                             <label for="ft-nahco3" class="text-xs text-slate-300 uppercase block mb-1">NaHCO3 (g)</label>
@@ -222,6 +231,9 @@ Object.assign(ui, {
                                         <span class="text-xs font-mono font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded">BORRADOR TÉCNICO</span>
                                     </div>
                                     <p class="text-xs text-slate-300">Genera el escandallo (BOM) arriba, redacta la Hoja de Taller en Google Docs y envíala al Taller para montaje físico.</p>
+                                    <div class="mb-2">
+                                        ${this.renderDocTemplateBtn('DOC_10_HOJA_TALLER')}
+                                    </div>
                                     <label for="tech-hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Enlace Drive Hoja de Taller (BOM & Control Físico)</label>
                                     <input type="url" id="tech-hoja-taller-drive-url" value="${this.escapeAttr(hojaUrl)}" placeholder="https://docs.google.com/..." class="w-full bg-black border border-slate-700 p-2 text-xs text-white font-mono outline-none focus:border-mars-cyan min-h-[44px]">
                                     <div class="flex justify-end pt-1">
@@ -322,6 +334,9 @@ Object.assign(ui, {
                 </div>
                 <div>
                     <label for="b2b-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Informe Técnico de Excedentes (Google Drive / Docs)</label>
+                    <div class="mb-2">
+                        ${this.renderDocTemplateBtn('DOC_7_B2B_DESINVERSION')}
+                    </div>
                     <input type="url" id="b2b-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono" required>
                     <p class="text-[10px] text-slate-400 mt-1">Adjunta la memoria técnica en Google Drive justificando el excedente para autorización en Aduana Docente.</p>
                 </div>

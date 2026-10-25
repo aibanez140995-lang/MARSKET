@@ -1,5 +1,5 @@
 // js/ui-empresa-gov-brand.js
-// --- MÓDULO GOBERNANZA Y MARCA: MOCIONES, HR, REGISTRO MERCANTIL Y PAQUETES MARKETING (v1.1.23) ---
+// --- MÓDULO GOBERNANZA Y MARCA: MOCIONES, HR, REGISTRO MERCANTIL Y PAQUETES MARKETING (v1.1.27) ---
 
 Object.assign(ui, {
     setBrandDocTab(tab) {
@@ -114,8 +114,9 @@ Object.assign(ui, {
                 nameChangeHtml = `
                 <div class="bg-mars-yellow/10 border border-mars-yellow p-4 flex flex-wrap justify-between items-center gap-3 mb-6">
                     <div class="min-w-0">
-                        <span class="text-xs text-mars-yellow font-bold uppercase tracking-wider block mb-1">Registro Mercantil</span>
-                        <p class="text-xs sm:text-sm text-white break-words">Solicitud enviada: <span class="font-orbitron font-bold">${this.escapeHTML(req.proposedName)}</span></p>
+                        <span class="text-xs text-mars-yellow font-bold uppercase tracking-wider block mb-1">Registro Mercantil // Solicitud en Revisión</span>
+                        <p class="text-xs sm:text-sm text-white break-words">Motivo: <span class="font-bold text-mars-yellow">${this.escapeHTML(req.reason || req.proposedName || '')}</span></p>
+                        ${req.driveUrl ? `<a href="${encodeURI(req.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50"><span>📄 Abrir Solicitud Oficial en Google Drive ↗</span></a>` : ''}
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="text-xs bg-mars-yellow text-black font-black px-2.5 py-1 uppercase animate-pulse">En Revisión</span>
@@ -127,7 +128,7 @@ Object.assign(ui, {
                 <div class="bg-mars-magenta/10 border border-mars-magenta p-4 flex flex-wrap justify-between items-center gap-3 mb-6">
                     <div class="min-w-0 flex-1">
                         <span class="text-xs text-mars-magenta font-bold uppercase tracking-wider block mb-1">🏛️ Registro Mercantil // Solicitud Denegada</span>
-                        <p class="text-xs sm:text-sm text-white break-words">La propuesta de denominación social <span class="font-orbitron font-bold text-mars-magenta">"${this.escapeHTML(req.proposedName)}"</span> ha sido denegada por Coordinación.</p>
+                        <p class="text-xs sm:text-sm text-white break-words">La solicitud de cambio de denominación social ha sido denegada por Coordinación.</p>
                     </div>
                     <div class="flex gap-2 shrink-0">
                         <button type="button" onclick="ui.promptRequestNameChange()" class="min-h-[44px] bg-mars-yellow text-black font-black px-3 py-2 text-xs uppercase hover:bg-white transition-all">Nueva Solicitud</button>
@@ -143,10 +144,51 @@ Object.assign(ui, {
             }
         }
 
+        let ceoSloganApprovalHtml = '';
+        if (isCEO && co.brandApproval && co.brandApproval.status === 'PENDIENTE_CEO') {
+            ceoSloganApprovalHtml = `
+            <div class="bg-amber-500/10 border-2 border-amber-500 p-4 mb-6 rounded">
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                    <span class="text-xs bg-amber-500 text-black font-black px-2.5 py-1 uppercase">Paso 2: Aval de Dirección General Requerido</span>
+                    <span class="text-xs text-slate-300 font-mono">${this.escapeHTML(co.brandApproval.expId || '')}</span>
+                </div>
+                <h4 class="text-white font-orbitron font-bold text-sm uppercase mb-1">Propuesta de Slogan Corporativo recibida de Marketing</h4>
+                <p class="text-xs text-slate-300 mb-2">Enfoque: <strong class="text-mars-cyan">${this.escapeHTML(co.brandApproval.concept || 'General')}</strong></p>
+                <div class="mb-3">
+                    ${co.brandApproval.driveUrl ? `<a href="${encodeURI(co.brandApproval.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono font-bold"><span>📄 Abrir Expediente Slogan en Google Drive ↗</span></a>` : ''}
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="ui.endorseBrandProposal('${state.user.coId}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all">[ ✅ 2. Avalar y Elevar a Coordinación Docente ]</button>
+                    <button type="button" onclick="ui.returnBrandProposalToMkt('${state.user.coId}')" class="min-h-[44px] bg-slate-800 border border-mars-magenta text-mars-magenta hover:bg-mars-magenta hover:text-white px-4 py-2 text-xs font-bold uppercase transition-all">[ ↩️ Devolver a Marketing ]</button>
+                </div>
+            </div>`;
+        }
+
+        let crisisResolutionsHtml = '';
+        if (co.executiveResolutions && co.executiveResolutions.length > 0) {
+            crisisResolutionsHtml = `
+            <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-yellow mb-6">
+                <h3 class="font-orbitron text-mars-yellow text-sm sm:text-base uppercase tracking-tighter mb-3">Resoluciones Ejecutivas y Sanciones de Crisis</h3>
+                <div class="space-y-3">
+                    ${co.executiveResolutions.map(r => `
+                        <div class="bg-black/80 border border-slate-800 p-3 flex flex-wrap justify-between items-center gap-2">
+                            <div>
+                                <span class="text-xs font-bold text-white uppercase block">${this.escapeHTML(r.crisisTitle || 'Resolución de Crisis')}</span>
+                                <span class="text-xs text-slate-300 block">Acción: ${this.escapeHTML(r.action || r.decision || '')} | ${this.escapeHTML(r.date || '')}</span>
+                            </div>
+                            ${r.driveUrl ? `<a href="${encodeURI(r.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50"><span>📄 Abrir Comunicado Oficial en Google Drive ↗</span></a>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>`;
+        }
+
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div class="lg:col-span-8 space-y-6">
                 ${nameChangeHtml}
+                ${ceoSloganApprovalHtml}
+                ${crisisResolutionsHtml}
                 <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-cyan">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-mars-border pb-3">
                         <h2 class="font-orbitron text-mars-cyan text-base sm:text-lg uppercase tracking-tighter">Asamblea y Votaciones</h2>
@@ -223,35 +265,53 @@ Object.assign(ui, {
 
     promptRequestNameChange() {
         if (!state.user || state.user.role !== 'CEO') return;
+        const reasons = typeof NAME_CHANGE_REASONS_DEF !== 'undefined' ? NAME_CHANGE_REASONS_DEF : [
+            { id: "PIVOTAJE_MERCADO", label: "Pivotaje Estratégico de Mercado / Reorientación de Misión" },
+            { id: "REORGANIZACION_INTERNA", label: "Reorganización de Junta Directiva y Estructura Interna" },
+            { id: "RESOLUCION_ASAMBLEA", label: "Resolución de la Asamblea General de Socios" },
+            { id: "DIFERENCIACION_MARCA", label: "Diferenciación Competitiva frente a otras Empresas del Sector" },
+            { id: "REQUERIMIENTO_DOCENTE", label: "Adecuación por Requerimiento de Coordinación Docente" }
+        ];
+        const reasonsOptions = reasons.map(r => `<option value="${this.escapeHTML(r.label)}">${this.escapeHTML(r.label)}</option>`).join('');
+        const templateBtn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_1_DENOMINACION', '📄 Modelo Oficial Solicitud Denominación Social (Hacer copia)') : '';
+
         const html = `
-            <p class="text-xs text-slate-300 mb-4 leading-relaxed uppercase">La modificación de la razón social debe ser evaluada por Coordinación. El historial contable y el código de la empresa permanecerán intactos.</p>
-            <label for="req-new-name" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Nueva Denominación Propuesta</label>
-            <input type="text" id="req-new-name" placeholder="Ej: Astra Aerospace, Horizon Tech..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-3 text-base sm:text-xs text-white font-orbitron uppercase outline-none focus:border-mars-yellow mb-3">
-            <label for="req-name-reason" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Justificación del Cambio</label>
-            <textarea id="req-name-reason" placeholder="Motivo del pivotaje o reorientación de marca..." class="w-full bg-slate-900 border border-slate-700 p-3 text-base sm:text-xs text-white h-24 outline-none focus:border-mars-yellow"></textarea>
+            <p class="text-xs text-slate-300 mb-4 leading-relaxed uppercase">La modificación de la denominación social debe ser evaluada por Coordinación Docente. Cumplimenta la solicitud formal en Google Docs y adjunta el enlace oficial.</p>
+            <div class="mb-4">
+                ${templateBtn}
+            </div>
+            <label for="req-name-reason" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Motivo Tipificado del Renombramiento</label>
+            <select id="req-name-reason" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-xs text-white uppercase outline-none focus:border-mars-yellow mb-3">
+                ${reasonsOptions}
+            </select>
+            <label for="req-name-drive-url" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Enlace a Solicitud Formal Oficial (Google Drive / Docs)</label>
+            <input type="url" id="req-name-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-3 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow mb-2" required>
+            <p class="text-[10px] text-slate-400">Coordinación revisará el documento formal y fijará la nueva denominación oficial en el sistema.</p>
         `;
         const actions = `<button type="button" onclick="ui.submitNameChangeRequest()" class="min-h-[44px] bg-mars-yellow text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all">Transmitir a Coordinación</button>`;
         this.showModal("Solicitud Oficial de Renombramiento", html, actions);
     },
 
     submitNameChangeRequest() {
-        const elName = document.getElementById('req-new-name');
         const elReason = document.getElementById('req-name-reason');
-        if (!elName || !elReason) return;
+        const elUrl = document.getElementById('req-name-drive-url');
+        if (!elReason || !elUrl) return;
 
-        const newName = this.cleanInput(elName.value);
         const reason = this.cleanInput(elReason.value);
+        const driveUrl = this.cleanInput(elUrl.value);
 
-        if (newName.length < 3) return this.notify("La denominación propuesta es demasiado corta.", "warning");
-        if (reason.length < 5) return this.notify("Debes justificar el motivo del cambio.", "warning");
-
-        if (ui.hasForbiddenWords && ui.hasForbiddenWords(newName + " " + reason, 'Registro Mercantil (Nombre)', elName)) return;
+        if (!reason) return this.notify("Debes seleccionar el motivo del cambio.", "warning");
+        if (!driveUrl) return this.notify("Debes indicar el enlace Drive de la solicitud formal.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+        }
 
         const co = state.data.companies[state.user.coId];
         co.nameChangeRequest = {
             status: 'PENDIENTE',
-            proposedName: newName,
             reason: reason,
+            driveUrl: driveUrl,
+            proposedName: 'Propuesta en Documento Drive',
             date: new Date().toLocaleString(),
             updatedAt: Date.now()
         };
@@ -298,8 +358,21 @@ Object.assign(ui, {
 
     modalReportInactivity() {
         if (!state.user) return;
+        const reasons = typeof INACTIVITY_REASONS_DEF !== 'undefined' ? INACTIVITY_REASONS_DEF : [
+            { id: "SIN_AVANCE_HITOS", label: "Falta reiterada de avance en hitos departamentales obligatorios" },
+            { id: "BLOQUEO_INTERDEPARTAMENTAL", label: "Bloqueo operativo a otros departamentos por falta de entregas" },
+            { id: "AUSENCIA_ASAMBLEAS", label: "Inasistencia o falta de participación en Asambleas y toma de decisiones" },
+            { id: "INCUMPLIMIENTO_TAREAS", label: "Incumplimiento de tareas asignadas en el plan de trabajo" },
+            { id: "ROTURA_COMUNICACION", label: "Falta absoluta de comunicación y coordinación en el equipo" }
+        ];
+        const reasonsOpts = reasons.map(r => `<option value="${this.escapeHTML(r.label)}">${this.escapeHTML(r.label)}</option>`).join('');
+        const templateBtn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_2_INACTIVIDAD_HR', '📄 Modelo Oficial Expediente HR (Hacer copia)') : '';
+
         const html = `
-            <p class="text-xs text-slate-300 mb-4 leading-relaxed">Usa este canal oficial para notificar al Claustro Docente si un departamento está bloqueando el progreso de la startup por inactividad.</p>
+            <p class="text-xs text-slate-300 mb-3 leading-relaxed">Usa este canal oficial para notificar al Claustro Docente si un departamento está bloqueando el progreso de la startup por inactividad.</p>
+            <div class="mb-4">
+                ${templateBtn}
+            </div>
             <label for="inactivity-dept" class="text-xs text-mars-magenta uppercase font-bold block mb-1.5">Departamento a Reportar</label>
             <select id="inactivity-dept" class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white mb-3 outline-none focus:border-mars-cyan">
                 <option value="">-- Selecciona el Departamento a Reportar --</option>
@@ -309,8 +382,13 @@ Object.assign(ui, {
                 <option value="MARKETING">Dpto. Marketing</option>
                 <option value="OPERACIONES_IA">Dpto. Operaciones e IA</option>
             </select>
-            <label for="inactivity-reason" class="text-xs text-mars-magenta uppercase font-bold block mb-1.5">Descripción de la Inactividad</label>
-            <textarea id="inactivity-reason" placeholder="Describe detalladamente qué tareas no se están cumpliendo y cómo afecta al equipo..." class="w-full bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white h-24 mb-2 outline-none focus:border-mars-cyan"></textarea>
+            <label for="inactivity-reason" class="text-xs text-mars-magenta uppercase font-bold block mb-1.5">Causa Tipificada de Inactividad</label>
+            <select id="inactivity-reason" class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white mb-3 outline-none focus:border-mars-cyan">
+                ${reasonsOpts}
+            </select>
+            <label for="inactivity-drive-url" class="text-xs text-mars-magenta uppercase font-bold block mb-1.5">Enlace a Expediente HR Oficial (Google Drive / Docs)</label>
+            <input type="url" id="inactivity-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white mb-2 outline-none focus:border-mars-cyan font-mono" required>
+            <p class="text-[10px] text-slate-400 mb-2">Adjunta la copia del expediente completado con las evidencias de inactividad.</p>
         `;
         const actions = `<button type="button" onclick="ui.submitInactivityReport()" class="min-h-[44px] bg-mars-magenta text-white px-5 py-2.5 text-xs font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Enviar Reporte al Claustro</button>`;
         this.showModal("Reporte de Inactividad (HR)", html, actions);
@@ -320,14 +398,19 @@ Object.assign(ui, {
         if (!state.user) return;
         const elDept = document.getElementById('inactivity-dept');
         const elReason = document.getElementById('inactivity-reason');
-        if (!elDept || !elReason) return;
+        const elUrl = document.getElementById('inactivity-drive-url');
+        if (!elDept || !elReason || !elUrl) return;
         
         const dept = elDept.value;
         const reason = this.cleanInput(elReason.value);
+        const driveUrl = this.cleanInput(elUrl.value);
         
-        if(!dept || !reason) return this.notify("Debes seleccionar un departamento y justificar el reporte.", "warning");
+        if(!dept || !reason) return this.notify("Debes seleccionar un departamento y el motivo tipificado.", "warning");
         if(dept === state.user.role) return this.notify("No puedes reportarte a ti mismo.", "warning");
-        if(ui.hasForbiddenWords && ui.hasForbiddenWords(reason, 'Reporte Inactividad HR', elReason)) return;
+        if(!driveUrl) return this.notify("Debes adjuntar el enlace Drive al expediente oficial de HR.", "warning");
+        if(typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+        }
         
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
@@ -338,6 +421,7 @@ Object.assign(ui, {
             reportedDept: dept,
             reportingRole: state.user.role,
             reason: reason,
+            driveUrl: driveUrl,
             date: new Date().toLocaleString(),
             status: 'PENDIENTE'
         });
@@ -349,6 +433,11 @@ Object.assign(ui, {
         state.save();
         this.closeModal();
         this.notify("Reporte enviado exitosamente al Claustro Docente y a Dirección General.", "success");
+        this.render();
+    },
+
+    modalProposeGovernanceMotion() {
+        return this.modalMotion();
     },
 
     modalMotion() {
@@ -363,14 +452,18 @@ Object.assign(ui, {
             { id: "JUNTA_GENERAL", label: "[EXTRAORDINARIA] Convocatoria de Junta General de Socios" }
         ];
         const optionsHtml = motionTypes.map(m => `<option value="${this.escapeHTML(m.id)}">${this.escapeHTML(m.label)}</option>`).join('');
+        const templateBtn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_6_MOCION_ASAMBLEA', '📄 Modelo Oficial Acta de Moción (Hacer copia)') : '';
 
         const html = `
+            <div class="mb-4">
+                ${templateBtn}
+            </div>
             <label for="motion-type" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Tipo de Moción Tipificada</label>
             <select id="motion-type" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white mb-3 outline-none focus:border-mars-yellow">
                 ${optionsHtml}
             </select>
             <label for="motion-drive-url" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Enlace al Documento de la Propuesta (Google Docs)</label>
-            <input type="url" id="motion-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white mb-2 outline-none focus:border-mars-yellow font-mono">
+            <input type="url" id="motion-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white mb-2 outline-none focus:border-mars-yellow font-mono" required>
             <p class="text-[10px] text-slate-400 mb-2">La memoria y argumentario de la moción se desarrolla en el Google Doc oficial con permisos de lectura.</p>
         `;
         const actions = `<button type="button" onclick="ui.submitMotion()" class="min-h-[44px] bg-mars-yellow text-black px-5 py-2.5 text-xs font-bold uppercase hover:bg-white transition-colors">Registrar Moción</button>`;
@@ -666,41 +759,128 @@ Object.assign(ui, {
         } else {
             docTabContent = `
                 <div class="mb-3">
-                    <span class="bg-mars-yellow/10 border border-mars-yellow text-mars-yellow text-xs font-black px-2.5 py-1 uppercase">Peso en Proyecto: 5% Global (70% Oral / 30% Redacciones)</span>
+                    <span class="bg-mars-yellow/10 border border-mars-yellow text-mars-yellow text-xs font-black px-2.5 py-1 uppercase">Peso en Proyecto: 5% Global (Evaluación Directa en Aula)</span>
                 </div>
-                <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Entregables oficiales para el departamento de Inglés (Solo Enlaces verificados de Google Drive).</p>
-                <div class="space-y-4">
-                    ${this.renderDriveLinkBox('1. Expresión Oral: Presentación Prototipo (70% ING)', 'Enlace a soporte visual / slides de la presentación oral en inglés.', 'oralPresentation', docs.oralPresentation)}
-                    ${this.renderDriveLinkBox('2. Redacciones Escritas en Inglés (30% ING)', 'Enlace a documentos escritos y ensayos técnicos/comerciales en lengua inglesa.', 'writtenEssays', docs.writtenEssays)}
+                <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Evaluación del departamento de Inglés (100% evaluación docente directa en clase).</p>
+                <div class="bg-black/80 border border-mars-yellow/40 p-4 text-xs text-slate-300 space-y-2">
+                    <p class="text-white font-bold uppercase text-xs">📢 Criterio Curricular Oficial de Lengua Extranjera (Inglés):</p>
+                    <p>Las competencias de expresión oral (Pitch / Presentación de Prototipo) y expresión escrita en lengua inglesa son evaluadas directamente por el profesorado de Lengua Extranjera durante las sesiones lectivas presenciales y defensas orales en el aula.</p>
+                    <p class="text-mars-yellow font-mono text-[11px] font-bold">✓ No se requiere la subida de enlaces de Google Drive en este panel.</p>
                 </div>
             `;
         }
 
-        const displaySloganInput = (co.pendingSlogan !== null && co.pendingSlogan !== undefined)
-            ? co.pendingSlogan
-            : ((co.brandApproval && co.brandApproval.status === 'PENDIENTE' && co.brandApproval.pendingSlogan)
-                ? co.brandApproval.pendingSlogan
-                : (co.slogan || ''));
-        const displayMissionInput = (co.pendingMission !== null && co.pendingMission !== undefined)
-            ? co.pendingMission
-            : (co.valueProposition || co.mission || '');
+        const coCode = co.code || state.user.coId;
+        const expId = (co.brandApproval && co.brandApproval.expId) || ('PROP-SLOGAN-' + coCode + '-001');
+        const estadoActual = (co.brandApproval && co.brandApproval.status) || 'APROBADO';
+        const brandConcepts = typeof BRAND_CONCEPTS_DEF !== 'undefined' ? BRAND_CONCEPTS_DEF : [
+            { id: "EXPLORACION", label: "Exploración y Conquista de Nuevas Fronteras Espaciales" },
+            { id: "SOSTENIBILIDAD", label: "Sostenibilidad y Eficiencia en Recursos Planetarios" },
+            { id: "INNOVACION", label: "Innovación Radical en Propulsión e Ingeniería Aeroespacial" },
+            { id: "ACCESIBILIDAD", label: "Democratización y Accesibilidad del Transporte Orbital" },
+            { id: "SEGURIDAD", label: "Máxima Seguridad y Fiabilidad en Misiones Críticas" }
+        ];
+        const conceptOptionsHtml = brandConcepts.map(c => `
+            <option value="${this.escapeHTML(c.label)}" ${(co.brandApproval?.concept === c.label) ? 'selected' : ''}>${this.escapeHTML(c.label)}</option>
+        `).join('');
+
+        const doc11Btn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_11_SLOGAN', '📄 Modelo Oficial Solicitud de Slogan (Hacer copia)') : '';
+
+        let step2CeoControls = '';
+        if (estadoActual === 'PENDIENTE_CEO') {
+            if (state.user.role === 'CEO') {
+                step2CeoControls = `
+                <div class="bg-amber-500/15 border-2 border-amber-500 p-4 mb-4 rounded">
+                    <span class="text-xs bg-amber-500 text-black font-black px-2 py-0.5 uppercase block mb-2 w-fit">Paso 2: Aval de Dirección General Requerido</span>
+                    <p class="text-xs text-white mb-2">Marketing ha formulado esta propuesta conceptual. Como CEO, debes examinar el documento Drive y decidir si avalarla ante Coordinación Docente:</p>
+                    <div class="mb-3">
+                        ${co.brandApproval.driveUrl ? `<a href="${encodeURI(co.brandApproval.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono font-bold"><span>📄 Abrir Propuesta de Slogan en Google Drive ↗</span></a>` : ''}
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="ui.endorseBrandProposal('${state.user.coId}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all">[ ✅ 2. Avalar y Elevar a Coordinación Docente ]</button>
+                        <button type="button" onclick="ui.returnBrandProposalToMkt('${state.user.coId}')" class="min-h-[44px] bg-slate-800 border border-mars-magenta text-mars-magenta hover:bg-mars-magenta hover:text-white px-4 py-2 text-xs font-bold uppercase transition-all">[ ↩️ Devolver a Marketing ]</button>
+                    </div>
+                </div>`;
+            } else {
+                step2CeoControls = `
+                <div class="bg-amber-500/10 border border-amber-500 p-3 mb-4 text-xs">
+                    <span class="text-amber-400 font-bold uppercase block mb-1">⏳ Paso 2: En Revisión por Dirección General (CEO)</span>
+                    <p class="text-slate-300">La propuesta ha sido enviada al CEO. Una vez que Dirección General la avale, se elevará a Coordinación Docente para su resolución final.</p>
+                </div>`;
+            }
+        } else if (estadoActual === 'PENDIENTE') {
+            step2CeoControls = `
+            <div class="bg-mars-cyan/15 border border-mars-cyan p-3 mb-4 text-xs">
+                <span class="text-mars-cyan font-bold uppercase block mb-1">⏳ Paso 3: En Aduana de Identidad Corporativa (Coordinación Docente)</span>
+                <p class="text-slate-300">El expediente ha sido avalado por Dirección General y está en manos de Coordinación Docente para su aprobación e inscripción oficial en el HUD.</p>
+            </div>`;
+        } else if (estadoActual === 'DEVUELTO_CEO') {
+            step2CeoControls = `
+            <div class="bg-mars-magenta/15 border border-mars-magenta p-3 mb-4 text-xs">
+                <span class="text-mars-magenta font-black uppercase block mb-1">↩️ Propuesta Devuelta por el CEO</span>
+                <p class="text-slate-300">Feedback: "${this.escapeHTML(co.brandApproval.feedback || 'Revisar propuesta en Google Docs.')}". Marketing puede realizar correcciones y volver a presentarla.</p>
+            </div>`;
+        } else if (estadoActual === 'RECHAZADO') {
+            step2CeoControls = `
+            <div class="bg-mars-magenta/15 border border-mars-magenta p-3 mb-4 text-xs">
+                <span class="text-mars-magenta font-black uppercase block mb-1">❌ Propuesta Rechazada por Coordinación</span>
+                <p class="text-slate-300">Motivo: "${this.escapeHTML(co.brandApproval.feedback || 'Incumplimiento de criterios oficiales.')}". Marketing debe generar una nueva propuesta.</p>
+            </div>`;
+        }
 
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div class="lg:col-span-6 space-y-6 w-full overflow-hidden">
+                <!-- Bloque Oficial Registro Mercantil // Aprobación Slogan Corporativo -->
                 <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-magenta w-full">
-                    <h2 class="font-orbitron text-mars-magenta text-base sm:text-lg mb-2 uppercase tracking-tighter">Identidad Corporativa & Manifiesto</h2>
-                    ${brandApprovalAlert}
-                    <label for="brand-slogan" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Eslogan Corporativo (Requiere Aprobación Docente)</label>
-                    <input type="text" id="brand-slogan" value="${this.escapeHTML(displaySloganInput)}" placeholder="Eslogan corto corporativo (Tagline)..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-mars-yellow font-bold uppercase mb-3 focus:border-mars-magenta outline-none">
-                    <label for="val-prop-text" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Misión, Visión y Propuesta de Valor</label>
-                    <textarea id="val-prop-text" class="w-full bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-white h-24 outline-none focus:border-mars-cyan mb-3 leading-relaxed" placeholder="Redacte la misión, visión y propuesta de valor corporativa...">${this.escapeHTML(displayMissionInput)}</textarea>
-                    <label for="company-logo-drive" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Enlace al Escudo / Logo Corporativo (Google Drive)</label>
-                    <input type="url" id="company-logo-drive" value="${this.escapeHTML((co.brandApproval && co.brandApproval.pendingLogo) ? co.brandApproval.pendingLogo : (co.logo || ''))}" placeholder="https://drive.google.com/file/d/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-3 text-base sm:text-xs text-white font-mono mb-2 focus:border-mars-magenta outline-none">
-                    <p class="text-[10px] text-slate-400 mb-3">Pega el enlace a la imagen del logotipo en Google Drive con permisos de lectura.</p>
-                    <div class="flex flex-col sm:flex-row gap-2 w-full">
-                        <button type="button" onclick="ui.saveCompanyLogoDrive()" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-mars-magenta hover:text-white transition-all flex-1">[ Vincular Logo Google Drive ]</button>
-                        <button type="button" onclick="ui.saveBrandIdentityText()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all flex-1">Enviar Identidad a Docente</button>
+                    <div class="border-b border-mars-border pb-3 mb-4">
+                        <div class="flex flex-wrap justify-between items-center gap-2 mb-1">
+                            <span class="text-[10px] font-mono text-mars-cyan tracking-widest uppercase">REGISTRO MERCANTIL // SOLICITUD DE APROBACIÓN DE SLOGAN CORPORATIVO</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 uppercase ${estadoActual==='APROBADO'?'bg-mars-green/20 text-mars-green border border-mars-green':'bg-amber-500/20 text-amber-400 border border-amber-500'}">${this.escapeHTML(estadoActual)}</span>
+                        </div>
+                        <h2 class="font-orbitron text-white text-xs sm:text-sm font-bold uppercase break-words">EXPEDIENTE: ${this.escapeHTML(expId)} | EMPRESA: ${this.escapeHTML(co.name)}</h2>
+                    </div>
+
+                    <!-- Instrucciones del Flujo de Trámite Oficial -->
+                    <div class="bg-black/60 border border-slate-800 p-3 mb-4 text-xs text-slate-300 space-y-2">
+                        <span class="text-mars-yellow font-bold uppercase block tracking-wider text-[11px]">📋 Instrucciones del Flujo de Trámite:</span>
+                        <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-300">
+                            <li><strong class="text-white">Marketing ➔ CEO:</strong> Marketing formula la propuesta conceptual del slogan en el modelo oficial de Google Docs y la presenta a la Dirección General.</li>
+                            <li><strong class="text-white">CEO ➔ Coordinación:</strong> El CEO revisa, avala la propuesta y la eleva a Coordinación Docente para su resolución final.</li>
+                            <li><strong class="text-white">Coordinación Docente:</strong> Emite la resolución oficial (Aprobado/Denegado) y registra el slogan oficial en el expediente de la empresa.</li>
+                        </ol>
+                    </div>
+
+                    ${co.slogan ? `
+                    <div class="bg-mars-green/10 border border-mars-green/50 p-3 mb-4 text-xs">
+                        <span class="text-mars-green font-bold uppercase block mb-1">✓ Slogan Corporativo Oficial Activo:</span>
+                        <p class="text-white font-orbitron font-bold italic text-sm break-words">"${this.escapeHTML(co.slogan)}"</p>
+                    </div>` : ''}
+
+                    ${step2CeoControls}
+
+                    <!-- Paso 1: Formulación de Propuesta (Marketing) -->
+                    <div class="bg-slate-950 p-4 border border-slate-800 space-y-3">
+                        <span class="text-xs text-mars-cyan font-bold uppercase block">Paso 1: Formulación de Propuesta (Dpto. Marketing)</span>
+                        <div class="mb-2">
+                            ${doc11Btn}
+                        </div>
+                        <div>
+                            <label for="brand-concept-select" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Enfoque Conceptual Aeroespacial</label>
+                            <select id="brand-concept-select" class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-magenta uppercase">
+                                ${conceptOptionsHtml}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="company-logo-drive" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Enlace al Escudo / Logo Corporativo (Google Drive)</label>
+                            <input type="url" id="company-logo-drive" value="${this.escapeHTML((co.brandApproval && co.brandApproval.pendingLogo) ? co.brandApproval.pendingLogo : (co.logo || ''))}" placeholder="https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-magenta">
+                        </div>
+                        <div>
+                            <label for="brand-slogan-drive-url" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Enlace a la Propuesta de Slogan en Google Drive (Obligatorio)</label>
+                            <input type="url" id="brand-slogan-drive-url" value="${this.escapeHTML(co.brandApproval?.driveUrl || '')}" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/60 p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow" required>
+                            <p class="text-[10px] text-slate-400 mt-1">El argumentario, lema propuesto y justificación residen en el Google Doc oficial con permisos de lectura.</p>
+                        </div>
+                        <button type="button" onclick="ui.submitBrandProposalToCEO()" class="w-full min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)]">[ 📤 1. Presentar Propuesta al CEO ]</button>
                     </div>
                 </div>
 
@@ -753,6 +933,10 @@ Object.assign(ui, {
         el.appendChild(wrapper);
     },
 
+    modalNewMktCamp(pkgId = null) {
+        return this.modalRequestMktPackage(pkgId);
+    },
+
     modalRequestMktPackage(pkgId = null) {
         if (!state.user) return;
         const mktPackages = typeof MARKETING_PACKAGES !== 'undefined' ? MARKETING_PACKAGES : [];
@@ -765,8 +949,13 @@ Object.assign(ui, {
             </option>
         `).join('');
 
+        const doc5Btn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_5_BRIEF_MKT', '📄 Modelo Oficial Brief Creativo MKT (Hacer copia)') : '';
+
         const html = `
             <div class="space-y-3">
+                <div class="mb-2">
+                    ${doc5Btn}
+                </div>
                 <div>
                     <label for="campaign-tier" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Paquete / Tier Publicitario Predefinido</label>
                     <select id="campaign-tier" onchange="const p = (typeof MARKETING_PACKAGES !== 'undefined' ? MARKETING_PACKAGES : []).find(x => x.id === this.value); const sEl = document.getElementById('campaign-price-display'); if(sEl && p) sEl.textContent = p.price + ' €v';" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow">
@@ -955,40 +1144,7 @@ Object.assign(ui, {
     },
 
     saveBrandIdentityText() {
-        if (!state.user) return;
-        const elSlogan = document.getElementById('brand-slogan');
-        const elText = document.getElementById('val-prop-text');
-        
-        const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
-        
-        const newSlogan = elSlogan ? this.cleanInput(elSlogan.value) : '';
-        const newMission = elText ? this.cleanInput(elText.value) : '';
-
-        if (ui.hasForbiddenWords && (ui.hasForbiddenWords(newSlogan, 'Eslogan Corporativo', elSlogan) || ui.hasForbiddenWords(newMission, 'Misión y Visión Corporativa', elText))) {
-            return;
-        }
-
-        co.pendingSlogan = newSlogan;
-        co.pendingMission = newMission;
-        co.brandStatus = 'PENDING_APPROVAL';
-
-        co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
-        co.brandApproval.pendingSlogan = newSlogan;
-        co.brandApproval.status = 'PENDIENTE';
-        co.brandApproval.feedback = '';
-
-        this.notify("⏳ Propuesta de Eslogan y Misión enviada a Coordinación para su aprobación.", "info");
-        state.save();
-        this.render();
-
-        try {
-            state.executeAction('GENERIC_PATCH', {
-                pendingSlogan: newSlogan,
-                pendingMission: newMission,
-                brandStatus: 'PENDING_APPROVAL'
-            });
-        } catch(e) {}
+        return this.submitBrandProposalToCEO();
     },
 
     saveCompanyLogoDrive() {
@@ -1037,5 +1193,79 @@ Object.assign(ui, {
             this.notify("⏳ Logotipo enviado a Coordinación Docente. Aparecerá en vuestro HUD en cuanto sea aprobado.", "info");
         };
         reader.readAsDataURL(file);
+    },
+
+    submitBrandProposalToCEO() {
+        if (!state.user) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout();
+
+        const elConcept = document.getElementById('brand-concept-select');
+        const elDrive = document.getElementById('brand-slogan-drive-url');
+        const elLogo = document.getElementById('company-logo-drive');
+
+        const concept = elConcept ? this.cleanInput(elConcept.value) : '';
+        const driveUrl = elDrive ? this.cleanInput(elDrive.value) : '';
+        const logoUrl = elLogo ? this.cleanInput(elLogo.value) : '';
+
+        if (!concept) return this.notify("Debes seleccionar un enfoque aeroespacial.", "warning");
+        if (!driveUrl) return this.notify("Debes indicar la URL de Google Drive con la propuesta oficial del Slogan.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace al documento del eslogan debe ser una URL válida de Google Drive / Docs.", "error");
+        }
+        if (logoUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(logoUrl)) {
+            return this.notify("El enlace al logotipo debe ser una URL válida de Google Drive.", "error");
+        }
+
+        const coCode = co.code || state.user.coId;
+        const expId = 'PROP-SLOGAN-' + coCode + '-001';
+
+        co.brandApproval = {
+            expId: expId,
+            status: 'PENDIENTE_CEO',
+            concept: concept,
+            pendingLogo: logoUrl || co.brandApproval?.pendingLogo || co.logo || null,
+            pendingSlogan: '',
+            driveUrl: driveUrl,
+            date: Date.now(),
+            feedback: ''
+        };
+
+        ui.pushNotification(state.user.coId, 'CEO', `Marketing ha presentado la propuesta de Slogan Corporativo (${expId}) para aval y elevación a Coordinación.`, 'info');
+
+        state.save();
+        this.render();
+        this.notify("✅ Propuesta presentada al CEO exitosamente. En espera de su aval.", "success");
+    },
+
+    endorseBrandProposal(cid) {
+        if (!state.user || state.user.role !== 'CEO') return this.notify("Solo Dirección General (CEO) puede avalar esta propuesta.", "warning");
+        const co = state.data.companies[cid || state.user.coId];
+        if (!co || !co.brandApproval) return;
+
+        co.brandApproval.status = 'PENDIENTE';
+        co.brandApproval.endorsedAt = Date.now();
+        
+        ui.pushNotification(state.user.coId, 'MARKETING', `El CEO ha avalado la propuesta de Slogan (${co.brandApproval.expId || ''}) y la ha elevado a Coordinación Docente.`, 'success');
+
+        state.save();
+        this.render();
+        this.notify("✅ Propuesta de Slogan avalada y elevada a Coordinación Docente.", "success");
+    },
+
+    returnBrandProposalToMkt(cid) {
+        if (!state.user || state.user.role !== 'CEO') return this.notify("Solo Dirección General (CEO) puede devolver esta propuesta.", "warning");
+        const co = state.data.companies[cid || state.user.coId];
+        if (!co || !co.brandApproval) return;
+
+        const feedback = prompt("Indica a Marketing las correcciones o motivos de la devolución:") || "Revisar propuesta en Google Docs.";
+        co.brandApproval.status = 'DEVUELTO_CEO';
+        co.brandApproval.feedback = feedback;
+
+        ui.pushNotification(state.user.coId, 'MARKETING', `El CEO ha devuelto la propuesta de Slogan: "${feedback}".`, 'warning');
+
+        state.save();
+        this.render();
+        this.notify("Propuesta devuelta al Departamento de Marketing.", "info");
     }
 });
