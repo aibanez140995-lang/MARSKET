@@ -1,7 +1,15 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.27) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.29) ---
 
-const APP_VERSION = "1.1.27";
+const APP_VERSION = "1.1.29";
+
+const SPONSOR_TIERS_DEF = Object.freeze({
+    ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
+    PLATA: { id: 'PLATA', name: 'Nivel PLATA', amount: 400, badgeClass: 'text-[#c0c0c0] border-[#c0c0c0]', emoji: '🥈' },
+    BRONCE: { id: 'BRONCE', name: 'Nivel BRONCE', amount: 250, badgeClass: 'text-[#cd7f32] border-[#cd7f32]', emoji: '🥉' },
+    COBRE: { id: 'COBRE', name: 'Nivel COBRE', amount: 150, badgeClass: 'text-[#b87333] border-[#b87333]', emoji: '🔶' },
+    COLABORADOR: { id: 'COLABORADOR', name: 'Nivel COLABORADOR', amount: 100, badgeClass: 'text-mars-cyan border-mars-cyan', emoji: '🤝' }
+});
 
 const COMMERCIAL_SHOPS_DEF = [
   { id: 'mercadona', name: 'Mercadona' },
@@ -326,6 +334,42 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.29",
+      date: new Date().toISOString().split('T')[0],
+      title: "Guía de Primeros Pasos Ultra-Escaneable, Onboarding Directo y Poda Integral de Ruido Técnico",
+      items: [
+        "Rediseño completo de la Guía de Usuario (ui.showGuide): formato estandarizado 'Primeros Pasos' en 4 fases (Acceso, Elementos en Pantalla, Primera Acción y Verificación) para los 7 perfiles operativos",
+        "Poda del 80% de texto explicativo redundante, lore innecesario y códigos de documento internos en todas las fichas de departamento",
+        "Desconexión entre el Mensaje de Entrada (ui.showOnboarding) y el Manual General: bienvenida ágil de <5 segundos con indicador de próximo hito y acceso a guía bajo demanda",
+        "Eliminación total de jerga técnica y backend expuesta al usuario final en modales de bienvenida",
+        "Compactación de directivas clave en 3 protocolos directos de una línea en la cabecera del manual táctico"
+      ],
+      highlights: [
+        { type: "GUÍA", text: "Fichas 'Primeros Pasos' ultra-escaneables con checklists visuales para alumnado y profesorado." },
+        { type: "ONBOARDING", text: "Mensaje de entrada directo sin saturación de texto ni jerga de backend." },
+        { type: "CLARIDAD", text: "Poda del 80% de texto y eliminación de jerga técnica en modales informativos." }
+      ]
+    },
+    {
+      version: "1.1.28",
+      date: new Date().toISOString().split('T')[0],
+      title: "Sincronización Concurrente de Cronograma, 5 Niveles de Patrocinio y Corrección de Flujos Interdepartamentales",
+      items: [
+        "Sincronización robusta de cronograma y aperturas temporales: mergeData bidireccional de deliverableSchedule y mitigación de colisiones HTTP 409 con incremento incondicional de versión",
+        "5 Niveles Oficiales de Patrocinio (ORO 500 €v, PLATA 400 €v, BRONCE 250 €v, COBRE 150 €v y COLABORADOR 100 €v) con reducción directa unificada de costes operativos totales",
+        "Corrección de enlaces documentales en rúbricas docentes y dossier de entregas mediante fallback seguro a driveUrl, evitando URLs undefined",
+        "Persistencia docente dirigida por ID de startup (cid) con actualización inmediata de timestamp updatedAt para evitar sobrescrituras de calificaciones y acuerdos",
+        "Normalización de recuento de votaciones en gobernanza (A_FAVOR / EN_CONTRA) y corrección de cálculo por cantidad (qty) en ejecuciones físicas y BOM del prototipo",
+        "Prevención de doble clic en contratación de paquetes de marketing y unificación de IDs en formularios de entrega Google Drive"
+      ],
+      highlights: [
+        { type: "CRONOGRAMA", text: "Blindaje de apertura y plazos con sincronización pausada durante mutaciones docentes y protección Last-Write-Wins en servidor." },
+        { type: "PATROCINIO", text: "5 Niveles tipificados de patrocinio con cálculo contable de reducción directa sobre costes operativos totales." },
+        { type: "EVALUACIÓN", text: "Garantía de persistencia para calificaciones docentes (grades) y enlaces verificados de Google Drive sin enlaces rotos." },
+        { type: "TALLER & BOM", text: "Multiplicador de cantidad (qty) corregido en BOM e inventario físico, y normalización de votos de asamblea." }
+      ]
+    },
     {
       version: "1.1.27",
       date: new Date().toISOString().split('T')[0],

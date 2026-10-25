@@ -1,5 +1,5 @@
 // js/ui-empresa-finance.js
-// --- MÓDULO FINANCIERO Y BÓVEDA DE ÓRDENES: CRONOGRAMA MAESTRO (17 ENTREGABLES), AUDITORÍA Y LEDGER (v1.1.27) ---
+// --- MÓDULO FINANCIERO Y BÓVEDA DE ÓRDENES: CRONOGRAMA MAESTRO (17 ENTREGABLES), AUDITORÍA Y LEDGER (v1.1.28) ---
 
 Object.assign(ui, {
     cronogramaFilter: 'ALL',
@@ -33,6 +33,33 @@ Object.assign(ui, {
         const isFinanzas = state.user.role === 'FINANZAS';
 
         const wrapper = document.createElement('div');
+
+        const grossCosts = state.getCompanyGrossOperatingCosts ? state.getCompanyGrossOperatingCosts(co) : 0;
+        const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
+        const opCosts = state.getCompanyOperatingCosts ? state.getCompanyOperatingCosts(co) : { gross: grossCosts, sponsorReduction: sponsorAmt, net: grossCosts };
+        const netOpCosts = (opCosts && typeof opCosts.net === 'number') ? opCosts.net : ((typeof opCosts === 'number') ? opCosts : grossCosts);
+        const sponsorTierLabel = co.sponsorAwarded ? (co.sponsorData?.tier || co.sponsorAwarded || 'SPONSOR') : null;
+
+        const kpisHtml = `
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-green text-center">
+                <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Saldo Disponible</span>
+                <p class="text-lg sm:text-xl font-orbitron font-black text-mars-green">${Number(co.balance).toFixed(2)} €v</p>
+            </div>
+            <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-slate-500 text-center">
+                <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Coste Operativo Bruto</span>
+                <p class="text-lg sm:text-xl font-orbitron font-black text-white">${grossCosts.toFixed(2)} €v</p>
+            </div>
+            <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-amber-400 text-center">
+                <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Reducción Patrocinio</span>
+                <p class="text-lg sm:text-xl font-orbitron font-black text-amber-400">${sponsorAmt > 0 ? `-${sponsorAmt.toFixed(2)} €v` : '0.00 €v'}</p>
+                ${(sponsorAmt > 0 && sponsorTierLabel) ? `<span class="text-[10px] text-amber-400/80 font-mono">[${this.escapeHTML(sponsorTierLabel)}]</span>` : ''}
+            </div>
+            <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-cyan text-center">
+                <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Coste Operativo Neto</span>
+                <p class="text-lg sm:text-xl font-orbitron font-black text-mars-cyan">${netOpCosts.toFixed(2)} €v</p>
+            </div>
+        </div>`;
 
         // 1. BANNER DE GESTIÓN DE CRISIS (Si hay sanciones regulatorias AEE)
         let crisisHtml = '';
@@ -285,6 +312,7 @@ Object.assign(ui, {
 
         wrapper.innerHTML = `
             ${crisisHtml}
+            ${kpisHtml}
             ${bovedaSection}
         `;
         el.appendChild(wrapper);
@@ -384,7 +412,8 @@ Object.assign(ui, {
         ui.pushNotification(state.user.coId, 'OPERACIONES_IA', `Nueva orden #${order.id} aprobada lista para ensamblaje físico.`, 'info');
         
         telemetry.log("ORDEN APROBADA", `Finanzas aprobó orden #${order.id} por ${order.total}€v`);
-        state.save();
+        co.updatedAt = Date.now();
+        state.save(state.user.coId);
         this.notify(`✅ Orden #${order.id} aprobada. Pasa a Logística de Despliegue Físico.`, "success");
         this.render();
     },
@@ -401,7 +430,8 @@ Object.assign(ui, {
         ui.pushNotification(state.user.coId, 'TECNICO', `Finanzas ha RECHAZADO la orden #${order.id}. Revisa justificación o presupuesto.`, 'error');
         
         telemetry.log("ORDEN RECHAZADA", `Finanzas rechazó orden #${order.id}`);
-        state.save();
+        co.updatedAt = Date.now();
+        state.save(state.user.coId);
         this.notify(`❌ Orden #${order.id} rechazada.`, "info");
         this.render();
     },
@@ -422,9 +452,14 @@ Object.assign(ui, {
         
         ui.pushNotification(state.user.coId, 'MARKETING', `Finanzas autorizó el paquete "${camp.packageName}". Ya puedes publicar tus ${camp.totalActions} acciones.`, 'success');
         telemetry.log("MKT APROBADO", `Aprobado ${camp.packageName} (-${price}€v)`);
-        state.save();
+        co.updatedAt = Date.now();
+        state.save(state.user.coId);
         this.notify(`✅ Paquete publicitario activado y fondos descontados del Ledger.`, "success");
         this.render();
+    },
+
+    approveMktPackage(campId) {
+        return this.approveMktCamp(campId);
     },
 
     rejectMktCamp(campId) {
@@ -438,7 +473,8 @@ Object.assign(ui, {
         camp.status = 'DENEGADO';
         ui.pushNotification(state.user.coId, 'MARKETING', `Finanzas denegó la contratación del paquete "${camp.packageName}".`, 'error');
         telemetry.log("MKT RECHAZADO", `Denegado ${camp.packageName}`);
-        state.save();
+        co.updatedAt = Date.now();
+        state.save(state.user.coId);
         this.notify(`❌ Solicitud de paquete de marketing rechazada.`, "info");
         this.render();
     },
@@ -540,6 +576,11 @@ Object.assign(ui, {
 
         const totalRealCost = co.realCosts.reduce((acc, c) => acc + (Number(c.eur) || 0), 0);
         const virtualSpend = co.ledger.filter(l => l.delta < 0).reduce((acc, l) => acc + Math.abs(Number(l.delta) || 0), 0);
+        const grossCosts = state.getCompanyGrossOperatingCosts ? state.getCompanyGrossOperatingCosts(co) : 0;
+        const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
+        const opCosts = state.getCompanyOperatingCosts ? state.getCompanyOperatingCosts(co) : { gross: grossCosts, sponsorReduction: sponsorAmt, net: grossCosts };
+        const netOpCosts = (opCosts && typeof opCosts.net === 'number') ? opCosts.net : ((typeof opCosts === 'number') ? opCosts : grossCosts);
+        const sponsorTierLabel = co.sponsorAwarded ? (co.sponsorData?.tier || co.sponsorAwarded || 'SPONSOR') : null;
 
         const maxVisibleLedger = 100;
         const visibleLedger = co.ledger.slice(0, maxVisibleLedger);
@@ -550,18 +591,23 @@ Object.assign(ui, {
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <!-- Columna Izquierda: Balance, KPIs y Ledger Inmutable -->
             <div class="lg:col-span-7 space-y-6">
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-green text-center">
-                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Saldo Virtual Disponible</span>
-                        <p class="text-xl sm:text-2xl font-orbitron font-black text-mars-green">${Number(co.balance).toFixed(2)} €v</p>
+                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Saldo Virtual</span>
+                        <p class="text-lg sm:text-xl font-orbitron font-black text-mars-green">${Number(co.balance).toFixed(2)} €v</p>
+                    </div>
+                    <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-cyan text-center">
+                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Coste Neto</span>
+                        <p class="text-lg sm:text-xl font-orbitron font-black text-mars-cyan">${netOpCosts.toFixed(2)} €v</p>
+                        ${sponsorAmt > 0 ? `<span class="text-[10px] text-amber-400 font-mono block mt-0.5">(Bruto: ${grossCosts.toFixed(2)} | Patr: -${sponsorAmt.toFixed(2)}${sponsorTierLabel ? ` [${this.escapeHTML(sponsorTierLabel)}]` : ''})</span>` : ''}
                     </div>
                     <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-yellow text-center">
-                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Gasto Virtual Acumulado</span>
-                        <p class="text-xl sm:text-2xl font-orbitron font-black text-mars-yellow">-${virtualSpend.toFixed(2)} €v</p>
+                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Gasto Acumulado</span>
+                        <p class="text-lg sm:text-xl font-orbitron font-black text-mars-yellow">-${virtualSpend.toFixed(2)} €v</p>
                     </div>
                     <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-magenta text-center">
-                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Coste Real Físico (Taller)</span>
-                        <p class="text-xl sm:text-2xl font-orbitron font-black text-mars-magenta">${totalRealCost.toFixed(2)} €</p>
+                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Coste Real Físico</span>
+                        <p class="text-lg sm:text-xl font-orbitron font-black text-mars-magenta">${totalRealCost.toFixed(2)} €</p>
                     </div>
                 </div>
 

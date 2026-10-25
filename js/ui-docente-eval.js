@@ -1,5 +1,5 @@
 // js/ui-docente-eval.js
-// --- MÓDULO DOCENTE: RÚBRICAS PONDERADAS (100%), ACTAS Y ARCHIVO DOCUMENTAL OFICIAL (v1.1.27) ---
+// --- MÓDULO DOCENTE: RÚBRICAS PONDERADAS (100%), ACTAS Y ARCHIVO DOCUMENTAL OFICIAL (v1.1.28) ---
 
 Object.assign(ui, {
     renderAdminEval() {
@@ -141,7 +141,8 @@ Object.assign(ui, {
                                     const sched = state.data.config?.deliverableSchedule?.[colKey];
                                     const templateBadge = sched?.guideDocUrl ? `<a href="${encodeURI(sched.guideDocUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-[9px] text-mars-cyan block hover:underline" title="Ver Plantilla Docente">📄 Plantilla ↗</a>` : '';
                                     if (doc) {
-                                        return `<div class="flex flex-col items-center gap-1"><a href="${this.escapeHTML(doc.dataUrl)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] flex items-center justify-center bg-mars-green/15 text-mars-green border border-mars-green px-2 py-1 font-bold hover:bg-mars-green hover:text-black transition-colors text-center">${doc.type==='link'?'🔗 LINK':'📁 FILE'}</a>${templateBadge}</div>`;
+                                        const docUrl = doc.driveUrl || doc.url || doc.dataUrl || '#';
+                                        return `<div class="flex flex-col items-center gap-1"><a href="${this.escapeHTML(docUrl)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] flex items-center justify-center bg-mars-green/15 text-mars-green border border-mars-green px-2 py-1 font-bold hover:bg-mars-green hover:text-black transition-colors text-center">${(doc.type==='link' || doc.driveUrl || doc.url)?'🔗 LINK':'📁 FILE'}</a>${templateBadge}</div>`;
                                     }
                                     return `<div class="flex flex-col items-center gap-1"><span class="min-h-[44px] flex items-center justify-center text-slate-400 border border-slate-800 px-2 py-1 text-center">--</span>${templateBadge}</div>`;
                                 };
@@ -312,9 +313,10 @@ Object.assign(ui, {
             const elFeedback = document.getElementById('eval-feedback');
             const feedback = elFeedback ? this.cleanInput(elFeedback.value) : '';
             co.grades[subject] = { scores, feedback, final: total };
+            co.updatedAt = Date.now();
             
             telemetry.log("EVALUACIÓN", `Nota ${subject} registrada a ${co.name}: ${total.toFixed(2)}`);
-            state.save();
+            state.save(this.evalSelectedCo);
             this.notify(`Calificación de ${subject} registrada para ${co.name}: ${total.toFixed(2)}`, "success");
             this.render();
         };

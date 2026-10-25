@@ -1,5 +1,5 @@
 // js/state.js
-// --- GESTIÓN DE ESTADO ZERO-TRUST, MIGRACIÓN Y PERSISTENCIA ATÓMICA (v1.1.27) ---
+// --- GESTIÓN DE ESTADO ZERO-TRUST, MIGRACIÓN Y PERSISTENCIA ATÓMICA (v1.1.28) ---
 
 const DEFAULT_STATE = {
     version: 1,
@@ -107,6 +107,43 @@ const state = {
     recalculateBalance(co) {
         if (!co) return;
         co.balance = this.calculateBalance(co);
+    },
+
+    getCompanySponsorAmount(co) {
+        if (!co) return 0;
+        if (co.sponsorData && !isNaN(Number(co.sponsorData.amount)) && Number(co.sponsorData.amount) > 0) {
+            return Number(co.sponsorData.amount);
+        }
+        if (co.sponsorAwarded && typeof SPONSOR_TIERS_DEF !== 'undefined' && SPONSOR_TIERS_DEF[co.sponsorAwarded]) {
+            return Number(SPONSOR_TIERS_DEF[co.sponsorAwarded].amount) || 0;
+        }
+        return 0;
+    },
+
+    getCompanyGrossOperatingCosts(co) {
+        if (!co) return 0;
+        const ledger = Array.isArray(co.ledger) ? co.ledger : [];
+        const virtualSpend = ledger
+            .filter(l => Number(l.delta) < 0)
+            .reduce((acc, l) => acc + Math.abs(Number(l.delta) || 0), 0);
+        return Math.round((virtualSpend + Number.EPSILON) * 100) / 100;
+    },
+
+    getCompanyOperatingCosts(co) {
+        if (!co) {
+            return { gross: 0, sponsorReduction: 0, net: 0, valueOf() { return 0; }, toString() { return '0'; }, toFixed(d) { return (0).toFixed(d); } };
+        }
+        const gross = this.getCompanyGrossOperatingCosts(co);
+        const sponsorReduction = this.getCompanySponsorAmount(co);
+        const net = Math.max(0, Math.round((gross - sponsorReduction + Number.EPSILON) * 100) / 100);
+        return { 
+            gross, 
+            sponsorReduction, 
+            net,
+            valueOf() { return this.net; },
+            toString() { return String(this.net); },
+            toFixed(d) { return this.net.toFixed(d); }
+        };
     },
 
     encodeSecret(str) {
@@ -376,7 +413,13 @@ const state = {
             co.sponsorAwarded = co.sponsorAwarded || null;
             co.marketingCampaigns = Array.isArray(co.marketingCampaigns) ? co.marketingCampaigns : [];
             co.inactivityReports = Array.isArray(co.inactivityReports) ? co.inactivityReports : [];
-            co.sponsorData = co.sponsorData || { name: null, logo: null };
+            co.sponsorData = co.sponsorData || { name: null, tier: null, amount: 0, date: null, logo: null };
+            if (co.sponsorAwarded && !co.sponsorData.tier) {
+                co.sponsorData.tier = co.sponsorAwarded;
+            }
+            if (co.sponsorAwarded && (!co.sponsorData.amount || co.sponsorData.amount === 0) && typeof SPONSOR_TIERS_DEF !== 'undefined' && SPONSOR_TIERS_DEF[co.sponsorAwarded]) {
+                co.sponsorData.amount = SPONSOR_TIERS_DEF[co.sponsorAwarded].amount;
+            }
             co.auxRoleDept = co.auxRoleDept || null;
             co.notifications = Array.isArray(co.notifications) ? co.notifications : [];
             co.sanctions = Array.isArray(co.sanctions) ? co.sanctions : [];
@@ -421,10 +464,30 @@ const state = {
         // Resolución LWW para configuración y PINs docentes (evita rebote de PIN en el Claustro)
         if (localData.config) {
             merged.config = merged.config || {};
-            if ((localData.config.updatedAt || 0) > (serverData.config?.updatedAt || 0)) {
+            const localCfgTime = localData.config.updatedAt || 0;
+            const serverCfgTime = serverData.config?.updatedAt || 0;
+
+            if (localCfgTime > serverCfgTime) {
                 merged.config.deadlines = JSON.parse(JSON.stringify(localData.config.deadlines || merged.config.deadlines || {}));
                 merged.config.guidelines = JSON.parse(JSON.stringify(localData.config.guidelines || merged.config.guidelines || {}));
-                merged.config.updatedAt = localData.config.updatedAt;
+                merged.config.updatedAt = localCfgTime;
+            }
+
+            // Fusión granular de deliverableSchedule conservando siempre los datos más recientes por entregable
+            merged.config.deliverableSchedule = merged.config.deliverableSchedule || {};
+            const localSched = localData.config.deliverableSchedule || {};
+            for (const dKey in localSched) {
+                const lItem = localSched[dKey];
+                const sItem = merged.config.deliverableSchedule[dKey];
+                if (!sItem) {
+                    merged.config.deliverableSchedule[dKey] = JSON.parse(JSON.stringify(lItem));
+                } else {
+                    const lItemTime = lItem.updatedAt || localCfgTime;
+                    const sItemTime = sItem.updatedAt || serverCfgTime;
+                    if (lItemTime > sItemTime) {
+                        merged.config.deliverableSchedule[dKey] = JSON.parse(JSON.stringify(lItem));
+                    }
+                }
             }
             if (localData.config.teachers) {
                 merged.config.teachers = merged.config.teachers || {};
@@ -476,6 +539,41 @@ const state = {
                         merged.companies[k].auxRoleDept = sCo.auxRoleDept;
                         merged.companies[k].auxRoleRequest = JSON.parse(JSON.stringify(sCo.auxRoleRequest));
                         merged.companies[k].authUpdatedAt = sAuthTime;
+                    }
+                    // Preservar siempre calificaciones docentes sCo.grades de la nube
+                    if (sCo.grades) {
+                        merged.companies[k].grades = merged.companies[k].grades || {};
+                        for (const subj in sCo.grades) {
+                            if (sCo.grades[subj] && sCo.grades[subj].final !== undefined && sCo.grades[subj].final !== null) {
+                                merged.companies[k].grades[subj] = JSON.parse(JSON.stringify(sCo.grades[subj]));
+                            }
+                        }
+                    }
+                    // Preservar asignación docente de patrocinio si el servidor la tiene
+                    if (sCo.sponsorAwarded) {
+                        const sSpDate = sCo.sponsorData?.date || 0;
+                        const lSpDate = lCo.sponsorData?.date || 0;
+                        if (!lCo.sponsorAwarded || sSpDate >= lSpDate) {
+                            merged.companies[k].sponsorAwarded = sCo.sponsorAwarded;
+                            merged.companies[k].sponsorData = JSON.parse(JSON.stringify(sCo.sponsorData || {}));
+                        }
+                    }
+                    // Fusión de entregables: no pisar entregables docentes ni estados más recientes
+                    merged.companies[k].deliverables = merged.companies[k].deliverables || {};
+                    if (sCo.deliverables) {
+                        for (const dKey in sCo.deliverables) {
+                            const sDoc = sCo.deliverables[dKey];
+                            const lDoc = merged.companies[k].deliverables[dKey];
+                            if (!lDoc && sDoc) {
+                                merged.companies[k].deliverables[dKey] = JSON.parse(JSON.stringify(sDoc));
+                            } else if (sDoc && lDoc) {
+                                const sDocTime = new Date(sDoc.updatedAt || 0).getTime();
+                                const lDocTime = new Date(lDoc.updatedAt || 0).getTime();
+                                if (sDocTime >= lDocTime) {
+                                    merged.companies[k].deliverables[dKey] = JSON.parse(JSON.stringify(sDoc));
+                                }
+                            }
+                        }
                     }
                     const mergeArraysLocalDominant = (arrLocal, arrServer) => {
                         if (!Array.isArray(arrLocal)) arrLocal = [];
@@ -544,6 +642,37 @@ const state = {
                         const sSt = sCo.auxRoleRequest ? sCo.auxRoleRequest.status : null;
                         if (!sSt || (sSt === 'PENDIENTE' && lSt && lSt !== 'PENDIENTE') || (lCo.auxRoleRequest.updatedAt || 0) > (sCo.auxRoleRequest?.updatedAt || 0)) {
                             sCo.auxRoleRequest = JSON.parse(JSON.stringify(lCo.auxRoleRequest));
+                        }
+                    }
+                    // Preservar calificaciones locales si el servidor no las tiene
+                    if (lCo.grades) {
+                        sCo.grades = sCo.grades || {};
+                        for (const subj in lCo.grades) {
+                            if (!sCo.grades[subj] && lCo.grades[subj]) {
+                                sCo.grades[subj] = JSON.parse(JSON.stringify(lCo.grades[subj]));
+                            }
+                        }
+                    }
+                    // Preservar patrocinio local si fuera posterior
+                    if (lCo.sponsorAwarded && (!sCo.sponsorAwarded || (lCo.sponsorData?.date || 0) > (sCo.sponsorData?.date || 0))) {
+                        sCo.sponsorAwarded = lCo.sponsorAwarded;
+                        sCo.sponsorData = JSON.parse(JSON.stringify(lCo.sponsorData || {}));
+                    }
+                    // Preservar entregables locales si no están en servidor o tienen entrega más reciente
+                    sCo.deliverables = sCo.deliverables || {};
+                    if (lCo.deliverables) {
+                        for (const dKey in lCo.deliverables) {
+                            const lDoc = lCo.deliverables[dKey];
+                            const sDoc = sCo.deliverables[dKey];
+                            if (!sDoc && lDoc) {
+                                sCo.deliverables[dKey] = JSON.parse(JSON.stringify(lDoc));
+                            } else if (lDoc && sDoc) {
+                                const lDocTime = new Date(lDoc.updatedAt || 0).getTime();
+                                const sDocTime = new Date(sDoc.updatedAt || 0).getTime();
+                                if (lDocTime > sDocTime) {
+                                    sCo.deliverables[dKey] = JSON.parse(JSON.stringify(lDoc));
+                                }
+                            }
                         }
                     }
                     const mergeArrays = (arrServer, arrLocal) => {
@@ -1028,9 +1157,11 @@ const state = {
                 const localCo = this.data.companies?.[cid];
                 const localUpdated = Number(localCo?.updatedAt || 0);
                 const remoteUpdated = Number(info.updatedAt || 0);
+                const configUpdated = Number(info.configUpdatedAt || 0);
+                const localConfigUpdated = Number(this.data.config?.updatedAt || 0);
 
-                // Si la versión remota es posterior a la local, sincronizar estado completo
-                if (remoteUpdated > localUpdated || !this.lastETag) {
+                // Si la versión remota o la configuración docente es posterior a la local, sincronizar estado completo
+                if (remoteUpdated > localUpdated || configUpdated > localConfigUpdated || !this.lastETag) {
                     await this.fetchFromCloud();
                 }
                 return true;
@@ -1616,15 +1747,14 @@ const state = {
         this.isSyncing = true;
         try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
         let pushSuccess = false;
+        let shouldRenderConflict = false;
         
         try {
             const payload = JSON.parse(JSON.stringify(this.data));
             if (this.user?.coId) {
                 payload.coId = this.user.coId;
             }
-            if (typeof payload.version !== 'number' || isNaN(payload.version)) {
-                payload.version = (Number(this.data.version) || 0) + 1;
-            }
+            payload.version = (Number(this.data.version) || 0) + 1;
             const res = await this.pushWithBackoff(payload);
             
             if (res.ok) {
@@ -1638,6 +1768,7 @@ const state = {
                 if (this.isOfflineContained) this.setOfflineContainment(false);
                 pushSuccess = true;
             } else if (res.status === 409) {
+                shouldRenderConflict = true;
                 if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
                     ui.notify("⚠️ Conflicto de concurrencia detectado. Se ha sincronizado el registro más reciente de la nube sin sobrescribir datos ajenos.", "warning");
                 }

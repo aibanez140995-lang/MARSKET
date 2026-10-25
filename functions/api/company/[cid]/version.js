@@ -54,7 +54,15 @@ export async function onRequestGet(context) {
             }
         }
 
-        const serverETag = `W/"co-${cid}-${version}-${updatedAt}"`;
+        let configUpdatedAt = 0;
+        const configRow = await env.MARSKET_DB.prepare(
+            "SELECT json_extract(data, '$.config.updatedAt') as cu FROM state WHERE id = 'current'"
+        ).first().catch(() => null);
+        if (configRow && configRow.cu) {
+            configUpdatedAt = Number(configRow.cu) || 0;
+        }
+
+        const serverETag = `W/"co-${cid}-${version}-${updatedAt}-${configUpdatedAt}"`;
         const clientETag = request.headers.get('If-None-Match');
 
         // Respuesta HTTP 304 Not Modified (0 bytes transferidos)
@@ -84,6 +92,7 @@ export async function onRequestGet(context) {
             companyId: cid,
             version,
             updatedAt,
+            configUpdatedAt,
             etag: serverETag
         }), {
             status: 200,

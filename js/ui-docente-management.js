@@ -1,5 +1,5 @@
 // js/ui-docente-management.js
-// --- MÓDULO DOCENTE: GESTIÓN, LLAVERO MAESTRO, ADUANAS Y REGISTRO MERCANTIL (v1.1.27) ---
+// --- MÓDULO DOCENTE: GESTIÓN, LLAVERO MAESTRO, ADUANAS Y REGISTRO MERCANTIL (v1.1.28) ---
 
 Object.assign(ui, {
     pinsVisible: false,
@@ -224,14 +224,22 @@ Object.assign(ui, {
                                 c.ledger = c.ledger || []; 
                                 
                                 const r = c.realCosts.reduce((s,i)=>s+(Number(i.eur)||0),0);
-                                const virtualSpend = c.ledger.filter(l => l.delta < 0).reduce((s, l) => s + Math.abs(Number(l.delta)||0), 0);
+                                const opCosts = state.getCompanyOperatingCosts ? state.getCompanyOperatingCosts(c) : { gross: c.ledger.filter(l => l.delta < 0).reduce((s, l) => s + Math.abs(Number(l.delta)||0), 0), sponsorReduction: 0, net: c.ledger.filter(l => l.delta < 0).reduce((s, l) => s + Math.abs(Number(l.delta)||0), 0) };
                                 
+                                const tierStyles = {
+                                    'ORO': 'text-[#ffd700] border-[#ffd700]',
+                                    'PLATA': 'text-[#c0c0c0] border-[#c0c0c0]',
+                                    'BRONCE': 'text-[#cd7f32] border-[#cd7f32]',
+                                    'COBRE': 'text-[#b87333] border-[#b87333]',
+                                    'COLABORADOR': 'text-mars-cyan border-mars-cyan'
+                                };
+                                const cl = tierStyles[c.sponsorAwarded] || 'text-slate-300 border-slate-700';
+
                                 let sponsorHtml = '';
                                 if(canSponsor) {
-                                    sponsorHtml = `<button onclick="ui.modalAssignSponsor('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-3 py-1.5 font-bold text-xs uppercase hover:bg-mars-yellow hover:text-black transition-all whitespace-nowrap">${c.sponsorAwarded ? `[${this.escapeHTML(c.sponsorAwarded)}] Editar` : 'Asignar Patrocinio'}</button>`;
+                                    sponsorHtml = `<button onclick="ui.modalAssignSponsor('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-slate-900 border ${cl} ${cl.split(' ')[0]} px-3 py-1.5 font-bold text-xs uppercase hover:bg-white hover:text-black transition-all whitespace-nowrap">${c.sponsorAwarded ? `[${this.escapeHTML(c.sponsorAwarded)}] Editar` : 'Asignar Patrocinio'}</button>`;
                                 } else {
                                     if(c.sponsorAwarded) {
-                                        const cl = c.sponsorAwarded==='ORO'?'text-[#ffd700] border-[#ffd700]':c.sponsorAwarded==='PLATA'?'text-[#c0c0c0] border-[#c0c0c0]':'text-[#cd7f32] border-[#cd7f32]';
                                         let spName = c.sponsorData?.name ? ` - ${this.escapeHTML(c.sponsorData.name)}` : '';
                                         let spLogo = c.sponsorData?.logo ? `<img src="${this.escapeHTML(c.sponsorData.logo)}" alt="Logo patrocinador" width="16" height="16" class="h-4 inline-block ml-2 rounded-sm object-contain bg-black/50 p-0.5">` : '';
                                         sponsorHtml = `<span class="${cl} font-bold text-xs uppercase border px-2 py-1 bg-black/50 flex items-center w-max gap-1">[PATROCINIO: ${this.escapeHTML(c.sponsorAwarded)}${spName}]${spLogo}</span>`;
@@ -247,7 +255,12 @@ Object.assign(ui, {
                                         ${isCoord ? `<button onclick="ui.promptRenameStartup('${this.escapeHTML(cid)}')" aria-label="Renombrar Denominación Social" title="Renombrar Denominación Social" class="min-h-[44px] min-w-[44px] bg-slate-800 text-slate-200 px-2 py-1 text-xs hover:bg-mars-yellow hover:text-black transition-colors rounded-sm flex items-center justify-center shrink-0">✏️</button>` : ''}
                                     </td>
                                     <td class="py-3 font-mono pr-2.5 sm:pr-4"><span class="text-mars-green font-bold">${c.balance.toFixed(0)} €v</span></td>
-                                    <td class="py-3 font-mono pr-2.5 sm:pr-4"><button onclick="ui.modalVirtualSpend('${this.escapeHTML(cid)}')" class="min-h-[44px] text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 inline-flex items-center" title="Ver desglose detallado">${virtualSpend.toFixed(2)} €v</button></td>
+                                    <td class="py-3 font-mono pr-2.5 sm:pr-4">
+                                        <button onclick="ui.modalVirtualSpend('${this.escapeHTML(cid)}')" class="min-h-[44px] text-left text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 inline-flex flex-col justify-center" title="Ver desglose detallado">
+                                            <span class="font-bold">${opCosts.net.toFixed(2)} €v</span>
+                                            ${opCosts.sponsorReduction > 0 ? `<span class="text-[10px] text-mars-yellow">(Bruto: ${opCosts.gross.toFixed(0)} | -${opCosts.sponsorReduction.toFixed(0)} €v)</span>` : ''}
+                                        </button>
+                                    </td>
                                     <td class="py-3 font-mono pr-2.5 sm:pr-4"><span class="text-mars-magenta">${r.toFixed(2)} €</span></td>
                                     <td class="py-3 pr-2.5 sm:pr-4">${sponsorHtml}</td>
                                     <td class="py-3">
@@ -446,7 +459,7 @@ Object.assign(ui, {
         this.notify(this.pinsVisible ? "PINs visibles temporalmente." : "PINs protegidos (modo contraseña).", "info");
     },
 
-    saveDeliverableSchedule(docKey) {
+    async saveDeliverableSchedule(docKey) {
         if (!state.user || !state.user.role.startsWith('COORD')) return;
         const elOpen = document.getElementById(`sched-open-${docKey}`);
         const elDead = document.getElementById(`sched-dead-${docKey}`);
@@ -461,12 +474,15 @@ Object.assign(ui, {
             return this.notify("El enlace a la plantilla docente debe ser una URL válida de Google Drive / Docs.", "error");
         }
 
+        state.pausePolling = true;
+        const now = Date.now();
         state.data.config = state.data.config || {};
         state.data.config.deliverableSchedule = state.data.config.deliverableSchedule || {};
         state.data.config.deliverableSchedule[docKey] = {
             openDate,
             deadline,
-            guideDocUrl: guideDocUrl || ""
+            guideDocUrl: guideDocUrl || "",
+            updatedAt: now
         };
 
         if (deadline) {
@@ -474,9 +490,57 @@ Object.assign(ui, {
             state.data.config.deadlines[docKey] = deadline;
         }
 
-        state.data.config.updatedAt = Date.now();
-        state.save();
-        this.notify(`✅ Cronograma y plantilla actualizados para ${docKey}.`, "success");
+        state.data.config.updatedAt = now;
+        state.saveLocalOnly();
+        try {
+            await state.pushToCloud(false);
+            this.notify(`✅ Cronograma y plantilla actualizados para ${docKey}.`, "success");
+        } catch(e) {
+            console.error("Error al persistir cronograma:", e);
+        } finally {
+            state.pausePolling = false;
+        }
+    },
+
+    async saveAllDeliverableSchedules() {
+        if (!state.user || !state.user.role.startsWith('COORD')) return;
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        state.pausePolling = true;
+        const now = Date.now();
+        state.data.config = state.data.config || {};
+        state.data.config.deliverableSchedule = state.data.config.deliverableSchedule || {};
+        state.data.config.deadlines = state.data.config.deadlines || {};
+
+        defs.forEach(d => {
+            const elOpen = document.getElementById(`sched-open-${d.key}`);
+            const elDead = document.getElementById(`sched-dead-${d.key}`);
+            const elGuide = document.getElementById(`sched-guide-${d.key}`);
+            if (elOpen && elDead && elGuide) {
+                const openDate = elOpen.value.trim() || null;
+                const deadline = elDead.value.trim() || null;
+                const guideDocUrl = elGuide.value.trim();
+                state.data.config.deliverableSchedule[d.key] = {
+                    openDate,
+                    deadline,
+                    guideDocUrl: guideDocUrl || "",
+                    updatedAt: now
+                };
+                if (deadline) {
+                    state.data.config.deadlines[d.key] = deadline;
+                }
+            }
+        });
+
+        state.data.config.updatedAt = now;
+        state.saveLocalOnly();
+        try {
+            await state.pushToCloud(false);
+            this.notify("✅ Todos los cronogramas han sido sincronizados en la nube.", "success");
+        } catch(e) {
+            console.error("Error al persistir todos los cronogramas:", e);
+        } finally {
+            state.pausePolling = false;
+        }
     },
 
     updateDeadline(key, val) {
@@ -574,7 +638,10 @@ Object.assign(ui, {
                         <h3 class="font-orbitron text-mars-cyan text-sm uppercase tracking-widest font-bold">⏳ Cronograma Maestro: Entregables Curriculares y Candados</h3>
                         <p class="text-xs text-slate-300 uppercase mt-0.5">Control centralizado de aperturas automáticas, plazos de entrega y plantillas Google Docs (${defs.length} Hitos).</p>
                     </div>
-                    <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-3 py-1 text-xs font-black uppercase font-mono">${defs.length} Entregables</span>
+                    <div class="flex items-center gap-2">
+                        ${isCoord ? `<button type="button" onclick="ui.saveAllDeliverableSchedules()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)]">[ 💾 Guardar Todo el Cronograma ]</button>` : ''}
+                        <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-3 py-1 text-xs font-black uppercase font-mono">${defs.length} Entregables</span>
+                    </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[700px] overflow-y-auto pr-2">
                     ${scheduleCards}
@@ -871,7 +938,8 @@ Object.assign(ui, {
         const rep = co.inactivityReports.find(r => r.id === repId);
         if (rep) {
             rep.status = 'RESUELTO';
-            state.save();
+            co.updatedAt = Date.now();
+            state.save(cid);
             this.notify("Reporte HR marcado como resuelto por el Claustro.", "success");
             this.render();
         }
@@ -1219,8 +1287,11 @@ Object.assign(ui, {
             ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial ha sido DENEGADA por el Claustro.`, 'error');
         }
         
+        if (state.data.companies && state.data.companies[coId]) {
+            state.data.companies[coId].updatedAt = Date.now();
+        }
         state.data.pendingCustom.splice(reqIdx, 1); 
-        state.save(); 
+        state.save(coId); 
         this.render();
     },
 
@@ -1363,7 +1434,7 @@ Object.assign(ui, {
         ui.pushNotification(cid, 'MARKETING', `Tu propuesta de marca (Logo/Eslogan) ha sido RECHAZADA por Coordinación. Motivo: ${reason}`, 'error');
         ui.pushNotification(cid, 'CEO', `Propuesta de identidad corporativa rechazada. Revisa el panel de Marketing.`, 'error');
 
-        state.save();
+        state.save(cid);
         this.closeModal();
         this.render();
     },
@@ -1392,7 +1463,7 @@ Object.assign(ui, {
         ui.pushNotification(cid, 'MARKETING', `¡Enhorabuena! El logotipo y el eslogan oficial ("${co.slogan}") han sido APROBADOS por Coordinación y ya son públicos en el HUD.`, 'success');
         ui.pushNotification(cid, 'CEO', `Identidad corporativa aprobada y visible para toda la flota. Slogan: "${co.slogan}".`, 'success');
 
-        state.save();
+        state.save(cid);
         this.notify(`Identidad corporativa de ${co.name} aprobada y registrada.`, "success");
         this.render();
     },
@@ -1473,8 +1544,8 @@ Object.assign(ui, {
     modalVirtualSpend(cid) {
         const co = state.data.companies[cid];
         if (!co) return;
+        const opCosts = state.getCompanyOperatingCosts ? state.getCompanyOperatingCosts(co) : { gross: (co.ledger || []).filter(l => l.delta < 0).reduce((s, l) => s + Math.abs(Number(l.delta) || 0), 0), sponsorReduction: 0, net: (co.ledger || []).filter(l => l.delta < 0).reduce((s, l) => s + Math.abs(Number(l.delta) || 0), 0) };
         const expenses = (co.ledger || []).filter(l => l.delta < 0);
-        const total = expenses.reduce((s, l) => s + Math.abs(Number(l.delta) || 0), 0);
 
         const rowsHtml = expenses.slice(0, 100).map(e => `
             <tr class="border-b border-slate-800">
@@ -1486,9 +1557,19 @@ Object.assign(ui, {
         `).join('') || `<tr><td colspan="4" class="py-4 text-center text-slate-300 text-xs italic">Esta startup no registra salidas de capital virtual.</td></tr>`;
 
         const html = `
-            <div class="bg-slate-900 border border-mars-cyan p-3 mb-4 flex justify-between items-center">
-                <span class="text-xs text-slate-200 uppercase font-bold">Total Gasto Virtual Acumulado:</span>
-                <span class="text-lg font-orbitron text-mars-magenta font-black">-${total.toFixed(2)} €v</span>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-slate-900 border border-mars-cyan p-3 mb-4">
+                <div>
+                    <span class="text-[10px] text-slate-400 uppercase font-bold block">Costes Operativos Brutos</span>
+                    <span class="text-base font-orbitron text-mars-yellow font-black">-${opCosts.gross.toFixed(2)} €v</span>
+                </div>
+                <div>
+                    <span class="text-[10px] text-mars-cyan uppercase font-bold block">Reducción por Patrocinio</span>
+                    <span class="text-base font-orbitron text-mars-green font-black">+${opCosts.sponsorReduction.toFixed(2)} €v</span>
+                </div>
+                <div>
+                    <span class="text-[10px] text-slate-300 uppercase font-bold block">Costes Operativos Netos</span>
+                    <span class="text-lg font-orbitron text-mars-magenta font-black">-${opCosts.net.toFixed(2)} €v</span>
+                </div>
             </div>
             <div class="max-h-72 overflow-y-auto pr-1 overflow-x-auto max-w-full">
                 <table class="w-full text-left">
@@ -1508,21 +1589,24 @@ Object.assign(ui, {
 
         const currentTier = co.sponsorAwarded || 'ORO';
         const currentName = co.sponsorData?.name || '';
+        const currentAmount = co.sponsorData?.amount || (currentTier === 'ORO' ? 500 : (currentTier === 'PLATA' ? 400 : (currentTier === 'BRONCE' ? 250 : (currentTier === 'COBRE' ? 150 : 100))));
 
         const html = `
             <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Inyecta capital virtual de patrocinio (Fase I) y personaliza la marca patrocinadora.</p>
             <div class="space-y-3">
                 <div>
                     <label for="sp-tier" class="text-xs text-mars-yellow uppercase font-bold block mb-1">Nivel de Patrocinio</label>
-                    <select id="sp-tier" onchange="const v=this.value; document.getElementById('sp-amount').value = (v==='ORO'?500:(v==='PLATA'?400:250));" class="min-h-[44px] w-full bg-slate-900 border border-mars-yellow p-2.5 text-xs text-white font-bold uppercase outline-none">
-                        <option value="ORO" ${currentTier==='ORO'?'selected':''}>🥇 Nivel ORO (+500 €v sugerido)</option>
-                        <option value="PLATA" ${currentTier==='PLATA'?'selected':''}>🥈 Nivel PLATA (+400 €v sugerido)</option>
-                        <option value="BRONCE" ${currentTier==='BRONCE'?'selected':''}>🥉 Nivel BRONCE (+250 €v sugerido)</option>
+                    <select id="sp-tier" onchange="const amounts = { ORO: 500, PLATA: 400, BRONCE: 250, COBRE: 150, COLABORADOR: 100 }; document.getElementById('sp-amount').value = amounts[this.value] || 100;" class="min-h-[44px] w-full bg-slate-900 border border-mars-yellow p-2.5 text-xs text-white font-bold uppercase outline-none">
+                        <option value="ORO" ${currentTier==='ORO'?'selected':''}>🥇 Nivel ORO (+500 €v)</option>
+                        <option value="PLATA" ${currentTier==='PLATA'?'selected':''}>🥈 Nivel PLATA (+400 €v)</option>
+                        <option value="BRONCE" ${currentTier==='BRONCE'?'selected':''}>🥉 Nivel BRONCE (+250 €v)</option>
+                        <option value="COBRE" ${currentTier==='COBRE'?'selected':''}>🔶 Nivel COBRE (+150 €v)</option>
+                        <option value="COLABORADOR" ${currentTier==='COLABORADOR'?'selected':''}>🤝 Nivel COLABORADOR (+100 €v)</option>
                     </select>
                 </div>
                 <div>
                     <label for="sp-amount" class="text-xs text-mars-green uppercase font-bold block mb-1">Inyección Económica al Ledger (€v)</label>
-                    <input type="number" id="sp-amount" value="500" step="50" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-sm text-mars-green font-mono font-bold outline-none">
+                    <input type="number" id="sp-amount" value="${currentAmount}" step="25" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-sm text-mars-green font-mono font-bold outline-none">
                 </div>
                 <div>
                     <label for="sp-name" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Nombre de la Corporación Patrocinadora</label>
@@ -1554,13 +1638,39 @@ Object.assign(ui, {
         const file = elLogo && elLogo.files ? elLogo.files[0] : null;
 
         const finalizeSponsor = (logoDataUrl) => {
+            const now = Date.now();
             co.sponsorAwarded = tier;
-            co.sponsorData = { name: spName, logo: logoDataUrl !== undefined ? logoDataUrl : (co.sponsorData?.logo || null) };
+            co.sponsorData = { 
+                name: spName, 
+                tier: tier, 
+                amount: amount, 
+                date: now, 
+                logo: logoDataUrl !== undefined ? logoDataUrl : (co.sponsorData?.logo || null) 
+            };
 
-            if (amount !== 0) state.addToLedger(cid, `[PATROCINIO ${tier}] Inyección de capital por ${spName}`, 'DIRECCIÓN_AEE', amount);
+            // Eliminar asientos previos de patrocinio en co.ledger para no duplicar saldo
+            co.ledger = Array.isArray(co.ledger) ? co.ledger.filter(tx => !(tx && typeof tx.concept === 'string' && tx.concept.startsWith('[PATROCINIO'))) : [];
+
+            if (amount !== 0) {
+                const txId = 'TX-' + now.toString(36).toUpperCase() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+                co.ledger.unshift({
+                    id: txId,
+                    tx_id: txId,
+                    date: new Date().toLocaleString(),
+                    concept: `[PATROCINIO ${tier}] Inyección de capital por ${spName}`,
+                    dept: 'DIRECCIÓN_AEE',
+                    delta: amount,
+                    timestamp: now,
+                    final: 0
+                });
+            }
+
+            state.recalculateBalance(co);
+            if (co.ledger[0]) co.ledger[0].final = co.balance;
+            co.updatedAt = now;
 
             ui.pushNotification(cid, 'CEO', `¡Habéis obtenido el Patrocinio ${tier} de ${spName} (+${amount} €v)!`, 'success');
-            state.save();
+            state.save(cid);
             this.closeModal();
             this.render();
         };
@@ -1600,7 +1710,8 @@ Object.assign(ui, {
         co.name = newName;
         
         ui.pushNotification(cid, 'CEO', `Coordinación ha forzado el cambio de denominación social a "${newName}".`, 'warning');
-        state.save();
+        co.updatedAt = Date.now();
+        state.save(cid);
         this.closeModal();
         this.render();
     },

@@ -1,5 +1,5 @@
 // js/ui-empresa-ops.js
-// --- MÓDULO OPERACIONES E IA: LOGÍSTICA FÍSICA, BITÁCORA IA Y DIARIO DE DECISIONES (v1.1.27) ---
+// --- MÓDULO OPERACIONES E IA: LOGÍSTICA FÍSICA, BITÁCORA IA Y DIARIO DE DECISIONES (v1.1.28) ---
 
 Object.assign(ui, {
     modalLogAI() {
@@ -206,8 +206,9 @@ Object.assign(ui, {
                 order.items[i].realShop = valShop;
                 order.items[i].ticketUrl = ticketUrl;
                 finalItems.push(order.items[i]);
-                finalTotalEurV += Number(order.items[i].price) || 0;
-                realCostsToLog.push({ id: 'RC-'+Date.now()+'-'+i, date: new Date().toLocaleDateString(), item: order.items[i].name, eur: valEur, shop: valShop, ticketUrl: ticketUrl });
+                const itemQty = Number(order.items[i].qty) || 1;
+                finalTotalEurV += (Number(order.items[i].price) || 0) * itemQty;
+                realCostsToLog.push({ id: 'RC-'+Date.now()+'-'+i, date: new Date().toLocaleDateString(), item: order.items[i].name, eur: valEur, shop: valShop, ticketUrl: ticketUrl, qty: itemQty });
             }
         }
 
@@ -220,9 +221,10 @@ Object.assign(ui, {
 
         state.addToLedger(state.user.coId, `Ejecución Logística Orden #${order.id}`, 'OPERACIONES_IA', -finalTotalEurV);
         co.realCosts.push(...realCostsToLog);
+        co.updatedAt = Date.now();
 
         telemetry.log("EJECUCIÓN LOGÍSTICA", `Orden #${order.id} completada por ${finalTotalEurV.toFixed(2)}€v`);
-        state.save();
+        state.save(state.user.coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         
         this.notify(`✅ Orden #${order.id} ejecutada. El saldo virtual ha sido descontado y los costes reales registrados.`, "success");

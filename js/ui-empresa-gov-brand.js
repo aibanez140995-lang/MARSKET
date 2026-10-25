@@ -1,5 +1,5 @@
 // js/ui-empresa-gov-brand.js
-// --- MÓDULO GOBERNANZA Y MARCA: MOCIONES, HR, REGISTRO MERCANTIL Y PAQUETES MARKETING (v1.1.27) ---
+// --- MÓDULO GOBERNANZA Y MARCA: MOCIONES, HR, REGISTRO MERCANTIL Y PAQUETES MARKETING (v1.1.28) ---
 
 Object.assign(ui, {
     setBrandDocTab(tab) {
@@ -537,8 +537,8 @@ Object.assign(ui, {
         const m = co.votingMotions.find(x => x.id === id);
         if(m) {
             const votes = Object.values(m.votes || {});
-            const y = votes.filter(v => v === 'A FAVOR').length;
-            const n = votes.filter(v => v === 'EN CONTRA').length;
+            const y = votes.filter(v => v === 'A_FAVOR' || v === 'A FAVOR').length;
+            const n = votes.filter(v => v === 'EN_CONTRA' || v === 'EN CONTRA').length;
             if(y > n) { m.result = 'APROBADA'; m.status = 'CERRADA'; }
             else if(n > y) { m.result = 'RECHAZADA'; m.status = 'CERRADA'; }
             else {
@@ -546,7 +546,8 @@ Object.assign(ui, {
             }
             
             ui.pushNotification(state.user.coId, m.authorRole, `Tu moción ha sido ${m.result}.`, m.result === 'APROBADA' ? 'success' : 'error');
-            state.save(); 
+            co.updatedAt = Date.now();
+            state.save(state.user.coId); 
             this.render();
         }
     },
@@ -574,7 +575,8 @@ Object.assign(ui, {
             m.result = result;
             m.status = 'CERRADA';
             ui.pushNotification(state.user.coId, m.authorRole, `Tu moción ha sido ${m.result} (Voto de Calidad).`, m.result === 'APROBADA' ? 'success' : 'error');
-            state.save();
+            co.updatedAt = Date.now();
+            state.save(state.user.coId);
             this.closeModal();
             this.render();
         }
@@ -641,6 +643,11 @@ Object.assign(ui, {
         }
 
         const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+        const grossCosts = state.getCompanyGrossOperatingCosts ? state.getCompanyGrossOperatingCosts(co) : 0;
+        const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
+        const opCosts = state.getCompanyOperatingCosts ? state.getCompanyOperatingCosts(co) : { gross: grossCosts, sponsorReduction: sponsorAmt, net: grossCosts };
+        const netOpCosts = (opCosts && typeof opCosts.net === 'number') ? opCosts.net : ((typeof opCosts === 'number') ? opCosts : grossCosts);
+        const sponsorTierLabel = co.sponsorAwarded ? (co.sponsorData?.tier || co.sponsorAwarded || 'SPONSOR') : null;
 
         const mktPackages = typeof MARKETING_PACKAGES !== 'undefined' ? MARKETING_PACKAGES : [];
 
@@ -907,6 +914,21 @@ Object.assign(ui, {
                         <div class="bg-black p-3 border border-mars-border flex justify-between items-center gap-2">
                             <span class="text-xs text-mars-cyan uppercase font-bold">Inversión Total I+D Ejecutada</span>
                             <span class="text-mars-cyan font-mono font-bold text-base">${totalDevCost.toFixed(2)} €v</span>
+                        </div>
+                        <div class="bg-black p-3 border border-slate-800 space-y-1.5">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-300 uppercase">Coste Operativo Bruto:</span>
+                                <span class="text-white font-mono font-bold">${grossCosts.toFixed(2)} €v</span>
+                            </div>
+                            ${(sponsorAmt > 0 && sponsorTierLabel) ? `
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-amber-400 uppercase font-bold">Reducción Patrocinio (${this.escapeHTML(sponsorTierLabel)}):</span>
+                                <span class="text-amber-400 font-mono font-bold">-${sponsorAmt.toFixed(2)} €v</span>
+                            </div>` : ''}
+                            <div class="flex justify-between items-center text-xs border-t border-slate-800 pt-1.5">
+                                <span class="text-mars-green font-bold uppercase">Coste Operativo Neto:</span>
+                                <span class="text-mars-green font-mono font-bold text-sm">${netOpCosts.toFixed(2)} €v</span>
+                            </div>
                         </div>
                         ${bestFlightHtml}
                     </div>

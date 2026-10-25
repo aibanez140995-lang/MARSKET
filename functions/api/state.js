@@ -90,14 +90,25 @@ export async function onRequest(context) {
                 return new Response(JSON.stringify({ status: 'empty' }), { headers });
             }
 
-            // 1. Lectura sub-milisegundo solo del campo de versión (Mitigación ETag / HTTP 304)
+            if (action === 'fast_version') {
+                const rowFast = await env.MARSKET_DB.prepare(
+                    "SELECT json_extract(data, '$.version') as v, json_extract(data, '$.lastUpdated') as lu, json_extract(data, '$.config.updatedAt') as cu FROM state WHERE id = 'current'"
+                ).first().catch(() => null);
+                const version = Number(rowFast?.v) || 1;
+                const updatedAt = Number(rowFast?.lu) || 0;
+                const configUpdatedAt = Number(rowFast?.cu) || 0;
+                return new Response(JSON.stringify({ version, updatedAt, configUpdatedAt }), { headers });
+            }
+
+            // 1. Lectura sub-milisegundo solo del campo de versión y config.updatedAt (Mitigación ETag / HTTP 304)
             const row = await env.MARSKET_DB.prepare(
-                "SELECT json_extract(data, '$.version') as v FROM state WHERE id = 'current'"
-            ).first();
+                "SELECT json_extract(data, '$.version') as v, json_extract(data, '$.config.updatedAt') as cu FROM state WHERE id = 'current'"
+            ).first().catch(() => null);
             
             const currentVersion = (row && row.v !== null && row.v !== undefined) ? String(row.v) : "1";
+            const currentConfigUpdated = (row && row.cu !== null && row.cu !== undefined) ? String(row.cu) : "0";
             const clientETag = request.headers.get('If-None-Match');
-            const serverETag = `W/"v-${currentVersion}"`;
+            const serverETag = `W/"v-${currentVersion}-${currentConfigUpdated}"`;
 
             // 2. Si el cliente está actualizado, responder 304 sin payload (0 bytes transferidos)
             if (clientETag === serverETag) {
@@ -448,6 +459,19 @@ export async function onRequest(context) {
                 }
             } else if (currentState.config) {
                 payload.config = currentState.config;
+            }
+
+            // Proteger config.deliverableSchedule, config.deadlines y config.guidelines con Last-Write-Wins
+            if (currentState && currentState.config) {
+                payload.config = payload.config || {};
+                const currentConfigUpdated = Number(currentState.config.updatedAt) || 0;
+                const incomingConfigUpdated = Number(payload.config.updatedAt) || 0;
+                if (currentConfigUpdated > incomingConfigUpdated) {
+                    payload.config.deliverableSchedule = currentState.config.deliverableSchedule || payload.config.deliverableSchedule || {};
+                    payload.config.deadlines = currentState.config.deadlines || payload.config.deadlines || {};
+                    payload.config.guidelines = currentState.config.guidelines || payload.config.guidelines || {};
+                    payload.config.updatedAt = currentConfigUpdated;
+                }
             }
 
             // B. Restaurar Bóvedas de Startups (authVault, accessCode, roles)

@@ -1,5 +1,5 @@
 // js/ui-docente-core.js
-// --- MÓDULO DOCENTE CORE: ENRUTADOR, AJUSTES DE PLAZOS Y BACKUPS D1 (v1.1.27) ---
+// --- MÓDULO DOCENTE CORE: ENRUTADOR, AJUSTES DE PLAZOS Y BACKUPS D1 (v1.1.28) ---
 
 Object.assign(ui, {
     viewAdmin(el) {
@@ -355,105 +355,6 @@ Object.assign(ui, {
         `;
     },
 
-    renderAdminSettings() {
-        const dl = state.data.config.deadlines || {};
-        const suggestions = state.data.suggestionsToAlex || [];
-        const isResolvedStatus = (s) => s.status === 'IMPLEMENTADO' || s.status === 'RESUELTO' || s.resolved === true;
-        const activeSuggs = suggestions.filter(s => !isResolvedStatus(s));
-        const resolvedSuggs = suggestions.filter(s => isResolvedStatus(s));
-
-        const renderSuggItem = (sugg) => {
-            const cat = sugg.category || 'MEJORA';
-            const status = sugg.status || 'RECIBIDO';
-            const catBadge = cat === 'BUG' ? 'text-mars-magenta border-mars-magenta bg-mars-magenta/10' : (cat === 'REGLAS' ? 'text-mars-cyan border-mars-cyan bg-mars-cyan/10' : 'text-mars-yellow border-mars-yellow bg-mars-yellow/10');
-            
-            return `
-            <div class="bg-slate-900 border border-mars-border p-4 text-xs mb-2">
-                <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs font-black uppercase px-2 py-0.5 border ${catBadge}">${this.escapeHTML(cat)}</span>
-                        <span class="text-white font-bold uppercase break-words">${this.escapeHTML(sugg.author)}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <select aria-label="Estado de sugerencia" onchange="ui.updateSuggestionStatus('${this.escapeHTML(sugg.id)}', this.value)" class="min-h-[44px] bg-black border border-slate-700 text-white p-1.5 text-xs uppercase font-bold outline-none">
-                            <option value="RECIBIDO" ${status==='RECIBIDO'?'selected':''}>Recibido</option>
-                            <option value="EN_REVISION" ${status==='EN_REVISION'?'selected':''}>En Revisión</option>
-                            <option value="IMPLEMENTADO" ${status==='IMPLEMENTADO'?'selected':''}>Implementado</option>
-                        </select>
-                        <button onclick="ui.deleteSuggestion('${this.escapeHTML(sugg.id)}')" aria-label="Eliminar sugerencia" class="min-h-[44px] min-w-[44px] text-mars-magenta hover:text-white font-bold px-2 border border-mars-magenta/40">X</button>
-                    </div>
-                </div>
-                <p class="text-slate-200 italic mb-2 bg-black/50 p-2 border border-slate-800 break-words">"${this.escapeHTML(sugg.text)}"</p>
-                <span class="text-xs text-slate-300 block text-right">${this.escapeHTML(sugg.date)}</span>
-            </div>`;
-        };
-
-        const activeHtml = activeSuggs.map(renderSuggItem).join('') || '<p class="text-slate-300 italic text-xs">No hay consultas activas pendientes en el buzón.</p>';
-        const resolvedHtml = resolvedSuggs.map(renderSuggItem).join('') || '<p class="text-slate-400 italic text-xs">No hay consultas resueltas registradas.</p>';
-
-        return `
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Configuración de Plazos Granulares -->
-            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan">
-                <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Configuración Granular de Plazos (Resumen)</h3>
-                <div class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                    <div>
-                        <label for="dl-technicalReport" class="text-xs text-slate-300 uppercase font-bold block mb-1">Informe Técnico (FYQ)</label>
-                        <input type="datetime-local" id="dl-technicalReport" value="${this.escapeHTML(dl.technicalReport || dl.techReport || '')}" class="min-h-[44px] w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none">
-                    </div>
-                    <div>
-                        <label for="dl-brandIdentity_dec" class="text-xs text-slate-300 uppercase font-bold block mb-1">Identidad de Marca - Diciembre (LYE)</label>
-                        <input type="datetime-local" id="dl-brandIdentity_dec" value="${this.escapeHTML(dl.brandIdentity_dec || '')}" class="min-h-[44px] w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none">
-                    </div>
-                    <div>
-                        <label for="dl-brandIdentity_apr" class="text-xs text-slate-300 uppercase font-bold block mb-1">Identidad de Marca - Abril (LYE)</label>
-                        <input type="datetime-local" id="dl-brandIdentity_apr" value="${this.escapeHTML(dl.brandIdentity_apr || '')}" class="min-h-[44px] w-full bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none">
-                    </div>
-                    <div>
-                        <label for="dl-businessModelDoc" class="text-xs text-slate-300 uppercase font-bold block mb-1">Business Model Escrito (LYE)</label>
-                        <input type="datetime-local" id="dl-businessModelDoc" value="${this.escapeHTML(dl.businessModelDoc || '')}" class="min-h-[44px] w-full bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none">
-                    </div>
-                    <div>
-                        <label for="dl-investorDossier" class="text-xs text-slate-300 uppercase font-bold block mb-1">Dossier para Inversores (Lengua)</label>
-                        <input type="datetime-local" id="dl-investorDossier" value="${this.escapeHTML(dl.investorDossier || '')}" class="min-h-[44px] w-full bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none">
-                    </div>
-                    <div>
-                        <label for="dl-balanceSheet" class="text-xs text-slate-300 uppercase font-bold block mb-1">Balance de Situación (Economía)</label>
-                        <input type="datetime-local" id="dl-balanceSheet" value="${this.escapeHTML(dl.balanceSheet || '')}" class="min-h-[44px] w-full bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none">
-                    </div>
-                    <button onclick="ui.saveDeadlines()" class="min-h-[44px] w-full bg-mars-cyan text-black font-black py-3 text-xs uppercase tracking-widest hover:bg-white transition-all mt-4">Actualizar Plazos Oficiales</button>
-                    <p class="text-xs text-slate-300 mt-2">* Para editar los 19 plazos completos, ve a la pestaña "Startups & PINs".</p>
-                </div>
-            </div>
-
-            <!-- Buzón Alex y Sugerencias -->
-            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-yellow">
-                <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-2 flex-wrap gap-2">
-                    <h3 class="font-orbitron text-mars-yellow text-xs uppercase tracking-widest">Buzón de Consultas & Feedback</h3>
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs text-mars-cyan font-bold font-mono">${activeSuggs.length} Activas</span>
-                        <span class="text-xs text-slate-400 font-mono">/ ${suggestions.length} Total</span>
-                    </div>
-                </div>
-                <div class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                    <div class="space-y-2">
-                        ${activeHtml}
-                    </div>
-
-                    <details class="border border-cyan-500/20 bg-[#0A0E17] rounded-lg mt-4 p-3">
-                        <summary class="cursor-pointer font-orbitron text-xs text-mars-cyan uppercase tracking-wider font-bold select-none flex items-center justify-between">
-                            <span>CONSULTAS Y SUGERENCIAS RESUELTAS</span>
-                            <span class="bg-cyan-950/80 text-mars-cyan border border-cyan-500/30 px-2 py-0.5 rounded text-[11px] font-mono">[${resolvedSuggs.length} RESUELTAS]</span>
-                        </summary>
-                        <div class="space-y-2 mt-3 pt-2 border-t border-cyan-500/20">
-                            ${resolvedHtml}
-                        </div>
-                    </details>
-                </div>
-            </div>
-        </div>`;
-    },
-
     renderAdminBackups() {
         return `
         <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-blue-500 mb-6">
@@ -543,11 +444,21 @@ Object.assign(ui, {
     saveDeadlines() {
         const fields = ['technicalReport', 'brandIdentity_dec', 'brandIdentity_apr', 'businessModelDoc', 'investorDossier', 'balanceSheet'];
         state.data.config.deadlines = state.data.config.deadlines || {};
+        state.data.config.deliverableSchedule = state.data.config.deliverableSchedule || {};
         
+        const now = Date.now();
         fields.forEach(f => {
             const el = document.getElementById(`dl-${f}`);
-            if (el) state.data.config.deadlines[f] = el.value;
+            if (el) {
+                state.data.config.deadlines[f] = el.value;
+                state.data.config.deliverableSchedule[f] = {
+                    ...(state.data.config.deliverableSchedule[f] || {}),
+                    deadline: el.value,
+                    updatedAt: now
+                };
+            }
         });
+        state.data.config.updatedAt = now;
 
         state.save();
         this.notify("Plazos institucionales actualizados.", "success");

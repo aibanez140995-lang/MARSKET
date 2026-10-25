@@ -1,5 +1,5 @@
 // js/ui-empresa-tech.js
-// --- MÓDULO I+D: BANCO DE PRUEBAS (en mm), BOM, MATEMÁTICAS E INVENTARIO B2B (v1.1.27) ---
+// --- MÓDULO I+D: BANCO DE PRUEBAS (en mm), BOM, MATEMÁTICAS E INVENTARIO B2B (v1.1.28) ---
 
 Object.assign(ui, {
     setTechDocTab(tab) {
@@ -67,8 +67,11 @@ Object.assign(ui, {
                 const isSold = item.b2bStatus === 'VENDIDO';
                 const isListed = item.b2bStatus === 'EN_VENTA';
                 const isChecked = !isSold && !isListed && co.bom.includes(item.itemKey);
+                const itemQty = Number(item.qty) || 1;
+                const unitPrice = Number(item.price) || 0;
+                const totalItemPrice = unitPrice * itemQty;
                 
-                if (isChecked) bomTotal += Number(item.price) || 0;
+                if (isChecked) bomTotal += totalItemPrice;
 
                 let statusAction = '';
                 if (isSold) {
@@ -84,10 +87,10 @@ Object.assign(ui, {
                     <label class="mars-checkbox-label flex items-center gap-2.5 text-white ${isSold || isListed ? 'cursor-not-allowed line-through text-slate-400' : 'cursor-pointer'} flex-grow min-w-0 min-h-[44px]">
                         <input type="checkbox" class="mars-touch-input" ${isChecked ? 'checked' : ''} ${isSold || isListed ? 'disabled' : ''} onchange="ui.toggleBomItem('${this.escapeHTML(item.itemKey)}', this.checked)">
                         <span class="mars-checkbox-visual"></span>
-                        <span class="break-words">${this.escapeHTML(item.name)} (x${Number(item.qty)||1})</span>
+                        <span class="break-words">${this.escapeHTML(item.name)} (x${itemQty})</span>
                     </label>
                     <div class="flex items-center gap-2 shrink-0">
-                        <span class="text-mars-green font-mono font-bold">${Number(item.price).toFixed(2)} €v</span>
+                        <span class="text-mars-green font-mono font-bold">${totalItemPrice.toFixed(2)} €v${itemQty > 1 ? ` <span class="text-[10px] text-slate-400 font-normal">(${unitPrice.toFixed(2)} c/u)</span>` : ''}</span>
                         ${statusAction}
                     </div>
                 </div>
@@ -96,6 +99,11 @@ Object.assign(ui, {
         }
 
         const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+        const grossCosts = state.getCompanyGrossOperatingCosts ? state.getCompanyGrossOperatingCosts(co) : 0;
+        const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
+        const opCosts = state.getCompanyOperatingCosts ? state.getCompanyOperatingCosts(co) : { gross: grossCosts, sponsorReduction: sponsorAmt, net: grossCosts };
+        const netOpCosts = (opCosts && typeof opCosts.net === 'number') ? opCosts.net : ((typeof opCosts === 'number') ? opCosts : grossCosts);
+        const sponsorTierLabel = co.sponsorAwarded ? (co.sponsorData?.tier || co.sponsorAwarded || 'SPONSOR') : null;
 
         let docSectionContent = '';
         if (activeDocTab === 'FYQ') {
@@ -216,6 +224,22 @@ Object.assign(ui, {
                         </div>
                     </div>
 
+                    <div class="bg-black p-3 border border-slate-800 mb-4 space-y-1.5">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-slate-300 uppercase">Coste Operativo Bruto:</span>
+                            <span class="text-white font-mono font-bold">${grossCosts.toFixed(2)} €v</span>
+                        </div>
+                        ${(sponsorAmt > 0 && sponsorTierLabel) ? `
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-amber-400 uppercase font-bold">Reducción Patrocinio (${this.escapeHTML(sponsorTierLabel)}):</span>
+                            <span class="text-amber-400 font-mono font-bold">-${sponsorAmt.toFixed(2)} €v</span>
+                        </div>` : ''}
+                        <div class="flex justify-between items-center text-xs border-t border-slate-800 pt-1.5">
+                            <span class="text-mars-green font-bold uppercase">Coste Operativo Neto:</span>
+                            <span class="text-mars-green font-mono font-bold text-sm">${netOpCosts.toFixed(2)} €v</span>
+                        </div>
+                    </div>
+
                     <div class="max-h-60 overflow-y-auto pr-1">
                         ${bomHtml}
                         ${(() => {
@@ -324,13 +348,15 @@ Object.assign(ui, {
 
         const item = ord.items[itemIdx];
         if (item.b2bStatus) return this.notify("Este componente ya está en proceso de venta o ha sido vendido.", "warning");
+        const qty = Number(item.qty) || 1;
+        const totalOrigCost = (Number(item.price) || 0) * qty;
 
         const html = `
-            <p class="text-xs text-slate-200 mb-4 leading-relaxed">Vas a publicar <strong>${this.escapeHTML(item.name)} (x${Number(item.qty)||1})</strong> en el Mercado Secundario B2B. El coste original de adquisición fue de <span class="text-mars-cyan font-bold">${Number(item.price).toFixed(2)} €v</span>.</p>
+            <p class="text-xs text-slate-200 mb-4 leading-relaxed">Vas a publicar <strong>${this.escapeHTML(item.name)} (x${qty})</strong> en el Mercado Secundario B2B. El coste original de adquisición del lote fue de <span class="text-mars-cyan font-bold">${totalOrigCost.toFixed(2)} €v</span>${qty > 1 ? ` (${Number(item.price).toFixed(2)} €v c/u)` : ''}.</p>
             <div class="space-y-3">
                 <div>
-                    <label for="b2b-sell-price" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Precio de Venta Solicitado (€v)</label>
-                    <input type="number" id="b2b-sell-price" value="${Number(item.price).toFixed(0)}" min="1" step="1" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold outline-none">
+                    <label for="b2b-sell-price" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Precio de Venta Solicitado Lote Completo (€v)</label>
+                    <input type="number" id="b2b-sell-price" value="${totalOrigCost.toFixed(0)}" min="1" step="1" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold outline-none">
                 </div>
                 <div>
                     <label for="b2b-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Informe Técnico de Excedentes (Google Drive / Docs)</label>
@@ -391,7 +417,8 @@ Object.assign(ui, {
         });
 
         telemetry.log("OFERTA B2B", `Publicado en B2B: ${item.name} por ${price}€v`);
-        state.save();
+        co.updatedAt = Date.now();
+        state.save(state.user.coId);
         this.closeModal();
         this.notify(`✅ Componente "${item.name}" publicado en el Mercado B2B por ${price.toFixed(2)} €v.`, "success");
         this.render();

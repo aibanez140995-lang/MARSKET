@@ -1,5 +1,5 @@
 // js/ui-empresa-market.js
-// --- MÓDULO CATÁLOGO B2B Y B2C CON BLINDAJE LÉXICO EN COMPRAS (v1.1.27) ---
+// --- MÓDULO CATÁLOGO B2B Y B2C CON BLINDAJE LÉXICO EN COMPRAS (v1.1.28) ---
 
 Object.assign(ui, {
     marketTab: 'B2C',
