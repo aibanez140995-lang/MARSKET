@@ -1,5 +1,5 @@
 // js/ui-empresa-finance.js
-// --- MÓDULO FINANCIERO Y BÓVEDA DE ÓRDENES: CRONOGRAMA MAESTRO (17 ENTREGABLES), AUDITORÍA Y LEDGER (v1.1.28) ---
+// --- MÓDULO FINANCIERO Y BÓVEDA DE ÓRDENES: CRONOGRAMA MAESTRO (17 ENTREGABLES), AUDITORÍA Y LEDGER (v1.1.34) ---
 
 Object.assign(ui, {
     cronogramaFilter: 'ALL',
@@ -45,19 +45,22 @@ Object.assign(ui, {
             <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-green text-center">
                 <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Saldo Disponible</span>
                 <p class="text-lg sm:text-xl font-orbitron font-black text-mars-green">${Number(co.balance).toFixed(2)} €v</p>
+                <span class="text-[10px] text-slate-400 block mt-1 font-mono">Fondos líquidos de tesorería</span>
             </div>
             <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-slate-500 text-center">
                 <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Coste Operativo Bruto</span>
                 <p class="text-lg sm:text-xl font-orbitron font-black text-white">${grossCosts.toFixed(2)} €v</p>
+                <span class="text-[10px] text-slate-400 block mt-1 font-mono">Total compras y suministros</span>
             </div>
             <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-amber-400 text-center">
                 <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Reducción Patrocinio</span>
                 <p class="text-lg sm:text-xl font-orbitron font-black text-amber-400">${sponsorAmt > 0 ? `-${sponsorAmt.toFixed(2)} €v` : '0.00 €v'}</p>
-                ${(sponsorAmt > 0 && sponsorTierLabel) ? `<span class="text-[10px] text-amber-400/80 font-mono">[${this.escapeHTML(sponsorTierLabel)}]</span>` : ''}
+                <span class="text-[10px] text-amber-400/80 block mt-1 font-mono">${(sponsorAmt > 0 && sponsorTierLabel) ? `[${this.escapeHTML(sponsorTierLabel)}] Descuento aplicado` : 'Sin patrocinios activos'}</span>
             </div>
             <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-cyan text-center">
                 <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Coste Operativo Neto</span>
                 <p class="text-lg sm:text-xl font-orbitron font-black text-mars-cyan">${netOpCosts.toFixed(2)} €v</p>
+                <span class="text-[10px] text-slate-400 block mt-1 font-mono">Neto = Bruto - Patrocinios</span>
             </div>
         </div>`;
 
@@ -77,7 +80,7 @@ Object.assign(ui, {
                         <p class="text-xs text-slate-200 italic mt-1 break-words">"${this.escapeHTML(unreadCrisis[0].reason)}"</p>
                         <p class="text-mars-magenta font-mono font-bold text-xs sm:text-sm mt-1">Penalización Económica: ${Number(unreadCrisis[0].amount).toFixed(2)} €v</p>
                     </div>
-                    ${isCEO ? `<button type="button" onclick="ui.modalCrisisAction()" class="min-h-[44px] bg-red-700 text-white font-black px-4 py-2.5 text-xs uppercase tracking-wider hover:bg-white hover:text-red-700 transition-all border border-red-500 shadow-[0_0_10px_red] shrink-0 w-full sm:w-auto">[ Emitir Comunicado de Crisis ]</button>` : `<span class="text-xs text-mars-yellow font-bold uppercase">Esperando acción de Dirección General (CEO)...</span>`}
+                    ${isCEO ? `<button type="button" onclick="ui.modalCrisisAction()" class="min-h-[44px] bg-red-700 text-white font-black px-4 py-2.5 text-xs uppercase tracking-wider hover:bg-white hover:text-red-700 transition-all border border-red-500 shadow-[0_0_10px_red] shrink-0 w-full sm:w-auto active:scale-95">[ 📢 Comunicar Sanción al Equipo ]</button>` : `<span class="text-xs text-mars-yellow font-bold uppercase flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-mars-yellow animate-ping"></span> Pendiente de comunicación por Dirección General (CEO)</span>`}
                 </div>
             </div>`;
         }
@@ -486,29 +489,30 @@ Object.assign(ui, {
         const crisis = (co.crisisAlerts || []).find(a => String(a.id) === String(crisisId)) || (co.crisisAlerts || [])[0] || {};
         const expId = crisis.id || ('EXP-' + Date.now().toString().slice(-4));
         const articulo = crisis.article || 'Infracción Normativa Regulatoria';
+        const motivo = crisis.reason || 'Sanción disciplinaria AEE';
         const cuantia = Number(crisis.amount || 0).toFixed(2);
-        const immutableText = `COMUNICADO OFICIAL DE SANCIÓN: Expediente ${expId} incoado por ${articulo}. Detracción: ${cuantia} €v. Alegaciones mediante procedimiento ordinario en Google Drive.`;
+        const immutableText = `COMUNICADO OFICIAL DE SANCIÓN AEE: Expediente ${expId} incoado por ${articulo}. Motivo: "${motivo}". Penalización aplicada al saldo: -${cuantia} €v.`;
 
         const html = `
-            <div class="space-y-3">
-                <p class="text-xs text-slate-300 leading-relaxed">Resolución inmutable de la Agencia Reguladora AEE. Como CEO, debes acusar recibo e informar de oficio a los departamentos de la startup.</p>
+            <div class="space-y-4">
+                <p class="text-xs text-slate-300 leading-relaxed">
+                    Resolución ejecutiva e inapelable de la Agencia Reguladora AEE. Como Dirección General (CEO), tu responsabilidad es acusar recibo e informar de oficio a todos los departamentos de la empresa para asumir el impacto financiero y ajustar la planificación operativa.
+                </p>
                 <div class="bg-black/80 border border-red-600/70 p-4 space-y-2">
-                    <span class="text-xs font-mono font-black text-red-500 uppercase tracking-widest block">[REGISTRO DISCIPLINARIO INMUTABLE]</span>
+                    <span class="text-xs font-mono font-black text-red-500 uppercase tracking-widest block">[REGISTRO DISCIPLINARIO EJECUTIVO]</span>
                     <p class="text-xs sm:text-sm font-mono text-white leading-relaxed select-all">${this.escapeHTML(immutableText)}</p>
                 </div>
-                <div class="mb-2">
-                    <label class="text-xs text-mars-yellow uppercase font-bold block mb-1">Modelo Oficial de Comunicado</label>
-                    ${this.renderDocTemplateBtn('DOC_3_COMUNICADO_SANCION')}
+                <div class="bg-mars-card/60 border border-slate-700 p-3 text-xs text-slate-300 space-y-1">
+                    <p class="font-bold text-mars-yellow uppercase">Efectos inmediatos en la empresa:</p>
+                    <ul class="list-disc list-inside text-[11px] text-slate-400 space-y-0.5">
+                        <li>Detracción automática del saldo de tesorería: <strong class="text-red-400">-${cuantia} €v</strong>.</li>
+                        <li>Notificación directa enviada a Técnico, Finanzas, Marketing y Operaciones.</li>
+                        <li>Registro inmutable archivado en el Libro de Resoluciones de Gobernanza.</li>
+                    </ul>
                 </div>
-                <div>
-                    <label for="crisis-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Enlace Drive del Comunicado Oficial / Alegación (URL)</label>
-                    <input type="url" id="crisis-drive-url" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-red-500/70 p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-red-400" required>
-                    <p class="text-[10px] text-slate-400 mt-1">Adjunta el comunicado oficial redactado en Google Docs con permisos de lectura.</p>
-                </div>
-                <p class="text-[10px] text-slate-400">Por directiva de gobernanza y trazabilidad RGPD, el expediente no admite edición de texto libre. Cualquier alegación se formaliza mediante documento enlazado a Google Drive.</p>
             </div>
         `;
-        const actions = `<button type="button" onclick="ui.notifyDepartmentsCrisis('${this.escapeHTML(expId)}')" class="min-h-[44px] bg-red-700 text-white font-black px-6 py-2.5 text-xs uppercase tracking-wider hover:bg-white hover:text-red-700 transition-all border border-red-500 w-full sm:w-auto">Informar a los departamentos</button>`;
+        const actions = `<button type="button" onclick="ui.notifyDepartmentsCrisis('${this.escapeHTML(expId)}')" class="min-h-[44px] bg-red-700 text-white font-black px-6 py-2.5 text-xs uppercase tracking-wider hover:bg-white hover:text-red-700 transition-all border border-red-500 shadow-[0_0_10px_red] w-full sm:w-auto active:scale-95">📢 Informar y Difundir a Todos los Departamentos</button>`;
         this.showModal("Gabinete de Crisis AEE (Dirección General)", html, actions);
     },
 
@@ -517,23 +521,19 @@ Object.assign(ui, {
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
 
-        const elDrive = document.getElementById('crisis-drive-url');
-        const driveUrl = elDrive ? this.cleanInput(elDrive.value) : '';
-        if (!driveUrl) return this.notify("Debes adjuntar el enlace Drive del Comunicado Oficial.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
-        }
-
         const crisis = (co.crisisAlerts || []).find(a => String(a.id) === String(expId)) || (co.crisisAlerts || [])[0] || {};
         const expClean = expId || crisis.id || ('EXP-' + Date.now().toString().slice(-4));
         const articulo = crisis.article || 'Infracción Normativa Regulatoria';
+        const motivo = crisis.reason || 'Sanción disciplinaria AEE';
         const cuantia = Number(crisis.amount || 0).toFixed(2);
-        const immutableText = `COMUNICADO OFICIAL DE SANCIÓN: Expediente ${expClean} incoado por ${articulo}. Detracción: ${cuantia} €v. Alegaciones mediante procedimiento ordinario en Google Drive.`;
+        const immutableText = `COMUNICADO OFICIAL DE SANCIÓN AEE: Expediente ${expClean} incoado por ${articulo}. Motivo: "${motivo}". Penalización aplicada al saldo: -${cuantia} €v.`;
 
         (co.crisisAlerts || []).forEach(a => {
             if (!expClean || String(a.id) === String(expClean) || !a.id) {
                 a.read = true;
                 a.notified = true;
+                a.notifiedBy = 'CEO';
+                a.notifiedAt = Date.now();
             }
         });
 
@@ -541,9 +541,8 @@ Object.assign(ui, {
         co.executiveResolutions.unshift({
             id: 'CRISIS-' + Date.now(),
             expId: expClean,
-            title: 'COMUNICADO OFICIAL DE SANCIÓN',
+            title: 'COMUNICADO OFICIAL DE SANCIÓN AEE',
             desc: immutableText,
-            driveUrl: driveUrl,
             date: new Date().toLocaleString()
         });
 
@@ -557,7 +556,7 @@ Object.assign(ui, {
         }
         state.save();
         this.closeModal();
-        this.notify("✅ Expediente notificado de oficio a todos los departamentos.", "success");
+        this.notify("✅ Sanción comunicada de oficio a todos los departamentos.", "success");
         this.render();
     },
 

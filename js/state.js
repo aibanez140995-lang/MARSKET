@@ -1,5 +1,5 @@
 // js/state.js
-// --- GESTIÓN DE ESTADO ZERO-TRUST, MIGRACIÓN Y PERSISTENCIA ATÓMICA (v1.1.28) ---
+// --- GESTIÓN DE ESTADO ZERO-TRUST, MIGRACIÓN Y PERSISTENCIA ATÓMICA (v1.1.36) ---
 
 const DEFAULT_STATE = {
     version: 1,
@@ -10,14 +10,44 @@ const DEFAULT_STATE = {
     suggestionsToAlex: [],
     pendingCustom: [],
     telemetry: { totalLogins: 0, sessions: [] },
-    catalog: [
-        { id: 'F01', name: 'Botella PET 500ml', price: 97.0, unit: 'Unidad', category: 'Fuselaje', origin: 'China' },
-        { id: 'F02', name: 'Botella PET 1L', price: 120.0, unit: 'Unidad', category: 'Fuselaje', origin: 'China' },
-        { id: 'P01', name: 'Bicarbonato de Sodio', price: 10.0, unit: 'Gramo', category: 'Propulsión', origin: 'Turquía' },
-        { id: 'P02', name: 'Vinagre', price: 5.0, unit: '10ml', category: 'Propulsión', origin: 'España' },
-        { id: 'A01', name: 'Cartón Básico', price: 30.0, unit: 'Set', category: 'Aerodinámica', origin: 'Marruecos' },
-        { id: 'S01', name: 'Papel de Cocina', price: 5.0, unit: 'Unidad', category: 'Sellado', origin: 'Portugal' },
-        { id: 'S05', name: 'Cinta Aislante', price: 10.0, unit: 'Rollo', category: 'Sellado', origin: 'Alemania' }
+        catalog: [
+        // 1. Cuerpo del Cohete (Estructura Principal)
+        { id: 'F01', name: 'Botella de 500 ml', price: 97.0, unit: 'Unidad', category: 'Cuerpo del Cohete (Estructura Principal)', origin: 'España' },
+        { id: 'F02', name: 'Botella de 1 L', price: 120.0, unit: 'Unidad', category: 'Cuerpo del Cohete (Estructura Principal)', origin: 'España' },
+        { id: 'F03', name: 'Botella de 1,5 L', price: 165.0, unit: 'Unidad', category: 'Cuerpo del Cohete (Estructura Principal)', origin: 'Portugal' },
+        { id: 'F04', name: 'Botella de 2 L', price: 200.0, unit: 'Unidad', category: 'Cuerpo del Cohete (Estructura Principal)', origin: 'Italia' },
+
+        // 2. Propulsión y Reactivos
+        { id: 'P01', name: 'Bicarbonato de Sodio', price: 10.0, unit: 'Gramo', category: 'Propulsión y Reactivos', origin: 'España' },
+        { id: 'P02', name: 'Vinagre', price: 5.0, unit: '10 ml', category: 'Propulsión y Reactivos', origin: 'España' },
+
+        // 3. Aerodinámica - 3.1 Aletas Estabilizadoras
+        { id: 'A01', name: 'Cartulina (Aletas)', price: 15.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'España' },
+        { id: 'A02', name: 'Cartón Básico', price: 30.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'Portugal' },
+        { id: 'A03', name: 'Aletas de Plástico', price: 45.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'Alemania' },
+        { id: 'A04', name: 'Aletas de PVC Rígido', price: 85.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'Polonia' },
+        { id: 'A05', name: 'Suplemento: Plastificado de Aletas', price: 5.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'España' },
+
+        // 3. Aerodinámica - 3.2 Puntas / Ojivas
+        { id: 'O01', name: 'Punta de Cartulina', price: 25.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'España' },
+        { id: 'O02', name: 'Punta de Cartón (Estándar)', price: 55.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'ESA / Francia' },
+        { id: 'O03', name: 'Punta de Plástico (PET)', price: 75.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'Alemania' },
+        { id: 'O04', name: 'Punta de Plástico 3D', price: 90.0, unit: 'Unidad', category: 'Aerodinámica', origin: 'ESA / Francia' },
+
+        // 4. Sistema de Reacción
+        { id: 'R01', name: 'Papel de Cocina', price: 5.0, unit: 'Unidad/Hoja', category: 'Sistema de Reacción', origin: 'España' },
+        { id: 'R02', name: 'Hilo de Algodón', price: 2.0, unit: 'Decímetro', category: 'Sistema de Reacción', origin: 'España' },
+
+        // 5. Sellado y Unión (Estanquidad y Montaje)
+        { id: 'S01', name: 'Corcho de Vino Estándar', price: 25.0, unit: 'Unidad', category: 'Sellado y Unión (Estanquidad y Montaje)', origin: 'España' },
+        { id: 'S02', name: 'Tapón de Goma Hermético', price: 40.0, unit: 'Unidad', category: 'Sellado y Unión (Estanquidad y Montaje)', origin: 'Alemania' },
+        { id: 'S03', name: 'Cinta Aislante', price: 10.0, unit: 'Metro', category: 'Sellado y Unión (Estanquidad y Montaje)', origin: 'Alemania' },
+        { id: 'S04', name: 'Celo / Cinta Adhesiva', price: 0.50, unit: 'cm', category: 'Sellado y Unión (Estanquidad y Montaje)', origin: 'España' },
+        { id: 'S05', name: 'Pegamento de Barra', price: 15.0, unit: 'Unidad', category: 'Sellado y Unión (Estanquidad y Montaje)', origin: 'España' },
+        { id: 'S06', name: 'Carga de Pegamento Termofusible por Uso', price: 1.0, unit: 'Uso', category: 'Sellado y Unión (Estanquidad y Montaje)', origin: 'ESA / Francia' },
+
+        // 6. Elementos Extra
+        { id: 'E01', name: 'Pintura', price: 2.0, unit: 'Cada Color', category: 'Elementos Extra', origin: 'España' }
     ],
     config: {
         nextOrderId: 1000,
@@ -172,10 +202,58 @@ const state = {
         }
     },
 
+    getSecureRandomInt(min, max) {
+        const lo = Math.min(min, max);
+        const hi = Math.max(min, max);
+        const range = hi - lo + 1;
+        if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+            const buf = new Uint32Array(1);
+            // Reducción sin sesgo de módulo (unbiased rejection sampling conforme AEPD VALiDA Cripto)
+            const maxLimit = Math.floor(0xFFFFFFFF / range) * range;
+            do {
+                crypto.getRandomValues(buf);
+            } while (buf[0] >= maxLimit);
+            return lo + (buf[0] % range);
+        }
+        return Math.floor(lo + Math.random() * range);
+    },
+
     generateCompanyCode(name) {
         const prefix = (name || 'MRS').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 3).padEnd(3, 'X');
-        const num = Math.floor(1000 + Math.random() * 9000);
+        const num = this.getSecureRandomInt(1000, 9999);
         return `${prefix}-${num}`;
+    },
+
+    generateRandomPin(excludePins = []) {
+        const excludeSet = new Set((excludePins || []).map(String));
+        let pin = '';
+        let attempts = 0;
+        do {
+            pin = this.getSecureRandomInt(1000, 9999).toString();
+            attempts++;
+        } while (excludeSet.has(pin) && attempts < 200);
+        return pin;
+    },
+
+    generateCompanyPins(co) {
+        const roles = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA'];
+        const existingAux = this.getRolePin(co, 'AUXILIAR');
+        if (existingAux || (co && co.auxRoleDept)) {
+            roles.push('AUXILIAR');
+        }
+        const used = new Set();
+        const pins = {};
+        roles.forEach(r => {
+            let pin = '';
+            let attempts = 0;
+            do {
+                pin = this.getSecureRandomInt(1000, 9999).toString();
+                attempts++;
+            } while (used.has(pin) && attempts < 200);
+            used.add(pin);
+            pins[r] = pin;
+        });
+        return pins;
     },
 
     getCompanyCode(co) {
@@ -272,8 +350,24 @@ const state = {
         d.b2bContracts = Array.isArray(d.b2bContracts) ? d.b2bContracts : [];
         d.securityIncidents = Array.isArray(d.securityIncidents) ? d.securityIncidents : [];
         
-        d.config.deadlines = d.config.deadlines || {};
-        if (typeof DELIVERABLES_DEF !== 'undefined') {
+                d.config.deadlines = d.config.deadlines || {};
+        if (!d.config.scheduleBaselineVersion || d.config.scheduleBaselineVersion < 1130) {
+            d.config.scheduleBaselineVersion = 1130;
+            d.config.deliverableSchedule = d.config.deliverableSchedule || {};
+            if (typeof DELIVERABLES_DEF !== 'undefined') {
+                DELIVERABLES_DEF.forEach(def => {
+                    d.config.deadlines[def.key] = def.defaultDate;
+                    const prevSched = d.config.deliverableSchedule[def.key] || {};
+                    d.config.deliverableSchedule[def.key] = {
+                        ...prevSched,
+                        openDate: def.defaultOpenDate,
+                        deadline: def.defaultDate,
+                        guideDocUrl: prevSched.guideDocUrl || def.defaultGuideDocUrl || "",
+                        updatedAt: Date.now()
+                    };
+                });
+            }
+        } else if (typeof DELIVERABLES_DEF !== 'undefined') {
             DELIVERABLES_DEF.forEach(def => {
                 if (!d.config.deadlines[def.key]) {
                     if (def.key === 'technicalReport' && d.config.deadlines.techReport) {
@@ -282,6 +376,36 @@ const state = {
                         d.config.deadlines[def.key] = DEFAULT_DEADLINES[def.key];
                     } else {
                         d.config.deadlines[def.key] = def.defaultDate;
+                    }
+                }
+            });
+        }
+
+        if (!d.config.catalogBaselineVersion || d.config.catalogBaselineVersion < 1131) {
+            d.config.catalogBaselineVersion = 1131;
+            const officialCatalog = DEFAULT_STATE.catalog;
+            const existingMap = new Map();
+            if (Array.isArray(d.catalog)) {
+                d.catalog.forEach(item => {
+                    if (item && item.id) existingMap.set(String(item.id), item);
+                });
+            }
+            d.catalog = officialCatalog.map(offItem => {
+                const existing = existingMap.get(String(offItem.id));
+                if (existing) {
+                    return {
+                        ...offItem,
+                        price: typeof existing.price === 'number' && !isNaN(existing.price) ? existing.price : offItem.price,
+                        origin: existing.origin || offItem.origin
+                    };
+                }
+                return { ...offItem };
+            });
+            // Preservar articulos especiales creados ad-hoc por el profesorado
+            existingMap.forEach((item, id) => {
+                if (id.startsWith('CUST-') || !officialCatalog.some(o => String(o.id) === id)) {
+                    if (!d.catalog.some(c => String(c.id) === id)) {
+                        d.catalog.push(item);
                     }
                 }
             });
@@ -412,6 +536,18 @@ const state = {
             co.bom = Array.isArray(co.bom) ? co.bom : [];
             co.sponsorAwarded = co.sponsorAwarded || null;
             co.marketingCampaigns = Array.isArray(co.marketingCampaigns) ? co.marketingCampaigns : [];
+            co.marketingCampaigns.forEach(c => {
+                if (c && Array.isArray(c.executedActions)) {
+                    c.executedActions.forEach(act => {
+                        if (act) {
+                            if (!act.status) act.status = 'VALIDADO_CEO';
+                            act.feedback = act.feedback || '';
+                            act.url = act.url || act.driveUrl || '';
+                            act.driveUrl = act.driveUrl || act.url || '';
+                        }
+                    });
+                }
+            });
             co.inactivityReports = Array.isArray(co.inactivityReports) ? co.inactivityReports : [];
             co.sponsorData = co.sponsorData || { name: null, tier: null, amount: 0, date: null, logo: null };
             if (co.sponsorAwarded && !co.sponsorData.tier) {
@@ -431,6 +567,58 @@ const state = {
     mergeData(serverData, localData) {
         if (!serverData) return localData;
         if (!localData) return serverData;
+
+        const reconcileExecutedActions = (actionsLocal, actionsServer) => {
+            if (!Array.isArray(actionsLocal)) actionsLocal = [];
+            if (!Array.isArray(actionsServer)) actionsServer = [];
+
+            const serverMap = new Map();
+            actionsServer.forEach(a => { if (a && a.id) serverMap.set(String(a.id), a); });
+
+            const localMap = new Map();
+            actionsLocal.forEach(a => { if (a && a.id) localMap.set(String(a.id), a); });
+
+            const allIds = new Set([...localMap.keys(), ...serverMap.keys()]);
+            const result = [];
+
+            allIds.forEach(id => {
+                const lAct = localMap.get(id);
+                const sAct = serverMap.get(id);
+
+                if (sAct && !lAct) {
+                    result.push({ ...sAct });
+                } else if (lAct && !sAct) {
+                    result.push({ ...lAct });
+                } else {
+                    // Precedencia estricta: Las decisiones de servidor (VALIDADO_CEO o RECHAZADO_CEO) tienen precedencia sobre estados locales obsoletos (PENDIENTE_CEO)
+                    let status = lAct.status || sAct.status || 'PENDIENTE_CEO';
+                    let feedback = lAct.feedback || sAct.feedback || '';
+                    let reviewedAt = lAct.reviewedAt || sAct.reviewedAt || null;
+
+                    if (sAct.status === 'VALIDADO_CEO' || sAct.status === 'RECHAZADO_CEO') {
+                        status = sAct.status;
+                        feedback = sAct.feedback || '';
+                        reviewedAt = sAct.reviewedAt || null;
+                    } else if (lAct.status === 'VALIDADO_CEO' || lAct.status === 'RECHAZADO_CEO') {
+                        status = lAct.status;
+                        feedback = lAct.feedback || '';
+                        reviewedAt = lAct.reviewedAt || null;
+                    }
+
+                    result.push({
+                        ...sAct,
+                        ...lAct,
+                        status,
+                        feedback,
+                        reviewedAt,
+                        url: lAct.url || sAct.url || lAct.driveUrl || sAct.driveUrl || '',
+                        driveUrl: lAct.driveUrl || sAct.driveUrl || lAct.url || sAct.url || ''
+                    });
+                }
+            });
+
+            return result;
+        };
 
         // Al recibir serverData de la red:
         const localEpoch = parseInt(localStorage.getItem('marsket_reset_epoch') || '0', 10);
@@ -575,7 +763,7 @@ const state = {
                             }
                         }
                     }
-                    const mergeArraysLocalDominant = (arrLocal, arrServer) => {
+                    const mergeArraysLocalDominant = (arrLocal, arrServer, arrName = '') => {
                         if (!Array.isArray(arrLocal)) arrLocal = [];
                         if (!Array.isArray(arrServer)) arrServer = [];
                         const serverMap = new Map();
@@ -590,7 +778,11 @@ const state = {
                             if (lItem.status === 'PENDIENTE' && sItem.status && sItem.status !== 'PENDIENTE') {
                                 status = sItem.status;
                             }
-                            return { ...sItem, ...lItem, read: isRead, status: status || lItem.status };
+                            let executedActions = lItem.executedActions;
+                            if (arrName === 'marketingCampaigns' || lItem.executedActions || sItem.executedActions) {
+                                executedActions = reconcileExecutedActions(lItem.executedActions, sItem.executedActions);
+                            }
+                            return { ...sItem, ...lItem, read: isRead, status: status || lItem.status, ...(executedActions ? { executedActions } : {}) };
                         });
                         const localIds = new Set(arrLocal.map(i => String(i?.id)));
                         const missingInLocal = arrServer.filter(i => i && i.id && !localIds.has(String(i.id)));
@@ -598,7 +790,7 @@ const state = {
                     };
                     const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'cart', 'bom', 'coordinatorReports'];
                     arraysToMerge.forEach(arrName => {
-                        merged.companies[k][arrName] = mergeArraysLocalDominant(lCo[arrName], sCo[arrName]);
+                        merged.companies[k][arrName] = mergeArraysLocalDominant(lCo[arrName], sCo[arrName], arrName);
                     });
                     merged.companies[k].balance = this.calculateBalance(merged.companies[k]);
                     if (lCo.nameChangeRequest && sCo.nameChangeRequest) {
@@ -675,7 +867,7 @@ const state = {
                             }
                         }
                     }
-                    const mergeArrays = (arrServer, arrLocal) => {
+                    const mergeArrays = (arrServer, arrLocal, arrName = '') => {
                         if (!Array.isArray(arrServer)) arrServer = [];
                         if (!Array.isArray(arrLocal)) arrLocal = [];
                         const localMap = new Map();
@@ -692,7 +884,11 @@ const state = {
                             if (sItem.status === 'PENDIENTE' && lItem.status && lItem.status !== 'PENDIENTE') {
                                 status = lItem.status;
                             }
-                            return { ...sItem, ...lItem, read: isRead, status: status || sItem.status };
+                            let executedActions = sItem.executedActions;
+                            if (arrName === 'marketingCampaigns' || sItem.executedActions || lItem.executedActions) {
+                                executedActions = reconcileExecutedActions(lItem.executedActions, sItem.executedActions);
+                            }
+                            return { ...sItem, ...lItem, read: isRead, status: status || sItem.status, ...(executedActions ? { executedActions } : {}) };
                         });
                         
                         const serverIds = new Set(arrServer.map(i => String(i?.id)));
@@ -702,7 +898,7 @@ const state = {
 
                     const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'cart', 'bom', 'coordinatorReports'];
                     arraysToMerge.forEach(arrName => {
-                        sCo[arrName] = mergeArrays(sCo[arrName], lCo[arrName]);
+                        sCo[arrName] = mergeArrays(sCo[arrName], lCo[arrName], arrName);
                     });
                     sCo.balance = this.calculateBalance(sCo);
                 }
@@ -884,6 +1080,53 @@ const state = {
             }
         } catch(e) {
             console.error("Error al actualizar PIN en /api/admin/credentials:", e);
+        } finally {
+            this.pausePolling = false;
+        }
+        return ok;
+    },
+    async updateCompanyPins(coId, newPins) {
+        const co = this.data.companies?.[coId];
+        if (!co || !newPins || typeof newPins !== 'object') return false;
+        clearTimeout(this.syncTimer);
+        this.pausePolling = true;
+
+        const cleanMap = {};
+        for (const role in newPins) {
+            const clean = String(newPins[role] || '').trim();
+            if (/^\d{4}$/.test(clean)) {
+                cleanMap[role] = clean;
+                this.setRolePin(co, role, clean, true);
+                if (role === 'AUXILIAR' && co.auxRoleRequest) {
+                    co.auxRoleRequest.pin = clean;
+                    co.auxRoleRequest.status = 'APROBADO';
+                }
+            }
+        }
+        this.data.lastUpdated = Date.now();
+        this.saveLocalOnly();
+
+        let ok = false;
+        try {
+            const token = this.getAuthToken(this.user, this.data);
+            const res = await fetch('/api/admin/credentials', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'X-Marsket-Auth': token } : {})
+                },
+                body: JSON.stringify({ type: 'company', id: coId, roles: cleanMap })
+            });
+            if (res.ok) {
+                const resJson = await res.json().catch(() => null);
+                if (resJson && resJson.newVersion) {
+                    this.data.version = resJson.newVersion;
+                    this.saveLocalOnly();
+                }
+                ok = true;
+            }
+        } catch(e) {
+            console.error("Error al actualizar PINs por lote en /api/admin/credentials:", e);
         } finally {
             this.pausePolling = false;
         }
@@ -1464,6 +1707,97 @@ const state = {
             });
         } catch(e) {
             console.warn("[ACTION] Error sincronizando devolución del CEO:", e);
+        }
+    },
+
+    async decideMktAction(campId, actId, approved, feedback = '') {
+        if (!this.user || !this.user.coId || (this.user.role !== 'CEO' && !this.user.admin && !this.user.isCoordinator)) return;
+        const coId = this.user.coId;
+        const co = this.data.companies?.[coId];
+        if (!co || !Array.isArray(co.marketingCampaigns)) return;
+
+        const camp = co.marketingCampaigns.find(c => String(c.id) === String(campId));
+        if (!camp || !Array.isArray(camp.executedActions)) return;
+
+        const act = camp.executedActions.find(a => String(a.id) === String(actId));
+        if (!act) return;
+
+        act.status = approved ? 'VALIDADO_CEO' : 'RECHAZADO_CEO';
+        act.reviewedAt = Date.now();
+        act.feedback = approved ? '' : (feedback || 'Revisión requerida por CEO');
+
+        if (typeof telemetry !== 'undefined' && telemetry.log) {
+            telemetry.log(approved ? "CEO_MKT_ACCION_APROBADA" : "CEO_MKT_ACCION_RECHAZADA", `Acción publicitaria ${act.title}: ${approved ? 'Aprobada y elevada a Liderazgo' : 'Devuelta a Marketing'}`);
+        }
+
+        if (typeof ui !== 'undefined' && typeof ui.pushNotification === 'function') {
+            if (approved) {
+                ui.pushNotification(coId, 'MARKETING', `El CEO ha VALIDADO la acción publicitaria "${act.title}". Elevada al docente de Liderazgo y Coordinación.`, 'success');
+            } else {
+                ui.pushNotification(coId, 'MARKETING', `El CEO ha DEVUELTO la acción publicitaria "${act.title}". Motivo: ${act.feedback}`, 'error');
+            }
+        }
+
+        this.save();
+        if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
+            ui.render();
+            ui.notify(approved ? "✅ Acción publicitaria validada y elevada a Liderazgo y Coordinación." : "↩️ Acción publicitaria devuelta a Marketing para subsanación.", approved ? "success" : "warning");
+        }
+
+        try {
+            await this.executeAction('UPDATE_MARKETING', {
+                decideAction: { campId, actId, approved, feedback: act.feedback }
+            });
+        } catch(e) {
+            console.warn("[ACTION] Error sincronizando decisión del CEO sobre acción publicitaria:", e);
+        }
+    },
+
+    async resubmitMktAction(campId, actId, newDriveUrl) {
+        if (!this.user || !this.user.coId) return;
+        const coId = this.user.coId;
+        const co = this.data.companies?.[coId];
+        if (!co || !Array.isArray(co.marketingCampaigns)) return;
+
+        const camp = co.marketingCampaigns.find(c => String(c.id) === String(campId));
+        if (!camp || !Array.isArray(camp.executedActions)) return;
+
+        const act = camp.executedActions.find(a => String(a.id) === String(actId));
+        if (!act) return;
+
+        const totalAllowed = camp.totalActions || 3;
+        if ((camp.executedActions || []).length > totalAllowed) {
+            if (typeof ui !== 'undefined' && ui.notify) ui.notify("Cupo de acciones excedido en este paquete.", "error");
+            return;
+        }
+
+        act.url = newDriveUrl;
+        act.driveUrl = newDriveUrl;
+        act.status = 'PENDIENTE_CEO';
+        act.date = new Date().toLocaleDateString();
+        act.resubmittedAt = Date.now();
+
+        if (typeof telemetry !== 'undefined' && telemetry.log) {
+            telemetry.log("MKT_ACCION_SUBSANADA", `Marketing ha subsanado y reenviado al CEO la acción: ${act.title}`);
+        }
+
+        if (typeof ui !== 'undefined' && typeof ui.pushNotification === 'function') {
+            ui.pushNotification(coId, 'CEO', `Marketing ha subsanado y reenviado la acción "${act.title}" para tu revisión.`, 'info');
+        }
+
+        this.save();
+        if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
+            ui.render();
+            ui.notify("✅ Acción publicitaria subsanada y reenviada al CEO.", "success");
+        }
+
+        try {
+            await this.executeAction('UPDATE_MARKETING', {
+                campaignId: campId,
+                actionItem: act
+            });
+        } catch(e) {
+            console.warn("[ACTION] Error sincronizando reenvío de acción publicitaria:", e);
         }
     },
 

@@ -157,7 +157,20 @@ export async function handleCredentials(context) {
                 co.authVault = co.authVault || { code: '', roles: {} };
                 co.authVault.roles = co.authVault.roles || {};
 
-                if (role) {
+                if (body.roles && typeof body.roles === 'object') {
+                    for (const r in body.roles) {
+                        const cleanPin = String(body.roles[r] || '').trim();
+                        if (/^\d{4}$/.test(cleanPin)) {
+                            co.authVault.roles[r] = encodeSecret(cleanPin, env?.AUTH_SECRET);
+                            co.roles = co.roles || {};
+                            co.roles[r] = 'PROTECTED';
+                            if (r === 'AUXILIAR' && co.auxRoleRequest) {
+                                co.auxRoleRequest.pin = cleanPin;
+                                co.auxRoleRequest.status = 'APROBADO';
+                            }
+                        }
+                    }
+                } else if (role) {
                     const cleanPin = String(newPin || '').trim();
                     if (role === 'AUXILIAR' && cleanPin === '') {
                         delete co.authVault.roles['AUXILIAR'];

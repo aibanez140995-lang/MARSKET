@@ -1297,7 +1297,19 @@ try {
                     $co['authVault'] = ['code' => '', 'roles' => []];
                 }
 
-                if ($role) {
+                if (!empty($body['roles']) && is_array($body['roles'])) {
+                    foreach ($body['roles'] as $r => $pin) {
+                        $cleanPin = trim((string)$pin);
+                        if (preg_match('/^\d{4}$/', $cleanPin)) {
+                            $co['authVault']['roles'][$r] = encodeSecret($cleanPin);
+                            $co['roles'][$r] = 'PROTECTED';
+                            if ($r === 'AUXILIAR' && isset($co['auxRoleRequest']) && is_array($co['auxRoleRequest'])) {
+                                $co['auxRoleRequest']['pin'] = $cleanPin;
+                                $co['auxRoleRequest']['status'] = 'APROBADO';
+                            }
+                        }
+                    }
+                } elseif ($role) {
                     $cleanPin = trim($newPin);
                     if ($role === 'AUXILIAR' && $cleanPin === '') {
                         unset($co['authVault']['roles']['AUXILIAR'], $co['roles']['AUXILIAR']);

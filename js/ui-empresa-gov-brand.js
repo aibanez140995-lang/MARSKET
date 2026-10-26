@@ -696,15 +696,58 @@ Object.assign(ui, {
                 ? 'bg-mars-green/20 text-mars-green border-mars-green' 
                 : (status === 'DENEGADO' ? 'bg-mars-magenta/20 text-mars-magenta border-mars-magenta' : 'bg-mars-yellow/20 text-mars-yellow border-mars-yellow animate-pulse');
 
-            const executedListHtml = (c.executedActions || []).map((act, idx) => `
-                <div class="bg-slate-900/90 border border-slate-800 p-2.5 text-xs flex justify-between items-center gap-2">
-                    <div class="overflow-hidden min-w-0">
-                        <span class="text-mars-cyan font-bold uppercase block truncate">#${idx + 1}: ${this.escapeHTML(act.title)}</span>
+            const isCEO = Boolean(state.user && (state.user.role === 'CEO' || state.user.admin || state.user.isCoordinator));
+            const isMarketing = Boolean(state.user && (state.user.role === 'MARKETING' || state.user.admin || state.user.isCoordinator));
+
+            const executedListHtml = (c.executedActions || []).map((act, idx) => {
+                const actId = act.id || ('ACT-' + idx);
+                const actStatus = act.status || 'VALIDADO_CEO';
+                const actFeedback = act.feedback || '';
+                const actUrl = act.url || act.driveUrl || '';
+                const safeUrl = actUrl ? encodeURI(actUrl).replace(/"/g, '&quot;') : '';
+
+                let statusBadge = '';
+                if (actStatus === 'PENDIENTE_CEO') {
+                    statusBadge = `<span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider">[⏳ PENDIENTE DE APROBACIÓN CEO]</span>`;
+                } else if (actStatus === 'VALIDADO_CEO') {
+                    statusBadge = `<span class="bg-mars-green/20 text-mars-green border border-mars-green/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider">[✓ VALIDADA Y ELEVADA A LIDERAZGO Y COORDINACIÓN]</span>`;
+                } else if (actStatus === 'RECHAZADO_CEO') {
+                    statusBadge = `<span class="bg-mars-magenta/20 text-mars-magenta border border-mars-magenta/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider">[❌ DEVUELTA POR CEO]</span>`;
+                }
+
+                let actionControls = '';
+                if (actStatus === 'PENDIENTE_CEO' && isCEO) {
+                    actionControls = `
+                        <div class="flex items-center gap-1.5 shrink-0 flex-wrap">
+                            <button type="button" onclick="ui.decideMktAction('${this.escapeHTML(c.id)}', '${this.escapeHTML(actId)}', true)" class="min-h-[44px] bg-mars-green text-black px-3 py-1.5 text-xs font-black uppercase hover:bg-white transition-all shadow-sm">[✓ APROBAR ACCIÓN]</button>
+                            <button type="button" onclick="ui.modalRejectMktAction('${this.escapeHTML(c.id)}', '${this.escapeHTML(actId)}')" class="min-h-[44px] bg-mars-magenta text-white px-3 py-1.5 text-xs font-black uppercase hover:bg-white hover:text-black transition-all shadow-sm">[↩ DEVOLVER]</button>
+                        </div>
+                    `;
+                } else if (actStatus === 'RECHAZADO_CEO' && isMarketing) {
+                    actionControls = `
+                        <div class="shrink-0">
+                            <button type="button" onclick="ui.modalResubmitMktAction('${this.escapeHTML(c.id)}', '${this.escapeHTML(actId)}')" class="min-h-[44px] bg-mars-yellow text-black px-3 py-1.5 text-xs font-black uppercase hover:bg-white transition-all shadow-sm">[✏️ Subsanar Enlace y Reenviar al CEO]</button>
+                        </div>
+                    `;
+                }
+
+                return `
+                <div class="bg-slate-900/90 border border-slate-800 p-3 text-xs flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                    <div class="overflow-hidden min-w-0 space-y-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-mars-cyan font-bold uppercase truncate">#${idx + 1}: ${this.escapeHTML(act.title)}</span>
+                            ${statusBadge}
+                        </div>
                         <span class="text-slate-300 italic block truncate">"${this.escapeHTML(act.desc)}"</span>
+                        ${act.date ? `<span class="text-[10px] text-slate-400 block font-mono">Fecha: ${this.escapeHTML(act.date)}</span>` : ''}
+                        ${actFeedback ? `<div class="text-[11px] text-mars-magenta font-mono">Motivo devolución CEO: "${this.escapeHTML(actFeedback)}"</div>` : ''}
                     </div>
-                    ${act.url ? `<a href="${this.escapeHTML(act.url)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] flex items-center bg-mars-cyan/20 text-mars-cyan border border-mars-cyan px-3 py-1.5 text-xs font-bold uppercase shrink-0 hover:bg-mars-cyan hover:text-black">Ver Link</a>` : ''}
-                </div>
-            `).join('');
+                    <div class="flex items-center gap-2 flex-wrap shrink-0">
+                        ${safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 px-3 py-1.5 text-xs font-bold uppercase hover:bg-cyan-900/50">Abrir en Drive ↗</a>` : ''}
+                        ${actionControls}
+                    </div>
+                </div>`;
+            }).join('');
 
             return `
             <div class="bg-black/70 border ${status === 'ACTIVO' ? 'border-mars-green/50' : 'border-mars-border'} p-4 mb-3">
@@ -1109,9 +1152,17 @@ Object.assign(ui, {
         }
 
         const actionsOpts = standardizedActions.map(act => `<option value="${this.escapeHTML(act)}">${this.escapeHTML(act)}</option>`).join('');
+        const doc12Btn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_12_ACCION_MKT', '📄 Modelo Oficial de Acción Publicitaria (Hacer copia)') : '';
 
         const html = `
             <p class="text-xs text-slate-200 mb-3">Registrando acción <strong>#${used + 1} de ${total}</strong> del paquete <span class="text-mars-yellow font-bold">${this.escapeHTML(camp.packageName)}</span>.</p>
+            <div class="mb-3">
+                ${doc12Btn}
+            </div>
+            <div class="bg-amber-950/30 border border-amber-500/40 p-2.5 text-xs text-amber-200 mb-3 space-y-1">
+                <p>ℹ️ <strong>Flujo Oficial de Gobernanza:</strong></p>
+                <p>La acción publicitaria será enviada a <strong>Dirección General (CEO)</strong> para su revisión y validación previa. Una vez validada, se elevará automáticamente al docente de Liderazgo y a Coordinación.</p>
+            </div>
             <div class="space-y-3">
                 <div>
                     <label for="mkt-action-type" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Acción Estandarizada del Paquete</label>
@@ -1122,11 +1173,11 @@ Object.assign(ui, {
                 <div>
                     <label for="mkt-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Enlace a Evidencia Oficial (Google Drive / Docs)</label>
                     <input type="url" id="mkt-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono" required>
-                    <p class="text-[10px] text-slate-400 mt-1">Adjunta exclusivamente la URL verificada de Google Drive con permisos de lectura.</p>
+                    <p class="text-[10px] text-slate-400 mt-1">Adjunta exclusivamente la URL verificada de Google Drive de la Ficha Técnica (DOC_12) con permisos abiertos de lectura.</p>
                 </div>
             </div>
         `;
-        const actions = `<button type="button" onclick="ui.confirmConsumeMktAction('${this.escapeHTML(camp.id)}')" class="min-h-[44px] bg-mars-cyan text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-all">Publicar Acción</button>`;
+        const actions = `<button type="button" onclick="ui.confirmConsumeMktAction('${this.escapeHTML(camp.id)}')" class="min-h-[44px] bg-mars-cyan text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-all">Entregar Acción al CEO</button>`;
         this.showModal("Ejecutar Acción Publicitaria", html, actions);
     },
 
@@ -1150,19 +1201,138 @@ Object.assign(ui, {
         const camp = co.marketingCampaigns.find(c => String(c.id) === String(campId));
         if (!camp) return;
 
-        camp.executedActions = camp.executedActions || [];
-        camp.executedActions.push({
+        const currentUsed = (camp.executedActions || []).length;
+        const totalAllowed = camp.totalActions || 3;
+        if (currentUsed >= totalAllowed) return this.notify("Ya has agotado el cupo de acciones de este paquete.", "warning");
+
+        const newAction = {
             id: 'ACT-' + Date.now(),
             title: actionType,
             desc: 'Acción oficial de marketing: ' + actionType,
             url: url,
-            date: new Date().toLocaleDateString()
-        });
+            driveUrl: url,
+            date: new Date().toLocaleDateString(),
+            status: 'PENDIENTE_CEO',
+            feedback: '',
+            createdAt: Date.now()
+        };
+
+        camp.executedActions = camp.executedActions || [];
+        camp.executedActions.push(newAction);
+
+        ui.pushNotification(state.user.coId, 'CEO', `Marketing ha presentado la acción "${actionType}" para su revisión y validación.`, 'info');
 
         state.save();
         this.closeModal();
-        this.notify("✅ Acción publicitaria publicada.", "success");
+        this.notify("✅ Acción publicitaria entregada al CEO para su validación.", "success");
         this.render();
+
+        try {
+            state.executeAction('UPDATE_MARKETING', {
+                campaignId: campId,
+                actionItem: newAction
+            });
+        } catch(e) {
+            console.warn("[ACTION] Error sincronizando entrega de acción publicitaria:", e);
+        }
+    },
+
+    decideMktAction(campId, actId, approved) {
+        if (approved) {
+            state.decideMktAction(campId, actId, true);
+        } else {
+            this.modalRejectMktAction(campId, actId);
+        }
+    },
+
+    modalRejectMktAction(campId, actId) {
+        if (!state.user) return;
+        const reasons = (typeof CEO_RETURN_REASONS !== 'undefined' ? CEO_RETURN_REASONS : [
+            { id: "ENLACE_INVALIDO", label: "Enlace a Google Drive inexistente o con formato incorrecto" },
+            { id: "PERMISOS_BLOQUEADOS", label: "Documento sin permisos de acceso/lectura para el equipo docente" },
+            { id: "PLANTILLA_INCORRECTA", label: "No se ha utilizado la plantilla oficial corporativa/curricular" },
+            { id: "CHECKLIST_INCOMPLETO", label: "Faltan apartados obligatorios según la guía de la materia" },
+            { id: "DISCREPANCIA_DATOS", label: "Discrepancia entre datos de la app y el documento adjunto" },
+            { id: "REVISION_PENDIENTE", label: "Requiere subsanación técnica interna antes de elevar a evaluación" }
+        ]);
+
+        const opts = reasons.map(r => `<option value="${this.escapeHTML(r.label)}">${this.escapeHTML(r.label)}</option>`).join('');
+
+        const html = `
+            <div class="space-y-3 font-mono text-xs">
+                <div class="bg-mars-magenta/10 border-l-4 border-mars-magenta p-3">
+                    <p class="text-white font-bold mb-1">Devolución de Acción Publicitaria al Dpto. Marketing</p>
+                    <p class="text-slate-300">Selecciona o especifica el motivo por el cual la acción publicitaria no puede ser validada todavía.</p>
+                </div>
+                <div>
+                    <label for="reject-mkt-reason-select" class="text-xs text-mars-magenta uppercase font-bold block mb-1">Motivo tipificado</label>
+                    <select id="reject-mkt-reason-select" class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white outline-none focus:border-white" onchange="document.getElementById('reject-mkt-custom').value = this.value;">
+                        ${opts}
+                    </select>
+                </div>
+                <div>
+                    <label for="reject-mkt-custom" class="text-xs text-slate-300 uppercase font-bold block mb-1">Observaciones o instrucción de subsanación</label>
+                    <input type="text" id="reject-mkt-custom" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-magenta" value="${this.escapeHTML(reasons[0].label)}">
+                </div>
+            </div>
+        `;
+        const actions = `
+            <button type="button" onclick="ui.confirmRejectMktAction('${this.escapeHTML(campId)}', '${this.escapeHTML(actId)}')" class="min-h-[44px] bg-mars-magenta text-white px-5 py-2 text-xs font-black uppercase hover:bg-white hover:text-black transition-all">Confirmar Devolución</button>
+        `;
+        this.showModal("Devolver Acción al Dpto. Marketing", html, actions);
+    },
+
+    confirmRejectMktAction(campId, actId) {
+        const el = document.getElementById('reject-mkt-custom');
+        const reason = el ? this.cleanInput(el.value) : 'Revisión requerida por CEO';
+        this.closeModal();
+        state.decideMktAction(campId, actId, false, reason);
+    },
+
+    modalResubmitMktAction(campId, actId) {
+        if (!state.user) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co || !Array.isArray(co.marketingCampaigns)) return;
+        const camp = co.marketingCampaigns.find(c => String(c.id) === String(campId));
+        if (!camp || !Array.isArray(camp.executedActions)) return;
+        const act = camp.executedActions.find(a => String(a.id) === String(actId));
+        if (!act) return;
+
+        const doc12Btn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_12_ACCION_MKT', '📄 Modelo Oficial de Acción Publicitaria (Hacer copia)') : '';
+        const currentUrl = act.url || act.driveUrl || '';
+
+        const html = `
+            <div class="space-y-3 font-mono text-xs">
+                <div class="bg-amber-950/30 border-l-4 border-amber-500 p-3">
+                    <p class="text-white font-bold mb-1">Subsanación de Acción: ${this.escapeHTML(act.title)}</p>
+                    <p class="text-slate-300">Motivo de devolución del CEO: <span class="text-mars-magenta font-bold">"${this.escapeHTML(act.feedback || 'Sin motivo especificado')}"</span></p>
+                </div>
+                <div class="mb-2">
+                    ${doc12Btn}
+                </div>
+                <div>
+                    <label for="resubmit-mkt-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Nuevo enlace corregido de Google Drive</label>
+                    <input type="url" id="resubmit-mkt-drive-url" value="${this.escapeHTML(currentUrl)}" placeholder="https://docs.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                    <p class="text-[10px] text-slate-400 mt-1">Verifica que el documento tenga permisos de lectura abiertos.</p>
+                </div>
+            </div>
+        `;
+        const actions = `
+            <button type="button" onclick="ui.confirmResubmitMktAction('${this.escapeHTML(campId)}', '${this.escapeHTML(actId)}')" class="min-h-[44px] bg-mars-yellow text-black px-5 py-2 text-xs font-black uppercase hover:bg-white transition-all">Reenviar al CEO</button>
+        `;
+        this.showModal("Subsanar y Reenviar Acción", html, actions);
+    },
+
+    confirmResubmitMktAction(campId, actId) {
+        const el = document.getElementById('resubmit-mkt-drive-url');
+        if (!el) return;
+        const newUrl = this.cleanInput(el.value);
+        if (!newUrl) return this.notify("Debes indicar la URL de Google Drive subsanada.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(newUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive.", "error");
+        }
+        this.closeModal();
+        state.resubmitMktAction(campId, actId, newUrl);
     },
 
     saveBrandIdentityText() {

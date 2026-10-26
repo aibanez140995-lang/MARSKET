@@ -1,5 +1,5 @@
 // js/ui-docente-management.js
-// --- MÓDULO DOCENTE: GESTIÓN, LLAVERO MAESTRO, ADUANAS Y REGISTRO MERCANTIL (v1.1.28) ---
+// --- MÓDULO DOCENTE: GESTIÓN, LLAVERO MAESTRO, ADUANAS Y REGISTRO MERCANTIL (v1.1.32) ---
 
 Object.assign(ui, {
     pinsVisible: false,
@@ -371,6 +371,7 @@ Object.assign(ui, {
                     </div>
                     <div class="flex items-center gap-2 flex-wrap">
                         ${isCoord ? `<button id="toggle-pins-btn" onclick="ui.togglePinsVisibility()" class="min-h-[44px] bg-slate-800 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase hover:bg-mars-cyan hover:text-black transition-colors shrink-0">${this.pinsVisible ? '[ 🔒 Ocultar PINs ]' : '[ 👁️ Revelar PINs ]'}</button>` : ''}
+                        ${isCoord ? `<button onclick="ui.promptRegenerateAllStartupsPins()" id="btn-regen-all-pins" title="Asignar nuevos PINs aleatorios a todas las empresas de la misión" class="min-h-[44px] bg-amber-400 text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0 flex items-center gap-1.5 shadow-[0_0_10px_rgba(251,191,36,0.2)]">🎲 PINs Aleatorios (Todas)</button>` : ''}
                         ${isCoord ? `<button onclick="ui.exportTeacherBadgesPDF()" class="min-h-[44px] bg-[#00F0FF] text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">[🪪 Claustro PDF]</button>` : ''}
                         ${isCoord ? `<button onclick="ui.generateAllCompaniesCredentialCards()" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-4 py-2 text-xs font-black uppercase transition-colors shrink-0">[🪪 TODAS LAS CREDENCIALES PDF]</button>` : ''}
                         ${isCoord ? `<button onclick="ui.exportCredentialsCSV()" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">[📥 Exportar Llavero CSV]</button>` : ''}
@@ -414,7 +415,11 @@ Object.assign(ui, {
                                         return `
                                         <td class="py-3 pr-2">
                                             <div class="flex flex-col items-center gap-1.5">
-                                                ${isCoord ? `<input type="${this.pinsVisible ? 'text' : 'password'}" id="pin-input-${this.escapeHTML(cid)}-${rol}" aria-label="PIN ${rol} de ${this.escapeHTML(co.name)}" maxlength="4" value="${this.escapeHTML(pinVal)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', '${rol}', this.value)" class="min-h-[44px] w-14 bg-black border border-mars-border text-center text-mars-cyan font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">` : `<span class="text-slate-300">****</span>`}
+                                                ${isCoord ? `
+                                                <div class="flex items-center gap-1">
+                                                    <input type="${this.pinsVisible ? 'text' : 'password'}" id="pin-input-${this.escapeHTML(cid)}-${rol}" aria-label="PIN ${rol} de ${this.escapeHTML(co.name)}" maxlength="4" value="${this.escapeHTML(pinVal)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', '${rol}', this.value)" class="min-h-[44px] w-14 bg-black border border-mars-border text-center text-mars-cyan font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">
+                                                    <button onclick="ui.regenerateRolePin('${this.escapeHTML(cid)}', '${rol}')" id="role-pin-regen-${this.escapeHTML(cid)}-${rol}" aria-label="Nuevo PIN aleatorio para ${rol}" title="Generar nuevo PIN aleatorio para ${rol}" class="min-h-[44px] min-w-[36px] bg-slate-800 text-slate-300 hover:text-black hover:bg-amber-400 border border-slate-700 px-1 py-1 flex items-center justify-center transition-colors text-xs font-bold disabled:opacity-50">🎲</button>
+                                                </div>` : `<span class="text-slate-300">****</span>`}
                                                 ${isCoord ? `<button onclick="ui.generateRoleCredentialCard('${this.escapeHTML(cid)}', '${rol}')" aria-label="Credencial PDF ${rol}" title="Emitir Credencial PDF ${rol}" class="min-h-[44px] w-full inline-flex items-center justify-center text-xs font-mono font-bold bg-slate-900 border border-slate-700 hover:border-mars-cyan text-slate-300 hover:text-mars-cyan px-2 py-1 rounded-sm transition-colors whitespace-nowrap">🪪 ${rol}</button>` : ''}
                                             </div>
                                         </td>`;
@@ -424,6 +429,7 @@ Object.assign(ui, {
                                             ${isCoord ? `
                                             <div class="flex items-center gap-1">
                                                 <input type="${this.pinsVisible ? 'text' : 'password'}" id="pin-input-${this.escapeHTML(cid)}-AUXILIAR" aria-label="PIN AUXILIAR de ${this.escapeHTML(co.name)}" maxlength="4" placeholder="----" value="${this.escapeHTML(auxPin)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', 'AUXILIAR', this.value)" class="min-h-[44px] w-14 bg-black border ${auxPin ? 'border-mars-green text-mars-green' : 'border-slate-700 text-slate-400'} text-center font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">
+                                                ${auxPin ? `<button onclick="ui.regenerateRolePin('${this.escapeHTML(cid)}', 'AUXILIAR')" id="role-pin-regen-${this.escapeHTML(cid)}-AUXILIAR" aria-label="Nuevo PIN aleatorio para AUXILIAR" title="Generar nuevo PIN aleatorio para AUXILIAR" class="min-h-[44px] min-w-[36px] bg-slate-800 text-slate-300 hover:text-black hover:bg-amber-400 border border-slate-700 px-1 py-1 flex items-center justify-center transition-colors text-xs font-bold disabled:opacity-50">🎲</button>` : ''}
                                                 <span class="text-xs text-slate-300 uppercase">[${this.escapeHTML(auxDept)}]</span>
                                             </div>` : `<span class="text-slate-300">****</span>`}
                                             ${isCoord && auxPin ? `<button onclick="ui.generateRoleCredentialCard('${this.escapeHTML(cid)}', 'AUXILIAR')" aria-label="Credencial PDF AUXILIAR" title="Emitir Credencial PDF AUXILIAR" class="min-h-[44px] w-full inline-flex items-center justify-center text-xs font-mono font-bold bg-slate-900 border border-slate-700 hover:border-mars-green text-slate-300 hover:text-mars-green px-2 py-1 rounded-sm transition-colors whitespace-nowrap">🪪 AUX</button>` : ''}
@@ -431,6 +437,7 @@ Object.assign(ui, {
                                     </td>
                                     <td class="py-3">
                                         <div class="flex items-center gap-2">
+                                            ${isCoord ? `<button onclick="ui.regenerateCompanyPins('${this.escapeHTML(cid)}')" id="co-pins-regen-${this.escapeHTML(cid)}" title="Generar nuevos PINs aleatorios de 4 dígitos para todos los roles de ${this.escapeHTML(co.name)}" class="min-h-[44px] bg-amber-400/20 border border-amber-400 text-amber-300 hover:bg-amber-400 hover:text-black font-bold text-xs px-2.5 py-1 transition-colors whitespace-nowrap flex items-center gap-1">🎲 PINs</button>` : ''}
                                             ${isCoord ? `<button onclick="ui.generateCompanyCredentialCards('${this.escapeHTML(cid)}')" title="Emitir todas las credenciales de flota de ${this.escapeHTML(co.name)}" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold text-xs px-2.5 py-1 transition-colors whitespace-nowrap">🪪 Flota PDF</button>` : ''}
                                             ${isCoord ? `<button onclick="ui.confirmAction('Eliminar Startup', '¿Borrar startup irreversiblemente?', () => ui.deleteStartup('${this.escapeHTML(cid)}'), 'Eliminar')" class="min-h-[44px] text-mars-magenta font-bold hover:underline px-2">Eliminar</button>` : `<span class="text-slate-400">Bloqueado</span>`}
                                         </div>
@@ -737,6 +744,87 @@ Object.assign(ui, {
         }
     },
 
+
+    async regenerateRolePin(cid, role) {
+        if (!state.user || !state.user.role.startsWith('COORD')) return;
+        const co = state.data.companies[cid];
+        if (!co) return;
+
+        const allRoles = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'];
+        const existingPins = allRoles.map(r => state.getRolePin(co, r)).filter(Boolean);
+        const newPin = state.generateRandomPin(existingPins);
+
+        const btnEl = document.getElementById(`role-pin-regen-${cid}-${role}`);
+        const inputEl = document.getElementById(`pin-input-${cid}-${role}`);
+        if (btnEl) btnEl.disabled = true;
+        if (inputEl) inputEl.disabled = true;
+
+        try {
+            const ok = await state.updatePin(cid, role, newPin);
+            if (inputEl) {
+                inputEl.value = newPin;
+                inputEl.classList.add('border-amber-400', 'shadow-[0_0_10px_rgba(251,191,36,0.6)]');
+                setTimeout(() => {
+                    inputEl.classList.remove('border-amber-400', 'shadow-[0_0_10px_rgba(251,191,36,0.6)]');
+                }, 2000);
+            }
+            if (ok) {
+                this.notify(`✅ Nuevo PIN para ${role} (${co.name}): ${newPin} sincronizado en D1.`, "success", 7000);
+            } else {
+                this.notify(`⚠️ Nuevo PIN para ${role} (${co.name}): ${newPin} guardado localmente.`, "warning", 7000);
+            }
+        } finally {
+            if (btnEl) btnEl.disabled = false;
+            if (inputEl) inputEl.disabled = false;
+        }
+    },
+
+    async regenerateCompanyPins(cid) {
+        if (!state.user || !state.user.role.startsWith('COORD')) return;
+        const co = state.data.companies[cid];
+        if (!co) return;
+
+        const newPins = state.generateCompanyPins(co);
+        const btnEl = document.getElementById(`co-pins-regen-${cid}`);
+        if (btnEl) btnEl.disabled = true;
+
+        try {
+            const ok = await state.updateCompanyPins(cid, newPins);
+            this.render();
+            if (ok) {
+                this.notify(`✅ Nuevos PINs de flota generados y sincronizados para ${co.name}.`, "success");
+            } else {
+                this.notify(`⚠️ Nuevos PINs generados localmente para ${co.name}; pendiente de D1.`, "warning");
+            }
+        } finally {
+            if (btnEl) btnEl.disabled = false;
+        }
+    },
+
+    promptRegenerateAllStartupsPins() {
+        if (!state.user || !state.user.role.startsWith('COORD')) return;
+        const totalCos = Object.keys(state.data.companies).length;
+        if (totalCos === 0) return this.notify("No hay startups registradas.", "warning");
+
+        const msg = `Se generarán nuevos PINs de 4 dígitos totalmente aleatorios y distintos para todos los roles de las ${totalCos} startups registradas en la misión. Esta acción evitará claves por defecto (1234). ¿Deseas continuar?`;
+        this.confirmAction(
+            "Regenerar PINs de TODAS las Startups",
+            msg,
+            async () => {
+                let successCount = 0;
+                for (const cid of Object.keys(state.data.companies)) {
+                    const co = state.data.companies[cid];
+                    const newPins = state.generateCompanyPins(co);
+                    const ok = await state.updateCompanyPins(cid, newPins);
+                    if (ok) successCount++;
+                }
+                this.render();
+                this.notify(`✅ Asignados nuevos PINs aleatorios a ${successCount}/${totalCos} startups.`, "success");
+            },
+            "Regenerar Todos los PINs"
+        );
+    },
+
     exportCredentialsCSV() {
         if (!state.user || !state.user.role.startsWith('COORD')) return;
         let csv = "Empresa,Clase,Codigo_Empresa,PIN_CEO,PIN_TECNICO,PIN_FINANZAS,PIN_MARKETING,PIN_OPERACIONES_IA,PIN_AUXILIAR,DPTO_AUXILIAR\n";
@@ -962,9 +1050,14 @@ Object.assign(ui, {
                 <input type="text" id="new-cat-unit" placeholder="Unidad (Ej: Unidad, Gramo)" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white mb-2 outline-none focus:border-mars-cyan">
                 <label for="new-cat-category" class="text-xs text-slate-300 uppercase font-bold block mb-1">Categoría</label>
                 <select id="new-cat-category" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white mb-2 outline-none focus:border-mars-cyan">
+                    <option value="Cuerpo del Cohete (Estructura Principal)">Cuerpo del Cohete (Estructura Principal)</option>
+                    <option value="Propulsión y Reactivos">Propulsión y Reactivos</option>
+                    <option value="Aerodinámica">Aerodinámica</option>
+                    <option value="Sistema de Reacción">Sistema de Reacción</option>
+                    <option value="Sellado y Unión (Estanquidad y Montaje)">Sellado y Unión (Estanquidad y Montaje)</option>
+                    <option value="Elementos Extra">Elementos Extra</option>
                     <option value="Fuselaje">Fuselaje</option>
                     <option value="Propulsión">Propulsión</option>
-                    <option value="Aerodinámica">Aerodinámica</option>
                     <option value="Sellado">Sellado</option>
                     <option value="Externo">Externo</option>
                 </select>

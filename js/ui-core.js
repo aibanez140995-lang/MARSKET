@@ -1,5 +1,5 @@
 // js/ui-core.js
-// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.29) ---
+// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.36) ---
 
 // Constante global GOOGLE_DRIVE_REGEX centralizada en js/config.js
 
@@ -907,7 +907,7 @@ const ui = {
                         <span class="text-[10px] bg-black text-mars-green border border-mars-green/40 px-2 py-0.5 font-bold uppercase">MANDO EDUCATIVO</span>
                     </div>
                     <p class="text-white text-xs font-semibold leading-relaxed">
-                        Supervisar el aprendizaje competencial de las 6 materias LOMLOE, calificar evidencias en Google Drive con rúbricas y regular aduanas y gobernanza.
+                        Supervisar el aprendizaje competencial de las 6 materias LOMLOE, calificar evidencias en Google Drive con rúbricas, supervisar acciones publicitarias y regular aduanas y gobernanza.
                     </p>
                 </div>
 
@@ -929,6 +929,7 @@ const ui = {
                     <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
                         <li>[ ] <strong>Llavero y PINs:</strong> Entra en <strong>Startups</strong> para consultar o imprimir las credenciales de los equipos.</li>
                         <li>[ ] <strong>Aduana y B2B:</strong> Revisa y aprueba contratos entre startups o solicitudes de I+D tras abrir su enlace de Google Drive.</li>
+                        <li>[ ] <strong>Acciones Publicitarias [LYE & Coord]:</strong> Supervisa en el panel de recepción docente las acciones publicitarias validadas por el CEO con su enlace a Drive.</li>
                         <li>[ ] <strong>Evaluación Curricular:</strong> Abre el documento del alumno y califica con la rúbrica oficial (FYQ, LYE, ECO, MAT, LEN).</li>
                     </ul>
                     <div class="pt-2 flex flex-wrap gap-2">
@@ -981,10 +982,11 @@ const ui = {
         switch(role) {
             case 'CEO':
                 p1Acceso = 'Introduce el <strong>Código de Empresa</strong>, elige <strong>Dirección General (CEO)</strong> y marca tu <strong>PIN</strong>.';
-                p2Pantalla = 'Tu saldo en euros virtuales (<strong>€v</strong>) en la barra superior, <strong>[🔐 Bóveda Órdenes]</strong> y <strong>[📋 Dossier (19)]</strong>.';
+                p2Pantalla = 'Tu saldo en euros virtuales (<strong>€v</strong>) en la barra superior, <strong>[🔐 Bóveda Órdenes]</strong>, <strong>[📋 Dossier (19)]</strong> y <strong>[🎨 Marca & MKT]</strong>.';
                 p3Accion = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
                     <li>[ ] Entra en <strong>[📋 Dossier (19)]</strong>, abre los enlaces de tu equipo y pulsa <strong>[✓ APROBAR Y ELEVAR A DOCENTE]</strong> o <strong>[↩ DEVOLVER CON MOTIVO]</strong>.</li>
+                    <li>[ ] Entra en <strong>[🎨 Marca & MKT]</strong> para revisar las acciones publicitarias presentadas por Marketing: pulsa <strong>[✓ APROBAR ACCIÓN]</strong> para elevarlas a Liderazgo y Coordinación, o devuélvelas con motivo.</li>
                     <li>[ ] Entra en <strong>[⚖️ Gobernanza]</strong> para convocar votaciones de equipo o avalar el eslogan hacia el profesorado.</li>
                     <li>[ ] Revisa el saldo corporativo en el HUD antes de validar gastos grandes.</li>
                 </ul>`;
@@ -1035,11 +1037,12 @@ const ui = {
 
             case 'MARKETING':
                 p1Acceso = 'Introduce el <strong>Código de Empresa</strong>, elige <strong>Dpto. Marketing</strong> e introduce tu <strong>PIN</strong>.';
-                p2Pantalla = 'El panel de identidad corporativa en <strong>[🎨 Marca & MKT]</strong> y el catálogo de campañas publicitarias.';
+                p2Pantalla = 'El panel de identidad corporativa en <strong>[🎨 Marca & MKT]</strong>, el catálogo de campañas y las acciones publicitarias activas.';
                 p3Accion = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
                     <li>[ ] En <strong>[🎨 Marca & MKT]</strong>, pulsa <strong>[📄 Modelo de documento (Hacer copia)]</strong>, redacta el eslogan en Google Docs y elévalo al CEO.</li>
-                    <li>[ ] Contrata un paquete de campaña publicitaria adjuntando el enlace al dossier para aprobación de Finanzas.</li>
+                    <li>[ ] Contrata un paquete de campaña publicitaria con el dossier ROI (DOC_5) para visto bueno de Finanzas.</li>
+                    <li>[ ] Tras aprobar Finanzas, pulsa <strong>[+ Publicar Acción]</strong>, utiliza el modelo oficial <strong>DOC_12</strong> en Google Docs y entrégalo al <strong>CEO</strong> para su validación previa (se elevará a Liderazgo y Coordinación).</li>
                     <li>[ ] En <strong>[📋 Dossier (19)]</strong>, sube las evidencias de Lengua y de Iniciación a la Actividad Emprendedora.</li>
                 </ul>`;
                 p3Botones = `
@@ -1047,8 +1050,8 @@ const ui = {
                     <button type="button" onclick="ui.navigate('market'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Catálogo</button>
                     <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
                 `;
-                p4Exito = 'El eslogan pasa a aval del CEO y la campaña queda en espera de validación presupuestaria en Finanzas.';
-                pAvisos = 'El eslogan no se escribe directamente en la app; se redacta en la plantilla oficial y Coordinación lo registra tras el visto bueno del CEO.';
+                p4Exito = 'Tus acciones publicitarias pasan a estado <strong>[⏳ PENDIENTE DE APROBACIÓN CEO]</strong> y, tras ser validadas por Dirección, cambian a <strong>[✓ VALIDADA Y ELEVADA A LIDERAZGO Y COORDINACIÓN]</strong>.';
+                pAvisos = 'Cada acción publicitaria requiere adjuntar la Ficha Técnica oficial (DOC_12) en Google Drive con permisos de lectura antes de entregarla al CEO.';
                 break;
 
             case 'OPERACIONES_IA':
@@ -1338,7 +1341,7 @@ const ui = {
     },
 
     showGuide(defaultRole = null) {
-        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.29';
+        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.36';
         let initialRole = defaultRole;
         if (!initialRole) {
             if (state.user) {
@@ -1689,14 +1692,14 @@ const ui = {
         return `
         <div class="h-16 max-h-16 flex items-center justify-between px-2 sm:px-4 bg-[#07090E]/90 border-b border-cyan-500/20 backdrop-blur sticky top-0 z-30 w-full mb-4 terminal-border overflow-hidden">
             <!-- Izquierda: Miniatura del logotipo (40x40px) + Nombre Orbitron + Badge Rol Activo -->
-            <div class="flex items-center gap-1.5 sm:gap-3 min-w-0 shrink">
+            <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
                 <div class="relative w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 p-0.5 hex-clip bg-mars-bg ${isBrandPending ? 'border border-mars-magenta shadow-[0_0_10px_rgba(255,0,85,0.4)]' : 'border border-mars-cyan shadow-neon-cyan'}">
                     <div class="w-full h-full hex-clip overflow-hidden">
                         <img src="${activeLogoSrc}" alt="Logo de ${coName}" width="40" height="40" onerror="this.onerror=null;this.src='logo.png';" class="w-full h-full ${hasApprovedLogo ? 'object-cover' : 'object-contain p-1 bg-black'}">
                     </div>
                 </div>
-                <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                    <span class="font-orbitron font-black text-xs sm:text-base text-mars-cyan tracking-wider uppercase truncate max-w-[150px]" title="${coName}">${coName}</span>
+                <div class="flex items-center gap-1.5 sm:gap-2">
+                    <span class="company-header-title font-orbitron font-black text-xs sm:text-base text-mars-cyan tracking-wider uppercase" title="${coName}">${coName}</span>
                     <span class="bg-mars-cyan/10 border border-mars-cyan/40 text-mars-cyan text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 uppercase tracking-wider whitespace-nowrap shrink-0">${roleLabel}</span>
                 </div>
             </div>
@@ -1710,7 +1713,7 @@ const ui = {
 
             <!-- Derecha: Acceso directo a la bitácora de IA [ 🤖 IA ] que invoca ui.navigate('ailog') -->
             <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                <button type="button" onclick="ui.navigate('ailog')" class="bg-blue-600/20 border border-blue-500 text-blue-300 hover:bg-blue-500 hover:text-white px-2 sm:px-3 py-1.5 text-xs font-bold uppercase transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)] min-h-[36px] flex items-center gap-1 shrink-0" title="Bitácora y Registro de Prompts IA">
+                <button type="button" onclick="ui.navigate('ailog')" class="bg-cyan-950/40 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-2.5 sm:px-3 py-1.5 text-xs font-bold uppercase transition-all shadow-[0_0_10px_rgba(0,240,255,0.25)] min-h-[36px] flex items-center gap-1.5 shrink-0 active:scale-95" title="Bitácora y Registro de Prompts IA">
                     <span>🤖</span> <span class="hidden sm:inline">IA</span>
                 </button>
             </div>
@@ -1875,12 +1878,12 @@ const ui = {
         }
 
         document.querySelectorAll('.nav-tab').forEach(t => {
-            t.classList.remove('tab-active', 'text-mars-cyan');
+            t.classList.remove('tab-active', 'text-mars-cyan', 'border-b-2', 'border-mars-cyan', 'bg-mars-cyan/10');
             t.setAttribute('aria-selected', 'false');
             const tabId = t.getAttribute('data-tab-id') || '';
             const oc = t.getAttribute('onclick') || '';
             if (tabId === this.current || oc.includes(`('${this.current}')`)) {
-                t.classList.add('tab-active', 'text-mars-cyan');
+                t.classList.add('tab-active', 'text-mars-cyan', 'border-b-2', 'border-mars-cyan', 'bg-mars-cyan/10');
                 t.setAttribute('aria-selected', 'true');
             }
         });

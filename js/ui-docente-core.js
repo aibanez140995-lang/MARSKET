@@ -146,10 +146,12 @@ Object.assign(ui, {
         try {
             switch(currentTab) {
                 case 'dash': {
-                    const isFyqOrCoord = state.user.role === 'FYQ' || state.user.role.startsWith('COORD');
+                    const isFyqOrCoord = state.user.role === 'FYQ' || (state.user.role && state.user.role.startsWith('COORD')) || state.user.admin;
+                    const isLyeOrCoord = state.user.role === 'LYE' || (state.user.role && state.user.role.startsWith('COORD')) || state.user.admin;
                     const fyqPanel = isFyqOrCoord ? this.renderFyqReceptionPanel() : '';
+                    const mktActionPanel = isLyeOrCoord ? this.renderMktActionReceptionPanel() : '';
                     const brandPanel = isCoord ? this.renderAdminBrandReview() : '';
-                    subContainer.innerHTML = brandPanel + fyqPanel + this.renderAdminDash();
+                    subContainer.innerHTML = brandPanel + fyqPanel + mktActionPanel + this.renderAdminDash();
                     break;
                 }
                 case 'eval': subContainer.innerHTML = this.renderAdminEval(); break;
@@ -344,6 +346,78 @@ Object.assign(ui, {
                             <th class="p-2.5 border-b border-slate-700">Fecha</th>
                             <th class="p-2.5 border-b border-slate-700">Estado Pipeline</th>
                             <th class="p-2.5 border-b border-slate-700">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        `;
+    },
+
+    renderMktActionReceptionPanel() {
+        const companies = state.data.companies || {};
+        let rows = '';
+
+        for (const cid in companies) {
+            const co = companies[cid];
+            const coName = co.name || cid.toUpperCase();
+            const campaigns = Array.isArray(co.marketingCampaigns) ? co.marketingCampaigns : [];
+
+            campaigns.forEach(c => {
+                const actions = Array.isArray(c.executedActions) ? c.executedActions : [];
+                actions.forEach(act => {
+                    if (act && act.status === 'VALIDADO_CEO') {
+                        const actUrl = act.url || act.driveUrl || '';
+                        const safeHref = actUrl ? encodeURI(actUrl).replace(/"/g, '&quot;') : '';
+                        const dateFormatted = act.reviewedAt ? new Date(act.reviewedAt).toLocaleDateString() : (act.date || '--');
+
+                        rows += `
+                            <tr class="border-b border-slate-800 text-xs hover:bg-slate-900/60 transition-colors">
+                                <td class="p-2.5 font-bold text-mars-cyan uppercase">${this.escapeHTML(coName)}</td>
+                                <td class="p-2.5 text-white font-medium">${this.escapeHTML(c.packageName || c.title || 'Campaña MKT')}</td>
+                                <td class="p-2.5 text-slate-200">
+                                    <span class="font-bold block">${this.escapeHTML(act.title)}</span>
+                                    ${act.desc ? `<span class="text-[11px] text-slate-400 italic block">"${this.escapeHTML(act.desc)}"</span>` : ''}
+                                </td>
+                                <td class="p-2.5 font-mono text-slate-300">${this.escapeHTML(dateFormatted)}</td>
+                                <td class="p-2.5">
+                                    <span class="bg-mars-green/20 text-mars-green border border-mars-green/40 px-2 py-0.5 text-[10px] font-black uppercase">[✓ RECIBIDO DOCENTE]</span>
+                                </td>
+                                <td class="p-2.5">
+                                    ${safeHref ? `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50">Abrir Drive ↗</a>` : '<span class="text-slate-500 text-[10px] italic">Sin enlace</span>'}
+                                </td>
+                            </tr>
+                        `;
+                    }
+                });
+            });
+        }
+
+        if (!rows) {
+            rows = `<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">No hay acciones publicitarias validadas por CEO elevadas al docente de Liderazgo o Coordinación todavía.</td></tr>`;
+        }
+
+        return `
+        <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-amber-400 mb-6">
+            <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2 flex-wrap gap-2">
+                <div>
+                    <h3 class="font-orbitron text-amber-400 text-xs sm:text-sm uppercase tracking-wider font-bold">Recepción de Acciones Publicitarias (Liderazgo & Coordinación)</h3>
+                    <p class="text-[11px] text-slate-300">Acciones validadas por Dirección General (CEO) para supervisión curricular y feedback docente.</p>
+                </div>
+            </div>
+            <div class="overflow-x-auto max-h-64 border border-slate-800">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-900 text-slate-400 text-[10px] uppercase font-bold tracking-wider sticky top-0">
+                        <tr>
+                            <th class="p-2.5 border-b border-slate-700">Startup</th>
+                            <th class="p-2.5 border-b border-slate-700">Paquete</th>
+                            <th class="p-2.5 border-b border-slate-700">Acción Publicitaria</th>
+                            <th class="p-2.5 border-b border-slate-700">Aprobación CEO</th>
+                            <th class="p-2.5 border-b border-slate-700">Estado Pipeline</th>
+                            <th class="p-2.5 border-b border-slate-700">Enlace Drive</th>
                         </tr>
                     </thead>
                     <tbody>

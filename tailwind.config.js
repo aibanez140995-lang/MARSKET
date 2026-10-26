@@ -12,6 +12,7 @@ module.exports = {
       pattern: /(bg|border)-(mars-(cyan|magenta|yellow|green|border)|blue-500|red-950)\/(10|20|30|40|50|60|70|80|90)/
     },
     'tab-active',
+    'company-header-title',
     'glow-cyan',
     'terminal-border',
     'break-words',

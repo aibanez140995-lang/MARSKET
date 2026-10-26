@@ -1,5 +1,5 @@
 // js/ui-docente-eval.js
-// --- MÓDULO DOCENTE: RÚBRICAS PONDERADAS (100%), ACTAS Y ARCHIVO DOCUMENTAL OFICIAL (v1.1.28) ---
+// --- MÓDULO DOCENTE: RÚBRICAS PONDERADAS (100%), ACTAS Y ARCHIVO DOCUMENTAL OFICIAL (v1.1.32) ---
 
 Object.assign(ui, {
     renderAdminEval() {
@@ -91,8 +91,8 @@ Object.assign(ui, {
         } else if(isCoord && this.coordEvalView === 'ARCHIVE') {
             const docCols = [
                 { key: 'preliminaryReport', label: 'FYQ 1: Prelim' },
-                { key: 'hoja_taller_fyq', label: 'FYQ 2: Hoja Taller' },
-                { key: 'technicalReport', label: 'FYQ 3: Informe' },
+                { key: 'technicalReport', label: 'FYQ 2: Inf. Técnico' },
+                { key: 'hoja_taller_fyq', label: 'FYQ 3: Hoja Taller' },
                 { key: 'brandIdentity_dec', label: 'LYE 1A: Marca Dic' },
                 { key: 'brandIdentity_apr', label: 'LYE 1B: Marca Abr' },
                 { key: 'businessModelDoc', label: 'LYE 2: Bus. Model' },

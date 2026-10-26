@@ -204,7 +204,7 @@ Object.assign(ui, {
     validateB2BPrice(inputEl) {
         const btn = document.getElementById('btn-confirm-b2b');
         if (!btn || !inputEl) return;
-        const raw = inputEl.value.trim();
+        const raw = inputEl.value.trim().replace(',', '.');
         const num = parseFloat(raw);
         const isValid = raw !== '' && Number.isFinite(num) && num > 0 && num <= 1000000 && /^\d+(\.\d{1,2})?$/.test(raw);
         btn.disabled = !isValid;

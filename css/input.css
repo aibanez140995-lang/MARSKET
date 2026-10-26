@@ -10,3 +10,32 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .nav-tab.tab-active {
+    background-color: rgba(0, 240, 255, 0.12);
+    border-bottom: 2px solid #00F0FF;
+    box-shadow: inset 0 -2px 8px rgba(0, 240, 255, 0.25);
+  }
+
+  .company-header-title {
+    white-space: nowrap !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .company-header-title {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (min-width: 481px) {
+  .company-header-title {
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+  }
+}

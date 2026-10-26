@@ -1,6 +1,6 @@
 <?php
 // api/db.php
-// Capa de Persistencia SQLite3 (PDO) en modo WAL para Hosting CDMON (v1.1.06)
+// Capa de Persistencia SQLite3 (PDO) en modo WAL para Hosting CDMON (v1.1.35)
 
 declare(strict_types=1);
 
@@ -111,9 +111,57 @@ function getDatabaseConnection(): PDO {
     $row = $stmt->fetch();
     if (!$row || (int)$row['count'] === 0) {
         seedInitialState($pdo);
+    } else {
+        // Auto-migración atómica del catálogo oficial a v1.1.31 si la base ya existe
+        $stateStmt = $pdo->query("SELECT data FROM state WHERE id = 'current'");
+        $stateRow = $stateStmt->fetch();
+        if ($stateRow && !empty($stateRow['data'])) {
+            $st = json_decode($stateRow['data'], true);
+            if (is_array($st)) {
+                $catVer = (int)($st['config']['catalogBaselineVersion'] ?? 0);
+                if ($catVer < 1131) {
+                    $st['config']['catalogBaselineVersion'] = 1131;
+                    $st['catalog'] = getOfficialCatalogDefinition();
+                    $updateStmt = $pdo->prepare("UPDATE state SET data = :data, updated_at = CURRENT_TIMESTAMP WHERE id = 'current'");
+                    $updateStmt->execute([':data' => json_encode($st, JSON_UNESCAPED_UNICODE)]);
+                }
+            }
+        }
     }
 
     return $pdo;
+}
+
+/**
+ * Catálogo Oficial Maestro de MARS-KET OS (24 artículos en 6 categorías técnicas)
+ */
+function getOfficialCatalogDefinition(): array {
+    return [
+        ['id' => 'F01', 'name' => 'Botella de 500 ml', 'price' => 97.0, 'unit' => 'Unidad', 'category' => 'Cuerpo del Cohete (Estructura Principal)', 'origin' => 'España'],
+        ['id' => 'F02', 'name' => 'Botella de 1 L', 'price' => 120.0, 'unit' => 'Unidad', 'category' => 'Cuerpo del Cohete (Estructura Principal)', 'origin' => 'España'],
+        ['id' => 'F03', 'name' => 'Botella de 1,5 L', 'price' => 165.0, 'unit' => 'Unidad', 'category' => 'Cuerpo del Cohete (Estructura Principal)', 'origin' => 'Portugal'],
+        ['id' => 'F04', 'name' => 'Botella de 2 L', 'price' => 200.0, 'unit' => 'Unidad', 'category' => 'Cuerpo del Cohete (Estructura Principal)', 'origin' => 'Italia'],
+        ['id' => 'P01', 'name' => 'Bicarbonato de Sodio', 'price' => 10.0, 'unit' => 'Gramo', 'category' => 'Propulsión y Reactivos', 'origin' => 'España'],
+        ['id' => 'P02', 'name' => 'Vinagre', 'price' => 5.0, 'unit' => '10 ml', 'category' => 'Propulsión y Reactivos', 'origin' => 'España'],
+        ['id' => 'A01', 'name' => 'Cartulina (Aletas)', 'price' => 15.0, 'unit' => 'Unidad', 'category' => 'Aerodinámica', 'origin' => 'España'],
+        ['id' => 'A02', 'name' => 'Cartón Básico', 'price' => 30.0, 'unit' => 'Unidad', 'category' => 'Aerodinámica', 'origin' => 'Portugal'],
+        ['id' => 'A03', 'name' => 'Aletas de Plástico', 'price' => 45.0, 'unit' => 'Unidad', 'category' => 'Aerodinámica', 'origin' => 'Alemania'],
+        ['id' => 'A04', 'name' => 'Aletas de PVC Rígido', 'price' => 85.0, 'unit' => 'Unidad', 'category' => 'Aerodinámica', 'origin' => 'Polonia'],
+        ['id' => 'A05', 'name' => 'Suplemento: Plastificado de Aletas', 'price' => 5.0, 'unit' => 'Unidad', 'category' => 'Aerodinámica', 'origin' => 'España'],
+        ['id' => 'O01', 'name' => 'Punta de Cartulina', 'price' => 25.0, 'unit' => 'Unidad', 'category' => 'Aerodinámica', 'origin' => 'España'],
+        ['id' => 'O02', 'name' => 'Punta de Cartón (Estándar)', 'price' => 55.0, 'unit' => 'Unidad', 'category' => 'Aerodinámica', 'origin' => 'ESA / Francia'],
+        ['id' => 'O03', 'name' => 'Punta de Plástico (PET)', 'price' => 75.0, 'unit' => 'Unidad', 'category' => 'Aerodinámica', 'origin' => 'Alemania'],
+        ['id' => 'O04', 'name' => 'Punta de Plástico 3D', 'price' => 90.0, 'unit' => 'Unidad', 'category' => 'Aerodinámica', 'origin' => 'ESA / Francia'],
+        ['id' => 'R01', 'name' => 'Papel de Cocina', 'price' => 5.0, 'unit' => 'Unidad/Hoja', 'category' => 'Sistema de Reacción', 'origin' => 'España'],
+        ['id' => 'R02', 'name' => 'Hilo de Algodón', 'price' => 2.0, 'unit' => 'Decímetro', 'category' => 'Sistema de Reacción', 'origin' => 'España'],
+        ['id' => 'S01', 'name' => 'Corcho de Vino Estándar', 'price' => 25.0, 'unit' => 'Unidad', 'category' => 'Sellado y Unión (Estanquidad y Montaje)', 'origin' => 'España'],
+        ['id' => 'S02', 'name' => 'Tapón de Goma Hermético', 'price' => 40.0, 'unit' => 'Unidad', 'category' => 'Sellado y Unión (Estanquidad y Montaje)', 'origin' => 'Alemania'],
+        ['id' => 'S03', 'name' => 'Cinta Aislante', 'price' => 10.0, 'unit' => 'Metro', 'category' => 'Sellado y Unión (Estanquidad y Montaje)', 'origin' => 'Alemania'],
+        ['id' => 'S04', 'name' => 'Celo / Cinta Adhesiva', 'price' => 0.50, 'unit' => 'cm', 'category' => 'Sellado y Unión (Estanquidad y Montaje)', 'origin' => 'España'],
+        ['id' => 'S05', 'name' => 'Pegamento de Barra', 'price' => 15.0, 'unit' => 'Unidad', 'category' => 'Sellado y Unión (Estanquidad y Montaje)', 'origin' => 'España'],
+        ['id' => 'S06', 'name' => 'Carga de Pegamento Termofusible por Uso', 'price' => 1.0, 'unit' => 'Uso', 'category' => 'Sellado y Unión (Estanquidad y Montaje)', 'origin' => 'ESA / Francia'],
+        ['id' => 'E01', 'name' => 'Pintura', 'price' => 2.0, 'unit' => 'Cada Color', 'category' => 'Elementos Extra', 'origin' => 'España']
+    ];
 }
 
 /**
@@ -132,15 +180,7 @@ function seedInitialState(PDO $pdo): void {
             'totalLogins' => 0,
             'sessions' => []
         ],
-        'catalog' => [
-            ['id' => 'F01', 'name' => 'Botella PET 500ml', 'price' => 97.0, 'unit' => 'Unidad', 'category' => 'Fuselaje', 'origin' => 'China'],
-            ['id' => 'F02', 'name' => 'Botella PET 1L', 'price' => 120.0, 'unit' => 'Unidad', 'category' => 'Fuselaje', 'origin' => 'China'],
-            ['id' => 'P01', 'name' => 'Bicarbonato de Sodio', 'price' => 10.0, 'unit' => 'Gramo', 'category' => 'Propulsión', 'origin' => 'Turquía'],
-            ['id' => 'P02', 'name' => 'Vinagre', 'price' => 5.0, 'unit' => '10ml', 'category' => 'Propulsión', 'origin' => 'España'],
-            ['id' => 'A01', 'name' => 'Cartón Básico', 'price' => 30.0, 'unit' => 'Set', 'category' => 'Aerodinámica', 'origin' => 'Marruecos'],
-            ['id' => 'S01', 'name' => 'Papel de Cocina', 'price' => 5.0, 'unit' => 'Unidad', 'category' => 'Sellado', 'origin' => 'Portugal'],
-            ['id' => 'S05', 'name' => 'Cinta Aislante', 'price' => 10.0, 'unit' => 'Rollo', 'category' => 'Sellado', 'origin' => 'Alemania']
-        ],
+        'catalog' => getOfficialCatalogDefinition(),
         'config' => [
             'nextOrderId' => 1000,
             'deadlines' => [

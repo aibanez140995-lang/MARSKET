@@ -252,16 +252,45 @@ export async function onRequestPost(context) {
                     }
                     co.marketingCampaigns.unshift(p.campaign);
                 }
+                if (p.decideAction) {
+                    const { campId, actId, approved, feedback } = p.decideAction;
+                    if (auth.role !== 'CEO' && !auth.isCoordinator && !auth.admin) {
+                        return new Response(JSON.stringify({ error: 'UNAUTHORIZED_ROLE', message: 'Solo el CEO o Coordinación puede validar acciones publicitarias.' }), { status: 403, headers: CORS_HEADERS });
+                    }
+                    const camp = co.marketingCampaigns.find(c => String(c.id) === String(campId));
+                    if (camp && Array.isArray(camp.executedActions)) {
+                        const act = camp.executedActions.find(a => String(a.id) === String(actId));
+                        if (act) {
+                            act.status = approved ? 'VALIDADO_CEO' : 'RECHAZADO_CEO';
+                            act.feedback = feedback || '';
+                            act.reviewedAt = now;
+                        }
+                    }
+                }
                 if (p.actionItem) {
                     const actUrl = p.actionItem.url || p.actionItem.driveUrl;
                     if (!actUrl || !GOOGLE_DRIVE_REGEX.test(actUrl)) {
                         return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL', message: 'URL de Google Drive obligatoria para la acción de marketing.' }), { status: 400, headers: CORS_HEADERS });
                     }
-                    if (p.campaignId) {
-                        const camp = co.marketingCampaigns.find(c => String(c.id) === String(p.campaignId));
+                    const isCeoOrCoord = auth.role === 'CEO' || auth.isCoordinator || auth.admin;
+                    if (!isCeoOrCoord || !p.actionItem.status) {
+                        p.actionItem.status = 'PENDIENTE_CEO';
+                    }
+                    const campId = p.campaignId || p.campId;
+                    if (campId) {
+                        const camp = co.marketingCampaigns.find(c => String(c.id) === String(campId));
                         if (camp) {
                             camp.executedActions = Array.isArray(camp.executedActions) ? camp.executedActions : [];
-                            camp.executedActions.push(p.actionItem);
+                            const totalAllowed = camp.totalActions || 3;
+                            const existingIdx = camp.executedActions.findIndex(a => String(a.id) === String(p.actionItem.id));
+                            if (existingIdx >= 0) {
+                                camp.executedActions[existingIdx] = Object.assign({}, camp.executedActions[existingIdx], p.actionItem);
+                            } else {
+                                if (camp.executedActions.length >= totalAllowed) {
+                                    return new Response(JSON.stringify({ error: 'CAMPAIGN_QUOTA_EXCEEDED', message: 'Cupo de acciones publicitarias agotado para este paquete.' }), { status: 400, headers: CORS_HEADERS });
+                                }
+                                camp.executedActions.push(p.actionItem);
+                            }
                         }
                     }
                 }

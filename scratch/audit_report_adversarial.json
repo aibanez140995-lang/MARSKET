@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-25T19:31:41.347Z",
+  "timestamp": "2026-10-26T19:42:59.087Z",
   "environment": "HTTP standard http://127.0.0.1:3000/ (Tailwind compilado css/tailwind.css)",
   "gates": {
     "G8": {
@@ -36,7 +36,7 @@
     },
     "G16": {
       "status": "FALLO",
-      "clsScore": 0.06809567395161834,
+      "clsScore": 0.07113637384605018,
       "clsTopShifts": [
         {
           "value": 0.06753554502369669,
@@ -68,17 +68,17 @@
           ]
         },
         {
-          "value": 0.000560128927921655,
+          "value": 0.0036008288223534964,
           "sources": [
             {
               "nodeTag": "FOOTER",
               "nodeId": "hud-footer",
               "previousRect": {
                 "x": 0,
-                "y": 794,
+                "y": 832,
                 "width": 768,
-                "height": 50,
-                "top": 794,
+                "height": 12,
+                "top": 832,
                 "right": 768,
                 "bottom": 844,
                 "left": 0
@@ -145,7 +145,7 @@
         "w": 44,
         "h": 44
       },
-      "evidence": "CLS acumulado medido: 0.0681 (Umbral <= 0.02). Violaciones táctiles < 44x44: 0. Casilla #skip-onboarding: {\"w\":44,\"h\":44}."
+      "evidence": "CLS acumulado medido: 0.0711 (Umbral <= 0.02). Violaciones táctiles < 44x44: 0. Casilla #skip-onboarding: {\"w\":44,\"h\":44}."
     },
     "G6": {
       "status": "CORRECTO",
