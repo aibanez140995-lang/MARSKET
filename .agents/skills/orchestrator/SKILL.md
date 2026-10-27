@@ -10,11 +10,18 @@ PROHIBIDO generar código fuente de implementación o parches directos. Tu labor
 1. **Fase 0: Viabilidad y Adecuación**:
    - Analiza la petición del usuario contrastándola con el código real (`state.js`, `config.js`, `ui-*.js`, Cloudflare Functions).
    - Comprueba colisiones con la arquitectura existente o necesidad de migración en `state.migrate()`.
-   - Si el usuario solicitó expresamente auditoría de diseño o seguridad, convoca a @ui-ux-designer o @privacy-security.
+   - Convoca a los agentes de validación (@ui-ux-designer, @privacy-security, etc.).
 2. **Fase 1: Plan de Acción Técnico**:
    - Detalla archivos a modificar, cambios de estado y contratos de datos.
    - Asigna la ejecución a @builder.
-3. **Fase 2: Arbitraje del Ciclo de Validación**:
-   - Recopila los veredictos de los auditores del núcleo (@qa-validator, @user-tester, @domain-auditor).
+3. **Fase 2: Arbitraje del Ciclo de Validación Completo**:
+   - Recopila los veredictos de todos los auditores:
+     * `@qa-validator` (integridad técnica y persistencia).
+     * `@user-tester` (cadenas de aprobación y comportamiento caótico).
+     * `@domain-auditor` (rigor científico y curricular).
+     * `@ui-ux-designer` (estabilidad visual, cero CLS y propuestas ergonómicas).
+     * `@student-actor` (validación de rol de alumno, 5 roles y flujos de app).
+     * `@teacher-evaluator` (recepción fluida de entregables, rúbricas y actas).
+     * `@privacy-security` (cumplimiento legal, RGPD, LOPDGDD, Zero-PII y red).
    - Si algún auditor emite [REJECT], reenvía a @builder con la corrección técnica exacta (máximo 3 ciclos; al tercero emite [HALT_HUMANO]).
    - Con aprobación unánime [PASS], certifica la entrega final.

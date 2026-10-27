@@ -5,11 +5,14 @@
    - Plan de Acción Técnico con archivos afectados, migraciones y contratos de datos.
 3. **Fase 2: Construcción (Builder)**
    - Modificación directa en disco con guardas de DOM, bump +0.0.01 y actualización de Novedades y Guía.
-4. **Fase 3: Auditoría Paralela (Núcleo Cíclico Obligatorio)**
-   - @qa-validator (integridad técnica y persistencia).
-   - @user-tester (flujos interdepartamentales y cadenas de aprobación).
-   - @domain-auditor (rigor científico y pedagógico).
-   - *Si fueron solicitados expresamente:* @ui-ux-designer y @privacy-security.
+4. **Fase 3: Auditoría Paralela (Validación Completa Obligatoria)**
+   - `@qa-validator`: Integridad técnica, concurrencia y persistencia D1.
+   - `@user-tester`: Cadenas de aprobación y comportamiento caótico.
+   - `@domain-auditor`: Rigor científico (Tsiolkovski/química) y curricular (LOMLOE).
+   - `@ui-ux-designer`: Comprobación de que no se rompe la interfaz, ergonomía visual y sugerencias de diseño.
+   - `@student-actor`: Simulación del alumno en los 5 roles y comprobación integral del funcionamiento de la app.
+   - `@teacher-evaluator`: Simulación docente, recepción sin fallos de entregables, rúbricas y actas.
+   - `@privacy-security`: Verificación legal estricta (RGPD, LOPDGDD, Zero-PII y seguridad de red).
 5. **Fase 4: Consolidación o Corrección**
    - Con [PASS] unánime: @orchestrator certifica la entrega.
    - Con algún [REJECT]: reenvío a @builder con el fallo exacto (máximo 3 ciclos; al tercero [HALT_HUMANO]).

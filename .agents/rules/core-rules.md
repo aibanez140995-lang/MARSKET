@@ -8,8 +8,12 @@
 - **Estética Cyberpunk Marciana**: Paleta fija `#07090E` (fondo abisal), `#FF5722` (óxido marciano), `#00F0FF` (cian criogénico) y `#FFB300` (ámbar telemetría). Microinteracciones táctiles rápidas (<150ms), bordes milimétricos y cero CLS.
 - **Aterrizaje Intuitivo para 15 Años**: Comprensible en menos de 5 segundos por un alumno de 4º ESO, preservando la inmersión técnica.
 ## 3. Dinámica Operativa de Agentes
-- **Núcleo Cíclico Obligatorio**: @orchestrator, @builder, @qa-validator, @user-tester y @domain-auditor operan en bucle continuo en cada desarrollo hasta obtener aprobación unánime [PASS].
-- **Agentes Consultores Bajo Demanda**: @ui-ux-designer y @privacy-security intervienen ÚNICAMENTE cuando el usuario lo solicite de forma explícita.
+- **Núcleo Cíclico Obligatorio**: @orchestrator, @builder, @qa-validator, @user-tester, @domain-auditor, @student-actor, @teacher-evaluator, @ui-ux-designer y @privacy-security operan en bucle continuo de validación completa en cada mejora y desarrollo hasta obtener aprobación unánime [PASS].
+- **Especializaciones de Validación en Cada Iteración**:
+  - `@ui-ux-designer`: Comprueba que no se rompa la interfaz, asegura ergonomía táctil (<150ms), diseño sin CLS y aporta sugerencias de optimización visual.
+  - `@student-actor`: Valida desde la perspectiva del alumno que todo funcione, cubriendo los 5 roles (`CEO`, `FINANZAS`, `TECNICO`, `OPERACIONES_IA`, `MARKETING`) y sus flujos cruzados.
+  - `@teacher-evaluator`: Valida desde la perspectiva docente la recepción fluida de entregables, el Archivo Documental Central, las rúbricas y el Acta General (100%).
+  - `@privacy-security`: Audita el cumplimiento estricto de la ley (RGPD, LOPDGDD, Zero-PII, prevención de XSS y seguridad de tokens) con cada mejora introducida.
 ## 4. Trazabilidad y Código
 - **Bump de versión estricto (+0.0.01)**: Cada intervención completada por @builder debe incrementar APP_VERSION en exactamente +0.0.01 en constantes y cabeceras.
 - **Novedades y Guía**: Obligatorio actualizar el changelog de novedades (#btn-novedades) y la Guía de Roles si hay cambios de flujo.

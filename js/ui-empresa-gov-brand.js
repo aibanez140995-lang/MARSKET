@@ -611,6 +611,7 @@ Object.assign(ui, {
             <div class="bg-mars-magenta/15 border border-mars-magenta p-3 mb-4 text-xs">
                 <span class="text-mars-magenta font-black uppercase block mb-1">❌ Propuesta de Marca Rechazada por Coordinación</span>
                 <p class="text-slate-200 leading-relaxed break-words">Motivo: "${this.escapeHTML(co.brandApproval.feedback || 'Incumplimiento de criterios corporativos.')}"</p>
+                ${co.brandApproval.returnDriveUrl ? `<div class="mt-2"><a href="${encodeURI(co.brandApproval.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-mono font-bold"><span>📄 Ver Correcciones de Coordinación en Drive ↗</span></a></div>` : ''}
             </div>`;
         } else {
             brandApprovalAlert = `
@@ -740,7 +741,10 @@ Object.assign(ui, {
                         </div>
                         <span class="text-slate-300 italic block truncate">"${this.escapeHTML(act.desc)}"</span>
                         ${act.date ? `<span class="text-[10px] text-slate-400 block font-mono">Fecha: ${this.escapeHTML(act.date)}</span>` : ''}
-                        ${actFeedback ? `<div class="text-[11px] text-mars-magenta font-mono">Motivo devolución CEO: "${this.escapeHTML(actFeedback)}"</div>` : ''}
+                        ${actStatus === 'RECHAZADO_CEO' ? `
+                            <div class="text-[11px] text-mars-magenta font-mono">Motivo devolución CEO: "${this.escapeHTML(actFeedback || 'Revisión requerida por CEO')}"</div>
+                            ${act.returnDriveUrl ? `<div class="mt-1"><a href="${encodeURI(act.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-mono font-bold mt-1"><span>📄 Ver Correcciones del CEO en Drive ↗</span></a></div>` : ''}
+                        ` : (actFeedback ? `<div class="text-[11px] text-mars-magenta font-mono">Motivo devolución CEO: "${this.escapeHTML(actFeedback)}"</div>` : '')}
                     </div>
                     <div class="flex items-center gap-2 flex-wrap shrink-0">
                         ${safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 px-3 py-1.5 text-xs font-bold uppercase hover:bg-cyan-900/50">Abrir en Drive ↗</a>` : ''}
@@ -1274,17 +1278,18 @@ Object.assign(ui, {
             <div class="space-y-3 font-mono text-xs">
                 <div class="bg-mars-magenta/10 border-l-4 border-mars-magenta p-3">
                     <p class="text-white font-bold mb-1">Devolución de Acción Publicitaria al Dpto. Marketing</p>
-                    <p class="text-slate-300">Selecciona o especifica el motivo por el cual la acción publicitaria no puede ser validada todavía.</p>
+                    <p class="text-slate-300">Selecciona el motivo tipificado e indica el enlace al documento de Google Drive con las correcciones u observaciones.</p>
                 </div>
                 <div>
                     <label for="reject-mkt-reason-select" class="text-xs text-mars-magenta uppercase font-bold block mb-1">Motivo tipificado</label>
-                    <select id="reject-mkt-reason-select" class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white outline-none focus:border-white" onchange="document.getElementById('reject-mkt-custom').value = this.value;">
+                    <select id="reject-mkt-reason-select" class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white outline-none focus:border-white">
                         ${opts}
                     </select>
                 </div>
                 <div>
-                    <label for="reject-mkt-custom" class="text-xs text-slate-300 uppercase font-bold block mb-1">Observaciones o instrucción de subsanación</label>
-                    <input type="text" id="reject-mkt-custom" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-magenta" value="${this.escapeHTML(reasons[0].label)}">
+                    <label for="reject-mkt-drive-url" class="text-xs text-mars-yellow uppercase font-bold block mb-1">Enlace a Google Drive con observaciones / correcciones (Obligatorio)</label>
+                    <input type="url" id="reject-mkt-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-white" required>
+                    <p class="text-[10px] text-slate-400 mt-1">Conforme a la directiva Zero-Text y blindaje RGPD, no se admite texto libre. Incluye las observaciones o correcciones en tu documento de Google Drive con permisos de lectura.</p>
                 </div>
             </div>
         `;
@@ -1295,10 +1300,15 @@ Object.assign(ui, {
     },
 
     confirmRejectMktAction(campId, actId) {
-        const el = document.getElementById('reject-mkt-custom');
-        const reason = el ? this.cleanInput(el.value) : 'Revisión requerida por CEO';
+        const sel = document.getElementById('reject-mkt-reason-select');
+        const reason = sel ? this.cleanInput(sel.value) : 'Revisión requerida por CEO';
+        const elUrl = document.getElementById('reject-mkt-drive-url');
+        const driveUrl = elUrl ? this.cleanInput(elUrl.value) : '';
+        if (!driveUrl || (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl))) {
+            return this.notify("Debes indicar un enlace válido de Google Drive / Docs con las observaciones de subsanación.", "error");
+        }
         this.closeModal();
-        state.decideMktAction(campId, actId, false, reason);
+        state.decideMktAction(campId, actId, false, reason, driveUrl);
     },
 
     modalResubmitMktAction(campId, actId) {
@@ -1312,6 +1322,12 @@ Object.assign(ui, {
 
         const doc12Btn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_12_ACCION_MKT', '📄 Modelo Oficial de Acción Publicitaria (Hacer copia)') : '';
         const currentUrl = act.url || act.driveUrl || '';
+        const ceoCorrectionsBtn = act.returnDriveUrl ? `
+            <div class="bg-red-950/40 border border-red-500/40 p-2.5 rounded mb-2">
+                <p class="text-[11px] text-red-200 font-bold mb-1">Anotaciones del CEO en Google Drive:</p>
+                <a href="${encodeURI(act.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs text-mars-cyan hover:underline font-mono"><span>📄 Abrir Correcciones del CEO en Google Drive ↗</span></a>
+            </div>
+        ` : '';
 
         const html = `
             <div class="space-y-3 font-mono text-xs">
@@ -1319,6 +1335,7 @@ Object.assign(ui, {
                     <p class="text-white font-bold mb-1">Subsanación de Acción: ${this.escapeHTML(act.title)}</p>
                     <p class="text-slate-300">Motivo de devolución del CEO: <span class="text-mars-magenta font-bold">"${this.escapeHTML(act.feedback || 'Sin motivo especificado')}"</span></p>
                 </div>
+                ${ceoCorrectionsBtn}
                 <div class="mb-2">
                     ${doc12Btn}
                 </div>

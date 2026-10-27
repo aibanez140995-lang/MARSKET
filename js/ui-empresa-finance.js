@@ -31,6 +31,7 @@ Object.assign(ui, {
 
         const isCEO = state.user.role === 'CEO';
         const isFinanzas = state.user.role === 'FINANZAS';
+        const isMarketing = state.user.role === 'MARKETING' || state.user.admin || state.user.isCoordinator;
 
         const wrapper = document.createElement('div');
 
@@ -353,7 +354,15 @@ Object.assign(ui, {
                                     ? `<div class="mb-3"><a href="${encodeURI(act.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>📄 Ver Creatividad / Memoria en Docs ↗</span></a></div>`
                                     : ''
                                 }
-                                ${(ast === 'RECHAZADO_CEO' && act.feedback) ? `<div class="bg-red-950/40 border border-red-500/40 p-2 text-xs text-red-300 mb-2 rounded"><strong class="uppercase">Motivo Devolución CEO:</strong> ${this.escapeHTML(act.feedback)}</div>` : ''}
+                                ${(ast === 'RECHAZADO_CEO') ? `
+                                     <div class="bg-red-950/40 border border-red-500/40 p-2.5 text-xs text-red-300 mb-2 rounded space-y-1.5">
+                                         <div><strong class="uppercase">Motivo Devolución CEO:</strong> ${this.escapeHTML(act.feedback || 'Revisión requerida por CEO')}</div>
+                                         ${act.returnDriveUrl ? `<div><a href="${encodeURI(act.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-mono font-bold"><span>📄 Ver Correcciones del CEO en Drive ↗</span></a></div>` : ''}
+                                     </div>` : ''}
+                                 ${(isMarketing && ast === 'RECHAZADO_CEO') ? `
+                                 <div class="flex flex-col sm:flex-row gap-2 mt-3 pt-2 border-t border-slate-800">
+                                     <button type="button" onclick="ui.modalResubmitMktAction('${this.escapeHTML(camp.id)}', '${this.escapeHTML(act.id)}')" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all flex-1 shadow-sm">[ ✏️ Subsanar Enlace y Reenviar al CEO ]</button>
+                                 </div>` : ''}
                                 ${(isCEO && ast === 'PENDIENTE_CEO') ? `
                                 <div class="flex flex-col sm:flex-row gap-2 mt-3 pt-2 border-t border-slate-800">
                                     <button type="button" onclick="ui.decideMktAction('${this.escapeHTML(camp.id)}', '${this.escapeHTML(act.id)}', true)" class="min-h-[44px] bg-mars-green text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all flex-1 shadow-sm">[ ✓ APROBAR ACCIÓN ]</button>

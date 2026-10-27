@@ -1505,7 +1505,34 @@ Object.assign(ui, {
     },
 
     promptDenyBrand(cid) {
-        const html = `<label for="deny-brand-reason" class="text-xs text-slate-300 uppercase font-bold block mb-2">Motivo del rechazo</label><input type="text" id="deny-brand-reason" class="min-h-[44px] w-full bg-black border border-mars-magenta p-3 text-base sm:text-xs text-white outline-none focus:border-mars-magenta" placeholder="Motivo del rechazo (Filtro léxico, plagio, no apto...)...">`;
+        const reasons = (typeof BRAND_DENIAL_REASONS_DEF !== 'undefined' ? BRAND_DENIAL_REASONS_DEF : [
+            { id: "SIMILITUD_MARCA", label: "Similitud o conflicto con marcas comerciales existentes" },
+            { id: "FILTRO_LEXICO", label: "Incumplimiento del filtro léxico o valores del centro educativo" },
+            { id: "DOC_11_ACCESO", label: "Modelo oficial DOC_11 en Google Drive sin permisos o inaccesible" },
+            { id: "DEFICIT_ARGUMENTAL", label: "Falta de justificación estratégica o lingüística en el dossier" },
+            { id: "FORMATO_INADECUADO", label: "Resolución o formato gráfico del logotipo no apto para el HUD" }
+        ]);
+
+        const opts = reasons.map(r => `<option value="${this.escapeHTML(r.label)}">${this.escapeHTML(r.label)}</option>`).join('');
+
+        const html = `
+            <div class="space-y-3 font-mono text-xs">
+                <div class="bg-mars-magenta/10 border-l-4 border-mars-magenta p-3">
+                    <p class="text-white font-bold mb-1">Rechazo de Identidad Corporativa (Coordinación Docente)</p>
+                    <p class="text-slate-300">Conforme a la directiva Zero-Text y blindaje RGPD, selecciona un motivo tipificado.</p>
+                </div>
+                <div>
+                    <label for="deny-brand-reason" class="text-xs text-mars-magenta uppercase font-bold block mb-1">Motivo del rechazo</label>
+                    <select id="deny-brand-reason" class="w-full min-h-[44px] bg-black border border-mars-magenta p-2.5 text-base sm:text-xs text-white outline-none focus:border-white">
+                        ${opts}
+                    </select>
+                </div>
+                <div>
+                    <label for="deny-brand-drive-url" class="text-xs text-slate-300 uppercase font-bold block mb-1">Enlace a Google Docs con correcciones (Opcional)</label>
+                    <input type="url" id="deny-brand-drive-url" placeholder="https://docs.google.com/... (Opcional)" class="w-full min-h-[44px] bg-black border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-magenta font-mono">
+                </div>
+            </div>
+        `;
         const btn = `<button onclick="ui.finalizeDenyBrand('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-mars-magenta text-white px-6 py-2 text-xs font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Confirmar Rechazo</button>`;
         this.showModal("Rechazar Identidad Corporativa", html, btn);
     },
@@ -1516,16 +1543,24 @@ Object.assign(ui, {
         const reason = this.cleanInput(el.value);
         if(!reason) return this.notify("Debes especificar un motivo para el rechazo.", "warning");
 
+        const elUrl = document.getElementById('deny-brand-drive-url');
+        const driveUrl = elUrl ? this.cleanInput(elUrl.value) : '';
+        if (driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace opcional debe ser una URL válida de Google Drive.", "error");
+        }
+
         const co = state.data.companies[cid];
         if(!co || !co.brandApproval) return;
 
         co.brandApproval.status = 'RECHAZADO';
         co.brandApproval.feedback = reason;
+        if (driveUrl) co.brandApproval.returnDriveUrl = driveUrl;
         co.brandApproval.updatedAt = Date.now();
         co.updatedAt = Date.now();
 
-        ui.pushNotification(cid, 'MARKETING', `Tu propuesta de marca (Logo/Eslogan) ha sido RECHAZADA por Coordinación. Motivo: ${reason}`, 'error');
-        ui.pushNotification(cid, 'CEO', `Propuesta de identidad corporativa rechazada. Revisa el panel de Marketing.`, 'error');
+        const notifMsg = driveUrl ? `Tu propuesta de marca (Logo/Eslogan) ha sido RECHAZADA por Coordinación. Motivo: ${reason}. Consulta el documento de Drive adjunto.` : `Tu propuesta de marca (Logo/Eslogan) ha sido RECHAZADA por Coordinación. Motivo: ${reason}`;
+        ui.pushNotification(cid, 'MARKETING', notifMsg, 'error');
+        ui.pushNotification(cid, 'CEO', `Propuesta de identidad corporativa rechazada por Coordinación. Revisa el panel de Marketing.`, 'error');
 
         state.save(cid);
         this.closeModal();

@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.38) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.39) ---
 
-const APP_VERSION = "1.1.38";
+const APP_VERSION = "1.1.39";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -141,6 +141,14 @@ const BRAND_CONCEPTS_DEF = Object.freeze([
     { id: 'SOPORTE_VITAL', label: 'Soporte Vital, Habitabilidad y Biología Marciana' },
     { id: 'TELECOMUNICACIONES_ORBITA', label: 'Telecomunicaciones Orbitales y Redes de Satélites' },
     { id: 'SENSORES_ATMOSFERICOS', label: 'Detección Remota, Sensores y Observación Atmosférica' }
+]);
+
+const BRAND_DENIAL_REASONS_DEF = Object.freeze([
+    { id: "SIMILITUD_MARCA", label: "Similitud o conflicto con marcas comerciales existentes" },
+    { id: "FILTRO_LEXICO", label: "Incumplimiento del filtro léxico o valores del centro educativo" },
+    { id: "DOC_11_ACCESO", label: "Modelo oficial DOC_11 en Google Drive sin permisos o inaccesible" },
+    { id: "DEFICIT_ARGUMENTAL", label: "Falta de justificación estratégica o lingüística en el dossier" },
+    { id: "FORMATO_INADECUADO", label: "Resolución o formato gráfico del logotipo no apto para el HUD" }
 ]);
 
 const CEO_RETURN_REASONS = [
@@ -527,6 +535,19 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.39",
+      date: new Date().toISOString().split('T')[0],
+      title: "Erradicación de Texto Libre en Devolución de Acciones Publicitarias y Blindaje Zero-Text",
+      items: [
+        "Eliminación del campo de texto libre en la devolución de acciones de marketing por el CEO, sustituyéndolo por selector tipificado y campo obligatorio de enlace a Google Drive con observaciones.",
+        "Inspección integral de roles y blindaje de la directiva Zero-Text en toda la gobernanza y aduanas de la plataforma."
+      ],
+      highlights: [
+        { type: "ZERO-TEXT", text: "Enlace obligatorio a Google Drive para observaciones del CEO al devolver acciones publicitarias." },
+        { type: "SEGURIDAD", text: "Blindaje Zero-Text 100% en todos los roles y aduanas de la plataforma." }
+      ]
+    },
     {
       version: "1.1.38",
       date: new Date().toISOString().split('T')[0],

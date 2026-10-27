@@ -542,6 +542,7 @@ const state = {
                         if (act) {
                             if (!act.status) act.status = 'VALIDADO_CEO';
                             act.feedback = act.feedback || '';
+                            act.returnDriveUrl = act.returnDriveUrl || '';
                             act.url = act.url || act.driveUrl || '';
                             act.driveUrl = act.driveUrl || act.url || '';
                         }
@@ -593,15 +594,18 @@ const state = {
                     // Precedencia estricta: Las decisiones de servidor (VALIDADO_CEO o RECHAZADO_CEO) tienen precedencia sobre estados locales obsoletos (PENDIENTE_CEO)
                     let status = lAct.status || sAct.status || 'PENDIENTE_CEO';
                     let feedback = lAct.feedback || sAct.feedback || '';
+                    let returnDriveUrl = lAct.returnDriveUrl || sAct.returnDriveUrl || '';
                     let reviewedAt = lAct.reviewedAt || sAct.reviewedAt || null;
 
                     if (sAct.status === 'VALIDADO_CEO' || sAct.status === 'RECHAZADO_CEO') {
                         status = sAct.status;
                         feedback = sAct.feedback || '';
+                        returnDriveUrl = sAct.returnDriveUrl || '';
                         reviewedAt = sAct.reviewedAt || null;
                     } else if (lAct.status === 'VALIDADO_CEO' || lAct.status === 'RECHAZADO_CEO') {
                         status = lAct.status;
                         feedback = lAct.feedback || '';
+                        returnDriveUrl = lAct.returnDriveUrl || '';
                         reviewedAt = lAct.reviewedAt || null;
                     }
 
@@ -610,6 +614,7 @@ const state = {
                         ...lAct,
                         status,
                         feedback,
+                        returnDriveUrl,
                         reviewedAt,
                         url: lAct.url || sAct.url || lAct.driveUrl || sAct.driveUrl || '',
                         driveUrl: lAct.driveUrl || sAct.driveUrl || lAct.url || sAct.url || ''
@@ -1812,7 +1817,7 @@ const state = {
         }
     },
 
-    async decideMktAction(campId, actId, approved, feedback = '') {
+    async decideMktAction(campId, actId, approved, feedback = '', returnDriveUrl = '') {
         if (!this.user || !this.user.coId || (this.user.role !== 'CEO' && !this.user.admin && !this.user.isCoordinator)) return;
         const coId = this.user.coId;
         const co = this.data.companies?.[coId];
@@ -1827,6 +1832,7 @@ const state = {
         act.status = approved ? 'VALIDADO_CEO' : 'RECHAZADO_CEO';
         act.reviewedAt = Date.now();
         act.feedback = approved ? '' : (feedback || 'Revisión requerida por CEO');
+        act.returnDriveUrl = approved ? '' : (returnDriveUrl || '');
 
         if (typeof telemetry !== 'undefined' && telemetry.log) {
             telemetry.log(approved ? "CEO_MKT_ACCION_APROBADA" : "CEO_MKT_ACCION_RECHAZADA", `Acción publicitaria ${act.title}: ${approved ? 'Aprobada y elevada a Liderazgo' : 'Devuelta a Marketing'}`);
@@ -1856,7 +1862,7 @@ const state = {
 
         try {
             await this.executeAction('UPDATE_MARKETING', {
-                decideAction: { campId, actId, approved, feedback: act.feedback }
+                decideAction: { campId, actId, approved, feedback: act.feedback, returnDriveUrl: act.returnDriveUrl }
             });
         } catch(e) {
             console.warn("[ACTION] Error sincronizando decisión del CEO sobre acción publicitaria:", e);

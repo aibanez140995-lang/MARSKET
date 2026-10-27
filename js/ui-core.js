@@ -1,5 +1,5 @@
 // js/ui-core.js
-// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.36) ---
+// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.39) ---
 
 // Constante global GOOGLE_DRIVE_REGEX centralizada en js/config.js
 
@@ -1073,7 +1073,7 @@ const ui = {
                 p3Accion = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
                     <li>[ ] Entra en <strong>[📋 Dossier (19)]</strong>, abre los enlaces de tu equipo y pulsa <strong>[✓ APROBAR Y ELEVAR A DOCENTE]</strong> o <strong>[↩ DEVOLVER CON MOTIVO]</strong>.</li>
-                    <li>[ ] Entra en <strong>[🎨 Marca & MKT]</strong> para revisar las acciones publicitarias presentadas por Marketing: pulsa <strong>[✓ APROBAR ACCIÓN]</strong> para elevarlas a Liderazgo y Coordinación, o devuélvelas con motivo.</li>
+                    <li>[ ] Entra en <strong>[🎨 Marca & MKT]</strong> para revisar las acciones publicitarias presentadas por Marketing: pulsa <strong>[✓ APROBAR ACCIÓN]</strong> para elevarlas a Liderazgo y Coordinación, o <strong>[↩ DEVOLVER]</strong> indicando motivo tipificado y enlace obligatorio a Google Drive con observaciones (Zero-Text).</li>
                     <li>[ ] Entra en <strong>[⚖️ Gobernanza]</strong> para convocar votaciones de equipo o avalar el eslogan hacia el profesorado.</li>
                     <li>[ ] Revisa el saldo corporativo en el HUD antes de validar gastos grandes.</li>
                 </ul>`;
@@ -1137,7 +1137,7 @@ const ui = {
                     <button type="button" onclick="ui.navigate('market'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Catálogo</button>
                     <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
                 `;
-                p4Exito = 'Tus acciones publicitarias pasan a estado <strong>[⏳ PENDIENTE DE APROBACIÓN CEO]</strong> y, tras ser validadas por Dirección, cambian a <strong>[✓ VALIDADA Y ELEVADA A LIDERAZGO Y COORDINACIÓN]</strong>.';
+                p4Exito = 'Tus acciones publicitarias pasan a estado <strong>[⏳ PENDIENTE DE APROBACIÓN CEO]</strong> y, tras ser validadas por Dirección, cambian a <strong>[✓ VALIDADA Y ELEVADA A LIDERAZGO Y COORDINACIÓN]</strong>. Si el CEO devuelve una acción, abre el enlace de correcciones en Drive y pulsa <strong>[✏️ Subsanar Enlace y Reenviar al CEO]</strong>.';
                 pAvisos = 'Cada acción publicitaria requiere adjuntar la Ficha Técnica oficial (DOC_12) en Google Drive con permisos de lectura antes de entregarla al CEO.';
                 break;
 
@@ -1376,12 +1376,15 @@ const ui = {
             html += `<p class="text-slate-300 italic">No hay registros de versión disponibles.</p>`;
         } else {
             logs.forEach(log => {
-                const itemsHtml = (log.highlights || []).map(h => {
+                const items = log.highlights || (log.items ? log.items.map(t => ({ type: "MEJORA", text: t })) : []);
+                const itemsHtml = items.map(h => {
                     let badgeClass = 'bg-mars-cyan/20 text-mars-cyan border-mars-cyan';
                     if (h.type === 'NUEVO') badgeClass = 'bg-mars-green/20 text-mars-green border-mars-green';
                     if (h.type === 'MEJORA') badgeClass = 'bg-mars-yellow/20 text-mars-yellow border-mars-yellow';
                     if (h.type === 'FIX') badgeClass = 'bg-mars-magenta/20 text-mars-magenta border-mars-magenta';
                     if (h.type === 'SISTEMA') badgeClass = 'bg-blue-500/20 text-blue-400 border-blue-500';
+                    if (h.type === 'ZERO-TEXT') badgeClass = 'bg-emerald-500/20 text-emerald-400 border-emerald-500';
+                    if (h.type === 'SEGURIDAD') badgeClass = 'bg-purple-500/20 text-purple-400 border-purple-500';
                     
                     return `
                     <li class="flex items-start gap-2.5 pb-2 border-b border-slate-800/80 last:border-0">
@@ -1428,7 +1431,7 @@ const ui = {
     },
 
     showGuide(defaultRole = null) {
-        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.36';
+        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.39';
         let initialRole = defaultRole;
         if (!initialRole) {
             if (state.user) {

@@ -253,9 +253,12 @@ export async function onRequestPost(context) {
                     co.marketingCampaigns.unshift(p.campaign);
                 }
                 if (p.decideAction) {
-                    const { campId, actId, approved, feedback } = p.decideAction;
+                    const { campId, actId, approved, feedback, returnDriveUrl } = p.decideAction;
                     if (auth.role !== 'CEO' && !auth.isCoordinator && !auth.admin) {
                         return new Response(JSON.stringify({ error: 'UNAUTHORIZED_ROLE', message: 'Solo el CEO o Coordinación puede validar acciones publicitarias.' }), { status: 403, headers: CORS_HEADERS });
+                    }
+                    if (!approved && (!returnDriveUrl || !GOOGLE_DRIVE_REGEX.test(returnDriveUrl))) {
+                        return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL', message: 'URL de Google Drive obligatoria y válida para las observaciones de devolución.' }), { status: 400, headers: CORS_HEADERS });
                     }
                     const camp = co.marketingCampaigns.find(c => String(c.id) === String(campId));
                     if (camp && Array.isArray(camp.executedActions)) {
@@ -263,6 +266,7 @@ export async function onRequestPost(context) {
                         if (act) {
                             act.status = approved ? 'VALIDADO_CEO' : 'RECHAZADO_CEO';
                             act.feedback = feedback || '';
+                            act.returnDriveUrl = (!approved && returnDriveUrl) ? String(returnDriveUrl).trim() : '';
                             act.reviewedAt = now;
                         }
                     }
