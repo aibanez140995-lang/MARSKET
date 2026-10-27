@@ -1,5 +1,5 @@
 // js/state.js
-// --- GESTIÓN DE ESTADO ZERO-TRUST, MIGRACIÓN Y PERSISTENCIA ATÓMICA (v1.1.37) ---
+// --- GESTIÓN DE ESTADO ZERO-TRUST, MIGRACIÓN Y PERSISTENCIA ATÓMICA (v1.1.44) ---
 
 const DEFAULT_STATE = {
     version: 1,
@@ -1510,12 +1510,35 @@ const state = {
         this.save();
     },
 
+    isDeliverableLocked(docKey, co) {
+        if (this.user?.admin) return false;
+        const comp = co || (this.data?.companies?.[this.user?.coId]);
+        const docObj = comp?.deliverables?.[docKey];
+        if (docObj && docObj.driveUrl) return false;
+        const sched = (this.data?.config?.deliverableSchedule && this.data.config.deliverableSchedule[docKey]) || {};
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const def = defs.find(d => d.key === docKey) || {};
+        const openDate = sched.openDate || def.defaultOpenDate;
+        if (!openDate) return false;
+        const openTime = new Date(openDate).getTime();
+        if (isNaN(openTime)) return false;
+        return Date.now() < openTime;
+    },
+
     async submitDeliverable(docType, payload) {
         const driveUrl = String(payload?.driveUrl || '').trim();
         if (!this.user || !this.user.coId) return;
         const coId = this.user.coId;
         const co = this.data.companies?.[coId];
         if (!co) return;
+
+        if (!this.user.admin && this.isDeliverableLocked(docType, co)) {
+            console.warn(`[SECURITY] Intento no autorizado de entrega de entregable bloqueado: ${docType}`);
+            if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
+                ui.notify("Entrega bloqueada: este entregable aún no ha alcanzado su fecha de apertura.", "error");
+            }
+            return;
+        }
 
         co.deliverables = co.deliverables || {};
         const isCEO = (this.user.role === 'CEO');
@@ -1568,8 +1591,22 @@ const state = {
 
     async sendHojaTallerToWorkshop(driveUrl) {
         if (!this.user || !this.user.coId) return;
+        if (this.user.role !== 'TECNICO' && !this.user.admin) {
+            if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
+                ui.notify("Acceso restringido: solo el departamento Técnico puede remitir la Hoja de Taller.", "error");
+            }
+            return;
+        }
         const co = this.data.companies?.[this.user.coId];
         if (!co) return;
+
+        if (!this.user.admin && this.isDeliverableLocked('hoja_taller_fyq', co)) {
+            console.warn("[SECURITY] Intento no autorizado de envío de Hoja de Taller bloqueada.");
+            if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
+                ui.notify("La Hoja de Taller se encuentra bloqueada hasta su fecha de apertura.", "error");
+            }
+            return;
+        }
 
         co.deliverables = co.deliverables || {};
         co.deliverables.hoja_taller_fyq = {
@@ -1635,7 +1672,7 @@ const state = {
         }
     },
 
-    async returnHojaTallerByOperator(reasonId, reasonLabel) {
+    async returnHojaTallerByOperator(reasonId, reasonLabel, driveUrl) {
         if (!this.user || !this.user.coId) return;
         const co = this.data.companies?.[this.user.coId];
         if (!co || !co.deliverables?.hoja_taller_fyq) return;
@@ -1644,13 +1681,17 @@ const state = {
         hoja.status = 'DEVUELTO_A_TECNICO';
         hoja.returnReasonId = reasonId;
         hoja.returnReason = reasonLabel;
+        if (driveUrl) {
+            hoja.returnDriveUrl = driveUrl;
+        }
         hoja.updatedAt = new Date().toISOString();
 
         if (typeof telemetry !== 'undefined' && telemetry.log) {
             telemetry.log("TALLER_DEVUELTO", "Operario devolvió Hoja de Taller por: " + reasonId);
         }
         ui.pushNotification(this.user.coId, 'TECNICO', 'Operaciones ha DEVUELTO la Hoja de Taller por incidencia: "' + reasonLabel + '". Revisa el BOM y actualiza el Google Doc.', 'error', {
-            view: 'tech'
+            view: 'tech_workshop',
+            anchorId: 'tech-hoja-taller-panel'
         });
         this.save();
 
@@ -1660,7 +1701,8 @@ const state = {
                 driveUrl: hoja.driveUrl,
                 status: 'DEVUELTO_A_TECNICO',
                 returnReasonId: reasonId,
-                returnReason: reasonLabel
+                returnReason: reasonLabel,
+                returnDriveUrl: driveUrl || hoja.returnDriveUrl || null
             });
         } catch(e) {
             console.warn("[ACTION] Error sincronizando devolución de taller:", e);

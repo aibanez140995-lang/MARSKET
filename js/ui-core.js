@@ -1,5 +1,5 @@
 // js/ui-core.js
-// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.43) ---
+// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.44) ---
 
 // Constante global GOOGLE_DRIVE_REGEX centralizada en js/config.js
 
@@ -918,9 +918,9 @@ const ui = {
 
         // Marketing y Campañas
         if (msg.includes('campaña') || msg.includes('publicit') || msg.includes('marketing') || msg.includes('acción') || msg.includes('paquete')) {
-            if (role === 'MARKETING') return { view: 'brand', anchorId: 'mkt-campaigns-section' };
+            if (role === 'MARKETING') return { view: 'campaigns', anchorId: 'mkt-campaigns-section' };
             if (role === 'CEO' || role === 'FINANZAS') return { view: 'orders', filter: 'EN_PROCESO', dept: 'MARKETING' };
-            return { view: 'brand', anchorId: 'mkt-campaigns-section' };
+            return { view: 'campaigns', anchorId: 'mkt-campaigns-section' };
         }
 
         // B2B, Aduanas e I+D Especial
@@ -936,13 +936,18 @@ const ui = {
         }
 
         // Órdenes de compra y Logística / Taller
-        if (msg.includes('orden') || msg.includes('pedido') || msg.includes('compra') || msg.includes('presupuesto') || msg.includes('ensamblaje') || msg.includes('taller') || msg.includes('hoja de taller')) {
+        if (msg.includes('orden') || msg.includes('pedido') || msg.includes('compra') || msg.includes('presupuesto') || msg.includes('ensamblaje') || msg.includes('ensamble') || msg.includes('taller') || msg.includes('hoja de taller')) {
             if (role === 'OPERACIONES_IA' || role === 'OPERACIONES') return { view: 'cart', anchorId: 'ops-orders-tracking-panel' };
             if (role === 'FINANZAS' || role === 'CEO') {
                 const filter = msg.includes('rechaz') || msg.includes('denegad') ? 'DENEGADAS' : (msg.includes('completad') || msg.includes('ejecutad') ? 'COMPLETADAS' : 'EN_PROCESO');
                 return { view: 'orders', filter: filter, dept: 'TECNICO' };
             }
-            if (role === 'TECNICO') return { view: 'tech', anchorId: 'tech-orders-tracking-panel' };
+            if (role === 'TECNICO') {
+                if (msg.includes('taller') || msg.includes('hoja de taller') || msg.includes('ensamble') || msg.includes('ensamblaje')) {
+                    return { view: 'tech_workshop', anchorId: 'tech-hoja-taller-panel' };
+                }
+                return { view: 'tech', anchorId: 'tech-orders-tracking-panel' };
+            }
             return { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' };
         }
 
@@ -1121,7 +1126,10 @@ const ui = {
         }
 
         // Estructura limpia de 3 bloques para los 6 roles de alumno
-        const roleDeliverables = defs.filter(d => d.role === targetRole);
+        let roleDeliverables = defs.filter(d => d.role === targetRole);
+        if (!state.user?.admin) {
+            roleDeliverables = roleDeliverables.filter(d => !this.isDeliverableLocked(d.key, co));
+        }
         const roleDeliverablesHtml = roleDeliverables.length > 0 ? roleDeliverables.map(d => {
             const docObj = docs[d.key];
             const sched = (state.data.config?.deliverableSchedule && state.data.config.deliverableSchedule[d.key]) || {};
@@ -1130,7 +1138,7 @@ const ui = {
             const lockLabel = isLocked ? '<span class="text-amber-400 font-bold">[🔒 BLOQUEADO]</span>' : '<span class="text-mars-green font-bold">[🟢 ACTIVO]</span>';
             const statusLabel = docObj ? '<span class="text-mars-green font-bold">✓ Entregado</span>' : '<span class="text-mars-magenta font-bold">⏳ Pendiente</span>';
             return `<li class="border-b border-slate-800/80 pb-1.5 flex justify-between items-center gap-2 flex-wrap"><span><strong class="text-white">${this.escapeHTML(d.shortName || d.name)}</strong> (${this.escapeHTML(d.subject)}): ${statusLabel}</span>${lockLabel}</li>`;
-        }).join('') : '<li class="text-slate-400 italic">No tienes entregables curriculares asignados directamente a tu rol. Supervisa o asiste al equipo en el Dossier.</li>';
+        }).join('') : '<li class="text-slate-400 italic">No tienes entregables curriculares activos asignados directamente a tu rol en esta fase. Supervisa o asiste al equipo en el Dossier.</li>';
 
         let roleTitle = '';
         let roleDesc = '';
@@ -1172,6 +1180,7 @@ const ui = {
                 roleButtons = `
                     <button type="button" onclick="ui.navigate('market'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a SUPERMARS-KET</button>
                     <button type="button" onclick="ui.navigate('tech'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Banco I+D</button>
+                    <button type="button" onclick="ui.navigate('tech_workshop'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Taller</button>
                     <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
                 `;
                 roleWarning = 'La altura del lanzamiento se registra siempre en milímetros (mm) y toda justificación técnica o de aduana requiere enlace oficial de Google Drive.';
@@ -1208,7 +1217,7 @@ const ui = {
                 </ul>`;
                 roleButtons = `
                     <button type="button" onclick="ui.navigate('brand'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Marca & MKT</button>
-                    <button type="button" onclick="ui.navigate('market'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Catálogo</button>
+                    <button type="button" onclick="ui.navigate('campaigns'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Campañas</button>
                     <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
                 `;
                 roleWarning = 'Cada acción publicitaria requiere adjuntar la Ficha Técnica oficial (DOC_12) en Google Drive con permisos de lectura antes de entregarla al CEO.';
@@ -1511,7 +1520,7 @@ const ui = {
     },
 
     showGuide(defaultRole = null) {
-        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.43';
+        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.44';
         let initialRole = defaultRole;
         if (!initialRole) {
             if (state.user) {
@@ -2166,9 +2175,9 @@ const ui = {
 
         const roleAllowedMap = {
             'CEO': ['orders', 'resolutions', 'finance', 'dossier', 'market'],
-            'TECNICO': ['tech', 'market', 'cart', 'orders', 'dossier', 'resolutions'],
+            'TECNICO': ['tech', 'tech_workshop', 'market', 'cart', 'orders', 'dossier', 'resolutions'],
             'FINANZAS': ['finance', 'orders', 'dossier', 'market', 'resolutions'],
-            'MARKETING': ['brand', 'dossier', 'market', 'resolutions'],
+            'MARKETING': ['brand', 'campaigns', 'dossier', 'resolutions'],
             'OPERACIONES_IA': ['cart', 'ailog', 'dossier', 'market', 'resolutions']
         };
 
@@ -2177,17 +2186,18 @@ const ui = {
             currentAllowed = ['admin', 'market', 'dossier'];
             if (!currentAllowed.includes(this.current)) this.current = 'admin';
         } else {
-            const validViews = ['orders', 'finance', 'tech', 'market', 'brand', 'cart', 'ailog', 'dossier', 'resolutions', 'company', 'work'];
-            if (!validViews.includes(this.current)) {
+            const auxDept = (role === 'AUXILIAR') ? co?.auxRoleDept : null;
+            const effectiveRole = (role === 'AUXILIAR' && auxDept) ? auxDept : role;
+            const allowed = (roleAllowedMap[effectiveRole] || ['orders', 'finance', 'dossier', 'resolutions']).concat(['company']);
+            if (!allowed.includes(this.current)) {
                 const landingByRole = {
-                    'TECNICO': 'market',
+                    'TECNICO': 'tech',
                     'FINANZAS': 'orders',
                     'OPERACIONES_IA': 'cart',
                     'OPERACIONES': 'cart',
                     'CEO': 'orders',
                     'MARKETING': 'brand'
                 };
-                const auxDept = (role === 'AUXILIAR') ? co?.auxRoleDept : null;
                 this.current = (role === 'AUXILIAR' ? landingByRole[auxDept] : landingByRole[role]) || 'orders';
             }
         }
@@ -2214,6 +2224,8 @@ const ui = {
                 break;
             }
             case 'brand': vp.innerHTML = hero + notifs; this.viewBrand(vp); break;
+            case 'campaigns': vp.innerHTML = hero + notifs; this.viewCampaigns(vp); break;
+            case 'tech_workshop': vp.innerHTML = hero + notifs; this.viewTechWorkshop(vp); break;
             case 'ailog': vp.innerHTML = hero + notifs; this.viewAILog(vp); break;
             case 'tech': vp.innerHTML = hero + notifs; this.viewTech(vp); break;
             case 'resolutions': vp.innerHTML = hero + notifs; this.viewResolutions(vp); break;
@@ -2256,8 +2268,9 @@ const ui = {
     renderCronogramaSection() {
         const co = (state.user && state.user.coId && state.data.companies) ? state.data.companies[state.user.coId] : null;
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const visibleDefs = (!state.user?.admin) ? defs.filter(d => !this.isDeliverableLocked(d.key, co)) : defs;
         const activeSubj = this.cronogramaFilter || 'ALL';
-        let filteredDefs = activeSubj === 'ALL' ? defs : defs.filter(d => d.subject === activeSubj);
+        let filteredDefs = activeSubj === 'ALL' ? visibleDefs : visibleDefs.filter(d => d.subject === activeSubj);
         const deadlinesData = (state.data.config && state.data.config.deadlines) ? state.data.config.deadlines : {};
 
         const showAll = !!this.dossierShowAll;
@@ -2288,7 +2301,7 @@ const ui = {
         };
 
         const subjectNavButtons = [
-            { id: 'ALL', label: `TODOS (${defs.length})` },
+            { id: 'ALL', label: `TODOS (${visibleDefs.length})` },
             { id: 'FYQ', label: 'FYQ' },
             { id: 'LYE', label: 'LYE' },
             { id: 'ECO', label: 'ECO' },
@@ -2301,7 +2314,9 @@ const ui = {
             </button>
         `).join('');
 
-        const deadlineCardsHtml = filteredDefs.map(d => {
+        const deadlineCardsHtml = filteredDefs.length === 0
+            ? `<div class="col-span-full p-6 bg-slate-900/40 border border-slate-800 text-center rounded"><p class="text-xs font-mono text-slate-400 uppercase">🔒 No hay entregables activos en esta fase. Se habilitarán según el cronograma oficial.</p></div>`
+            : filteredDefs.map(d => {
             const dateStr = deadlinesData[d.key] || d.defaultDate;
             const st = this.getDeadlineStatus(dateStr);
             const isDelivered = !!(co && co.deliverables && co.deliverables[d.key]);
@@ -2341,7 +2356,7 @@ const ui = {
                 </div>
                 <div class="flex flex-wrap gap-2 w-full sm:w-auto">
                     <button type="button" onclick="ui.toggleDossierShowAll()" class="min-h-[44px] px-3.5 py-2 text-xs font-black uppercase tracking-wider border transition-all ${showAll ? 'bg-mars-yellow text-black border-mars-yellow' : 'bg-slate-900 text-mars-cyan border-mars-cyan hover:bg-mars-cyan hover:text-black'}">
-                        ${showAll ? '🎯 Filtrar Próximos 15 Días / Fase Activa' : `🔍 Expandir Histórico Completo (${defs.length})`}
+                        ${showAll ? '🎯 Filtrar Próximos 15 Días / Fase Activa' : `🔍 Expandir Histórico Completo (${visibleDefs.length})`}
                     </button>
                     ${(state.user && state.user.role === 'CEO') ? `<button type="button" onclick="ui.modalCreateAuxRole()" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase tracking-wider hover:bg-mars-cyan hover:text-black transition-all shrink-0 w-full sm:w-auto">Gestionar Rol Observador</button>` : ''}
                 </div>
@@ -2426,7 +2441,29 @@ const ui = {
                 </div>`;
     },
     
+    isDeliverableLocked(docKey, co) {
+        if (typeof state !== 'undefined' && typeof state.isDeliverableLocked === 'function') {
+            return state.isDeliverableLocked(docKey, co);
+        }
+        if (state.user?.admin) return false;
+        const comp = co || (state.data?.companies?.[state.user?.coId]);
+        const docObj = comp?.deliverables?.[docKey];
+        if (docObj && docObj.driveUrl) return false;
+        const sched = (state.data?.config?.deliverableSchedule && state.data.config.deliverableSchedule[docKey]) || {};
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const def = defs.find(d => d.key === docKey) || {};
+        const openDate = sched.openDate || def.defaultOpenDate;
+        if (!openDate) return false;
+        const openTime = new Date(openDate).getTime();
+        if (isNaN(openTime)) return false;
+        return Date.now() < openTime;
+    },
+
     renderDriveLinkBox(title, desc, docKey, currentDoc) {
+        const co = (typeof state !== 'undefined' && state.user?.coId && state.data?.companies) ? state.data.companies[state.user.coId] : null;
+        if (!state.user?.admin && this.isDeliverableLocked(docKey, co)) {
+            return '';
+        }
         const isCEO = (typeof state !== 'undefined' && state.user && state.user.role === 'CEO');
         const item = (typeof currentDoc === 'object' && currentDoc !== null) ? currentDoc : null;
         const status = item?.status;
@@ -2435,7 +2472,7 @@ const ui = {
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
         const def = defs.find(d => d.key === docKey) || {};
         const openDate = sched.openDate || def.defaultOpenDate;
-        const isLocked = Boolean(openDate && !isNaN(new Date(openDate).getTime()) && (new Date() < new Date(openDate)));
+        const isLocked = this.isDeliverableLocked(docKey, co);
 
         const lockBadge = isLocked
             ? `<span class="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded">🔒 BLOQUEADO HASTA ${new Date(openDate).toLocaleString()}</span>`
@@ -2587,6 +2624,10 @@ const ui = {
     },
 
     submitDeliverable(docType, btnEl = null) {
+        if (!state.user?.admin && this.isDeliverableLocked(docType)) {
+            this.notify("Este entregable se encuentra bloqueado hasta su fecha de apertura.", "error");
+            return;
+        }
         const inputFromBtn = (btnEl && btnEl.closest) ? (btnEl.closest('.bg-slate-900')?.querySelector('input[name="driveUrl"]') || btnEl.closest('.border-b')?.querySelector('input[name="driveUrl"]')) : null;
         const driveUrl = (inputFromBtn?.value || (document.getElementById(`input-drive-url-${docType}`)?.value || '')).trim();
 

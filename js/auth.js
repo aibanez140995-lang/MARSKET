@@ -474,8 +474,10 @@ const auth = (function() {
                 'orders': { id: 'orders', label: '🔐 Bóveda Órdenes', badge: 'badge-orders' },
                 'finance': { id: 'finance', label: '💰 Finanzas & ECO' },
                 'tech': { id: 'tech', label: '🧪 Banco I+D' },
+                'tech_workshop': { id: 'tech_workshop', label: '🔧 Taller' },
                 'market': { id: 'market', label: '🛒 SUPERMARS-KET' },
                 'brand': { id: 'brand', label: '🎨 Marca & MKT' },
+                'campaigns': { id: 'campaigns', label: '📢 Campañas', badge: 'badge-campaigns' },
                 'cart': { id: 'cart', label: '📦 Taller Ensamble', badge: 'badge-cart' },
                 'ailog': { id: 'ailog', label: '🤖 Bitácora IA', badge: 'badge-ailog' },
                 'dossier': { id: 'dossier', label: '📋 Dossier (19)', badge: 'badge-dossier' },
@@ -484,9 +486,9 @@ const auth = (function() {
 
             const roleTabOrders = {
                 'CEO': ['orders', 'finance', 'dossier', 'resolutions'],
-                'TECNICO': ['market', 'tech', 'dossier', 'resolutions'],
+                'TECNICO': ['market', 'tech', 'tech_workshop', 'dossier', 'resolutions'],
                 'FINANZAS': ['orders', 'finance', 'dossier', 'resolutions'],
-                'MARKETING': ['brand', 'market', 'dossier', 'resolutions'],
+                'MARKETING': ['brand', 'campaigns', 'dossier', 'resolutions'],
                 'OPERACIONES_IA': ['cart', 'ailog', 'dossier', 'resolutions'],
                 'OPERACIONES': ['cart', 'ailog', 'dossier', 'resolutions']
             };

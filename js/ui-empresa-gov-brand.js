@@ -618,74 +618,12 @@ Object.assign(ui, {
         }
     },
 
-    viewBrand(el) {
+    viewCampaigns(el) {
         if (!el || !state.user) return;
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
-        
-        const docs = co.deliverables || {};
-        co.flightTests = co.flightTests || [];
-        co.orders = co.orders || [];
+
         co.marketingCampaigns = co.marketingCampaigns || [];
-        co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
-        
-        const activeDocTab = this.brandDocTab || 'LYE';
-        const wrapper = document.createElement('div');
-        
-        let brandApprovalAlert = '';
-        const isPendingBrand = (co.brandStatus === 'PENDING_APPROVAL' || co.brandApproval?.status === 'PENDIENTE');
-        if (isPendingBrand) {
-            brandApprovalAlert = `
-            <div class="bg-mars-yellow/15 border border-mars-yellow/60 p-3 mb-4 text-xs">
-                <span class="bg-mars-yellow/20 text-mars-yellow border border-mars-yellow/50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider block mb-2">[Eslogan/Misión en revisión por Coordinación]</span>
-                <p class="text-slate-200 leading-relaxed">Tu propuesta de Eslogan y Misión ha sido enviada a Coordinación Docente y se encuentra en proceso de validación previa antes de su publicación en el HUD.</p>
-                ${(co.pendingSlogan || co.brandApproval?.pendingSlogan) ? `<p class="text-white mt-1.5 break-words"><strong>Eslogan propuesto:</strong> "${this.escapeHTML(co.pendingSlogan || co.brandApproval?.pendingSlogan)}"</p>` : ''}
-                ${(co.pendingMission || co.valueProposition) ? `<p class="text-white mt-1.5 break-words"><strong>Misión propuesta:</strong> "${this.escapeHTML(co.pendingMission || co.valueProposition)}"</p>` : ''}
-            </div>`;
-        } else if (co.brandApproval.status === 'RECHAZADO') {
-            brandApprovalAlert = `
-            <div class="bg-mars-magenta/15 border border-mars-magenta p-3 mb-4 text-xs">
-                <span class="text-mars-magenta font-black uppercase block mb-1">❌ Propuesta de Marca Rechazada por Coordinación</span>
-                <p class="text-slate-200 leading-relaxed break-words">Motivo: "${this.escapeHTML(co.brandApproval.feedback || 'Incumplimiento de criterios corporativos.')}"</p>
-                ${co.brandApproval.returnDriveUrl ? `<div class="mt-2"><a href="${encodeURI(co.brandApproval.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-mono font-bold"><span>📄 Ver Correcciones de Coordinación en Drive ↗</span></a></div>` : ''}
-            </div>`;
-        } else {
-            brandApprovalAlert = `
-            <div class="bg-mars-green/10 border border-mars-green/50 p-2.5 mb-4 text-xs flex flex-wrap justify-between items-center gap-2">
-                <span class="text-mars-green font-bold uppercase">✓ Marca Oficial Verificada por Coordinación</span>
-                <span class="text-slate-300">Cambios nuevos requerirán re-aprobación</span>
-            </div>`;
-        }
-
-        let bestFlightHtml = '<p class="text-slate-300 italic text-xs">Aún no hay ensayos de vuelo registrados por el Dpto. Técnico.</p>';
-        if (co.flightTests.length > 0) {
-            const bestFlight = [...co.flightTests].sort((a, b) => b.efficiency - a.efficiency)[0];
-            const h_mm = bestFlight.heightMm !== undefined ? bestFlight.heightMm : (bestFlight.heightM * 1000);
-            
-            bestFlightHtml = `
-                <div class="bg-black p-3 border border-mars-border">
-                    <p class="text-xs text-mars-yellow uppercase font-bold mb-1">Mejor Ensayo Registrado</p>
-                    <div class="flex justify-between items-center gap-2">
-                        <div>
-                            <p class="text-white font-bold text-xs sm:text-sm break-words">${this.escapeHTML(bestFlight.bottle)}</p>
-                            <p class="text-xs text-slate-300">Coste: ${Number(bestFlight.costEurV).toFixed(2)} €v | Altura: ${Number(h_mm).toFixed(0)} mm</p>
-                        </div>
-                        <div class="text-right shrink-0">
-                            <p class="text-xs text-slate-300 uppercase">Eficiencia (E)</p>
-                            <p class="text-mars-green font-mono font-bold text-lg">${Number(bestFlight.efficiency).toFixed(2)}</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-        const grossCosts = state.getCompanyGrossOperatingCosts ? state.getCompanyGrossOperatingCosts(co) : 0;
-        const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
-        const opCosts = state.getCompanyOperatingCosts ? state.getCompanyOperatingCosts(co) : { gross: grossCosts, sponsorReduction: sponsorAmt, net: grossCosts };
-        const netOpCosts = (opCosts && typeof opCosts.net === 'number') ? opCosts.net : ((typeof opCosts === 'number') ? opCosts : grossCosts);
-        const sponsorTierLabel = co.sponsorAwarded ? (co.sponsorData?.tier || co.sponsorAwarded || 'SPONSOR') : null;
-
         const mktPackages = typeof MARKETING_PACKAGES !== 'undefined' ? MARKETING_PACKAGES : [];
         const isMktUser = Boolean(state.user && (state.user.role === 'MARKETING' || state.user.admin || state.user.isCoordinator || (state.user.role && String(state.user.role).startsWith('COORD'))));
 
@@ -827,6 +765,118 @@ Object.assign(ui, {
             </div>`;
         }).join('') || '<p class="text-slate-300 italic text-xs">No hay paquetes ni campañas contratadas todavía.</p>';
 
+        const wrapper = document.createElement('div');
+        wrapper.className = 'w-full';
+        wrapper.innerHTML = `
+            <div id="mkt-campaigns-section" class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow w-full">
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                    <div>
+                        <h2 class="font-orbitron text-mars-yellow text-base sm:text-lg uppercase tracking-tighter">Contratación de Paquetes Publicitarios</h2>
+                        <p class="text-xs text-slate-300 mt-1 uppercase leading-relaxed">Selecciona un paquete para solicitar presupuesto a Finanzas. Una vez aprobado, podrás registrar tus acciones promocionales con enlaces verificados de Google Drive.</p>
+                    </div>
+                    <span class="text-xs bg-mars-yellow/10 text-mars-yellow border border-mars-yellow px-2.5 py-1 font-bold uppercase">Requiere Aprobación Finanzas</span>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 my-6">
+                    ${packagesGridHtml}
+                </div>
+
+                <div class="border-t border-mars-border pt-4">
+                    <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase tracking-wider mb-3 border-b border-mars-border pb-1.5">Mis Paquetes y Acciones Ejecutadas</h3>
+                    <div>
+                        ${(!co.marketingCampaigns || !co.marketingCampaigns.some(c => c.status === 'ACTIVO')) ? `
+                        <div class="bg-mars-yellow/10 border-l-4 border-l-mars-yellow border border-mars-yellow/30 p-3.5 mb-3 text-xs font-mono">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-mars-yellow font-bold uppercase">⚡ Circuito Oficial de Acciones Publicitarias (DOC_12):</span>
+                            </div>
+                            <p class="text-slate-200 leading-relaxed mb-2">
+                                Para publicar acciones comerciales y registrar la Ficha Técnica oficial (<strong class="text-white">DOC_12</strong>), tu empresa debe contratar previamente un <strong class="text-mars-yellow">Paquete de Campaña</strong> arriba y solicitar la aprobación presupuestaria a <strong class="text-mars-cyan">Finanzas</strong>.
+                            </p>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-800 text-[11px] text-slate-300">
+                                <div><strong>1.</strong> Contrata paquete arriba</div>
+                                <div><strong>2.</strong> Finanzas audita en Bóveda</div>
+                                <div><strong>3.</strong> Publica acción con DOC_12</div>
+                            </div>
+                        </div>` : ''}
+                        ${campaignsHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+        el.appendChild(wrapper);
+    },
+
+    viewBrand(el) {
+        if (!el || !state.user) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout();
+        
+        const docs = co.deliverables || {};
+        co.flightTests = co.flightTests || [];
+        co.orders = co.orders || [];
+        co.marketingCampaigns = co.marketingCampaigns || [];
+        co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
+        
+        const activeDocTab = this.brandDocTab || 'LYE';
+        const wrapper = document.createElement('div');
+        
+        let brandApprovalAlert = '';
+        const isPendingBrand = (co.brandStatus === 'PENDING_APPROVAL' || co.brandApproval?.status === 'PENDIENTE');
+        if (isPendingBrand) {
+            brandApprovalAlert = `
+            <div class="bg-mars-yellow/15 border border-mars-yellow/60 p-3 mb-4 text-xs">
+                <span class="bg-mars-yellow/20 text-mars-yellow border border-mars-yellow/50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider block mb-2">[Eslogan/Misión en revisión por Coordinación]</span>
+                <p class="text-slate-200 leading-relaxed">Tu propuesta de Eslogan y Misión ha sido enviada a Coordinación Docente y se encuentra en proceso de validación previa antes de su publicación en el HUD.</p>
+                ${(co.pendingSlogan || co.brandApproval?.pendingSlogan) ? `<p class="text-white mt-1.5 break-words"><strong>Eslogan propuesto:</strong> "${this.escapeHTML(co.pendingSlogan || co.brandApproval?.pendingSlogan)}"</p>` : ''}
+                ${(co.pendingMission || co.valueProposition) ? `<p class="text-white mt-1.5 break-words"><strong>Misión propuesta:</strong> "${this.escapeHTML(co.pendingMission || co.valueProposition)}"</p>` : ''}
+            </div>`;
+        } else if (co.brandApproval.status === 'RECHAZADO') {
+            brandApprovalAlert = `
+            <div class="bg-mars-magenta/15 border border-mars-magenta p-3 mb-4 text-xs">
+                <span class="text-mars-magenta font-black uppercase block mb-1">❌ Propuesta de Marca Rechazada por Coordinación</span>
+                <p class="text-slate-200 leading-relaxed break-words">Motivo: "${this.escapeHTML(co.brandApproval.feedback || 'Incumplimiento de criterios corporativos.')}"</p>
+                ${co.brandApproval.returnDriveUrl ? `<div class="mt-2"><a href="${encodeURI(co.brandApproval.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-mono font-bold"><span>📄 Ver Correcciones de Coordinación en Drive ↗</span></a></div>` : ''}
+            </div>`;
+        } else {
+            brandApprovalAlert = `
+            <div class="bg-mars-green/10 border border-mars-green/50 p-2.5 mb-4 text-xs flex flex-wrap justify-between items-center gap-2">
+                <span class="text-mars-green font-bold uppercase">✓ Marca Oficial Verificada por Coordinación</span>
+                <span class="text-slate-300">Cambios nuevos requerirán re-aprobación</span>
+            </div>`;
+        }
+
+        let bestFlightHtml = '<p class="text-slate-300 italic text-xs">Aún no hay ensayos de vuelo registrados por el Dpto. Técnico.</p>';
+        if (co.flightTests.length > 0) {
+            const bestFlight = [...co.flightTests].sort((a, b) => b.efficiency - a.efficiency)[0];
+            const h_mm = bestFlight.heightMm !== undefined ? bestFlight.heightMm : (bestFlight.heightM * 1000);
+            
+            bestFlightHtml = `
+                <div class="bg-black p-3 border border-mars-border">
+                    <p class="text-xs text-mars-yellow uppercase font-bold mb-1">Mejor Ensayo Registrado</p>
+                    <div class="flex justify-between items-center gap-2">
+                        <div>
+                            <p class="text-white font-bold text-xs sm:text-sm break-words">${this.escapeHTML(bestFlight.bottle)}</p>
+                            <p class="text-xs text-slate-300">Coste: ${Number(bestFlight.costEurV).toFixed(2)} €v | Altura: ${Number(h_mm).toFixed(0)} mm</p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="text-xs text-slate-300 uppercase">Eficiencia (E)</p>
+                            <p class="text-mars-green font-mono font-bold text-lg">${Number(bestFlight.efficiency).toFixed(2)}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+        const grossCosts = state.getCompanyGrossOperatingCosts ? state.getCompanyGrossOperatingCosts(co) : 0;
+        const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
+        const opCosts = state.getCompanyOperatingCosts ? state.getCompanyOperatingCosts(co) : { gross: grossCosts, sponsorReduction: sponsorAmt, net: grossCosts };
+        const netOpCosts = (opCosts && typeof opCosts.net === 'number') ? opCosts.net : ((typeof opCosts === 'number') ? opCosts : grossCosts);
+        const sponsorTierLabel = co.sponsorAwarded ? (co.sponsorData?.tier || co.sponsorAwarded || 'SPONSOR') : null;
+
+        const isLyeAllLocked = !state.user?.admin && ['brandIdentity_dec', 'brandIdentity_apr', 'businessModelDoc', 'businessModelCanvas'].every(k => this.isDeliverableLocked(k, co));
+        const isLenAllLocked = !state.user?.admin && ['investorDossier'].every(k => this.isDeliverableLocked(k, co));
+
         let docTabContent = '';
         if (activeDocTab === 'LYE') {
             docTabContent = `
@@ -835,10 +885,16 @@ Object.assign(ui, {
                 </div>
                 <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Entregables oficiales de Liderazgo y Emprendimiento (Solo Enlaces verificados de Google Drive).</p>
                 <div class="space-y-4">
-                    ${this.renderDriveLinkBox('1A. Identidad de Marca, Misión y Visión — DICIEMBRE (10%)', 'Nombre, Logo, Tagline, sector elegido y justificación (1ª Entrega). Resp: Marketing.', 'brandIdentity_dec', docs.brandIdentity_dec)}
-                    ${this.renderDriveLinkBox('1B. Identidad de Marca, Misión y Visión — ABRIL (10%)', 'Revisión evolutiva de marca, misión y visión tras pruebas (2ª Entrega). Resp: Marketing.', 'brandIdentity_apr', docs.brandIdentity_apr)}
-                    ${this.renderDriveLinkBox('2. Business Model — Documento Escrito (25%)', 'Documento formal con portada, índice, integrantes del equipo, roles y funciones. Resp: Marketing/CEO.', 'businessModelDoc', docs.businessModelDoc)}
-                    ${this.renderDriveLinkBox('3. Business Model Canvas (15%)', 'Lienzo estratégico del modelo de negocio de la startup aeroespacial. Resp: Marketing.', 'businessModelCanvas', docs.businessModelCanvas)}
+                    ${isLyeAllLocked ? `
+                        <div class="p-6 bg-slate-900/40 border border-slate-800 text-center rounded">
+                            <p class="text-xs font-mono text-slate-400 uppercase">🔒 No hay entregables activos en esta fase. Se habilitarán según el cronograma oficial.</p>
+                        </div>
+                    ` : `
+                        ${this.renderDriveLinkBox('1A. Identidad de Marca, Misión y Visión — DICIEMBRE (10%)', 'Nombre, Logo, Tagline, sector elegido y justificación (1ª Entrega). Resp: Marketing.', 'brandIdentity_dec', docs.brandIdentity_dec)}
+                        ${this.renderDriveLinkBox('1B. Identidad de Marca, Misión y Visión — ABRIL (10%)', 'Revisión evolutiva de marca, misión y visión tras pruebas (2ª Entrega). Resp: Marketing.', 'brandIdentity_apr', docs.brandIdentity_apr)}
+                        ${this.renderDriveLinkBox('2. Business Model — Documento Escrito (25%)', 'Documento formal con portada, índice, integrantes del equipo, roles y funciones. Resp: Marketing/CEO.', 'businessModelDoc', docs.businessModelDoc)}
+                        ${this.renderDriveLinkBox('3. Business Model Canvas (15%)', 'Lienzo estratégico del modelo de negocio de la startup aeroespacial. Resp: Marketing.', 'businessModelCanvas', docs.businessModelCanvas)}
+                    `}
                 </div>
             `;
         } else if (activeDocTab === 'LEN') {
@@ -848,7 +904,13 @@ Object.assign(ui, {
                 </div>
                 <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Entregable oficial para Lengua Castellana (Solo Enlace verificado de Google Drive).</p>
                 <div class="space-y-4">
-                    ${this.renderDriveLinkBox('1. Dossier para Inversores (Texto Argumentativo)', 'Documento persuasivo y formal para captación de inversión. Resp: Marketing / CEO.', 'investorDossier', docs.investorDossier)}
+                    ${isLenAllLocked ? `
+                        <div class="p-6 bg-slate-900/40 border border-slate-800 text-center rounded">
+                            <p class="text-xs font-mono text-slate-400 uppercase">🔒 No hay entregables activos en esta fase. Se habilitarán según el cronograma oficial.</p>
+                        </div>
+                    ` : `
+                        ${this.renderDriveLinkBox('1. Dossier para Inversores (Texto Argumentativo)', 'Documento persuasivo y formal para captación de inversión. Resp: Marketing / CEO.', 'investorDossier', docs.investorDossier)}
+                    `}
                 </div>
             `;
         } else {
@@ -994,37 +1056,6 @@ Object.assign(ui, {
                             <p class="text-[10px] text-slate-400 mt-1">El argumentario, lema propuesto y justificación residen en el Google Doc oficial con permisos de lectura.</p>
                         </div>
                         <button type="button" onclick="ui.submitBrandProposalToCEO()" class="w-full min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)]">[ 📤 1. Presentar Propuesta al CEO ]</button>
-                    </div>
-                </div>
-
-                <div id="mkt-campaigns-section" class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow w-full">
-                    <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
-                        <h2 class="font-orbitron text-mars-yellow text-base sm:text-lg uppercase tracking-tighter">Contratación de Paquetes Publicitarios</h2>
-                        <span class="text-xs bg-mars-yellow/10 text-mars-yellow border border-mars-yellow px-2.5 py-0.5 font-bold uppercase">Requiere Aprobación Finanzas</span>
-                    </div>
-                    <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Selecciona un paquete para solicitar presupuesto a Finanzas. Una vez aprobado, podrás registrar tus acciones promocionales con enlaces verificados de Google Drive.</p>
-                    
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                        ${packagesGridHtml}
-                    </div>
-
-                    <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase tracking-wider mb-3 border-b border-mars-border pb-1.5">Mis Paquetes y Acciones Ejecutadas</h3>
-                    <div class="max-h-80 overflow-y-auto pr-1">
-                        ${(!co.marketingCampaigns || !co.marketingCampaigns.some(c => c.status === 'ACTIVO')) ? `
-                        <div class="bg-mars-yellow/10 border-l-4 border-l-mars-yellow border border-mars-yellow/30 p-3.5 mb-3 text-xs font-mono">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="text-mars-yellow font-bold uppercase">⚡ Circuito Oficial de Acciones Publicitarias (DOC_12):</span>
-                            </div>
-                            <p class="text-slate-200 leading-relaxed mb-2">
-                                Para publicar acciones comerciales y registrar la Ficha Técnica oficial (<strong class="text-white">DOC_12</strong>), tu empresa debe contratar previamente un <strong class="text-mars-yellow">Paquete de Campaña</strong> arriba y solicitar la aprobación presupuestaria a <strong class="text-mars-cyan">Finanzas</strong>.
-                            </p>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-800 text-[11px] text-slate-300">
-                                <div><strong>1.</strong> Contrata paquete arriba</div>
-                                <div><strong>2.</strong> Finanzas audita en Bóveda</div>
-                                <div><strong>3.</strong> Publica acción con DOC_12</div>
-                            </div>
-                        </div>` : ''}
-                        ${campaignsHtml}
                     </div>
                 </div>
 

@@ -1,5 +1,5 @@
 // js/ui-empresa-ops.js
-// --- MÓDULO OPERACIONES E IA: LOGÍSTICA FÍSICA, BITÁCORA IA Y DIARIO DE DECISIONES (v1.1.28) ---
+// --- MÓDULO OPERACIONES E IA: LOGÍSTICA FÍSICA, BITÁCORA IA Y DIARIO DE DECISIONES (v1.1.44) ---
 
 Object.assign(ui, {
     modalLogAI() {
@@ -199,6 +199,12 @@ Object.assign(ui, {
                 <div class="bg-amber-950/40 border border-amber-500/50 p-2.5 my-2 text-xs text-amber-300 font-mono">
                     <strong>Incidencia reportada a I+D:</strong> ${this.escapeHTML(currentHoja.returnReason || currentHoja.returnReasonId || 'Incidencia de taller')}
                 </div>
+                ${currentHoja.returnDriveUrl ? `
+                <div class="my-2">
+                    <a href="${encodeURI(currentHoja.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-2 px-3 py-2 text-xs bg-amber-950/60 text-amber-300 border border-amber-400 rounded hover:bg-amber-900/60 transition-colors font-bold uppercase">
+                        <span>📄 Abrir Registro de Incidencias en Google Docs ↗</span>
+                    </a>
+                </div>` : ''}
                 <p class="text-xs text-slate-300">Esperando que el departamento Técnico subsane el BOM en Google Docs y lo reenvíe a Taller.</p>
             </div>`;
         } else if (hojaStatus === 'EN_TALLER_OPERARIO') {
@@ -279,7 +285,6 @@ Object.assign(ui, {
                 <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">Logística de Despliegue Físico</h2>
                 <div class="flex gap-2 flex-wrap">
                     ${this.renderDocTemplateBtn('DOC_10_HOJA_TALLER')}
-                    ${this.renderDocTemplateBtn('DOC_8_CONTROL_AERO')}
                 </div>
             </div>
             ${hojaHtml}
@@ -402,6 +407,7 @@ Object.assign(ui, {
             </div>`;
         }
 
+        const isDiaryAllLocked = !state.user?.admin && ['decisionDiary_dec', 'decisionDiary_apr'].every(k => this.isDeliverableLocked(k, co));
         const diaryDocsHtml = `
         <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan mb-8">
             <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
@@ -409,10 +415,16 @@ Object.assign(ui, {
                 <span class="text-xs bg-mars-cyan/10 text-mars-cyan border border-mars-cyan px-2.5 py-1 font-bold uppercase">Resp: Operaciones IA / Marketing</span>
             </div>
             <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Sube los enlaces verificados de Google Drive correspondientes a las dos entregas oficiales de la bitácora del proyecto con permisos de lectura compartidos ("Cualquiera con el enlace puede ver").</p>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                ${this.renderDriveLinkBox('4A. Diario Decisiones, Conflictos e IA — DICIEMBRE', 'Enlace Drive a la 1ª Entrega (Diciembre) de gobernanza y auditoría IA.', 'decisionDiary_dec', docs.decisionDiary_dec)}
-                ${this.renderDriveLinkBox('4B. Diario Decisiones, Conflictos e IA — ABRIL', 'Enlace Drive a la 2ª Entrega (Abril) de cierre de bitácora e IA.', 'decisionDiary_apr', docs.decisionDiary_apr)}
-            </div>
+            ${isDiaryAllLocked ? `
+                <div class="terminal-border border-dashed p-6 text-center text-slate-400 italic text-xs uppercase">
+                    🔒 No hay entregables activos en esta fase. Se habilitarán según el cronograma oficial.
+                </div>
+            ` : `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    ${this.renderDriveLinkBox('4A. Diario Decisiones, Conflictos e IA — DICIEMBRE', 'Enlace Drive a la 1ª Entrega (Diciembre) de gobernanza y auditoría IA.', 'decisionDiary_dec', docs.decisionDiary_dec)}
+                    ${this.renderDriveLinkBox('4B. Diario Decisiones, Conflictos e IA — ABRIL', 'Enlace Drive a la 2ª Entrega (Abril) de cierre de bitácora e IA.', 'decisionDiary_apr', docs.decisionDiary_apr)}
+                </div>
+            `}
         </div>`;
 
         wrapper.innerHTML = `
@@ -463,12 +475,21 @@ Object.assign(ui, {
 
         const html = `
             <p class="text-xs text-slate-300 mb-3 leading-relaxed">Selecciona la incidencia técnica detectada durante la verificación física en el banco de trabajo. Prohibido el texto libre.</p>
+            <div class="bg-cyan-950/40 border border-cyan-500/40 p-3 mb-3 text-xs text-slate-300 leading-relaxed font-sans">
+                <p class="font-bold text-cyan-400 uppercase mb-1">📋 Protocolo de Devolución de Taller:</p>
+                <p>Para asegurar la trazabilidad sin texto libre (política Zero-Text), documenta las anomalías físicas, fotografías del ensamble o tolerancias erróneas en un documento de Google Docs o Google Drive con permisos de lectura compartidos ("Cualquiera con el enlace puede ver").</p>
+            </div>
             <div class="space-y-3">
                 <div>
                     <label for="taller-return-reason" class="text-xs text-amber-400 font-bold uppercase block mb-1.5">Causa de Incidencia Tipificada</label>
                     <select id="taller-return-reason" class="w-full min-h-[44px] bg-slate-900 border border-amber-500/50 p-2.5 text-base sm:text-xs text-white outline-none focus:border-amber-400">
                         ${optionsHtml}
                     </select>
+                </div>
+                <div>
+                    <label for="taller-return-drive-url" class="text-xs text-mars-cyan font-bold uppercase block mb-1.5">Enlace a Documento de Incidencias / Evidencias (Google Docs / Drive) *</label>
+                    <input type="url" id="taller-return-drive-url" placeholder="https://docs.google.com/document/d/..." required class="w-full min-h-[44px] bg-slate-900 border border-cyan-500/60 p-2.5 text-base sm:text-xs text-white outline-none focus:border-cyan-400 font-mono">
+                    <p class="text-[10px] text-slate-400 mt-1">El departamento Técnico revisará este enlace para subsanar los defectos físicos indicados.</p>
                 </div>
             </div>
         `;
@@ -479,13 +500,20 @@ Object.assign(ui, {
     confirmTallerReturnReason() {
         if (!state.user || (state.user.role !== 'OPERACIONES_IA' && state.user.role !== 'OPERACIONES' && !state.user.admin)) return;
         const el = document.getElementById('taller-return-reason');
+        const elUrl = document.getElementById('taller-return-drive-url');
         if (!el) return;
         const reasonId = el.value;
         const reasons = typeof WORKSHOP_INCIDENCE_REASONS !== 'undefined' ? WORKSHOP_INCIDENCE_REASONS : [];
         const reasonObj = reasons.find(r => r.id === reasonId);
         const label = reasonObj ? reasonObj.label : reasonId;
 
-        state.returnHojaTallerByOperator(reasonId, label);
+        const driveUrl = elUrl ? this.cleanInput(elUrl.value) : '';
+        if (!driveUrl) return this.notify("Debes introducir el enlace de Google Docs/Drive con el registro de la incidencia.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("Solo se admiten enlaces válidos a recursos de Google Drive o Google Docs.", "error");
+        }
+
+        state.returnHojaTallerByOperator(reasonId, label, driveUrl);
         this.closeModal();
         this.notify("⚠️ Hoja de Taller devuelta al departamento Técnico para subsanación.", "warning");
         this.render();

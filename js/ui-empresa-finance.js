@@ -86,10 +86,11 @@ Object.assign(ui, {
             </div>`;
         }
 
-        // 2. CRONOGRAMA MAESTRO DE ENTREGAS (19 ENTREGABLES OFICIALES)
+        // 2. CRONOGRAMA MAESTRO DE ENTREGAS
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const visibleDefs = (!state.user?.admin) ? defs.filter(d => !ui.isDeliverableLocked(d.key, co)) : defs;
         const activeSubj = this.cronogramaFilter || 'ALL';
-        const filteredDefs = activeSubj === 'ALL' ? defs : defs.filter(d => d.subject === activeSubj);
+        const filteredDefs = activeSubj === 'ALL' ? visibleDefs : visibleDefs.filter(d => d.subject === activeSubj);
 
         const deadlinesData = (state.data.config && state.data.config.deadlines) ? state.data.config.deadlines : {};
 
@@ -103,20 +104,22 @@ Object.assign(ui, {
         };
 
         const subjectNavButtons = [
-            { id: 'ALL', label: `TODOS (${defs.length})` },
-            { id: 'FYQ', label: 'FYQ (2)' },
-            { id: 'LYE', label: 'LYE (6)' },
-            { id: 'ECO', label: 'ECO (4)' },
-            { id: 'MAT', label: 'MAT (4)' },
-            { id: 'LEN', label: 'LEN (1)' },
-            { id: 'ING', label: 'ING (2)' }
+            { id: 'ALL', label: `TODOS (${visibleDefs.length})` },
+            { id: 'FYQ', label: `FYQ (${visibleDefs.filter(d => d.subject === 'FYQ').length})` },
+            { id: 'LYE', label: `LYE (${visibleDefs.filter(d => d.subject === 'LYE').length})` },
+            { id: 'ECO', label: `ECO (${visibleDefs.filter(d => d.subject === 'ECO').length})` },
+            { id: 'MAT', label: `MAT (${visibleDefs.filter(d => d.subject === 'MAT').length})` },
+            { id: 'LEN', label: `LEN (${visibleDefs.filter(d => d.subject === 'LEN').length})` },
+            { id: 'ING', label: `ING (${visibleDefs.filter(d => d.subject === 'ING').length})` }
         ].map(btn => `
             <button type="button" role="tab" aria-selected="${activeSubj === btn.id}" onclick="ui.setCronogramaSubjectFilter('${btn.id}')" class="min-h-[44px] px-3 py-2 text-xs font-bold uppercase transition-colors whitespace-nowrap ${activeSubj === btn.id ? 'bg-mars-cyan text-black' : 'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'}">
                 ${btn.label}
             </button>
         `).join('');
 
-        const deadlineCardsHtml = filteredDefs.map(d => {
+        const deadlineCardsHtml = filteredDefs.length === 0
+            ? `<div class="col-span-full p-6 bg-slate-900/40 border border-slate-800 text-center rounded"><p class="text-xs font-mono text-slate-400 uppercase">🔒 No hay entregables activos en esta fase. Se habilitarán según el cronograma oficial.</p></div>`
+            : filteredDefs.map(d => {
             const dateStr = deadlinesData[d.key] || d.defaultDate;
             const st = ui.getDeadlineStatus(dateStr);
             const docObj = co.deliverables[d.key];
@@ -162,7 +165,7 @@ Object.assign(ui, {
         const cronogramaSection = `
         <details ${this.cronogramaExpanded ? 'open' : ''} ontoggle="ui.cronogramaExpanded = this.open" class="terminal-border bg-mars-card p-4 sm:p-5 mb-6 border-l-4 border-l-mars-cyan group">
             <summary class="cursor-pointer font-orbitron text-xs sm:text-sm text-mars-cyan uppercase tracking-wider font-bold select-none flex items-center justify-between min-h-[44px]">
-                <span>📅 CRONOGRAMA MAESTRO DE ENTREGAS (19 HITOS)</span>
+                <span>📅 CRONOGRAMA MAESTRO DE ENTREGAS (${visibleDefs.length} HITOS)</span>
                 <span class="text-xs text-slate-300 font-mono group-open:rotate-180 transition-transform">▼ Desplegar</span>
             </summary>
             <div class="mt-4 pt-3 border-t border-slate-800">
@@ -907,10 +910,16 @@ Object.assign(ui, {
                         </div>
                     </div>
                     <div class="space-y-4">
+                        ${(!state.user?.admin && ['budgetInitial', 'incomeStatement', 'budgetPostProto', 'balanceSheet'].every(k => ui.isDeliverableLocked(k, co))) ? `
+                            <div class="p-6 bg-slate-900/40 border border-slate-800 text-center rounded">
+                                <p class="text-xs font-mono text-slate-400 uppercase">🔒 No hay entregables activos en esta fase. Se habilitarán según el cronograma oficial.</p>
+                            </div>
+                        ` : `
                         ${this.renderDriveLinkBox('1. Presupuesto Inicial (20% ECO)', 'Presupuesto estimativo previo al inicio de pruebas. Hoja Sheets/Drive.', 'budgetInitial', docs.budgetInitial)}
                         ${this.renderDriveLinkBox('2. Cuenta de Resultados Provisional (20% ECO)', 'Registro de ingresos virtuales, gastos y balance de rentabilidad.', 'incomeStatement', docs.incomeStatement)}
                         ${this.renderDriveLinkBox('3. Presupuesto Post-Prototipo (20% ECO)', 'Ajuste presupuestario final tras los ensayos de lanzamiento.', 'budgetPostProto', docs.budgetPostProto)}
                         ${this.renderDriveLinkBox('4. Balance de Situación Simplificado (20% ECO)', 'Estructura patrimonial de la startup aeroespacial al cierre del proyecto.', 'balanceSheet', docs.balanceSheet)}
+                        `}
                     </div>
                 </div>
 

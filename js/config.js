@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.43) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.44) ---
 
-const APP_VERSION = "1.1.43";
+const APP_VERSION = "1.1.44";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -67,12 +67,6 @@ const OFFICIAL_DOC_TEMPLATES = Object.freeze({
         title: 'ADUANA DOCENTE & MERCADO B2B — MEMORIA TÉCNICA DE DESINVERSIÓN Y DECLARACIÓN DE EXCEDENTES',
         flow: 'Técnico/Financiero ➔ Mercado B2B & Aduana Docente',
         copyUrl: 'https://docs.google.com/document/d/1V1amJQa0GkogTC2r8HPAJRUCVj3UlG0HIvjgHx4Csas/copy'
-    },
-    DOC_8_CONTROL_AERO: {
-        id: 'DOC_8_CONTROL_AERO',
-        title: 'PROTOCOLO DE ADQUISICIÓN Y CONTROL DE AERO-ESTRUCTURA',
-        flow: 'Financiero & Operaciones - Control de Calidad',
-        copyUrl: 'https://docs.google.com/document/d/1Y5dAyCQ92Avft0_kVCrJmcamc-J8g7G2Z23Euj1TLso/copy'
     },
     DOC_9_ORDEN_ADQUISICION: {
         id: 'DOC_9_ORDEN_ADQUISICION',
@@ -535,6 +529,24 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.44",
+      date: new Date().toISOString().split('T')[0],
+      title: "Ocultación Global de Bloqueados, Pestaña Campañas MKT, 5ª Pestaña Taller Técnico y Guía de Incidencias",
+      items: [
+        "Ocultación global reactiva de entregables con fecha de apertura futura aún no entregados para perfiles de alumno en todos los departamentos, Dossier y Cronograma Maestro.",
+        "Reestructuración de navegación en Marketing: nueva pestaña independiente '📢 Campañas' (catálogo de paquetes publicitarios e historial DOC_12 con workflow) y desvinculación de SUPERMARS-KET.",
+        "5ª Pestaña exclusiva '🔧 Taller' para el rol Técnico: escandallo BOM, inventario físico, venta B2B y panel de Hoja de Taller (DOC_10) con workflow en 4 fases.",
+        "Guía operativa contextual y campo obligatorio de enlace a Google Drive en la devolución de Hoja de Taller por incidencias de montaje por el Operario.",
+        "Depuración definitiva del documento DOC_8_CONTROL_AERO de plantillas oficiales y vistas de logística."
+      ],
+      highlights: [
+        { type: "ENTREGABLES", text: "Ocultación limpia y automática de entregables bloqueados según fecha de apertura docente." },
+        { type: "MARKETING", text: "Pestaña dedicada '📢 Campañas' para contratación de paquetes publicitarios y publicación de acciones DOC_12." },
+        { type: "TÉCNICO", text: "5ª Pestaña '🔧 Taller' con control total de piezas BOM, excedentes B2B y ciclo de vida de Hoja de Taller." },
+        { type: "TALLER", text: "Informe obligatorio de incidencias en Google Docs para devoluciones de taller físico por Operaciones." }
+      ]
+    },
     {
       version: "1.1.43",
       date: new Date().toISOString().split('T')[0],

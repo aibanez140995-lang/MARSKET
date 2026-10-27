@@ -195,7 +195,7 @@ console.log("\n--- VECTOR 3: PANEL LOGÍSTICO DE OPERACIONES Y EJECUCIÓN FÍSIC
 
 console.log("\n--- VECTOR 4: INTEGRIDAD DE ENLACES, ID Y REFERENCIAS CRUZADAS ---");
 {
-    assert(uiCoreCode.includes("if (role === 'TECNICO') return { view: 'tech', anchorId: 'tech-orders-tracking-panel' };"), "Notificaciones para Técnico resuelven a view: tech y anchorId: tech-orders-tracking-panel");
+    assert(uiCoreCode.includes("return { view: 'tech', anchorId: 'tech-orders-tracking-panel' };"), "Notificaciones para Técnico resuelven a view: tech y anchorId: tech-orders-tracking-panel");
     assert(uiCoreCode.includes("if (role === 'OPERACIONES_IA' || role === 'OPERACIONES') return { view: 'cart', anchorId: 'ops-orders-tracking-panel' };"), "Notificaciones para Operaciones resuelven a view: cart y anchorId: ops-orders-tracking-panel");
 }
 

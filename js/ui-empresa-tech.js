@@ -1,5 +1,5 @@
 // js/ui-empresa-tech.js
-// --- MÓDULO I+D: BANCO DE PRUEBAS (en mm), BOM, MATEMÁTICAS E INVENTARIO B2B (v1.1.28) ---
+// --- MÓDULO I+D: BANCO DE PRUEBAS (en mm), MATEMÁTICAS, ENTREGABLES CIENTÍFICOS Y TALLER BOM (v1.1.44) ---
 
 Object.assign(ui, {
     setTechDocTab(tab) {
@@ -9,6 +9,9 @@ Object.assign(ui, {
 
     techSendHojaTaller() {
         if (!state.user) return;
+        if (!state.user.admin && this.isDeliverableLocked('hoja_taller_fyq')) {
+            return this.notify("La Hoja de Taller se encuentra bloqueada hasta su fecha de apertura.", "error");
+        }
         const el = document.getElementById('tech-hoja-taller-drive-url');
         if (!el) return;
         const url = this.cleanInput(el.value);
@@ -25,7 +28,6 @@ Object.assign(ui, {
         if (!co) return auth.logout();
         
         const docs = co.deliverables || {};
-        co.bom = co.bom || [];
         co.flightTests = co.flightTests || [];
         co.orders = co.orders || [];
         
@@ -50,72 +52,8 @@ Object.assign(ui, {
             </tr>`;
         }).join('') || `<tr><td colspan="6" class="text-center py-4 text-slate-300 italic text-xs">No hay ensayos registrados.</td></tr>`;
 
-        let executedItems = [];
-        co.orders.filter(o => o.status === 'EJECUTADO').forEach(o => {
-            (o.items || []).forEach((item, idx) => {
-                executedItems.push({ ...item, orderId: o.id, itemIdx: idx, itemKey: `${o.id}-${idx}` });
-            });
-        });
-
-        let stockCount = 0;
-        let bomCount = 0;
-        let b2bCount = 0;
-        executedItems.forEach(item => {
-            const isSold = item.b2bStatus === 'VENDIDO';
-            const isListed = item.b2bStatus === 'EN_VENTA';
-            const isChecked = !isSold && !isListed && co.bom.includes(item.itemKey);
-            if (!isSold && !isListed && !isChecked) stockCount++;
-            if (isChecked) bomCount++;
-            if (isListed) b2bCount++;
-        });
-
-        let bomTotal = 0;
-        let bomHtml = '';
-
-        if (executedItems.length === 0) {
-            bomHtml = `<p class="text-slate-300 italic text-xs">No hay componentes adquiridos y ejecutados físicamente en inventario.</p>`;
-        } else {
-            bomHtml = executedItems.map(item => {
-                const isSold = item.b2bStatus === 'VENDIDO';
-                const isListed = item.b2bStatus === 'EN_VENTA';
-                const isChecked = !isSold && !isListed && co.bom.includes(item.itemKey);
-                const itemQty = Number(item.qty) || 1;
-                const unitPrice = Number(item.price) || 0;
-                const totalItemPrice = unitPrice * itemQty;
-                
-                if (isChecked) bomTotal += totalItemPrice;
-
-                let statusAction = '';
-                if (isSold) {
-                    statusAction = `<span class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 font-bold uppercase border border-slate-700">TRASPASADO B2B</span>`;
-                } else if (isListed) {
-                    statusAction = `<span class="text-xs bg-mars-yellow/20 text-mars-yellow px-2.5 py-1 font-bold uppercase border border-mars-yellow animate-pulse">EN OFERTA B2B</span>`;
-                } else {
-                    statusAction = `<button type="button" onclick="ui.modalSellB2B('${this.escapeHTML(item.orderId)}', ${Number(item.itemIdx)})" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-3 py-1.5 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors whitespace-nowrap" title="Poner en venta en el mercado secundario">[VENDER B2B]</button>`;
-                }
-
-                return `
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-900 p-2.5 border ${isSold ? 'border-slate-800 opacity-60' : (isListed ? 'border-mars-yellow/50' : 'border-mars-border')} text-xs mb-2 gap-2.5">
-                    <label class="mars-checkbox-label flex items-center gap-2.5 text-white ${isSold || isListed ? 'cursor-not-allowed line-through text-slate-400' : 'cursor-pointer'} min-w-0 flex-1 min-h-[44px]">
-                        <input type="checkbox" class="mars-touch-input" ${isChecked ? 'checked' : ''} ${isSold || isListed ? 'disabled' : ''} onchange="ui.toggleBomItem('${this.escapeHTML(item.itemKey)}', this.checked)">
-                        <span class="mars-checkbox-visual"></span>
-                        <span class="break-words min-w-0 flex-1">${this.escapeHTML(item.name)} (x${itemQty})</span>
-                    </label>
-                    <div class="flex items-center gap-2 shrink-0 justify-between sm:justify-end">
-                        <span class="text-mars-green font-mono font-bold">${totalItemPrice.toFixed(2)} €v${itemQty > 1 ? ` <span class="text-[10px] text-slate-400 font-normal">(${unitPrice.toFixed(2)} c/u)</span>` : ''}</span>
-                        ${statusAction}
-                    </div>
-                </div>
-                `;
-            }).join('');
-        }
-
-        const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-        const grossCosts = state.getCompanyGrossOperatingCosts ? state.getCompanyGrossOperatingCosts(co) : 0;
-        const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
-        const opCosts = state.getCompanyOperatingCosts ? state.getCompanyOperatingCosts(co) : { gross: grossCosts, sponsorReduction: sponsorAmt, net: grossCosts };
-        const netOpCosts = (opCosts && typeof opCosts.net === 'number') ? opCosts.net : ((typeof opCosts === 'number') ? opCosts : grossCosts);
-        const sponsorTierLabel = co.sponsorAwarded ? (co.sponsorData?.tier || co.sponsorAwarded || 'SPONSOR') : null;
+        const isFyqAllLocked = !state.user?.admin && ['preliminaryReport', 'technicalReport'].every(k => this.isDeliverableLocked(k, co));
+        const isMatAllLocked = !state.user?.admin && ['goniometerEvidence', 'mathReportDist', 'mathReportTwoPoints', 'mathReportFinal'].every(k => this.isDeliverableLocked(k, co));
 
         let docSectionContent = '';
         if (activeDocTab === 'FYQ') {
@@ -128,8 +66,14 @@ Object.assign(ui, {
                 ${state.data.config.guidelines.techReportNotes ? `<p class="text-xs text-mars-yellow mb-3 italic">Info: ${this.escapeHTML(state.data.config.guidelines.techReportNotes)}</p>` : ''}
                 ${state.data.config.guidelines.techReportDocUrl ? `<a href="${this.escapeHTML(state.data.config.guidelines.techReportDocUrl)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] flex items-center justify-center border border-mars-cyan text-mars-cyan text-xs py-2.5 mb-4 font-bold uppercase hover:bg-mars-cyan hover:text-black transition-colors">Abrir Guía Oficial FYQ</a>` : ''}
                 
-                ${this.renderDriveLinkBox('1. Hoja de Registro Preliminar (Fase I)', 'Enlace Drive al presupuesto teórico, materiales del catálogo, altura estimada, boceto y foto del prototipo montado sin combustible.', 'preliminaryReport', docs.preliminaryReport)}
-                ${this.renderDriveLinkBox('2. Informe Técnico Exhaustivo (Fase II)', 'Enlace Drive al documento formal con marco químico estequiométrico, análisis físico-aerodinámico, balance definitivo y análisis V2.0.', 'technicalReport', docs.technicalReport)}
+                ${isFyqAllLocked ? `
+                    <div class="terminal-border border-dashed p-6 text-center text-slate-400 italic text-xs uppercase">
+                        🔒 No hay entregables activos en esta fase. Se habilitarán según el cronograma oficial.
+                    </div>
+                ` : `
+                    ${this.renderDriveLinkBox('1. Hoja de Registro Preliminar (Fase I)', 'Enlace Drive al presupuesto teórico, materiales del catálogo, altura estimada, boceto y foto del prototipo montado sin combustible.', 'preliminaryReport', docs.preliminaryReport)}
+                    ${this.renderDriveLinkBox('2. Informe Técnico Exhaustivo (Fase II)', 'Enlace Drive al documento formal con marco químico estequiométrico, análisis físico-aerodinámico, balance definitivo y análisis V2.0.', 'technicalReport', docs.technicalReport)}
+                `}
             `;
         } else {
             docSectionContent = `
@@ -139,13 +83,18 @@ Object.assign(ui, {
                 </div>
                 <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Entregables trigonométricos y constructivos para Matemáticas (Solo Enlaces Drive/Cloud).</p>
                 
-                ${this.renderDriveLinkBox('1. Elaboración de Goniómetro/s (25% MAT)', 'Enlace a carpeta/documento Drive con fotografías, diseño constructivo y calibración del goniómetro casero.', 'goniometerEvidence', docs.goniometerEvidence)}
-                ${this.renderDriveLinkBox('2. Informe Empírico: Distancia Conocida (25% MAT)', 'Enlace Drive al cálculo trigonométrico de apogeo con datos objetivos desde una distancia conocida a la base.', 'mathReportDist', docs.mathReportDist)}
-                ${this.renderDriveLinkBox('3. Informe Empírico: Dos Mediciones (25% MAT)', 'Enlace Drive al cálculo de altitud mediante sistema de dos mediciones tomadas a una distancia de separación conocida.', 'mathReportTwoPoints', docs.mathReportTwoPoints)}
-                ${this.renderDriveLinkBox('4. Informe Técnico Final Comparativo (25% MAT)', 'Enlace Drive al análisis de coherencia comparando resultados anteriores y parámetros adicionales.', 'mathReportFinal', docs.mathReportFinal)}
+                ${isMatAllLocked ? `
+                    <div class="terminal-border border-dashed p-6 text-center text-slate-400 italic text-xs uppercase">
+                        🔒 No hay entregables activos en esta fase. Se habilitarán según el cronograma oficial.
+                    </div>
+                ` : `
+                    ${this.renderDriveLinkBox('1. Elaboración de Goniómetro/s (25% MAT)', 'Enlace a carpeta/documento Drive con fotografías, diseño constructivo y calibración del goniómetro casero.', 'goniometerEvidence', docs.goniometerEvidence)}
+                    ${this.renderDriveLinkBox('2. Informe Empírico: Distancia Conocida (25% MAT)', 'Enlace Drive al cálculo trigonométrico de apogeo con datos objetivos desde una distancia conocida a la base.', 'mathReportDist', docs.mathReportDist)}
+                    ${this.renderDriveLinkBox('3. Informe Empírico: Dos Mediciones (25% MAT)', 'Enlace Drive al cálculo de altitud mediante sistema de dos mediciones tomadas a una distancia de separación conocida.', 'mathReportTwoPoints', docs.mathReportTwoPoints)}
+                    ${this.renderDriveLinkBox('4. Informe Técnico Final Comparativo (25% MAT)', 'Enlace Drive al análisis de coherencia comparando resultados anteriores y parámetros adicionales.', 'mathReportFinal', docs.mathReportFinal)}
+                `}
             `;
         }
-
 
         // --- Panel de Seguimiento de Órdenes I+D (Técnico) ---
         const techFilter = this.techOrdersFilter || 'EN_PROCESO';
@@ -237,7 +186,7 @@ Object.assign(ui, {
             }).join('');
 
         const trackingSectionHtml = `
-        <div id="tech-orders-tracking-panel" class="mt-8 terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
+        <div id="tech-orders-tracking-panel" class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-3">
                 <div>
                     <h2 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter flex items-center gap-2">
@@ -264,217 +213,367 @@ Object.assign(ui, {
         </div>`;
 
         wrapper.innerHTML = `
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <!-- Columna Izquierda: Entregables FYQ y MAT -->
-            <div class="lg:col-span-5 space-y-6">
-                <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
-                    <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-3 flex-wrap gap-2">
-                        <h2 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter">Entregables Científicos (Drive)</h2>
-                        <div role="tablist" aria-label="Materias científicas" class="flex gap-1 bg-black p-1 border border-mars-border">
-                            <button type="button" role="tab" aria-selected="${activeDocTab === 'FYQ'}" onclick="ui.setTechDocTab('FYQ')" class="min-h-[44px] px-3 py-2 text-xs font-bold uppercase transition-colors ${activeDocTab === 'FYQ' ? 'bg-mars-cyan text-black' : 'text-slate-300 hover:text-white'}">Física y Química</button>
-                            <button type="button" role="tab" aria-selected="${activeDocTab === 'MAT'}" onclick="ui.setTechDocTab('MAT')" class="min-h-[44px] px-3 py-2 text-xs font-bold uppercase transition-colors ${activeDocTab === 'MAT' ? 'bg-mars-yellow text-black' : 'text-slate-300 hover:text-white'}">Matemáticas</button>
-                        </div>
-                    </div>
-                    <div class="max-h-[560px] overflow-y-auto pr-1">
-                        ${docSectionContent}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Columna Derecha: Banco de Pruebas e Inventario Físico / BOM -->
-            <div class="lg:col-span-7 space-y-6">
-                <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow">
-                    <h2 class="font-orbitron text-mars-yellow text-base sm:text-lg mb-2 uppercase tracking-tighter">Banco de Pruebas de Vuelo (Fase II)</h2>
-                    <p class="text-[11px] text-mars-cyan font-mono mb-4">ℹ️ La Eficiencia (E = Altura / Coste) es calculada de forma matemática automática por la terminal al registrar el ensayo.</p>
-                    <div class="bg-black border border-mars-border p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-                        <div>
-                            <label for="ft-bottle" class="text-xs text-slate-300 uppercase block mb-1">Fuselaje / Botella</label>
-                            <select id="ft-bottle" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow w-full">
-                                ${(typeof BOTTLE_TYPES_DEF !== 'undefined' ? BOTTLE_TYPES_DEF : [
-                                    "PET 1.5L Lisa Cilíndrica",
-                                    "PET 1.5L Acanalada Reforzada",
-                                    "PET 2.0L Alta Capacidad",
-                                    "PET 1.0L Estándar",
-                                    "PET 0.5L Ligera Suborbital",
-                                    "Fuselaje Bietapa / Empalmado"
-                                ]).map(b => `<option value="${this.escapeHTML(b)}">${this.escapeHTML(b)}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div>
-                            <label for="ft-nahco3" class="text-xs text-slate-300 uppercase block mb-1">NaHCO3 (g)</label>
-                            <input type="number" id="ft-nahco3" placeholder="NaHCO3 (g)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan w-full" step="0.1">
-                        </div>
-                        <div>
-                            <label for="ft-vinegar" class="text-xs text-slate-300 uppercase block mb-1">Vinagre (ml)</label>
-                            <input type="number" id="ft-vinegar" placeholder="Vinagre (ml)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan w-full" step="1">
-                        </div>
-                        <div>
-                            <label for="ft-cost" class="text-xs text-slate-300 uppercase block mb-1">Coste Ensayo (€v)</label>
-                            <input type="number" id="ft-cost" placeholder="Coste (€v)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-magenta w-full" step="0.1">
-                        </div>
-                        <div>
-                            <label for="ft-height-mm" class="text-xs text-slate-300 uppercase block mb-1">Altura H (mm)</label>
-                            <input type="number" id="ft-height-mm" placeholder="Altura H (mm)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-green font-bold w-full" step="1">
-                        </div>
-                        <div class="flex items-end">
-                            <button type="button" onclick="ui.submitFlightTest()" class="min-h-[44px] bg-mars-yellow text-black font-black uppercase tracking-wider hover:bg-white transition-all py-2.5 px-3 w-full">Registrar Vuelo</button>
-                        </div>
-                    </div>
-                    <div class="overflow-x-auto w-full max-h-60 overflow-y-auto">
-                        <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
-                            <thead class="text-slate-300 uppercase border-b border-mars-border sticky top-0 bg-mars-card">
-                                <tr><th class="py-2 pr-3">Fecha</th><th class="pr-3">Fuselaje</th><th class="pr-3">Mix (Sól/Líq)</th><th class="pr-3">Coste (€v)</th><th class="pr-3">H (mm)</th><th class="text-mars-yellow">E = H/C</th></tr>
-                            </thead>
-                            <tbody>${ftHtml}</tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-magenta">
-                    <div class="flex flex-col gap-3 mb-4 border-b border-mars-border pb-3">
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 w-full">
+        <div class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Columna Izquierda: Banco de Pruebas de Vuelo -->
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2">
                             <div>
-                                <h2 class="font-orbitron text-mars-magenta text-sm sm:text-base uppercase tracking-tighter">Inventario Físico, BOM & Ventas B2B</h2>
-                                <p class="text-xs text-slate-300 uppercase mt-0.5">Marca las piezas que integran el cohete final o vende el excedente a otras empresas.</p>
+                                <h2 class="font-orbitron text-mars-yellow text-base sm:text-lg uppercase tracking-tighter">Banco de Pruebas de Vuelo (Fase II)</h2>
+                                <p class="text-[11px] text-mars-cyan font-mono">ℹ️ La Eficiencia (E = Altura / Coste) es calculada de forma matemática automática por la terminal al registrar el ensayo.</p>
                             </div>
-                            <div class="flex items-center gap-2 text-xs font-mono font-bold flex-wrap">
-                                <span class="px-2.5 py-1 bg-slate-900 border border-slate-700 text-slate-300">📦 Stock: ${stockCount}</span>
-                                <span class="px-2.5 py-1 bg-mars-green/10 border border-mars-green text-mars-green">🚀 En BOM: ${bomCount}</span>
-                                <span class="px-2.5 py-1 bg-mars-yellow/10 border border-mars-yellow text-mars-yellow">🤝 En Venta B2B: ${b2bCount}</span>
+                            <button type="button" onclick="ui.navigate('tech_workshop')" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-3 py-1.5 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors whitespace-nowrap">
+                                🔧 Ir a Taller y BOM ➔
+                            </button>
+                        </div>
+                        <div class="bg-black border border-mars-border p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                            <div>
+                                <label for="ft-bottle" class="text-xs text-slate-300 uppercase block mb-1">Fuselaje / Botella</label>
+                                <select id="ft-bottle" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow w-full">
+                                    ${(typeof BOTTLE_TYPES_DEF !== 'undefined' ? BOTTLE_TYPES_DEF : [
+                                        "PET 1.5L Lisa Cilíndrica",
+                                        "PET 1.5L Acanalada Reforzada",
+                                        "PET 2.0L Alta Capacidad",
+                                        "PET 1.0L Estándar",
+                                        "PET 0.5L Ligera Suborbital",
+                                        "Fuselaje Bietapa / Empalmado"
+                                    ]).map(b => `<option value="${this.escapeHTML(b)}">${this.escapeHTML(b)}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label for="ft-nahco3" class="text-xs text-slate-300 uppercase block mb-1">NaHCO3 (g)</label>
+                                <input type="number" id="ft-nahco3" placeholder="NaHCO3 (g)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan w-full" step="0.1">
+                            </div>
+                            <div>
+                                <label for="ft-vinegar" class="text-xs text-slate-300 uppercase block mb-1">Vinagre (ml)</label>
+                                <input type="number" id="ft-vinegar" placeholder="Vinagre (ml)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan w-full" step="1">
+                            </div>
+                            <div>
+                                <label for="ft-cost" class="text-xs text-slate-300 uppercase block mb-1">Coste Ensayo (€v)</label>
+                                <input type="number" id="ft-cost" placeholder="Coste (€v)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-magenta w-full" step="0.1">
+                            </div>
+                            <div>
+                                <label for="ft-height-mm" class="text-xs text-slate-300 uppercase block mb-1">Altura H (mm)</label>
+                                <input type="number" id="ft-height-mm" placeholder="Altura H (mm)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-green font-bold w-full" step="1">
+                            </div>
+                            <div class="flex items-end">
+                                <button type="button" onclick="ui.submitFlightTest()" class="min-h-[44px] bg-mars-yellow text-black font-black uppercase tracking-wider hover:bg-white transition-all py-2.5 px-3 w-full">Registrar Vuelo</button>
                             </div>
                         </div>
-                        <div class="flex flex-wrap items-center gap-2 w-full pt-1">
-                            <button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta hover:bg-mars-magenta hover:text-white px-3 py-2 text-xs font-bold uppercase transition-all whitespace-nowrap">[ + Solicitar Ítem Especial / Fuera de Mercado ]</button>
-                            <button type="button" onclick="ui.navigate('dossier')" class="min-h-[44px] bg-mars-cyan/10 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-3 py-2 text-xs font-bold uppercase transition-all whitespace-nowrap">[ 📄 Ver Dossier Inversores ↗ ]</button>
-                            <button type="button" onclick="ui.setMarketTab('b2b'); ui.navigate('market')" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-4 py-2 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-all whitespace-nowrap">[ 🤝 Ver Mercado B2B ]</button>
+                        <div class="overflow-x-auto w-full max-h-60 overflow-y-auto">
+                            <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
+                                <thead class="text-slate-300 uppercase border-b border-mars-border sticky top-0 bg-mars-card">
+                                    <tr><th class="py-2 pr-3">Fecha</th><th class="pr-3">Fuselaje</th><th class="pr-3">Mix (Sól/Líq)</th><th class="pr-3">Coste (€v)</th><th class="pr-3">H (mm)</th><th class="text-mars-yellow">E = H/C</th></tr>
+                                </thead>
+                                <tbody>${ftHtml}</tbody>
+                            </table>
                         </div>
                     </div>
-                    
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 bg-black p-3 border border-mars-border">
-                        <div class="text-center sm:border-r border-slate-800 pb-2 sm:pb-0 border-b sm:border-b-0">
-                            <p class="text-xs text-slate-300 uppercase font-bold">Inversión Total I+D Ejecutada</p>
-                            <p class="text-mars-cyan font-mono font-bold text-base mt-1">${totalDevCost.toFixed(2)} €v</p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-xs text-slate-300 uppercase font-bold">Coste Prototipo Final (BOM)</p>
-                            <p class="text-mars-green font-mono font-bold text-lg mt-1">${bomTotal.toFixed(2)} €v</p>
-                        </div>
-                    </div>
+                </div>
 
-                    <div class="bg-black p-3 border border-slate-800 mb-4 space-y-1.5">
-                        <div class="flex justify-between items-center text-xs">
-                            <span class="text-slate-300 uppercase">Coste Operativo Bruto:</span>
-                            <span class="text-white font-mono font-bold">${grossCosts.toFixed(2)} €v</span>
+                <!-- Columna Derecha: Entregables FYQ y MAT -->
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
+                        <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-3 flex-wrap gap-2">
+                            <h2 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter">Entregables Científicos (Drive)</h2>
+                            <div role="tablist" aria-label="Materias científicas" class="flex gap-1 bg-black p-1 border border-mars-border">
+                                <button type="button" role="tab" aria-selected="${activeDocTab === 'FYQ'}" onclick="ui.setTechDocTab('FYQ')" class="min-h-[44px] px-3 py-2 text-xs font-bold uppercase transition-colors ${activeDocTab === 'FYQ' ? 'bg-mars-cyan text-black' : 'text-slate-300 hover:text-white'}">Física y Química</button>
+                                <button type="button" role="tab" aria-selected="${activeDocTab === 'MAT'}" onclick="ui.setTechDocTab('MAT')" class="min-h-[44px] px-3 py-2 text-xs font-bold uppercase transition-colors ${activeDocTab === 'MAT' ? 'bg-mars-yellow text-black' : 'text-slate-300 hover:text-white'}">Matemáticas</button>
+                            </div>
                         </div>
-                        ${(sponsorAmt > 0 && sponsorTierLabel) ? `
-                        <div class="flex justify-between items-center text-xs">
-                            <span class="text-amber-400 uppercase font-bold">Reducción Patrocinio (${this.escapeHTML(sponsorTierLabel)}):</span>
-                            <span class="text-amber-400 font-mono font-bold">-${sponsorAmt.toFixed(2)} €v</span>
-                        </div>` : ''}
-                        <div class="flex justify-between items-center text-xs border-t border-slate-800 pt-1.5">
-                            <span class="text-mars-green font-bold uppercase">Coste Operativo Neto:</span>
-                            <span class="text-mars-green font-mono font-bold text-sm">${netOpCosts.toFixed(2)} €v</span>
+                        <div class="max-h-[560px] overflow-y-auto pr-1">
+                            ${docSectionContent}
                         </div>
-                    </div>
-
-                    <div class="max-h-60 overflow-y-auto pr-1">
-                        ${bomHtml}
-                        ${(() => {
-                            const hojaFyq = co.deliverables?.hoja_taller_fyq;
-                            const hojaStatus = hojaFyq?.status || 'DRAFT_TECNICO';
-                            const hojaUrl = hojaFyq?.driveUrl || '';
-
-                            if (!hojaFyq || hojaStatus === 'DRAFT_TECNICO') {
-                                return `
-                                <div class="bg-slate-900 border border-cyan-500/50 p-3 mt-4 space-y-2 rounded">
-                                    <div class="flex justify-between items-center flex-wrap gap-2">
-                                        <span class="text-xs font-bold uppercase text-cyan-400">[FASE 1: ESPECIFICACIÓN Y BOM]</span>
-                                        <span class="text-xs font-mono font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded">BORRADOR TÉCNICO</span>
-                                    </div>
-                                    <p class="text-xs text-slate-300">Genera el escandallo (BOM) arriba, redacta la Hoja de Taller en Google Docs y envíala al Taller para montaje físico.</p>
-                                    <div class="mb-2">
-                                        ${this.renderDocTemplateBtn('DOC_10_HOJA_TALLER')}
-                                    </div>
-                                    <label for="tech-hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Enlace Drive Hoja de Taller (BOM & Control Físico)</label>
-                                    <input type="url" id="tech-hoja-taller-drive-url" value="${this.escapeAttr(hojaUrl)}" placeholder="https://docs.google.com/..." class="w-full bg-black border border-slate-700 p-2 text-xs text-white font-mono outline-none focus:border-mars-cyan min-h-[44px]">
-                                    <div class="flex justify-end pt-1">
-                                        <button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ 🚀 ENVIAR A TALLER ]</button>
-                                    </div>
-                                </div>`;
-                            } else if (hojaStatus === 'EN_TALLER_OPERARIO') {
-                                return `
-                                <div class="bg-slate-900 border border-blue-500/50 p-3 mt-4 space-y-2 rounded">
-                                    <div class="flex justify-between items-center flex-wrap gap-2">
-                                        <span class="text-xs font-bold uppercase text-blue-400">[FASE 2: EN TALLER FÍSICO]</span>
-                                        <span class="text-xs font-mono font-bold text-blue-300 bg-blue-900/40 border border-blue-500 px-2 py-0.5 rounded">EN TALLER (OPERARIO)</span>
-                                    </div>
-                                    <p class="text-xs text-slate-300">La Hoja de Taller ha sido remitida a Operaciones. El Operario está ensamblando y verificando la tolerancia física.</p>
-                                    <div class="pt-1 flex gap-2 items-center flex-wrap">
-                                        <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Ver Documento Drive ↗</span></a>
-                                    </div>
-                                </div>`;
-                            } else if (hojaStatus === 'DEVUELTO_A_TECNICO') {
-                                return `
-                                <div class="bg-slate-900 border border-amber-500 p-3 mt-4 space-y-2 rounded">
-                                    <div class="flex justify-between items-center flex-wrap gap-2">
-                                        <span class="text-xs font-bold uppercase text-amber-400">[FASE 3: SUBSANACIÓN TÉCNICA]</span>
-                                        <span class="text-xs font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-500 px-2 py-0.5 rounded">⚠️ DEVUELTO POR INCIDENCIA EN TALLER</span>
-                                    </div>
-                                    <div class="bg-amber-950/40 border border-amber-500/50 p-2.5 my-1 text-xs text-amber-300 font-mono">
-                                        <strong>Motivo de Incidencia Tipificado:</strong> ${this.escapeHTML(hojaFyq.returnReason || hojaFyq.returnReasonId || 'Incidencia de taller')}
-                                    </div>
-                                    <p class="text-xs text-slate-300">Corrige las tolerancias o sustituye las piezas en el Google Doc y vuelve a remitir a taller.</p>
-                                    <label for="tech-hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Actualizar Enlace Drive Hoja de Taller</label>
-                                    <input type="url" id="tech-hoja-taller-drive-url" value="${this.escapeAttr(hojaUrl)}" class="w-full bg-black border border-amber-500/60 p-2 text-xs text-white font-mono outline-none focus:border-amber-400 min-h-[44px]">
-                                    <div class="flex justify-end pt-1">
-                                        <button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-amber-400 text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ 🔄 REENVIAR A TALLER ]</button>
-                                    </div>
-                                </div>`;
-                            } else if (hojaStatus === 'SUBMITTED_TO_CEO') {
-                                return `
-                                <div class="bg-slate-900 border border-purple-500/50 p-3 mt-4 space-y-2 rounded">
-                                    <div class="flex justify-between items-center flex-wrap gap-2">
-                                        <span class="text-xs font-bold uppercase text-purple-400">[FASE 4: SUPERVISIÓN CEO]</span>
-                                        <span class="text-xs font-mono font-bold text-purple-300 bg-purple-900/40 border border-purple-500 px-2 py-0.5 rounded">VALIDADO EN TALLER // EN REVISIÓN CEO</span>
-                                    </div>
-                                    <p class="text-xs text-slate-300">Operaciones ha validado el montaje físico. La Hoja de Taller está pendiente del visado final del CEO hacia el profesor de FyQ.</p>
-                                    <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Ver Documento Drive ↗</span></a>
-                                </div>`;
-                            } else if (hojaStatus === 'CEO_REVISION') {
-                                return `
-                                <div class="bg-slate-900 border border-mars-magenta p-3 mt-4 space-y-2 rounded">
-                                    <div class="flex justify-between items-center flex-wrap gap-2">
-                                        <span class="text-xs font-bold uppercase text-mars-magenta">[REVISIÓN REQUERIDA POR CEO]</span>
-                                        <span class="text-xs font-mono font-bold text-mars-magenta bg-mars-magenta/20 border border-mars-magenta px-2 py-0.5 rounded">⚠️ DEVUELTO POR CEO</span>
-                                    </div>
-                                    <div class="bg-red-950/40 border border-red-500/50 p-2.5 my-1 text-xs text-red-300 font-mono">
-                                        <strong>Motivo de Devolución CEO:</strong> ${this.escapeHTML(hojaFyq.returnReason || hojaFyq.returnReasonId || 'Requiere subsanación técnica')}
-                                    </div>
-                                    <p class="text-xs text-slate-300">Corrige las observaciones en el documento de Drive y vuelve a enviar a Taller/CEO.</p>
-                                    <label for="tech-hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Actualizar Enlace Drive Hoja de Taller</label>
-                                    <input type="url" id="tech-hoja-taller-drive-url" value="${this.escapeAttr(hojaUrl)}" class="w-full bg-black border border-mars-magenta/60 p-2 text-xs text-white font-mono outline-none focus:border-mars-magenta min-h-[44px]">
-                                    <div class="flex justify-end pt-1">
-                                        <button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-mars-magenta text-white font-black uppercase text-xs px-4 py-2 hover:bg-white hover:text-mars-magenta transition-all">[ 🔄 REENVIAR A REVISIÓN ]</button>
-                                    </div>
-                                </div>`;
-                            } else if (hojaStatus === 'DELIVERED_TO_TEACHER') {
-                                return `
-                                <div class="bg-slate-900 border border-mars-green/50 p-3 mt-4 space-y-2 rounded">
-                                    <div class="flex justify-between items-center flex-wrap gap-2">
-                                        <span class="text-xs font-bold uppercase text-mars-green">[COMPLETADO: ENTREGADO A DOCENTE]</span>
-                                        <span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">✓ VISADO Y ENTREGADO A FYQ</span>
-                                    </div>
-                                    <p class="text-xs text-slate-300">El CEO ha visado y remitido la Hoja de Taller al profesor de Física y Química para su evaluación oficial (10%).</p>
-                                    <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Abrir Documento Oficial Drive ↗</span></a>
-                                </div>`;
-                            }
-                            return '';
-                        })()}
                     </div>
                 </div>
             </div>
-        </div>
-        ${trackingSectionHtml}`;
+            ${trackingSectionHtml}
+        </div>`;
+        el.appendChild(wrapper);
+    },
+
+    viewTechWorkshop(el) {
+        if (!el || !state.user) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout();
+        
+        co.bom = co.bom || [];
+        co.orders = co.orders || [];
+        
+        const wrapper = document.createElement('div');
+
+        let executedItems = [];
+        co.orders.filter(o => o.status === 'EJECUTADO').forEach(o => {
+            (o.items || []).forEach((item, idx) => {
+                executedItems.push({ ...item, orderId: o.id, itemIdx: idx, itemKey: `${o.id}-${idx}` });
+            });
+        });
+
+        let stockCount = 0;
+        let bomCount = 0;
+        let b2bCount = 0;
+        executedItems.forEach(item => {
+            const isSold = item.b2bStatus === 'VENDIDO';
+            const isListed = item.b2bStatus === 'EN_VENTA';
+            const isChecked = !isSold && !isListed && co.bom.includes(item.itemKey);
+            if (!isSold && !isListed && !isChecked) stockCount++;
+            if (isChecked) bomCount++;
+            if (isListed) b2bCount++;
+        });
+
+        let bomTotal = 0;
+        let bomHtml = '';
+
+        if (executedItems.length === 0) {
+            bomHtml = `<p class="text-slate-300 italic text-xs">No hay componentes adquiridos y ejecutados físicamente en inventario.</p>`;
+        } else {
+            bomHtml = executedItems.map(item => {
+                const isSold = item.b2bStatus === 'VENDIDO';
+                const isListed = item.b2bStatus === 'EN_VENTA';
+                const isChecked = !isSold && !isListed && co.bom.includes(item.itemKey);
+                const itemQty = Number(item.qty) || 1;
+                const unitPrice = Number(item.price) || 0;
+                const totalItemPrice = unitPrice * itemQty;
+                
+                if (isChecked) bomTotal += totalItemPrice;
+
+                let statusAction = '';
+                if (isSold) {
+                    statusAction = `<span class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 font-bold uppercase border border-slate-700">TRASPASADO B2B</span>`;
+                } else if (isListed) {
+                    statusAction = `<span class="text-xs bg-mars-yellow/20 text-mars-yellow px-2.5 py-1 font-bold uppercase border border-mars-yellow animate-pulse">EN OFERTA B2B</span>`;
+                } else {
+                    statusAction = `<button type="button" onclick="ui.modalSellB2B('${this.escapeHTML(item.orderId)}', ${Number(item.itemIdx)})" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-3 py-1.5 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors whitespace-nowrap" title="Poner en venta en el mercado secundario">[VENDER B2B]</button>`;
+                }
+
+                return `
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-900 p-2.5 border ${isSold ? 'border-slate-800 opacity-60' : (isListed ? 'border-mars-yellow/50' : 'border-mars-border')} text-xs mb-2 gap-2.5">
+                    <label class="mars-checkbox-label flex items-center gap-2.5 text-white ${isSold || isListed ? 'cursor-not-allowed line-through text-slate-400' : 'cursor-pointer'} min-w-0 flex-1 min-h-[44px]">
+                        <input type="checkbox" class="mars-touch-input" ${isChecked ? 'checked' : ''} ${isSold || isListed ? 'disabled' : ''} onchange="ui.toggleBomItem('${this.escapeHTML(item.itemKey)}', this.checked)">
+                        <span class="mars-checkbox-visual"></span>
+                        <span class="break-words min-w-0 flex-1">${this.escapeHTML(item.name)} (x${itemQty})</span>
+                    </label>
+                    <div class="flex items-center gap-2 shrink-0 justify-between sm:justify-end">
+                        <span class="text-mars-green font-mono font-bold">${totalItemPrice.toFixed(2)} €v${itemQty > 1 ? ` <span class="text-[10px] text-slate-400 font-normal">(${unitPrice.toFixed(2)} c/u)</span>` : ''}</span>
+                        ${statusAction}
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+        const grossCosts = state.getCompanyGrossOperatingCosts ? state.getCompanyGrossOperatingCosts(co) : 0;
+        const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
+        const opCosts = state.getCompanyOperatingCosts ? state.getCompanyOperatingCosts(co) : { gross: grossCosts, sponsorReduction: sponsorAmt, net: grossCosts };
+        const netOpCosts = (opCosts && typeof opCosts.net === 'number') ? opCosts.net : ((typeof opCosts === 'number') ? opCosts : grossCosts);
+        const sponsorTierLabel = co.sponsorAwarded ? (co.sponsorData?.tier || co.sponsorAwarded || 'SPONSOR') : null;
+
+        const isHojaLocked = !state.user?.admin && this.isDeliverableLocked('hoja_taller_fyq', co);
+        let hojaPanelHtml = '';
+
+        if (isHojaLocked) {
+            hojaPanelHtml = `
+            <div id="tech-hoja-taller-panel" class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-cyan-400">
+                <h2 class="font-orbitron text-cyan-400 text-sm sm:text-base uppercase tracking-tighter mb-2">Hoja de Taller Oficial, BOM y Control de Calidad (FYQ)</h2>
+                <div class="terminal-border border-dashed p-6 text-center text-slate-400 italic text-xs uppercase">
+                    🔒 Hoja de Taller no habilitada en esta fase según el cronograma oficial.
+                </div>
+            </div>`;
+        } else {
+            const hojaFyq = co.deliverables?.hoja_taller_fyq;
+            const hojaStatus = hojaFyq?.status || 'DRAFT_TECNICO';
+            const hojaUrl = hojaFyq?.driveUrl || '';
+
+            let trackerIdx = 0;
+            if (hojaStatus === 'EN_TALLER_OPERARIO') trackerIdx = 1;
+            else if (hojaStatus === 'SUBMITTED_TO_CEO') trackerIdx = 2;
+            else if (hojaStatus === 'DELIVERED_TO_TEACHER') trackerIdx = 3;
+            else trackerIdx = 0; // DRAFT_TECNICO, DEVUELTO_A_TECNICO, CEO_REVISION
+
+            let hojaInnerHtml = '';
+            if (!hojaFyq || hojaStatus === 'DRAFT_TECNICO') {
+                hojaInnerHtml = `
+                <div class="bg-slate-900 border border-cyan-500/50 p-4 space-y-3 rounded">
+                    <div class="flex justify-between items-center flex-wrap gap-2">
+                        <span class="text-xs font-bold uppercase text-cyan-400">[FASE 1: ESPECIFICACIÓN Y BOM]</span>
+                        <span class="text-xs font-mono font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded">BORRADOR TÉCNICO</span>
+                    </div>
+                    <p class="text-xs text-slate-300">Genera el escandallo (BOM) en el panel de inventario, redacta la Hoja de Taller en Google Docs y envíala al Taller para montaje físico.</p>
+                    <div class="mb-2">
+                        ${this.renderDocTemplateBtn('DOC_10_HOJA_TALLER')}
+                    </div>
+                    <label for="tech-hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Enlace Drive Hoja de Taller (BOM & Control Físico)</label>
+                    <input type="url" id="tech-hoja-taller-drive-url" value="${this.escapeAttr(hojaUrl)}" placeholder="https://docs.google.com/document/d/..." class="w-full bg-black border border-slate-700 p-2 text-xs text-white font-mono outline-none focus:border-mars-cyan min-h-[44px]">
+                    <div class="flex justify-end pt-1">
+                        <button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ 🚀 ENVIAR A TALLER ]</button>
+                    </div>
+                </div>`;
+            } else if (hojaStatus === 'EN_TALLER_OPERARIO') {
+                hojaInnerHtml = `
+                <div class="bg-slate-900 border border-blue-500/50 p-4 space-y-3 rounded">
+                    <div class="flex justify-between items-center flex-wrap gap-2">
+                        <span class="text-xs font-bold uppercase text-blue-400">[FASE 2: EN TALLER FÍSICO]</span>
+                        <span class="text-xs font-mono font-bold text-blue-300 bg-blue-900/40 border border-blue-500 px-2 py-0.5 rounded">EN TALLER (OPERARIO)</span>
+                    </div>
+                    <p class="text-xs text-slate-300">La Hoja de Taller ha sido remitida a Operaciones. El Operario está ensamblando y verificando la tolerancia física.</p>
+                    <div class="pt-1 flex gap-2 items-center flex-wrap">
+                        <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors"><span>Ver Documento Drive ↗</span></a>
+                    </div>
+                </div>`;
+            } else if (hojaStatus === 'DEVUELTO_A_TECNICO') {
+                hojaInnerHtml = `
+                <div class="bg-slate-900 border border-amber-500 p-4 space-y-3 rounded">
+                    <div class="flex justify-between items-center flex-wrap gap-2">
+                        <span class="text-xs font-bold uppercase text-amber-400">[FASE 3: SUBSANACIÓN TÉCNICA]</span>
+                        <span class="text-xs font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-500 px-2 py-0.5 rounded">⚠️ DEVUELTO POR INCIDENCIA EN TALLER</span>
+                    </div>
+                    <div class="bg-amber-950/40 border border-amber-500/50 p-2.5 my-1 text-xs text-amber-300 font-mono">
+                        <strong>Motivo de Incidencia Tipificado:</strong> ${this.escapeHTML(hojaFyq.returnReason || hojaFyq.returnReasonId || 'Incidencia de taller')}
+                    </div>
+                    ${hojaFyq.returnDriveUrl ? `
+                    <div class="my-2">
+                        <a href="${encodeURI(hojaFyq.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-2 px-3 py-2 text-xs bg-amber-950/60 text-amber-300 border border-amber-400 rounded hover:bg-amber-900/60 transition-colors font-bold uppercase">
+                            <span>📄 Abrir Registro de Incidencias en Google Docs ↗</span>
+                        </a>
+                    </div>` : ''}
+                    <p class="text-xs text-slate-300">Corrige las tolerancias o sustituye las piezas en el Google Doc y vuelve a remitir a taller.</p>
+                    <label for="tech-hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Actualizar Enlace Drive Hoja de Taller</label>
+                    <input type="url" id="tech-hoja-taller-drive-url" value="${this.escapeAttr(hojaUrl)}" class="w-full bg-black border border-amber-500/60 p-2 text-xs text-white font-mono outline-none focus:border-amber-400 min-h-[44px]">
+                    <div class="flex justify-end pt-1">
+                        <button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-amber-400 text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ 🔄 REENVIAR A TALLER ]</button>
+                    </div>
+                </div>`;
+            } else if (hojaStatus === 'SUBMITTED_TO_CEO') {
+                hojaInnerHtml = `
+                <div class="bg-slate-900 border border-purple-500/50 p-4 space-y-3 rounded">
+                    <div class="flex justify-between items-center flex-wrap gap-2">
+                        <span class="text-xs font-bold uppercase text-purple-400">[FASE 4: SUPERVISIÓN CEO]</span>
+                        <span class="text-xs font-mono font-bold text-purple-300 bg-purple-900/40 border border-purple-500 px-2 py-0.5 rounded">VALIDADO EN TALLER // EN REVISIÓN CEO</span>
+                    </div>
+                    <p class="text-xs text-slate-300">Operaciones ha validado el montaje físico. La Hoja de Taller está pendiente del visado final del CEO hacia el profesor de FyQ.</p>
+                    <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Ver Documento Drive ↗</span></a>
+                </div>`;
+            } else if (hojaStatus === 'CEO_REVISION') {
+                hojaInnerHtml = `
+                <div class="bg-slate-900 border border-mars-magenta p-4 space-y-3 rounded">
+                    <div class="flex justify-between items-center flex-wrap gap-2">
+                        <span class="text-xs font-bold uppercase text-mars-magenta">[REVISIÓN REQUERIDA POR CEO]</span>
+                        <span class="text-xs font-mono font-bold text-mars-magenta bg-mars-magenta/20 border border-mars-magenta px-2 py-0.5 rounded">⚠️ DEVUELTO POR CEO</span>
+                    </div>
+                    <div class="bg-red-950/40 border border-red-500/50 p-2.5 my-1 text-xs text-red-300 font-mono">
+                        <strong>Motivo de Devolución CEO:</strong> ${this.escapeHTML(hojaFyq.returnReason || hojaFyq.returnReasonId || 'Requiere subsanación técnica')}
+                    </div>
+                    <p class="text-xs text-slate-300">Corrige las observaciones en el documento de Drive y vuelve a enviar a Taller/CEO.</p>
+                    <label for="tech-hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Actualizar Enlace Drive Hoja de Taller</label>
+                    <input type="url" id="tech-hoja-taller-drive-url" value="${this.escapeAttr(hojaUrl)}" class="w-full bg-black border border-mars-magenta/60 p-2 text-xs text-white font-mono outline-none focus:border-mars-magenta min-h-[44px]">
+                    <div class="flex justify-end pt-1">
+                        <button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-mars-magenta text-white font-black uppercase text-xs px-4 py-2 hover:bg-white hover:text-mars-magenta transition-all">[ 🔄 REENVIAR A REVISIÓN ]</button>
+                    </div>
+                </div>`;
+            } else if (hojaStatus === 'DELIVERED_TO_TEACHER') {
+                hojaInnerHtml = `
+                <div class="bg-slate-900 border border-mars-green/50 p-4 space-y-3 rounded">
+                    <div class="flex justify-between items-center flex-wrap gap-2">
+                        <span class="text-xs font-bold uppercase text-mars-green">[COMPLETADO: ENTREGADO A DOCENTE]</span>
+                        <span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">✓ VISADO Y ENTREGADO A FYQ</span>
+                    </div>
+                    <p class="text-xs text-slate-300">El CEO ha visado y remitido la Hoja de Taller al profesor de Física y Química para su evaluación oficial (10%).</p>
+                    <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Abrir Documento Oficial Drive ↗</span></a>
+                </div>`;
+            }
+
+            hojaPanelHtml = `
+            <div id="tech-hoja-taller-panel" class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-cyan-400">
+                <div class="flex justify-between items-start mb-3 flex-wrap gap-2">
+                    <div>
+                        <h3 class="font-orbitron text-cyan-400 text-sm sm:text-base uppercase tracking-tighter">Hoja de Taller: BOM y Control de Ensamble (FYQ)</h3>
+                        <p class="text-xs text-slate-300 uppercase mt-0.5">Control de calidad y seguimiento operativo en 4 fases: I+D ➔ Taller ➔ CEO ➔ Docente.</p>
+                    </div>
+                    <span class="text-xs font-mono font-bold text-cyan-400 bg-cyan-950/60 border border-cyan-500/50 px-2.5 py-1 uppercase">Peso: 10% FYQ</span>
+                </div>
+                ${this.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval)', '4. Docente FyQ'], trackerIdx)}
+                ${hojaInnerHtml}
+            </div>`;
+        }
+
+        wrapper.innerHTML = `
+        <div class="space-y-6">
+            <!-- Cabecera Taller -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                    <h2 class="font-orbitron text-mars-yellow text-lg sm:text-xl uppercase tracking-tighter flex items-center gap-2">
+                        <span>🔧 Taller de Ensamble y Desglose BOM</span>
+                        <span class="text-[10px] font-mono text-mars-yellow bg-mars-yellow/10 px-2 py-0.5 border border-mars-yellow/40 uppercase">Dpto. Técnico</span>
+                    </h2>
+                    <p class="text-xs text-slate-300 uppercase mt-1">Configuración del escandallo de materiales (BOM), desinversión de excedentes en el mercado secundario B2B y workflow de Hoja de Taller.</p>
+                </div>
+                <div class="flex items-center gap-2 text-xs font-mono font-bold flex-wrap">
+                    <span class="px-2.5 py-1 bg-slate-900 border border-slate-700 text-slate-300">📦 Stock: ${stockCount}</span>
+                    <span class="px-2.5 py-1 bg-mars-green/10 border border-mars-green text-mars-green">🚀 En BOM: ${bomCount}</span>
+                    <span class="px-2.5 py-1 bg-mars-yellow/10 border border-mars-yellow text-mars-yellow">🤝 En Venta B2B: ${b2bCount}</span>
+                </div>
+            </div>
+
+            <!-- Grid de 2 columnas -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Columna Izquierda: Escandallo BOM e Inventario (lg:col-span-7) -->
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-magenta">
+                        <div class="flex flex-col gap-3 mb-4 border-b border-mars-border pb-3">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 w-full">
+                                <div>
+                                    <h3 class="font-orbitron text-mars-magenta text-sm sm:text-base uppercase tracking-tighter">Inventario Físico & Ventas B2B</h3>
+                                    <p class="text-xs text-slate-300 uppercase mt-0.5">Marca las piezas que integran el cohete final o vende el excedente a otras empresas.</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2 w-full pt-1">
+                                <button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta hover:bg-mars-magenta hover:text-white px-3 py-2 text-xs font-bold uppercase transition-all whitespace-nowrap">[ + Solicitar Ítem Especial / Fuera de Mercado ]</button>
+                                <button type="button" onclick="ui.navigate('dossier')" class="min-h-[44px] bg-mars-cyan/10 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-3 py-2 text-xs font-bold uppercase transition-all whitespace-nowrap">[ 📄 Ver Dossier Inversores ↗ ]</button>
+                                <button type="button" onclick="ui.setMarketTab('b2b'); ui.navigate('market')" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-4 py-2 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-all whitespace-nowrap">[ 🤝 Ver Mercado B2B ]</button>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 bg-black p-3 border border-mars-border">
+                            <div class="text-center sm:border-r border-slate-800 pb-2 sm:pb-0 border-b sm:border-b-0">
+                                <p class="text-xs text-slate-300 uppercase font-bold">Inversión Total I+D Ejecutada</p>
+                                <p class="text-mars-cyan font-mono font-bold text-base mt-1">${totalDevCost.toFixed(2)} €v</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs text-slate-300 uppercase font-bold">Coste Prototipo Final (BOM)</p>
+                                <p class="text-mars-green font-mono font-bold text-lg mt-1">${bomTotal.toFixed(2)} €v</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-black p-3 border border-slate-800 mb-4 space-y-1.5">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-300 uppercase">Coste Operativo Bruto:</span>
+                                <span class="text-white font-mono font-bold">${grossCosts.toFixed(2)} €v</span>
+                            </div>
+                            ${(sponsorAmt > 0 && sponsorTierLabel) ? `
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-amber-400 uppercase font-bold">Reducción Patrocinio (${this.escapeHTML(sponsorTierLabel)}):</span>
+                                <span class="text-amber-400 font-mono font-bold">-${sponsorAmt.toFixed(2)} €v</span>
+                            </div>` : ''}
+                            <div class="flex justify-between items-center text-xs border-t border-slate-800 pt-1.5">
+                                <span class="text-mars-green font-bold uppercase">Coste Operativo Neto:</span>
+                                <span class="text-mars-green font-mono font-bold text-sm">${netOpCosts.toFixed(2)} €v</span>
+                            </div>
+                        </div>
+
+                        <div class="max-h-[460px] overflow-y-auto pr-1">
+                            ${bomHtml}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Columna Derecha: Hoja de Taller (lg:col-span-5) -->
+                <div class="lg:col-span-5 space-y-6">
+                    ${hojaPanelHtml}
+                </div>
+            </div>
+        </div>`;
         el.appendChild(wrapper);
     },
 

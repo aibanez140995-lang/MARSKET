@@ -1,5 +1,5 @@
 // js/ui-empresa-core.js
-// --- MÓDULO CORE: LOGIN EN 2 PASOS (ZERO-KNOWLEDGE), NOTIFICACIONES Y DOSSIER ACADÉMICO (v1.1.43) ---
+// --- MÓDULO CORE: LOGIN EN 2 PASOS (ZERO-KNOWLEDGE), NOTIFICACIONES Y DOSSIER ACADÉMICO (v1.1.44) ---
 
 Object.assign(ui, {
     viewLogin(el) {
@@ -304,7 +304,9 @@ Object.assign(ui, {
             // MÓDULO B (v1.0.19): Bóveda de Entregables con Acordeones por Fase (Milestone Collapsible) y Detalle Bajo Demanda (Bottom-Sheet Drawer)
             const docs = co.deliverables || {};
             const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
-            const deliveredCount = defs.filter(d => docs[d.key] && docs[d.key].status === 'DELIVERED_TO_TEACHER').length;
+            const isAdmin = Boolean(state.user && state.user.admin);
+            const activeDefs = (!isAdmin) ? defs.filter(d => !ui.isDeliverableLocked(d.key, co)) : defs;
+            const deliveredCount = activeDefs.filter(d => docs[d.key] && docs[d.key].status === 'DELIVERED_TO_TEACHER').length;
             const activeGroup = this.activeMilestoneGroup || 'ACTIVE';
             const isCEO = state.user && state.user.role === 'CEO';
 
@@ -332,8 +334,18 @@ Object.assign(ui, {
                 }
             ];
 
-            const accordionsHtml = milestonePhases.map(phase => {
-                const phaseDefs = phase.keys.map(k => defs.find(d => d.key === k)).filter(Boolean);
+            const visiblePhases = milestonePhases.map(phase => {
+                let phaseDefs = phase.keys.map(k => defs.find(d => d.key === k)).filter(Boolean);
+                if (!isAdmin) {
+                    phaseDefs = phaseDefs.filter(def => !ui.isDeliverableLocked(def.key, co));
+                }
+                return { ...phase, phaseDefs };
+            }).filter(phase => isAdmin || phase.phaseDefs.length > 0);
+
+            const accordionsHtml = visiblePhases.length === 0
+                ? `<div class="p-6 bg-slate-900/60 border border-slate-800 text-center rounded"><span class="text-xs font-mono uppercase text-slate-400">🔒 No hay entregables ni fases activas en este momento. Se habilitarán según el cronograma oficial.</span></div>`
+                : visiblePhases.map(phase => {
+                const phaseDefs = phase.phaseDefs;
                 const phaseDelivered = phaseDefs.filter(d => docs[d.key] && docs[d.key].status === 'DELIVERED_TO_TEACHER').length;
                 const isExpanded = activeGroup === phase.id;
 
@@ -432,7 +444,7 @@ Object.assign(ui, {
                     <h3 class="font-orbitron text-mars-cyan text-sm uppercase">Bóveda Oficial de Entregables por Hitos (Milestone Collapsible)</h3>
                     <p class="text-xs text-slate-300 uppercase mt-1">Supervisión en 4 estados: Pendiente ➔ En Revisión CEO ➔ Devuelto / Subsanar ➔ Entregado a Docente.</p>
                 </div>
-                <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-3 py-1.5 text-xs font-mono font-black uppercase">Entregados a Docente: ${deliveredCount} / ${defs.length}</span>
+                <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-3 py-1.5 text-xs font-mono font-black uppercase">Entregados a Docente: ${deliveredCount} / ${activeDefs.length}</span>
             </div>
             <div class="space-y-4 w-full">
                 ${accordionsHtml}

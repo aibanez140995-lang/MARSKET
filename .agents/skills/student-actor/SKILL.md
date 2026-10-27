@@ -32,7 +32,7 @@ Actúas como un **alumno (o equipo de alumnos)** dentro de una startup en MARS-K
 4. **OPERACIONES_IA (COO / Taller y Auditoría Tecnológica)**:
    - Control de Taller y BOM: registro de materiales en la Hoja Oficial de Taller (`DOC_10_HOJA_TALLER`, `hoja_taller_fyq`).
    - Cuaderno de Bitácora Ética de IA: registro de prompts, modelos autorizados y evidencias de uso ético (`DOC_4_BITACORA_IA`).
-   - Control de Aeroestructura: inspección dimensional y protocolo de calidad (`DOC_8_CONTROL_AERO`).
+   - Recepción física y montaje: registro del gasto real (€) y verificación dimensional del prototipo.
 
 5. **MARKETING (CMO / Identidad y Comunicación)**:
    - Identidad Corporativa: creación y subida de entregables de marca (`brandIdentity_dec`, `brandIdentity_apr`).
