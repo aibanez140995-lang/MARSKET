@@ -773,7 +773,9 @@ Object.assign(ui, {
                 }
 
                 return `
-                <div class="bg-slate-900/90 border border-slate-800 p-3 text-xs flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                <div class="bg-slate-900/90 border border-slate-800 p-3 text-xs flex flex-col gap-2">
+                    ${ui.renderWorkflowTracker(['1. Creatividad MKT', '2. CEO (Valida)', '3. Docente Liderazgo'], actStatus === 'PENDIENTE_CEO' ? 0 : (actStatus === 'VALIDADO_CEO' ? 2 : 0))}
+                    <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
                     <div class="overflow-hidden min-w-0 space-y-1">
                         <div class="flex items-center gap-2 flex-wrap">
                             <span class="text-mars-cyan font-bold uppercase truncate">#${idx + 1}: ${this.escapeHTML(act.title)}</span>
@@ -786,9 +788,10 @@ Object.assign(ui, {
                             ${act.returnDriveUrl ? `<div class="mt-1"><a href="${encodeURI(act.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-mono font-bold mt-1"><span>📄 Ver Correcciones del CEO en Drive ↗</span></a></div>` : ''}
                         ` : (actFeedback ? `<div class="text-[11px] text-mars-magenta font-mono">Motivo devolución CEO: "${this.escapeHTML(actFeedback)}"</div>` : '')}
                     </div>
-                    <div class="flex items-center gap-2 flex-wrap shrink-0">
-                        ${safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 px-3 py-1.5 text-xs font-bold uppercase hover:bg-cyan-900/50">Abrir en Drive ↗</a>` : ''}
-                        ${actionControls}
+                        <div class="flex items-center gap-2 flex-wrap shrink-0">
+                            ${safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 px-3 py-1.5 text-xs font-bold uppercase hover:bg-cyan-900/50">Abrir en Drive ↗</a>` : ''}
+                            ${actionControls}
+                        </div>
                     </div>
                 </div>`;
             }).join('');

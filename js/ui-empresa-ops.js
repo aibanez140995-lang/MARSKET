@@ -14,58 +14,158 @@ Object.assign(ui, {
         co.orders = co.orders || []; 
         const isOperario = (state.user.role === 'OPERACIONES_IA' || state.user.role === 'OPERACIONES' || state.user.admin);
         
-        const approvedOrders = co.orders.filter(o => o.status === 'APROBADO_FINANZAS');
+        const opsTab = this.opsOrdersTab || 'APROBADAS';
+        const allOrders = co.orders || [];
+        const approvedOrders = allOrders.filter(o => o.status === 'APROBADO_FINANZAS');
+        const pendingFinOrders = allOrders.filter(o => o.status === 'PENDIENTE_FINANZAS');
+        const historyOrders = allOrders.filter(o => o.status === 'EJECUTADO' || o.status === 'RECHAZADO');
+
         const wrapper = document.createElement('div');
-        
-        let ordersHtml = approvedOrders.map(order => `
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-green mb-6 w-full">
-                ${ui.renderWorkflowTracker(['I+D (Solicita)', 'Finanzas (Audita)', 'Logística (Ejecuta)'], 1)}
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-2 mt-4">
-                    <div>
-                        <span class="text-xs font-bold uppercase text-mars-green bg-mars-green/10 border border-mars-green/40 px-2.5 py-1 tracking-wider">[APROBADO POR FINANZAS]</span>
-                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">ORDEN #${this.escapeHTML(order.id)}</h3>
-                    </div>
-                    <div class="text-left sm:text-right">
-                        <p class="text-mars-green font-black font-mono text-xl">${Number(order.total).toFixed(2)} €v</p>
-                        <p class="text-xs text-slate-300 uppercase">${this.escapeHTML(order.date)}</p>
-                    </div>
-                </div>
-                <p class="text-xs text-mars-yellow uppercase font-bold mb-3">Registra el coste real físico (€), el comercio oficial y el ticket en Google Drive:</p>
-                <div class="space-y-3 mb-6">
-                    ${(order.items || []).map((item, idx) => `
-                        <div class="border border-slate-800 bg-slate-900/90 p-3 mb-3 rounded flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                            <div class="flex-grow min-w-0">
-                                <label class="mars-checkbox-label flex items-center gap-2.5 text-xs text-white font-bold cursor-pointer min-h-[44px]">
-                                    <input type="checkbox" id="assembled-${this.escapeHTML(order.id)}-${idx}" class="mars-touch-input" checked ${isOperario ? '' : 'disabled'}>
-                                    <span class="mars-checkbox-visual"></span>
-                                    <span class="break-words">${this.escapeHTML(item.name)} (x${Number(item.qty)||1}) - <span class="text-mars-cyan font-mono">${Number(item.price).toFixed(2)} €v</span></span>
-                                </label>
-                                <p class="text-[10px] text-slate-400 font-mono mt-0.5 ml-7">Material donado o reciclado: registrar 0.00 €</p>
-                            </div>
-                            <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                                <input type="number" id="real-eur-${this.escapeHTML(order.id)}-${idx}" aria-label="Coste real en euros de ${this.escapeHTML(item.name)}" placeholder="Coste Real (€) - 0.00 si es reciclado" step="0.01" min="0" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-mars-magenta p-2.5 text-base sm:text-xs text-white w-full sm:w-48 outline-none focus:border-mars-cyan font-mono">
-                                <select id="real-shop-${this.escapeHTML(order.id)}-${idx}" aria-label="Comercio de adquisición de ${this.escapeHTML(item.name)}" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-slate-700 p-2.5 text-base sm:text-xs text-white w-full sm:w-44 outline-none focus:border-mars-cyan">
-                                    ${(typeof COMMERCIAL_SHOPS_DEF !== 'undefined' ? COMMERCIAL_SHOPS_DEF : [
-                                        { id: 'mercadona', name: 'Mercadona' },
-                                        { id: 'carrefour', name: 'Carrefour' },
-                                        { id: 'eroski', name: 'Eroski' },
-                                        { id: 'dia', name: 'Dia' },
-                                        { id: 'ferreteria', name: 'Ferretería' },
-                                        { id: 'bazar', name: 'Bazar' },
-                                        { id: 'comercio_generico', name: 'Comercio genérico' }
-                                    ]).map(shop => `<option value="${this.escapeHTML(shop.name)}">${this.escapeHTML(shop.name)}</option>`).join('')}
-                                </select>
-                                <input type="url" id="real-ticket-${this.escapeHTML(order.id)}-${idx}" aria-label="Ticket Drive de ${this.escapeHTML(item.name)}" placeholder="URL Ticket Drive" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-mars-cyan/60 p-2 text-base sm:text-xs text-white w-full sm:w-44 outline-none focus:border-mars-cyan font-mono">
-                            </div>
+
+        let ordersTabContentHtml = '';
+
+        if (opsTab === 'APROBADAS') {
+            ordersTabContentHtml = approvedOrders.map(order => `
+                <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-green mb-6 w-full">
+                    ${ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Logística (Ejecuta)'], 1)}
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-2 mt-4">
+                        <div>
+                            <span class="text-xs font-bold uppercase text-mars-green bg-mars-green/10 border border-mars-green/40 px-2.5 py-1 tracking-wider">[APROBADO POR FINANZAS]</span>
+                            <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">ORDEN #${this.escapeHTML(order.id)}</h3>
                         </div>
-                    `).join('')}
+                        <div class="text-left sm:text-right">
+                            <p class="text-mars-green font-black font-mono text-xl">${Number(order.total).toFixed(2)} €v</p>
+                            <p class="text-xs text-slate-300 uppercase">${this.escapeHTML(order.date)}</p>
+                        </div>
+                    </div>
+                    <p class="text-xs text-mars-yellow uppercase font-bold mb-3">Registra el coste real físico (€), el comercio oficial y el ticket en Google Drive:</p>
+                    <div class="space-y-3 mb-6">
+                        ${(order.items || []).map((item, idx) => `
+                            <div class="border border-slate-800 bg-slate-900/90 p-3 mb-3 rounded flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                                <div class="flex-grow min-w-0">
+                                    <label class="mars-checkbox-label flex items-center gap-2.5 text-xs text-white font-bold cursor-pointer min-h-[44px]">
+                                        <input type="checkbox" id="assembled-${this.escapeHTML(order.id)}-${idx}" class="mars-touch-input" checked ${isOperario ? '' : 'disabled'}>
+                                        <span class="mars-checkbox-visual"></span>
+                                        <span class="break-words">${this.escapeHTML(item.name)} (x${Number(item.qty)||1}) - <span class="text-mars-cyan font-mono">${Number(item.price).toFixed(2)} €v</span></span>
+                                    </label>
+                                    <p class="text-[10px] text-slate-400 font-mono mt-0.5 ml-7">Material donado o reciclado: registrar 0.00 €</p>
+                                </div>
+                                <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                                    <input type="number" id="real-eur-${this.escapeHTML(order.id)}-${idx}" aria-label="Coste real en euros de ${this.escapeHTML(item.name)}" placeholder="Coste Real (€) - 0.00 si es reciclado" step="0.01" min="0" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-mars-magenta p-2.5 text-base sm:text-xs text-white w-full sm:w-48 outline-none focus:border-mars-cyan font-mono">
+                                    <select id="real-shop-${this.escapeHTML(order.id)}-${idx}" aria-label="Comercio de adquisición de ${this.escapeHTML(item.name)}" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-slate-700 p-2.5 text-base sm:text-xs text-white w-full sm:w-44 outline-none focus:border-mars-cyan">
+                                        ${(typeof COMMERCIAL_SHOPS_DEF !== 'undefined' ? COMMERCIAL_SHOPS_DEF : [
+                                            { id: 'mercadona', name: 'Mercadona' },
+                                            { id: 'carrefour', name: 'Carrefour' },
+                                            { id: 'eroski', name: 'Eroski' },
+                                            { id: 'dia', name: 'Dia' },
+                                            { id: 'ferreteria', name: 'Ferretería' },
+                                            { id: 'bazar', name: 'Bazar' },
+                                            { id: 'comercio_generico', name: 'Comercio genérico' }
+                                        ]).map(shop => `<option value="${this.escapeHTML(shop.name)}">${this.escapeHTML(shop.name)}</option>`).join('')}
+                                    </select>
+                                    <input type="url" id="real-ticket-${this.escapeHTML(order.id)}-${idx}" aria-label="Ticket Drive de ${this.escapeHTML(item.name)}" placeholder="URL Ticket Drive" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-mars-cyan/60 p-2 text-base sm:text-xs text-white w-full sm:w-44 outline-none focus:border-mars-cyan font-mono">
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    ${isOperario
+                        ? `<button type="button" onclick="ui.executePhysicalOrder('${this.escapeHTML(order.id)}')" class="w-full min-h-[48px] bg-mars-cyan text-black font-black py-3 px-4 text-xs uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)]">[ CONFIRMAR COMPRA FÍSICA Y ENSAMBLAJE ]</button>`
+                        : `<div class="p-3 bg-slate-950 border border-slate-800 text-center text-xs text-slate-400 uppercase font-mono">🔒 Vista de Sólo Lectura: Registro de compra física reservado exclusivamente al Operario de Taller.</div>`
+                    }
                 </div>
-                ${isOperario
-                    ? `<button type="button" onclick="ui.executePhysicalOrder('${this.escapeHTML(order.id)}')" class="w-full min-h-[48px] bg-mars-cyan text-black font-black py-3 px-4 text-xs uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)]">[ CONFIRMAR COMPRA FÍSICA Y ENSAMBLAJE ]</button>`
-                    : `<div class="p-3 bg-slate-950 border border-slate-800 text-center text-xs text-slate-400 uppercase font-mono">🔒 Vista de Sólo Lectura: Registro de compra física reservado exclusivamente al Operario de Taller.</div>`
-                }
+            `).join('') || `<div class="terminal-border border-dashed p-8 text-center text-slate-400 italic text-xs uppercase">No hay órdenes aprobadas pendientes de ejecución logística.</div>`;
+        } else if (opsTab === 'PENDIENTES') {
+            ordersTabContentHtml = pendingFinOrders.map(order => `
+                <div class="terminal-border bg-slate-900/90 border border-mars-border p-4 mb-4">
+                    ${ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Logística (Ejecuta)'], 0)}
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-2 mb-2 gap-2 mt-2">
+                        <div>
+                            <span class="text-xs font-bold uppercase px-2 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-500">⏳ EN AUDITORÍA POR FINANZAS</span>
+                            <h3 class="text-white font-orbitron mt-1.5 uppercase text-xs sm:text-sm font-bold">ORDEN #${this.escapeHTML(order.id)}</h3>
+                        </div>
+                        <div class="text-left sm:text-right">
+                            <span class="text-mars-green font-mono font-bold text-sm">${Number(order.total).toFixed(2)} €v</span>
+                            <span class="block text-xs text-slate-400 font-mono">${this.escapeHTML(order.date)}</span>
+                        </div>
+                    </div>
+                    <div class="space-y-1 bg-black/60 p-2.5 border border-slate-800 rounded text-xs">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Materiales en Espera:</p>
+                        ${(order.items || []).map(it => `
+                            <div class="flex justify-between text-slate-300">
+                                <span>${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
+                                <span class="font-mono text-white">${Number(it.price).toFixed(2)} €v</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('') || `<div class="terminal-border border-dashed p-8 text-center text-slate-400 italic text-xs uppercase">No hay órdenes en cola de auditoría de finanzas.</div>`;
+        } else {
+            ordersTabContentHtml = historyOrders.map(order => {
+                const isExecuted = order.status === 'EJECUTADO';
+                const totalRealEur = (order.items || []).reduce((s, it) => s + (Number(it.realEur) || 0), 0);
+                return `
+                <div class="terminal-border bg-slate-900/90 border border-slate-800 p-4 mb-4">
+                    ${ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Logística (Ejecuta)'], isExecuted ? 2 : 0)}
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-2 mb-2 gap-2 mt-2">
+                        <div>
+                            <span class="text-xs font-bold uppercase px-2 py-0.5 rounded ${isExecuted ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500' : 'bg-rose-950/40 text-rose-400 border border-rose-500'}">
+                                ${isExecuted ? '✓ EJECUTADA EN TALLER' : '❌ DENEGADA / RECHAZADA'}
+                            </span>
+                            <h3 class="text-white font-orbitron mt-1.5 uppercase text-xs sm:text-sm font-bold">ORDEN #${this.escapeHTML(order.id)}</h3>
+                        </div>
+                        <div class="text-left sm:text-right">
+                            <span class="text-mars-green font-mono font-bold text-sm">${Number(order.total).toFixed(2)} €v</span>
+                            ${isExecuted ? `<span class="block text-xs text-mars-yellow font-mono">Coste Real Total: ${totalRealEur.toFixed(2)} €</span>` : ''}
+                            <span class="block text-[11px] text-slate-400 font-mono">${this.escapeHTML(order.date)}</span>
+                        </div>
+                    </div>
+                    ${isExecuted ? `
+                    <div class="mt-2.5 pt-2 border-t border-slate-800 bg-black/50 p-2.5 rounded text-xs space-y-1.5 font-mono">
+                        <p class="text-[10px] text-mars-green font-bold uppercase">Detalle de Compras Físicas Realizadas:</p>
+                        ${(order.items || []).map(it => `
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-300 gap-1 border-b border-slate-900 pb-1 last:border-0">
+                                <span class="text-white">${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
+                                <div class="flex items-center gap-2">
+                                    <span>Real: <strong class="text-mars-yellow">${it.realEur !== undefined ? Number(it.realEur).toFixed(2) : '--'} €</strong></span>
+                                    <span>Comercio: <strong class="text-slate-200">${this.escapeHTML(it.realShop || 'Comercio')}</strong></span>
+                                    ${(it.ticketUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(it.ticketUrl))
+                                        ? `<a href="${encodeURI(it.ticketUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-mars-cyan hover:underline font-bold">[Ticket Drive ↗]</a>`
+                                        : ''
+                                    }
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>` : ''}
+                </div>`;
+            }).join('') || `<div class="terminal-border border-dashed p-8 text-center text-slate-400 italic text-xs uppercase">No hay órdenes en el historial de ejecución o denegadas.</div>`;
+        }
+
+        const ordersPanelHtml = `
+        <div id="ops-orders-tracking-panel" class="mt-6 terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-green">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-3">
+                <div>
+                    <h2 class="font-orbitron text-mars-green text-sm sm:text-base uppercase tracking-tighter flex items-center gap-2">
+                        <span>📦 Panel de Seguimiento Logístico de Taller</span>
+                        <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 border border-slate-700 font-normal">Operaciones Físicas</span>
+                    </h2>
+                    <p class="text-xs text-slate-300 uppercase mt-0.5">Control de órdenes autorizadas para compra física y ensamble en taller.</p>
+                </div>
+                <div role="tablist" aria-label="Filtro de Órdenes de Taller" class="flex flex-wrap gap-1.5 bg-black p-1 border border-mars-border">
+                    <button type="button" role="tab" aria-selected="${opsTab === 'APROBADAS'}" onclick="ui.setOpsOrdersTab('APROBADAS')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${opsTab === 'APROBADAS' ? 'bg-mars-green text-black' : 'text-slate-300 hover:text-white'}">
+                        ⚙️ Listas para Ensamble (${approvedOrders.length})
+                    </button>
+                    <button type="button" role="tab" aria-selected="${opsTab === 'PENDIENTES'}" onclick="ui.setOpsOrdersTab('PENDIENTES')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${opsTab === 'PENDIENTES' ? 'bg-mars-yellow text-black' : 'text-slate-300 hover:text-white'}">
+                        ⏳ En Cola Finanzas (${pendingFinOrders.length})
+                    </button>
+                    <button type="button" role="tab" aria-selected="${opsTab === 'HISTORIAL'}" onclick="ui.setOpsOrdersTab('HISTORIAL')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${opsTab === 'HISTORIAL' ? 'bg-slate-700 text-white' : 'text-slate-300 hover:text-white'}">
+                        ✅ Historial (${historyOrders.length})
+                    </button>
+                </div>
             </div>
-        `).join('') || `<div class="terminal-border border-dashed p-10 text-center text-slate-300 italic text-xs">No hay órdenes aprobadas pendientes de ejecución logística.</div>`;
+            <div>
+                ${ordersTabContentHtml}
+            </div>
+        </div>`;
 
         const currentHoja = co.deliverables?.hoja_taller_fyq;
         const hojaStatus = currentHoja?.status || 'DRAFT_TECNICO';
@@ -82,6 +182,7 @@ Object.assign(ui, {
                     </div>
                     <span class="text-xs font-mono font-bold text-slate-400 bg-slate-900 border border-slate-700 px-2.5 py-1 rounded">⏳ EN DISEÑO POR TÉCNICO</span>
                 </div>
+                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval)', '4. Docente FyQ'], 0)}
                 <p class="text-xs text-slate-300">El departamento Técnico (I+D) está configurando el BOM y la especificación inicial. En cuanto lo envíe a taller, podrás verificar el montaje físico.</p>
             </div>`;
         } else if (hojaStatus === 'DEVUELTO_A_TECNICO') {
@@ -94,6 +195,7 @@ Object.assign(ui, {
                     </div>
                     <span class="text-xs font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-500 px-2.5 py-1 rounded">⚠️ DEVUELTO A TÉCNICO</span>
                 </div>
+                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval)', '4. Docente FyQ'], 0)}
                 <div class="bg-amber-950/40 border border-amber-500/50 p-2.5 my-2 text-xs text-amber-300 font-mono">
                     <strong>Incidencia reportada a I+D:</strong> ${this.escapeHTML(currentHoja.returnReason || currentHoja.returnReasonId || 'Incidencia de taller')}
                 </div>
@@ -109,6 +211,7 @@ Object.assign(ui, {
                     </div>
                     <span class="text-xs font-mono font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-500 px-2.5 py-1 rounded">⚙️ EN TALLER (OPERARIO)</span>
                 </div>
+                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval)', '4. Docente FyQ'], 1)}
                 <p class="text-xs text-slate-300 mb-3">Revisa el montaje físico del cohete con respecto al BOM documentado por el departamento Técnico.</p>
                 <div class="mb-4">
                     <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/60 transition-colors">
@@ -130,6 +233,7 @@ Object.assign(ui, {
                     </div>
                     <span class="text-xs font-mono font-bold text-purple-300 bg-purple-950/60 border border-purple-500 px-2.5 py-1 rounded">⏳ REMITIDO AL CEO</span>
                 </div>
+                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval)', '4. Docente FyQ'], 2)}
                 <p class="text-xs text-slate-300 mb-2">Has validado el ensamble físico en taller. El entregable está pendiente de visado formal por el CEO hacia el profesor de FyQ.</p>
                 <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-purple-950/40 text-purple-300 border border-purple-500/30 rounded font-mono"><span>Ver Documento Drive ↗</span></a>
             </div>`;
@@ -143,6 +247,7 @@ Object.assign(ui, {
                     </div>
                     <span class="text-xs font-mono font-bold text-mars-magenta bg-mars-magenta/20 border border-mars-magenta px-2.5 py-1 rounded">⚠️ DEVUELTO POR CEO</span>
                 </div>
+                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval)', '4. Docente FyQ'], 2)}
                 <div class="bg-red-950/40 border border-red-500/50 p-2.5 my-2 text-xs text-red-300 font-mono">
                     <strong>Motivo de Devolución CEO:</strong> ${this.escapeHTML(currentHoja?.returnReason || currentHoja?.returnReasonId || 'Requiere subsanación')}
                 </div>
@@ -162,6 +267,7 @@ Object.assign(ui, {
                     </div>
                     <span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2.5 py-1 rounded">✓ VISADO Y ENTREGADO A FYQ</span>
                 </div>
+                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval)', '4. Docente FyQ'], 3)}
                 <p class="text-xs text-slate-300 mb-2">El CEO ha visado y remitido la Hoja de Taller al profesor de Física y Química para su evaluación oficial.</p>
                 <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Abrir Documento Oficial Drive ↗</span></a>
             </div>`;
@@ -177,9 +283,14 @@ Object.assign(ui, {
                 </div>
             </div>
             ${hojaHtml}
-            ${ordersHtml}
+            ${ordersPanelHtml}
         `;
         el.appendChild(wrapper);
+    },
+
+    setOpsOrdersTab(tab) {
+        this.opsOrdersTab = tab || 'APROBADAS';
+        this.render();
     },
 
     executePhysicalOrder(oid) {

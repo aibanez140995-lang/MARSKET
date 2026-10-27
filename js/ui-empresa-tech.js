@@ -57,6 +57,18 @@ Object.assign(ui, {
             });
         });
 
+        let stockCount = 0;
+        let bomCount = 0;
+        let b2bCount = 0;
+        executedItems.forEach(item => {
+            const isSold = item.b2bStatus === 'VENDIDO';
+            const isListed = item.b2bStatus === 'EN_VENTA';
+            const isChecked = !isSold && !isListed && co.bom.includes(item.itemKey);
+            if (!isSold && !isListed && !isChecked) stockCount++;
+            if (isChecked) bomCount++;
+            if (isListed) b2bCount++;
+        });
+
         let bomTotal = 0;
         let bomHtml = '';
 
@@ -83,13 +95,13 @@ Object.assign(ui, {
                 }
 
                 return `
-                <div class="flex flex-wrap justify-between items-center bg-slate-900 p-2.5 border ${isSold ? 'border-slate-800 opacity-60' : (isListed ? 'border-mars-yellow/50' : 'border-mars-border')} text-xs mb-2 gap-2">
-                    <label class="mars-checkbox-label flex items-center gap-2.5 text-white ${isSold || isListed ? 'cursor-not-allowed line-through text-slate-400' : 'cursor-pointer'} flex-grow min-w-0 min-h-[44px]">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-900 p-2.5 border ${isSold ? 'border-slate-800 opacity-60' : (isListed ? 'border-mars-yellow/50' : 'border-mars-border')} text-xs mb-2 gap-2.5">
+                    <label class="mars-checkbox-label flex items-center gap-2.5 text-white ${isSold || isListed ? 'cursor-not-allowed line-through text-slate-400' : 'cursor-pointer'} min-w-0 flex-1 min-h-[44px]">
                         <input type="checkbox" class="mars-touch-input" ${isChecked ? 'checked' : ''} ${isSold || isListed ? 'disabled' : ''} onchange="ui.toggleBomItem('${this.escapeHTML(item.itemKey)}', this.checked)">
                         <span class="mars-checkbox-visual"></span>
-                        <span class="break-words">${this.escapeHTML(item.name)} (x${itemQty})</span>
+                        <span class="break-words min-w-0 flex-1">${this.escapeHTML(item.name)} (x${itemQty})</span>
                     </label>
-                    <div class="flex items-center gap-2 shrink-0">
+                    <div class="flex items-center gap-2 shrink-0 justify-between sm:justify-end">
                         <span class="text-mars-green font-mono font-bold">${totalItemPrice.toFixed(2)} €v${itemQty > 1 ? ` <span class="text-[10px] text-slate-400 font-normal">(${unitPrice.toFixed(2)} c/u)</span>` : ''}</span>
                         ${statusAction}
                     </div>
@@ -133,6 +145,123 @@ Object.assign(ui, {
                 ${this.renderDriveLinkBox('4. Informe Técnico Final Comparativo (25% MAT)', 'Enlace Drive al análisis de coherencia comparando resultados anteriores y parámetros adicionales.', 'mathReportFinal', docs.mathReportFinal)}
             `;
         }
+
+
+        // --- Panel de Seguimiento de Órdenes I+D (Técnico) ---
+        const techFilter = this.techOrdersFilter || 'EN_PROCESO';
+        const techOrders = co.orders || [];
+        const techPendingCount = techOrders.filter(o => o.status === 'PENDIENTE_FINANZAS' || o.status === 'APROBADO_FINANZAS').length;
+        const techCompletedCount = techOrders.filter(o => o.status === 'EJECUTADO').length;
+        const techRejectedCount = techOrders.filter(o => o.status === 'RECHAZADO').length;
+
+        const filteredTechOrders = techOrders.filter(o => {
+            if (techFilter === 'EN_PROCESO') return (o.status === 'PENDIENTE_FINANZAS' || o.status === 'APROBADO_FINANZAS');
+            if (techFilter === 'COMPLETADAS') return o.status === 'EJECUTADO';
+            if (techFilter === 'DENEGADAS') return o.status === 'RECHAZADO';
+            return true;
+        });
+
+        const techOrdersHtml = filteredTechOrders.length === 0
+            ? `<div class="terminal-border border-dashed p-6 text-center text-slate-400 italic text-xs uppercase">No hay órdenes en esta vista.</div>`
+            : filteredTechOrders.map(order => {
+                const st = order.status || 'PENDIENTE_FINANZAS';
+                let stBadge = 'bg-amber-950/40 text-amber-400 border border-amber-500';
+                let trackerIdx = 0;
+                if (st === 'APROBADO_FINANZAS') {
+                    stBadge = 'bg-blue-950/40 text-blue-400 border border-blue-500';
+                    trackerIdx = 1;
+                } else if (st === 'EJECUTADO') {
+                    stBadge = 'bg-emerald-950/40 text-emerald-400 border border-emerald-500';
+                    trackerIdx = 2;
+                } else if (st === 'RECHAZADO') {
+                    stBadge = 'bg-rose-950/40 text-rose-400 border border-rose-500';
+                    trackerIdx = 0;
+                }
+
+                return `
+                <div class="terminal-border bg-slate-900/90 border border-mars-border/80 p-4 mb-4">
+                    ${ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Logística (Ejecuta)'], trackerIdx)}
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-2 mb-3 gap-2">
+                        <div>
+                            <span class="text-xs font-black uppercase px-2 py-0.5 rounded ${stBadge}">${this.escapeHTML(st)}</span>
+                            <h3 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">Orden #${this.escapeHTML(order.id)}</h3>
+                        </div>
+                        <div class="text-left sm:text-right">
+                            <span class="text-mars-green font-mono font-bold text-sm sm:text-base">${Number(order.total).toFixed(2)} €v</span>
+                            <span class="block text-xs text-slate-400 font-mono">${this.escapeHTML(order.date || '--')}</span>
+                        </div>
+                    </div>
+
+                    ${(order.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(order.driveUrl))
+                        ? `<div class="mb-3">
+                            <a href="${encodeURI(order.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono">
+                                <span>📄 Ver Justificación Técnica DOC_9 en Docs ↗</span>
+                            </a>
+                        </div>`
+                        : ''
+                    }
+
+                    <div class="space-y-1.5 bg-black/60 p-2.5 border border-slate-800 rounded">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Partidas Solicitadas:</p>
+                        ${(order.items || []).map(it => `
+                            <div class="flex justify-between text-xs text-slate-300 gap-2">
+                                <span class="break-words">${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
+                                <span class="font-mono text-white shrink-0">${Number(it.price).toFixed(2)} €v</span>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    ${(st === 'EJECUTADO') ? `
+                    <div class="mt-3 pt-2.5 border-t border-slate-800 bg-black/50 p-2.5 rounded text-xs space-y-1.5">
+                        <div class="flex justify-between items-center text-[11px] font-bold text-mars-green uppercase">
+                            <span>📦 Imputación de Compra Real y Ensamble (Taller):</span>
+                            <span class="font-mono text-white">Coste Real Total: ${(order.items || []).reduce((s, it) => s + (Number(it.realEur) || 0), 0).toFixed(2)} €</span>
+                        </div>
+                        <div class="space-y-1">
+                            ${(order.items || []).map(it => `
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-300 gap-1 border-b border-slate-900 pb-1 last:border-0 font-mono">
+                                    <span class="text-white">${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
+                                    <div class="flex items-center gap-2">
+                                        <span>Real: <strong class="text-mars-yellow">${it.realEur !== undefined ? Number(it.realEur).toFixed(2) : '--'} €</strong></span>
+                                        <span>Comercio: <strong class="text-slate-200">${this.escapeHTML(it.realShop || 'Comercio')}</strong></span>
+                                        ${(it.ticketUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(it.ticketUrl))
+                                            ? `<a href="${encodeURI(it.ticketUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-mars-cyan hover:underline font-bold">[Ticket Drive ↗]</a>`
+                                            : ''
+                                        }
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>` : ''}
+                </div>`;
+            }).join('');
+
+        const trackingSectionHtml = `
+        <div id="tech-orders-tracking-panel" class="mt-8 terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-3">
+                <div>
+                    <h2 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter flex items-center gap-2">
+                        <span>📡 Seguimiento de Órdenes de I+D</span>
+                        <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 border border-slate-700 font-normal">Workflow 3 Fases</span>
+                    </h2>
+                    <p class="text-xs text-slate-300 uppercase mt-0.5">Control de estado de solicitudes: I+D (Técnico) ➔ Finanzas (Auditoría) ➔ Logística (Taller / Ensamble).</p>
+                </div>
+                <div role="tablist" aria-label="Filtro de Órdenes I+D" class="flex flex-wrap gap-1.5 bg-black p-1 border border-mars-border">
+                    <button type="button" role="tab" aria-selected="${techFilter === 'EN_PROCESO'}" onclick="ui.setTechOrdersFilter('EN_PROCESO')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${techFilter === 'EN_PROCESO' ? 'bg-mars-cyan text-black' : 'text-slate-300 hover:text-white'}">
+                        ⏳ En Proceso (${techPendingCount})
+                    </button>
+                    <button type="button" role="tab" aria-selected="${techFilter === 'COMPLETADAS'}" onclick="ui.setTechOrdersFilter('COMPLETADAS')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${techFilter === 'COMPLETADAS' ? 'bg-mars-green text-black' : 'text-slate-300 hover:text-white'}">
+                        ✅ Completadas (${techCompletedCount})
+                    </button>
+                    <button type="button" role="tab" aria-selected="${techFilter === 'DENEGADAS'}" onclick="ui.setTechOrdersFilter('DENEGADAS')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${techFilter === 'DENEGADAS' ? 'bg-mars-magenta text-white' : 'text-slate-300 hover:text-white'}">
+                        ❌ Denegadas (${techRejectedCount})
+                    </button>
+                </div>
+            </div>
+            <div>
+                ${techOrdersHtml}
+            </div>
+        </div>`;
 
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -202,15 +331,22 @@ Object.assign(ui, {
                 </div>
 
                 <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-magenta">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-3">
-                        <div>
-                            <h2 class="font-orbitron text-mars-magenta text-sm sm:text-base uppercase tracking-tighter">Inventario Físico, BOM & Ventas B2B</h2>
-                            <p class="text-xs text-slate-300 uppercase mt-1">Marca las piezas que integran el cohete final o vende el excedente a otras empresas.</p>
+                    <div class="flex flex-col gap-3 mb-4 border-b border-mars-border pb-3">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 w-full">
+                            <div>
+                                <h2 class="font-orbitron text-mars-magenta text-sm sm:text-base uppercase tracking-tighter">Inventario Físico, BOM & Ventas B2B</h2>
+                                <p class="text-xs text-slate-300 uppercase mt-0.5">Marca las piezas que integran el cohete final o vende el excedente a otras empresas.</p>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs font-mono font-bold flex-wrap">
+                                <span class="px-2.5 py-1 bg-slate-900 border border-slate-700 text-slate-300">📦 Stock: ${stockCount}</span>
+                                <span class="px-2.5 py-1 bg-mars-green/10 border border-mars-green text-mars-green">🚀 En BOM: ${bomCount}</span>
+                                <span class="px-2.5 py-1 bg-mars-yellow/10 border border-mars-yellow text-mars-yellow">🤝 En Venta B2B: ${b2bCount}</span>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-2 flex-wrap shrink-0">
-                            <button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta hover:bg-mars-magenta hover:text-white px-3 py-2 text-xs font-bold uppercase transition-all whitespace-nowrap">[ Solicitar Ítem Especial / Fuera de Mercado ]</button>
-                            <button type="button" onclick="ui.navigate('dossier')" class="min-h-[44px] bg-mars-cyan/10 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-3 py-2 text-xs font-bold uppercase transition-all whitespace-nowrap">[ Ver Dossier Inversores ↗ ]</button>
-                            <button type="button" onclick="ui.setMarketTab('b2b'); ui.navigate('market')" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-4 py-2 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-all whitespace-nowrap">Ver Mercado B2B</button>
+                        <div class="flex flex-wrap items-center gap-2 w-full pt-1">
+                            <button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta hover:bg-mars-magenta hover:text-white px-3 py-2 text-xs font-bold uppercase transition-all whitespace-nowrap">[ + Solicitar Ítem Especial / Fuera de Mercado ]</button>
+                            <button type="button" onclick="ui.navigate('dossier')" class="min-h-[44px] bg-mars-cyan/10 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-3 py-2 text-xs font-bold uppercase transition-all whitespace-nowrap">[ 📄 Ver Dossier Inversores ↗ ]</button>
+                            <button type="button" onclick="ui.setMarketTab('b2b'); ui.navigate('market')" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-4 py-2 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-all whitespace-nowrap">[ 🤝 Ver Mercado B2B ]</button>
                         </div>
                     </div>
                     
@@ -337,8 +473,14 @@ Object.assign(ui, {
                     </div>
                 </div>
             </div>
-        </div>`;
+        </div>
+        ${trackingSectionHtml}`;
         el.appendChild(wrapper);
+    },
+
+    setTechOrdersFilter(tab) {
+        this.techOrdersFilter = tab || 'EN_PROCESO';
+        this.render();
     },
 
     toggleBomItem(itemKey, isChecked) {

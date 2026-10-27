@@ -83,7 +83,15 @@ Object.assign(ui, {
                 <h2 class="font-orbitron text-mars-cyan text-base sm:text-lg uppercase tracking-tighter">Catálogo Aeroespacial (B2C)</h2>
                 <p class="text-xs text-slate-300 uppercase mt-1">Suministro oficial regulado en €v.</p>
             </div>
-            ${canBuy ? `<button type="button" id="btn-cart-toggle" onclick="ui.modalCheckout()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 font-black uppercase text-xs tracking-wider shadow-[0_0_15px_#00f0ff] hover:bg-white transition-all w-full sm:w-auto text-center shrink-0">🛒 Carrito de la compra (${(state.data.companies[state.user.coId]?.cart || []).length})</button>` : ''}
+            ${canBuy ? `
+            <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <button type="button" onclick="ui.navigate('tech'); setTimeout(() => { const el = document.getElementById('tech-orders-tracking-panel'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); el.classList.add('ring-2', 'ring-mars-cyan'); setTimeout(() => el.classList.remove('ring-2', 'ring-mars-cyan'), 2000); } }, 80);" class="min-h-[44px] bg-slate-900 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-3.5 py-2.5 font-bold uppercase text-xs tracking-wider transition-all whitespace-nowrap shadow-sm">
+                    📡 Mis Órdenes (${((state.data.companies[state.user.coId]?.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS' || o.status === 'APROBADO_FINANZAS')).length})
+                </button>
+                <button type="button" id="btn-cart-toggle" onclick="ui.modalCheckout()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 font-black uppercase text-xs tracking-wider shadow-[0_0_15px_#00f0ff] hover:bg-white transition-all w-full sm:w-auto text-center shrink-0">
+                    🛒 Carrito de la compra (${(state.data.companies[state.user.coId]?.cart || []).length})
+                </button>
+            </div>` : ''}
         </div>`;
 
         const searchBarHtml = `

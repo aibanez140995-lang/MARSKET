@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.42) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.43) ---
 
-const APP_VERSION = "1.1.42";
+const APP_VERSION = "1.1.43";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -535,6 +535,22 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.43",
+      date: new Date().toISOString().split('T')[0],
+      title: "Trazabilidad de Flujo Interdepartamental, Panel Técnico I+D y Optimización de Guías de Usuario",
+      items: [
+        "Modal de Guía: Exclusión estricta del perfil Docente para cuentas de alumno y flexibilización de selector de roles en cuadrícula fluida.",
+        "Panel de Seguimiento Técnico I+D (tech-orders-tracking-panel): Visualización de estado en 3 fases, enlace a DOC_9 y desglose de imputación real (€) de taller.",
+        "Acceso directo [📡 Mis Órdenes] en Catálogo B2C hacia la terminal técnica.",
+        "Panel de Seguimiento Logístico de Taller (ops-orders-tracking-panel): 3 pestañas operativas (Listas para Ensamble, En Cola Finanzas, Historial).",
+        "Trazabilidad gráfica renderWorkflowTracker transversal en Órdenes de I+D, Paquetes de Marketing, Acciones Publicitarias y Hoja de Taller."
+      ],
+      highlights: [
+        { type: "FLUJO_CRUZADO", text: "Trazabilidad end-to-end de órdenes y entregables con componentes visuales de progreso entre departamentos." },
+        { type: "UI_UX", text: "Mejora ergonómica del modal de guía y acceso rápido desde el catálogo a órdenes activas." }
+      ]
+    },
     {
       version: "1.1.42",
       date: new Date().toISOString().split('T')[0],

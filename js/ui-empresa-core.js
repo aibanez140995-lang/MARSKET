@@ -1,5 +1,5 @@
 // js/ui-empresa-core.js
-// --- MÓDULO CORE: LOGIN EN 2 PASOS (ZERO-KNOWLEDGE), NOTIFICACIONES Y DOSSIER ACADÉMICO (v1.1.42) ---
+// --- MÓDULO CORE: LOGIN EN 2 PASOS (ZERO-KNOWLEDGE), NOTIFICACIONES Y DOSSIER ACADÉMICO (v1.1.43) ---
 
 Object.assign(ui, {
     viewLogin(el) {

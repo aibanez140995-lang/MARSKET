@@ -249,6 +249,28 @@ Object.assign(ui, {
                                     </div>
                                 `).join('')}
                             </div>
+                            ${(st === 'EJECUTADO') ? `
+                            <div class="mt-2.5 pt-2 border-t border-slate-800 bg-black/40 p-2.5 rounded text-xs space-y-1.5">
+                                <div class="flex justify-between items-center text-[11px] font-bold text-mars-green uppercase">
+                                    <span>📦 Imputación de Compra Real y Ensamble (Taller):</span>
+                                    <span class="font-mono text-white">Coste Real Total: ${(order.items || []).reduce((s, it) => s + (Number(it.realEur) || 0), 0).toFixed(2)} €</span>
+                                </div>
+                                <div class="space-y-1">
+                                    ${(order.items || []).map(it => `
+                                        <div class="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-300 gap-1 border-b border-slate-900 pb-1 last:border-0 font-mono">
+                                            <span class="text-white">${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
+                                            <div class="flex items-center gap-2">
+                                                <span>Real: <strong class="text-mars-yellow">${it.realEur !== undefined ? Number(it.realEur).toFixed(2) : '--'} €</strong></span>
+                                                <span>Comercio: <strong class="text-slate-200">${this.escapeHTML(it.realShop || 'Comercio')}</strong></span>
+                                                ${(it.ticketUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(it.ticketUrl))
+                                                    ? `<a href="${encodeURI(it.ticketUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-mars-cyan hover:underline font-bold">[Ticket Drive ↗]</a>`
+                                                    : ''
+                                                }
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>` : ''}
                             <button type="button" onclick="ui.inspectOrderDrawer('${this.escapeHTML(co.id || state.user.coId)}', '${this.escapeHTML(order.id)}', false)" class="sm:hidden w-full min-h-[44px] bg-slate-950 border border-mars-cyan/60 text-mars-cyan font-black uppercase text-xs py-2 px-3 hover:bg-mars-cyan hover:text-black transition-all">[ 🔍 INSPECCIONAR ORDEN (${(order.items || []).length} partidas) ]</button>
                             ${isApproved ? '<p class="text-xs text-blue-400 font-mono mt-2 pt-2 border-t border-slate-800">📦 Orden en Logística de Taller: El Operario ejecuta la compra física real y el ensamble.</p>' : ''}
                             ${finActions}
@@ -284,6 +306,7 @@ Object.assign(ui, {
                             <div class="flex items-center gap-2 mb-2">
                                 <span class="text-[10px] font-black uppercase px-2 py-0.5 bg-yellow-950 text-mars-yellow border border-mars-yellow/40">DEPTO: MARKETING (PAQUETE)</span>
                             </div>
+                            ${ui.renderWorkflowTracker(['1. Solicitud MKT', '2. Finanzas (Audita)', '3. Activo / Pack'], cst === 'PENDIENTE_FINANZAS' ? 0 : 2)}
                             <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
                                 <div>
                                     <span class="text-xs font-black uppercase px-2 py-0.5 border ${campBadge}">${this.escapeHTML(cst)}</span>
@@ -332,6 +355,7 @@ Object.assign(ui, {
                                 <div class="flex items-center gap-2 mb-2">
                                     <span class="text-[10px] font-black uppercase px-2 py-0.5 bg-purple-950 text-mars-magenta border border-mars-magenta/40">DEPTO: MARKETING (ACCIÓN ESPECÍFICA)</span>
                                 </div>
+                                ${ui.renderWorkflowTracker(['1. Creatividad MKT', '2. CEO (Valida)', '3. Docente Liderazgo'], ast === 'PENDIENTE_CEO' ? 0 : 2)}
                                 <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
                                     <div>
                                         <span class="text-xs font-black uppercase px-2 py-0.5 border ${actBadge}">${this.escapeHTML(ast)}</span>
@@ -392,6 +416,7 @@ Object.assign(ui, {
                             <div class="flex items-center gap-2 mb-2">
                                 <span class="text-[10px] font-black uppercase px-2 py-0.5 bg-blue-950 text-blue-300 border border-blue-500/40">DEPTO: TALLER / OPERACIONES</span>
                             </div>
+                            ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval)', '4. Docente FyQ'], (hst === 'DELIVERED_TO_TEACHER' ? 3 : (hst === 'SUBMITTED_TO_CEO' || hst === 'CEO_REVISION' ? 2 : 1)))}
                             <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
                                 <div>
                                     <span class="text-xs font-black uppercase px-2 py-0.5 border ${hojaBadge}">${this.escapeHTML(hst)}</span>

@@ -1,5 +1,5 @@
 // js/ui-core.js
-// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.42) ---
+// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.43) ---
 
 // Constante global GOOGLE_DRIVE_REGEX centralizada en js/config.js
 
@@ -937,12 +937,12 @@ const ui = {
 
         // Órdenes de compra y Logística / Taller
         if (msg.includes('orden') || msg.includes('pedido') || msg.includes('compra') || msg.includes('presupuesto') || msg.includes('ensamblaje') || msg.includes('taller') || msg.includes('hoja de taller')) {
-            if (role === 'OPERACIONES_IA' || role === 'OPERACIONES') return { view: 'cart' };
+            if (role === 'OPERACIONES_IA' || role === 'OPERACIONES') return { view: 'cart', anchorId: 'ops-orders-tracking-panel' };
             if (role === 'FINANZAS' || role === 'CEO') {
                 const filter = msg.includes('rechaz') || msg.includes('denegad') ? 'DENEGADAS' : (msg.includes('completad') || msg.includes('ejecutad') ? 'COMPLETADAS' : 'EN_PROCESO');
                 return { view: 'orders', filter: filter, dept: 'TECNICO' };
             }
-            if (role === 'TECNICO') return { view: 'market' };
+            if (role === 'TECNICO') return { view: 'tech', anchorId: 'tech-orders-tracking-panel' };
             return { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' };
         }
 
@@ -1055,13 +1055,23 @@ const ui = {
     },
 
     getOnboardingContent(role) {
-        const isDocente = role === 'DOCENTE' || (state.user && state.user.admin);
+        let targetRole = role || 'CEO';
+        if (targetRole === 'OPERACIONES') targetRole = 'OPERACIONES_IA';
+        if (targetRole === 'SECRETARIO') targetRole = 'AUXILIAR';
+
+        const isDocente = targetRole === 'DOCENTE';
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
         const coId = state.user?.coId;
         const co = coId ? state.data.companies?.[coId] : null;
         const docs = co?.deliverables || {};
 
         if (isDocente) {
+            if (state.user && !state.user.admin) {
+                return `
+                <div class="terminal-border border-dashed p-6 text-center text-mars-magenta font-mono text-xs uppercase bg-black/60">
+                    🔒 Acceso denegado: El perfil y manual del Claustro Docente está reservado exclusivamente a profesores evaluadores.
+                </div>`;
+            }
             const isCoord = Boolean(state.user && state.user.role && state.user.role.startsWith('COORD_'));
             return `
             <div class="space-y-4 font-mono text-xs leading-relaxed text-slate-200">
@@ -1111,7 +1121,7 @@ const ui = {
         }
 
         // Estructura limpia de 3 bloques para los 6 roles de alumno
-        const roleDeliverables = defs.filter(d => d.role === role);
+        const roleDeliverables = defs.filter(d => d.role === targetRole);
         const roleDeliverablesHtml = roleDeliverables.length > 0 ? roleDeliverables.map(d => {
             const docObj = docs[d.key];
             const sched = (state.data.config?.deliverableSchedule && state.data.config.deliverableSchedule[d.key]) || {};
@@ -1128,7 +1138,7 @@ const ui = {
         let roleButtons = '';
         let roleWarning = '';
 
-        switch(role) {
+        switch(targetRole) {
             case 'CEO':
                 roleTitle = 'DIRECCIÓN GENERAL // CEO';
                 roleDesc = 'Liderar la estrategia global de la empresa, visar entregables en el Dossier, validar campañas de marketing, emitir comunicados de crisis y coordinar la gobernanza corporativa.';
@@ -1475,25 +1485,33 @@ const ui = {
     },
 
     switchGuideRole(role) {
-        const targetRole = role || 'CEO';
+        let targetRole = role || 'CEO';
+        if (targetRole === 'OPERACIONES') targetRole = 'OPERACIONES_IA';
+        if (targetRole === 'SECRETARIO') targetRole = 'AUXILIAR';
+        if (state.user && !state.user.admin && targetRole === 'DOCENTE') {
+            targetRole = (state.user && state.user.role) || 'CEO';
+            if (targetRole === 'OPERACIONES') targetRole = 'OPERACIONES_IA';
+            if (targetRole === 'SECRETARIO') targetRole = 'AUXILIAR';
+        }
         const container = document.getElementById('guide-role-content');
         if (container) {
             container.innerHTML = this.getOnboardingContent(targetRole);
         }
         document.querySelectorAll('.guide-role-pill').forEach(btn => {
             const r = btn.getAttribute('data-role');
-            if (r === targetRole) {
-                btn.className = 'guide-role-pill min-h-[44px] px-2.5 py-1.5 text-xs font-black uppercase tracking-wider bg-mars-cyan text-black border border-mars-cyan transition-all shadow-[0_0_8px_rgba(0,240,255,0.4)]';
+            const isMatch = (r === targetRole) || (targetRole === 'OPERACIONES_IA' && r === 'OPERACIONES') || (targetRole === 'AUXILIAR' && r === 'SECRETARIO');
+            if (isMatch) {
+                btn.className = 'guide-role-pill min-h-[44px] px-2.5 py-1.5 text-xs font-black uppercase tracking-wider bg-mars-cyan text-black border border-mars-cyan transition-all shadow-[0_0_8px_rgba(0,240,255,0.4)] shrink-0 whitespace-nowrap';
                 btn.setAttribute('aria-selected', 'true');
             } else {
-                btn.className = 'guide-role-pill min-h-[44px] px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider bg-slate-900 text-slate-300 border border-slate-700 hover:text-white hover:border-slate-500 transition-all';
+                btn.className = 'guide-role-pill min-h-[44px] px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider bg-slate-900 text-slate-300 border border-slate-700 hover:text-white hover:border-slate-500 transition-all shrink-0 whitespace-nowrap';
                 btn.setAttribute('aria-selected', 'false');
             }
         });
     },
 
     showGuide(defaultRole = null) {
-        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.42';
+        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.43';
         let initialRole = defaultRole;
         if (!initialRole) {
             if (state.user) {
@@ -1502,8 +1520,10 @@ const ui = {
                 initialRole = 'CEO';
             }
         }
+        if (initialRole === 'OPERACIONES') initialRole = 'OPERACIONES_IA';
+        if (initialRole === 'SECRETARIO') initialRole = 'AUXILIAR';
 
-        const rolesList = [
+        let rolesList = [
             { key: 'CEO', label: '👑 CEO' },
             { key: 'TECNICO', label: '🧪 TÉCNICO' },
             { key: 'FINANZAS', label: '💰 FINANZAS' },
@@ -1513,11 +1533,18 @@ const ui = {
             { key: 'DOCENTE', label: '🎓 DOCENTE' }
         ];
 
+        if (state.user && !state.user.admin) {
+            rolesList = rolesList.filter(r => r.key !== 'DOCENTE');
+            if (initialRole === 'DOCENTE') {
+                initialRole = state.user.role || 'CEO';
+            }
+        }
+
         const pillsHtml = rolesList.map(r => {
             const isSelected = r.key === initialRole;
             const cls = isSelected
-                ? 'guide-role-pill min-h-[44px] px-2.5 py-1.5 text-xs font-black uppercase tracking-wider bg-mars-cyan text-black border border-mars-cyan transition-all shadow-[0_0_8px_rgba(0,240,255,0.4)]'
-                : 'guide-role-pill min-h-[44px] px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider bg-slate-900 text-slate-300 border border-slate-700 hover:text-white hover:border-slate-500 transition-all';
+                ? 'guide-role-pill min-h-[44px] px-2.5 py-1.5 text-xs font-black uppercase tracking-wider bg-mars-cyan text-black border border-mars-cyan transition-all shadow-[0_0_8px_rgba(0,240,255,0.4)] shrink-0 whitespace-nowrap'
+                : 'guide-role-pill min-h-[44px] px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider bg-slate-900 text-slate-300 border border-slate-700 hover:text-white hover:border-slate-500 transition-all shrink-0 whitespace-nowrap';
             return `<button type="button" role="tab" aria-selected="${isSelected}" data-role="${r.key}" onclick="ui.switchGuideRole('${r.key}')" class="${cls}">${r.label}</button>`;
         }).join('');
 
@@ -1537,7 +1564,7 @@ const ui = {
             <!-- Selector de Roles -->
             <div>
                 <p class="text-mars-cyan font-bold uppercase text-xs mb-2">Selecciona un Rol Operativo para ver su Manual:</p>
-                <div role="tablist" aria-label="Manuales de Rol" class="flex gap-2 overflow-x-auto whitespace-nowrap pb-2 min-h-[48px] border-b border-slate-800">
+                <div role="tablist" aria-label="Manuales de Rol" class="flex flex-wrap gap-2 pb-3 border-b border-slate-800">
                     ${pillsHtml}
                 </div>
             </div>
