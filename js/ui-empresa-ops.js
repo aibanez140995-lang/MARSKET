@@ -33,14 +33,17 @@ Object.assign(ui, {
                 <p class="text-xs text-mars-yellow uppercase font-bold mb-3">Registra el coste real físico (€), el comercio oficial y el ticket en Google Drive:</p>
                 <div class="space-y-3 mb-6">
                     ${(order.items || []).map((item, idx) => `
-                        <div class="bg-slate-900 p-3 border border-mars-border flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                            <label class="mars-checkbox-label flex items-center gap-2.5 text-xs text-white font-bold cursor-pointer flex-grow min-h-[44px]">
-                                <input type="checkbox" id="assembled-${this.escapeHTML(order.id)}-${idx}" class="mars-touch-input" checked ${isOperario ? '' : 'disabled'}>
-                                <span class="mars-checkbox-visual"></span>
-                                <span class="break-words">${this.escapeHTML(item.name)} (x${Number(item.qty)||1}) - <span class="text-mars-cyan font-mono">${Number(item.price).toFixed(2)} €v</span></span>
-                            </label>
+                        <div class="border border-slate-800 bg-slate-900/90 p-3 mb-3 rounded flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                            <div class="flex-grow min-w-0">
+                                <label class="mars-checkbox-label flex items-center gap-2.5 text-xs text-white font-bold cursor-pointer min-h-[44px]">
+                                    <input type="checkbox" id="assembled-${this.escapeHTML(order.id)}-${idx}" class="mars-touch-input" checked ${isOperario ? '' : 'disabled'}>
+                                    <span class="mars-checkbox-visual"></span>
+                                    <span class="break-words">${this.escapeHTML(item.name)} (x${Number(item.qty)||1}) - <span class="text-mars-cyan font-mono">${Number(item.price).toFixed(2)} €v</span></span>
+                                </label>
+                                <p class="text-[10px] text-slate-400 font-mono mt-0.5 ml-7">Material donado o reciclado: registrar 0.00 €</p>
+                            </div>
                             <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                                <input type="number" id="real-eur-${this.escapeHTML(order.id)}-${idx}" aria-label="Coste real en euros de ${this.escapeHTML(item.name)}" placeholder="Coste Real (€)" step="0.01" min="0" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-mars-magenta p-2.5 text-base sm:text-xs text-white w-full sm:w-28 outline-none focus:border-mars-cyan font-mono">
+                                <input type="number" id="real-eur-${this.escapeHTML(order.id)}-${idx}" aria-label="Coste real en euros de ${this.escapeHTML(item.name)}" placeholder="Coste Real (€) - 0.00 si es reciclado" step="0.01" min="0" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-mars-magenta p-2.5 text-base sm:text-xs text-white w-full sm:w-48 outline-none focus:border-mars-cyan font-mono">
                                 <select id="real-shop-${this.escapeHTML(order.id)}-${idx}" aria-label="Comercio de adquisición de ${this.escapeHTML(item.name)}" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-slate-700 p-2.5 text-base sm:text-xs text-white w-full sm:w-44 outline-none focus:border-mars-cyan">
                                     ${(typeof COMMERCIAL_SHOPS_DEF !== 'undefined' ? COMMERCIAL_SHOPS_DEF : [
                                         { id: 'mercadona', name: 'Mercadona' },
@@ -51,11 +54,6 @@ Object.assign(ui, {
                                         { id: 'bazar', name: 'Bazar' },
                                         { id: 'comercio_generico', name: 'Comercio genérico' }
                                     ]).map(shop => `<option value="${this.escapeHTML(shop.name)}">${this.escapeHTML(shop.name)}</option>`).join('')}
-
-
-
-
-
                                 </select>
                                 <input type="url" id="real-ticket-${this.escapeHTML(order.id)}-${idx}" aria-label="Ticket Drive de ${this.escapeHTML(item.name)}" placeholder="URL Ticket Drive" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-mars-cyan/60 p-2 text-base sm:text-xs text-white w-full sm:w-44 outline-none focus:border-mars-cyan font-mono">
                             </div>
@@ -307,24 +305,24 @@ Object.assign(ui, {
 
         wrapper.innerHTML = `
             <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
-                <h2 class="font-orbitron text-blue-400 text-lg sm:text-xl uppercase tracking-tighter">Bitácora y Auditoría de Inteligencia Artificial</h2>
-                <button type="button" onclick="ui.modalReportAI()" class="min-h-[44px] bg-blue-600 text-white px-4 py-2.5 text-xs font-bold uppercase hover:bg-blue-500 transition-all">[🤖 Nuevo Reporte IA]</button>
+                <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">Bitácora y Auditoría de Inteligencia Artificial</h2>
+                <button type="button" onclick="ui.modalReportAI()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_12px_rgba(0,240,255,0.3)]">[🤖 Nuevo Reporte IA]</button>
             </div>
             ${diaryDocsHtml}
             ${pendingHtml}
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-blue-500">
-                <h3 class="font-orbitron text-blue-400 text-sm sm:text-base mb-4 uppercase tracking-tighter">Historial Oficial de Uso de IA (Aprobados)</h3>
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
+                <h3 class="font-orbitron text-mars-cyan text-sm sm:text-base mb-4 uppercase tracking-tighter">Historial Oficial de Uso de IA (Aprobados)</h3>
                 <div class="space-y-4">
                     ${approvedPrompts.map(p => `
-                        <div class="bg-black/60 border border-slate-800 p-4 text-xs">
+                        <div class="bg-black/60 border border-mars-cyan/40 p-4 text-xs">
                             <div class="flex flex-wrap justify-between gap-2 border-b border-slate-800 pb-2 mb-2">
-                                <span class="text-blue-400 font-bold uppercase">${this.escapeHTML(p.role)} • ${this.escapeHTML(p.tool)}</span>
+                                <span class="text-mars-cyan font-bold uppercase">${this.escapeHTML(p.role)} • ${this.escapeHTML(p.tool)}</span>
                                 <span class="text-slate-300">${this.escapeHTML(p.date)}</span>
                             </div>
                             <div class="mt-2">
                                 ${(p.bitacoraUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(p.bitacoraUrl)) || (p.prompt && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(p.prompt))
                                     ? `<a href="${encodeURI(p.bitacoraUrl || p.prompt).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Bitácora en Docs ↗</span></a>`
-                                    : `<span class="text-xs text-amber-500/80 font-mono italic">[Bitácora legacy archivada por protocolo RGPD]</span>`
+                                    : `<span class="text-xs text-mars-yellow/80 font-mono italic">[Bitácora legacy archivada por protocolo RGPD]</span>`
                                 }
                             </div>
                         </div>

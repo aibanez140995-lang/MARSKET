@@ -19,7 +19,7 @@ Object.assign(ui, {
 
         const rgpdClauseHtml = `
             <div class="mt-4 text-center">
-                <button type="button" id="btn-open-rgpd-modal" onclick="ui.openRgpdModal()" class="text-[10px] text-slate-500 hover:text-cyan-400 font-mono tracking-wider transition-colors">
+                <button type="button" id="btn-open-rgpd-modal" onclick="ui.openRgpdModal()" class="min-h-[44px] min-w-[44px] px-3 py-2 text-xs text-slate-300 hover:text-mars-cyan font-mono tracking-wider transition-colors inline-flex items-center justify-center">
                     [ 🛡️ PROTOCOLO RGPD / ART. 13 ]
                 </button>
             </div>
@@ -247,6 +247,7 @@ Object.assign(ui, {
                     <span class="text-2xl sm:text-3xl font-orbitron font-black ${hasAnyGrade ? 'text-mars-green' : 'text-slate-400'}">${globalNoteDisplay}</span>
                 </div>
             </div>
+            ${evaluatedWeightSum === 0 ? `<div class="bg-slate-900 border border-mars-cyan/30 p-3 text-xs text-slate-300 font-mono mb-6">ℹ️ Las calificaciones del proyecto comenzarán a reflejarse tras la entrega y evaluación de los primeros hitos de Diciembre.</div>` : ''}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">`;
             
             subjects.forEach(sub => {
@@ -332,11 +333,11 @@ Object.assign(ui, {
                     const dlStatus = this.getDeadlineStatus(dlDate);
 
                     const lockBadge = isLocked
-                        ? `<span class="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded">🔒 BLOQUEADO HASTA ${new Date(openDate).toLocaleString()}</span>`
+                        ? `<span class="text-xs font-mono font-bold text-mars-yellow bg-mars-yellow/10 border border-mars-yellow/30 px-2 py-0.5 rounded">🔒 BLOQUEADO HASTA ${new Date(openDate).toLocaleString()}</span>`
                         : `<span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">🟢 ACTIVO / EN PLAZO</span>`;
 
                     let pipelineBadge = '<span class="text-xs font-bold uppercase text-slate-300 bg-black border border-slate-700 px-2 py-0.5">⏳ PENDIENTE</span>';
-                    let borderColor = isLocked ? 'border-amber-400/40' : 'border-slate-800';
+                    let borderColor = isLocked ? 'border-mars-yellow/40' : 'border-slate-800';
 
                     if (st === 'EN_TALLER_OPERARIO') {
                         pipelineBadge = '<span class="text-xs font-black uppercase text-blue-400 bg-blue-900/30 border border-blue-500 px-2 py-0.5 animate-pulse">⚙️ EN TALLER</span>';
@@ -364,7 +365,7 @@ Object.assign(ui, {
                         ceoDirectActions = `
                         <div class="flex items-center gap-1.5 shrink-0">
                             <button type="button" onclick="ui.approveDeliverableByCEO('${docKey}')" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-3 py-1.5 hover:bg-white transition-all shadow-sm" title="Aprobar y Elevar a Evaluación Docente">[ ✓ VISAR ]</button>
-                            <button type="button" onclick="ui.modalCeoReturnDeliverable('${docKey}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-3 py-1.5 hover:bg-mars-magenta hover:text-white transition-all" title="Devolver con Motivo Tipificado">[ ↩ DEVOLVER ]</button>
+                            <button type="button" onclick="ui.modalCeoReturnDeliverable('${docKey}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-3 py-1.5 hover:bg-mars-magenta hover:text-white transition-all" title="Devolver para Subsanación">[ ⚠️ DEVOLVER PARA SUBSANACIÓN ]</button>
                         </div>`;
                     }
 

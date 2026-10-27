@@ -298,6 +298,7 @@ const auth = (function() {
                 const co = state.data.companies[_verifiedCoId];
                 const hasAux = !!state.getRolePin(co, 'AUXILIAR') || !!(_serverCompanyMeta && _serverCompanyMeta.hasAux);
                 let html = `
+                    <option value="" disabled selected>[ Selecciona tu puesto en el equipo ]</option>
                     <option value="CEO">Dirección General (CEO)</option>
                     <option value="TECNICO">Dpto. Técnico (I+D)</option>
                     <option value="FINANZAS">Dpto. Financiero</option>
@@ -309,6 +310,10 @@ const auth = (function() {
                 }
                 roleSelect.innerHTML = html;
             }
+        },
+
+        validateRoleAndPIN() {
+            return this.verify();
         },
 
         press(n) {
@@ -341,6 +346,11 @@ const auth = (function() {
             const roleSelect = document.getElementById('login-role');
             if (!roleSelect) return;
             const role = roleSelect.value;
+            if (!role) {
+                ui.notify("Por favor, selecciona tu departamento o rol en el equipo.", "warning");
+                this.clear();
+                return;
+            }
             const pinAttempt = state.pin;
 
             if (_verifiedCoId === 'admin') {

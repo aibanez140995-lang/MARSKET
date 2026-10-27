@@ -103,7 +103,6 @@ Object.assign(ui, {
         
         let headerActions = `
         <div class="flex flex-wrap gap-2">
-            <button type="button" onclick="ui.modalReportInactivity()" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2 text-xs uppercase font-bold hover:bg-mars-magenta hover:text-white transition-all">Reportar Inactividad</button>
             <button type="button" onclick="ui.modalMotion()" class="min-h-[44px] bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-4 py-2 text-xs uppercase font-bold hover:bg-mars-yellow hover:text-black transition-all">Proponer Moción</button>
         </div>`;
 
@@ -147,9 +146,9 @@ Object.assign(ui, {
         let ceoSloganApprovalHtml = '';
         if (isCEO && co.brandApproval && co.brandApproval.status === 'PENDIENTE_CEO') {
             ceoSloganApprovalHtml = `
-            <div class="bg-amber-500/10 border-2 border-amber-500 p-4 mb-6 rounded">
+            <div class="bg-mars-yellow/10 border-2 border-mars-yellow p-4 mb-6 rounded">
                 <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
-                    <span class="text-xs bg-amber-500 text-black font-black px-2.5 py-1 uppercase">Paso 2: Aval de Dirección General Requerido</span>
+                    <span class="text-xs bg-mars-yellow text-black font-black px-2.5 py-1 uppercase">Paso 2: Aval de Dirección General Requerido</span>
                     <span class="text-xs text-slate-300 font-mono">${this.escapeHTML(co.brandApproval.expId || '')}</span>
                 </div>
                 <h4 class="text-white font-orbitron font-bold text-sm uppercase mb-1">Propuesta de Slogan Corporativo recibida de Marketing</h4>
@@ -208,9 +207,9 @@ Object.assign(ui, {
                             if(m.status === 'ABIERTA') {
                                 if(!myVote) {
                                     actions = `<div class="flex flex-wrap gap-2 mt-3">
-                                        <button type="button" onclick="ui.voteMotion('${this.escapeHTML(m.id)}', 'A_FAVOR')" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2 text-xs font-bold uppercase hover:bg-white transition-colors">A Favor</button>
-                                        <button type="button" onclick="ui.voteMotion('${this.escapeHTML(m.id)}', 'EN_CONTRA')" class="min-h-[44px] bg-red-700 text-white px-4 py-2 text-xs font-bold uppercase hover:bg-white hover:text-red-700 transition-colors">En Contra</button>
-                                        <button type="button" onclick="ui.voteMotion('${this.escapeHTML(m.id)}', 'NO_ESTOY_SEGURO')" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2 text-xs font-bold uppercase hover:bg-white transition-colors">No estoy seguro</button>
+                                        <button type="button" onclick="ui.voteMotion('${this.escapeHTML(m.id)}', 'A_FAVOR')" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2 text-xs font-bold uppercase hover:bg-white transition-colors">✓ A Favor</button>
+                                        <button type="button" onclick="ui.voteMotion('${this.escapeHTML(m.id)}', 'EN_CONTRA')" class="min-h-[44px] bg-red-700 text-white px-4 py-2 text-xs font-bold uppercase hover:bg-white hover:text-red-700 transition-colors">✗ En Contra</button>
+                                        <button type="button" onclick="ui.voteMotion('${this.escapeHTML(m.id)}', 'NO_ESTOY_SEGURO')" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2 text-xs font-bold uppercase hover:bg-white transition-colors">? No seguro</button>
                                     </div>`;
                                 } else {
                                     actions = `<p class="text-xs text-mars-cyan mt-3 uppercase font-bold">Tu voto: ${this.escapeHTML(String(myVote).replace(/_/g, ' '))}</p>`;
@@ -232,7 +231,7 @@ Object.assign(ui, {
                                 <div class="mb-3">
                                     ${(m.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(m.driveUrl))
                                         ? `<a href="${encodeURI(m.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Propuesta en Docs ↗</span></a>`
-                                        : `<span class="text-xs text-amber-500/80 font-mono italic">[Propuesta legacy archivada por protocolo RGPD]</span>`
+                                        : `<span class="text-xs text-mars-yellow/80 font-mono italic">[Propuesta legacy archivada por protocolo RGPD]</span>`
                                     }
                                 </div>
                                 <div class="w-full bg-black h-2.5 flex rounded-sm overflow-hidden mb-1.5">
@@ -241,14 +240,14 @@ Object.assign(ui, {
                                     <div class="bg-red-600 h-full transition-all" style="width: ${totalRoles>0?(n/totalRoles)*100:0}%"></div>
                                 </div>
                                 <div class="flex justify-between text-xs font-bold text-slate-300 uppercase">
-                                    <span class="text-mars-cyan">${y} A Favor</span>
-                                    <span class="text-mars-yellow">${abst} No seguro</span>
+                                    <span class="text-mars-cyan">✓ ${y} A Favor</span>
+                                    <span class="text-mars-yellow">? ${abst} No seguro</span>
                                     <span>Quórum: ${total}/${totalRoles}</span>
-                                    <span class="text-red-500">${n} En Contra</span>
+                                    <span class="text-red-500">✗ ${n} En Contra</span>
                                 </div>
                                 ${actions}
                             </div>`;
-                        }).join('') || '<p class="text-slate-300 text-xs italic">No hay mociones asamblearias registradas.</p>'}
+                        }).join('') || '<div class="terminal-border border-dashed p-6 text-center text-slate-300 italic text-xs">No hay mociones asamblearias registradas en la startup.</div>'}
                     </div>
                 </div>
             </div>
@@ -600,8 +599,8 @@ Object.assign(ui, {
         const isPendingBrand = (co.brandStatus === 'PENDING_APPROVAL' || co.brandApproval?.status === 'PENDIENTE');
         if (isPendingBrand) {
             brandApprovalAlert = `
-            <div class="bg-amber-500/15 border border-amber-500/60 p-3 mb-4 text-xs">
-                <span class="bg-amber-500/20 text-amber-400 border border-amber-500/50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider block mb-2">[Eslogan/Misión en revisión por Coordinación]</span>
+            <div class="bg-mars-yellow/15 border border-mars-yellow/60 p-3 mb-4 text-xs">
+                <span class="bg-mars-yellow/20 text-mars-yellow border border-mars-yellow/50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider block mb-2">[Eslogan/Misión en revisión por Coordinación]</span>
                 <p class="text-slate-200 leading-relaxed">Tu propuesta de Eslogan y Misión ha sido enviada a Coordinación Docente y se encuentra en proceso de validación previa antes de su publicación en el HUD.</p>
                 ${(co.pendingSlogan || co.brandApproval?.pendingSlogan) ? `<p class="text-white mt-1.5 break-words"><strong>Eslogan propuesto:</strong> "${this.escapeHTML(co.pendingSlogan || co.brandApproval?.pendingSlogan)}"</p>` : ''}
                 ${(co.pendingMission || co.valueProposition) ? `<p class="text-white mt-1.5 break-words"><strong>Misión propuesta:</strong> "${this.escapeHTML(co.pendingMission || co.valueProposition)}"</p>` : ''}
@@ -651,6 +650,7 @@ Object.assign(ui, {
         const sponsorTierLabel = co.sponsorAwarded ? (co.sponsorData?.tier || co.sponsorAwarded || 'SPONSOR') : null;
 
         const mktPackages = typeof MARKETING_PACKAGES !== 'undefined' ? MARKETING_PACKAGES : [];
+        const isMktUser = Boolean(state.user && (state.user.role === 'MARKETING' || state.user.admin || state.user.isCoordinator || (state.user.role && String(state.user.role).startsWith('COORD'))));
 
         const packagesGridHtml = mktPackages.map(pkg => `
             <div class="bg-black/80 border border-mars-border p-3.5 flex flex-col justify-between hover:border-mars-yellow transition-all">
@@ -664,7 +664,10 @@ Object.assign(ui, {
                 </div>
                 <div class="flex justify-between items-center border-t border-slate-800 pt-2.5 gap-2">
                     <span class="text-mars-green font-mono font-black text-sm">${Number(pkg.price)} €v</span>
-                    <button type="button" onclick="ui.modalRequestMktPackage('${this.escapeHTML(pkg.id)}')" class="min-h-[44px] bg-mars-yellow text-black px-3.5 py-2 text-xs font-black uppercase hover:bg-white transition-colors">Contratar</button>
+                    ${isMktUser 
+                        ? `<button type="button" onclick="ui.modalRequestMktPackage('${this.escapeHTML(pkg.id)}')" class="min-h-[44px] bg-mars-yellow text-black px-3.5 py-2 text-xs font-black uppercase hover:bg-white transition-colors">Contratar</button>`
+                        : `<span class="min-h-[44px] inline-flex items-center justify-center bg-slate-900 text-slate-400 px-3.5 py-2 text-xs font-bold uppercase border border-slate-700 cursor-not-allowed">Solo Marketing</span>`
+                    }
                 </div>
             </div>
         `).join('');
@@ -681,7 +684,7 @@ Object.assign(ui, {
                     <div class="mb-2">
                         ${(c.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(c.driveUrl))
                             ? `<a href="${encodeURI(c.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Dossier ROI en Docs ↗</span></a>`
-                            : `<span class="text-xs text-amber-500/80 font-mono italic">[Dossier legacy archivado por protocolo RGPD]</span>`
+                            : `<span class="text-xs text-mars-yellow/80 font-mono italic">[Dossier legacy archivado por protocolo RGPD]</span>`
                         }
                     </div>
                     ${c.url ? `<a href="${this.escapeHTML(c.url)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center text-xs text-mars-yellow hover:underline">🔗 Ver Creatividad</a>` : ''}
@@ -709,7 +712,7 @@ Object.assign(ui, {
 
                 let statusBadge = '';
                 if (actStatus === 'PENDIENTE_CEO') {
-                    statusBadge = `<span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider">[⏳ PENDIENTE DE APROBACIÓN CEO]</span>`;
+                    statusBadge = `<span class="bg-mars-yellow/20 text-mars-yellow border border-mars-yellow/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider">[⏳ PENDIENTE DE APROBACIÓN CEO]</span>`;
                 } else if (actStatus === 'VALIDADO_CEO') {
                     statusBadge = `<span class="bg-mars-green/20 text-mars-green border border-mars-green/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider">[✓ VALIDADA Y ELEVADA A LIDERAZGO Y COORDINACIÓN]</span>`;
                 } else if (actStatus === 'RECHAZADO_CEO') {
@@ -768,7 +771,7 @@ Object.assign(ui, {
                 <div class="mb-3">
                     ${(c.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(c.driveUrl))
                         ? `<a href="${encodeURI(c.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Dossier ROI en Docs ↗</span></a>`
-                        : `<span class="text-xs text-amber-500/80 font-mono italic">[Dossier legacy archivado por protocolo RGPD]</span>`
+                        : `<span class="text-xs text-mars-yellow/80 font-mono italic">[Dossier legacy archivado por protocolo RGPD]</span>`
                     }
                 </div>
                 
@@ -811,13 +814,31 @@ Object.assign(ui, {
         } else {
             docTabContent = `
                 <div class="mb-3">
-                    <span class="bg-mars-yellow/10 border border-mars-yellow text-mars-yellow text-xs font-black px-2.5 py-1 uppercase">Peso en Proyecto: 5% Global (Evaluación Directa en Aula)</span>
+                    <span class="bg-mars-yellow/10 border border-mars-yellow text-mars-yellow text-xs font-black px-2.5 py-1 uppercase">Peso en Proyecto: 5% Global (Rúbrica Oficial de Aula)</span>
                 </div>
                 <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Evaluación del departamento de Inglés (100% evaluación docente directa en clase).</p>
-                <div class="bg-black/80 border border-mars-yellow/40 p-4 text-xs text-slate-300 space-y-2">
-                    <p class="text-white font-bold uppercase text-xs">📢 Criterio Curricular Oficial de Lengua Extranjera (Inglés):</p>
-                    <p>Las competencias de expresión oral (Pitch / Presentación de Prototipo) y expresión escrita en lengua inglesa son evaluadas directamente por el profesorado de Lengua Extranjera durante las sesiones lectivas presenciales y defensas orales en el aula.</p>
-                    <p class="text-mars-yellow font-mono text-[11px] font-bold">✓ No se requiere la subida de enlaces de Google Drive en este panel.</p>
+                <div class="bg-black/80 border border-mars-yellow/40 p-4 text-xs text-slate-300 space-y-3 mb-4">
+                    <p class="text-white font-bold uppercase text-xs flex items-center gap-1.5"><span>📋</span> Criterios Oficiales de Evaluación (Rúbrica Docente):</p>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center p-2.5 bg-slate-900 border border-slate-800">
+                            <div>
+                                <span class="text-white font-bold block">1. Expresión Oral (Presentación / Pitch de Prototipo)</span>
+                                <span class="text-[11px] text-slate-400">Defensa oral, pronunciación, fluidez y respuesta a preguntas</span>
+                            </div>
+                            <span class="text-mars-yellow font-mono font-bold text-sm bg-mars-yellow/10 border border-mars-yellow/30 px-2 py-0.5 shrink-0">70%</span>
+                        </div>
+                        <div class="flex justify-between items-center p-2.5 bg-slate-900 border border-slate-800">
+                            <div>
+                                <span class="text-white font-bold block">2. Expresión Escrita (Redacciones y Fichas Técnicas)</span>
+                                <span class="text-[11px] text-slate-400">Vocabulario técnico aeroespacial, gramática y corrección textual</span>
+                            </div>
+                            <span class="text-mars-yellow font-mono font-bold text-sm bg-mars-yellow/10 border border-mars-yellow/30 px-2 py-0.5 shrink-0">30%</span>
+                        </div>
+                    </div>
+                    <p class="text-slate-300 text-[11px] leading-relaxed pt-1">
+                        Las competencias de expresión oral y escrita en lengua inglesa son evaluadas de forma continua por el profesorado durante las sesiones lectivas presenciales y defensas orales.
+                    </p>
+                    <p class="text-mars-yellow font-mono text-[11px] font-bold">ℹ️ No se requiere la subida de enlaces de Google Drive en este panel.</p>
                 </div>
             `;
         }
@@ -842,8 +863,8 @@ Object.assign(ui, {
         if (estadoActual === 'PENDIENTE_CEO') {
             if (state.user.role === 'CEO') {
                 step2CeoControls = `
-                <div class="bg-amber-500/15 border-2 border-amber-500 p-4 mb-4 rounded">
-                    <span class="text-xs bg-amber-500 text-black font-black px-2 py-0.5 uppercase block mb-2 w-fit">Paso 2: Aval de Dirección General Requerido</span>
+                <div class="bg-mars-yellow/15 border-2 border-mars-yellow p-4 mb-4 rounded">
+                    <span class="text-xs bg-mars-yellow text-black font-black px-2 py-0.5 uppercase block mb-2 w-fit">Paso 2: Aval de Dirección General Requerido</span>
                     <p class="text-xs text-white mb-2">Marketing ha formulado esta propuesta conceptual. Como CEO, debes examinar el documento Drive y decidir si avalarla ante Coordinación Docente:</p>
                     <div class="mb-3">
                         ${co.brandApproval.driveUrl ? `<a href="${encodeURI(co.brandApproval.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono font-bold"><span>📄 Abrir Propuesta de Slogan en Google Drive ↗</span></a>` : ''}
@@ -855,8 +876,8 @@ Object.assign(ui, {
                 </div>`;
             } else {
                 step2CeoControls = `
-                <div class="bg-amber-500/10 border border-amber-500 p-3 mb-4 text-xs">
-                    <span class="text-amber-400 font-bold uppercase block mb-1">⏳ Paso 2: En Revisión por Dirección General (CEO)</span>
+                <div class="bg-mars-yellow/10 border border-mars-yellow p-3 mb-4 text-xs">
+                    <span class="text-mars-yellow font-bold uppercase block mb-1">⏳ Paso 2: En Revisión por Dirección General (CEO)</span>
                     <p class="text-slate-300">La propuesta ha sido enviada al CEO. Una vez que Dirección General la avale, se elevará a Coordinación Docente para su resolución final.</p>
                 </div>`;
             }
@@ -888,7 +909,7 @@ Object.assign(ui, {
                     <div class="border-b border-mars-border pb-3 mb-4">
                         <div class="flex flex-wrap justify-between items-center gap-2 mb-1">
                             <span class="text-[10px] font-mono text-mars-cyan tracking-widest uppercase">REGISTRO MERCANTIL // SOLICITUD DE APROBACIÓN DE SLOGAN CORPORATIVO</span>
-                            <span class="text-[10px] font-bold px-2 py-0.5 uppercase ${estadoActual==='APROBADO'?'bg-mars-green/20 text-mars-green border border-mars-green':'bg-amber-500/20 text-amber-400 border border-amber-500'}">${this.escapeHTML(estadoActual)}</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 uppercase ${estadoActual==='APROBADO'?'bg-mars-green/20 text-mars-green border border-mars-green':'bg-mars-yellow/20 text-mars-yellow border border-mars-yellow'}">${this.escapeHTML(estadoActual)}</span>
                         </div>
                         <h2 class="font-orbitron text-white text-xs sm:text-sm font-bold uppercase break-words">EXPEDIENTE: ${this.escapeHTML(expId)} | EMPRESA: ${this.escapeHTML(co.name)}</h2>
                     </div>
@@ -950,12 +971,12 @@ Object.assign(ui, {
                     <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase tracking-wider mb-3 border-b border-mars-border pb-1.5">Mis Paquetes y Acciones Ejecutadas</h3>
                     <div class="max-h-80 overflow-y-auto pr-1">
                         ${(!co.marketingCampaigns || !co.marketingCampaigns.some(c => c.status === 'ACTIVO')) ? `
-                        <div class="bg-amber-950/30 border-l-4 border-l-amber-400 border border-amber-500/30 p-3.5 mb-3 text-xs font-mono">
+                        <div class="bg-mars-yellow/10 border-l-4 border-l-mars-yellow border border-mars-yellow/30 p-3.5 mb-3 text-xs font-mono">
                             <div class="flex items-center gap-2 mb-1">
-                                <span class="text-amber-400 font-bold uppercase">⚡ Circuito Oficial de Acciones Publicitarias (DOC_12):</span>
+                                <span class="text-mars-yellow font-bold uppercase">⚡ Circuito Oficial de Acciones Publicitarias (DOC_12):</span>
                             </div>
                             <p class="text-slate-200 leading-relaxed mb-2">
-                                Para publicar acciones comerciales y registrar la Ficha Técnica oficial (<strong class="text-white">DOC_12</strong>), tu empresa debe contratar previamente un <strong class="text-amber-300">Paquete de Campaña</strong> arriba y solicitar la aprobación presupuestaria a <strong class="text-mars-cyan">Finanzas</strong>.
+                                Para publicar acciones comerciales y registrar la Ficha Técnica oficial (<strong class="text-white">DOC_12</strong>), tu empresa debe contratar previamente un <strong class="text-mars-yellow">Paquete de Campaña</strong> arriba y solicitar la aprobación presupuestaria a <strong class="text-mars-cyan">Finanzas</strong>.
                             </p>
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-800 text-[11px] text-slate-300">
                                 <div><strong>1.</strong> Contrata paquete arriba</div>
@@ -981,8 +1002,8 @@ Object.assign(ui, {
                             </div>
                             ${(sponsorAmt > 0 && sponsorTierLabel) ? `
                             <div class="flex justify-between items-center text-xs">
-                                <span class="text-amber-400 uppercase font-bold">Reducción Patrocinio (${this.escapeHTML(sponsorTierLabel)}):</span>
-                                <span class="text-amber-400 font-mono font-bold">-${sponsorAmt.toFixed(2)} €v</span>
+                                <span class="text-mars-yellow uppercase font-bold">Reducción Patrocinio (${this.escapeHTML(sponsorTierLabel)}):</span>
+                                <span class="text-mars-yellow font-mono font-bold">-${sponsorAmt.toFixed(2)} €v</span>
                             </div>` : ''}
                             <div class="flex justify-between items-center text-xs border-t border-slate-800 pt-1.5">
                                 <span class="text-mars-green font-bold uppercase">Coste Operativo Neto:</span>
@@ -1175,7 +1196,7 @@ Object.assign(ui, {
             <div class="mb-3">
                 ${doc12Btn}
             </div>
-            <div class="bg-amber-950/30 border border-amber-500/40 p-2.5 text-xs text-amber-200 mb-3 space-y-1">
+            <div class="bg-mars-yellow/10 border border-mars-yellow/40 p-2.5 text-xs text-slate-200 mb-3 space-y-1">
                 <p>ℹ️ <strong>Flujo Oficial de Gobernanza:</strong></p>
                 <p>La acción publicitaria será enviada a <strong>Dirección General (CEO)</strong> para su revisión y validación previa. Una vez validada, se elevará automáticamente al docente de Liderazgo y a Coordinación.</p>
             </div>
@@ -1331,7 +1352,7 @@ Object.assign(ui, {
 
         const html = `
             <div class="space-y-3 font-mono text-xs">
-                <div class="bg-amber-950/30 border-l-4 border-amber-500 p-3">
+                <div class="bg-mars-yellow/10 border-l-4 border-l-mars-yellow p-3">
                     <p class="text-white font-bold mb-1">Subsanación de Acción: ${this.escapeHTML(act.title)}</p>
                     <p class="text-slate-300">Motivo de devolución del CEO: <span class="text-mars-magenta font-bold">"${this.escapeHTML(act.feedback || 'Sin motivo especificado')}"</span></p>
                 </div>

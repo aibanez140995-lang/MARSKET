@@ -54,7 +54,7 @@ Object.assign(ui, {
                     : (isDocente ? `<span class="block text-center text-slate-300 text-xs uppercase font-bold py-2 border border-slate-800 bg-black/40">Modo Supervisión</span>` : `<span class="block text-center text-slate-300 text-xs uppercase font-bold border border-slate-700 p-2.5 bg-black/40">Solo Dpto. Técnico</span>`);
 
                 return `
-                <div class="bg-slate-900 border border-slate-700 p-4 hover:border-mars-cyan/60 transition-colors flex flex-col justify-between">
+                <div class="catalog-item bg-slate-900 border border-slate-700 p-4 hover:border-mars-cyan/60 transition-colors h-full flex flex-col justify-between" data-search="${this.escapeHTML((item.name + ' ' + item.id + ' ' + (item.category || '')).toLowerCase())}">
                     <div>
                         <div class="flex justify-between items-start mb-2 border-b border-slate-800 pb-2 gap-2">
                             <span class="font-mono text-slate-300 text-xs">${this.escapeHTML(item.id)}</span>
@@ -71,7 +71,7 @@ Object.assign(ui, {
             }).join('');
             
             return `
-            <div class="mb-6">
+            <div class="catalog-group mb-6">
                 <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase border-b border-mars-cyan/40 pb-1.5 mb-3 font-bold">${this.escapeHTML(cat)}</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">${itemsHtml}</div>
             </div>`;
@@ -86,7 +86,44 @@ Object.assign(ui, {
             ${canBuy ? `<button type="button" id="btn-cart-toggle" onclick="ui.modalCheckout()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 font-black uppercase text-xs tracking-wider shadow-[0_0_15px_#00f0ff] hover:bg-white transition-all w-full sm:w-auto text-center shrink-0">🛒 Carrito de la compra (${(state.data.companies[state.user.coId]?.cart || []).length})</button>` : ''}
         </div>`;
 
-        return header + groupsHtml;
+        const searchBarHtml = `
+        <div class="mb-4">
+            <input type="text" id="catalog-search-input" oninput="ui.filterCatalog(this.value)" placeholder="🔍 Buscar material o reactivo (ej: Manómetro, Bicarbonato, Válvula...)" class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan/50 p-2.5 text-xs text-white uppercase outline-none focus:border-mars-cyan font-mono">
+        </div>`;
+
+        return header + searchBarHtml + groupsHtml;
+    },
+
+    filterCatalog(query) {
+        const cleanNorm = (str) => String(str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+        const q = cleanNorm(query);
+        const items = document.querySelectorAll('.catalog-item');
+        const groups = document.querySelectorAll('.catalog-group');
+
+        if (!q) {
+            items.forEach(el => el.classList.remove('hidden'));
+            groups.forEach(el => el.classList.remove('hidden'));
+            return;
+        }
+
+        items.forEach(el => {
+            const rawSearch = el.getAttribute('data-search') || el.innerText;
+            const searchData = cleanNorm(rawSearch);
+            if (searchData.includes(q)) {
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
+        });
+
+        groups.forEach(grp => {
+            const hasVisible = grp.querySelector('.catalog-item:not(.hidden)');
+            if (hasVisible) {
+                grp.classList.remove('hidden');
+            } else {
+                grp.classList.add('hidden');
+            }
+        });
     },
 
     renderB2BMarket() {

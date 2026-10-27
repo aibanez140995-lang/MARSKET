@@ -80,7 +80,14 @@ Object.assign(ui, {
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-mars-cyan/5">
                                     <td class="py-3 font-orbitron text-white font-bold pr-4"><button onclick="ui.showCompanyLogins('${this.escapeHTML(cid)}')" class="min-h-[44px] text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 max-w-[260px] truncate inline-flex items-center align-middle" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)} [${this.escapeHTML(co.classGroup)}]</button></td>${cellsHtml}
-                                    <td class="py-3 font-mono pr-3 text-xs ${pctEval === 100 ? 'text-mars-green font-bold' : 'text-slate-300'}">${pctEval}%</td>
+                                    <td class="py-3 font-mono pr-3 text-xs">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-12 bg-black h-1.5 rounded-sm overflow-hidden border border-slate-700 shrink-0">
+                                                <div class="${pctEval === 100 ? 'bg-mars-green' : 'bg-mars-cyan'} h-full transition-all" style="width: ${pctEval}%"></div>
+                                            </div>
+                                            <span class="${pctEval === 100 ? 'text-mars-green font-bold' : 'text-slate-300'}">${pctEval}%</span>
+                                        </div>
+                                    </td>
                                     <td class="py-3 font-mono text-mars-yellow font-black text-sm">${finalDisplay}</td>
                                 </tr>`;
                             }).join('')}
@@ -120,7 +127,7 @@ Object.assign(ui, {
                 </div>
                 <div class="overflow-x-auto w-full pb-2">
                     <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
-                        <thead class="text-slate-300 uppercase border-b border-mars-border bg-slate-900/80">
+                        <thead class="text-slate-300 uppercase border-b border-mars-border sticky top-0 bg-slate-900 z-20">
                             <tr>
                                 <th class="py-3 px-2 sticky left-0 bg-slate-900 z-10 border-r border-mars-border">Empresa</th>
                                 <th class="py-3 px-2 text-center">Progreso</th>
@@ -148,12 +155,12 @@ Object.assign(ui, {
                                 };
                                 
                                 const aLink = aiCount > 0 
-                                    ? `<span class="text-blue-400 font-bold bg-blue-500/10 border border-blue-500 px-2 py-1 block text-center">✓ ${aiCount}</span>` 
+                                    ? `<span class="text-mars-cyan font-bold bg-mars-cyan/10 border border-mars-cyan px-2 py-1 block text-center">✓ ${aiCount}</span>` 
                                     : `<span class="text-slate-400 border border-slate-800 px-2 py-1 block text-center">0</span>`;
 
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
-                                    <td class="py-2.5 px-2 font-orbitron text-white font-bold sticky left-0 bg-mars-card z-10 border-r border-mars-border max-w-[220px] truncate" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)} [${this.escapeHTML(co.classGroup)}]</td>
+                                    <td class="py-2.5 px-2 font-orbitron text-white font-bold sticky left-0 bg-slate-950 font-orbitron font-bold text-white z-10 border-r border-mars-border/60 max-w-[220px] truncate" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)} [${this.escapeHTML(co.classGroup)}]</td>
                                     <td class="py-2.5 px-2 font-mono font-bold text-center text-mars-yellow">${deliveredTotal}/${docCols.length}</td>${docCols.map(col => `<td class="py-2.5 px-1.5">${dLink(d[col.key], col.key)}</td>`).join('')}
                                     <td class="py-2.5 px-1.5">${aLink}</td>
                                 </tr>`;

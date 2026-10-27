@@ -46,7 +46,7 @@ Object.assign(ui, {
                 <td class="py-2.5 text-mars-cyan pr-3">${naVal}g / ${vinVal}ml</td>
                 <td class="py-2.5 font-mono text-mars-magenta pr-3">${costVal.toFixed(2)}</td>
                 <td class="py-2.5 font-mono text-mars-green font-bold text-sm sm:text-base pr-3">${h_mm.toFixed(0)}</td>
-                <td class="py-2.5 font-orbitron text-mars-yellow font-black">${effVal.toFixed(2)}</td>
+                <td class="py-2.5 font-orbitron font-mono tabular-nums text-mars-yellow font-black">${effVal.toFixed(2)}</td>
             </tr>`;
         }).join('') || `<tr><td colspan="6" class="text-center py-4 text-slate-300 italic text-xs">No hay ensayos registrados.</td></tr>`;
 
@@ -155,7 +155,8 @@ Object.assign(ui, {
             <!-- Columna Derecha: Banco de Pruebas e Inventario Físico / BOM -->
             <div class="lg:col-span-7 space-y-6">
                 <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow">
-                    <h2 class="font-orbitron text-mars-yellow text-base sm:text-lg mb-4 uppercase tracking-tighter">Banco de Pruebas de Vuelo (Fase II)</h2>
+                    <h2 class="font-orbitron text-mars-yellow text-base sm:text-lg mb-2 uppercase tracking-tighter">Banco de Pruebas de Vuelo (Fase II)</h2>
+                    <p class="text-[11px] text-mars-cyan font-mono mb-4">ℹ️ La Eficiencia (E = Altura / Coste) es calculada de forma matemática automática por la terminal al registrar el ensayo.</p>
                     <div class="bg-black border border-mars-border p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                         <div>
                             <label for="ft-bottle" class="text-xs text-slate-300 uppercase block mb-1">Fuselaje / Botella</label>

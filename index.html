@@ -9,14 +9,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MARS-KET 2.0">
-    <link rel="manifest" href="manifest.json?v=1.1.39">
-    <link rel="icon" type="image/jpeg" href="logo.jpg?v=1.1.39">
-    <link rel="shortcut icon" href="logo.jpg?v=1.1.39">
-    <link rel="apple-touch-icon" href="logo.jpg?v=1.1.39">
-    <link rel="apple-touch-icon-precomposed" href="logo.jpg?v=1.1.39">
+    <link rel="manifest" href="manifest.json?v=1.1.40">
+    <link rel="icon" type="image/jpeg" href="logo.jpg?v=1.1.40">
+    <link rel="shortcut icon" href="logo.jpg?v=1.1.40">
+    <link rel="apple-touch-icon" href="logo.jpg?v=1.1.40">
+    <link rel="apple-touch-icon-precomposed" href="logo.jpg?v=1.1.40">
     
     <!-- Tailwind CSS (Compilado localmente v1.1.03 - Bloque T) -->
-    <link rel="stylesheet" href="css/tailwind.css?v=1.1.39">
+    <link rel="stylesheet" href="css/tailwind.css?v=1.1.40">
     <style>
         :root {
             color-scheme: dark;
@@ -161,6 +161,8 @@
             pointer-events: none;
             overflow: hidden;
             z-index: 1;
+            transform: translateZ(0);
+            contain: strict;
         }
         .login-laser-beam {
             width: 100%;
@@ -396,18 +398,7 @@
 <body class="min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-mars-cyan selection:text-black">
 
     <!-- CAPA DE ACCESO INMERSIVA / LOGIN SCREEN (v1.1.03) -->
-    <div id="login-screen" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-3 sm:p-4 bg-mars-bg text-slate-100 transition-opacity duration-200">
-        <div id="login-box" class="w-full max-w-md terminal-border bg-mars-card p-4 sm:p-6 glow-cyan animate-in fade-in zoom-in duration-300 transition-all mx-auto my-auto" style="max-width: 28rem;">
-            <div class="bg-black/60 border border-mars-border p-3 sm:p-4">
-                <button type="button" onclick="auth.validateCompanyCode()" style="touch-action: manipulation;" class="w-full min-h-[48px] bg-mars-cyan text-black font-black py-3 px-3 text-xs uppercase tracking-normal sm:tracking-wider hover:bg-white transition-all shadow-[0_0_12px_rgba(0,240,255,0.3)] whitespace-nowrap">[ VALIDAR CÓDIGO ]</button>
-                <div class="mt-4 text-center">
-                    <button type="button" id="btn-open-rgpd-modal" onclick="ui.openRgpdModal()" class="text-[10px] text-slate-500 hover:text-cyan-400 font-mono tracking-wider transition-colors">
-                        [ 🛡️ PROTOCOLO RGPD / ART. 13 ]
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <div id="login-screen" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-3 sm:p-4 bg-mars-bg text-slate-100 transition-opacity duration-200"></div>
 
     <!-- CONTENEDOR PRINCIPAL -->
     <div id="app-container" class="hidden max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden p-2 sm:p-4 flex-grow flex flex-col">
@@ -423,7 +414,7 @@
                         <h1 class="font-orbitron font-black text-xs sm:text-lg text-white tracking-wider sm:tracking-widest leading-none flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
                             MARS-KET <span class="text-mars-cyan">2.0</span>
                         </h1>
-                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v1.1.39</span>
+                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v1.1.40</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -469,13 +460,16 @@
 
     <!-- FOOTER INSTITUCIONAL -->
     <footer id="hud-footer" class="hidden border-t border-mars-border/60 bg-black/60 py-3 px-4 text-center text-xs text-slate-300 uppercase font-mono">
-        <p>MARS-KET 2.0 (v1.1.39) • Plataforma Aeroespacial Interdisciplinar • AEE / ESA Simulación Académica • 2026-2027</p>
+        <p>MARS-KET 2.0 (v1.1.40) • Plataforma Aeroespacial Interdisciplinar • AEE / ESA Simulación Académica • 2026-2027</p>
     </footer>
 
     <!-- MODAL GLOBAL DE OPERACIONES -->
     <div id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden animate-in fade-in duration-200">
         <div class="terminal-border bg-mars-card max-w-lg w-full p-4 sm:p-6 border-2 border-mars-cyan glow-cyan max-h-[90vh] flex flex-col">
-            <h3 id="modal-title" class="font-orbitron font-black text-sm sm:text-base text-mars-cyan mb-3 uppercase tracking-wider border-b border-mars-border pb-2">AVISO INSTITUCIONAL</h3>
+            <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2 gap-2">
+                <h3 id="modal-title" class="font-orbitron font-black text-sm sm:text-base text-mars-cyan uppercase tracking-wider truncate flex-1">AVISO INSTITUCIONAL</h3>
+                <button type="button" onclick="ui.closeModal()" aria-label="Cerrar modal" class="min-h-[44px] min-w-[44px] text-slate-400 hover:text-white font-mono text-base font-bold flex items-center justify-center -mr-2">✕</button>
+            </div>
             <div id="modal-body" class="text-xs sm:text-sm text-slate-200 space-y-3 overflow-y-auto pr-1 flex-grow font-mono leading-relaxed"></div>
             <div id="modal-actions" class="flex gap-2 justify-end mt-4 pt-3 border-t border-mars-border flex-wrap"></div>
         </div>
@@ -521,7 +515,7 @@
             <div id="hud-drawer-handle-zone" class="w-full flex items-center justify-center py-2 -mt-2 cursor-grab active:cursor-grabbing touch-none select-none min-h-[44px]">
                 <div class="w-12 h-1.5 bg-mars-cyan/40 rounded-full mx-auto sm:hidden" aria-hidden="true"></div>
             </div>
-            <div class="flex justify-between items-center gap-3 border-b border-mars-border pb-2.5 mb-3">
+            <div id="hud-drawer-header-bar" class="flex justify-between items-center gap-3 border-b border-mars-border pb-2.5 mb-3">
                 <h3 id="hud-drawer-title" class="font-orbitron font-black text-xs sm:text-sm text-mars-cyan uppercase tracking-wider truncate">INSPECCIÓN TÁCTICA</h3>
                 <button type="button" onclick="ui.closeDrawer()" aria-label="Cerrar panel de inspección" class="min-h-[44px] min-w-[44px] bg-slate-900 border border-slate-700 text-slate-200 hover:text-white hover:border-mars-cyan text-xs font-black px-3 py-1.5 uppercase">✕ CERRAR</button>
             </div>
@@ -536,20 +530,20 @@
     <div id="credentials-print-area" class="hidden"></div>
 
     <!-- SCRIPTS ORDENADOS DEL SISTEMA -->
-    <script src="js/lexicon-data.js?v=1.1.39"></script>
-    <script src="js/config.js?v=1.1.39"></script>
-    <script src="js/state.js?v=1.1.39"></script>
-    <script src="js/auth.js?v=1.1.39"></script>
-    <script src="js/ui-core.js?v=1.1.39"></script>
-    <script src="js/ui-empresa-core.js?v=1.1.39"></script>
-    <script src="js/ui-empresa-market.js?v=1.1.39"></script>
-    <script src="js/ui-empresa-tech.js?v=1.1.39"></script>
-    <script src="js/ui-empresa-finance.js?v=1.1.39"></script>
-    <script src="js/ui-empresa-ops.js?v=1.1.39"></script>
-    <script src="js/ui-empresa-gov-brand.js?v=1.1.39"></script>
-    <script src="js/ui-docente-core.js?v=1.1.39"></script>
-    <script src="js/ui-docente-eval.js?v=1.1.39"></script>
-    <script src="js/ui-docente-management.js?v=1.1.39"></script>
+    <script src="js/lexicon-data.js?v=1.1.40"></script>
+    <script src="js/config.js?v=1.1.40"></script>
+    <script src="js/state.js?v=1.1.40"></script>
+    <script src="js/auth.js?v=1.1.40"></script>
+    <script src="js/ui-core.js?v=1.1.40"></script>
+    <script src="js/ui-empresa-core.js?v=1.1.40"></script>
+    <script src="js/ui-empresa-market.js?v=1.1.40"></script>
+    <script src="js/ui-empresa-tech.js?v=1.1.40"></script>
+    <script src="js/ui-empresa-finance.js?v=1.1.40"></script>
+    <script src="js/ui-empresa-ops.js?v=1.1.40"></script>
+    <script src="js/ui-empresa-gov-brand.js?v=1.1.40"></script>
+    <script src="js/ui-docente-core.js?v=1.1.40"></script>
+    <script src="js/ui-docente-eval.js?v=1.1.40"></script>
+    <script src="js/ui-docente-management.js?v=1.1.40"></script>
 
     <script>
         window.addEventListener('DOMContentLoaded', () => {
@@ -581,7 +575,7 @@
                 }).observe(loginScreenEl, { childList: true, subtree: true });
             }
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-                navigator.serviceWorker.register('sw.js?v=1.1.39').catch(() => {});
+                navigator.serviceWorker.register('sw.js?v=1.1.40').catch(() => {});
             }
         });
     </script>

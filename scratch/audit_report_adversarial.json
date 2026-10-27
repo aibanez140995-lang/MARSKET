@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-27T08:23:39.823Z",
+  "timestamp": "2026-10-27T10:22:09.414Z",
   "environment": "HTTP standard http://127.0.0.1:3000/ (Tailwind compilado css/tailwind.css)",
   "gates": {
     "G8": {
@@ -35,68 +35,9 @@
       "evidence": "Errores consola: 0. Avisos (console.warn): 0. Indicador UI en desconexión: [D1: OFFLINE]."
     },
     "G16": {
-      "status": "FALLO",
-      "clsScore": 0.03584825138698592,
-      "clsTopShifts": [
-        {
-          "value": 0.02832652006918084,
-          "sources": [
-            {
-              "nodeTag": "FOOTER",
-              "nodeId": "hud-footer",
-              "previousRect": {
-                "x": 0,
-                "y": 787,
-                "width": 768,
-                "height": 57,
-                "top": 787,
-                "right": 768,
-                "bottom": 844,
-                "left": 0
-              },
-              "currentRect": {
-                "x": 0,
-                "y": 0,
-                "width": 0,
-                "height": 0,
-                "top": 0,
-                "right": 0,
-                "bottom": 0,
-                "left": 0
-              }
-            }
-          ]
-        },
-        {
-          "value": 0.007521731317805081,
-          "sources": [
-            {
-              "nodeTag": "FOOTER",
-              "nodeId": "hud-footer",
-              "previousRect": {
-                "x": 0,
-                "y": 0,
-                "width": 0,
-                "height": 0,
-                "top": 0,
-                "right": 0,
-                "bottom": 0,
-                "left": 0
-              },
-              "currentRect": {
-                "x": 0,
-                "y": 787,
-                "width": 768,
-                "height": 57,
-                "top": 787,
-                "right": 768,
-                "bottom": 844,
-                "left": 0
-              }
-            }
-          ]
-        }
-      ],
+      "status": "CORRECTO",
+      "clsScore": 0,
+      "clsTopShifts": [],
       "touchViolationsCount": 0,
       "touchViolations": [],
       "sampleCompliant": [
@@ -145,7 +86,7 @@
         "w": 44,
         "h": 44
       },
-      "evidence": "CLS acumulado medido: 0.0358 (Umbral <= 0.02). Violaciones táctiles < 44x44: 0. Casilla #skip-onboarding: {\"w\":44,\"h\":44}."
+      "evidence": "CLS acumulado medido: 0.0000 (Umbral <= 0.02). Violaciones táctiles < 44x44: 0. Casilla #skip-onboarding: {\"w\":44,\"h\":44}."
     },
     "G6": {
       "status": "CORRECTO",

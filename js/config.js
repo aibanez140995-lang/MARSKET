@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.39) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.40) ---
 
-const APP_VERSION = "1.1.39";
+const APP_VERSION = "1.1.40";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -535,6 +535,26 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.40",
+      date: new Date().toISOString().split('T')[0],
+      title: "Optimización Integral de Ergonomía Táctil, Accesibilidad WCAG y Experiencia de Usuario",
+      items: [
+        "Ajuste estricto de touch-targets (>=44x44px) en botones tácticos, selectores de rol y acciones del drawer.",
+        "Incorporación de buscador instantáneo en el catálogo B2C y separación ergonómica en carrito.",
+        "Descongestión visual de la Bóveda de Finanzas: cronograma colapsable para priorizar auditoría de órdenes.",
+        "Blindaje de gestos en el Drawer táctico inferior, limitando el cierre por arrastre a la zona del tirador.",
+        "Mejora del andamiaje pedagógico: aclaración de costes reales en reciclaje (0.00 €v) y notas informativas de cálculo.",
+        "Priorización inteligente en aduanas docentes: elevación superior de trámites pendientes de resolución.",
+        "Filtro por clase en el Llavero Maestro y confirmaciones modales de seguridad en buzón."
+      ],
+      highlights: [
+        { type: "MEJORA", text: "Touch targets de 44x44px en toda la interfaz táctil y selectores de rol para total cumplimiento WCAG AAA." },
+        { type: "NUEVO", text: "Buscador instantáneo en catálogo de materiales B2C y filtro por clase en Llavero Maestro." },
+        { type: "ERGONOMÍA", text: "Cronograma colapsable en Finanzas y blindaje contra swipe accidental en el drawer inferior." },
+        { type: "FORMATIVO", text: "Notas formativas de cálculo de eficiencia e instrucción explícita de coste 0.00 €v para material reciclado." }
+      ]
+    },
     {
       version: "1.1.39",
       date: new Date().toISOString().split('T')[0],

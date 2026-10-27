@@ -191,9 +191,20 @@ Object.assign(ui, {
             </div>`;
         }
 
-        return `
+        const topAduanasHtml = `
         ${incidentsHtml}
         ${nameCustomsHtml}
+        ${pendingBrands.length > 0 ? brandCustomsHtml : ''}
+        ${pendingB2B.length > 0 ? b2bCustomsHtml : ''}
+        `;
+
+        const bottomAduanasHtml = `
+        ${pendingBrands.length === 0 ? brandCustomsHtml : ''}
+        ${pendingB2B.length === 0 ? b2bCustomsHtml : ''}
+        `;
+
+        return `
+        ${topAduanasHtml}
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
             <div class="lg:col-span-1 terminal-border bg-mars-card p-6 text-center border-t-4 border-t-mars-magenta flex flex-col justify-center">
                 <h3 class="font-orbitron text-mars-magenta text-xs mb-4 uppercase tracking-widest">Inversión FÍSICA CLASE</h3>
@@ -273,12 +284,14 @@ Object.assign(ui, {
                 </div>
             </div>
         </div>
-        ${brandCustomsHtml}
-        ${b2bCustomsHtml}`;
+        ${bottomAduanasHtml}`;
     },
 
     renderAdminStartups() {
         const isCoord = state.user.role.startsWith('COORD');
+        const currentKeychainClass = this.selectedKeychainClass || 'ALL';
+        const rawClasses = Object.values(state.data.companies || {}).map(c => c.classGroup).filter(Boolean);
+        const uniqueClasses = [...new Set(['A', 'B', ...rawClasses])].sort();
         
         const pendingAuxCoIds = Object.keys(state.data.companies).filter(cid => {
             const co = state.data.companies[cid];
@@ -377,6 +390,13 @@ Object.assign(ui, {
                         ${isCoord ? `<button onclick="ui.exportCredentialsCSV()" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">[📥 Exportar Llavero CSV]</button>` : ''}
                     </div>
                 </div>
+                <div class="flex items-center gap-2 mb-3">
+                    <label for="keychain-class-filter" class="text-xs text-slate-300 font-bold uppercase shrink-0">Filtrar por Clase:</label>
+                    <select id="keychain-class-filter" onchange="ui.filterKeychainClass(this.value)" class="min-h-[44px] bg-black border border-mars-yellow text-mars-yellow text-xs p-2.5 uppercase font-bold outline-none cursor-pointer">
+                        <option value="ALL" ${currentKeychainClass === 'ALL' ? 'selected' : ''}>Todas las Clases</option>
+                        ${uniqueClasses.map(cls => `<option value="${this.escapeHTML(cls)}" ${currentKeychainClass === cls ? 'selected' : ''}>Clase ${this.escapeHTML(cls)}</option>`).join('')}
+                    </select>
+                </div>
                 <div class="overflow-x-auto w-full">
                     <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
                         <thead class="text-slate-300 uppercase border-b border-mars-border">
@@ -394,7 +414,9 @@ Object.assign(ui, {
                             </tr>
                         </thead>
                         <tbody>
-                            ${Object.keys(state.data.companies).map(cid => {
+                            ${Object.keys(state.data.companies)
+                                .filter(cid => currentKeychainClass === 'ALL' || (state.data.companies[cid] && state.data.companies[cid].classGroup === currentKeychainClass))
+                                .map(cid => {
                                 const co = state.data.companies[cid];
                                 const coCode = state.getCompanyCode(co);
                                 const auxPin = state.getRolePin(co, 'AUXILIAR');
@@ -418,7 +440,7 @@ Object.assign(ui, {
                                                 ${isCoord ? `
                                                 <div class="flex items-center gap-1">
                                                     <input type="${this.pinsVisible ? 'text' : 'password'}" id="pin-input-${this.escapeHTML(cid)}-${rol}" aria-label="PIN ${rol} de ${this.escapeHTML(co.name)}" maxlength="4" value="${this.escapeHTML(pinVal)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', '${rol}', this.value)" class="min-h-[44px] w-14 bg-black border border-mars-border text-center text-mars-cyan font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">
-                                                    <button onclick="ui.regenerateRolePin('${this.escapeHTML(cid)}', '${rol}')" id="role-pin-regen-${this.escapeHTML(cid)}-${rol}" aria-label="Nuevo PIN aleatorio para ${rol}" title="Generar nuevo PIN aleatorio para ${rol}" class="min-h-[44px] min-w-[36px] bg-slate-800 text-slate-300 hover:text-black hover:bg-amber-400 border border-slate-700 px-1 py-1 flex items-center justify-center transition-colors text-xs font-bold disabled:opacity-50">🎲</button>
+                                                    <button onclick="ui.regenerateRolePin('${this.escapeHTML(cid)}', '${rol}')" id="role-pin-regen-${this.escapeHTML(cid)}-${rol}" aria-label="Nuevo PIN aleatorio para ${rol}" title="Generar nuevo PIN aleatorio para ${rol}" class="min-h-[44px] min-w-[44px] bg-slate-800 text-slate-300 hover:text-black hover:bg-mars-yellow border border-slate-700 px-1 py-1 flex items-center justify-center transition-colors text-xs font-bold disabled:opacity-50">🎲</button>
                                                 </div>` : `<span class="text-slate-300">****</span>`}
                                                 ${isCoord ? `<button onclick="ui.generateRoleCredentialCard('${this.escapeHTML(cid)}', '${rol}')" aria-label="Credencial PDF ${rol}" title="Emitir Credencial PDF ${rol}" class="min-h-[44px] w-full inline-flex items-center justify-center text-xs font-mono font-bold bg-slate-900 border border-slate-700 hover:border-mars-cyan text-slate-300 hover:text-mars-cyan px-2 py-1 rounded-sm transition-colors whitespace-nowrap">🪪 ${rol}</button>` : ''}
                                             </div>
@@ -429,7 +451,7 @@ Object.assign(ui, {
                                             ${isCoord ? `
                                             <div class="flex items-center gap-1">
                                                 <input type="${this.pinsVisible ? 'text' : 'password'}" id="pin-input-${this.escapeHTML(cid)}-AUXILIAR" aria-label="PIN AUXILIAR de ${this.escapeHTML(co.name)}" maxlength="4" placeholder="----" value="${this.escapeHTML(auxPin)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', 'AUXILIAR', this.value)" class="min-h-[44px] w-14 bg-black border ${auxPin ? 'border-mars-green text-mars-green' : 'border-slate-700 text-slate-400'} text-center font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">
-                                                ${auxPin ? `<button onclick="ui.regenerateRolePin('${this.escapeHTML(cid)}', 'AUXILIAR')" id="role-pin-regen-${this.escapeHTML(cid)}-AUXILIAR" aria-label="Nuevo PIN aleatorio para AUXILIAR" title="Generar nuevo PIN aleatorio para AUXILIAR" class="min-h-[44px] min-w-[36px] bg-slate-800 text-slate-300 hover:text-black hover:bg-amber-400 border border-slate-700 px-1 py-1 flex items-center justify-center transition-colors text-xs font-bold disabled:opacity-50">🎲</button>` : ''}
+                                                ${auxPin ? `<button onclick="ui.regenerateRolePin('${this.escapeHTML(cid)}', 'AUXILIAR')" id="role-pin-regen-${this.escapeHTML(cid)}-AUXILIAR" aria-label="Nuevo PIN aleatorio para AUXILIAR" title="Generar nuevo PIN aleatorio para AUXILIAR" class="min-h-[44px] min-w-[44px] bg-slate-800 text-slate-300 hover:text-black hover:bg-mars-yellow border border-slate-700 px-1 py-1 flex items-center justify-center transition-colors text-xs font-bold disabled:opacity-50">🎲</button>` : ''}
                                                 <span class="text-xs text-slate-300 uppercase">[${this.escapeHTML(auxDept)}]</span>
                                             </div>` : `<span class="text-slate-300">****</span>`}
                                             ${isCoord && auxPin ? `<button onclick="ui.generateRoleCredentialCard('${this.escapeHTML(cid)}', 'AUXILIAR')" aria-label="Credencial PDF AUXILIAR" title="Emitir Credencial PDF AUXILIAR" class="min-h-[44px] w-full inline-flex items-center justify-center text-xs font-mono font-bold bg-slate-900 border border-slate-700 hover:border-mars-green text-slate-300 hover:text-mars-green px-2 py-1 rounded-sm transition-colors whitespace-nowrap">🪪 AUX</button>` : ''}
@@ -437,7 +459,7 @@ Object.assign(ui, {
                                     </td>
                                     <td class="py-3">
                                         <div class="flex items-center gap-2">
-                                            ${isCoord ? `<button onclick="ui.regenerateCompanyPins('${this.escapeHTML(cid)}')" id="co-pins-regen-${this.escapeHTML(cid)}" title="Generar nuevos PINs aleatorios de 4 dígitos para todos los roles de ${this.escapeHTML(co.name)}" class="min-h-[44px] bg-amber-400/20 border border-amber-400 text-amber-300 hover:bg-amber-400 hover:text-black font-bold text-xs px-2.5 py-1 transition-colors whitespace-nowrap flex items-center gap-1">🎲 PINs</button>` : ''}
+                                            ${isCoord ? `<button onclick="ui.regenerateCompanyPins('${this.escapeHTML(cid)}')" id="co-pins-regen-${this.escapeHTML(cid)}" title="Generar nuevos PINs aleatorios de 4 dígitos para todos los roles de ${this.escapeHTML(co.name)}" class="min-h-[44px] bg-mars-yellow/20 border border-mars-yellow text-mars-yellow hover:bg-mars-yellow hover:text-black font-bold text-xs px-2.5 py-1 transition-colors whitespace-nowrap flex items-center gap-1">🎲 PINs</button>` : ''}
                                             ${isCoord ? `<button onclick="ui.generateCompanyCredentialCards('${this.escapeHTML(cid)}')" title="Emitir todas las credenciales de flota de ${this.escapeHTML(co.name)}" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold text-xs px-2.5 py-1 transition-colors whitespace-nowrap">🪪 Flota PDF</button>` : ''}
                                             ${isCoord ? `<button onclick="ui.confirmAction('Eliminar Startup', '¿Borrar startup irreversiblemente?', () => ui.deleteStartup('${this.escapeHTML(cid)}'), 'Eliminar')" class="min-h-[44px] text-mars-magenta font-bold hover:underline px-2">Eliminar</button>` : `<span class="text-slate-400">Bloqueado</span>`}
                                         </div>
@@ -451,6 +473,16 @@ Object.assign(ui, {
             </div>
         </div>
         ${coordSettingsHtml}`;
+    },
+
+    filterKeychainClass(cls) {
+        this.selectedKeychainClass = cls;
+        const subContainer = document.getElementById('admin-subtab-container');
+        if (subContainer) {
+            subContainer.innerHTML = this.renderAdminStartups();
+        } else {
+            this.renderAdminDash();
+        }
     },
 
     togglePinsVisibility() {
@@ -590,7 +622,7 @@ Object.assign(ui, {
                             <option value="EN_REVISION" ${status==='EN_REVISION'?'selected':''}>En Revisión</option>
                             <option value="IMPLEMENTADO" ${status==='IMPLEMENTADO'?'selected':''}>Implementado</option>
                         </select>
-                        <button onclick="ui.deleteSuggestion('${this.escapeHTML(sugg.id)}')" aria-label="Eliminar sugerencia" class="min-h-[44px] min-w-[44px] text-mars-magenta hover:text-white font-bold px-2 border border-mars-magenta/40">X</button>
+                        <button onclick="ui.confirmAction('Eliminar Consulta', '¿Estás seguro de que deseas eliminar permanentemente esta consulta o sugerencia?', () => ui.deleteSuggestion('${this.escapeHTML(sugg.id)}'), 'Eliminar', true)" aria-label="Eliminar sugerencia" class="min-h-[44px] min-w-[44px] text-mars-magenta hover:text-white font-bold px-2 border border-mars-magenta/40">X</button>
                     </div>
                 </div>
                 <p class="text-slate-200 italic mb-2 bg-black/50 p-2 border border-slate-800 break-words">"${this.escapeHTML(sugg.text)}"</p>
@@ -668,7 +700,7 @@ Object.assign(ui, {
                         ${activeHtml}
                     </div>
 
-                    <details class="border border-cyan-500/20 bg-[#0A0E17] rounded-lg mt-4 p-3">
+                    <details class="border border-cyan-500/20 bg-mars-card rounded-lg mt-4 p-3">
                         <summary class="cursor-pointer font-orbitron text-xs text-mars-cyan uppercase tracking-wider font-bold select-none flex items-center justify-between">
                             <span>CONSULTAS Y SUGERENCIAS RESUELTAS</span>
                             <span class="bg-cyan-950/80 text-mars-cyan border border-cyan-500/30 px-2 py-0.5 rounded text-[11px] font-mono">[${resolvedSuggs.length} RESUELTAS]</span>

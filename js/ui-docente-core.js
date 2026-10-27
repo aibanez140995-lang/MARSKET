@@ -139,9 +139,8 @@ Object.assign(ui, {
             `;
         }
 
-        wrapper.innerHTML = modeSwitchHtml + tabsHtml;
-        const subContainer = document.createElement('div');
-        subContainer.setAttribute('role', 'tabpanel');
+        wrapper.innerHTML = modeSwitchHtml + tabsHtml + '<div id="admin-subtab-container" role="tabpanel"></div>';
+        const subContainer = wrapper.querySelector('#admin-subtab-container');
 
         try {
             switch(currentTab) {
@@ -167,7 +166,6 @@ Object.assign(ui, {
             subContainer.innerHTML = `<div class="bg-red-900/50 border border-red-500 p-4 text-white text-xs">Error de renderizado en pestaña ${this.escapeHTML(currentTab)}: ${this.escapeHTML(err.message)}</div>`;
         }
 
-        wrapper.appendChild(subContainer);
         el.appendChild(wrapper);
     },
 

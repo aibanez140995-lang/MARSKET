@@ -160,28 +160,21 @@ Object.assign(ui, {
         }).join('');
 
         const cronogramaSection = `
-        <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow mb-8">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 border-b border-mars-border pb-3">
-                <div>
-                    <h3 class="font-orbitron text-mars-yellow text-sm sm:text-base uppercase tracking-tighter font-black">Cronograma Maestro de Entregas</h3>
-                    <p class="text-xs text-slate-300 uppercase mt-1">Seguimiento oficial de los 19 entregables curriculares con semáforo temporal.</p>
+        <details ${this.cronogramaExpanded ? 'open' : ''} ontoggle="ui.cronogramaExpanded = this.open" class="terminal-border bg-mars-card p-4 sm:p-5 mb-6 border-l-4 border-l-mars-cyan group">
+            <summary class="cursor-pointer font-orbitron text-xs sm:text-sm text-mars-cyan uppercase tracking-wider font-bold select-none flex items-center justify-between min-h-[44px]">
+                <span>📅 CRONOGRAMA MAESTRO DE ENTREGAS (19 HITOS)</span>
+                <span class="text-xs text-slate-300 font-mono group-open:rotate-180 transition-transform">▼ Desplegar</span>
+            </summary>
+            <div class="mt-4 pt-3 border-t border-slate-800">
+                ${isCEO ? `<div class="mb-4 flex justify-end"><button type="button" onclick="ui.modalCreateAuxRole()" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase tracking-wider hover:bg-mars-cyan hover:text-black transition-all shrink-0 w-full sm:w-auto">Gestionar Rol Observador</button></div>` : ''}
+                <div role="tablist" aria-label="Filtrar entregables por asignatura" class="flex flex-wrap gap-2 pb-2 mb-4">
+                    ${subjectNavButtons}
                 </div>
-                ${isCEO ? `<button type="button" onclick="ui.modalCreateAuxRole()" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase tracking-wider hover:bg-mars-cyan hover:text-black transition-all shrink-0 w-full sm:w-auto">Gestionar Rol Observador</button>` : ''}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                    ${deadlineCardsHtml}
+                </div>
             </div>
-
-            <!-- Filtros por Materia -->
-            <div role="tablist" aria-label="Filtrar entregables por asignatura" class="flex flex-wrap gap-2 pb-2 mb-4">
-                ${subjectNavButtons}
-            </div>
-
-            <!-- Cuadrícula Responsiva de 19 Plazos (colapsable en móvil, v1.0.19 Módulo B) -->
-            <button type="button" aria-expanded="${!!this.cronogramaExpanded}" onclick="ui.toggleCronograma()" class="sm:hidden w-full min-h-[44px] mb-3 bg-slate-900 border border-mars-yellow/60 text-mars-yellow font-black uppercase text-xs py-2 px-3">
-                ${this.cronogramaExpanded ? '▲ PLEGAR PLAZOS' : `▼ DESPLEGAR ${filteredDefs.length} PLAZOS`}
-            </button>
-            <div class="${this.cronogramaExpanded ? 'grid' : 'hidden sm:grid'} grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                ${deadlineCardsHtml}
-            </div>
-        </div>`;
+        </details>`;
 
         // 3. BÓVEDA DE ÓRDENES Y AUTORIZACIÓN FINANCIERA (I+D, MARKETING Y TALLER)
         const ordersTab = this.ordersFilterTab || 'EN_PROCESO';
@@ -462,15 +455,14 @@ Object.assign(ui, {
             </div>
         </div>`;
 
-        wrapper.innerHTML = `
-            ${crisisHtml}
-            ${kpisHtml}
-            ${bovedaSection}
-        `;
+        wrapper.innerHTML = crisisHtml + kpisHtml + cronogramaSection + bovedaSection;
         el.appendChild(wrapper);
     },
 
     modalCheckout() {
+        const existingUrl = document.getElementById('order-drive-url') ? document.getElementById('order-drive-url').value : (this._lastOrderDriveUrl || '');
+        this._lastOrderDriveUrl = existingUrl;
+
         const co = state.data.companies[state.user.coId];
         if (!co || !co.cart || co.cart.length === 0) {
             return this.showModal("Carrito de la compra", "<p class='text-slate-300 text-xs sm:text-sm'>El carrito de la compra está vacío.</p>", "");
@@ -488,9 +480,9 @@ Object.assign(ui, {
                     <span class="text-slate-300 block">${Number(item.price).toFixed(2)} €v / ${this.escapeHTML(item.unit)}</span>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                    <button type="button" aria-label="Disminuir cantidad de ${this.escapeHTML(item.name)}" onclick="ui.removeFromCart('${this.escapeHTML(item.id)}')" class="min-h-[44px] min-w-[44px] border border-mars-magenta/50 text-mars-magenta font-black px-2 hover:bg-mars-magenta/20">-</button>
+                    <button type="button" aria-label="Disminuir cantidad de ${this.escapeHTML(item.name)}" onclick="ui.removeFromCart('${this.escapeHTML(item.id)}')" class="min-h-[44px] min-w-[44px] border border-mars-magenta/50 text-mars-magenta font-black px-2 hover:bg-mars-magenta/20 flex items-center justify-center">-</button>
                     <span class="cart-item-qty text-white font-mono w-6 text-center font-bold">${Number(item.qty)}</span>
-                    <button type="button" aria-label="Aumentar cantidad de ${this.escapeHTML(item.name)}" onclick="ui.addToCart('${this.escapeHTML(item.id)}'); ui.modalCheckout()" class="min-h-[44px] min-w-[44px] border border-mars-green/50 text-mars-green font-black px-2 hover:bg-mars-green/20">+</button>
+                    <button type="button" aria-label="Aumentar cantidad de ${this.escapeHTML(item.name)}" onclick="ui.addToCart('${this.escapeHTML(item.id)}'); ui.modalCheckout()" class="min-h-[44px] min-w-[44px] border border-mars-green/50 text-mars-green font-black px-2 hover:bg-mars-green/20 flex items-center justify-center">+</button>
                     <span class="cart-item-subtotal text-mars-green font-mono font-bold w-20 text-right">${sum.toFixed(2)} €v</span>
                 </div>
             </div>`;
@@ -505,7 +497,7 @@ Object.assign(ui, {
             <div class="mb-2">
                 ${this.renderDocTemplateBtn('DOC_9_ORDEN_ADQUISICION')}
             </div>
-            <input type="url" id="order-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono min-h-[44px]">
+            <input type="url" id="order-drive-url" value="${this.escapeHTML(this._lastOrderDriveUrl || '')}" oninput="ui._lastOrderDriveUrl = this.value" placeholder="https://docs.google.com/document/d/..." class="w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono min-h-[44px]">
             <p class="text-[10px] text-slate-400">La justificación técnica de la compra se aloja en el Google Doc corporativo con permisos de lectura.</p>
         </div>
         `;
@@ -538,6 +530,7 @@ Object.assign(ui, {
 
         co.orders.unshift(newOrder);
         co.cart = [];
+        this._lastOrderDriveUrl = '';
         
         ui.pushNotification(state.user.coId, 'FINANZAS', `Nueva orden #${newOrder.id} (${total.toFixed(2)} €v) recibida de I+D. Requiere validación urgente.`, 'warning');
         telemetry.log("ORDEN ENVIADA", `I+D generó orden #${newOrder.id}`);

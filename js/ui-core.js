@@ -1,5 +1,5 @@
 // js/ui-core.js
-// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.39) ---
+// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.40) ---
 
 // Constante global GOOGLE_DRIVE_REGEX centralizada en js/config.js
 
@@ -317,16 +317,19 @@ const ui = {
         const bodyEl = document.getElementById('hud-drawer-body');
         const sheet = document.getElementById('hud-drawer-sheet');
         const handle = document.getElementById('hud-drawer-handle-zone');
+        const headerBar = document.getElementById('hud-drawer-header-bar') || handle;
         if (!overlay || !titleEl || !bodyEl || !sheet || !handle) return;
 
         titleEl.innerText = title || 'INSPECCIÓN TÁCTICA';
         bodyEl.innerHTML = bodyHtml || '';
         overlay.classList.remove('hidden');
 
+        this._isDraggingDrawer = false;
         this._touchStartY = 0;
         this._lastDeltaY = 0;
 
         this._boundTouchMove = (e) => {
+            if (!this._isDraggingDrawer) return;
             const deltaY = e.touches[0].clientY - this._touchStartY;
             if (deltaY > 0) {
                 this._lastDeltaY = deltaY;
@@ -334,6 +337,8 @@ const ui = {
             }
         };
         this._boundTouchEnd = () => {
+            if (!this._isDraggingDrawer) return;
+            this._isDraggingDrawer = false;
             const deltaY = this._lastDeltaY || 0;
             if (deltaY > 75) {
                 this.closeDrawer();
@@ -347,17 +352,22 @@ const ui = {
 
         if (this._boundTouchStart && this._drawerHandleEl) {
             this._drawerHandleEl.removeEventListener('touchstart', this._boundTouchStart);
+            if (this._drawerHeaderEl) this._drawerHeaderEl.removeEventListener('touchstart', this._boundTouchStart);
         }
         this._drawerHandleEl = handle;
+        this._drawerHeaderEl = headerBar;
         this._boundTouchStart = (e) => {
+            this._isDraggingDrawer = true;
             this._touchStartY = e.touches[0].clientY;
             this._lastDeltaY = 0;
             sheet.style.transition = '';
+            window.addEventListener('touchmove', this._boundTouchMove, { passive: true });
+            window.addEventListener('touchend', this._boundTouchEnd);
         };
         handle.addEventListener('touchstart', this._boundTouchStart, { passive: true });
-
-        window.addEventListener('touchmove', this._boundTouchMove, { passive: true });
-        window.addEventListener('touchend', this._boundTouchEnd);
+        if (headerBar && headerBar !== handle) {
+            headerBar.addEventListener('touchstart', this._boundTouchStart, { passive: true });
+        }
 
         this.pushLayer('drawer', (skipHistory) => this.closeDrawer(skipHistory));
         setTimeout(() => {
@@ -367,12 +377,15 @@ const ui = {
     },
 
     closeDrawer(skipHistory = false) {
+        this._isDraggingDrawer = false;
         if (this._boundTouchMove) window.removeEventListener('touchmove', this._boundTouchMove);
         if (this._boundTouchEnd) window.removeEventListener('touchend', this._boundTouchEnd);
-        if (this._boundTouchStart && this._drawerHandleEl) {
-            this._drawerHandleEl.removeEventListener('touchstart', this._boundTouchStart);
+        if (this._boundTouchStart) {
+            if (this._drawerHandleEl) this._drawerHandleEl.removeEventListener('touchstart', this._boundTouchStart);
+            if (this._drawerHeaderEl) this._drawerHeaderEl.removeEventListener('touchstart', this._boundTouchStart);
             this._boundTouchStart = null;
             this._drawerHandleEl = null;
+            this._drawerHeaderEl = null;
         }
         const sheet = document.getElementById('hud-drawer-sheet');
         if (sheet) {
@@ -1370,12 +1383,12 @@ const ui = {
 
     modalChangelog() {
         const logs = typeof APP_CHANGELOG !== 'undefined' ? APP_CHANGELOG : [];
-        let html = `<div class="space-y-6 font-mono text-xs">`;
+        let html = `<div class="space-y-4 font-mono text-xs">`;
         
         if (logs.length === 0) {
             html += `<p class="text-slate-300 italic">No hay registros de versión disponibles.</p>`;
         } else {
-            logs.forEach(log => {
+            const renderLogCard = (log) => {
                 const items = log.highlights || (log.items ? log.items.map(t => ({ type: "MEJORA", text: t })) : []);
                 const itemsHtml = items.map(h => {
                     let badgeClass = 'bg-mars-cyan/20 text-mars-cyan border-mars-cyan';
@@ -1393,8 +1406,8 @@ const ui = {
                     </li>`;
                 }).join('');
 
-                html += `
-                <div class="bg-slate-900/90 border border-mars-border p-4">
+                return `
+                <div class="bg-slate-900/90 border border-mars-border p-4 mb-3">
                     <div class="flex justify-between items-center border-b border-mars-border pb-2 mb-3">
                         <div>
                             <span class="text-mars-green font-orbitron font-black text-sm">v${this.escapeHTML(log.version)}</span>
@@ -1406,7 +1419,27 @@ const ui = {
                         ${itemsHtml}
                     </ul>
                 </div>`;
+            };
+
+            const recentLogs = logs.slice(0, 3);
+            const olderLogs = logs.slice(3);
+
+            recentLogs.forEach(log => {
+                html += renderLogCard(log);
             });
+
+            if (olderLogs.length > 0) {
+                html += `
+                <details class="mt-4 border border-slate-800 p-3 bg-black/40 group">
+                    <summary class="cursor-pointer text-xs text-mars-yellow uppercase font-bold select-none min-h-[44px] flex items-center justify-between">
+                        <span>Ver versiones históricas anteriores (${olderLogs.length})...</span>
+                        <span class="text-xs text-slate-300 font-mono group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    <div class="mt-3 pt-3 border-t border-slate-800 space-y-3">
+                        ${olderLogs.map(renderLogCard).join('')}
+                    </div>
+                </details>`;
+            }
         }
         html += `</div>`;
         this.showModal("Registro de Novedades y Versiones", html, "");
@@ -1431,7 +1464,7 @@ const ui = {
     },
 
     showGuide(defaultRole = null) {
-        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.39';
+        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.40';
         let initialRole = defaultRole;
         if (!initialRole) {
             if (state.user) {
@@ -1494,7 +1527,7 @@ const ui = {
             <!-- Selector de Roles -->
             <div>
                 <p class="text-mars-cyan font-bold uppercase text-xs mb-2">Selecciona un Rol Operativo para ver su Manual:</p>
-                <div role="tablist" aria-label="Manuales de Rol" class="flex flex-wrap gap-1.5 border-b border-slate-800 pb-2.5">
+                <div role="tablist" aria-label="Manuales de Rol" class="flex gap-2 overflow-x-auto whitespace-nowrap pb-2 min-h-[48px] border-b border-slate-800">
                     ${pillsHtml}
                 </div>
             </div>
@@ -1698,7 +1731,7 @@ const ui = {
                             <option value="EN_REVISION" ${status==='EN_REVISION'?'selected':''}>En Revisión</option>
                             <option value="IMPLEMENTADO" ${status==='IMPLEMENTADO'?'selected':''}>Implementado</option>
                         </select>
-                        <button type="button" onclick="ui.deleteSuggestion('${this.escapeHTML(sugg.id)}'); ui.modalCoordinatorInbox('${filterCategory}');" aria-label="Eliminar reporte" class="min-h-[44px] px-2.5 bg-black text-mars-magenta border border-mars-magenta/40 hover:bg-mars-magenta hover:text-white font-black text-xs transition-all">✕</button>
+                        <button type="button" onclick="ui.confirmAction('Eliminar Consulta', '¿Estás seguro de que deseas eliminar permanentemente esta consulta o sugerencia?', () => { ui.deleteSuggestion('${this.escapeHTML(sugg.id)}'); ui.modalCoordinatorInbox('${filterCategory}'); }, 'Eliminar', true);" aria-label="Eliminar reporte" class="min-h-[44px] px-2.5 bg-black text-mars-magenta border border-mars-magenta/40 hover:bg-mars-magenta hover:text-white font-black text-xs transition-all">✕</button>
                     </div>
                 </div>
                 <p class="text-slate-200 italic mb-2 bg-black/60 p-2.5 border border-slate-800 break-words font-mono">"${this.escapeHTML(sugg.text)}"</p>
@@ -1780,7 +1813,7 @@ const ui = {
         const balanceStr = Number(co.balance || 0).toFixed(2);
 
         return `
-        <div class="h-16 max-h-16 flex items-center justify-between px-2 sm:px-4 bg-[#07090E]/90 border-b border-cyan-500/20 backdrop-blur sticky top-0 z-30 w-full mb-4 terminal-border overflow-hidden">
+        <div class="h-16 max-h-16 flex items-center justify-between px-2 sm:px-4 bg-[#07090E]/90 border-b border-cyan-500/20 backdrop-blur sm:sticky sm:top-0 sm:z-30 relative z-10 w-full mb-4 terminal-border overflow-hidden">
             <!-- Izquierda: Miniatura del logotipo (40x40px) + Nombre Orbitron + Badge Rol Activo -->
             <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
                 <div class="relative w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 p-0.5 hex-clip bg-mars-bg ${isBrandPending ? 'border border-mars-magenta shadow-[0_0_10px_rgba(255,0,85,0.4)]' : 'border border-mars-cyan shadow-neon-cyan'}">
@@ -1803,7 +1836,7 @@ const ui = {
 
             <!-- Derecha: Acceso directo a la bitácora de IA [ 🤖 IA ] que invoca ui.navigate('ailog') -->
             <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                <button type="button" onclick="ui.navigate('ailog')" class="bg-cyan-950/40 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-2.5 sm:px-3 py-1.5 text-xs font-bold uppercase transition-all shadow-[0_0_10px_rgba(0,240,255,0.25)] min-h-[36px] flex items-center gap-1.5 shrink-0 active:scale-95" title="Bitácora y Registro de Prompts IA">
+                <button type="button" onclick="ui.navigate('ailog')" class="bg-cyan-950/40 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-2.5 sm:px-3 py-1.5 text-xs font-bold uppercase transition-all shadow-[0_0_10px_rgba(0,240,255,0.25)] min-h-[44px] min-w-[44px] flex items-center justify-center gap-1.5 shrink-0 active:scale-95" title="Bitácora y Registro de Prompts IA">
                     <span>🤖</span> <span class="hidden sm:inline">IA</span>
                 </button>
             </div>
@@ -1945,7 +1978,7 @@ const ui = {
             }
         } else {
             const co = state.data.companies[state.user.coId];
-            if(tacticalRow) tacticalRow.classList.add('hidden');
+            if(tacticalRow) tacticalRow.classList.remove('hidden');
             if(co && balEl) balEl.innerText = `${co.balance.toFixed(2)} €v`;
             if(co && infoEl) {
                 const entityInfo = `ENTITY: ${co.name.toUpperCase()} | ROLE: ${state.user.role.replace('_',' ')}`;
@@ -2380,7 +2413,7 @@ const ui = {
             ceoControlsHtml = `
             <div class="bg-slate-950 border border-mars-cyan/40 p-3 mt-2 flex flex-col sm:flex-row gap-2 justify-end">
                 <button type="button" onclick="ui.approveDeliverableByCEO('${docKey}')" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ ✓ APROBAR Y ELEVAR A DOCENTE ]</button>
-                <button type="button" onclick="ui.modalCeoReturnDeliverable('${docKey}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-4 py-2 hover:bg-mars-magenta hover:text-white transition-all">[ ↩ DEVOLVER CON MOTIVO ]</button>
+                <button type="button" onclick="ui.modalCeoReturnDeliverable('${docKey}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-4 py-2 hover:bg-mars-magenta hover:text-white transition-all">[ ⚠️ DEVOLVER PARA SUBSANACIÓN ]</button>
             </div>
             `;
         }
@@ -2455,8 +2488,8 @@ const ui = {
                 </div>
             </div>
         `;
-        const actions = `<button type="button" onclick="ui.confirmCeoReturnDeliverable('${docKey}')" class="min-h-[44px] bg-red-700 text-white font-black px-5 py-2.5 text-xs uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">Confirmar Devolución</button>`;
-        this.showModal("Supervisión CEO: Devolver Entregable", html, actions);
+        const actions = `<button type="button" onclick="ui.confirmCeoReturnDeliverable('${docKey}')" class="min-h-[44px] bg-red-700 text-white font-black px-5 py-2.5 text-xs uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">Devolver para Subsanación</button>`;
+        this.showModal("Supervisión CEO: Devolver para Subsanación", html, actions);
     },
 
     confirmCeoReturnDeliverable(docKey) {
@@ -2497,7 +2530,7 @@ const ui = {
         `;
         const actions = `
             <button type="button" onclick="ui.closeModal()" class="min-h-[44px] bg-slate-800 text-slate-200 px-4 py-2 text-xs font-bold uppercase hover:bg-slate-700 transition-all">Cancelar</button>
-            <button type="button" onclick="ui.confirmTeacherReturnDeliverable('${this.escapeHTML(coId)}', '${this.escapeHTML(docKey)}')" class="min-h-[44px] bg-red-700 text-white font-black px-5 py-2.5 text-xs uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">Confirmar Devolución</button>
+            <button type="button" onclick="ui.confirmTeacherReturnDeliverable('${this.escapeHTML(coId)}', '${this.escapeHTML(docKey)}')" class="min-h-[44px] bg-red-700 text-white font-black px-5 py-2.5 text-xs uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">Devolver para Subsanación</button>
         `;
         this.showModal(`Subsanación Docente: ${docName}`, html, actions);
     },
@@ -2586,13 +2619,13 @@ const ui = {
                         <span class="text-slate-400 text-xs font-mono">(${this.escapeHTML(String(dateStr).slice(0, 10))})</span>
                     </div>
                     ${status === 'CEO_REVISION' && (item.returnReason || item.returnReasonId) ? `<div class="bg-red-950/40 border border-red-500/40 p-2 text-xs text-red-300 mb-2 rounded"><strong class="uppercase">Motivo:</strong> ${this.escapeHTML(item.returnReason || item.returnReasonId)}</div>` : ''}
-                    <div class="mt-2 flex items-center gap-2">
-                        <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors">
+                    <div class="mt-2 flex items-center gap-2 flex-wrap">
+                        <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors">
                             <span>Abrir ${tipoDoc} ↗</span>
                         </a>
                         ${(state.user && state.user.role === 'CEO' && (status === 'SUBMITTED_TO_CEO' || status === 'CEO_REVISION')) ? `
-                            <button type="button" onclick="ui.approveDeliverableByCEO('${docKey}'); ui.closeDrawer()" class="px-2.5 py-1 text-xs bg-mars-green text-black font-black uppercase hover:bg-white transition-all">Aprobar CEO</button>
-                            <button type="button" onclick="ui.modalCeoReturnDeliverable('${docKey}'); ui.closeDrawer()" class="px-2.5 py-1 text-xs bg-red-700 text-white font-black uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">Devolver</button>
+                            <button type="button" onclick="ui.approveDeliverableByCEO('${docKey}'); ui.closeDrawer()" class="min-h-[44px] px-4 py-2 text-xs bg-mars-green text-black font-black uppercase hover:bg-white transition-all">Aprobar CEO</button>
+                            <button type="button" onclick="ui.modalCeoReturnDeliverable('${docKey}'); ui.closeDrawer()" class="min-h-[44px] px-4 py-2 text-xs bg-red-700 text-white font-black uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">Devolver para Subsanación</button>
                         ` : ''}
                     </div>
                 `;
