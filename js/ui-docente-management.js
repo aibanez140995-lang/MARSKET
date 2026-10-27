@@ -1537,7 +1537,7 @@ Object.assign(ui, {
         if(!co || !co.brandApproval) return;
 
         const inputEl = document.getElementById('coord-official-slogan-' + cid);
-        const officialSlogan = inputEl ? this.cleanInput(inputEl.value) : (co.brandApproval.pendingSlogan || co.slogan || '');
+        const officialSlogan = (inputEl && inputEl.value.trim()) ? this.cleanInput(inputEl.value) : (co.brandApproval.pendingSlogan || co.slogan || '');
 
         if (!officialSlogan && !co.brandApproval.pendingLogo) {
             return this.notify("Debes escribir o confirmar el slogan oficial aprobado.", "warning");

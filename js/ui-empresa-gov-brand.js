@@ -792,8 +792,6 @@ Object.assign(ui, {
                     ${this.renderDriveLinkBox('1B. Identidad de Marca, Misión y Visión — ABRIL (10%)', 'Revisión evolutiva de marca, misión y visión tras pruebas (2ª Entrega). Resp: Marketing.', 'brandIdentity_apr', docs.brandIdentity_apr)}
                     ${this.renderDriveLinkBox('2. Business Model — Documento Escrito (25%)', 'Documento formal con portada, índice, integrantes del equipo, roles y funciones. Resp: Marketing/CEO.', 'businessModelDoc', docs.businessModelDoc)}
                     ${this.renderDriveLinkBox('3. Business Model Canvas (15%)', 'Lienzo estratégico del modelo de negocio de la startup aeroespacial. Resp: Marketing.', 'businessModelCanvas', docs.businessModelCanvas)}
-                    ${this.renderDriveLinkBox('4A. Diario-Bitácora de Decisiones, Conflictos e IA — DICIEMBRE (10%)', 'Registro de gobernanza, mitigación de riesgos y uso ético de IA (1ª Entrega). Resp: Operaciones IA.', 'decisionDiary_dec', docs.decisionDiary_dec)}
-                    ${this.renderDriveLinkBox('4B. Diario-Bitácora de Decisiones, Conflictos e IA — ABRIL (10%)', 'Cierre de bitácora de decisiones operativas, conflictos e IA (2ª Entrega). Resp: Operaciones IA.', 'decisionDiary_apr', docs.decisionDiary_apr)}
                 </div>
             `;
         } else if (activeDocTab === 'LEN') {
@@ -947,6 +945,20 @@ Object.assign(ui, {
 
                     <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase tracking-wider mb-3 border-b border-mars-border pb-1.5">Mis Paquetes y Acciones Ejecutadas</h3>
                     <div class="max-h-80 overflow-y-auto pr-1">
+                        ${(!co.marketingCampaigns || !co.marketingCampaigns.some(c => c.status === 'ACTIVO')) ? `
+                        <div class="bg-amber-950/30 border-l-4 border-l-amber-400 border border-amber-500/30 p-3.5 mb-3 text-xs font-mono">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-amber-400 font-bold uppercase">⚡ Circuito Oficial de Acciones Publicitarias (DOC_12):</span>
+                            </div>
+                            <p class="text-slate-200 leading-relaxed mb-2">
+                                Para publicar acciones comerciales y registrar la Ficha Técnica oficial (<strong class="text-white">DOC_12</strong>), tu empresa debe contratar previamente un <strong class="text-amber-300">Paquete de Campaña</strong> arriba y solicitar la aprobación presupuestaria a <strong class="text-mars-cyan">Finanzas</strong>.
+                            </p>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-800 text-[11px] text-slate-300">
+                                <div><strong>1.</strong> Contrata paquete arriba</div>
+                                <div><strong>2.</strong> Finanzas audita en Bóveda</div>
+                                <div><strong>3.</strong> Publica acción con DOC_12</div>
+                            </div>
+                        </div>` : ''}
                         ${campaignsHtml}
                     </div>
                 </div>
@@ -1447,14 +1459,47 @@ Object.assign(ui, {
 
     returnBrandProposalToMkt(cid) {
         if (!state.user || state.user.role !== 'CEO') return this.notify("Solo Dirección General (CEO) puede devolver esta propuesta.", "warning");
-        const co = state.data.companies[cid || state.user.coId];
+        const targetCid = cid || state.user.coId;
+        const co = state.data.companies[targetCid];
         if (!co || !co.brandApproval) return;
 
-        const feedback = prompt("Indica a Marketing las correcciones o motivos de la devolución:") || "Revisar propuesta en Google Docs.";
+        const reasons = [
+            { id: "SLOGAN_LONGITUD", label: "El slogan excede la longitud o impacto comercial recomendado" },
+            { id: "DISCREPANCIA_VALORES", label: "No representa fielmente la misión o identidad de la startup" },
+            { id: "DOC_11_INCOMPLETO", label: "El Modelo DOC_11 en Google Docs está incompleto o sin permisos públicos" },
+            { id: "FALTA_JUSTIFICACION", label: "Falta justificación lingüística y de posicionamiento de mercado" },
+            { id: "REVISION_INTERNA", label: "Marketing debe revisar la propuesta antes de elevarla al Claustro" }
+        ];
+
+        const optionsHtml = reasons.map(r => `<option value="${this.escapeHTML(r.label)}">${this.escapeHTML(r.label)}</option>`).join('');
+
+        const html = `
+            <div class="space-y-3">
+                <p class="text-xs text-slate-300 leading-relaxed">Selecciona el motivo tipificado para devolver la propuesta de Slogan Corporativo (DOC_11) a Marketing. Conforme a la política Zero-Text y blindaje RGPD no se admite texto libre.</p>
+                <div>
+                    <label for="ceo-brand-return-reason" class="text-xs text-mars-yellow font-bold uppercase block mb-1">Motivo Tipificado de Devolución</label>
+                    <select id="ceo-brand-return-reason" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white outline-none focus:border-white">
+                        ${optionsHtml}
+                    </select>
+                </div>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.confirmReturnBrandProposalToMkt('${this.escapeHTML(targetCid)}')" class="min-h-[44px] bg-red-700 text-white font-black px-5 py-2.5 text-xs uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">Confirmar Devolución</button>`;
+        this.showModal("Supervisión CEO: Devolver Propuesta de Slogan", html, actions);
+    },
+
+    confirmReturnBrandProposalToMkt(cid) {
+        if (!state.user || state.user.role !== 'CEO') return;
+        const co = state.data.companies[cid || state.user.coId];
+        if (!co || !co.brandApproval) return;
+        const sel = document.getElementById('ceo-brand-return-reason');
+        const feedback = sel ? sel.value : "Revisar propuesta en Google Docs.";
+        this.closeModal();
+
         co.brandApproval.status = 'DEVUELTO_CEO';
         co.brandApproval.feedback = feedback;
 
-        ui.pushNotification(state.user.coId, 'MARKETING', `El CEO ha devuelto la propuesta de Slogan: "${feedback}".`, 'warning');
+        ui.pushNotification(state.user.coId, 'MARKETING', `El CEO ha devuelto la propuesta de Slogan: "${feedback}".`, 'warning', { view: 'brand', subTab: 'slogan' });
 
         state.save();
         this.render();

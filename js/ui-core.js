@@ -7,6 +7,7 @@ const ui = {
     current: 'login', adminTab: 'dash', coordEvalView: 'ACTA', evalSelectedCo: '', evalClassFilter: 'ALL',
     activeMilestoneGroup: 'ACTIVE',
     ordersFilterTab: 'EN_PROCESO',
+    ordersDeptFilter: 'ALL',
     ordersVisibleCount: 5,
     currentSubView: null,
     _lastFocusedElement: null,
@@ -294,6 +295,12 @@ const ui = {
 
     setOrdersFilterTab(tab) {
         this.ordersFilterTab = tab || 'EN_PROCESO';
+        this.ordersVisibleCount = 5;
+        this.render();
+    },
+
+    setOrdersDeptFilter(dept) {
+        this.ordersDeptFilter = dept || 'ALL';
         this.ordersVisibleCount = 5;
         this.render();
     },
@@ -842,7 +849,7 @@ const ui = {
         }
     },
 
-    pushNotification(coId, targetRole, message, type = 'info') {
+    pushNotification(coId, targetRole, message, type = 'info', targetMeta = null) {
         const co = state.data.companies[coId];
         if (!co) return;
         
@@ -854,12 +861,92 @@ const ui = {
             type: type,
             date: new Date().toLocaleString(),
             read: false,
-            updatedAt: Date.now()
+            updatedAt: Date.now(),
+            target: targetMeta || null
         });
         
         if (co.notifications.length > 50) co.notifications.pop();
         co.updatedAt = Date.now();
         state.save(coId);
+    },
+
+    resolveNotificationTarget(notif) {
+        if (!notif) return { view: 'dossier' };
+        if (notif.target && typeof notif.target === 'object' && notif.target.view) {
+            return notif.target;
+        }
+
+        const msg = String(notif.message || '').toLowerCase();
+        const role = String(notif.role || (state.user ? state.user.role : '')).toUpperCase();
+
+        if (msg.includes('hoja de taller') || msg.includes('taller ensamble') || msg.includes('ensamblado')) {
+            if (role === 'OPERACIONES_IA' || role === 'OPERACIONES') return { view: 'cart' };
+            if (role === 'TECNICO') return { view: 'tech' };
+            return { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' };
+        }
+        if (msg.includes('campaña') || msg.includes('publicit') || msg.includes('marketing') || msg.includes('acción comercial')) {
+            if (role === 'CEO' || role === 'FINANZAS') return { view: 'orders', filter: 'EN_PROCESO', dept: 'MARKETING' };
+            return { view: 'brand' };
+        }
+        if (msg.includes('sanción') || msg.includes('disciplin') || msg.includes('crisis')) {
+            return { view: 'orders' };
+        }
+        if (msg.includes('slogan') || msg.includes('moción') || msg.includes('gobernanza') || msg.includes('voto')) {
+            return { view: 'resolutions' };
+        }
+        if (msg.includes('pedido') || msg.includes('compra') || msg.includes('presupuesto')) {
+            return { view: 'orders', filter: 'EN_PROCESO' };
+        }
+        if (msg.includes('calific') || msg.includes('nota') || msg.includes('acta') || msg.includes('rúbrica')) {
+            return { view: 'dossier', subTab: 'eval' };
+        }
+        if (msg.includes('entregable') || msg.includes('dossier') || msg.includes('visado') || msg.includes('subsan') || msg.includes('doc_')) {
+            return { view: 'dossier', subTab: 'docs' };
+        }
+
+        return { view: 'dossier' };
+    },
+
+    openNotificationTarget(notifId) {
+        if (!state.user) return;
+        const coId = state.user.coId;
+        const co = state.data.companies[coId];
+        if (!co) return;
+
+        co.notifications = co.notifications || [];
+        const notif = co.notifications.find(n => n.id === notifId);
+        if (notif) {
+            notif.read = true;
+            notif.updatedAt = Date.now();
+            co.updatedAt = Date.now();
+            state.save(coId);
+        }
+
+        this.updateBadges();
+        this.closeDrawer();
+        this.closeModal();
+
+        const target = this.resolveNotificationTarget(notif);
+        if (target.dept) this.ordersDeptFilter = target.dept;
+        if (target.filter) this.ordersFilterTab = target.filter;
+
+        if (target.view) {
+            this.navigate(target.view);
+        }
+
+        if (target.subTab) {
+            if (target.view === 'dossier' && typeof this.showDossierTab === 'function') {
+                this.showDossierTab(target.subTab);
+            } else if (target.view === 'company' && typeof this.setCompanySubTab === 'function') {
+                this.setCompanySubTab(target.subTab);
+            }
+        }
+
+        if (target.docKey && typeof this.inspectDeliverableDrawer === 'function') {
+            setTimeout(() => {
+                this.inspectDeliverableDrawer(coId, target.docKey);
+            }, 300);
+        }
     },
 
     renderWorkflowTracker(steps, currentIndex) {
@@ -1771,8 +1858,11 @@ const ui = {
 
         const elRes = document.getElementById('badge-resolutions');
         if (elRes) {
-            const pendingMotions = (co.votingMotions || []).filter(m => m.status === 'ABIERTA' && (!m.votes || !m.votes[state.user.role])).length;
-            if (pendingMotions > 0) { elRes.innerText = pendingMotions; elRes.classList.remove('hidden'); }
+            let pendingRes = (co.votingMotions || []).filter(m => m.status === 'ABIERTA' && (!m.votes || !m.votes[state.user.role])).length;
+            if (state.user.role === 'CEO' && co.brandApproval && co.brandApproval.status === 'PENDIENTE_CEO') {
+                pendingRes += 1;
+            }
+            if (pendingRes > 0) { elRes.innerText = pendingRes; elRes.classList.remove('hidden'); }
             else { elRes.classList.add('hidden'); }
         }
 
@@ -1783,9 +1873,33 @@ const ui = {
                 const iDOrders = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS').length;
                 const mktOrders = (co.marketingCampaigns || []).filter(m => m.status === 'PENDIENTE_FINANZAS').length;
                 pendingOrders = iDOrders + mktOrders;
+            } else if (state.user.role === 'CEO') {
+                let mktCeoActions = 0;
+                (co.marketingCampaigns || []).forEach(c => {
+                    (c.executedActions || []).forEach(a => {
+                        if (a.status === 'PENDIENTE_CEO') mktCeoActions++;
+                    });
+                });
+                const hojaCeo = (co.hojaTaller && co.hojaTaller.status === 'CEO_REVISION') ? 1 : 0;
+                const crises = (co.crisisAlerts || []).filter(a => !a.read).length;
+                pendingOrders = mktCeoActions + hojaCeo + crises;
             }
             if (pendingOrders > 0) { elOrders.innerText = pendingOrders; elOrders.classList.remove('hidden'); }
             else { elOrders.classList.add('hidden'); }
+        }
+
+        const elDossier = document.getElementById('badge-dossier');
+        if (elDossier) {
+            let pendingDossier = 0;
+            const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+            if (state.user.role === 'CEO') {
+                pendingDossier = Object.values(co.deliverables || {}).filter(d => d && d.status === 'SUBMITTED_TO_CEO').length;
+            } else {
+                const myDefs = defs.filter(d => d.role === state.user.role).map(d => d.key);
+                pendingDossier = Object.entries(co.deliverables || {}).filter(([k, d]) => myDefs.includes(k) && d && d.status === 'CEO_REVISION').length;
+            }
+            if (pendingDossier > 0) { elDossier.innerText = pendingDossier; elDossier.classList.remove('hidden'); }
+            else { elDossier.classList.add('hidden'); }
         }
 
         const elCart = document.getElementById('badge-cart');
@@ -2174,7 +2288,7 @@ const ui = {
         </div>`;
     },
 
-    renderDocBadge(title, docObj, short=false) {
+    renderDocBadge(title, docObj, short=false, coId=null, docKey=null) {
         if (!docObj) {
             return `<div class="bg-black/60 border border-mars-border border-dashed p-3 mb-2 flex justify-between items-center gap-2 text-xs"><span class="text-slate-300 font-bold uppercase break-words">${this.escapeHTML(title)}</span><span class="text-mars-magenta font-black uppercase shrink-0">[PENDIENTE]</span></div>`;
         }
@@ -2188,9 +2302,18 @@ const ui = {
         if (status === 'SUBMITTED_TO_CEO') {
             statusBadgeHtml = `<span class="bg-mars-yellow/20 text-mars-yellow border border-mars-yellow px-2 py-0.5 text-[10px] font-black uppercase shrink-0">[PENDIENTE SUPERVISIÓN CEO]</span>`;
         } else if (status === 'CEO_REVISION') {
-            statusBadgeHtml = `<span class="bg-mars-magenta/20 text-mars-magenta border border-mars-magenta px-2 py-0.5 text-[10px] font-black uppercase shrink-0">[⚠️ REVISIÓN REQUERIDA POR CEO]</span>`;
+            const isTeacher = !!item.returnByTeacher;
+            statusBadgeHtml = `<span class="bg-mars-magenta/20 text-mars-magenta border border-mars-magenta px-2 py-0.5 text-[10px] font-black uppercase shrink-0">[⚠️ ${isTeacher ? 'SUBSANACIÓN DOCENTE' : 'REVISIÓN REQUERIDA CEO'}]</span>`;
         } else {
             statusBadgeHtml = `<span class="bg-mars-green/20 text-mars-green border border-mars-green px-2 py-0.5 text-[10px] font-black uppercase shrink-0">[✓ ENTREGADO A DOCENTE]</span>`;
+        }
+
+        let teacherSubsanarBtn = '';
+        if (state.user && state.user.admin && coId && docKey && isValidDriveUrl) {
+            teacherSubsanarBtn = `
+            <button type="button" onclick="ui.modalTeacherReturnDeliverable('${this.escapeHTML(coId)}', '${this.escapeHTML(docKey)}')" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-bold uppercase min-h-[44px]" title="Requerir subsanación a la startup">
+                <span>↩ Subsanar</span>
+            </button>`;
         }
 
         let actionHtml = '';
@@ -2201,19 +2324,21 @@ const ui = {
               : item.driveUrl.includes('/folders/') ? 'Carpeta'
               : 'Archivo Drive';
             const safeHref = encodeURI(item.driveUrl).replace(/"/g, '&quot;');
-            actionHtml = `<div class="flex items-center gap-2 shrink-0">
+            actionHtml = `<div class="flex items-center gap-2 shrink-0 flex-wrap">
   ${statusBadgeHtml}
-  <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors">
+  <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors min-h-[44px]">
     <span>Abrir ${tipoDoc} ↗</span>
   </a>
+  ${teacherSubsanarBtn}
 </div>`;
         } else {
-            actionHtml = `<div class="flex items-center gap-2 shrink-0">${statusBadgeHtml}<span class="text-xs text-amber-500/80 font-mono italic">[Contenido legacy no accesible por directiva RGPD]</span></div>`;
+            actionHtml = `<div class="flex items-center gap-2 shrink-0 flex-wrap">${statusBadgeHtml}<span class="text-xs text-amber-500/80 font-mono italic">[Contenido legacy no accesible por directiva RGPD]</span>${teacherSubsanarBtn}</div>`;
         }
 
         const dateStr = item.updatedAt || item.date || '';
+        const isTeacherOrigin = !!item.returnByTeacher;
         const reasonBanner = (status === 'CEO_REVISION' && (item.returnReason || item.returnReasonId))
-            ? `<div class="mt-2 bg-red-950/50 border border-red-500/40 p-2 text-[11px] text-red-300 rounded"><strong class="text-red-400 uppercase">Motivo de Subsanación (CEO):</strong> ${this.escapeHTML(item.returnReason || item.returnReasonId)}</div>`
+            ? `<div class="mt-2 bg-red-950/50 border border-red-500/40 p-2 text-[11px] text-red-300 rounded"><strong class="text-red-400 uppercase">Motivo de Subsanación (${isTeacherOrigin ? 'Claustro Docente' : 'CEO'}):</strong> ${this.escapeHTML(item.returnReason || item.returnReasonId)}</div>`
             : '';
 
         return `<div class="bg-mars-cyan/10 border border-mars-cyan/60 p-3 mb-2 text-xs">
@@ -2257,16 +2382,13 @@ const ui = {
             `;
         }
 
-        return `
-        <div class="border-b border-slate-800 pb-4 mb-4 last:border-0 last:pb-0 last:mb-0">
-            <div class="flex justify-between items-start gap-2 flex-wrap mb-1">
-                <h3 class="text-mars-cyan font-bold text-xs sm:text-sm uppercase">${this.escapeHTML(title)}</h3>
-                ${lockBadge}
-            </div>
-            <p class="text-xs text-slate-300 mb-2 uppercase leading-relaxed">${this.escapeHTML(desc)}</p>
-            ${templateBtn}
-            ${this.renderDocBadge(title, currentDoc)}
-            ${ceoControlsHtml}
+        const userRole = state.user ? state.user.role : '';
+        const isAdmin = state.user ? !!state.user.admin : false;
+        const canUpload = (userRole === def.role) || isAdmin || (isCEO && def.role === 'CEO');
+
+        let uploadSectionHtml = '';
+        if (canUpload) {
+            uploadSectionHtml = `
             <div class="bg-slate-900 border border-slate-700 p-3 mt-2 space-y-2">
                 <label for="input-drive-url-${docKey}" class="text-xs text-mars-yellow font-bold uppercase block">${isLocked ? '🔒 Entrega Bloqueada hasta la Fecha de Apertura' : (isCEO ? 'Entregar o Actualizar Enlace Google Drive' : 'Subir Enlace para Supervisión del CEO')}</label>
                 <div class="space-y-1.5">
@@ -2283,7 +2405,26 @@ const ui = {
                 <div class="flex justify-end pt-1">
                     <button type="button" ${isLocked ? 'disabled' : ''} onclick="ui.submitDeliverable('${docKey}', this)" class="bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white flex-shrink-0 w-full sm:w-auto min-h-[44px] ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}">${isLocked ? '🔒 Entrega Bloqueada' : (isCEO ? 'Entregar y Elevar a Docente' : 'Enviar a Supervisión CEO')}</button>
                 </div>
+            </div>`;
+        } else {
+            uploadSectionHtml = `
+            <div class="bg-slate-900/60 border border-slate-800 p-3 mt-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs font-mono">
+                <span class="text-slate-400">Departamento Responsable: <strong class="text-mars-yellow uppercase">${this.escapeHTML(def.role ? def.role.replace('_',' ') : 'ASIGNADO')}</strong></span>
+                ${item && item.driveUrl ? `<a href="${encodeURI(item.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-mars-cyan hover:underline font-bold inline-flex items-center gap-1"><span>Abrir Documento Cloud</span> ↗</a>` : '<span class="text-slate-400 italic">Pendiente de subida por el responsable</span>'}
+            </div>`;
+        }
+
+        return `
+        <div class="border-b border-slate-800 pb-4 mb-4 last:border-0 last:pb-0 last:mb-0">
+            <div class="flex justify-between items-start gap-2 flex-wrap mb-1">
+                <h3 class="text-mars-cyan font-bold text-xs sm:text-sm uppercase">${this.escapeHTML(title)}</h3>
+                ${lockBadge}
             </div>
+            <p class="text-xs text-slate-300 mb-2 uppercase leading-relaxed">${this.escapeHTML(desc)}</p>
+            ${templateBtn}
+            ${this.renderDocBadge(title, currentDoc)}
+            ${ceoControlsHtml}
+            ${uploadSectionHtml}
         </div>`;
     },
 
@@ -2322,6 +2463,49 @@ const ui = {
         const reasonId = el.value;
         this.closeModal();
         state.returnDeliverableByCEO(docKey, reasonId);
+    },
+
+    modalTeacherReturnDeliverable(coId, docKey) {
+        if (!state.user || !state.user.admin) return;
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const def = defs.find(d => d.key === docKey);
+        const docName = def ? (def.shortName || def.name) : docKey;
+        const reasons = (typeof CEO_RETURN_REASONS !== 'undefined' ? CEO_RETURN_REASONS : [
+            { id: "ENLACE_INVALIDO", label: "Enlace a Google Drive inexistente o con formato incorrecto" },
+            { id: "PERMISOS_BLOQUEADOS", label: "Documento sin permisos de acceso/lectura para el equipo docente" },
+            { id: "PLANTILLA_INCORRECTA", label: "No se ha utilizado la plantilla oficial corporativa/curricular" },
+            { id: "CHECKLIST_INCOMPLETO", label: "Faltan apartados obligatorios según la guía de la materia" },
+            { id: "DISCREPANCIA_DATOS", label: "Discrepancia entre datos de la app y el documento adjunto" },
+            { id: "REVISION_PENDIENTE", label: "Requiere subsanación técnica interna antes de evaluación" }
+        ]);
+
+        const optionsHtml = reasons.map(r => `<option value="${this.escapeHTML(r.id)}">${this.escapeHTML(r.label)}</option>`).join('');
+
+        const html = `
+            <div class="space-y-3 font-mono text-xs">
+                <p class="text-slate-300 leading-relaxed">Selecciona el motivo oficial para devolver el entregable <strong>"${this.escapeHTML(docName)}"</strong> a la startup para su subsanación inmediata. Cumple la directiva Zero-Text.</p>
+                <div>
+                    <label for="teacher-return-reason" class="text-xs text-mars-yellow font-bold uppercase block mb-1">Motivo Tipificado de Subsanación</label>
+                    <select id="teacher-return-reason" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white outline-none focus:border-white">
+                        ${optionsHtml}
+                    </select>
+                </div>
+            </div>
+        `;
+        const actions = `
+            <button type="button" onclick="ui.closeModal()" class="min-h-[44px] bg-slate-800 text-slate-200 px-4 py-2 text-xs font-bold uppercase hover:bg-slate-700 transition-all">Cancelar</button>
+            <button type="button" onclick="ui.confirmTeacherReturnDeliverable('${this.escapeHTML(coId)}', '${this.escapeHTML(docKey)}')" class="min-h-[44px] bg-red-700 text-white font-black px-5 py-2.5 text-xs uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">Confirmar Devolución</button>
+        `;
+        this.showModal(`Subsanación Docente: ${docName}`, html, actions);
+    },
+
+    confirmTeacherReturnDeliverable(coId, docKey) {
+        if (!state.user || !state.user.admin) return;
+        const el = document.getElementById('teacher-return-reason');
+        if (!el) return;
+        const reasonId = el.value;
+        this.closeModal();
+        state.returnDeliverableByTeacher(coId, docKey, reasonId);
     },
 
     approveDeliverableByCEO(docKey) {
@@ -2380,7 +2564,10 @@ const ui = {
             const status = item.status || 'DELIVERED_TO_TEACHER';
             let pipelineLabel = '';
             if (status === 'SUBMITTED_TO_CEO') pipelineLabel = '<span class="text-mars-yellow font-bold uppercase text-xs">[PENDIENTE SUPERVISIÓN CEO]</span>';
-            else if (status === 'CEO_REVISION') pipelineLabel = '<span class="text-mars-magenta font-bold uppercase text-xs">[⚠️ REVISIÓN REQUERIDA POR CEO]</span>';
+            else if (status === 'CEO_REVISION') {
+                const isTeacher = !!item.returnByTeacher;
+                pipelineLabel = `<span class="text-mars-magenta font-bold uppercase text-xs">[⚠️ ${isTeacher ? 'SUBSANACIÓN DOCENTE' : 'REVISIÓN REQUERIDA POR CEO'}]</span>`;
+            }
             else pipelineLabel = '<span class="text-mars-green font-bold uppercase text-xs">[✓ ENTREGADO A DOCENTE]</span>';
 
             if (isValidDriveUrl) {

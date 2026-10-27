@@ -187,9 +187,9 @@ Object.assign(ui, {
                 let evidenceHtml = `<h4 class="font-orbitron text-mars-cyan text-xs uppercase mb-4 tracking-widest border-b border-mars-border pb-2">Evidencias Adjuntas (${this.escapeHTML(activeSubject)})</h4>`;
                 
                 if (activeSubject === 'FYQ') {
-                    evidenceHtml += this.renderDocBadge('1. Hoja Registro Preliminar (Dic)', docs.preliminaryReport);
-                    evidenceHtml += this.renderDocBadge('2. Hoja Oficial de Taller, BOM y Calidad', docs.hoja_taller_fyq);
-                    evidenceHtml += this.renderDocBadge('3. Informe Técnico Final (Abr)', docs.technicalReport);
+                    evidenceHtml += this.renderDocBadge('1. Hoja Registro Preliminar (Dic)', docs.preliminaryReport, false, this.evalSelectedCo, 'preliminaryReport');
+                    evidenceHtml += this.renderDocBadge('2. Hoja Oficial de Taller, BOM y Calidad', docs.hoja_taller_fyq, false, this.evalSelectedCo, 'hoja_taller_fyq');
+                    evidenceHtml += this.renderDocBadge('3. Informe Técnico Final (Abr)', docs.technicalReport, false, this.evalSelectedCo, 'technicalReport');
                     if(co.flightTests && co.flightTests.length > 0) {
                         evidenceHtml += `<div class="mt-4 bg-black p-3 border border-slate-800"><span class="text-mars-yellow text-xs font-bold uppercase block mb-2">Ensayos en Banco de Pruebas:</span><div class="text-xs space-y-1 max-h-40 overflow-y-auto">`;
                         co.flightTests.forEach(f => {
@@ -200,25 +200,25 @@ Object.assign(ui, {
                     }
                 } else if (activeSubject === 'ECO') {
                     evidenceHtml += `<p class="text-xs text-mars-yellow uppercase font-bold mb-2">Nota: El criterio 1 corresponde al Test Evaluativo (20%).</p>`;
-                    evidenceHtml += this.renderDocBadge('1. Presupuesto Inicial (20%)', docs.budgetInitial);
-                    evidenceHtml += this.renderDocBadge('2. Cuenta de Resultados (20%)', docs.incomeStatement);
-                    evidenceHtml += this.renderDocBadge('3. Presupuesto Post-Prototipo (20%)', docs.budgetPostProto);
-                    evidenceHtml += this.renderDocBadge('4. Balance de Situación (20%)', docs.balanceSheet);
+                    evidenceHtml += this.renderDocBadge('1. Presupuesto Inicial (20%)', docs.budgetInitial, false, this.evalSelectedCo, 'budgetInitial');
+                    evidenceHtml += this.renderDocBadge('2. Cuenta de Resultados (20%)', docs.incomeStatement, false, this.evalSelectedCo, 'incomeStatement');
+                    evidenceHtml += this.renderDocBadge('3. Presupuesto Post-Prototipo (20%)', docs.budgetPostProto, false, this.evalSelectedCo, 'budgetPostProto');
+                    evidenceHtml += this.renderDocBadge('4. Balance de Situación (20%)', docs.balanceSheet, false, this.evalSelectedCo, 'balanceSheet');
                 } else if (activeSubject === 'LYE') {
-                    evidenceHtml += this.renderDocBadge('1A. Identidad y Misión (Diciembre)', docs.brandIdentity_dec);
-                    evidenceHtml += this.renderDocBadge('1B. Identidad y Misión (Abril)', docs.brandIdentity_apr);
-                    evidenceHtml += this.renderDocBadge('2. Business Model Escrito', docs.businessModelDoc);
-                    evidenceHtml += this.renderDocBadge('3. Business Model Canvas', docs.businessModelCanvas);
-                    evidenceHtml += this.renderDocBadge('4A. Diario Decisiones e IA (Diciembre)', docs.decisionDiary_dec);
-                    evidenceHtml += this.renderDocBadge('4B. Diario Decisiones e IA (Abril)', docs.decisionDiary_apr);
+                    evidenceHtml += this.renderDocBadge('1A. Identidad y Misión (Diciembre)', docs.brandIdentity_dec, false, this.evalSelectedCo, 'brandIdentity_dec');
+                    evidenceHtml += this.renderDocBadge('1B. Identidad y Misión (Abril)', docs.brandIdentity_apr, false, this.evalSelectedCo, 'brandIdentity_apr');
+                    evidenceHtml += this.renderDocBadge('2. Business Model Escrito', docs.businessModelDoc, false, this.evalSelectedCo, 'businessModelDoc');
+                    evidenceHtml += this.renderDocBadge('3. Business Model Canvas', docs.businessModelCanvas, false, this.evalSelectedCo, 'businessModelCanvas');
+                    evidenceHtml += this.renderDocBadge('4A. Diario Decisiones e IA (Diciembre)', docs.decisionDiary_dec, false, this.evalSelectedCo, 'decisionDiary_dec');
+                    evidenceHtml += this.renderDocBadge('4B. Diario Decisiones e IA (Abril)', docs.decisionDiary_apr, false, this.evalSelectedCo, 'decisionDiary_apr');
                     evidenceHtml += `<div class="mt-4"><span class="text-mars-yellow text-xs font-bold uppercase">Manifiesto / Propuesta de Valor:</span><p class="text-xs text-slate-200 italic mt-1 bg-black p-3 border border-slate-800 leading-relaxed max-h-28 overflow-y-auto break-words">"${this.escapeHTML(co.valueProposition || 'No redactada todavía.')}"</p></div>`;
                 } else if (activeSubject === 'LEN') {
-                    evidenceHtml += this.renderDocBadge('1. Dossier para Inversores (Argumentativo)', docs.investorDossier);
+                    evidenceHtml += this.renderDocBadge('1. Dossier para Inversores (Argumentativo)', docs.investorDossier, false, this.evalSelectedCo, 'investorDossier');
                 } else if (activeSubject === 'MAT') {
-                    evidenceHtml += this.renderDocBadge('1. Elaboración de Goniómetro/s (25%)', docs.goniometerEvidence);
-                    evidenceHtml += this.renderDocBadge('2. Informe Distancia Conocida (25%)', docs.mathReportDist);
-                    evidenceHtml += this.renderDocBadge('3. Informe Dos Mediciones (25%)', docs.mathReportTwoPoints);
-                    evidenceHtml += this.renderDocBadge('4. Informe Técnico Final (25%)', docs.mathReportFinal);
+                    evidenceHtml += this.renderDocBadge('1. Elaboración de Goniómetro/s (25%)', docs.goniometerEvidence, false, this.evalSelectedCo, 'goniometerEvidence');
+                    evidenceHtml += this.renderDocBadge('2. Informe Distancia Conocida (25%)', docs.mathReportDist, false, this.evalSelectedCo, 'mathReportDist');
+                    evidenceHtml += this.renderDocBadge('3. Informe Dos Mediciones (25%)', docs.mathReportTwoPoints, false, this.evalSelectedCo, 'mathReportTwoPoints');
+                    evidenceHtml += this.renderDocBadge('4. Informe Técnico Final (25%)', docs.mathReportFinal, false, this.evalSelectedCo, 'mathReportFinal');
                 } else if (activeSubject === 'ING') {
                     evidenceHtml += `
                     <div class="bg-black/80 border border-mars-yellow/40 p-4 text-xs text-slate-300 space-y-2 mb-3">
@@ -317,6 +317,16 @@ Object.assign(ui, {
             
             telemetry.log("EVALUACIÓN", `Nota ${subject} registrada a ${co.name}: ${total.toFixed(2)}`);
             state.save(this.evalSelectedCo);
+
+            const subjectRoleMap = { FYQ: 'TECNICO', LYE: 'MARKETING', ECO: 'FINANZAS', MAT: 'TECNICO', LEN: 'MARKETING', ING: 'MARKETING' };
+            const targetRole = subjectRoleMap[subject] || 'CEO';
+            const notifMsg = `Calificación de ${subject} registrada por el docente: ${total.toFixed(2)} / 10`;
+            const targetMeta = { view: 'dossier', subTab: 'eval' };
+            ui.pushNotification(this.evalSelectedCo, 'CEO', notifMsg, 'success', targetMeta);
+            if (targetRole !== 'CEO') {
+                ui.pushNotification(this.evalSelectedCo, targetRole, notifMsg, 'success', targetMeta);
+            }
+
             this.notify(`Calificación de ${subject} registrada para ${co.name}: ${total.toFixed(2)}`, "success");
             this.render();
         };

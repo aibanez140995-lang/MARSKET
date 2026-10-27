@@ -135,6 +135,25 @@ Object.assign(ui, {
                 <p class="text-xs text-slate-300 mb-2">Has validado el ensamble físico en taller. El entregable está pendiente de visado formal por el CEO hacia el profesor de FyQ.</p>
                 <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-purple-950/40 text-purple-300 border border-purple-500/30 rounded font-mono"><span>Ver Documento Drive ↗</span></a>
             </div>`;
+        } else if (hojaStatus === 'CEO_REVISION') {
+            hojaWorkshopHtml = `
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-magenta mb-6 w-full">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <span class="text-xs font-bold uppercase text-mars-magenta bg-mars-magenta/20 border border-mars-magenta px-2.5 py-1 tracking-wider">[REVISIÓN REQUERIDA POR CEO]</span>
+                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM y Control de Ensamble</h3>
+                    </div>
+                    <span class="text-xs font-mono font-bold text-mars-magenta bg-mars-magenta/20 border border-mars-magenta px-2.5 py-1 rounded">⚠️ DEVUELTO POR CEO</span>
+                </div>
+                <div class="bg-red-950/40 border border-red-500/50 p-2.5 my-2 text-xs text-red-300 font-mono">
+                    <strong>Motivo de Devolución CEO:</strong> ${this.escapeHTML(currentHoja?.returnReason || currentHoja?.returnReasonId || 'Requiere subsanación')}
+                </div>
+                <p class="text-xs text-slate-300 mb-3">El CEO ha devuelto la Hoja de Taller. Revisa las piezas en taller y vuelve a validar y remitir al CEO cuando esté subsanado.</p>
+                <div class="flex flex-col sm:flex-row gap-3 pt-2 border-t border-slate-800">
+                    <button type="button" onclick="ui.opsValidateHojaTaller()" class="min-h-[44px] flex-1 bg-mars-green text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">[ ✓ REVALIDAR Y REMITIR A CEO ]</button>
+                    <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/60 transition-colors"><span>Ver Documento Drive ↗</span></a>
+                </div>
+            </div>`;
         } else if (hojaStatus === 'DELIVERED_TO_TEACHER') {
             hojaWorkshopHtml = `
             <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-green mb-6 w-full">
@@ -227,6 +246,9 @@ Object.assign(ui, {
         state.save(state.user.coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         
+        ui.pushNotification(state.user.coId, 'TECNICO', `📦 Orden #${order.id} física completada y ensamblada por Operaciones.`, 'success', { view: 'orders', filter: 'COMPLETADAS', dept: 'TECNICO' });
+        ui.pushNotification(state.user.coId, 'FINANZAS', `📦 Coste real de Orden #${order.id} (${finalTotalEurV.toFixed(2)} €v / ${finalItems.reduce((acc, it) => acc + (it.realEur || 0), 0).toFixed(2)} €) registrado en Libro Mayor.`, 'info', { view: 'finance' });
+
         this.notify(`✅ Orden #${order.id} ejecutada. El saldo virtual ha sido descontado y los costes reales registrados.`, "success");
         this.render();
     },

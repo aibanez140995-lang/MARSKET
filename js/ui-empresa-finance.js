@@ -118,8 +118,21 @@ Object.assign(ui, {
         const deadlineCardsHtml = filteredDefs.map(d => {
             const dateStr = deadlinesData[d.key] || d.defaultDate;
             const st = ui.getDeadlineStatus(dateStr);
-            const isDelivered = !!co.deliverables[d.key];
+            const docObj = co.deliverables[d.key];
+            const isDelivered = !!docObj;
+            const docStatus = docObj ? (docObj.status || 'DELIVERED_TO_TEACHER') : null;
             const sBadge = subjectColors[d.subject] || 'text-white border-white bg-white/10';
+
+            let cronoBadge = '<span class="text-xs font-bold uppercase text-slate-300 bg-black border border-slate-700 px-2 py-0.5">⏳ PENDIENTE</span>';
+            if (docStatus === 'EN_TALLER_OPERARIO') {
+                cronoBadge = '<span class="text-xs font-black uppercase text-blue-400 bg-blue-900/30 border border-blue-500 px-2 py-0.5">⚙️ EN TALLER</span>';
+            } else if (docStatus === 'SUBMITTED_TO_CEO') {
+                cronoBadge = '<span class="text-xs font-black uppercase text-mars-yellow bg-mars-yellow/20 border border-mars-yellow px-2 py-0.5">🟡 EN REVISIÓN CEO</span>';
+            } else if (docStatus === 'CEO_REVISION' || docStatus === 'DEVUELTO_A_TECNICO') {
+                cronoBadge = '<span class="text-xs font-black uppercase text-mars-magenta bg-mars-magenta/20 border border-mars-magenta px-2 py-0.5">🔴 REVISIÓN REQ.</span>';
+            } else if (docStatus === 'DELIVERED_TO_TEACHER') {
+                cronoBadge = '<span class="text-xs font-black uppercase text-mars-green bg-mars-green/20 border border-mars-green px-2 py-0.5">🟢 ENTREGADO</span>';
+            }
 
             const displayDate = dateStr.replace('T', ' ');
 
@@ -128,9 +141,7 @@ Object.assign(ui, {
                 <div>
                     <div class="flex justify-between items-center mb-2 flex-wrap gap-1.5">
                         <span class="text-xs font-black uppercase px-2 py-0.5 border ${sBadge}">${this.escapeHTML(d.subject)} • ${this.escapeHTML(d.weight)}</span>
-                        ${isDelivered 
-                            ? `<span class="text-xs font-black uppercase text-mars-green bg-mars-green/10 border border-mars-green/50 px-2 py-0.5">✓ ENTREGADO</span>`
-                            : `<span class="text-xs font-bold uppercase text-slate-300 bg-black border border-slate-700 px-2 py-0.5">PENDIENTE</span>`}
+                        ${cronoBadge}
                     </div>
                     <h4 class="text-white font-bold text-xs sm:text-sm uppercase leading-snug mb-1.5 break-words">${this.escapeHTML(d.name)}</h4>
                     <span class="text-xs text-slate-300 block mb-2.5 uppercase font-mono">Resp: ${this.escapeHTML(d.role.replace('_',' '))}</span>
@@ -171,142 +182,271 @@ Object.assign(ui, {
             </div>
         </div>`;
 
-        // 3. BÓVEDA DE ÓRDENES Y AUTORIZACIÓN FINANCIERA (I+D Y MARKETING)
-        // v1.0.19 Módulo B: pestañas de estado + paginación compacta (5 por vista)
-        let ordersListHtml = '';
+        // 3. BÓVEDA DE ÓRDENES Y AUTORIZACIÓN FINANCIERA (I+D, MARKETING Y TALLER)
         const ordersTab = this.ordersFilterTab || 'EN_PROCESO';
-        const tabStatusMatch = (st) => {
-            if (ordersTab === 'EN_PROCESO') return st === 'PENDIENTE_FINANZAS' || st === 'APROBADO_FINANZAS';
-            if (ordersTab === 'COMPLETADAS') return st === 'EJECUTADO';
-            return true; // HISTORIAL
-        };
-        const allOrders = [...co.orders].filter(o => tabStatusMatch(o.status)).reverse();
+        const deptFilter = this.ordersDeptFilter || 'ALL';
         const visibleLimit = this.ordersVisibleCount || 5;
-        let hiddenOrdersCount = 0;
 
-        if (co.orders.length === 0 && co.marketingCampaigns.length === 0) {
-            ordersListHtml = `<div class="terminal-border border-dashed p-8 text-center text-slate-300 italic text-xs">No hay órdenes de I+D ni campañas de Marketing tramitadas.</div>`;
-        } else {
-            // Órdenes de Componentes I+D
-            const idOrdersHtmlList = allOrders.map(order => {
+        let allUnifiedItems = [];
+
+        // 1. Órdenes de I+D (TECNICO)
+        if (deptFilter === 'ALL' || deptFilter === 'TECNICO') {
+            (co.orders || []).forEach(order => {
                 const st = order.status;
-                const isPending = st === 'PENDIENTE_FINANZAS';
-                const isApproved = st === 'APROBADO_FINANZAS';
-                const isExecuted = st === 'EJECUTADO';
-                const isRejected = st === 'RECHAZADO';
+                let matchesTab = false;
+                if (ordersTab === 'EN_PROCESO') matchesTab = (st === 'PENDIENTE_FINANZAS' || st === 'APROBADO_FINANZAS');
+                else if (ordersTab === 'COMPLETADAS') matchesTab = (st === 'EJECUTADO');
+                else if (ordersTab === 'DENEGADAS') matchesTab = (st === 'RECHAZADO');
 
-                let trackerIdx = 0;
-                if (isApproved) trackerIdx = 1;
-                if (isExecuted) trackerIdx = 2;
+                if (matchesTab) {
+                    const isPending = st === 'PENDIENTE_FINANZAS';
+                    const isApproved = st === 'APROBADO_FINANZAS';
+                    const isExecuted = st === 'EJECUTADO';
+                    const isRejected = st === 'RECHAZADO';
 
-                let stBadge = 'bg-mars-yellow/20 text-mars-yellow border-mars-yellow animate-pulse';
-                if (isApproved) stBadge = 'bg-blue-500/20 text-blue-300 border-blue-500';
-                if (isExecuted) stBadge = 'bg-mars-green/20 text-mars-green border-mars-green';
-                if (isRejected) stBadge = 'bg-mars-magenta/20 text-mars-magenta border-mars-magenta';
+                    let trackerIdx = 0;
+                    if (isApproved) trackerIdx = 1;
+                    if (isExecuted) trackerIdx = 2;
 
-                let finActions = '';
-                if (isFinanzas && isPending) {
-                    finActions = `
-                    <div class="flex flex-col sm:flex-row gap-2 mt-4 pt-3 border-t border-slate-800">
-                        <button type="button" onclick="ui.approveOrder('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1">Aprobar Presupuesto</button>
-                        <button type="button" onclick="ui.rejectOrder('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Rechazar</button>
-                    </div>`;
+                    let stBadge = 'bg-mars-yellow/20 text-mars-yellow border-mars-yellow animate-pulse';
+                    if (isApproved) stBadge = 'bg-blue-500/20 text-blue-300 border-blue-500';
+                    if (isExecuted) stBadge = 'bg-mars-green/20 text-mars-green border-mars-green';
+                    if (isRejected) stBadge = 'bg-mars-magenta/20 text-mars-magenta border-mars-magenta';
+
+                    let finActions = '';
+                    if (isFinanzas && isPending) {
+                        finActions = `
+                        <div class="flex flex-col sm:flex-row gap-2 mt-4 pt-3 border-t border-slate-800">
+                            <button type="button" onclick="ui.approveOrder('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1">Aprobar Presupuesto</button>
+                            <button type="button" onclick="ui.rejectOrder('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Rechazar</button>
+                        </div>`;
+                    }
+
+                    allUnifiedItems.push({
+                        date: order.date || '',
+                        timestamp: order.timestamp || 0,
+                        html: `
+                        <div class="bg-slate-900 border ${isPending ? 'border-mars-yellow/60' : 'border-mars-border'} p-4 text-xs mb-3">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-[10px] font-black uppercase px-2 py-0.5 bg-cyan-950 text-mars-cyan border border-mars-cyan/40">DEPTO: I+D (TÉCNICO)</span>
+                            </div>
+                            ${ui.renderWorkflowTracker(['I+D (Solicita)', 'Finanzas (Audita)', 'Logística (Ejecuta)'], trackerIdx)}
+                            <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
+                                <div>
+                                    <span class="text-xs font-black uppercase px-2 py-0.5 border ${stBadge}">${this.escapeHTML(st)}</span>
+                                    <h4 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">Orden #${this.escapeHTML(order.id)}</h4>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-mars-green font-mono font-bold text-sm sm:text-base">${Number(order.total).toFixed(2)} €v</span>
+                                    <span class="block text-xs text-slate-300 font-mono">${this.escapeHTML(order.date)}</span>
+                                </div>
+                            </div>
+                            <div class="hidden sm:block mb-2">
+                                ${(order.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(order.driveUrl))
+                                    ? `<a href="${encodeURI(order.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Informe Técnico en Docs ↗</span></a>`
+                                    : `<span class="text-xs text-amber-500/80 font-mono italic">[Memoria técnica legacy archivada por protocolo RGPD]</span>`
+                                }
+                            </div>
+                            <div class="hidden sm:block space-y-1.5 mb-2 bg-black/60 p-2.5 border border-slate-800">
+                                ${(order.items || []).map(it => `
+                                    <div class="flex justify-between text-xs text-slate-300 gap-2">
+                                        <span class="break-words">${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
+                                        <span class="font-mono text-white shrink-0">${Number(it.price).toFixed(2)} €v</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <button type="button" onclick="ui.inspectOrderDrawer('${this.escapeHTML(co.id || state.user.coId)}', '${this.escapeHTML(order.id)}', false)" class="sm:hidden w-full min-h-[44px] bg-slate-950 border border-mars-cyan/60 text-mars-cyan font-black uppercase text-xs py-2 px-3 hover:bg-mars-cyan hover:text-black transition-all">[ 🔍 INSPECCIONAR ORDEN (${(order.items || []).length} partidas) ]</button>
+                            ${isApproved ? '<p class="text-xs text-blue-400 font-mono mt-2 pt-2 border-t border-slate-800">📦 Orden en Logística de Taller: El Operario ejecuta la compra física real y el ensamble.</p>' : ''}
+                            ${finActions}
+                        </div>`
+                    });
+                }
+            });
+        }
+
+        // 2. Paquetes de Campañas de Marketing (MARKETING)
+        if (deptFilter === 'ALL' || deptFilter === 'MARKETING') {
+            (co.marketingCampaigns || []).forEach(camp => {
+                const cst = camp.status || 'PENDIENTE_FINANZAS';
+                let matchesCampTab = false;
+                if (ordersTab === 'EN_PROCESO') matchesCampTab = (cst === 'PENDIENTE_FINANZAS');
+                else if (ordersTab === 'COMPLETADAS') matchesCampTab = (cst === 'ACTIVO' || cst === 'COMPLETADO');
+                else if (ordersTab === 'DENEGADAS') matchesCampTab = (cst === 'RECHAZADO');
+
+                if (matchesCampTab) {
+                    const campPrice = !isNaN(Number(camp.price)) ? Number(camp.price) : (!isNaN(Number(camp.cost)) ? Number(camp.cost) : 0);
+                    const campPkg = camp.packageName || camp.type || 'Campaña Publicitaria';
+                    const campTitle = camp.title || camp.type || 'Acción Comercial';
+
+                    let campBadge = 'bg-mars-yellow/20 text-mars-yellow border-mars-yellow animate-pulse';
+                    if (cst === 'ACTIVO' || cst === 'COMPLETADO') campBadge = 'bg-mars-green/20 text-mars-green border-mars-green';
+                    if (cst === 'RECHAZADO') campBadge = 'bg-mars-magenta/20 text-mars-magenta border-mars-magenta';
+
+                    allUnifiedItems.push({
+                        date: camp.date || '',
+                        timestamp: camp.timestamp || 0,
+                        html: `
+                        <div class="bg-slate-900 border ${cst === 'PENDIENTE_FINANZAS' ? 'border-mars-yellow' : 'border-slate-800'} p-4 text-xs mb-3">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-[10px] font-black uppercase px-2 py-0.5 bg-yellow-950 text-mars-yellow border border-mars-yellow/40">DEPTO: MARKETING (PAQUETE)</span>
+                            </div>
+                            <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
+                                <div>
+                                    <span class="text-xs font-black uppercase px-2 py-0.5 border ${campBadge}">${this.escapeHTML(cst)}</span>
+                                    <h4 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">Pack Marketing: ${this.escapeHTML(campPkg)}</h4>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-mars-green font-mono font-bold text-sm sm:text-base">${campPrice.toFixed(2)} €v</span>
+                                    <span class="block text-xs text-slate-300 font-mono">${this.escapeHTML(camp.date || '--')}</span>
+                                </div>
+                            </div>
+                            <p class="text-slate-200 italic mb-1 break-words"><strong class="text-mars-cyan">Campaña:</strong> "${this.escapeHTML(campTitle)}"</p>
+                            <div class="hidden sm:block mb-2">
+                                ${(camp.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(camp.driveUrl))
+                                    ? `<a href="${encodeURI(camp.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Dossier ROI en Docs ↗</span></a>`
+                                    : `<span class="text-xs text-amber-500/80 font-mono italic">[Justificación ROI legacy archivada por protocolo RGPD]</span>`
+                                }
+                            </div>
+                            <button type="button" onclick="ui.inspectMktCampDrawer('${this.escapeHTML(camp.id)}')" class="sm:hidden w-full min-h-[44px] mb-2 bg-slate-950 border border-mars-yellow/60 text-mars-yellow font-black uppercase text-xs py-2 px-3">[ 🔍 VER JUSTIFICACIÓN ROI ]</button>
+                            ${(isFinanzas && cst === 'PENDIENTE_FINANZAS') ? `
+                            <div class="flex flex-col sm:flex-row gap-2 mt-3 pt-2 border-t border-slate-800">
+                                <button type="button" onclick="ui.approveMktCamp('${this.escapeHTML(camp.id)}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1">Aprobar Paquete MKT</button>
+                                <button type="button" onclick="ui.rejectMktCamp('${this.escapeHTML(camp.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Rechazar</button>
+                            </div>` : ''}
+                        </div>`
+                    });
                 }
 
-                return `
-                <div class="bg-slate-900 border ${isPending ? 'border-mars-yellow/60' : 'border-mars-border'} p-4 text-xs mb-3">
-                    ${ui.renderWorkflowTracker(['I+D (Solicita)', 'Finanzas (Audita)', 'Logística (Ejecuta)'], trackerIdx)}
-                    <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
-                        <div>
-                            <span class="text-xs font-black uppercase px-2 py-0.5 border ${stBadge}">${this.escapeHTML(st)}</span>
-                            <h4 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">Orden #${this.escapeHTML(order.id)}</h4>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-mars-green font-mono font-bold text-sm sm:text-base">${Number(order.total).toFixed(2)} €v</span>
-                            <span class="block text-xs text-slate-300 font-mono">${this.escapeHTML(order.date)}</span>
-                        </div>
-                    </div>
-                    <div class="hidden sm:block mb-2">
-                        ${(order.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(order.driveUrl))
-                            ? `<a href="${encodeURI(order.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Informe Técnico en Docs ↗</span></a>`
-                            : `<span class="text-xs text-amber-500/80 font-mono italic">[Memoria técnica legacy archivada por protocolo RGPD]</span>`
-                        }
-                    </div>
-                    <div class="hidden sm:block space-y-1.5 mb-2 bg-black/60 p-2.5 border border-slate-800">
-                        ${(order.items || []).map(it => `
-                            <div class="flex justify-between text-xs text-slate-300 gap-2">
-                                <span class="break-words">${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
-                                <span class="font-mono text-white shrink-0">${Number(it.price).toFixed(2)} €v</span>
+                // 2b. Acciones Individuales de Marketing (camp.executedActions)
+                (camp.executedActions || []).forEach(act => {
+                    const ast = act.status || 'PENDIENTE_CEO';
+                    let matchesActTab = false;
+                    if (ordersTab === 'EN_PROCESO') matchesActTab = (ast === 'PENDIENTE_CEO');
+                    else if (ordersTab === 'COMPLETADAS') matchesActTab = (ast === 'VALIDADO_CEO');
+                    else if (ordersTab === 'DENEGADAS') matchesActTab = (ast === 'RECHAZADO_CEO');
+
+                    if (matchesActTab) {
+                        let actBadge = 'bg-mars-yellow/20 text-mars-yellow border-mars-yellow animate-pulse';
+                        if (ast === 'VALIDADO_CEO') actBadge = 'bg-mars-green/20 text-mars-green border-mars-green';
+                        if (ast === 'RECHAZADO_CEO') actBadge = 'bg-mars-magenta/20 text-mars-magenta border-mars-magenta';
+
+                        allUnifiedItems.push({
+                            date: act.date || camp.date || '',
+                            timestamp: act.timestamp || 0,
+                            html: `
+                            <div class="bg-slate-900 border ${ast === 'PENDIENTE_CEO' ? 'border-mars-yellow/80' : 'border-slate-800'} p-4 text-xs mb-3">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="text-[10px] font-black uppercase px-2 py-0.5 bg-purple-950 text-mars-magenta border border-mars-magenta/40">DEPTO: MARKETING (ACCIÓN ESPECÍFICA)</span>
+                                </div>
+                                <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
+                                    <div>
+                                        <span class="text-xs font-black uppercase px-2 py-0.5 border ${actBadge}">${this.escapeHTML(ast)}</span>
+                                        <h4 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">Acción: ${this.escapeHTML(act.title || act.type || 'Campaña')}</h4>
+                                        <span class="text-[11px] text-slate-400 font-mono">Pack Vinculado: ${this.escapeHTML(camp.packageName || camp.type || '')}</span>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-xs text-slate-300 font-mono block">${this.escapeHTML(act.date || camp.date || '--')}</span>
+                                    </div>
+                                </div>
+                                ${act.desc ? `<p class="text-slate-300 mb-2 leading-relaxed break-words">${this.escapeHTML(act.desc)}</p>` : ''}
+                                ${(act.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(act.driveUrl))
+                                    ? `<div class="mb-3"><a href="${encodeURI(act.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>📄 Ver Creatividad / Memoria en Docs ↗</span></a></div>`
+                                    : ''
+                                }
+                                ${(ast === 'RECHAZADO_CEO' && act.feedback) ? `<div class="bg-red-950/40 border border-red-500/40 p-2 text-xs text-red-300 mb-2 rounded"><strong class="uppercase">Motivo Devolución CEO:</strong> ${this.escapeHTML(act.feedback)}</div>` : ''}
+                                ${(isCEO && ast === 'PENDIENTE_CEO') ? `
+                                <div class="flex flex-col sm:flex-row gap-2 mt-3 pt-2 border-t border-slate-800">
+                                    <button type="button" onclick="ui.decideMktAction('${this.escapeHTML(camp.id)}', '${this.escapeHTML(act.id)}', true)" class="min-h-[44px] bg-mars-green text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all flex-1 shadow-sm">[ ✓ APROBAR ACCIÓN ]</button>
+                                    <button type="button" onclick="ui.modalRejectMktAction('${this.escapeHTML(camp.id)}', '${this.escapeHTML(act.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">[ ↩ DEVOLVER A MKT ]</button>
+                                </div>` : ''}
+                            </div>`
+                        });
+                    }
+                });
+            });
+        }
+
+        // 3. Hoja de Taller y Ensamble (OPERACIONES)
+        if (deptFilter === 'ALL' || deptFilter === 'OPERACIONES') {
+            const hoja = co.deliverables?.hoja_taller_fyq;
+            if (hoja) {
+                const hst = hoja.status || 'DRAFT_TECNICO';
+                let matchesHojaTab = false;
+                if (ordersTab === 'EN_PROCESO') matchesHojaTab = (hst === 'EN_TALLER_OPERARIO' || hst === 'SUBMITTED_TO_CEO');
+                else if (ordersTab === 'COMPLETADAS') matchesHojaTab = (hst === 'DELIVERED_TO_TEACHER');
+                else if (ordersTab === 'DENEGADAS') matchesHojaTab = (hst === 'CEO_REVISION' || hst === 'DEVUELTO_A_TECNICO');
+
+                if (matchesHojaTab) {
+                    let hojaBadge = 'bg-blue-500/20 text-blue-300 border-blue-500';
+                    if (hst === 'SUBMITTED_TO_CEO') hojaBadge = 'bg-mars-yellow/20 text-mars-yellow border-mars-yellow animate-pulse';
+                    if (hst === 'DELIVERED_TO_TEACHER') hojaBadge = 'bg-mars-green/20 text-mars-green border-mars-green';
+                    if (hst === 'CEO_REVISION' || hst === 'DEVUELTO_A_TECNICO') hojaBadge = 'bg-mars-magenta/20 text-mars-magenta border-mars-magenta';
+
+                    allUnifiedItems.push({
+                        date: hoja.updatedAt || '',
+                        timestamp: hoja.timestamp || 0,
+                        html: `
+                        <div class="bg-slate-900 border ${hst === 'SUBMITTED_TO_CEO' ? 'border-mars-yellow' : 'border-slate-800'} p-4 text-xs mb-3">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-[10px] font-black uppercase px-2 py-0.5 bg-blue-950 text-blue-300 border border-blue-500/40">DEPTO: TALLER / OPERACIONES</span>
                             </div>
-                        `).join('')}
-                    </div>
-                    <button type="button" onclick="ui.inspectOrderDrawer('${this.escapeHTML(co.id || state.user.coId)}', '${this.escapeHTML(order.id)}', false)" class="sm:hidden w-full min-h-[44px] bg-slate-950 border border-mars-cyan/60 text-mars-cyan font-black uppercase text-xs py-2 px-3 hover:bg-mars-cyan hover:text-black transition-all">[ 🔍 INSPECCIONAR ORDEN (${(order.items || []).length} partidas) ]</button>
-                    ${isApproved ? '<p class="text-xs text-blue-400 font-mono mt-2 pt-2 border-t border-slate-800">📦 Orden en Logística de Taller: El Operario ejecuta la compra física real y el ensamble.</p>' : ''}
-                    ${finActions}
-                </div>`;
-            });
-
-            // Solicitudes de Paquetes de Marketing pendientes de Finanzas (solo En Proceso / Historial)
-            const mktPendingHtmlList = (ordersTab === 'COMPLETADAS' ? [] : co.marketingCampaigns.filter(c => c.status === 'PENDIENTE_FINANZAS')).map(camp => {
-                const campPrice = !isNaN(Number(camp.price)) ? Number(camp.price) : (!isNaN(Number(camp.cost)) ? Number(camp.cost) : 0);
-                const campPkg = camp.packageName || camp.type || 'Campaña Publicitaria';
-                const campTitle = camp.title || camp.type || 'Acción Comercial';
-                const campDesc = camp.desc || 'Solicitud de inversión publicitaria';
-                return `
-                <div class="bg-slate-900 border border-mars-yellow p-4 text-xs mb-3">
-                    <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
-                        <div>
-                            <span class="text-xs font-black uppercase px-2 py-0.5 border bg-mars-yellow/20 text-mars-yellow border-mars-yellow animate-pulse">PENDIENTE FINANZAS</span>
-                            <h4 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">Pack Marketing: ${this.escapeHTML(campPkg)}</h4>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-mars-green font-mono font-bold text-sm sm:text-base">${campPrice.toFixed(2)} €v</span>
-                            <span class="block text-xs text-slate-300 font-mono">${this.escapeHTML(camp.date || '--')}</span>
-                        </div>
-                    </div>
-                    <p class="text-slate-200 italic mb-1 break-words"><strong class="text-mars-cyan">Campaña:</strong> "${this.escapeHTML(campTitle)}"</p>
-                    <div class="hidden sm:block mb-2">
-                        ${(camp.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(camp.driveUrl))
-                            ? `<a href="${encodeURI(camp.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Dossier ROI en Docs ↗</span></a>`
-                            : `<span class="text-xs text-amber-500/80 font-mono italic">[Justificación ROI legacy archivada por protocolo RGPD]</span>`
-                        }
-                    </div>
-                    <button type="button" onclick="ui.inspectMktCampDrawer('${this.escapeHTML(camp.id)}')" class="sm:hidden w-full min-h-[44px] mb-2 bg-slate-950 border border-mars-yellow/60 text-mars-yellow font-black uppercase text-xs py-2 px-3">[ 🔍 VER JUSTIFICACIÓN ROI ]</button>
-                    ${isFinanzas ? `
-                    <div class="flex flex-col sm:flex-row gap-2 mt-3 pt-2 border-t border-slate-800">
-                        <button type="button" onclick="ui.approveMktCamp('${this.escapeHTML(camp.id)}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1">Aprobar Paquete MKT</button>
-                        <button type="button" onclick="ui.rejectMktCamp('${this.escapeHTML(camp.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Rechazar</button>
-                    </div>` : `<p class="text-xs text-slate-300 uppercase italic">Esperando validación presupuestaria de Finanzas.</p>`}
-                </div>
-            `;
-            });
-
-            const combined = [...mktPendingHtmlList, ...idOrdersHtmlList];
-            hiddenOrdersCount = Math.max(0, combined.length - visibleLimit);
-            ordersListHtml = combined.length === 0
-                ? `<div class="terminal-border border-dashed p-6 text-center text-slate-300 italic text-xs uppercase">Sin órdenes en esta vista.</div>`
-                : combined.slice(0, visibleLimit).join('');
-            if (hiddenOrdersCount > 0) {
-                ordersListHtml += `<button type="button" onclick="ui.loadMoreOrders()" class="w-full min-h-[44px] bg-slate-950 border border-mars-cyan text-mars-cyan font-black uppercase text-xs py-2.5 px-4 tracking-widest hover:bg-mars-cyan hover:text-black transition-all">[ VER MÁS TELÉMETRO (+${hiddenOrdersCount}) ]</button>`;
+                            <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
+                                <div>
+                                    <span class="text-xs font-black uppercase px-2 py-0.5 border ${hojaBadge}">${this.escapeHTML(hst)}</span>
+                                    <h4 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">Hoja de Taller y Ensamble (BOM)</h4>
+                                </div>
+                                <div class="text-right">
+                                    <span class="block text-xs text-slate-300 font-mono">${this.escapeHTML(String(hoja.updatedAt || '').slice(0, 10))}</span>
+                                </div>
+                            </div>
+                            ${hoja.driveUrl ? `<div class="mb-2"><a href="${encodeURI(hoja.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>📄 Ver Hoja de Taller en Docs ↗</span></a></div>` : ''}
+                            ${(isCEO && hst === 'SUBMITTED_TO_CEO') ? `
+                            <div class="flex flex-col sm:flex-row gap-2 mt-3 pt-2 border-t border-slate-800">
+                                <button type="button" onclick="ui.approveDeliverableByCEO('hoja_taller_fyq')" class="min-h-[44px] bg-mars-green text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1">[ ✓ VISAR HOJA TALLER ]</button>
+                                <button type="button" onclick="ui.modalCeoReturnDeliverable('hoja_taller_fyq')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">[ ↩ DEVOLVER A TALLER ]</button>
+                            </div>` : ''}
+                        </div>`
+                    });
+                }
             }
+        }
+
+        const deptFilterButtons = [
+            { id: 'ALL', label: 'TODOS' },
+            { id: 'TECNICO', label: 'I+D (TÉCNICO)' },
+            { id: 'MARKETING', label: 'MARKETING' },
+            { id: 'OPERACIONES', label: 'TALLER' }
+        ].map(b => `<button type="button" role="tab" aria-selected="${deptFilter === b.id}" onclick="ui.setOrdersDeptFilter('${b.id}')" class="min-h-[44px] px-3 py-1.5 text-xs font-bold uppercase transition-colors whitespace-nowrap ${deptFilter === b.id ? 'bg-mars-yellow text-black' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800'}">${b.label}</button>`).join('');
+
+        const hiddenOrdersCount = Math.max(0, allUnifiedItems.length - visibleLimit);
+        let ordersListHtml = allUnifiedItems.length === 0
+            ? `<div class="terminal-border border-dashed p-6 text-center text-slate-300 italic text-xs uppercase">Sin órdenes ni acciones en esta vista para el filtro seleccionado.</div>`
+            : allUnifiedItems.slice(0, visibleLimit).map(it => it.html).join('');
+        if (hiddenOrdersCount > 0) {
+            ordersListHtml += `<button type="button" onclick="ui.loadMoreOrders()" class="w-full min-h-[44px] bg-slate-950 border border-mars-cyan text-mars-cyan font-black uppercase text-xs py-2.5 px-4 tracking-widest hover:bg-mars-cyan hover:text-black transition-all">[ VER MÁS TELÉMETRO (+${hiddenOrdersCount}) ]</button>`;
         }
 
         const ordersTabsHtml = [
             { id: 'EN_PROCESO', label: 'En Proceso' },
             { id: 'COMPLETADAS', label: 'Completadas' },
-            { id: 'HISTORIAL', label: 'Historial' }
+            { id: 'DENEGADAS', label: 'Denegadas' }
         ].map(t => `<button type="button" role="tab" aria-selected="${ordersTab === t.id}" onclick="ui.setOrdersFilterTab('${t.id}')" class="min-h-[44px] flex-1 px-3 py-2 text-xs font-bold uppercase transition-colors ${ordersTab === t.id ? 'bg-mars-cyan text-black' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800'}">${t.label}</button>`).join('');
 
         const bovedaSection = `
         <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
-            <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-3">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-2">
                 <div>
                     <h3 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter font-black">Bóveda de Órdenes y Adquisiciones</h3>
-                    <p class="text-xs text-slate-300 uppercase mt-1">Control de flujo presupuestario: Solicitud de I+D y Paquetes de Marketing.</p>
+                    <p class="text-xs text-slate-300 uppercase mt-1">Supervisión integral de I+D, Campañas de Marketing y Taller de Ensamble.</p>
                 </div>
             </div>
-            <div role="tablist" aria-label="Filtrar órdenes por estado" class="flex gap-2 mb-4">
+            <!-- Filtro de Estado -->
+            <div role="tablist" aria-label="Filtrar órdenes por estado" class="flex gap-2 mb-3">
                 ${ordersTabsHtml}
+            </div>
+            <!-- Filtro por Departamento -->
+            <div role="tablist" aria-label="Filtrar por departamento" class="flex flex-wrap gap-2 mb-4 pb-2 border-b border-slate-800">
+                ${deptFilterButtons}
             </div>
             <div class="space-y-3">
                 ${ordersListHtml}
@@ -569,6 +709,7 @@ Object.assign(ui, {
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
 
+        const isCEO = state.user.role === 'CEO';
         co.ledger = co.ledger || [];
         co.realCosts = co.realCosts || [];
         const docs = co.deliverables || {};
@@ -647,7 +788,59 @@ Object.assign(ui, {
                 </div>
             </div>
 
-            <!-- Columna Derecha: Entregables Oficiales de Economía (Drive) -->
+            <!-- Columna Derecha: Entregables Oficiales o Auditoría Físico-Virtual -->
+            ${isCEO ? `
+            <div class="lg:col-span-5 space-y-6">
+                <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-cyan">
+                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
+                        <div>
+                            <h3 class="font-orbitron text-mars-cyan text-sm uppercase tracking-tighter">Supervisión Contable & Auditoría</h3>
+                            <p class="text-xs text-slate-300 uppercase mt-0.5">Resp. de Entrega: Departamento Financiero.</p>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed mb-4">Los 4 entregables oficiales de Economía (Presupuestos, Cuenta de Resultados y Balance) son elaborados por Finanzas. Como CEO, supervisas y visas su calidad en el Dossier General.</p>
+                    <button type="button" onclick="ui.navigate('dossier')" class="w-full min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs py-2.5 px-4 hover:bg-white transition-all flex items-center justify-center gap-2 shadow-sm">
+                        <span>📋 ACCEDER A SUPERVISIÓN EN DOSSIER (19)</span> ➔
+                    </button>
+                </div>
+
+                <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-magenta">
+                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2 flex-wrap gap-2">
+                        <div>
+                            <h3 class="font-orbitron text-mars-magenta text-sm uppercase tracking-tighter">Auditoría de Costes Reales (€)</h3>
+                            <p class="text-xs text-slate-300 uppercase mt-0.5">Tickets y facturas físicas vinculadas a Drive.</p>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-mars-magenta bg-mars-magenta/10 border border-mars-magenta/40 px-2 py-0.5">${totalRealCost.toFixed(2)} € TOTAL</span>
+                    </div>
+                    <div class="max-h-72 overflow-x-auto overflow-y-auto pr-1">
+                        <table class="w-full text-left text-xs font-mono whitespace-nowrap min-w-max">
+                            <thead class="text-slate-300 uppercase border-b border-slate-700 sticky top-0 bg-mars-card">
+                                <tr>
+                                    <th class="py-2 pr-2">Fecha</th>
+                                    <th class="pr-2">Componente</th>
+                                    <th class="pr-2">Comercio</th>
+                                    <th class="text-right pr-2">Coste (€)</th>
+                                    <th class="text-right">Ticket</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${co.realCosts.map(rc => `
+                                    <tr class="border-b border-slate-800/70 hover:bg-slate-900/50">
+                                        <td class="py-1.5 pr-2 text-slate-300">${this.escapeHTML(rc.date || '--')}</td>
+                                        <td class="py-1.5 pr-2 text-white font-bold max-w-[140px] truncate" title="${this.escapeHTML(rc.item || '')}">${this.escapeHTML(rc.item || '')} (x${rc.qty || 1})</td>
+                                        <td class="py-1.5 pr-2 text-slate-300">${this.escapeHTML(rc.shop || '--')}</td>
+                                        <td class="py-1.5 pr-2 text-right font-bold text-mars-magenta">${Number(rc.eur || 0).toFixed(2)} €</td>
+                                        <td class="py-1.5 text-right">
+                                            ${rc.ticketUrl ? `<a href="${encodeURI(rc.ticketUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-mars-cyan hover:underline font-bold inline-flex items-center gap-1"><span>Ver Ticket</span> ↗</a>` : '<span class="text-slate-400 italic">Sin ticket</span>'}
+                                        </td>
+                                    </tr>
+                                `).join('') || `<tr><td colspan="5" class="text-center py-4 text-slate-400 italic text-xs">No hay costes reales físicos registrados por Operaciones.</td></tr>`}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            ` : `
             <div class="lg:col-span-5 space-y-6">
                 <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-green">
                     <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
@@ -663,7 +856,44 @@ Object.assign(ui, {
                         ${this.renderDriveLinkBox('4. Balance de Situación Simplificado (20% ECO)', 'Estructura patrimonial de la startup aeroespacial al cierre del proyecto.', 'balanceSheet', docs.balanceSheet)}
                     </div>
                 </div>
+
+                <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-magenta">
+                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2 flex-wrap gap-2">
+                        <div>
+                            <h3 class="font-orbitron text-mars-magenta text-sm uppercase tracking-tighter">Auditoría de Costes Reales (€)</h3>
+                            <p class="text-xs text-slate-300 uppercase mt-0.5">Tickets y facturas físicas de compras en taller.</p>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-mars-magenta bg-mars-magenta/10 border border-mars-magenta/40 px-2 py-0.5">${totalRealCost.toFixed(2)} € TOTAL</span>
+                    </div>
+                    <div class="max-h-72 overflow-x-auto overflow-y-auto pr-1">
+                        <table class="w-full text-left text-xs font-mono whitespace-nowrap min-w-max">
+                            <thead class="text-slate-300 uppercase border-b border-slate-700 sticky top-0 bg-mars-card">
+                                <tr>
+                                    <th class="py-2 pr-2">Fecha</th>
+                                    <th class="pr-2">Componente</th>
+                                    <th class="pr-2">Comercio</th>
+                                    <th class="text-right pr-2">Coste (€)</th>
+                                    <th class="text-right">Ticket</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${co.realCosts.map(rc => `
+                                    <tr class="border-b border-slate-800/70 hover:bg-slate-900/50">
+                                        <td class="py-1.5 pr-2 text-slate-300">${this.escapeHTML(rc.date || '--')}</td>
+                                        <td class="py-1.5 pr-2 text-white font-bold max-w-[140px] truncate" title="${this.escapeHTML(rc.item || '')}">${this.escapeHTML(rc.item || '')} (x${rc.qty || 1})</td>
+                                        <td class="py-1.5 pr-2 text-slate-300">${this.escapeHTML(rc.shop || '--')}</td>
+                                        <td class="py-1.5 pr-2 text-right font-bold text-mars-magenta">${Number(rc.eur || 0).toFixed(2)} €</td>
+                                        <td class="py-1.5 text-right">
+                                            ${rc.ticketUrl ? `<a href="${encodeURI(rc.ticketUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-mars-cyan hover:underline font-bold inline-flex items-center gap-1"><span>Ver Ticket</span> ↗</a>` : '<span class="text-slate-400 italic">Sin ticket</span>'}
+                                        </td>
+                                    </tr>
+                                `).join('') || `<tr><td colspan="5" class="text-center py-4 text-slate-400 italic text-xs">No hay costes reales físicos registrados por Operaciones.</td></tr>`}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
+            `}
         </div>`;
 
         el.appendChild(wrapper);

@@ -96,7 +96,7 @@ const report = {
 
 try {
     const browser = await chromium.launch({
-        channel: 'chrome',
+        channel: 'msedge',
         headless: true,
         args: ['--no-sandbox', '--disable-web-security']
     });

@@ -144,7 +144,6 @@ Object.assign(ui, {
         else { co.cart.push({ ...itemDef, qty: 1 }); }
 
         state.save();
-        ui.pushNotification(state.user.coId, 'FINANZAS', `I+D ha añadido "${itemDef.name}" al carrito de la compra.`, 'info');
         this.notify(`Añadido al carrito de la compra: ${itemDef.name}`, 'info');
         this.render();
     },

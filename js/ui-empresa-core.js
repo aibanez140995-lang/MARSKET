@@ -123,12 +123,15 @@ Object.assign(ui, {
                 if (n.type === 'warning') colors = 'border-mars-yellow bg-mars-yellow/10 text-mars-yellow';
                 
                 return `
-                <div class="flex justify-between items-center gap-3 p-3 border ${colors} shadow-sm">
-                    <div class="flex flex-col min-w-0">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-3 border ${colors} shadow-sm">
+                    <div class="flex flex-col min-w-0 flex-1">
                         <span class="text-xs font-bold uppercase leading-relaxed break-words">${this.escapeHTML(n.message)}</span>
                         <span class="text-xs text-slate-300 mt-1">${this.escapeHTML(n.date)}</span>
                     </div>
-                    <button type="button" aria-label="Descartar notificación" onclick="ui.dismissNotification('${this.escapeHTML(n.id)}')" class="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center font-black hover:text-white transition-colors text-xs border border-current/40 shrink-0">✕</button>
+                    <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+                        <button type="button" onclick="ui.openNotificationTarget('${this.escapeHTML(n.id)}')" class="min-h-[44px] bg-black/70 border border-current text-white font-black px-3.5 py-1.5 text-xs uppercase hover:bg-white hover:text-black transition-all flex items-center gap-1.5 shadow-sm">[ 👁️ Ver Notificación ➔ ]</button>
+                        <button type="button" aria-label="Descartar notificación" onclick="ui.dismissNotification('${this.escapeHTML(n.id)}')" class="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center font-black hover:text-white transition-colors text-xs border border-current/40 shrink-0" title="Descartar">✕</button>
+                    </div>
                 </div>`;
             }).join('')}
         </div>`;
@@ -285,8 +288,9 @@ Object.assign(ui, {
             // MÓDULO B (v1.0.19): Bóveda de Entregables con Acordeones por Fase (Milestone Collapsible) y Detalle Bajo Demanda (Bottom-Sheet Drawer)
             const docs = co.deliverables || {};
             const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
-            const deliveredCount = defs.filter(d => !!docs[d.key]).length;
+            const deliveredCount = defs.filter(d => docs[d.key] && docs[d.key].status === 'DELIVERED_TO_TEACHER').length;
             const activeGroup = this.activeMilestoneGroup || 'ACTIVE';
+            const isCEO = state.user && state.user.role === 'CEO';
 
             const milestonePhases = [
                 {
@@ -314,12 +318,13 @@ Object.assign(ui, {
 
             const accordionsHtml = milestonePhases.map(phase => {
                 const phaseDefs = phase.keys.map(k => defs.find(d => d.key === k)).filter(Boolean);
-                const phaseDelivered = phaseDefs.filter(d => !!docs[d.key]).length;
+                const phaseDelivered = phaseDefs.filter(d => docs[d.key] && docs[d.key].status === 'DELIVERED_TO_TEACHER').length;
                 const isExpanded = activeGroup === phase.id;
 
                 const itemsHtml = phaseDefs.map(def => {
                     const docKey = def.key;
                     const docObj = docs[def.key];
+                    const st = docObj ? (docObj.status || 'DELIVERED_TO_TEACHER') : null;
                     const sched = (state.data.config?.deliverableSchedule && state.data.config.deliverableSchedule[docKey]) || {};
                     const openDate = sched.openDate || def.defaultOpenDate;
                     const isLocked = Boolean(openDate && !isNaN(new Date(openDate).getTime()) && (new Date() < new Date(openDate)));
@@ -330,24 +335,55 @@ Object.assign(ui, {
                         ? `<span class="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded">🔒 BLOQUEADO HASTA ${new Date(openDate).toLocaleString()}</span>`
                         : `<span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">🟢 ACTIVO / EN PLAZO</span>`;
 
+                    let pipelineBadge = '<span class="text-xs font-bold uppercase text-slate-300 bg-black border border-slate-700 px-2 py-0.5">⏳ PENDIENTE</span>';
+                    let borderColor = isLocked ? 'border-amber-400/40' : 'border-slate-800';
+
+                    if (st === 'EN_TALLER_OPERARIO') {
+                        pipelineBadge = '<span class="text-xs font-black uppercase text-blue-400 bg-blue-900/30 border border-blue-500 px-2 py-0.5 animate-pulse">⚙️ EN TALLER</span>';
+                        borderColor = 'border-blue-500/60';
+                    } else if (st === 'SUBMITTED_TO_CEO') {
+                        pipelineBadge = '<span class="text-xs font-black uppercase text-mars-yellow bg-mars-yellow/20 border border-mars-yellow px-2 py-0.5 animate-pulse">🟡 EN REVISIÓN CEO</span>';
+                        borderColor = 'border-mars-yellow/60';
+                    } else if (st === 'CEO_REVISION' || st === 'DEVUELTO_A_TECNICO') {
+                        const isTeacher = !!docObj?.returnByTeacher;
+                        pipelineBadge = isTeacher
+                            ? '<span class="text-xs font-black uppercase text-mars-magenta bg-mars-magenta/20 border border-mars-magenta px-2 py-0.5">⚠️ SUBSANACIÓN DOCENTE</span>'
+                            : '<span class="text-xs font-black uppercase text-mars-magenta bg-mars-magenta/20 border border-mars-magenta px-2 py-0.5">🔴 DEVUELTO / SUBSANAR</span>';
+                        borderColor = 'border-mars-magenta/60';
+                    } else if (st === 'DELIVERED_TO_TEACHER') {
+                        pipelineBadge = '<span class="text-xs font-black uppercase text-mars-green bg-mars-green/20 border border-mars-green px-2 py-0.5">🟢 ENTREGADO A DOCENTE</span>';
+                        borderColor = 'border-mars-green/60';
+                    }
+
                     const templateBtn = sched.guideDocUrl
                         ? `<a href="${encodeURI(sched.guideDocUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-mars-cyan border border-mars-cyan/30 rounded hover:bg-cyan-900/50 transition-colors font-mono min-h-[44px]"><span>📄 VER PLANTILLA DOCENTE ↗</span></a>`
                         : '';
 
+                    let ceoDirectActions = '';
+                    if (isCEO && docObj && (st === 'SUBMITTED_TO_CEO' || st === 'CEO_REVISION')) {
+                        ceoDirectActions = `
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button type="button" onclick="ui.approveDeliverableByCEO('${docKey}')" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-3 py-1.5 hover:bg-white transition-all shadow-sm" title="Aprobar y Elevar a Evaluación Docente">[ ✓ VISAR ]</button>
+                            <button type="button" onclick="ui.modalCeoReturnDeliverable('${docKey}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-3 py-1.5 hover:bg-mars-magenta hover:text-white transition-all" title="Devolver con Motivo Tipificado">[ ↩ DEVOLVER ]</button>
+                        </div>`;
+                    }
+
                     return `
-                    <div class="bg-slate-900/90 border ${docObj ? 'border-mars-green/60' : (isLocked ? 'border-amber-400/40' : 'border-slate-800')} p-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div class="bg-slate-900/90 border ${borderColor} p-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                         <div class="min-w-0 flex-grow">
                             <div class="flex flex-wrap items-center gap-1.5 mb-1">
                                 <span class="text-xs font-black px-2 py-0.5 border border-mars-cyan/60 text-mars-cyan bg-mars-cyan/10 uppercase">${this.escapeHTML(def.subject)} (${this.escapeHTML(def.weight)})</span>
-                                <span class="text-xs font-black px-2 py-0.5 uppercase ${docObj ? 'bg-mars-green/20 text-mars-green border border-mars-green' : 'bg-mars-magenta/20 text-mars-magenta border border-mars-magenta'}">${docObj ? '✓ ENTREGADO' : '⏳ PENDIENTE'}</span>
+                                ${pipelineBadge}
                                 ${lockBadge}
                                 <span class="text-xs font-bold px-2 py-0.5 uppercase ${dlStatus.class}">${this.escapeHTML(dlStatus.text)}</span>
                             </div>
                             <p class="text-white font-bold uppercase text-xs sm:text-sm break-words">${this.escapeHTML(def.name)}</p>
                             <p class="hidden sm:block text-xs text-slate-300 uppercase mt-0.5">Responsable: <span class="text-mars-yellow font-bold">${this.escapeHTML(def.role.replace('_',' '))}</span> | Plazo: ${this.escapeHTML(dlDate.replace('T', ' '))}</p>
+                            ${(st === 'CEO_REVISION' && (docObj.returnReason || docObj.returnReasonId)) ? `<p class="text-[11px] text-red-400 mt-1 font-mono uppercase">⚠️ Motivo Devolución CEO: ${this.escapeHTML(docObj.returnReason || docObj.returnReasonId)}</p>` : ''}
                         </div>
                         <div class="flex items-center gap-2 w-full sm:w-auto shrink-0 flex-wrap">
                             ${templateBtn}
+                            ${ceoDirectActions}
                             <button type="button" onclick="ui.inspectDeliverableDrawer('${this.escapeHTML(targetCoId)}', '${this.escapeHTML(def.key)}')" class="min-h-[44px] flex-1 sm:flex-initial bg-slate-800 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-black uppercase text-xs px-3 py-2 transition-all">
                                 [ 🔍 INSPECCIONAR ]
                             </button>
@@ -362,7 +398,7 @@ Object.assign(ui, {
                         <div class="min-w-0">
                             <div class="flex items-center gap-2 flex-wrap mb-1">
                                 <span class="text-xs font-black uppercase px-2 py-0.5 border ${phase.accent} bg-black">${phase.badge}</span>
-                                <span class="text-xs text-slate-300 font-mono uppercase">Completados: <strong class="text-white">${phaseDelivered}/${phaseDefs.length}</strong></span>
+                                <span class="text-xs text-slate-300 font-mono uppercase">Visados / Entregados: <strong class="text-white">${phaseDelivered}/${phaseDefs.length}</strong></span>
                             </div>
                             <h4 class="font-orbitron font-black text-xs sm:text-sm text-white uppercase tracking-wider break-words">${phase.title}</h4>
                         </div>
@@ -378,9 +414,9 @@ Object.assign(ui, {
             <div class="terminal-border bg-mars-card p-4 mb-6 border-l-4 border-l-mars-cyan flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
                     <h3 class="font-orbitron text-mars-cyan text-sm uppercase">Bóveda Oficial de Entregables por Hitos (Milestone Collapsible)</h3>
-                    <p class="text-xs text-slate-300 uppercase mt-1">Solo la fase activa se despliega por defecto. Pulsa [ 🔍 INSPECCIONAR ] para abrir la rúbrica y detalles en el Drawer táctil.</p>
+                    <p class="text-xs text-slate-300 uppercase mt-1">Supervisión en 4 estados: Pendiente ➔ En Revisión CEO ➔ Devuelto / Subsanar ➔ Entregado a Docente.</p>
                 </div>
-                <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-3 py-1.5 text-xs font-mono font-black uppercase">Entregados: ${deliveredCount} / ${defs.length}</span>
+                <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-3 py-1.5 text-xs font-mono font-black uppercase">Entregados a Docente: ${deliveredCount} / ${defs.length}</span>
             </div>
             <div class="space-y-4 w-full">
                 ${accordionsHtml}

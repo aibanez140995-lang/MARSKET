@@ -468,7 +468,7 @@ const auth = (function() {
                 'brand': { id: 'brand', label: '🎨 Marca & MKT' },
                 'cart': { id: 'cart', label: '📦 Taller Ensamble', badge: 'badge-cart' },
                 'ailog': { id: 'ailog', label: '🤖 Bitácora IA', badge: 'badge-ailog' },
-                'dossier': { id: 'dossier', label: '📋 Dossier (19)' },
+                'dossier': { id: 'dossier', label: '📋 Dossier (19)', badge: 'badge-dossier' },
                 'resolutions': { id: 'resolutions', label: '⚖️ Gobernanza', badge: 'badge-resolutions' }
             };
 

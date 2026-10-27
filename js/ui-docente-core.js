@@ -208,7 +208,7 @@ Object.assign(ui, {
                 </div>
                 <div class="flex gap-2 justify-end">
                     <button type="button" onclick="ui.decideBrand('${this.escapeHTML(cid)}', true)" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ ✅ APROBAR Y REGISTRAR SLOGAN ]</button>
-                    <button type="button" onclick="ui.decideBrand('${this.escapeHTML(cid)}', false)" class="min-h-[44px] bg-red-700 text-white font-black uppercase text-xs px-4 py-2 hover:bg-white hover:text-red-700 transition-all border border-red-500">[ ❌ RECHAZAR ]</button>
+                    <button type="button" onclick="ui.modalCoordDenyBrand('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-red-700 text-white font-black uppercase text-xs px-4 py-2 hover:bg-white hover:text-red-700 transition-all border border-red-500">[ ❌ RECHAZAR ]</button>
                 </div>
             </div>
             `;
@@ -228,14 +228,51 @@ Object.assign(ui, {
         `;
     },
 
-    async decideBrand(cid, approved) {
+    modalCoordDenyBrand(cid) {
+        if (!state.user || !state.user.admin) return;
+        const reasons = [
+            { id: "ENFOQUE_NO_AERO", label: "El slogan no guarda relación con el sector aeroespacial ni la misión" },
+            { id: "PERMISOS_DRIVE_BLOQUEADOS", label: "El expediente Drive (DOC_11) no tiene permisos de lectura abiertos" },
+            { id: "PLANTILLA_INCORRECTA", label: "No se ha utilizado la plantilla oficial DOC_11 de Google Docs" },
+            { id: "CALIDAD_INSUFICIENTE", label: "La justificación de la propuesta es incompleta o requiere corrección léxica" },
+            { id: "LOGO_NO_CONFORME", label: "El logotipo adjunto no cumple las directrices técnicas del proyecto" }
+        ];
+        const optionsHtml = reasons.map(r => `<option value="${this.escapeHTML(r.label)}">${this.escapeHTML(r.label)}</option>`).join('');
+
+        const html = `
+            <div class="space-y-3 font-mono text-xs">
+                <p class="text-slate-300 leading-relaxed">Selecciona el motivo oficial para rechazar la propuesta de identidad corporativa. Cumple la directiva Zero-Text.</p>
+                <div>
+                    <label for="coord-deny-brand-reason" class="text-xs text-mars-yellow font-bold uppercase block mb-1">Motivo Tipificado de Rechazo</label>
+                    <select id="coord-deny-brand-reason" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white outline-none focus:border-white">
+                        ${optionsHtml}
+                    </select>
+                </div>
+            </div>
+        `;
+        const actions = `
+            <button type="button" onclick="ui.closeModal()" class="min-h-[44px] bg-slate-800 text-slate-200 px-4 py-2 text-xs font-bold uppercase hover:bg-slate-700 transition-all">Cancelar</button>
+            <button type="button" onclick="ui.confirmCoordDenyBrand('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-red-700 text-white font-black px-5 py-2.5 text-xs uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">Confirmar Rechazo</button>
+        `;
+        this.showModal("Rechazar Identidad Corporativa", html, actions);
+    },
+
+    confirmCoordDenyBrand(cid) {
+        if (!state.user || !state.user.admin) return;
+        const el = document.getElementById('coord-deny-brand-reason');
+        const reason = el ? el.value : "Incumplimiento de criterios oficiales.";
+        this.closeModal();
+        this.decideBrand(cid, false, reason);
+    },
+
+    async decideBrand(cid, approved, customReason = null) {
         if (!state.user || !state.user.admin) return;
         const co = state.data.companies?.[cid];
         if (!co) return;
 
         if (approved) {
             const inputEl = document.getElementById('coord-review-official-slogan-' + cid);
-            const officialSlogan = inputEl ? this.cleanInput(inputEl.value) : (co.brandApproval?.pendingSlogan || co.slogan || '');
+            const officialSlogan = (inputEl && inputEl.value.trim()) ? this.cleanInput(inputEl.value) : (co.brandApproval?.pendingSlogan || co.slogan || '');
             if (!officialSlogan && !co.brandApproval?.pendingLogo) {
                 return this.notify("Debes escribir o confirmar el slogan oficial aprobado.", "warning");
             }
@@ -255,7 +292,7 @@ Object.assign(ui, {
             ui.pushNotification(cid, 'MARKETING', `La Coordinación ha APROBADO el slogan oficial: "${co.slogan}".`, 'success');
             ui.pushNotification(cid, 'CEO', `Slogan oficial registrado en el expediente: "${co.slogan}".`, 'success');
         } else {
-            const reason = prompt("Indica el motivo del rechazo para que Marketing pueda corregirlo:") || "Incumplimiento de criterios oficiales.";
+            const reason = customReason || "Incumplimiento de criterios oficiales.";
             if (co.brandApproval) {
                 co.brandApproval.status = 'RECHAZADO';
                 co.brandApproval.feedback = reason;
@@ -720,7 +757,36 @@ Object.assign(ui, {
         }
     },
 
-    async globalTransactionalReset() {
+    modalConfirmSimulationReset() {
+        if (!state.user || !state.user.admin) return;
+        const html = `
+            <div class="space-y-3 font-mono text-xs">
+                <div class="bg-red-950/40 border border-red-500/60 p-3 text-red-200">
+                    <p class="font-bold uppercase text-red-400 mb-1">⚠️ PROTOCOLO DE RESET GLOBAL TRANSACCIONAL (v1.1.02)</p>
+                    <p>Esta acción ejecutará una transacción estricta D1 (órdenes, buzón, sugerencias, balances a 1000.00 €v y catálogo por defecto) y forzará la recarga en todos los clientes.</p>
+                </div>
+                <div>
+                    <label for="reset-master-code-input" class="text-xs text-mars-yellow font-bold uppercase block mb-1">Introduce el Código Maestro de Coordinador:</label>
+                    <input type="password" id="reset-master-code-input" placeholder="Código de Coordinador..." class="w-full min-h-[44px] bg-slate-900 border border-red-500/60 p-2.5 text-base sm:text-xs text-white outline-none focus:border-red-400 font-mono">
+                </div>
+            </div>
+        `;
+        const actions = `
+            <button type="button" onclick="ui.closeModal()" class="min-h-[44px] bg-slate-800 text-slate-200 px-4 py-2 text-xs font-bold uppercase hover:bg-slate-700 transition-all">Cancelar</button>
+            <button type="button" onclick="ui.confirmSimulationReset()" class="min-h-[44px] bg-red-700 text-white font-black px-5 py-2.5 text-xs uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">[ ⚠️ EJECUTAR RESET TOTAL ]</button>
+        `;
+        this.showModal("Confirmación de Reset Global", html, actions);
+    },
+
+    async confirmSimulationReset() {
+        const el = document.getElementById('reset-master-code-input');
+        const code = el ? el.value.trim() : '';
+        if (!code) return this.notify("Debes introducir el código maestro para autorizar el reset.", "warning");
+        this.closeModal();
+        await this.globalTransactionalReset(code);
+    },
+
+    async globalTransactionalReset(authorizedCode = null) {
         if (!state.user || !state.user.admin) return;
         const cu = (typeof currentUser !== 'undefined' ? currentUser : null) || state.currentUser || state.user;
         const r = String(cu?.role || '').toLowerCase();
@@ -728,8 +794,11 @@ Object.assign(ui, {
             return this.notify("Operación reservada exclusivamente para el rol de Coordinador.", "error");
         }
 
-        const inputCode = prompt("PROTOCOLO DE RESET GLOBAL TRANSACCIONAL (v1.1.02)\n\nEsta acción ejecutará una transacción estricta D1 (órdenes, buzón, sugerencias, balances a 1000.00 €v y catálogo por defecto) y forzará la recarga en todos los clientes.\n\nIntroduce el CÓDIGO MAESTRO DE COORDINADOR para confirmar:");
-        if (!inputCode) return this.notify("Operación de reset cancelada.", "info");
+        if (!authorizedCode) {
+            return this.modalConfirmSimulationReset();
+        }
+
+        const inputCode = authorizedCode;
 
         this.notify("Ejecutando transacción D1 estricta de reset global...", "info");
 

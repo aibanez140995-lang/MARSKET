@@ -1,5 +1,5 @@
 // js/state.js
-// --- GESTIÓN DE ESTADO ZERO-TRUST, MIGRACIÓN Y PERSISTENCIA ATÓMICA (v1.1.36) ---
+// --- GESTIÓN DE ESTADO ZERO-TRUST, MIGRACIÓN Y PERSISTENCIA ATÓMICA (v1.1.37) ---
 
 const DEFAULT_STATE = {
     version: 1,
@@ -1528,6 +1528,17 @@ const state = {
             telemetry.log("ENTREGABLE", `Enlace Google Drive subido: ${docType} (Estado: ${targetStatus})`);
         }
 
+        if (!isCEO && typeof ui !== 'undefined' && typeof ui.pushNotification === 'function') {
+            const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+            const def = defs.find(d => d.key === docType);
+            const docName = def ? (def.shortName || def.name) : docType;
+            ui.pushNotification(coId, 'CEO', `${this.user.role} ha subido el entregable "${docName}". Requiere tu supervisión y visado.`, 'warning', {
+                view: 'dossier',
+                subTab: 'docs',
+                docKey: docType
+            });
+        }
+
         this.save();
         if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
             ui.render();
@@ -1566,7 +1577,9 @@ const state = {
         if (typeof telemetry !== 'undefined' && telemetry.log) {
             telemetry.log("TALLER_FYQ", "Hoja de Taller y BOM remitidos a Taller: " + driveUrl);
         }
-        ui.pushNotification(this.user.coId, 'OPERACIONES_IA', 'Técnico ha enviado la Hoja de Taller (BOM) a Taller para validación física.', 'info');
+        ui.pushNotification(this.user.coId, 'OPERACIONES_IA', 'Técnico ha enviado la Hoja de Taller (BOM) a Taller para validación física.', 'info', {
+            view: 'cart'
+        });
         this.save();
         if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
             ui.render();
@@ -1598,7 +1611,11 @@ const state = {
         if (typeof telemetry !== 'undefined' && telemetry.log) {
             telemetry.log("TALLER_VALIDADO", "Operario validó ensamble físico de Hoja de Taller.");
         }
-        ui.pushNotification(this.user.coId, 'CEO', 'El Operario ha validado el ensamble físico de la Hoja de Taller. Pendiente de tu visado final.', 'warning');
+        ui.pushNotification(this.user.coId, 'CEO', 'El Operario ha validado el ensamble físico de la Hoja de Taller. Pendiente de tu visado final.', 'warning', {
+            view: 'dossier',
+            subTab: 'docs',
+            docKey: 'hoja_taller_fyq'
+        });
         this.save();
 
         try {
@@ -1626,7 +1643,9 @@ const state = {
         if (typeof telemetry !== 'undefined' && telemetry.log) {
             telemetry.log("TALLER_DEVUELTO", "Operario devolvió Hoja de Taller por: " + reasonId);
         }
-        ui.pushNotification(this.user.coId, 'TECNICO', 'Operaciones ha DEVUELTO la Hoja de Taller por incidencia: "' + reasonLabel + '". Revisa el BOM y actualiza el Google Doc.', 'error');
+        ui.pushNotification(this.user.coId, 'TECNICO', 'Operaciones ha DEVUELTO la Hoja de Taller por incidencia: "' + reasonLabel + '". Revisa el BOM y actualiza el Google Doc.', 'error', {
+            view: 'tech'
+        });
         this.save();
 
         try {
@@ -1655,6 +1674,18 @@ const state = {
 
         if (typeof telemetry !== 'undefined' && telemetry.log) {
             telemetry.log("CEO_APROBACION", `Entregable aprobado y elevado a docente: ${docType}`);
+        }
+
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const def = defs.find(d => d.key === docType);
+        const docName = def ? (def.shortName || def.name) : docType;
+        const targetRole = def ? def.role : null;
+        if (targetRole && typeof ui !== 'undefined' && typeof ui.pushNotification === 'function') {
+            ui.pushNotification(coId, targetRole, `El CEO ha VALIDADO vuestro entregable "${docName}". Elevado formalmente a evaluación docente.`, 'success', {
+                view: 'dossier',
+                subTab: 'docs',
+                docKey: docType
+            });
         }
 
         this.save();
@@ -1692,6 +1723,18 @@ const state = {
             telemetry.log("CEO_DEVOLUCION", `Entregable devuelto a departamento: ${docType} (${reasonId})`);
         }
 
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const def = defs.find(d => d.key === docType);
+        const docName = def ? (def.shortName || def.name) : docType;
+        const targetRole = def ? def.role : null;
+        if (targetRole && typeof ui !== 'undefined' && typeof ui.pushNotification === 'function') {
+            ui.pushNotification(coId, targetRole, `El CEO ha DEVUELTO vuestro entregable "${docName}" para subsanación. Motivo: ${reasonText}`, 'error', {
+                view: 'dossier',
+                subTab: 'docs',
+                docKey: docType
+            });
+        }
+
         this.save();
         if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
             ui.render();
@@ -1707,6 +1750,65 @@ const state = {
             });
         } catch(e) {
             console.warn("[ACTION] Error sincronizando devolución del CEO:", e);
+        }
+    },
+
+    async returnDeliverableByTeacher(coId, docType, reasonId) {
+        if (!this.user || !this.user.admin) return;
+        const co = this.data.companies?.[coId];
+        if (!co || !co.deliverables || !co.deliverables[docType]) return;
+
+        const reasonList = typeof CEO_RETURN_REASONS !== 'undefined' ? CEO_RETURN_REASONS : [];
+        const reasonObj = reasonList.find(r => r.id === reasonId);
+        const reasonText = reasonObj ? reasonObj.label : (reasonId || 'Revisión y subsanación requerida por el profesorado');
+
+        co.deliverables[docType].status = 'CEO_REVISION';
+        co.deliverables[docType].returnReasonId = reasonId;
+        co.deliverables[docType].returnReason = reasonText;
+        co.deliverables[docType].returnByTeacher = true;
+        co.deliverables[docType].updatedAt = new Date().toISOString();
+
+        if (typeof telemetry !== 'undefined' && telemetry.log) {
+            telemetry.log("DOCENTE_DEVOLUCION", `Entregable devuelto a startup por docente: ${coId} / ${docType} (${reasonId})`);
+        }
+
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const def = defs.find(d => d.key === docType);
+        const docName = def ? (def.shortName || def.name) : docType;
+        const targetRole = def ? def.role : null;
+        const teacherName = this.user.role || 'Docente';
+
+        if (typeof ui !== 'undefined' && typeof ui.pushNotification === 'function') {
+            if (targetRole) {
+                ui.pushNotification(coId, targetRole, `El Profesorado (${teacherName}) ha DEVUELTO vuestro entregable "${docName}" para subsanación urgente. Motivo: ${reasonText}`, 'error', {
+                    view: 'dossier',
+                    subTab: 'docs',
+                    docKey: docType
+                });
+            }
+            ui.pushNotification(coId, 'CEO', `El Profesorado (${teacherName}) ha devuelto el entregable "${docName}" para subsanación. Motivo: ${reasonText}`, 'error', {
+                view: 'dossier',
+                subTab: 'docs',
+                docKey: docType
+            });
+        }
+
+        this.save(coId);
+        if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
+            ui.render();
+            ui.notify("↩️ Entregable devuelto a la startup para subsanación.", "warning");
+        }
+
+        try {
+            await this.executeAction('DOCENTE_REVIEW_DELIVERABLE', {
+                coId: coId,
+                key: docType,
+                action: 'RETURN',
+                reasonId: reasonId,
+                reasonText: reasonText
+            });
+        } catch(e) {
+            console.warn("[ACTION] Error sincronizando devolución docente:", e);
         }
     },
 
@@ -1732,9 +1834,17 @@ const state = {
 
         if (typeof ui !== 'undefined' && typeof ui.pushNotification === 'function') {
             if (approved) {
-                ui.pushNotification(coId, 'MARKETING', `El CEO ha VALIDADO la acción publicitaria "${act.title}". Elevada al docente de Liderazgo y Coordinación.`, 'success');
+                ui.pushNotification(coId, 'MARKETING', `El CEO ha VALIDADO la acción publicitaria "${act.title}". Elevada al docente de Liderazgo y Coordinación.`, 'success', {
+                    view: 'orders',
+                    subTab: 'COMPLETADAS',
+                    deptFilter: 'MARKETING'
+                });
             } else {
-                ui.pushNotification(coId, 'MARKETING', `El CEO ha DEVUELTO la acción publicitaria "${act.title}". Motivo: ${act.feedback}`, 'error');
+                ui.pushNotification(coId, 'MARKETING', `El CEO ha DEVUELTO la acción publicitaria "${act.title}". Motivo: ${act.feedback}`, 'error', {
+                    view: 'orders',
+                    subTab: 'DENEGADAS',
+                    deptFilter: 'MARKETING'
+                });
             }
         }
 
@@ -1782,7 +1892,11 @@ const state = {
         }
 
         if (typeof ui !== 'undefined' && typeof ui.pushNotification === 'function') {
-            ui.pushNotification(coId, 'CEO', `Marketing ha subsanado y reenviado la acción "${act.title}" para tu revisión.`, 'info');
+            ui.pushNotification(coId, 'CEO', `Marketing ha subsanado y reenviado la acción "${act.title}" para tu revisión.`, 'info', {
+                view: 'orders',
+                subTab: 'EN_PROCESO',
+                deptFilter: 'MARKETING'
+            });
         }
 
         this.save();

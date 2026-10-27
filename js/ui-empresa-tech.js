@@ -303,6 +303,23 @@ Object.assign(ui, {
                                     <p class="text-xs text-slate-300">Operaciones ha validado el montaje físico. La Hoja de Taller está pendiente del visado final del CEO hacia el profesor de FyQ.</p>
                                     <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Ver Documento Drive ↗</span></a>
                                 </div>`;
+                            } else if (hojaStatus === 'CEO_REVISION') {
+                                return `
+                                <div class="bg-slate-900 border border-mars-magenta p-3 mt-4 space-y-2 rounded">
+                                    <div class="flex justify-between items-center flex-wrap gap-2">
+                                        <span class="text-xs font-bold uppercase text-mars-magenta">[REVISIÓN REQUERIDA POR CEO]</span>
+                                        <span class="text-xs font-mono font-bold text-mars-magenta bg-mars-magenta/20 border border-mars-magenta px-2 py-0.5 rounded">⚠️ DEVUELTO POR CEO</span>
+                                    </div>
+                                    <div class="bg-red-950/40 border border-red-500/50 p-2.5 my-1 text-xs text-red-300 font-mono">
+                                        <strong>Motivo de Devolución CEO:</strong> ${this.escapeHTML(hojaFyq.returnReason || hojaFyq.returnReasonId || 'Requiere subsanación técnica')}
+                                    </div>
+                                    <p class="text-xs text-slate-300">Corrige las observaciones en el documento de Drive y vuelve a enviar a Taller/CEO.</p>
+                                    <label for="tech-hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Actualizar Enlace Drive Hoja de Taller</label>
+                                    <input type="url" id="tech-hoja-taller-drive-url" value="${this.escapeAttr(hojaUrl)}" class="w-full bg-black border border-mars-magenta/60 p-2 text-xs text-white font-mono outline-none focus:border-mars-magenta min-h-[44px]">
+                                    <div class="flex justify-end pt-1">
+                                        <button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-mars-magenta text-white font-black uppercase text-xs px-4 py-2 hover:bg-white hover:text-mars-magenta transition-all">[ 🔄 REENVIAR A REVISIÓN ]</button>
+                                    </div>
+                                </div>`;
                             } else if (hojaStatus === 'DELIVERED_TO_TEACHER') {
                                 return `
                                 <div class="bg-slate-900 border border-mars-green/50 p-3 mt-4 space-y-2 rounded">

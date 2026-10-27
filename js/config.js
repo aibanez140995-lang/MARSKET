@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.36) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.38) ---
 
-const APP_VERSION = "1.1.36";
+const APP_VERSION = "1.1.38";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -527,6 +527,29 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.38",
+      date: new Date().toISOString().split('T')[0],
+      title: "Blindaje Zero-Text 100%, Subsanación Docente en Rúbricas y Andamiaje de Acciones de Marketing",
+      items: [
+        "Blindaje Zero-Text / RGPD Art. 13 Estricto: Erradicación total de funciones prompt() nativas del navegador en el rechazo de marcas y confirmación de reset global, sustituyéndolas por modales tipificados.",
+        "Flujo de Subsanación Docente en Evaluación Curricular: Nuevo botón interactivo '[ ↩ Subsanar ]' en cada evidencia de rúbrica para requerir subsanación inmediata con motivos cerrados y notificación dual (departamento + CEO).",
+        "Andamiaje Didáctico en Marketing (DOC_12): Incorporación de banner explicativo sobre el circuito de contratación de paquetes publicitario y auditoría presupuestaria previa a la ejecución de acciones.",
+        "Robustez en Aprobación de Slogan en Registro Mercantil: Mejora de la precedencia y fallback automático ante campos de texto de lema corporativo."
+      ]
+    },
+    {
+      version: "1.1.37",
+      date: new Date().toISOString().split('T')[0],
+      title: "Optimización Integral de Bóveda de Órdenes, Visado de Campañas MKT, Notificaciones Interactivas y Desacoplo de Entregables ECO",
+      items: [
+        "Bóveda de Órdenes Integral: Visibilidad completa de paquetes de Marketing y acciones publicitarias individuales (DOC_12) con botones directos de aprobación o devolución para el CEO.",
+        "Pestañas de Estado Optimizadas: Reemplazo de Historial por 'Denegadas' y nuevo filtro por departamento (I+D, Marketing, Taller).",
+        "Notificaciones Interactivas con Botón 'Ver Notificación': Enrutamiento contextual directo con un clic hacia el panel y pestaña correspondiente a cada aviso.",
+        "Desacoplo de Entregables de Economía para el CEO: Reorganización de 'Finanzas & ECO' mostrando el Registro Auditado de Tickets Físicos (€) y centralizando el visado de entregables en el Dossier.",
+        "Semáforo Fidedigno en Dossier y Cronograma: Diferenciación de 4 estados reales (Pendiente, En Taller, En Revisión CEO, Devuelto por Subsanación, Entregado a Docente) y gestión reactiva ante devoluciones del CEO."
+      ]
+    },
     {
       version: "1.1.36",
       date: new Date().toISOString().split('T')[0],
