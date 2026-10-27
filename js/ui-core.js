@@ -1,5 +1,5 @@
 // js/ui-core.js
-// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.40) ---
+// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.41) ---
 
 // Constante global GOOGLE_DRIVE_REGEX centralizada en js/config.js
 
@@ -891,28 +891,72 @@ const ui = {
 
         const msg = String(notif.message || '').toLowerCase();
         const role = String(notif.role || (state.user ? state.user.role : '')).toUpperCase();
+        const coId = state.user?.coId;
+        const co = coId ? state.data.companies?.[coId] : null;
 
-        if (msg.includes('hoja de taller') || msg.includes('taller ensamble') || msg.includes('ensamblado')) {
+        // Bitácora IA
+        if (/\b(ia|ai|inteligencia artificial)\b|prompt|bitácora/i.test(msg)) {
+            return { view: 'ailog', anchorId: 'ailog-section' };
+        }
+
+        // Sanciones y Crisis
+        if (msg.includes('sanción') || msg.includes('disciplin') || msg.includes('crisis') || msg.includes('expediente')) {
+            const crisis = (co?.crisisAlerts || []).find(a => notif.crisisId && String(a.id) === String(notif.crisisId)) || (co?.crisisAlerts || []).find(a => !a.read || !a.notified);
+            const isPending = Boolean(crisis && !crisis.notified);
+            if (role === 'CEO' && isPending) {
+                return { view: 'orders', modal: 'crisis', crisisId: crisis ? crisis.id : notif.crisisId };
+            }
+            return { view: 'resolutions', anchorId: 'crisis-resolutions-panel' };
+        }
+
+        // Slogan e Identidad
+        if (msg.includes('slogan') || msg.includes('eslogan') || msg.includes('logotipo') || msg.includes('identidad corporativa')) {
+            if (role === 'MARKETING') return { view: 'brand', anchorId: 'brand-slogan-section' };
+            if (role === 'CEO') return { view: 'resolutions', anchorId: 'ceo-slogan-approval-panel' };
+            return { view: 'brand', anchorId: 'brand-slogan-section' };
+        }
+
+        // Marketing y Campañas
+        if (msg.includes('campaña') || msg.includes('publicit') || msg.includes('marketing') || msg.includes('acción') || msg.includes('paquete')) {
+            if (role === 'MARKETING') return { view: 'brand', anchorId: 'mkt-campaigns-section' };
+            if (role === 'CEO' || role === 'FINANZAS') return { view: 'orders', filter: 'EN_PROCESO', dept: 'MARKETING' };
+            return { view: 'brand', anchorId: 'mkt-campaigns-section' };
+        }
+
+        // B2B, Aduanas e I+D Especial
+        if (msg.includes('b2b') || msg.includes('aduana') || msg.includes('i+d especial')) {
+            if (role === 'FINANZAS') return { view: 'finance' };
+            if (role === 'TECNICO') return { view: 'market' };
+            return { view: 'market' };
+        }
+
+        // Patrocinios / Libro Mayor
+        if (msg.includes('patrocinio') || msg.includes('ledger') || msg.includes('libro mayor')) {
+            return { view: 'finance' };
+        }
+
+        // Órdenes de compra y Logística / Taller
+        if (msg.includes('orden') || msg.includes('pedido') || msg.includes('compra') || msg.includes('presupuesto') || msg.includes('ensamblaje') || msg.includes('taller') || msg.includes('hoja de taller')) {
             if (role === 'OPERACIONES_IA' || role === 'OPERACIONES') return { view: 'cart' };
-            if (role === 'TECNICO') return { view: 'tech' };
+            if (role === 'FINANZAS' || role === 'CEO') {
+                const filter = msg.includes('rechaz') || msg.includes('denegad') ? 'DENEGADAS' : (msg.includes('completad') || msg.includes('ejecutad') ? 'COMPLETADAS' : 'EN_PROCESO');
+                return { view: 'orders', filter: filter, dept: 'TECNICO' };
+            }
+            if (role === 'TECNICO') return { view: 'market' };
             return { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' };
         }
-        if (msg.includes('campaña') || msg.includes('publicit') || msg.includes('marketing') || msg.includes('acción comercial')) {
-            if (role === 'CEO' || role === 'FINANZAS') return { view: 'orders', filter: 'EN_PROCESO', dept: 'MARKETING' };
-            return { view: 'brand' };
-        }
-        if (msg.includes('sanción') || msg.includes('disciplin') || msg.includes('crisis')) {
-            return { view: 'orders' };
-        }
-        if (msg.includes('slogan') || msg.includes('moción') || msg.includes('gobernanza') || msg.includes('voto')) {
+
+        // Gobernanza, Denominación, Rol Auxiliar, Inactividad HR, Mociones
+        if (msg.includes('denominación') || msg.includes('mercantil') || msg.includes('auxiliar') || msg.includes('inactividad') || msg.includes('moción') || msg.includes('voto')) {
             return { view: 'resolutions' };
         }
-        if (msg.includes('pedido') || msg.includes('compra') || msg.includes('presupuesto')) {
-            return { view: 'orders', filter: 'EN_PROCESO' };
-        }
+
+        // Calificaciones y notas
         if (msg.includes('calific') || msg.includes('nota') || msg.includes('acta') || msg.includes('rúbrica')) {
             return { view: 'dossier', subTab: 'eval' };
         }
+
+        // Entregables y visado
         if (msg.includes('entregable') || msg.includes('dossier') || msg.includes('visado') || msg.includes('subsan') || msg.includes('doc_')) {
             return { view: 'dossier', subTab: 'docs' };
         }
@@ -940,8 +984,8 @@ const ui = {
         this.closeModal();
 
         const target = this.resolveNotificationTarget(notif);
-        if (target.dept) this.ordersDeptFilter = target.dept;
-        if (target.filter) this.ordersFilterTab = target.filter;
+        if (target.dept || target.deptFilter) this.ordersDeptFilter = target.dept || target.deptFilter;
+        if (target.filter || target.subTab) this.ordersFilterTab = target.filter || target.subTab;
 
         if (target.view) {
             this.navigate(target.view);
@@ -955,11 +999,32 @@ const ui = {
             }
         }
 
+        if (target.modal === 'crisis') {
+            setTimeout(() => {
+                if (typeof this.modalCrisisAction === 'function') {
+                    this.modalCrisisAction(target.crisisId);
+                }
+            }, 150);
+        }
+
         if (target.docKey && typeof this.inspectDeliverableDrawer === 'function') {
             setTimeout(() => {
                 this.inspectDeliverableDrawer(coId, target.docKey);
             }, 300);
         }
+
+        setTimeout(() => {
+            if (target.anchorId) {
+                const el = document.getElementById(target.anchorId);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.classList.add('ring-mars-cyan');
+                    setTimeout(() => el.classList.remove('ring-mars-cyan'), 2500);
+                    return;
+                }
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
     },
 
     renderWorkflowTracker(steps, currentIndex) {
@@ -999,68 +1064,53 @@ const ui = {
         if (isDocente) {
             const isCoord = Boolean(state.user && state.user.role && state.user.role.startsWith('COORD_'));
             return `
-            <div class="space-y-3 font-mono text-xs leading-relaxed text-slate-200">
-                <!-- Tarjeta de Misión del Rol -->
-                <div class="bg-mars-cyan/10 border-l-4 border-mars-cyan p-3 bg-slate-950">
-                    <div class="flex items-center justify-between gap-2 flex-wrap mb-1">
+            <div class="space-y-4 font-mono text-xs leading-relaxed text-slate-200">
+                <!-- 1. Tarjeta de Responsabilidad y Tareas Operativas -->
+                <div class="bg-mars-cyan/10 border-l-4 border-mars-cyan p-3.5 bg-slate-950">
+                    <div class="flex items-center justify-between gap-2 flex-wrap mb-1.5">
                         <span class="text-xs font-black uppercase text-mars-cyan tracking-wider">🎓 PUESTO: CLAUSTRO DOCENTE / EVALUADOR</span>
-                        <span class="text-[10px] bg-black text-mars-green border border-mars-green/40 px-2 py-0.5 font-bold uppercase">MANDO EDUCATIVO</span>
+                        <span class="text-[10px] bg-black text-mars-green border border-mars-green/40 px-2 py-0.5 font-bold uppercase">FICHA OPERATIVA</span>
                     </div>
-                    <p class="text-white text-xs font-semibold leading-relaxed">
-                        Supervisar el aprendizaje competencial de las 6 materias LOMLOE, calificar evidencias en Google Drive con rúbricas, supervisar acciones publicitarias y regular aduanas y gobernanza.
+                    <p class="text-white text-xs font-semibold leading-relaxed mb-3">
+                        Supervisar el aprendizaje competencial de las 6 materias LOMLOE, calificar evidencias en Google Drive con rúbricas oficiales, auditar aduanas y velar por la gobernanza de las startups.
                     </p>
-                </div>
-
-                <!-- 1. Acceso -->
-                <div class="bg-slate-900 border border-slate-800 p-3">
-                    <p class="text-mars-yellow font-bold uppercase text-xs mb-1">🔑 Paso 1: Acceso a la Consola</p>
-                    <p class="text-slate-300">Haz <strong>doble clic en el escudo central</strong> de la pantalla de inicio, introduce la clave de misión, selecciona tu materia y marca tu <strong>PIN de 4 dígitos</strong>.</p>
-                </div>
-
-                <!-- 2. Qué veo en pantalla -->
-                <div class="bg-slate-900 border border-slate-800 p-3">
-                    <p class="text-mars-cyan font-bold uppercase text-xs mb-1">🖥️ Paso 2: Elementos Clave en Pantalla</p>
-                    <p class="text-slate-300">Acceso al <strong>[🎖️ Centro de Mando]</strong> con pestañas de <strong>Startups</strong>, <strong>Aduana/Mercantil</strong>, <strong>Evaluación Curricular</strong> y <strong>Ajustes</strong> (Coordinación).</p>
-                </div>
-
-                <!-- 3. Mi primera acción -->
-                <div class="bg-slate-900 border border-slate-800 p-3 space-y-2">
-                    <p class="text-mars-green font-bold uppercase text-xs mb-1">⚡ Paso 3: Mi Primera Acción en Clase (Checklist)</p>
-                    <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                        <li>[ ] <strong>Llavero y PINs:</strong> Entra en <strong>Startups</strong> para consultar o imprimir las credenciales de los equipos.</li>
-                        <li>[ ] <strong>Aduana y B2B:</strong> Revisa y aprueba contratos entre startups o solicitudes de I+D tras abrir su enlace de Google Drive.</li>
-                        <li>[ ] <strong>Acciones Publicitarias [LYE & Coord]:</strong> Supervisa en el panel de recepción docente las acciones publicitarias validadas por el CEO con su enlace a Drive.</li>
-                        <li>[ ] <strong>Evaluación Curricular:</strong> Abre el documento del alumno y califica con la rúbrica oficial (FYQ, LYE, ECO, MAT, LEN).</li>
-                    </ul>
-                    <div class="pt-2 flex flex-wrap gap-2">
-                        <button type="button" onclick="ui.adminTab='startups'; ui.navigate('admin'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Startups y PINs</button>
-                        <button type="button" onclick="ui.adminTab='customs'; ui.navigate('admin'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Aduana & Solicitudes</button>
-                        <button type="button" onclick="ui.adminTab='eval'; ui.navigate('admin'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Evaluación</button>
+                    <div class="border-t border-slate-800 pt-2.5 space-y-1.5 text-xs text-slate-300">
+                        <p class="text-mars-green font-bold uppercase text-[11px] mb-1">Tareas Operativas Clave:</p>
+                        <ul class="space-y-1.5 pl-1">
+                            <li>[ ] <strong>Llavero y PINs:</strong> Entra en <strong>Startups</strong> para consultar o imprimir las credenciales de acceso de los equipos.</li>
+                            <li>[ ] <strong>Aduana y B2B:</strong> Revisa y aprueba contratos entre startups o solicitudes de I+D tras verificar su enlace en Google Drive.</li>
+                            <li>[ ] <strong>Acciones Publicitarias [LYE & Coord]:</strong> Supervisa en recepción docente las acciones publicitarias validadas por el CEO con su enlace a Drive.</li>
+                            <li>[ ] <strong>Evaluación Curricular:</strong> Abre el documento del alumno en Drive y califica con la rúbrica oficial (FYQ, LYE, ECO, MAT, LEN).</li>
+                            ${isCoord ? `<li>[ ] <strong>Coordinación de Misión:</strong> Ajusta cronograma, candados de apertura de entregables y copias de seguridad de la base de datos.</li>` : ''}
+                        </ul>
+                    </div>
+                    <div class="pt-3 flex flex-wrap gap-2">
+                        <button type="button" onclick="ui.adminTab='startups'; ui.navigate('admin'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Startups y PINs</button>
+                        <button type="button" onclick="ui.adminTab='customs'; ui.navigate('admin'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Aduana & Solicitudes</button>
+                        <button type="button" onclick="ui.adminTab='eval'; ui.navigate('admin'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Evaluación</button>
                     </div>
                 </div>
 
-                <!-- 4. Cómo sé si lo he hecho bien -->
-                <div class="bg-slate-900 border border-slate-800 p-3">
-                    <p class="text-amber-400 font-bold uppercase text-xs mb-1">✓ Paso 4: Cómo Sé Si Lo He Hecho Bien</p>
-                    <p class="text-slate-300">Las calificaciones se reflejan al instante en el acta oficial ponderada y los trámites aprobados desaparecen de la bandeja de pendientes.</p>
+                <!-- 2. Entregables Asignados a tu Puesto -->
+                <div class="bg-slate-950 border border-slate-800 p-3.5">
+                    <p class="text-mars-cyan font-bold uppercase text-xs mb-2 flex items-center gap-1.5">
+                        <span>📁 Entregables Asignados a tu Puesto:</span>
+                    </p>
+                    <div class="bg-black/60 border border-slate-800 p-3 text-xs text-slate-300 space-y-1.5">
+                        <p><strong>Supervisión Global del Consorcio:</strong> Evaluación y calificación de los <strong>19 entregables curriculares</strong> del proyecto en Google Drive con rúbrica oficial LOMLOE.</p>
+                        <p class="text-[11px] text-slate-400">Las calificaciones se vuelcan en tiempo real al Acta General Ponderada (100%) y los trámites visados desaparecen de la bandeja de pendientes.</p>
+                    </div>
                 </div>
 
-                ${isCoord ? `
-                <!-- Herramientas de Coordinación -->
-                <div class="bg-slate-900/90 border border-mars-cyan/40 p-3">
-                    <p class="text-mars-cyan font-bold uppercase text-xs mb-1">🔐 Coordinación de Misión</p>
-                    <p class="text-slate-300">Gestión de plazos y candados de apertura en <strong>Cronograma</strong>, reseteo seguro de <strong>PINs</strong> y copias de seguridad de la base de datos.</p>
-                </div>` : ''}
-
-                <!-- Avisos de Calidad Docente -->
-                <div class="bg-slate-950 border border-slate-800 p-3 text-xs text-slate-400 space-y-1">
-                    <p>⚠️ <strong>Permisos Drive:</strong> Si un enlace no abre, indica al equipo que active <em>"Cualquiera con el enlace puede ver"</em>.</p>
-                    <p>🛡️ <strong>Zero-PII:</strong> Los alumnos deben usar siempre sus alias y roles de empresa, sin nombres personales.</p>
+                <!-- 3. Aviso Clave -->
+                <div class="bg-slate-900/80 border border-amber-400/40 p-3.5 text-xs text-slate-300 space-y-1">
+                    <p class="text-amber-400 font-bold uppercase text-xs mb-1">⚠️ Aviso Clave:</p>
+                    <p>Los enlaces de Drive deben estar en modo <em>"Cualquiera con el enlace puede ver"</em>. Exige el cumplimiento estricto de la política Zero-PII (sin nombres ni datos personales de alumnos).</p>
                 </div>
             </div>`;
         }
 
-        // Estructura para Alumnos segmentada en Checklist de Primeros Pasos
+        // Estructura limpia de 3 bloques para los 6 roles de alumno
         const roleDeliverables = defs.filter(d => d.role === role);
         const roleDeliverablesHtml = roleDeliverables.length > 0 ? roleDeliverables.map(d => {
             const docObj = docs[d.key];
@@ -1072,164 +1122,143 @@ const ui = {
             return `<li class="border-b border-slate-800/80 pb-1.5 flex justify-between items-center gap-2 flex-wrap"><span><strong class="text-white">${this.escapeHTML(d.shortName || d.name)}</strong> (${this.escapeHTML(d.subject)}): ${statusLabel}</span>${lockLabel}</li>`;
         }).join('') : '<li class="text-slate-400 italic">No tienes entregables curriculares asignados directamente a tu rol. Supervisa o asiste al equipo en el Dossier.</li>';
 
-        let p1Acceso = '';
-        let p2Pantalla = '';
-        let p3Accion = '';
-        let p3Botones = '';
-        let p4Exito = '';
-        let pAvisos = '';
+        let roleTitle = '';
+        let roleDesc = '';
+        let tasksList = '';
+        let roleButtons = '';
+        let roleWarning = '';
 
         switch(role) {
             case 'CEO':
-                p1Acceso = 'Introduce el <strong>Código de Empresa</strong>, elige <strong>Dirección General (CEO)</strong> y marca tu <strong>PIN</strong>.';
-                p2Pantalla = 'Tu saldo en euros virtuales (<strong>€v</strong>) en la barra superior, <strong>[🔐 Bóveda Órdenes]</strong>, <strong>[📋 Dossier (19)]</strong> y <strong>[🎨 Marca & MKT]</strong>.';
-                p3Accion = `
+                roleTitle = 'DIRECCIÓN GENERAL // CEO';
+                roleDesc = 'Liderar la estrategia global de la empresa, visar entregables en el Dossier, validar campañas de marketing, emitir comunicados de crisis y coordinar la gobernanza corporativa.';
+                tasksList = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] Entra en <strong>[📋 Dossier (19)]</strong>, abre los enlaces de tu equipo y pulsa <strong>[✓ APROBAR Y ELEVAR A DOCENTE]</strong> o <strong>[↩ DEVOLVER CON MOTIVO]</strong>.</li>
-                    <li>[ ] Entra en <strong>[🎨 Marca & MKT]</strong> para revisar las acciones publicitarias presentadas por Marketing: pulsa <strong>[✓ APROBAR ACCIÓN]</strong> para elevarlas a Liderazgo y Coordinación, o <strong>[↩ DEVOLVER]</strong> indicando motivo tipificado y enlace obligatorio a Google Drive con observaciones (Zero-Text).</li>
-                    <li>[ ] Entra en <strong>[⚖️ Gobernanza]</strong> para convocar votaciones de equipo o avalar el eslogan hacia el profesorado.</li>
-                    <li>[ ] Revisa el saldo corporativo en el HUD antes de validar gastos grandes.</li>
+                    <li>[ ] Entra en <strong>[📋 Dossier (19)]</strong>, abre los enlaces de tu equipo en Google Drive y pulsa <strong>[✓ APROBAR Y ELEVAR A DOCENTE]</strong> o <strong>[↩ DEVOLVER CON MOTIVO]</strong>.</li>
+                    <li>[ ] Entra en <strong>[🎨 Marca & MKT]</strong> para revisar las acciones publicitarias presentadas por Marketing: pulsa <strong>[✓ APROBAR ACCIÓN]</strong> para elevarlas a Liderazgo, o <strong>[↩ DEVOLVER]</strong> indicando motivo tipificado y enlace en Drive.</li>
+                    <li>[ ] Si la AEE incoa una sanción regulatoria, pulsa <strong>[📢 Redactar Comunicado de Crisis]</strong>, redacta el comunicado oficial en el modelo Google Docs (DOC_3) y difúndelo a todos los departamentos con su enlace obligatorio.</li>
+                    <li>[ ] Entra en <strong>[⚖️ Gobernanza]</strong> para convocar votaciones asamblearias y avalar la propuesta oficial de eslogan ante Coordinación Docente.</li>
+                    <li>[ ] Revisa el saldo corporativo en el HUD antes de autorizar órdenes de gasto de gran envergadura.</li>
                 </ul>`;
-                p3Botones = `
-                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
-                    <button type="button" onclick="ui.navigate('orders'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bóveda de Órdenes</button>
-                    <button type="button" onclick="ui.navigate('resolutions'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Gobernanza</button>
+                roleButtons = `
+                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
+                    <button type="button" onclick="ui.navigate('orders'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bóveda de Órdenes</button>
+                    <button type="button" onclick="ui.navigate('resolutions'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Gobernanza</button>
+                    <button type="button" onclick="ui.navigate('brand'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Marca & MKT</button>
                 `;
-                p4Exito = 'Los entregables aprobados cambian a <strong>[✓ ENTREGADO A DOCENTE]</strong> en color verde y quedan listos para calificación.';
-                pAvisos = 'Nunca apruebes un documento sin abrir su enlace de Google Drive para comprobar que la plantilla está completa y visible.';
+                roleWarning = 'Nunca apruebes un documento o acción sin abrir su enlace de Google Drive para comprobar que la plantilla oficial está completa y con permisos de lectura abiertos.';
                 break;
 
             case 'TECNICO':
-                p1Acceso = 'Introduce el <strong>Código de Empresa</strong>, elige <strong>Dpto. Técnico (I+D)</strong> y marca tu <strong>PIN</strong>.';
-                p2Pantalla = 'El catálogo de componentes en <strong>[🛒 SUPERMARS-KET]</strong> y el banco de pruebas en <strong>[🧪 Banco I+D]</strong>.';
-                p3Accion = `
+                roleTitle = 'DPTO. TÉCNICO // I+D';
+                roleDesc = 'Diseñar el prototipo aeroespacial, adquirir componentes en SUPERMARS-KET, registrar lanzamientos en el Banco de Pruebas y tramitar contratos de aduana B2B.';
+                tasksList = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] En <strong>[🛒 SUPERMARS-KET]</strong>, añade piezas al carrito, adjunta el enlace a tu orden en Google Drive y remítela a Finanzas.</li>
-                    <li>[ ] En <strong>[🧪 Banco I+D]</strong>, registra las pruebas introduciendo vinagre (ml), bicarbonato (g) y la altura en <strong>milímetros (mm)</strong>.</li>
-                    <li>[ ] Si vendes piezas sobrantes en B2B, genera el modelo oficial en Google Docs y envíalo a Aduana.</li>
+                    <li>[ ] En <strong>[🛒 SUPERMARS-KET]</strong>, añade componentes al carrito, adjunta el enlace a tu orden en Google Drive y remítela a Finanzas.</li>
+                    <li>[ ] En <strong>[🧪 Banco I+D]</strong>, registra las pruebas introduciendo vinagre (ml), bicarbonato (g) y la altura alcanzada en <strong>milímetros (mm)</strong>.</li>
+                    <li>[ ] Si vendes componentes sobrantes en B2B, genera el modelo oficial en Google Docs y tramítalo ante la Aduana Docente.</li>
+                    <li>[ ] Mantén sincronizada la lista de piezas con Operaciones e IA para asegurar el ensamblaje en taller.</li>
                 </ul>`;
-                p3Botones = `
-                    <button type="button" onclick="ui.navigate('market'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a SUPERMARS-KET</button>
-                    <button type="button" onclick="ui.navigate('tech'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Banco I+D</button>
-                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
+                roleButtons = `
+                    <button type="button" onclick="ui.navigate('market'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a SUPERMARS-KET</button>
+                    <button type="button" onclick="ui.navigate('tech'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Banco I+D</button>
+                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
                 `;
-                p4Exito = 'Tus pedidos quedan en estado <strong>[PENDIENTE FINANZAS]</strong> y tus lanzamientos guardados en el historial de pruebas.';
-                pAvisos = 'La altura del lanzamiento se anota siempre en <strong>milímetros (mm)</strong> y toda especificación técnica va en Google Drive.';
+                roleWarning = 'La altura del lanzamiento se registra siempre en milímetros (mm) y toda justificación técnica o de aduana requiere enlace oficial de Google Drive.';
                 break;
 
             case 'FINANZAS':
-                p1Acceso = 'Introduce el <strong>Código de Empresa</strong>, elige <strong>Dpto. Financiero</strong> e introduce tu <strong>PIN</strong>.';
-                p2Pantalla = 'Las solicitudes de gasto en <strong>[🔐 Bóveda Órdenes]</strong> y los balances económicos en <strong>[💰 Finanzas & ECO]</strong>.';
-                p3Accion = `
+                roleTitle = 'DPTO. FINANCIERO // TESORERÍA';
+                roleDesc = 'Administrar el capital en euros virtuales (€v), auditar y autorizar órdenes de compra en la Bóveda, gestionar el Libro Mayor y controlar el balance presupuestario.';
+                tasksList = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] En <strong>[🔐 Bóveda Órdenes]</strong>, revisa los pedidos de I+D y Marketing y pulsa <strong>[APROBAR]</strong> si hay fondos.</li>
-                    <li>[ ] En <strong>[💰 Finanzas & ECO]</strong>, audita el Libro Mayor con ingresos de patrocinio y retenciones de aduana.</li>
-                    <li>[ ] En <strong>[📋 Dossier (19)]</strong>, entrega los enlaces a tus balances de Economía en Google Sheets.</li>
+                    <li>[ ] En <strong>[🔐 Bóveda Órdenes]</strong>, revisa los pedidos de I+D y solicitudes de Marketing, aprobando si hay fondos suficientes.</li>
+                    <li>[ ] En <strong>[💰 Finanzas & ECO]</strong>, audita el Libro Mayor con ingresos de patrocinio, retenciones de aduana y costes operativos.</li>
+                    <li>[ ] En <strong>[📋 Dossier (19)]</strong>, entrega los balances de Economía y modelos presupuestarios en Google Sheets.</li>
+                    <li>[ ] Supervisa la tesorería corporativa tras la aplicación de cualquier sanción regulatoria o deducción de costes fijos.</li>
                 </ul>`;
-                p3Botones = `
-                    <button type="button" onclick="ui.navigate('orders'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bóveda de Órdenes</button>
-                    <button type="button" onclick="ui.navigate('finance'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Finanzas & ECO</button>
-                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
+                roleButtons = `
+                    <button type="button" onclick="ui.navigate('orders'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bóveda de Órdenes</button>
+                    <button type="button" onclick="ui.navigate('finance'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Finanzas & ECO</button>
+                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
                 `;
-                p4Exito = 'El saldo superior se descuenta automáticamente tras cada aprobación y la partida queda registrada en el Libro Mayor.';
-                pAvisos = 'No apruebes pedidos que dejen la cuenta en negativo; la terminal bloqueará operaciones por insolvencia.';
+                roleWarning = 'No apruebes pedidos que dejen la cuenta en saldo negativo; la terminal bloqueará operaciones corporativas por insolvencia.';
                 break;
 
             case 'MARKETING':
-                p1Acceso = 'Introduce el <strong>Código de Empresa</strong>, elige <strong>Dpto. Marketing</strong> e introduce tu <strong>PIN</strong>.';
-                p2Pantalla = 'El panel de identidad corporativa en <strong>[🎨 Marca & MKT]</strong>, el catálogo de campañas y las acciones publicitarias activas.';
-                p3Accion = `
+                roleTitle = 'DPTO. MARKETING // COMUNICACIÓN';
+                roleDesc = 'Construir la identidad corporativa, redactar la propuesta de slogan oficial (DOC_11), contratar paquetes de campaña y publicar acciones promocionales (DOC_12).';
+                tasksList = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] En <strong>[🎨 Marca & MKT]</strong>, pulsa <strong>[📄 Modelo de documento (Hacer copia)]</strong>, redacta el eslogan en Google Docs y elévalo al CEO.</li>
-                    <li>[ ] Contrata un paquete de campaña publicitaria con el dossier ROI (DOC_5) para visto bueno de Finanzas.</li>
-                    <li>[ ] Tras aprobar Finanzas, pulsa <strong>[+ Publicar Acción]</strong>, utiliza el modelo oficial <strong>DOC_12</strong> en Google Docs y entrégalo al <strong>CEO</strong> para su validación previa (se elevará a Liderazgo y Coordinación).</li>
-                    <li>[ ] En <strong>[📋 Dossier (19)]</strong>, sube las evidencias de Lengua y de Iniciación a la Actividad Emprendedora.</li>
+                    <li>[ ] En <strong>[🎨 Marca & MKT]</strong>, pulsa <strong>[📄 Modelo DOC_11]</strong>, formula el eslogan en Google Docs y elévalo al CEO.</li>
+                    <li>[ ] Contrata un paquete publicitario adjuntando el dossier ROI (DOC_5) para la aprobación presupuestaria de Finanzas.</li>
+                    <li>[ ] Tras aprobar Finanzas, pulsa <strong>[+ Publicar Acción]</strong>, cumplimenta el modelo oficial <strong>DOC_12</strong> en Google Docs y entrégalo al <strong>CEO</strong>.</li>
+                    <li>[ ] En caso de devolución del CEO, revisa las observaciones en Drive y pulsa <strong>[✏️ Subsanar Enlace y Reenviar al CEO]</strong>.</li>
+                    <li>[ ] En <strong>[📋 Dossier (19)]</strong>, sube las evidencias de Lengua, LyE e Iniciación a la Actividad Emprendedora.</li>
                 </ul>`;
-                p3Botones = `
-                    <button type="button" onclick="ui.navigate('brand'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Marca & MKT</button>
-                    <button type="button" onclick="ui.navigate('market'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Catálogo</button>
-                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
+                roleButtons = `
+                    <button type="button" onclick="ui.navigate('brand'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Marca & MKT</button>
+                    <button type="button" onclick="ui.navigate('market'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Catálogo</button>
+                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
                 `;
-                p4Exito = 'Tus acciones publicitarias pasan a estado <strong>[⏳ PENDIENTE DE APROBACIÓN CEO]</strong> y, tras ser validadas por Dirección, cambian a <strong>[✓ VALIDADA Y ELEVADA A LIDERAZGO Y COORDINACIÓN]</strong>. Si el CEO devuelve una acción, abre el enlace de correcciones en Drive y pulsa <strong>[✏️ Subsanar Enlace y Reenviar al CEO]</strong>.';
-                pAvisos = 'Cada acción publicitaria requiere adjuntar la Ficha Técnica oficial (DOC_12) en Google Drive con permisos de lectura antes de entregarla al CEO.';
+                roleWarning = 'Cada acción publicitaria requiere adjuntar la Ficha Técnica oficial (DOC_12) en Google Drive con permisos de lectura antes de entregarla al CEO.';
                 break;
 
             case 'OPERACIONES_IA':
-                p1Acceso = 'Introduce el <strong>Código de Empresa</strong>, elige <strong>Dpto. Operaciones e IA</strong> y marca tu <strong>PIN</strong>.';
-                p2Pantalla = 'La recepción física de piezas en <strong>[📦 Taller Ensamble]</strong> y el registro de prompts en <strong>[🤖 Bitácora IA]</strong>.';
-                p3Accion = `
+                roleTitle = 'DPTO. OPERACIONES E IA // TALLER';
+                roleDesc = 'Gestionar la recepción física de piezas en Taller Ensamble, confeccionar la Hoja de Taller (BOM) y auditar éticamente todo uso de inteligencia artificial en la Bitácora.';
+                tasksList = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] En <strong>[📦 Taller Ensamble]</strong>, selecciona los pedidos aprobados por Finanzas, anota el comercio físico y su coste en euros (<strong>€</strong>).</li>
-                    <li>[ ] En <strong>[🤖 Bitácora IA]</strong>, registra cualquier prompt utilizado en el proyecto con su enlace de verificación humana.</li>
-                    <li>[ ] Configura la Hoja de Taller (BOM) con los materiales empleados en el prototipo físico.</li>
+                    <li>[ ] En <strong>[📦 Taller Ensamble]</strong>, recepciona los pedidos aprobados por Finanzas, anota el comercio físico y su coste en euros reales (€).</li>
+                    <li>[ ] Confecciona la Hoja de Taller (BOM) garantizando la trazabilidad de los materiales empleados en el cohete.</li>
+                    <li>[ ] En <strong>[🤖 Bitácora IA]</strong>, registra obligatoriamente cada prompt y herramienta de IA utilizada en el consorcio con validación humana.</li>
+                    <li>[ ] En <strong>[📋 Dossier (19)]</strong>, entrega la bitácora ética bimestral en Google Docs para supervisión docente.</li>
                 </ul>`;
-                p3Botones = `
-                    <button type="button" onclick="ui.navigate('cart'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Taller Ensamble</button>
-                    <button type="button" onclick="ui.navigate('ailog'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bitácora IA</button>
-                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
+                roleButtons = `
+                    <button type="button" onclick="ui.navigate('cart'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Taller Ensamble</button>
+                    <button type="button" onclick="ui.navigate('ailog'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bitácora IA</button>
+                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
                 `;
-                p4Exito = 'Las piezas pasan al inventario de taller y cada uso de IA queda archivado con su enlace de Google Drive sin penalizaciones.';
-                pAvisos = 'El uso de IA no declarado conlleva penalización docente; documenta siempre el prompt y la respuesta revisada.';
+                roleWarning = 'El uso de IA no declarado en Bitácora acarrea sanción disciplinaria docente; documenta siempre el prompt, la herramienta y la respuesta verificada.';
                 break;
 
             default: // AUXILIAR
-                p1Acceso = 'Introduce el <strong>Código de Empresa</strong>, elige <strong>Observador Auxiliar</strong> y marca tu <strong>PIN</strong>.';
-                p2Pantalla = 'Las pestañas del departamento al que das soporte, más <strong>[📋 Dossier (19)]</strong> y <strong>[⚖️ Gobernanza]</strong>.';
-                p3Accion = `
+                roleTitle = 'OBSERVADOR AUXILIAR // CALIDAD';
+                roleDesc = 'Apoyar operativamente a los departamentos de la empresa, auditar permisos de Google Drive y ejercer derecho a voto en las asambleas de socios.';
+                tasksList = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] En <strong>[📋 Dossier (19)]</strong>, abre todos los enlaces del equipo en modo incógnito para verificar que el docente podrá verlos.</li>
-                    <li>[ ] En <strong>[⚖️ Gobernanza]</strong>, participa con voz y voto en las mociones y resoluciones de la empresa.</li>
-                    <li>[ ] Da soporte operativo en las tareas del departamento al que estés asignado en esta sesión.</li>
+                    <li>[ ] En <strong>[📋 Dossier (19)]</strong>, abre todos los enlaces del equipo en ventana de incógnito para verificar que el docente tendrá acceso de lectura.</li>
+                    <li>[ ] En <strong>[⚖️ Gobernanza]</strong>, participa activamente con voz y voto en las mociones y resoluciones de la empresa.</li>
+                    <li>[ ] Da soporte operativo puntual al departamento asignado en la sesión (compras, banco de pruebas, creatividad o taller).</li>
                 </ul>`;
-                p3Botones = `
-                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
-                    <button type="button" onclick="ui.navigate('resolutions'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3 py-1 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Gobernanza</button>
+                roleButtons = `
+                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
+                    <button type="button" onclick="ui.navigate('resolutions'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Gobernanza</button>
                 `;
-                p4Exito = 'Tu voto queda computado en el acta de asamblea y los enlaces de tu equipo abren sin errores de permisos.';
-                pAvisos = 'Tu papel principal es el control de calidad de accesos en Google Drive y el desbloqueo de decisiones en asamblea.';
+                roleWarning = 'Tu misión esencial es el control de calidad de accesos en Google Drive y el desbloqueo de decisiones asamblearias.';
                 break;
         }
 
         return `
-        <div class="space-y-3 font-mono text-xs leading-relaxed text-slate-200">
-            <!-- Tarjeta de Misión del Rol -->
-            <div class="bg-mars-cyan/10 border-l-4 border-mars-cyan p-3 bg-slate-950">
-                <div class="flex items-center justify-between gap-2 flex-wrap mb-1">
-                    <span class="text-xs font-black uppercase text-mars-cyan tracking-wider">🎯 PUESTO: ${role.replace('_', ' ')}</span>
-                    <span class="text-[10px] bg-black text-mars-green border border-mars-green/40 px-2 py-0.5 font-bold uppercase">PRIMEROS PASOS</span>
+        <div class="space-y-4 font-mono text-xs leading-relaxed text-slate-200">
+            <!-- 1. Tarjeta de Responsabilidad y Tareas Operativas -->
+            <div class="bg-mars-cyan/10 border-l-4 border-mars-cyan p-3.5 bg-slate-950">
+                <div class="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+                    <span class="text-xs font-black uppercase text-mars-cyan tracking-wider">🎯 PUESTO: ${roleTitle}</span>
+                    <span class="text-[10px] bg-black text-mars-green border border-mars-green/40 px-2 py-0.5 font-bold uppercase">FICHA OPERATIVA</span>
                 </div>
-                <p class="text-white text-xs font-semibold leading-relaxed">Guía rápida de 4 pasos para comenzar tu trabajo operativo en la sesión.</p>
-            </div>
-
-            <!-- Paso 1: Acceso -->
-            <div class="bg-slate-900 border border-slate-800 p-3">
-                <p class="text-mars-yellow font-bold uppercase text-xs mb-1">🔑 Paso 1: Acceso</p>
-                <p class="text-slate-300">${p1Acceso}</p>
-            </div>
-
-            <!-- Paso 2: Qué veo en pantalla -->
-            <div class="bg-slate-900 border border-slate-800 p-3">
-                <p class="text-mars-cyan font-bold uppercase text-xs mb-1">🖥️ Paso 2: Qué Veo en Pantalla</p>
-                <p class="text-slate-300">${p2Pantalla}</p>
-            </div>
-
-            <!-- Paso 3: Mi primera acción -->
-            <div class="bg-slate-900 border border-slate-800 p-3 space-y-2">
-                <p class="text-mars-green font-bold uppercase text-xs mb-1">⚡ Paso 3: Mi Primera Acción (Checklist)</p>
-                ${p3Accion}
-                <div class="pt-2 flex flex-wrap gap-2">
-                    ${p3Botones}
+                <p class="text-white text-xs font-semibold leading-relaxed mb-3">${roleDesc}</p>
+                <div class="border-t border-slate-800 pt-2.5 space-y-1.5 text-xs text-slate-300">
+                    <p class="text-mars-green font-bold uppercase text-[11px] mb-1">Tareas Operativas Clave:</p>
+                    ${tasksList}
+                </div>
+                <div class="pt-3 flex flex-wrap gap-2">
+                    ${roleButtons}
                 </div>
             </div>
 
-            <!-- Paso 4: Cómo sé si lo he hecho bien -->
-            <div class="bg-slate-900 border border-slate-800 p-3">
-                <p class="text-amber-400 font-bold uppercase text-xs mb-1">✓ Paso 4: Cómo Sé Si Lo He Hecho Bien</p>
-                <p class="text-slate-300">${p4Exito}</p>
-            </div>
-
-            <!-- Entregables del Rol -->
-            <div class="bg-slate-950 border border-slate-800 p-3">
+            <!-- 2. Entregables Asignados a tu Puesto -->
+            <div class="bg-slate-950 border border-slate-800 p-3.5">
                 <p class="text-mars-cyan font-bold uppercase text-xs mb-2 flex items-center gap-1.5">
                     <span>📁 Entregables Asignados a tu Puesto:</span>
                 </p>
@@ -1238,10 +1267,10 @@ const ui = {
                 </ul>
             </div>
 
-            <!-- Avisos y Errores Frecuentes -->
-            <div class="bg-slate-900/80 border border-amber-400/40 p-3 text-xs text-slate-300 space-y-1">
+            <!-- 3. Aviso Clave -->
+            <div class="bg-slate-900/80 border border-amber-400/40 p-3.5 text-xs text-slate-300 space-y-1">
                 <p class="text-amber-400 font-bold uppercase text-xs mb-1">⚠️ Aviso Clave:</p>
-                <p>${pAvisos}</p>
+                <p>${roleWarning}</p>
                 <p class="text-[11px] text-slate-400 pt-1 border-t border-slate-800">Recuerda: Prohibido usar nombres reales (política Zero-PII). Todos los documentos deben ir en enlaces públicos de Google Drive.</p>
             </div>
         </div>`;
@@ -1350,7 +1379,7 @@ const ui = {
                 <!-- Botón de apertura de guía bajo demanda -->
                 <div class="pt-1">
                     <button type="button" onclick="ui.closeOnboarding(); ui.showGuide('${role}');" class="min-h-[44px] w-full bg-mars-cyan/20 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-black uppercase text-xs py-2 px-3 tracking-wider transition-all text-center">
-                        [ ❓ ABRIR GUÍA PASO A PASO DE MI PUESTO ]
+                        [ ❓ ABRIR GUÍA OPERATIVA DE MI PUESTO ]
                     </button>
                 </div>
             </div>`;
@@ -1464,7 +1493,7 @@ const ui = {
     },
 
     showGuide(defaultRole = null) {
-        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.40';
+        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.41';
         let initialRole = defaultRole;
         if (!initialRole) {
             if (state.user) {
@@ -1503,25 +1532,6 @@ const ui = {
                     <span class="text-[10px] bg-black text-mars-green border border-mars-green/50 px-2 py-0.5 font-bold uppercase font-mono">v${currentVer} OFICIAL</span>
                 </div>
                 <p class="text-slate-300 text-xs">Simulación de emprendimiento aeroespacial interdisciplinar (AEE / ESA). Fichas de Primeros Pasos por puesto operativo.</p>
-            </div>
-
-            <!-- Directivas Clave de la Misión (Compacto) -->
-            <div class="bg-black/60 border border-slate-800 p-3 space-y-1.5">
-                <p class="text-mars-yellow font-bold uppercase text-xs mb-1">⚡ Protocolos Maestros de la Misión:</p>
-                <div class="space-y-1 text-xs text-slate-300">
-                    <p class="flex items-start gap-1.5">
-                        <span class="text-mars-cyan font-bold">1.</span>
-                        <span><strong>📁 Entregables en Google Drive:</strong> Pulsa <strong>[📄 Modelo de documento (Hacer copia)]</strong> y comparte con permiso de lectura abierto (<em>"Cualquiera con el enlace puede ver"</em>).</span>
-                    </p>
-                    <p class="flex items-start gap-1.5">
-                        <span class="text-mars-cyan font-bold">2.</span>
-                        <span><strong>🛡️ Privacidad RGPD:</strong> Prohibido usar nombres reales, apellidos, correos o teléfonos. Opera siempre bajo tu rol de equipo.</span>
-                    </p>
-                    <p class="flex items-start gap-1.5">
-                        <span class="text-mars-cyan font-bold">3.</span>
-                        <span><strong>🤖 Bitácora Ética IA:</strong> Todo uso de inteligencia artificial debe documentarse en la pestaña <strong>[🤖 Bitácora IA]</strong> con validación humana.</span>
-                    </p>
-                </div>
             </div>
 
             <!-- Selector de Roles -->

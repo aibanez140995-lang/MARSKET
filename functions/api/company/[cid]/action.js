@@ -476,12 +476,19 @@ export async function onRequestPost(context) {
             }
 
             case 'GENERIC_PATCH': {
-                const allowed = ['slogan', 'valueProposition', 'cart', 'votingMotions', 'flightTests', 'bom', 'brandApproval', 'pendingSlogan', 'pendingMission', 'brandStatus'];
+                const allowed = ['slogan', 'valueProposition', 'cart', 'votingMotions', 'flightTests', 'bom', 'brandApproval', 'pendingSlogan', 'pendingMission', 'brandStatus', 'executiveResolutions'];
                 for (const k of allowed) {
                     if (p[k] !== undefined) {
                         if (k === 'votingMotions' && Array.isArray(p[k])) {
                             for (const m of p[k]) {
                                 if (m && m.driveUrl && !GOOGLE_DRIVE_REGEX.test(m.driveUrl)) {
+                                    return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL' }), { status: 400, headers: CORS_HEADERS });
+                                }
+                            }
+                        }
+                        if (k === 'executiveResolutions' && Array.isArray(p[k])) {
+                            for (const r of p[k]) {
+                                if (r && r.driveUrl && !GOOGLE_DRIVE_REGEX.test(r.driveUrl)) {
                                     return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL' }), { status: 400, headers: CORS_HEADERS });
                                 }
                             }

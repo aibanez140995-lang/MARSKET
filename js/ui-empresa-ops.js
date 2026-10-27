@@ -261,6 +261,7 @@ Object.assign(ui, {
         
         const isOps = state.user.role === 'OPERACIONES_IA';
         const wrapper = document.createElement('div');
+        wrapper.id = 'ailog-section';
         
         const pendingPrompts = co.aiPrompts.filter(p => p.status === 'PENDIENTE_VALIDACION');
         const approvedPrompts = co.aiPrompts.filter(p => p.status === 'APROBADO');

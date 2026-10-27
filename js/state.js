@@ -561,6 +561,7 @@ const state = {
             co.notifications = Array.isArray(co.notifications) ? co.notifications : [];
             co.sanctions = Array.isArray(co.sanctions) ? co.sanctions : [];
             co.crisisAlerts = Array.isArray(co.crisisAlerts) ? co.crisisAlerts : [];
+            co.executiveResolutions = Array.isArray(co.executiveResolutions) ? co.executiveResolutions : [];
         }
         return d;
     },
@@ -793,7 +794,7 @@ const state = {
                         const missingInLocal = arrServer.filter(i => i && i.id && !localIds.has(String(i.id)));
                         return [...mergedLocal, ...missingInLocal];
                     };
-                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'cart', 'bom', 'coordinatorReports'];
+                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'cart', 'bom', 'coordinatorReports'];
                     arraysToMerge.forEach(arrName => {
                         merged.companies[k][arrName] = mergeArraysLocalDominant(lCo[arrName], sCo[arrName], arrName);
                     });
@@ -901,7 +902,7 @@ const state = {
                         return [...missingInServer, ...mergedServer];
                     };
 
-                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'cart', 'bom', 'coordinatorReports'];
+                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'cart', 'bom', 'coordinatorReports'];
                     arraysToMerge.forEach(arrName => {
                         sCo[arrName] = mergeArrays(sCo[arrName], lCo[arrName], arrName);
                     });
@@ -1841,15 +1842,13 @@ const state = {
         if (typeof ui !== 'undefined' && typeof ui.pushNotification === 'function') {
             if (approved) {
                 ui.pushNotification(coId, 'MARKETING', `El CEO ha VALIDADO la acción publicitaria "${act.title}". Elevada al docente de Liderazgo y Coordinación.`, 'success', {
-                    view: 'orders',
-                    subTab: 'COMPLETADAS',
-                    deptFilter: 'MARKETING'
+                    view: 'brand',
+                    anchorId: 'mkt-campaigns-section'
                 });
             } else {
                 ui.pushNotification(coId, 'MARKETING', `El CEO ha DEVUELTO la acción publicitaria "${act.title}". Motivo: ${act.feedback}`, 'error', {
-                    view: 'orders',
-                    subTab: 'DENEGADAS',
-                    deptFilter: 'MARKETING'
+                    view: 'brand',
+                    anchorId: 'mkt-campaigns-section'
                 });
             }
         }
@@ -1900,8 +1899,8 @@ const state = {
         if (typeof ui !== 'undefined' && typeof ui.pushNotification === 'function') {
             ui.pushNotification(coId, 'CEO', `Marketing ha subsanado y reenviado la acción "${act.title}" para tu revisión.`, 'info', {
                 view: 'orders',
-                subTab: 'EN_PROCESO',
-                deptFilter: 'MARKETING'
+                filter: 'EN_PROCESO',
+                dept: 'MARKETING'
             });
         }
 

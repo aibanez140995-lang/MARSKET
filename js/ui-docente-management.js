@@ -1979,7 +1979,11 @@ Object.assign(ui, {
         const concept = `[MULTA] ${agency} - ${article}`;
         state.addToLedger(cid, concept, 'DOCENTE_AEE', amount);
         
-        ui.pushNotification(cid, 'CEO', `NUEVA SANCIÓN RECIBIDA (${amount} €v). Revisa la Ventanilla Legal urgentemente.`, 'error');
+        ui.pushNotification(cid, 'CEO', `NUEVA SANCIÓN RECIBIDA (${amount} €v). Revisa la Ventanilla Legal urgentemente.`, 'error', {
+            view: 'orders',
+            modal: 'crisis',
+            crisisId: sanctionObj.id
+        });
         
         this.closeModal();
         this.render();

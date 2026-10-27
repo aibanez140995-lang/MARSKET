@@ -146,7 +146,7 @@ Object.assign(ui, {
         let ceoSloganApprovalHtml = '';
         if (isCEO && co.brandApproval && co.brandApproval.status === 'PENDIENTE_CEO') {
             ceoSloganApprovalHtml = `
-            <div class="bg-mars-yellow/10 border-2 border-mars-yellow p-4 mb-6 rounded">
+            <div id="ceo-slogan-approval-panel" class="bg-mars-yellow/10 border-2 border-mars-yellow p-4 mb-6 rounded">
                 <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
                     <span class="text-xs bg-mars-yellow text-black font-black px-2.5 py-1 uppercase">Paso 2: Aval de Dirección General Requerido</span>
                     <span class="text-xs text-slate-300 font-mono">${this.escapeHTML(co.brandApproval.expId || '')}</span>
@@ -164,20 +164,57 @@ Object.assign(ui, {
         }
 
         let crisisResolutionsHtml = '';
-        if (co.executiveResolutions && co.executiveResolutions.length > 0) {
-            crisisResolutionsHtml = `
-            <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-yellow mb-6">
-                <h3 class="font-orbitron text-mars-yellow text-sm sm:text-base uppercase tracking-tighter mb-3">Resoluciones Ejecutivas y Sanciones de Crisis</h3>
-                <div class="space-y-3">
-                    ${co.executiveResolutions.map(r => `
-                        <div class="bg-black/80 border border-slate-800 p-3 flex flex-wrap justify-between items-center gap-2">
-                            <div>
-                                <span class="text-xs font-bold text-white uppercase block">${this.escapeHTML(r.crisisTitle || 'Resolución de Crisis')}</span>
-                                <span class="text-xs text-slate-300 block">Acción: ${this.escapeHTML(r.action || r.decision || '')} | ${this.escapeHTML(r.date || '')}</span>
-                            </div>
-                            ${r.driveUrl ? `<a href="${encodeURI(r.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50"><span>📄 Abrir Comunicado Oficial en Google Drive ↗</span></a>` : ''}
+        const unreadCrisis = (co.crisisAlerts || []).filter(a => !a.read);
+        const hasResolutions = co.executiveResolutions && co.executiveResolutions.length > 0;
+
+        if (isCEO || hasResolutions || unreadCrisis.length > 0) {
+            let ceoCrisisBlock = '';
+            if (isCEO) {
+                let unreadBanner = '';
+                if (unreadCrisis.length > 0) {
+                    const firstCrisis = unreadCrisis[0];
+                    unreadBanner = `
+                    <div class="bg-red-950/80 border-2 border-red-500 p-3.5 mb-3 flex flex-wrap justify-between items-center gap-3 animate-pulse">
+                        <div>
+                            <span class="text-xs bg-red-600 text-white font-black px-2 py-0.5 uppercase tracking-wider block mb-1">⚠️ Sanción Regulatoria AEE Pendiente de Comunicar</span>
+                            <p class="text-xs text-white font-semibold">${this.escapeHTML(firstCrisis.article || 'Infracción Disciplinaria')} (${Number(firstCrisis.amount || 0).toFixed(2)} €v)</p>
                         </div>
-                    `).join('')}
+                        <button type="button" onclick="ui.modalCrisisAction('${this.escapeHTML(firstCrisis.id || '')}')" class="min-h-[44px] bg-red-600 text-white font-black px-4 py-2 text-xs uppercase tracking-wider hover:bg-white hover:text-black transition-all border border-red-400">
+                            [ 📢 Redactar Comunicado de Crisis ]
+                        </button>
+                    </div>`;
+                }
+
+                const doc3Btn = this.renderDocTemplateBtn ? this.renderDocTemplateBtn('DOC_3_COMUNICADO_SANCION', '📄 Modelo DOC_3 (Hacer copia)') : '';
+
+                ceoCrisisBlock = `
+                <div class="bg-black/60 border border-red-500/40 p-3 mb-3">
+                    ${unreadBanner}
+                    <div class="flex flex-wrap justify-between items-center gap-2">
+                        <div>
+                            <span class="text-xs text-red-400 font-bold uppercase tracking-wider block">Gabinete de Crisis // Modelo Oficial</span>
+                            <span class="text-[11px] text-slate-400">Difusión oficial obligatoria para expedientes sancionadores AEE.</span>
+                        </div>
+                        ${doc3Btn}
+                    </div>
+                </div>`;
+            }
+
+            crisisResolutionsHtml = `
+            <div id="crisis-resolutions-panel" class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-yellow mb-6">
+                <h3 class="font-orbitron text-mars-yellow text-sm sm:text-base uppercase tracking-tighter mb-3">Resoluciones Ejecutivas y Sanciones de Crisis</h3>
+                ${ceoCrisisBlock}
+                <div class="space-y-3">
+                    ${hasResolutions ? co.executiveResolutions.map(r => `
+                        <div class="bg-black/80 border border-slate-800 p-3 flex flex-wrap justify-between items-center gap-2">
+                            <div class="min-w-0 flex-1">
+                                <span class="text-xs font-bold text-white uppercase block">${this.escapeHTML(r.crisisTitle || r.title || 'Resolución de Crisis')}</span>
+                                <span class="text-xs text-slate-300 block break-words">${this.escapeHTML(r.action || r.decision || r.desc || '')}</span>
+                                <span class="text-[10px] text-slate-400 font-mono block mt-0.5">${this.escapeHTML(r.date || '')}</span>
+                            </div>
+                            ${r.driveUrl ? `<a href="${encodeURI(r.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50 shrink-0"><span>📄 Abrir Comunicado Oficial en Google Drive ↗</span></a>` : ''}
+                        </div>
+                    `).join('') : '<p class="text-slate-400 italic text-xs">No hay resoluciones ejecutivas de crisis registradas.</p>'}
                 </div>
             </div>`;
         }
@@ -905,7 +942,7 @@ Object.assign(ui, {
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div class="lg:col-span-6 space-y-6 w-full overflow-hidden">
                 <!-- Bloque Oficial Registro Mercantil // Aprobación Slogan Corporativo -->
-                <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-magenta w-full">
+                <div id="brand-slogan-section" class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-magenta w-full">
                     <div class="border-b border-mars-border pb-3 mb-4">
                         <div class="flex flex-wrap justify-between items-center gap-2 mb-1">
                             <span class="text-[10px] font-mono text-mars-cyan tracking-widest uppercase">REGISTRO MERCANTIL // SOLICITUD DE APROBACIÓN DE SLOGAN CORPORATIVO</span>
@@ -957,7 +994,7 @@ Object.assign(ui, {
                     </div>
                 </div>
 
-                <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow w-full">
+                <div id="mkt-campaigns-section" class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow w-full">
                     <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
                         <h2 class="font-orbitron text-mars-yellow text-base sm:text-lg uppercase tracking-tighter">Contratación de Paquetes Publicitarios</h2>
                         <span class="text-xs bg-mars-yellow/10 text-mars-yellow border border-mars-yellow px-2.5 py-0.5 font-bold uppercase">Requiere Aprobación Finanzas</span>

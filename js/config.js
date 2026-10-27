@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.40) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.41) ---
 
-const APP_VERSION = "1.1.40";
+const APP_VERSION = "1.1.41";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -535,6 +535,23 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.41",
+      date: new Date().toISOString().split('T')[0],
+      title: "Simplificación Operativa de Guías, Enrutamiento de Notificaciones y Gabinete de Crisis AEE",
+      items: [
+        "Simplificación de la Guía de Usuario: erradicación del formato tutorial 'Paso a Paso' y de los 'Protocolos Maestros' para ofrecer una ficha operativa directa por rol.",
+        "Corrección integral del enrutamiento de notificaciones [👁️ Ver Notificación ➔]: resolución contextual de vistas, filtros por departamento y scroll a elementos ancla.",
+        "Espacio oficial de Comunicado de Crisis para el CEO: integración del modelo DOC_3_COMUNICADO_SANCION, campo obligatorio de enlace Google Drive y difusión en Gobernanza.",
+        "Persistencia de Resoluciones Ejecutivas de Crisis en D1 y reconciliación atómica en state.mergeData."
+      ],
+      highlights: [
+        { type: "NUEVO", text: "Fichas operativas directas por puesto de trabajo y erradicación de pasos tutoriales redundantes." },
+        { type: "MEJORA", text: "Enrutamiento inteligente de notificaciones con auto-scroll a anclas y apertura directa de modales y filtros." },
+        { type: "GOBERNANZA", text: "Gabinete de Crisis para el CEO con modelo DOC_3, enlace obligatorio a Google Drive y archivo inmutable." },
+        { type: "SISTEMA", text: "Sincronización de resoluciones ejecutivas de crisis con Cloudflare D1 y fusión atómica local-servidor." }
+      ]
+    },
     {
       version: "1.1.40",
       date: new Date().toISOString().split('T')[0],

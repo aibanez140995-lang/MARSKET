@@ -635,6 +635,8 @@ Object.assign(ui, {
         const cuantia = Number(crisis.amount || 0).toFixed(2);
         const immutableText = `COMUNICADO OFICIAL DE SANCIÓN AEE: Expediente ${expId} incoado por ${articulo}. Motivo: "${motivo}". Penalización aplicada al saldo: -${cuantia} €v.`;
 
+        const templateBtn = this.renderDocTemplateBtn ? this.renderDocTemplateBtn('DOC_3_COMUNICADO_SANCION', '📄 Modelo de Comunicado de Crisis (Hacer copia)') : '';
+
         const html = `
             <div class="space-y-4">
                 <p class="text-xs text-slate-300 leading-relaxed">
@@ -644,11 +646,20 @@ Object.assign(ui, {
                     <span class="text-xs font-mono font-black text-red-500 uppercase tracking-widest block">[REGISTRO DISCIPLINARIO EJECUTIVO]</span>
                     <p class="text-xs sm:text-sm font-mono text-white leading-relaxed select-all">${this.escapeHTML(immutableText)}</p>
                 </div>
+                <div class="bg-slate-950 border border-red-500/50 p-3.5 space-y-2">
+                    <span class="text-xs font-mono font-bold text-mars-cyan uppercase tracking-wider block">1. Descarga / Copia de Plantilla Oficial:</span>
+                    <div>
+                        ${templateBtn}
+                    </div>
+                    <label for="crisis-drive-url" class="text-xs text-mars-cyan font-bold uppercase block mt-3 mb-1">Enlace del Comunicado Oficial en Google Drive (Docs / Drive)</label>
+                    <input type="url" id="crisis-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-red-500/60 p-2.5 text-xs text-white font-mono outline-none focus:border-red-400 mb-2" required>
+                    <p class="text-[10px] text-slate-400 font-mono">Por directiva de gobernanza y política Zero-Text, debes redactar el comunicado en el modelo oficial de Google Docs y pegar aquí el enlace con permisos de lectura.</p>
+                </div>
                 <div class="bg-mars-card/60 border border-slate-700 p-3 text-xs text-slate-300 space-y-1">
                     <p class="font-bold text-mars-yellow uppercase">Efectos inmediatos en la empresa:</p>
                     <ul class="list-disc list-inside text-[11px] text-slate-400 space-y-0.5">
                         <li>Detracción automática del saldo de tesorería: <strong class="text-red-400">-${cuantia} €v</strong>.</li>
-                        <li>Notificación directa enviada a Técnico, Finanzas, Marketing y Operaciones.</li>
+                        <li>Notificación directa enviada a Técnico, Finanzas, Marketing y Operaciones con acceso directo al comunicado.</li>
                         <li>Registro inmutable archivado en el Libro de Resoluciones de Gobernanza.</li>
                     </ul>
                 </div>
@@ -663,6 +674,15 @@ Object.assign(ui, {
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
 
+        const inputDrive = document.getElementById('crisis-drive-url');
+        const driveUrl = inputDrive ? this.cleanInput(inputDrive.value) : '';
+        if (!driveUrl || typeof GOOGLE_DRIVE_REGEX === 'undefined' || !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            if (this.highlightInvalidField && inputDrive) {
+                this.highlightInvalidField('', inputDrive);
+            }
+            return this.notify("Debes adjuntar un enlace válido de Google Drive al Comunicado de Crisis.", "error");
+        }
+
         const crisis = (co.crisisAlerts || []).find(a => String(a.id) === String(expId)) || (co.crisisAlerts || [])[0] || {};
         const expClean = expId || crisis.id || ('EXP-' + Date.now().toString().slice(-4));
         const articulo = crisis.article || 'Infracción Normativa Regulatoria';
@@ -676,6 +696,7 @@ Object.assign(ui, {
                 a.notified = true;
                 a.notifiedBy = 'CEO';
                 a.notifiedAt = Date.now();
+                a.driveUrl = driveUrl;
             }
         });
 
@@ -684,19 +705,28 @@ Object.assign(ui, {
             id: 'CRISIS-' + Date.now(),
             expId: expClean,
             title: 'COMUNICADO OFICIAL DE SANCIÓN AEE',
+            crisisTitle: `COMUNICADO OFICIAL DE CRISIS // ${expClean}`,
+            decision: immutableText,
             desc: immutableText,
+            driveUrl: driveUrl,
             date: new Date().toLocaleString()
         });
 
-        ui.pushNotification(state.user.coId, 'TECNICO', immutableText, 'warning');
-        ui.pushNotification(state.user.coId, 'FINANZAS', immutableText, 'warning');
-        ui.pushNotification(state.user.coId, 'MARKETING', immutableText, 'warning');
-        ui.pushNotification(state.user.coId, 'OPERACIONES_IA', immutableText, 'warning');
+        const targetMeta = { view: 'resolutions', anchorId: 'crisis-resolutions-panel' };
+        ui.pushNotification(state.user.coId, 'TECNICO', immutableText, 'warning', targetMeta);
+        ui.pushNotification(state.user.coId, 'FINANZAS', immutableText, 'warning', targetMeta);
+        ui.pushNotification(state.user.coId, 'MARKETING', immutableText, 'warning', targetMeta);
+        ui.pushNotification(state.user.coId, 'OPERACIONES_IA', immutableText, 'warning', targetMeta);
 
         if (typeof telemetry !== 'undefined' && telemetry.log) {
             telemetry.log("CRISIS", `Expediente ${expClean} comunicado a departamentos por CEO`);
         }
         state.save();
+        if (state.executeAction) {
+            state.executeAction('GENERIC_PATCH', {
+                executiveResolutions: co.executiveResolutions
+            }).catch(e => console.warn("[ACTION] Error sincronizando executiveResolutions:", e));
+        }
         this.closeModal();
         this.notify("✅ Sanción comunicada de oficio a todos los departamentos.", "success");
         this.render();
