@@ -1,5 +1,5 @@
 // js/ui-core.js
-// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.41) ---
+// --- MÓDULO UI CORE: ENRUTAMIENTO, HUD, BLINDAJE LÉXICO Y ONBOARDING (v1.1.42) ---
 
 // Constante global GOOGLE_DRIVE_REGEX centralizada en js/config.js
 
@@ -1493,7 +1493,7 @@ const ui = {
     },
 
     showGuide(defaultRole = null) {
-        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.41';
+        const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.42';
         let initialRole = defaultRole;
         if (!initialRole) {
             if (state.user) {

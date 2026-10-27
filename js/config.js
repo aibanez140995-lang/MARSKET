@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.41) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.42) ---
 
-const APP_VERSION = "1.1.41";
+const APP_VERSION = "1.1.42";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -535,6 +535,20 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.06
 const APP_CHANGELOG = [
+    {
+      version: "1.1.42",
+      date: new Date().toISOString().split('T')[0],
+      title: "Optimización de Branding, Presencia Visual de Logotipos y Sello Institucional Miravalles-El Redín",
+      items: [
+        "Ampliación del logo corporativo en la Pantalla de Acceso (Paso 1: Código de Empresa y Paso 2: Terminal PIN).",
+        "Rediseño del Pie de Página Global (#hud-footer): Isotipo centrado con halo cyan y jerarquía tipográfica premium.",
+        "Actualización de denominación institucional a Miravalles-El Redín Simulación Académica (2026-2027)."
+      ],
+      highlights: [
+        { type: "BRANDING", text: "Mayor protagonismo visual de logo.png en pasarela de acceso y pie de página." },
+        { type: "INSTITUCIONAL", text: "Identidad formal Miravalles-El Redín Simulación Académica en todas las vistas." }
+      ]
+    },
     {
       version: "1.1.41",
       date: new Date().toISOString().split('T')[0],

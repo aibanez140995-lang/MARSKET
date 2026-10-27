@@ -1,5 +1,5 @@
 // js/ui-empresa-core.js
-// --- MÓDULO CORE: LOGIN EN 2 PASOS (ZERO-KNOWLEDGE), NOTIFICACIONES Y DOSSIER ACADÉMICO (v1.1.28) ---
+// --- MÓDULO CORE: LOGIN EN 2 PASOS (ZERO-KNOWLEDGE), NOTIFICACIONES Y DOSSIER ACADÉMICO (v1.1.42) ---
 
 Object.assign(ui, {
     viewLogin(el) {
@@ -30,7 +30,11 @@ Object.assign(ui, {
             el.innerHTML = `
             ${scanlineHtml}
             <div id="login-box" class="w-full max-w-md terminal-border bg-mars-card p-4 sm:p-6 glow-cyan animate-in fade-in zoom-in duration-300 transition-all mx-auto my-auto" style="max-width: 28rem;">
-                <img id="marsket-logo" src="logo.png" alt="Logo oficial MARS-KET 2.0" width="72" height="72" onclick="auth.handleLogoTrigger(event)" ondblclick="auth.handleLogoTrigger(event)" style="touch-action: manipulation; width: clamp(48px, 9vh, 72px); height: clamp(48px, 9vh, 72px);" class="mx-auto mb-2 sm:mb-3 drop-shadow-[0_0_12px_rgba(0,240,255,0.8)] cursor-pointer select-none object-contain" onerror="this.onerror=null;this.src='logo.png';">
+                <img id="marsket-logo" src="logo.png" alt="Logo oficial MARS-KET 2.0" width="96" height="96" 
+                    onclick="auth.handleLogoTrigger(event)" ondblclick="auth.handleLogoTrigger(event)" 
+                    style="touch-action: manipulation; width: clamp(72px, 12vh, 96px); height: clamp(72px, 12vh, 96px); aspect-ratio: 1/1;" 
+                    class="mx-auto mb-2.5 sm:mb-4 drop-shadow-[0_0_16px_rgba(0,240,255,0.75)] hover:drop-shadow-[0_0_24px_rgba(0,240,255,0.95)] transition-all duration-300 cursor-pointer select-none object-contain" 
+                    onerror="this.onerror=null;this.src='logo.png';">
                 <h2 id="login-title" class="font-orbitron text-center text-mars-cyan text-sm sm:text-base tracking-wider uppercase font-black mb-1" style="font-size: clamp(0.95rem, 2.2vh, 1.2rem);">SECURE_GATEWAY</h2>
                 <p class="text-xs text-slate-300 text-center uppercase tracking-normal sm:tracking-wider mb-3 sm:mb-4">Paso 1/2: Identificación de Entidad</p>
                 
@@ -55,17 +59,28 @@ Object.assign(ui, {
         el.innerHTML = `
         ${scanlineHtml}
         <div id="login-box" class="w-full max-w-md terminal-border bg-mars-card p-4 sm:p-6 glow-cyan animate-in fade-in zoom-in duration-300 transition-all mx-auto my-auto" style="max-width: 28rem;">
-            <div class="flex justify-between items-center border-b border-mars-border pb-2.5 mb-3 gap-2">
-                <div class="flex items-center gap-2 min-w-0">
-                    <img src="logo.png" alt="MARS-KET 2.0" width="28" height="28" class="w-7 h-7 object-contain drop-shadow-[0_0_6px_rgba(0,240,255,0.7)] shrink-0">
-                    <span class="text-xs text-slate-300 uppercase font-bold tracking-normal sm:tracking-wider truncate">Paso 2/2: Credencial</span>
-                </div>
-                <button type="button" onclick="auth.resetCompanyStep()" class="min-h-[44px] text-xs text-mars-magenta hover:text-white uppercase font-black tracking-normal sm:tracking-wider border border-mars-magenta/60 px-2.5 py-1.5 shrink-0 whitespace-nowrap">[⬅ Cambiar]</button>
+            <!-- Sub-barra superior de navegación compacta -->
+            <div class="flex justify-between items-center border-b border-mars-border/60 pb-2 mb-2.5">
+                <span class="text-[11px] font-mono text-mars-cyan uppercase tracking-wider flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-mars-cyan animate-pulse" aria-hidden="true"></span>
+                    Paso 2/2 // Terminal PIN
+                </span>
+                <button type="button" onclick="auth.resetCompanyStep()" class="min-h-[36px] text-xs text-mars-magenta hover:text-white uppercase font-bold tracking-normal border border-mars-magenta/50 px-2.5 py-1 hover:bg-mars-magenta/20 transition-all whitespace-nowrap">
+                    [⬅ Cambiar]
+                </button>
             </div>
 
-            <div class="bg-slate-900/90 border ${isTeacher ? 'border-mars-yellow' : 'border-mars-cyan'} p-2.5 sm:p-3 mb-3 text-center">
-                <p class="text-xs text-slate-400 uppercase tracking-wider">Entidad Verificada</p>
-                <h2 id="login-title" class="font-orbitron ${isTeacher ? 'text-mars-yellow' : 'text-mars-cyan'} text-sm sm:text-base tracking-wider uppercase font-black truncate mt-0.5">${this.escapeHTML(entityLabel)}</h2>
+            <!-- Logo centrado de alta visibilidad + Tarjeta de Entidad Verificada -->
+            <div class="text-center mb-2.5">
+                <img id="marsket-logo-step2" src="logo.png" alt="Logo oficial MARS-KET 2.0" width="60" height="60"
+                    onclick="auth.handleLogoTrigger(event)" ondblclick="auth.handleLogoTrigger(event)"
+                    style="touch-action: manipulation; width: clamp(48px, 7vh, 60px); height: clamp(48px, 7vh, 60px); aspect-ratio: 1/1;"
+                    class="mx-auto mb-1.5 drop-shadow-[0_0_12px_rgba(0,240,255,0.75)] hover:drop-shadow-[0_0_20px_rgba(0,240,255,0.95)] transition-all duration-300 cursor-pointer select-none object-contain"
+                    onerror="this.onerror=null;this.src='logo.png';">
+                <div class="bg-slate-900/90 border ${isTeacher ? 'border-mars-yellow' : 'border-mars-cyan'} py-1.5 px-3">
+                    <p class="text-[10px] text-slate-400 uppercase tracking-widest font-mono">Entidad Verificada</p>
+                    <h2 id="login-title" class="font-orbitron ${isTeacher ? 'text-mars-yellow' : 'text-mars-cyan'} text-sm sm:text-base tracking-wider uppercase font-black truncate">${this.escapeHTML(entityLabel)}</h2>
+                </div>
             </div>
 
             <label for="login-role" class="text-xs text-slate-300 uppercase font-bold block mb-1">Selecciona tu Departamento / Rol</label>
