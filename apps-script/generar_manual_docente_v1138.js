@@ -193,13 +193,10 @@ function setupHeaderFooter(doc) {
   headerPara.setSpacingAfter(6);
 
   const footer = doc.addFooter();
-  const footerPara = footer.appendParagraph("Documento Oficial de Claustro • Terminal: www.proyectomarsket.es • Página ");
+  const footerPara = footer.appendParagraph("Documento Oficial de Claustro • Terminal: www.proyectomarsket.es • Evaluación Competencial LOMLOE 100%");
   footerPara.setFontFamily(THEME.font.body);
-  footerPara.setFontSize(9);
+  footerPara.setFontSize(8.5);
   footerPara.setForegroundColor(THEME.colors.textMuted);
-  footerPara.appendPageNumber();
-  footerPara.appendText(" de ");
-  footerPara.appendPageCount();
   footerPara.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
 }
 
