@@ -240,7 +240,7 @@ const ui = {
         const subTabs = [
             { id: 'resolutions', label: '⚖️ Gobernanza & Asamblea' },
             { id: 'orders', label: '📋 Historial de Órdenes' },
-            { id: 'market', label: '🛒 SUPERMARS-KET' }
+            { id: 'market', label: '🛒 SUPER-MARSKET' }
         ];
 
         const navHtml = `
@@ -1169,16 +1169,16 @@ const ui = {
 
             case 'TECNICO':
                 roleTitle = 'DPTO. TÉCNICO // I+D';
-                roleDesc = 'Diseñar el prototipo aeroespacial, adquirir componentes en SUPERMARS-KET, registrar lanzamientos en el Banco de Pruebas y tramitar contratos de aduana B2B.';
+                roleDesc = 'Diseñar el prototipo aeroespacial, adquirir componentes en SUPER-MARSKET, registrar lanzamientos en el Banco de Pruebas y tramitar contratos de aduana B2B.';
                 tasksList = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] En <strong>[🛒 SUPERMARS-KET]</strong>, añade componentes al carrito, adjunta el enlace a tu orden en Google Drive y remítela a Finanzas.</li>
+                    <li>[ ] En <strong>[🛒 SUPER-MARSKET]</strong>, añade componentes al carrito, adjunta el enlace a tu orden en Google Drive y remítela a Finanzas.</li>
                     <li>[ ] En <strong>[🧪 Banco I+D]</strong>, registra las pruebas introduciendo vinagre (ml), bicarbonato (g) y la altura alcanzada en <strong>milímetros (mm)</strong>.</li>
                     <li>[ ] Si vendes componentes sobrantes en B2B, genera el modelo oficial en Google Docs y tramítalo ante la Aduana Docente.</li>
                     <li>[ ] Mantén sincronizada la lista de piezas con Operaciones e IA para asegurar el ensamblaje en taller.</li>
                 </ul>`;
                 roleButtons = `
-                    <button type="button" onclick="ui.navigate('market'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a SUPERMARS-KET</button>
+                    <button type="button" onclick="ui.navigate('market'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a SUPER-MARSKET</button>
                     <button type="button" onclick="ui.navigate('tech'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Banco I+D</button>
                     <button type="button" onclick="ui.navigate('tech_workshop'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Taller</button>
                     <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
@@ -2036,6 +2036,17 @@ const ui = {
             if (pendingAI > 0) { elAILog.innerText = pendingAI; elAILog.classList.remove('hidden'); }
             else { elAILog.classList.add('hidden'); }
         }
+
+        const elMarket = document.getElementById('badge-market');
+        if (elMarket) {
+            const cartItems = (co.cart || []).length;
+            if (cartItems > 0) {
+                elMarket.innerText = cartItems;
+                elMarket.classList.remove('hidden');
+            } else {
+                elMarket.classList.add('hidden');
+            }
+        }
     },
 
     updateHUD() {
@@ -2255,17 +2266,7 @@ const ui = {
             case 'orders': vp.innerHTML = hero + notifs; this.viewOrders(vp); break;
             case 'finance': vp.innerHTML = hero + notifs; this.viewFinance(vp); break;
             case 'admin': this.viewAdmin(vp); break;
-            case 'dossier': {
-                vp.innerHTML = hero + notifs;
-                this.viewDossier(vp);
-                if (this.renderCronogramaSection) {
-                    const cronoDiv = document.createElement('div');
-                    cronoDiv.className = 'mt-6';
-                    cronoDiv.innerHTML = this.renderCronogramaSection();
-                    vp.appendChild(cronoDiv);
-                }
-                break;
-            }
+            case 'dossier': vp.innerHTML = hero + notifs; this.viewDossier(vp); break;
             case 'brand': vp.innerHTML = hero + notifs; this.viewBrand(vp); break;
             case 'campaigns': vp.innerHTML = hero + notifs; this.viewCampaigns(vp); break;
             case 'tech_workshop': vp.innerHTML = hero + notifs; this.viewTechWorkshop(vp); break;
@@ -2308,8 +2309,9 @@ const ui = {
         this.render();
     },
 
-    renderCronogramaSection() {
-        const co = (state.user && state.user.coId && state.data.companies) ? state.data.companies[state.user.coId] : null;
+    renderCronogramaSection(overrideCoId) {
+        const coId = overrideCoId || (state.user && state.user.coId);
+        const co = (coId && state.data.companies) ? state.data.companies[coId] : null;
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
         const visibleDefs = (!state.user?.admin) ? defs.filter(d => !this.isDeliverableLocked(d.key, co)) : defs;
         const activeSubj = this.cronogramaFilter || 'ALL';
@@ -2333,6 +2335,17 @@ const ui = {
                 filteredDefs = reactiveDefs;
             }
         }
+
+        // Agrupación y ordenación por Fase asignada (I a IV) y fecha límite
+        const phaseOrder = { 'I': 1, 'II': 2, 'III': 3, 'IV': 4 };
+        filteredDefs.sort((a, b) => {
+            const pA = phaseOrder[this.getDeliverablePhase ? this.getDeliverablePhase(a.key) : (a.phase || 'I')] || 99;
+            const pB = phaseOrder[this.getDeliverablePhase ? this.getDeliverablePhase(b.key) : (b.phase || 'I')] || 99;
+            if (pA !== pB) return pA - pB;
+            const dateA = new Date(deadlinesData[a.key] || a.defaultDate).getTime() || 0;
+            const dateB = new Date(deadlinesData[b.key] || b.defaultDate).getTime() || 0;
+            return dateA - dateB;
+        });
 
         const subjectColors = {
             'FYQ': 'text-mars-cyan border-mars-cyan bg-mars-cyan/10',
@@ -2365,12 +2378,16 @@ const ui = {
             const isDelivered = !!(co && co.deliverables && co.deliverables[d.key]);
             const sBadge = subjectColors[d.subject] || 'text-white border-white bg-white/10';
             const displayDate = String(dateStr).replace('T', ' ');
+            const currPhase = this.getDeliverablePhase ? this.getDeliverablePhase(d.key) : (d.phase || 'I');
 
             return `
             <div class="terminal-border bg-slate-950 p-3.5 sm:p-4 border border-slate-800 flex flex-col justify-between hover:border-mars-cyan/60 transition-all">
                 <div>
                     <div class="flex justify-between items-center mb-2 flex-wrap gap-1.5">
-                        <span class="text-xs font-black uppercase px-2 py-0.5 border ${sBadge}">${this.escapeHTML(d.subject)} • ${this.escapeHTML(d.weight)}</span>
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="text-xs font-black uppercase px-2 py-0.5 bg-black border border-mars-cyan text-mars-cyan">FASE ${this.escapeHTML(currPhase)}</span>
+                            <span class="text-xs font-black uppercase px-2 py-0.5 border ${sBadge}">${this.escapeHTML(d.subject)} • ${this.escapeHTML(d.weight)}</span>
+                        </div>
                         ${isDelivered 
                             ? `<span class="text-xs font-black uppercase text-mars-green bg-mars-green/10 border border-mars-green/50 px-2 py-0.5">✓ ENTREGADO</span>`
                             : `<span class="text-xs font-bold uppercase text-slate-300 bg-black border border-slate-700 px-2 py-0.5">PENDIENTE</span>`}

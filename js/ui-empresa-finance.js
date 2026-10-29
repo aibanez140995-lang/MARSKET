@@ -90,100 +90,7 @@ Object.assign(ui, {
             </div>`;
         }
 
-        // 2. CRONOGRAMA MAESTRO DE ENTREGAS
-        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
-        const visibleDefs = (!state.user?.admin) ? defs.filter(d => !ui.isDeliverableLocked(d.key, co)) : defs;
-        const activeSubj = this.cronogramaFilter || 'ALL';
-        const filteredDefs = activeSubj === 'ALL' ? visibleDefs : visibleDefs.filter(d => d.subject === activeSubj);
-
-        const deadlinesData = (state.data.config && state.data.config.deadlines) ? state.data.config.deadlines : {};
-
-        const subjectColors = {
-            'FYQ': 'text-mars-cyan border-mars-cyan bg-mars-cyan/10',
-            'LYE': 'text-mars-yellow border-mars-yellow bg-mars-yellow/10',
-            'ECO': 'text-mars-green border-mars-green bg-mars-green/10',
-            'MAT': 'text-amber-400 border-amber-400 bg-amber-400/10',
-            'LEN': 'text-mars-magenta border-mars-magenta bg-mars-magenta/10',
-            'ING': 'text-blue-400 border-blue-400 bg-blue-400/10'
-        };
-
-        const subjectNavButtons = [
-            { id: 'ALL', label: `TODOS (${visibleDefs.length})` },
-            { id: 'FYQ', label: `FYQ (${visibleDefs.filter(d => d.subject === 'FYQ').length})` },
-            { id: 'LYE', label: `LYE (${visibleDefs.filter(d => d.subject === 'LYE').length})` },
-            { id: 'ECO', label: `ECO (${visibleDefs.filter(d => d.subject === 'ECO').length})` },
-            { id: 'MAT', label: `MAT (${visibleDefs.filter(d => d.subject === 'MAT').length})` },
-            { id: 'LEN', label: `LEN (${visibleDefs.filter(d => d.subject === 'LEN').length})` },
-            { id: 'ING', label: `ING (${visibleDefs.filter(d => d.subject === 'ING').length})` }
-        ].map(btn => `
-            <button type="button" role="tab" aria-selected="${activeSubj === btn.id}" onclick="ui.setCronogramaSubjectFilter('${btn.id}')" class="min-h-[44px] px-3 py-2 text-xs font-bold uppercase transition-colors whitespace-nowrap ${activeSubj === btn.id ? 'bg-mars-cyan text-black' : 'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'}">
-                ${btn.label}
-            </button>
-        `).join('');
-
-        const deadlineCardsHtml = filteredDefs.length === 0
-            ? `<div class="col-span-full p-6 bg-slate-900/40 border border-slate-800 text-center rounded"><p class="text-xs font-mono text-slate-400 uppercase">🔒 No hay entregables activos en esta fase. Se habilitarán según el cronograma oficial.</p></div>`
-            : filteredDefs.map(d => {
-            const dateStr = deadlinesData[d.key] || d.defaultDate;
-            const st = ui.getDeadlineStatus(dateStr);
-            const docObj = co.deliverables[d.key];
-            const isDelivered = !!docObj;
-            const docStatus = docObj ? (docObj.status || 'DELIVERED_TO_TEACHER') : null;
-            const sBadge = subjectColors[d.subject] || 'text-white border-white bg-white/10';
-
-            let cronoBadge = '<span class="text-xs font-bold uppercase text-slate-300 bg-black border border-slate-700 px-2 py-0.5">⏳ PENDIENTE</span>';
-            if (docStatus === 'EN_TALLER_OPERARIO') {
-                cronoBadge = '<span class="text-xs font-black uppercase text-blue-400 bg-blue-900/30 border border-blue-500 px-2 py-0.5">⚙️ EN TALLER</span>';
-            } else if (docStatus === 'SUBMITTED_TO_CEO') {
-                cronoBadge = '<span class="text-xs font-black uppercase text-mars-yellow bg-mars-yellow/20 border border-mars-yellow px-2 py-0.5">🟡 EN REVISIÓN CEO</span>';
-            } else if (docStatus === 'CEO_REVISION' || docStatus === 'DEVUELTO_A_TECNICO') {
-                cronoBadge = '<span class="text-xs font-black uppercase text-mars-magenta bg-mars-magenta/20 border border-mars-magenta px-2 py-0.5">🔴 REVISIÓN REQ.</span>';
-            } else if (docStatus === 'DELIVERED_TO_TEACHER') {
-                cronoBadge = '<span class="text-xs font-black uppercase text-mars-green bg-mars-green/20 border border-mars-green px-2 py-0.5">🟢 ENTREGADO</span>';
-            }
-
-            const displayDate = dateStr.replace('T', ' ');
-
-            return `
-            <div class="terminal-border bg-slate-950 p-3.5 sm:p-4 border border-slate-800 flex flex-col justify-between hover:border-mars-cyan/60 transition-all">
-                <div>
-                    <div class="flex justify-between items-center mb-2 flex-wrap gap-1.5">
-                        <span class="text-xs font-black uppercase px-2 py-0.5 border ${sBadge}">${this.escapeHTML(d.subject)} • ${this.escapeHTML(d.weight)}</span>
-                        ${cronoBadge}
-                    </div>
-                    <h4 class="text-white font-bold text-xs sm:text-sm uppercase leading-snug mb-1.5 break-words">${this.escapeHTML(d.name)}</h4>
-                    <span class="text-xs text-slate-300 block mb-2.5 uppercase font-mono">Resp: ${this.escapeHTML(d.role.replace('_',' '))}</span>
-                </div>
-                <div>
-                    <div class="flex justify-between items-center text-xs font-mono text-white mb-2 pt-2 border-t border-slate-800 gap-2">
-                        <span class="text-slate-300 text-xs uppercase">Límite:</span>
-                        <span class="font-bold tracking-tight">${this.escapeHTML(displayDate)}</span>
-                    </div>
-                    <div class="w-full text-center py-1.5 text-xs font-black uppercase tracking-wider ${st.class}">
-                        ${this.escapeHTML(st.text)}
-                    </div>
-                </div>
-            </div>`;
-        }).join('');
-
-        const cronogramaSection = `
-        <details ${this.cronogramaExpanded ? 'open' : ''} ontoggle="ui.cronogramaExpanded = this.open" class="terminal-border bg-mars-card p-4 sm:p-5 mb-6 border-l-4 border-l-mars-cyan group">
-            <summary class="cursor-pointer font-orbitron text-xs sm:text-sm text-mars-cyan uppercase tracking-wider font-bold select-none flex items-center justify-between min-h-[44px]">
-                <span>📅 CRONOGRAMA MAESTRO DE ENTREGAS (${visibleDefs.length} HITOS)</span>
-                <span class="text-xs text-slate-300 font-mono group-open:rotate-180 transition-transform">▼ Desplegar</span>
-            </summary>
-            <div class="mt-4 pt-3 border-t border-slate-800">
-                ${isCEO ? `<div class="mb-4 flex justify-end"><button type="button" onclick="ui.modalCreateAuxRole()" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase tracking-wider hover:bg-mars-cyan hover:text-black transition-all shrink-0 w-full sm:w-auto">Gestionar Rol Observador</button></div>` : ''}
-                <div role="tablist" aria-label="Filtrar entregables por asignatura" class="flex flex-wrap gap-2 pb-2 mb-4">
-                    ${subjectNavButtons}
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                    ${deadlineCardsHtml}
-                </div>
-            </div>
-        </details>`;
-
-        // 3. BÓVEDA DE ÓRDENES Y AUTORIZACIÓN FINANCIERA (I+D, MARKETING Y TALLER)
+        // 2. BÓVEDA DE ÓRDENES Y AUTORIZACIÓN FINANCIERA (I+D, MARKETING Y TALLER)
         const ordersTab = this.ordersFilterTab || 'EN_PROCESO';
         const deptFilter = this.ordersDeptFilter || 'ALL';
         const visibleLimit = this.ordersVisibleCount || 5;
@@ -487,7 +394,7 @@ Object.assign(ui, {
             </div>
         </div>`;
 
-        wrapper.innerHTML = crisisHtml + kpisHtml + cronogramaSection + bovedaSection;
+        wrapper.innerHTML = crisisHtml + kpisHtml + bovedaSection;
         el.appendChild(wrapper);
     },
 

@@ -101,19 +101,19 @@ const auth = (function() {
                 ui.current = 'admin';
             } else {
                 const landingByRole = {
-                    'TECNICO': 'market',
-                    'FINANZAS': 'orders',
+                    'TECNICO': 'tech',
+                    'FINANZAS': 'finance',
                     'OPERACIONES_IA': 'cart',
                     'OPERACIONES': 'cart',
-                    'CEO': 'orders',
+                    'CEO': 'dashboard',
                     'MARKETING': 'brand'
                 };
                 if (userObj.role === 'AUXILIAR') {
                     const co = state.data?.companies?.[userObj.coId];
                     const auxDept = co?.auxRoleDept;
-                    ui.current = landingByRole[auxDept] || 'cart';
+                    ui.current = landingByRole[auxDept] || 'dashboard';
                 } else {
-                    ui.current = landingByRole[userObj.role] || 'orders';
+                    ui.current = landingByRole[userObj.role] || 'dashboard';
                 }
                 ui.currentSubView = null;
             }
@@ -481,7 +481,7 @@ const auth = (function() {
                 'finance': { id: 'finance', label: '💰 Finanzas & ECO' },
                 'tech': { id: 'tech', label: '🧪 Banco I+D' },
                 'tech_workshop': { id: 'tech_workshop', label: '🔧 Taller', badge: 'badge-workshop' },
-                'market': { id: 'market', label: '🛒 SUPERMARS-KET' },
+                'market': { id: 'market', label: '🛒 SUPER-MARSKET', badge: 'badge-market' },
                 'brand': { id: 'brand', label: '🎨 Marca & MKT' },
                 'campaigns': { id: 'campaigns', label: '📢 Campañas', badge: 'badge-campaigns' },
                 'cart': { id: 'cart', label: '📦 Taller Ensamble', badge: 'badge-cart' },
@@ -492,7 +492,7 @@ const auth = (function() {
 
             const roleTabOrders = {
                 'CEO': ['dashboard', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
-                'TECNICO': ['tech', 'tech_workshop', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
+                'TECNICO': ['tech', 'tech_workshop', 'market', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
                 'FINANZAS': ['finance', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
                 'MARKETING': ['brand', 'campaigns', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
                 'OPERACIONES_IA': ['cart', 'ailog', 'orders', 'resolutions', 'role_deliverables', 'dossier'],

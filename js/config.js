@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.49) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.50) ---
 
-const APP_VERSION = "1.1.49";
+const APP_VERSION = "1.1.50";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -545,8 +545,26 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.49
+// Changelog Oficial de Producción v1.1.50
 const APP_CHANGELOG = [
+    {
+      version: "1.1.50",
+      date: new Date().toISOString().split('T')[0],
+      title: "Cronograma Integrado en Dossier, Pestaña Fija SUPER-MARSKET para Técnico y Aterrizaje Coherente por Rol",
+      items: [
+        "Nueva sub-pestaña '📅 Cronograma' en '📋 Dossier': reúne la hoja de ruta curricular completa al nivel de Evaluación Continua y Bóveda de Entregables, ordenada por Fases I a IV con insignias visibles.",
+        "Despeje integral de '📡 Seguimiento de Órdenes': retirada del acordeón de cronograma para centrar la vista en KPIs de operaciones y trazabilidad de pedidos.",
+        "Botón de navegación permanente '🛒 SUPER-MARSKET' para el rol Técnico: acceso garantizado tanto al Catálogo Oficial (B2C) como al Mercado Secundario (B2B).",
+        "Globo interactivo de carrito pendiente ('badge-market'): alerta en tiempo real en la barra de navegación del Técnico cuando tiene componentes en el carrito pendientes de cursar.",
+        "Aterrizaje coherente al iniciar sesión: cada rol entra de forma natural a su primera pestaña departamental de la izquierda (CEO a Sala de Mando, Finanzas a Finanzas & ECO, Técnico a Banco I+D, etc.)."
+      ],
+      highlights: [
+        { type: "DOSSIER", text: "3ª sub-pestaña '📅 Cronograma' con insignias y ordenación por Fases I a IV." },
+        { type: "ÓRDENES", text: "Vista '📡 Seguimiento de Órdenes' optimizada y directa para máxima claridad operativa." },
+        { type: "TÉCNICO", text: "Botón permanente '🛒 SUPER-MARSKET' con globo de aviso de artículos en carrito." },
+        { type: "ACCESIBILIDAD", text: "Aterrizaje al login unificado en el primer botón departamental para todos los roles." }
+      ]
+    },
     {
       version: "1.1.49",
       date: new Date().toISOString().split('T')[0],

@@ -104,7 +104,7 @@ function runAudit() {
         tabMap: {
             roles: {
                 CEO: { primary: 'dashboard', render: 'ui.viewDashboard', tabs: ['dashboard', 'orders', 'resolutions', 'role_deliverables', 'dossier'] },
-                TECNICO: { primary: 'tech', render: 'ui.viewTech', tabs: ['tech', 'tech_workshop', 'orders', 'resolutions', 'role_deliverables', 'dossier'] },
+                TECNICO: { primary: 'tech', render: 'ui.viewTech', tabs: ['tech', 'tech_workshop', 'market', 'orders', 'resolutions', 'role_deliverables', 'dossier'] },
                 FINANZAS: { primary: 'finance', render: 'ui.viewFinance', tabs: ['finance', 'orders', 'resolutions', 'role_deliverables', 'dossier'] },
                 MARKETING: { primary: 'brand', render: 'ui.viewBrand', tabs: ['brand', 'campaigns', 'orders', 'resolutions', 'role_deliverables', 'dossier'] },
                 OPERACIONES_IA: { primary: 'cart', render: 'ui.viewCart', tabs: ['cart', 'ailog', 'orders', 'resolutions', 'role_deliverables', 'dossier'] },

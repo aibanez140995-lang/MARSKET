@@ -205,6 +205,7 @@ Object.assign(ui, {
         <div role="tablist" aria-label="Secciones del Dossier Académico" class="flex flex-wrap gap-2 mb-6 border-b border-mars-border pb-2">
             <button type="button" role="tab" aria-selected="${tab==='eval'}" onclick="ui.showDossierTab('eval')" class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase ${tab==='eval'?'bg-mars-cyan text-black':'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'} transition-colors">📊 Evaluación Continua (100%)</button>
             <button type="button" role="tab" aria-selected="${tab==='docs'}" onclick="ui.showDossierTab('docs')" class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase ${tab==='docs'?'bg-mars-cyan text-black':'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'} transition-colors">📁 Bóveda de Entregables</button>
+            <button type="button" role="tab" aria-selected="${tab==='cronograma'}" onclick="ui.showDossierTab('cronograma')" class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase ${tab==='cronograma'?'bg-mars-cyan text-black':'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'} transition-colors">📅 Cronograma</button>
         </div>
         <div id="dossier-content" class="w-full"></div>
         `;
@@ -227,6 +228,11 @@ Object.assign(ui, {
         if (!state.user.admin && !co) return auth.logout();
         if (!co) return;
         
+        if (tab === 'cronograma') {
+            container.innerHTML = this.renderCronogramaSection ? this.renderCronogramaSection(targetCoId) : '';
+            return;
+        }
+
         const weights = typeof GLOBAL_WEIGHTS !== 'undefined' ? GLOBAL_WEIGHTS : { FYQ: 0.25, LYE: 0.40, LEN: 0.15, ECO: 0.10, MAT: 0.05, ING: 0.05 };
 
         if(tab === 'eval') {
