@@ -1152,7 +1152,7 @@ const ui = {
                 roleDesc = 'Liderar la estrategia global de la empresa, visar entregables en el Dossier, validar campañas de marketing, emitir comunicados de crisis y coordinar la gobernanza corporativa.';
                 tasksList = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] Entra en <strong>[📋 Dossier (19)]</strong>, abre los enlaces de tu equipo en Google Drive y pulsa <strong>[✓ APROBAR Y ELEVAR A DOCENTE]</strong> o <strong>[↩ DEVOLVER CON MOTIVO]</strong>.</li>
+                    <li>[ ] Entra en <strong>[📋 Dossier]</strong>, abre los enlaces de tu equipo en Google Drive y pulsa <strong>[✓ APROBAR Y ELEVAR A DOCENTE]</strong> o <strong>[↩ DEVOLVER CON MOTIVO]</strong>.</li>
                     <li>[ ] Entra en <strong>[🎨 Marca & MKT]</strong> para revisar las acciones publicitarias presentadas por Marketing: pulsa <strong>[✓ APROBAR ACCIÓN]</strong> para elevarlas a Liderazgo, o <strong>[↩ DEVOLVER]</strong> indicando motivo tipificado y enlace en Drive.</li>
                     <li>[ ] Si la AEE incoa una sanción regulatoria, pulsa <strong>[📢 Redactar Comunicado de Crisis]</strong>, redacta el comunicado oficial en el modelo Google Docs (DOC_3) y difúndelo a todos los departamentos con su enlace obligatorio.</li>
                     <li>[ ] Entra en <strong>[⚖️ Gobernanza]</strong> para convocar votaciones asamblearias y avalar la propuesta oficial de eslogan ante Coordinación Docente.</li>
@@ -1193,7 +1193,7 @@ const ui = {
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
                     <li>[ ] En <strong>[🔐 Bóveda Órdenes]</strong>, revisa los pedidos de I+D y solicitudes de Marketing, aprobando si hay fondos suficientes.</li>
                     <li>[ ] En <strong>[💰 Finanzas & ECO]</strong>, audita el Libro Mayor con ingresos de patrocinio, retenciones de aduana y costes operativos.</li>
-                    <li>[ ] En <strong>[📋 Dossier (19)]</strong>, entrega los balances de Economía y modelos presupuestarios en Google Sheets.</li>
+                    <li>[ ] En <strong>[📋 Dossier]</strong>, entrega los balances de Economía y modelos presupuestarios en Google Sheets.</li>
                     <li>[ ] Supervisa la tesorería corporativa tras la aplicación de cualquier sanción regulatoria o deducción de costes fijos.</li>
                 </ul>`;
                 roleButtons = `
@@ -1213,7 +1213,7 @@ const ui = {
                     <li>[ ] Contrata un paquete publicitario adjuntando el dossier ROI (DOC_5) para la aprobación presupuestaria de Finanzas.</li>
                     <li>[ ] Tras aprobar Finanzas, pulsa <strong>[+ Publicar Acción]</strong>, cumplimenta el modelo oficial <strong>DOC_12</strong> en Google Docs y entrégalo al <strong>CEO</strong>.</li>
                     <li>[ ] En caso de devolución del CEO, revisa las observaciones en Drive y pulsa <strong>[✏️ Subsanar Enlace y Reenviar al CEO]</strong>.</li>
-                    <li>[ ] En <strong>[📋 Dossier (19)]</strong>, sube las evidencias de Lengua, LyE e Iniciación a la Actividad Emprendedora.</li>
+                    <li>[ ] En <strong>[📋 Dossier]</strong>, sube las evidencias de Lengua, LyE e Iniciación a la Actividad Emprendedora.</li>
                 </ul>`;
                 roleButtons = `
                     <button type="button" onclick="ui.navigate('brand'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Marca & MKT</button>
@@ -1231,7 +1231,7 @@ const ui = {
                     <li>[ ] En <strong>[📦 Taller Ensamble]</strong>, recepciona los pedidos aprobados por Finanzas, anota el comercio físico y su coste en euros reales (€).</li>
                     <li>[ ] Confecciona la Hoja de Taller (BOM) garantizando la trazabilidad de los materiales empleados en el cohete.</li>
                     <li>[ ] En <strong>[🤖 Bitácora IA]</strong>, registra obligatoriamente cada prompt y herramienta de IA utilizada en el consorcio con validación humana.</li>
-                    <li>[ ] En <strong>[📋 Dossier (19)]</strong>, entrega la bitácora ética bimestral en Google Docs para supervisión docente.</li>
+                    <li>[ ] En <strong>[📋 Dossier]</strong>, entrega la bitácora ética bimestral en Google Docs para supervisión docente.</li>
                 </ul>`;
                 roleButtons = `
                     <button type="button" onclick="ui.navigate('cart'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Taller Ensamble</button>
@@ -1246,7 +1246,7 @@ const ui = {
                 roleDesc = 'Apoyar operativamente a los departamentos de la empresa, auditar permisos de Google Drive y ejercer derecho a voto en las asambleas de socios.';
                 tasksList = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] En <strong>[📋 Dossier (19)]</strong>, abre todos los enlaces del equipo en ventana de incógnito para verificar que el docente tendrá acceso de lectura.</li>
+                    <li>[ ] En <strong>[📋 Dossier]</strong>, abre todos los enlaces del equipo en ventana de incógnito para verificar que el docente tendrá acceso de lectura.</li>
                     <li>[ ] En <strong>[⚖️ Gobernanza]</strong>, participa activamente con voz y voto en las mociones y resoluciones de la empresa.</li>
                     <li>[ ] Da soporte operativo puntual al departamento asignado en la sesión (compras, banco de pruebas, creatividad o taller).</li>
                 </ul>`;
@@ -2821,7 +2821,7 @@ const ui = {
                         ? `<a href="${encodeURI(ord.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Informe Técnico en Docs ↗</span></a>`
                         : `<span class="text-xs text-amber-500/80 font-mono italic">[Memoria técnica legacy archivada por protocolo RGPD]</span>`
                     }
-                    ${ord.realStore ? `<p class="text-mars-green text-xs font-bold uppercase mt-2 pt-2 border-t border-slate-800">Comercio Real: ${this.escapeHTML(ord.realStore)} | Coste Físico: ${Number(ord.realCost || 0).toFixed(2)} €</p>` : ''}
+                    ${(state.user && state.user.admin && ord.realStore) ? `<p class="text-mars-green text-xs font-bold uppercase mt-2 pt-2 border-t border-slate-800">Comercio Real: ${this.escapeHTML(ord.realStore)} | Coste Físico: ${Number(ord.realCost || 0).toFixed(2)} €</p>` : (ord.realStore ? `<p class="text-mars-green text-xs font-bold uppercase mt-2 pt-2 border-t border-slate-800">Comercio: ${this.escapeHTML(ord.realStore)}</p>` : '')}
                 </div>
             </div>
         `;
@@ -2908,5 +2908,13 @@ const ui = {
         if (this._lastFocusedElement && typeof this._lastFocusedElement.focus === 'function') {
             this._lastFocusedElement.focus();
         }
+    },
+
+    getDeliverablePhase(docKey) {
+        const fromSched = state.data?.config?.deliverableSchedule?.[docKey]?.phase;
+        if (fromSched) return fromSched;
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const def = defs.find(d => d.key === docKey);
+        return def?.phase || 'I';
     }
 };

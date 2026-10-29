@@ -103,12 +103,12 @@ function runAudit() {
         handlers: { total: 0, broken: [], list: [] },
         tabMap: {
             roles: {
-                CEO: { primary: 'dashboard', render: 'ui.viewDashboard', tabs: ['dashboard', 'dossier', 'orders', 'resolutions', 'role_deliverables'] },
-                TECNICO: { primary: 'tech', render: 'ui.viewTech', tabs: ['tech', 'tech_workshop', 'dossier', 'orders', 'resolutions', 'role_deliverables'] },
-                FINANZAS: { primary: 'finance', render: 'ui.viewFinance', tabs: ['finance', 'dossier', 'orders', 'resolutions', 'role_deliverables'] },
-                MARKETING: { primary: 'brand', render: 'ui.viewBrand', tabs: ['brand', 'campaigns', 'dossier', 'orders', 'resolutions', 'role_deliverables'] },
-                OPERACIONES_IA: { primary: 'cart', render: 'ui.viewCart', tabs: ['cart', 'ailog', 'dossier', 'orders', 'resolutions', 'role_deliverables'] },
-                AUXILIAR: { primary: 'dashboard', render: 'ui.viewDashboard', tabs: ['dashboard', 'dossier', 'orders', 'resolutions', 'role_deliverables'] },
+                CEO: { primary: 'dashboard', render: 'ui.viewDashboard', tabs: ['dashboard', 'orders', 'resolutions', 'role_deliverables', 'dossier'] },
+                TECNICO: { primary: 'tech', render: 'ui.viewTech', tabs: ['tech', 'tech_workshop', 'orders', 'resolutions', 'role_deliverables', 'dossier'] },
+                FINANZAS: { primary: 'finance', render: 'ui.viewFinance', tabs: ['finance', 'orders', 'resolutions', 'role_deliverables', 'dossier'] },
+                MARKETING: { primary: 'brand', render: 'ui.viewBrand', tabs: ['brand', 'campaigns', 'orders', 'resolutions', 'role_deliverables', 'dossier'] },
+                OPERACIONES_IA: { primary: 'cart', render: 'ui.viewCart', tabs: ['cart', 'ailog', 'orders', 'resolutions', 'role_deliverables', 'dossier'] },
+                AUXILIAR: { primary: 'dashboard', render: 'ui.viewDashboard', tabs: ['dashboard', 'orders', 'resolutions', 'role_deliverables', 'dossier'] },
                 DOCENTE: { primary: 'admin', render: 'ui.viewAdmin', tabs: ['admin', 'market', 'dossier'] }
             },
             adminTabs: {

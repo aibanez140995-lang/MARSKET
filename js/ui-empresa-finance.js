@@ -259,17 +259,17 @@ Object.assign(ui, {
                             ${(st === 'EJECUTADO') ? `
                             <div class="mt-2.5 pt-2 border-t border-slate-800 bg-black/40 p-2.5 rounded text-xs space-y-1.5">
                                 <div class="flex justify-between items-center text-[11px] font-bold text-mars-green uppercase">
-                                    <span>📦 Imputación de Compra Real y Ensamble (Taller):</span>
-                                    <span class="font-mono text-white">Coste Real Total: ${(order.items || []).reduce((s, it) => s + (Number(it.realEur) || 0), 0).toFixed(2)} €</span>
+                                    <span>📦 Ejecución y Ensamble en Taller:</span>
+                                    <span class="font-mono ${state.user.admin ? 'text-white' : 'text-mars-green'}">${state.user.admin ? `Coste Real Total: ${(order.items || []).reduce((s, it) => s + (Number(it.realEur) || 0), 0).toFixed(2)} €` : 'COMPRA FÍSICA EJECUTADA'}</span>
                                 </div>
                                 <div class="space-y-1">
                                     ${(order.items || []).map(it => `
                                         <div class="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-300 gap-1 border-b border-slate-900 pb-1 last:border-0 font-mono">
                                             <span class="text-white">${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
                                             <div class="flex items-center gap-2">
-                                                <span>Real: <strong class="text-mars-yellow">${it.realEur !== undefined ? Number(it.realEur).toFixed(2) : '--'} €</strong></span>
+                                                ${state.user.admin ? `<span>Real: <strong class="text-mars-yellow">${it.realEur !== undefined ? Number(it.realEur).toFixed(2) : '--'} €</strong></span>` : ''}
                                                 <span>Comercio: <strong class="text-slate-200">${this.escapeHTML(it.realShop || 'Comercio')}</strong></span>
-                                                ${(it.ticketUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(it.ticketUrl))
+                                                ${(state.user.admin && it.ticketUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(it.ticketUrl))
                                                     ? `<a href="${encodeURI(it.ticketUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-mars-cyan hover:underline font-bold">[Ticket Drive ↗]</a>`
                                                     : ''
                                                 }
@@ -795,7 +795,7 @@ Object.assign(ui, {
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <!-- Columna Izquierda: Balance, KPIs y Ledger Inmutable -->
             <div class="lg:col-span-7 space-y-6">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-green text-center">
                         <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Saldo Virtual</span>
                         <p class="text-lg sm:text-xl font-orbitron font-black text-mars-green">${Number(co.balance).toFixed(2)} €v</p>
@@ -808,10 +808,6 @@ Object.assign(ui, {
                     <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-yellow text-center">
                         <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Gasto Acumulado</span>
                         <p class="text-lg sm:text-xl font-orbitron font-black text-mars-yellow">-${virtualSpend.toFixed(2)} €v</p>
-                    </div>
-                    <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-magenta text-center">
-                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Coste Real Físico</span>
-                        <p class="text-lg sm:text-xl font-orbitron font-black text-mars-magenta">${totalRealCost.toFixed(2)} €</p>
                     </div>
                 </div>
 
@@ -852,7 +848,7 @@ Object.assign(ui, {
                 </div>
             </div>
 
-            <!-- Columna Derecha: Entregables Oficiales o Auditoría Físico-Virtual -->
+            <!-- Columna Derecha: Entregables Oficiales y Supervisión -->
             ${isCEO ? `
             <div class="lg:col-span-5 space-y-6">
                 <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-cyan">
@@ -864,44 +860,8 @@ Object.assign(ui, {
                     </div>
                     <p class="text-xs text-slate-300 leading-relaxed mb-4">Los 4 entregables oficiales de Economía (Presupuestos, Cuenta de Resultados y Balance) son elaborados por Finanzas. Como CEO, supervisas y visas su calidad en el Dossier General.</p>
                     <button type="button" onclick="ui.navigate('dossier')" class="w-full min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs py-2.5 px-4 hover:bg-white transition-all flex items-center justify-center gap-2 shadow-sm">
-                        <span>📋 ACCEDER A SUPERVISIÓN EN DOSSIER (19)</span> ➔
+                        <span>📋 ACCEDER A SUPERVISIÓN EN DOSSIER</span> ➔
                     </button>
-                </div>
-
-                <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-magenta">
-                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2 flex-wrap gap-2">
-                        <div>
-                            <h3 class="font-orbitron text-mars-magenta text-sm uppercase tracking-tighter">Auditoría de Costes Reales (€)</h3>
-                            <p class="text-xs text-slate-300 uppercase mt-0.5">Tickets y facturas físicas vinculadas a Drive.</p>
-                        </div>
-                        <span class="text-xs font-mono font-bold text-mars-magenta bg-mars-magenta/10 border border-mars-magenta/40 px-2 py-0.5">${totalRealCost.toFixed(2)} € TOTAL</span>
-                    </div>
-                    <div class="max-h-72 overflow-x-auto overflow-y-auto pr-1">
-                        <table class="w-full text-left text-xs font-mono whitespace-nowrap min-w-max">
-                            <thead class="text-slate-300 uppercase border-b border-slate-700 sticky top-0 bg-mars-card">
-                                <tr>
-                                    <th class="py-2 pr-2">Fecha</th>
-                                    <th class="pr-2">Componente</th>
-                                    <th class="pr-2">Comercio</th>
-                                    <th class="text-right pr-2">Coste (€)</th>
-                                    <th class="text-right">Ticket</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${co.realCosts.map(rc => `
-                                    <tr class="border-b border-slate-800/70 hover:bg-slate-900/50">
-                                        <td class="py-1.5 pr-2 text-slate-300">${this.escapeHTML(rc.date || '--')}</td>
-                                        <td class="py-1.5 pr-2 text-white font-bold max-w-[140px] truncate" title="${this.escapeHTML(rc.item || '')}">${this.escapeHTML(rc.item || '')} (x${rc.qty || 1})</td>
-                                        <td class="py-1.5 pr-2 text-slate-300">${this.escapeHTML(rc.shop || '--')}</td>
-                                        <td class="py-1.5 pr-2 text-right font-bold text-mars-magenta">${Number(rc.eur || 0).toFixed(2)} €</td>
-                                        <td class="py-1.5 text-right">
-                                            ${rc.ticketUrl ? `<a href="${encodeURI(rc.ticketUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-mars-cyan hover:underline font-bold inline-flex items-center gap-1"><span>Ver Ticket</span> ↗</a>` : '<span class="text-slate-400 italic">Sin ticket</span>'}
-                                        </td>
-                                    </tr>
-                                `).join('') || `<tr><td colspan="5" class="text-center py-4 text-slate-400 italic text-xs">No hay costes reales físicos registrados por Operaciones.</td></tr>`}
-                            </tbody>
-                        </table>
-                    </div>
                 </div>
             </div>
             ` : `
@@ -917,42 +877,6 @@ Object.assign(ui, {
                     <button type="button" onclick="ui.navigate('role_deliverables')" class="w-full min-h-[44px] bg-mars-green text-black font-black uppercase text-xs py-2.5 px-4 hover:bg-white transition-all flex items-center justify-center gap-2 shadow-sm">
                         <span>📤 GESTIONAR ENTREGABLES EN "MIS ENTREGABLES"</span> ➔
                     </button>
-                </div>
-
-                <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-magenta">
-                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2 flex-wrap gap-2">
-                        <div>
-                            <h3 class="font-orbitron text-mars-magenta text-sm uppercase tracking-tighter">Auditoría de Costes Reales (€)</h3>
-                            <p class="text-xs text-slate-300 uppercase mt-0.5">Tickets y facturas físicas de compras en taller.</p>
-                        </div>
-                        <span class="text-xs font-mono font-bold text-mars-magenta bg-mars-magenta/10 border border-mars-magenta/40 px-2 py-0.5">${totalRealCost.toFixed(2)} € TOTAL</span>
-                    </div>
-                    <div class="max-h-72 overflow-x-auto overflow-y-auto pr-1">
-                        <table class="w-full text-left text-xs font-mono whitespace-nowrap min-w-max">
-                            <thead class="text-slate-300 uppercase border-b border-slate-700 sticky top-0 bg-mars-card">
-                                <tr>
-                                    <th class="py-2 pr-2">Fecha</th>
-                                    <th class="pr-2">Componente</th>
-                                    <th class="pr-2">Comercio</th>
-                                    <th class="text-right pr-2">Coste (€)</th>
-                                    <th class="text-right">Ticket</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${co.realCosts.map(rc => `
-                                    <tr class="border-b border-slate-800/70 hover:bg-slate-900/50">
-                                        <td class="py-1.5 pr-2 text-slate-300">${this.escapeHTML(rc.date || '--')}</td>
-                                        <td class="py-1.5 pr-2 text-white font-bold max-w-[140px] truncate" title="${this.escapeHTML(rc.item || '')}">${this.escapeHTML(rc.item || '')} (x${rc.qty || 1})</td>
-                                        <td class="py-1.5 pr-2 text-slate-300">${this.escapeHTML(rc.shop || '--')}</td>
-                                        <td class="py-1.5 pr-2 text-right font-bold text-mars-magenta">${Number(rc.eur || 0).toFixed(2)} €</td>
-                                        <td class="py-1.5 text-right">
-                                            ${rc.ticketUrl ? `<a href="${encodeURI(rc.ticketUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-mars-cyan hover:underline font-bold inline-flex items-center gap-1"><span>Ver Ticket</span> ↗</a>` : '<span class="text-slate-400 italic">Sin ticket</span>'}
-                                        </td>
-                                    </tr>
-                                `).join('') || `<tr><td colspan="5" class="text-center py-4 text-slate-400 italic text-xs">No hay costes reales físicos registrados por Operaciones.</td></tr>`}
-                            </tbody>
-                        </table>
-                    </div>
                 </div>
             </div>
             `}

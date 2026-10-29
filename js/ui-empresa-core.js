@@ -204,7 +204,7 @@ Object.assign(ui, {
         ${adminSelector}
         <div role="tablist" aria-label="Secciones del Dossier Académico" class="flex flex-wrap gap-2 mb-6 border-b border-mars-border pb-2">
             <button type="button" role="tab" aria-selected="${tab==='eval'}" onclick="ui.showDossierTab('eval')" class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase ${tab==='eval'?'bg-mars-cyan text-black':'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'} transition-colors">📊 Evaluación Continua (100%)</button>
-            <button type="button" role="tab" aria-selected="${tab==='docs'}" onclick="ui.showDossierTab('docs')" class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase ${tab==='docs'?'bg-mars-cyan text-black':'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'} transition-colors">📁 Bóveda de Entregables (19)</button>
+            <button type="button" role="tab" aria-selected="${tab==='docs'}" onclick="ui.showDossierTab('docs')" class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase ${tab==='docs'?'bg-mars-cyan text-black':'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'} transition-colors">📁 Bóveda de Entregables</button>
         </div>
         <div id="dossier-content" class="w-full"></div>
         `;
@@ -314,35 +314,35 @@ Object.assign(ui, {
                 {
                     id: 'PHASE_I',
                     phaseCode: 'I',
-                    title: 'FASE I: LANZAMIENTO, I+D PRELIMINAR Y ESTRATEGIA (NOV - DIC)',
+                    title: 'FASE I: LANZAMIENTO, I+D PRELIMINAR Y ESTRATEGIA',
                     badge: 'FASE I // INICIAL',
                     accent: 'border-mars-cyan text-mars-cyan'
                 },
                 {
                     id: 'PHASE_II',
                     phaseCode: 'II',
-                    title: 'FASE II: PROTOTIPADO Y VALIDACIÓN EMPÍRICA (ENE - FEB)',
+                    title: 'FASE II: PROTOTIPADO Y VALIDACIÓN EMPÍRICA',
                     badge: 'FASE II // EMPÍRICA',
                     accent: 'border-mars-yellow text-mars-yellow'
                 },
                 {
                     id: 'PHASE_III',
                     phaseCode: 'III',
-                    title: 'FASE III: TRACCIÓN, CAMPAÑAS Y ESCALADO COMERCIAL (FEB - MAR)',
+                    title: 'FASE III: TRACCIÓN, CAMPAÑAS Y ESCALADO COMERCIAL',
                     badge: 'FASE III // TRACCIÓN',
                     accent: 'border-blue-400 text-blue-400'
                 },
                 {
                     id: 'PHASE_IV',
                     phaseCode: 'IV',
-                    title: 'FASE IV: CIERRE DE MISIÓN, ENSAMBLE FINAL Y DEFENSA (ABRIL)',
+                    title: 'FASE IV: CIERRE DE MISIÓN, ENSAMBLE FINAL Y DEFENSA',
                     badge: 'FASE IV // CIERRE',
                     accent: 'border-mars-magenta text-mars-magenta'
                 }
             ];
 
             const visiblePhases = milestonePhases.map(phase => {
-                let phaseDefs = defs.filter(d => (d.phase || 'I') === phase.phaseCode);
+                let phaseDefs = defs.filter(d => (ui.getDeliverablePhase ? ui.getDeliverablePhase(d.key) : (d.phase || 'I')) === phase.phaseCode);
                 if (!isAdmin) {
                     phaseDefs = phaseDefs.filter(def => !ui.isDeliverableLocked(def.key, co));
                 }
@@ -570,7 +570,7 @@ Object.assign(ui, {
                             <span class="text-xs font-mono text-slate-400">${deliveredCount}/${defs.length} Hitos</span>
                         </div>
                         <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">📋 Dossier Académico Oficial</h3>
-                        <p class="text-xs text-slate-300 mt-1 leading-relaxed">Supervisa la Bóveda de 19 Hitos dividida en 4 Fases y las calificaciones ponderadas de los 6 docentes.</p>
+                        <p class="text-xs text-slate-300 mt-1 leading-relaxed">Supervisa la Bóveda de Entregables dividida en 4 Fases y las calificaciones ponderadas de los 6 docentes.</p>
                     </div>
                     <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
                         <span class="text-[11px] text-slate-400 font-mono">6 Materias evaluadas</span>
@@ -685,7 +685,7 @@ Object.assign(ui, {
         // 3. Filtrado por Fase
         let filteredDefs = baseDefs;
         if (phaseFilter !== 'ALL') {
-            filteredDefs = filteredDefs.filter(d => (d.phase || 'I') === phaseFilter);
+            filteredDefs = filteredDefs.filter(d => (ui.getDeliverablePhase ? ui.getDeliverablePhase(d.key) : (d.phase || 'I')) === phaseFilter);
         }
 
         // 4. Filtrado por Estado
@@ -701,6 +701,14 @@ Object.assign(ui, {
                 return !isDelivered && !isLocked;
             });
         }
+
+        // Agrupación y ordenación dinámica por Fase asignada (I a IV)
+        const phaseOrder = { 'I': 1, 'II': 2, 'III': 3, 'IV': 4 };
+        filteredDefs.sort((a, b) => {
+            const pA = phaseOrder[ui.getDeliverablePhase ? ui.getDeliverablePhase(a.key) : (a.phase || 'I')] || 99;
+            const pB = phaseOrder[ui.getDeliverablePhase ? ui.getDeliverablePhase(b.key) : (b.phase || 'I')] || 99;
+            return pA - pB;
+        });
 
         // Renderizado del resumen con contadores interactivos
         const summaryHtml = `
@@ -730,10 +738,10 @@ Object.assign(ui, {
         // Filtros de barra de herramientas
         const phaseTabsHtml = [
             { id: 'ALL', label: 'Todas las Fases' },
-            { id: 'I', label: 'Fase I (Nov-Dic)' },
-            { id: 'II', label: 'Fase II (Ene-Feb)' },
-            { id: 'III', label: 'Fase III (Feb-Mar)' },
-            { id: 'IV', label: 'Fase IV (Abril)' }
+            { id: 'I', label: 'Fase I' },
+            { id: 'II', label: 'Fase II' },
+            { id: 'III', label: 'Fase III' },
+            { id: 'IV', label: 'Fase IV' }
         ].map(p => `
             <button type="button" role="tab" aria-selected="${phaseFilter === p.id}" onclick="ui.setRoleDeliverablesPhaseFilter('${p.id}')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-colors whitespace-nowrap ${phaseFilter === p.id ? 'bg-mars-cyan text-black shadow-sm' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800'}">
                 ${p.label}
@@ -886,7 +894,7 @@ Object.assign(ui, {
                 <div class="terminal-border bg-mars-card p-4 sm:p-5 border-l-4 ${isReturned ? 'border-l-red-500' : (isDelivered ? 'border-l-mars-green' : 'border-l-mars-cyan')} mb-4 space-y-3">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="text-xs font-black uppercase px-2 py-0.5 bg-black border border-mars-cyan text-mars-cyan">FASE ${def.phase || 'I'}</span>
+                            <span class="text-xs font-black uppercase px-2 py-0.5 bg-black border border-mars-cyan text-mars-cyan">FASE ${ui.getDeliverablePhase ? ui.getDeliverablePhase(def.key) : (def.phase || 'I')}</span>
                             <span class="text-xs font-black uppercase px-2 py-0.5 bg-slate-900 border border-slate-700 text-white">${this.escapeHTML(def.subject)} • ${this.escapeHTML(def.weight)}</span>
                             ${statusBadge}
                             <span class="text-xs font-mono px-2 py-0.5 uppercase ${dlStatus.class}">${this.escapeHTML(dlStatus.text)}</span>
@@ -978,7 +986,7 @@ Object.assign(ui, {
         const bodyHtml = `
         <div class="space-y-4 font-mono text-xs">
             <div class="bg-slate-900 border border-mars-cyan/40 p-3 text-slate-200">
-                <span class="text-mars-cyan font-bold uppercase block mb-1">ENTREGABLE OFICIAL // FASE ${def.phase || 'I'}</span>
+                <span class="text-mars-cyan font-bold uppercase block mb-1">ENTREGABLE OFICIAL // FASE ${ui.getDeliverablePhase ? ui.getDeliverablePhase(def.key) : (def.phase || 'I')}</span>
                 <p class="font-bold text-white uppercase text-sm">${this.escapeHTML(def.name)}</p>
                 <p class="text-slate-400 mt-1">${this.escapeHTML(def.desc)}</p>
             </div>

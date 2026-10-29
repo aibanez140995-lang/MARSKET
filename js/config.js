@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.48) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.49) ---
 
-const APP_VERSION = "1.1.48";
+const APP_VERSION = "1.1.49";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -545,8 +545,28 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.48
+// Changelog Oficial de Producción v1.1.49
 const APP_CHANGELOG = [
+    {
+      version: "1.1.49",
+      date: new Date().toISOString().split('T')[0],
+      title: "Asignación Dinámica de Fases en Cronograma Maestro, Dossier Reorganizado al Cierre y Blindaje de Costes Reales",
+      items: [
+        "Modal selector de fase curricular en cada hito del Cronograma Maestro de Coordinación: botón táctil interactivo para reasignar dinámicamente entregables entre las Fases I, II, III y IV con sincronización en la nube.",
+        "Erradicación definitiva de referencias a meses de calendario en Dossier, Mis Entregables y Cronograma Maestro, sustituyéndolas por una organización pedagógica 100% basada en Fases curriculares.",
+        "Agrupación y ordenación dinámica por Fase asignada en todas las vistas corporativas (Dossier Académico y Mis Entregables) y docentes.",
+        "Renombrado oficial del botón de navegación a '📋 Dossier' y reubicación al último lugar en la barra de pestañas para todos los roles departamentales (tras Mis Entregables).",
+        "Retirada del Coste Real Físico (€) en las vistas de los alumnos (Finanzas, Seguimiento de Órdenes, Banco I+D y panel de inspección), preservando la concentración formativa en la tesorería virtual (€v).",
+        "Modal interactivo de auditoría de compras físicas (ui.modalRealSpend) en el Panel Docente: acceso con un clic en la columna 'Físico(€)' al desglose de componentes, comercios, importes y tickets vinculados a Google Drive.",
+        "Notificaciones financieras limpias: las ejecuciones de taller notifican a Finanzas exclusivamente el descuento del importe virtual en el Libro Mayor."
+      ],
+      highlights: [
+        { type: "CRONOGRAMA", text: "Asignación táctil y dinámica de Fase (I a IV) en cada entregable del Cronograma Maestro." },
+        { type: "PEDAGOGÍA", text: "Eliminación de meses de calendario y ordenación dinámica por fases curriculares." },
+        { type: "NAVEGACIÓN", text: "Botón '📋 Dossier' reubicado al final de la barra de herramientas para todos los roles." },
+        { type: "FINANZAS", text: "Costes reales físicos (€) reservados exclusivamente a auditoría docente vía modal de compras." }
+      ]
+    },
     {
       version: "1.1.48",
       date: new Date().toISOString().split('T')[0],

@@ -486,18 +486,18 @@ const auth = (function() {
                 'campaigns': { id: 'campaigns', label: '📢 Campañas', badge: 'badge-campaigns' },
                 'cart': { id: 'cart', label: '📦 Taller Ensamble', badge: 'badge-cart' },
                 'ailog': { id: 'ailog', label: '🤖 Bitácora IA', badge: 'badge-ailog' },
-                'dossier': { id: 'dossier', label: '📋 Dossier (19)', badge: 'badge-dossier' },
+                'dossier': { id: 'dossier', label: '📋 Dossier', badge: 'badge-dossier' },
                 'resolutions': { id: 'resolutions', label: '⚖️ Trámites', badge: 'badge-resolutions' }
             };
 
             const roleTabOrders = {
-                'CEO': ['dashboard', 'dossier', 'orders', 'resolutions', 'role_deliverables'],
-                'TECNICO': ['tech', 'tech_workshop', 'dossier', 'orders', 'resolutions', 'role_deliverables'],
-                'FINANZAS': ['finance', 'dossier', 'orders', 'resolutions', 'role_deliverables'],
-                'MARKETING': ['brand', 'campaigns', 'dossier', 'orders', 'resolutions', 'role_deliverables'],
-                'OPERACIONES_IA': ['cart', 'ailog', 'dossier', 'orders', 'resolutions', 'role_deliverables'],
-                'OPERACIONES': ['cart', 'ailog', 'dossier', 'orders', 'resolutions', 'role_deliverables'],
-                'AUXILIAR': ['dashboard', 'dossier', 'orders', 'resolutions', 'role_deliverables']
+                'CEO': ['dashboard', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
+                'TECNICO': ['tech', 'tech_workshop', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
+                'FINANZAS': ['finance', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
+                'MARKETING': ['brand', 'campaigns', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
+                'OPERACIONES_IA': ['cart', 'ailog', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
+                'OPERACIONES': ['cart', 'ailog', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
+                'AUXILIAR': ['dashboard', 'orders', 'resolutions', 'role_deliverables', 'dossier']
             };
 
             let activeTabIds = [];

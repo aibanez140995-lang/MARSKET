@@ -163,17 +163,17 @@ Object.assign(ui, {
                     ${(st === 'EJECUTADO') ? `
                     <div class="mt-3 pt-2.5 border-t border-slate-800 bg-black/50 p-2.5 rounded text-xs space-y-1.5">
                         <div class="flex justify-between items-center text-[11px] font-bold text-mars-green uppercase">
-                            <span>📦 Imputación de Compra Real y Ensamble (Taller):</span>
-                            <span class="font-mono text-white">Coste Real Total: ${(order.items || []).reduce((s, it) => s + (Number(it.realEur) || 0), 0).toFixed(2)} €</span>
+                            <span>📦 Ejecución y Ensamble en Taller:</span>
+                            <span class="font-mono ${state.user.admin ? 'text-white' : 'text-mars-green'}">${state.user.admin ? `Coste Real Total: ${(order.items || []).reduce((s, it) => s + (Number(it.realEur) || 0), 0).toFixed(2)} €` : 'COMPRA FÍSICA EJECUTADA'}</span>
                         </div>
                         <div class="space-y-1">
                             ${(order.items || []).map(it => `
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-300 gap-1 border-b border-slate-900 pb-1 last:border-0 font-mono">
                                     <span class="text-white">${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
                                     <div class="flex items-center gap-2">
-                                        <span>Real: <strong class="text-mars-yellow">${it.realEur !== undefined ? Number(it.realEur).toFixed(2) : '--'} €</strong></span>
+                                        ${state.user.admin ? `<span>Real: <strong class="text-mars-yellow">${it.realEur !== undefined ? Number(it.realEur).toFixed(2) : '--'} €</strong></span>` : ''}
                                         <span>Comercio: <strong class="text-slate-200">${this.escapeHTML(it.realShop || 'Comercio')}</strong></span>
-                                        ${(it.ticketUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(it.ticketUrl))
+                                        ${(state.user.admin && it.ticketUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(it.ticketUrl))
                                             ? `<a href="${encodeURI(it.ticketUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-mars-cyan hover:underline font-bold">[Ticket Drive ↗]</a>`
                                             : ''
                                         }

@@ -294,9 +294,9 @@ Object.assign(ui, {
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         
         ui.pushNotification(state.user.coId, 'TECNICO', `📦 Orden #${order.id} física completada y ensamblada por Operaciones.`, 'success', { view: 'orders', filter: 'COMPLETADAS', dept: 'TECNICO' });
-        ui.pushNotification(state.user.coId, 'FINANZAS', `📦 Coste real de Orden #${order.id} (${finalTotalEurV.toFixed(2)} €v / ${finalItems.reduce((acc, it) => acc + (it.realEur || 0), 0).toFixed(2)} €) registrado en Libro Mayor.`, 'info', { view: 'finance' });
+        ui.pushNotification(state.user.coId, 'FINANZAS', `📦 Orden #${order.id} ejecutada: ${finalTotalEurV.toFixed(2)} €v descontados en el Libro Mayor.`, 'info', { view: 'finance' });
 
-        this.notify(`✅ Orden #${order.id} ejecutada. El saldo virtual ha sido descontado y los costes reales registrados.`, "success");
+        this.notify(`✅ Orden #${order.id} ejecutada. El saldo virtual ha sido descontado y los componentes registrados para ensamble.`, "success");
         this.render();
     },
 

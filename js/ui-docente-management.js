@@ -272,7 +272,12 @@ Object.assign(ui, {
                                             ${opCosts.sponsorReduction > 0 ? `<span class="text-[10px] text-mars-yellow">(Bruto: ${opCosts.gross.toFixed(0)} | -${opCosts.sponsorReduction.toFixed(0)} €v)</span>` : ''}
                                         </button>
                                     </td>
-                                    <td class="py-3 font-mono pr-2.5 sm:pr-4"><span class="text-mars-magenta">${r.toFixed(2)} €</span></td>
+                                    <td class="py-3 font-mono pr-2.5 sm:pr-4">
+                                        <button onclick="ui.modalRealSpend('${this.escapeHTML(cid)}')" class="min-h-[44px] text-left text-mars-magenta hover:text-white transition-colors underline decoration-mars-magenta/50 decoration-dashed underline-offset-4 inline-flex items-center gap-1 font-bold" title="Auditar compras físicas y tickets">
+                                            <span>${r.toFixed(2)} €</span>
+                                            <span class="text-[10px] text-slate-400">🔍</span>
+                                        </button>
+                                    </td>
                                     <td class="py-3 pr-2.5 sm:pr-4">${sponsorHtml}</td>
                                     <td class="py-3">
                                         <button onclick="ui.modalAEEFine('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-red-900/30 border border-red-500 text-red-400 px-3 py-1.5 font-bold text-xs uppercase hover:bg-red-500 hover:text-white transition-all shadow-[0_0_5px_red] whitespace-nowrap">Expediente Sancionador</button>
@@ -529,7 +534,10 @@ Object.assign(ui, {
         const now = Date.now();
         state.data.config = state.data.config || {};
         state.data.config.deliverableSchedule = state.data.config.deliverableSchedule || {};
+        const prevSched = state.data.config.deliverableSchedule[docKey] || {};
         state.data.config.deliverableSchedule[docKey] = {
+            ...prevSched,
+            phase: prevSched.phase || (this.getDeliverablePhase ? this.getDeliverablePhase(docKey) : 'I'),
             openDate,
             deadline,
             guideDocUrl: guideDocUrl || "",
@@ -570,7 +578,10 @@ Object.assign(ui, {
                 const openDate = elOpen.value.trim() || null;
                 const deadline = elDead.value.trim() || null;
                 const guideDocUrl = elGuide.value.trim();
+                const prevSched = state.data.config.deliverableSchedule[d.key] || {};
                 state.data.config.deliverableSchedule[d.key] = {
+                    ...prevSched,
+                    phase: prevSched.phase || (this.getDeliverablePhase ? this.getDeliverablePhase(d.key) : 'I'),
                     openDate,
                     deadline,
                     guideDocUrl: guideDocUrl || "",
@@ -606,6 +617,88 @@ Object.assign(ui, {
         this.notify("Plazo actualizado en el Cronograma Maestro.", "success");
     },
 
+    getDeliverablePhase(docKey) {
+        const fromSched = state.data?.config?.deliverableSchedule?.[docKey]?.phase;
+        if (fromSched) return fromSched;
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const def = defs.find(d => d.key === docKey);
+        return def?.phase || 'I';
+    },
+
+    modalSelectDeliverablePhase(docKey) {
+        if (!state.user || !state.user.role || !state.user.role.startsWith('COORD')) {
+            return this.notify("Acceso restringido a Coordinación Docente.", "error");
+        }
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const def = defs.find(d => d.key === docKey);
+        if (!def) return this.notify("Entregable no encontrado.", "error");
+
+        const currPhase = this.getDeliverablePhase(docKey);
+        const phaseOptions = [
+            { id: 'I', title: 'Fase I: Constitución, Misión y Especificaciones Preliminares', color: 'border-mars-cyan' },
+            { id: 'II', title: 'Fase II: Modelo de Negocio, Matemáticas y Prototipado', color: 'border-mars-yellow' },
+            { id: 'III', title: 'Fase III: Dossier de Inversores y Modelo Matemático Final', color: 'border-purple-500' },
+            { id: 'IV', title: 'Fase IV: Reporte Técnico, Taller, Marca Final y Cierre Contable', color: 'border-mars-green' }
+        ];
+
+        const optionsHtml = phaseOptions.map(p => {
+            const isSelected = currPhase === p.id;
+            return `
+            <div class="p-3 border rounded transition-all bg-slate-900 ${isSelected ? p.color + ' border-2 bg-slate-800/80 shadow-[0_0_10px_rgba(0,240,255,0.2)]' : 'border-slate-800 hover:border-slate-600'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div class="flex-grow">
+                    <span class="text-xs font-black uppercase text-white block">${this.escapeHTML(p.title)}</span>
+                    <span class="text-[10px] font-mono ${isSelected ? 'text-mars-cyan font-bold' : 'text-slate-400'}">FASE ${p.id} ${isSelected ? '• [FASE ACTUAL]' : ''}</span>
+                </div>
+                <button type="button" onclick="ui.setDeliverablePhase('${this.escapeHTML(docKey)}', '${p.id}')" class="min-h-[44px] px-4 py-2 text-xs font-black uppercase transition-all whitespace-nowrap ${isSelected ? 'bg-mars-cyan text-black' : 'bg-slate-800 border border-slate-700 text-slate-200 hover:bg-white hover:text-black'}">
+                    ${isSelected ? '✓ SELECCIONADA' : 'ASIGNAR FASE ' + p.id}
+                </button>
+            </div>`;
+        }).join('');
+
+        const content = `
+            <div class="space-y-4">
+                <div class="bg-slate-900 border border-mars-cyan/40 p-3 text-xs text-slate-300">
+                    <p class="mb-1"><strong class="text-mars-cyan uppercase">${this.escapeHTML(def.name)}</strong> <span class="font-mono text-slate-400">(${this.escapeHTML(def.key)})</span></p>
+                    <p class="text-[11px] text-slate-400">Selecciona la fase curricular en la que los alumnos verán y entregarán este hito en su Dossier y vista departamental:</p>
+                </div>
+                <div class="space-y-2.5">
+                    ${optionsHtml}
+                </div>
+            </div>
+        `;
+
+        this.showModal("🗂️ ASIGNAR FASE AL ENTREGABLE", content, `<button type="button" onclick="ui.closeModal();" class="min-h-[44px] px-5 py-2 bg-slate-800 text-white font-bold uppercase text-xs hover:bg-slate-700">Cerrar</button>`);
+    },
+
+    async setDeliverablePhase(docKey, newPhase) {
+        if (!state.user || !state.user.role || !state.user.role.startsWith('COORD')) {
+            return this.notify("Acceso restringido a Coordinación Docente.", "error");
+        }
+        state.pausePolling = true;
+        const now = Date.now();
+        state.data.config = state.data.config || {};
+        state.data.config.deliverableSchedule = state.data.config.deliverableSchedule || {};
+        const prevSched = state.data.config.deliverableSchedule[docKey] || {};
+        state.data.config.deliverableSchedule[docKey] = {
+            ...prevSched,
+            phase: newPhase,
+            updatedAt: now
+        };
+        state.data.config.updatedAt = now;
+        state.saveLocalOnly();
+        try {
+            await state.pushToCloud(false);
+            this.notify(`✅ Entregable ${docKey} reasignado a FASE ${newPhase}.`, "success");
+            this.closeModal();
+            this.render();
+        } catch(e) {
+            console.error("Error al persistir fase del entregable:", e);
+            this.notify("Error al persistir la fase en el servidor.", "error");
+        } finally {
+            state.pausePolling = false;
+        }
+    },
+
     modalManagePhases() {
         if (!state.user || !state.user.role.startsWith('COORD')) {
             return this.notify("Acceso restringido a Coordinación Docente.", "error");
@@ -622,7 +715,7 @@ Object.assign(ui, {
         const nowIso = new Date().toISOString().slice(0, 16);
 
         const phasesHtml = phases.map(p => {
-            const pDefs = defs.filter(d => d.phase === p.id);
+            const pDefs = defs.filter(d => (this.getDeliverablePhase ? this.getDeliverablePhase(d.key) : (d.phase || 'I')) === p.id);
             let openCount = 0;
             pDefs.forEach(d => {
                 const s = sched[d.key] || {};
@@ -684,7 +777,7 @@ Object.assign(ui, {
         if (!state.user || !state.user.role.startsWith('COORD')) {
             return this.notify("Acceso restringido a Coordinación Docente.", "error");
         }
-        const defs = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).filter(d => d.phase === phaseNum);
+        const defs = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).filter(d => (this.getDeliverablePhase ? this.getDeliverablePhase(d.key) : (d.phase || 'I')) === phaseNum);
         if (defs.length === 0) return this.notify("No se encontraron entregables para la Fase " + phaseNum, "warning");
 
         state.pausePolling = true;
@@ -774,7 +867,15 @@ Object.assign(ui, {
         const activeHtml = activeSuggs.map(renderSuggItem).join('') || '<p class="text-slate-300 italic text-xs">No hay consultas activas pendientes en el buzón.</p>';
         const resolvedHtml = resolvedSuggs.map(renderSuggItem).join('') || '<p class="text-slate-400 italic text-xs">No hay consultas resueltas registradas.</p>';
 
-        const scheduleCards = defs.map(d => {
+        const phaseOrder = { 'I': 1, 'II': 2, 'III': 3, 'IV': 4 };
+        const sortedDefs = [...defs].sort((a, b) => {
+            const pA = phaseOrder[this.getDeliverablePhase ? this.getDeliverablePhase(a.key) : (a.phase || 'I')] || 99;
+            const pB = phaseOrder[this.getDeliverablePhase ? this.getDeliverablePhase(b.key) : (b.phase || 'I')] || 99;
+            return pA - pB;
+        });
+
+        const scheduleCards = sortedDefs.map(d => {
+            const currPhase = this.getDeliverablePhase ? this.getDeliverablePhase(d.key) : (d.phase || 'I');
             const sched = schedule[d.key] || {};
             const openVal = sched.openDate || d.defaultOpenDate || '';
             const deadVal = sched.deadline || dl[d.key] || d.defaultDate || '';
@@ -800,6 +901,12 @@ Object.assign(ui, {
                 <div class="space-y-1">
                     <label for="sched-guide-${this.escapeHTML(d.key)}" class="text-[10px] text-mars-green uppercase font-bold block">3. Plantilla Oficial Drive (Opcional)</label>
                     <input type="url" id="sched-guide-${this.escapeHTML(d.key)}" value="${this.escapeAttr(guideVal)}" placeholder="https://docs.google.com/document/d/..." ${isCoord ? `onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')"` : 'disabled'} class="input-guide-url min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-mars-green font-mono outline-none focus:border-mars-green">
+                </div>
+                <div class="pt-1.5 border-t border-slate-800">
+                    <button type="button" ${isCoord ? `onclick="ui.modalSelectDeliverablePhase('${this.escapeHTML(d.key)}')"` : 'disabled'} class="min-h-[44px] w-full bg-slate-800/90 hover:bg-slate-800 border border-mars-cyan/40 hover:border-mars-cyan text-mars-cyan font-bold text-xs uppercase px-2.5 py-2 flex items-center justify-between transition-colors disabled:opacity-50">
+                        <span>🗂️ Fase Actual: FASE ${this.escapeHTML(currPhase)}</span>
+                        ${isCoord ? `<span class="text-[10px] text-amber-400 font-mono">[ Cambiar Fase ➔ ]</span>` : ''}
+                    </button>
                 </div>
             </div>`;
         }).join('');
@@ -1909,6 +2016,60 @@ Object.assign(ui, {
             </div>
         `;
         this.showModal(`Auditoría de Gasto Virtual: ${this.escapeHTML(co.name)}`, html, "");
+    },
+
+    modalRealSpend(cid) {
+        if (!state.user || !state.user.admin) {
+            return this.notify("Acceso restringido al Claustro Docente.", "error");
+        }
+        const co = state.data.companies?.[cid];
+        if (!co) return;
+        co.realCosts = co.realCosts || [];
+        const totalReal = co.realCosts.reduce((s, i) => s + (Number(i.eur) || 0), 0);
+
+        const rowsHtml = co.realCosts.map(rc => `
+            <tr class="border-b border-slate-800">
+                <td class="py-2 pr-2 text-slate-300 text-xs">${this.escapeHTML(rc.date || '--')}</td>
+                <td class="py-2 pr-2 text-white font-bold text-xs break-words">${this.escapeHTML(rc.item || '')}</td>
+                <td class="py-2 pr-2 text-slate-300 text-xs font-mono text-center">x${Number(rc.qty) || 1}</td>
+                <td class="py-2 pr-2 text-mars-cyan text-xs uppercase">${this.escapeHTML(rc.shop || '--')}</td>
+                <td class="py-2 text-right font-mono text-mars-magenta font-bold text-xs pr-3">${Number(rc.eur || 0).toFixed(2)} €</td>
+                <td class="py-2 text-right text-xs">
+                    ${(rc.ticketUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(rc.ticketUrl))
+                        ? `<a href="${encodeURI(rc.ticketUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[32px] inline-flex items-center gap-1 text-mars-cyan hover:underline font-bold font-mono"><span>Comprobante ↗</span></a>`
+                        : `<span class="text-slate-500 italic">Sin ticket</span>`
+                    }
+                </td>
+            </tr>
+        `).join('') || `<tr><td colspan="6" class="py-4 text-center text-slate-300 text-xs italic">Esta startup no registra compras físicas reales con coste monetario.</td></tr>`;
+
+        const html = `
+            <div class="bg-slate-900 border border-mars-magenta p-3 mb-4 flex justify-between items-center flex-wrap gap-2">
+                <div>
+                    <span class="text-[10px] text-slate-400 uppercase font-bold block">Gasto Físico Real Auditado (€)</span>
+                    <span class="text-xs text-slate-300 font-mono">${co.realCosts.length} Adquisiciones registradas en taller</span>
+                </div>
+                <div class="text-right">
+                    <span class="text-xl font-orbitron text-mars-magenta font-black">${totalReal.toFixed(2)} €</span>
+                </div>
+            </div>
+            <div class="max-h-72 overflow-y-auto pr-1 overflow-x-auto max-w-full">
+                <table class="w-full text-left text-xs">
+                    <thead class="text-xs text-slate-300 uppercase border-b border-mars-border sticky top-0 bg-slate-900">
+                        <tr>
+                            <th class="py-1.5 pr-2">Fecha</th>
+                            <th class="pr-2">Componente</th>
+                            <th class="pr-2 text-center">Uds</th>
+                            <th class="pr-2">Comercio</th>
+                            <th class="text-right pr-3">Coste Real</th>
+                            <th class="text-right">Ticket Drive</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            </div>
+        `;
+        this.showModal(`Auditoría de Compras Físicas: ${this.escapeHTML(co.name)}`, html, `<button type="button" onclick="ui.closeModal();" class="min-h-[44px] px-5 py-2 bg-slate-800 text-white font-bold uppercase text-xs hover:bg-slate-700">Cerrar</button>`);
     },
 
     modalAssignSponsor(cid) {
