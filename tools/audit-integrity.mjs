@@ -103,12 +103,12 @@ function runAudit() {
         handlers: { total: 0, broken: [], list: [] },
         tabMap: {
             roles: {
-                CEO: { primary: 'orders', render: 'ui.viewOrders', tabs: ['orders', 'resolutions', 'finance', 'dossier', 'market'] },
-                TECNICO: { primary: 'tech', render: 'ui.viewTech', tabs: ['market', 'tech', 'tech_workshop', 'dossier', 'resolutions'] },
-                FINANZAS: { primary: 'finance', render: 'ui.viewFinance', tabs: ['finance', 'orders', 'dossier', 'market', 'resolutions'] },
-                MARKETING: { primary: 'brand', render: 'ui.viewBrand', tabs: ['brand', 'campaigns', 'dossier', 'resolutions'] },
-                OPERACIONES_IA: { primary: 'cart', render: 'ui.viewCart', tabs: ['cart', 'ailog', 'dossier', 'market', 'resolutions'] },
-                AUXILIAR: { primary: 'resolutions (o dpto asignado)', render: 'ui.viewResolutions', tabs: ['resolutions', 'dossier', 'market'] },
+                CEO: { primary: 'dashboard', render: 'ui.viewDashboard', tabs: ['dashboard', 'dossier', 'orders', 'resolutions', 'role_deliverables'] },
+                TECNICO: { primary: 'tech', render: 'ui.viewTech', tabs: ['tech', 'tech_workshop', 'dossier', 'orders', 'resolutions', 'role_deliverables'] },
+                FINANZAS: { primary: 'finance', render: 'ui.viewFinance', tabs: ['finance', 'dossier', 'orders', 'resolutions', 'role_deliverables'] },
+                MARKETING: { primary: 'brand', render: 'ui.viewBrand', tabs: ['brand', 'campaigns', 'dossier', 'orders', 'resolutions', 'role_deliverables'] },
+                OPERACIONES_IA: { primary: 'cart', render: 'ui.viewCart', tabs: ['cart', 'ailog', 'dossier', 'orders', 'resolutions', 'role_deliverables'] },
+                AUXILIAR: { primary: 'dashboard', render: 'ui.viewDashboard', tabs: ['dashboard', 'dossier', 'orders', 'resolutions', 'role_deliverables'] },
                 DOCENTE: { primary: 'admin', render: 'ui.viewAdmin', tabs: ['admin', 'market', 'dossier'] }
             },
             adminTabs: {

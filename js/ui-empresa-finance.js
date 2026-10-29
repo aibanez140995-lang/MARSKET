@@ -8,6 +8,10 @@ Object.assign(ui, {
         return this.viewOrders(el);
     },
 
+    viewOrdersTracking(el) {
+        return this.viewOrders(el);
+    },
+
     setCronogramaSubjectFilter(subj) {
         this.cronogramaFilter = subj;
         this.render();
@@ -906,21 +910,13 @@ Object.assign(ui, {
                     <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
                         <div>
                             <h3 class="font-orbitron text-mars-green text-sm uppercase tracking-tighter">Entregables Oficiales: Economía (10%)</h3>
-                            <p class="text-xs text-slate-300 uppercase mt-0.5">Resp: Departamento Financiero (Solo Enlaces Cloud).</p>
+                            <p class="text-xs text-slate-300 uppercase mt-0.5">Resp: Departamento Financiero.</p>
                         </div>
                     </div>
-                    <div class="space-y-4">
-                        ${(!state.user?.admin && ['budgetInitial', 'incomeStatement', 'budgetPostProto', 'balanceSheet'].every(k => ui.isDeliverableLocked(k, co))) ? `
-                            <div class="p-6 bg-slate-900/40 border border-slate-800 text-center rounded">
-                                <p class="text-xs font-mono text-slate-400 uppercase">🔒 No hay entregables activos en esta fase. Se habilitarán según el cronograma oficial.</p>
-                            </div>
-                        ` : `
-                        ${this.renderDriveLinkBox('1. Presupuesto Inicial (20% ECO)', 'Presupuesto estimativo previo al inicio de pruebas. Hoja Sheets/Drive.', 'budgetInitial', docs.budgetInitial)}
-                        ${this.renderDriveLinkBox('2. Cuenta de Resultados Provisional (20% ECO)', 'Registro de ingresos virtuales, gastos y balance de rentabilidad.', 'incomeStatement', docs.incomeStatement)}
-                        ${this.renderDriveLinkBox('3. Presupuesto Post-Prototipo (20% ECO)', 'Ajuste presupuestario final tras los ensayos de lanzamiento.', 'budgetPostProto', docs.budgetPostProto)}
-                        ${this.renderDriveLinkBox('4. Balance de Situación Simplificado (20% ECO)', 'Estructura patrimonial de la startup aeroespacial al cierre del proyecto.', 'balanceSheet', docs.balanceSheet)}
-                        `}
-                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed mb-4">Los 4 hitos contables de la startup (Presupuesto Inicial, Cuenta de Resultados, Presupuesto Post-Prototipo y Balance) se gestionan con flujo guiado y control de versiones en <strong>Mis Entregables</strong>.</p>
+                    <button type="button" onclick="ui.navigate('role_deliverables')" class="w-full min-h-[44px] bg-mars-green text-black font-black uppercase text-xs py-2.5 px-4 hover:bg-white transition-all flex items-center justify-center gap-2 shadow-sm">
+                        <span>📤 GESTIONAR ENTREGABLES EN "MIS ENTREGABLES"</span> ➔
+                    </button>
                 </div>
 
                 <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-magenta">

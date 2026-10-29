@@ -185,32 +185,7 @@ Object.assign(ui, {
                 </div>`;
             }).join('');
 
-        const trackingSectionHtml = `
-        <div id="tech-orders-tracking-panel" class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-3">
-                <div>
-                    <h2 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter flex items-center gap-2">
-                        <span>📡 Seguimiento de Órdenes de I+D</span>
-                        <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 border border-slate-700 font-normal">Workflow 3 Fases</span>
-                    </h2>
-                    <p class="text-xs text-slate-300 uppercase mt-0.5">Control de estado de solicitudes: I+D (Técnico) ➔ Finanzas (Auditoría) ➔ Logística (Taller / Ensamble).</p>
-                </div>
-                <div role="tablist" aria-label="Filtro de Órdenes I+D" class="flex flex-wrap gap-1.5 bg-black p-1 border border-mars-border">
-                    <button type="button" role="tab" aria-selected="${techFilter === 'EN_PROCESO'}" onclick="ui.setTechOrdersFilter('EN_PROCESO')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${techFilter === 'EN_PROCESO' ? 'bg-mars-cyan text-black' : 'text-slate-300 hover:text-white'}">
-                        ⏳ En Proceso (${techPendingCount})
-                    </button>
-                    <button type="button" role="tab" aria-selected="${techFilter === 'COMPLETADAS'}" onclick="ui.setTechOrdersFilter('COMPLETADAS')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${techFilter === 'COMPLETADAS' ? 'bg-mars-green text-black' : 'text-slate-300 hover:text-white'}">
-                        ✅ Completadas (${techCompletedCount})
-                    </button>
-                    <button type="button" role="tab" aria-selected="${techFilter === 'DENEGADAS'}" onclick="ui.setTechOrdersFilter('DENEGADAS')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${techFilter === 'DENEGADAS' ? 'bg-mars-magenta text-white' : 'text-slate-300 hover:text-white'}">
-                        ❌ Denegadas (${techRejectedCount})
-                    </button>
-                </div>
-            </div>
-            <div>
-                ${techOrdersHtml}
-            </div>
-        </div>`;
+        const trackingSectionHtml = '';
 
         wrapper.innerHTML = `
         <div class="space-y-6">
@@ -272,23 +247,50 @@ Object.assign(ui, {
                     </div>
                 </div>
 
-                <!-- Columna Derecha: Entregables FYQ y MAT -->
+                <!-- Columna Derecha: Acceso a Entregables Científicos y Órdenes -->
                 <div class="lg:col-span-5 space-y-6">
                     <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
                         <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-3 flex-wrap gap-2">
-                            <h2 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter">Entregables Científicos (Drive)</h2>
-                            <div role="tablist" aria-label="Materias científicas" class="flex gap-1 bg-black p-1 border border-mars-border">
-                                <button type="button" role="tab" aria-selected="${activeDocTab === 'FYQ'}" onclick="ui.setTechDocTab('FYQ')" class="min-h-[44px] px-3 py-2 text-xs font-bold uppercase transition-colors ${activeDocTab === 'FYQ' ? 'bg-mars-cyan text-black' : 'text-slate-300 hover:text-white'}">Física y Química</button>
-                                <button type="button" role="tab" aria-selected="${activeDocTab === 'MAT'}" onclick="ui.setTechDocTab('MAT')" class="min-h-[44px] px-3 py-2 text-xs font-bold uppercase transition-colors ${activeDocTab === 'MAT' ? 'bg-mars-yellow text-black' : 'text-slate-300 hover:text-white'}">Matemáticas</button>
+                            <h2 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter">Entregables Científicos (FYQ & MAT)</h2>
+                            <span class="text-xs bg-mars-cyan/10 text-mars-cyan border border-mars-cyan/40 px-2 py-0.5 font-bold uppercase">Resp: Dpto. Técnico</span>
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Los 6 hitos científicos (Informes de Propulsión de Física y Química, Calibración del Goniómetro e Informes Trigonométricos de Matemáticas) se gestionan de forma guiada en <strong>Mis Entregables</strong>.
+                        </p>
+                        <div class="space-y-3 mb-4">
+                            <div class="p-3 bg-black/60 border border-slate-800 rounded text-xs flex justify-between items-center">
+                                <div>
+                                    <span class="text-white font-bold block uppercase">Física y Química (25%)</span>
+                                    <span class="text-[11px] text-slate-400">Informe Preliminar & Final Exhaustivo</span>
+                                </div>
+                                <span class="text-xs font-mono text-mars-cyan font-bold">2 Hitos</span>
+                            </div>
+                            <div class="p-3 bg-black/60 border border-slate-800 rounded text-xs flex justify-between items-center">
+                                <div>
+                                    <span class="text-white font-bold block uppercase">Matemáticas (5%)</span>
+                                    <span class="text-[11px] text-slate-400">Goniómetro, Distancia Fija, 2 Puntos y Comparativo</span>
+                                </div>
+                                <span class="text-xs font-mono text-mars-yellow font-bold">4 Hitos</span>
                             </div>
                         </div>
-                        <div class="max-h-[560px] overflow-y-auto pr-1">
-                            ${docSectionContent}
+                        <button type="button" onclick="ui.navigate('role_deliverables')" class="w-full min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs py-2.5 px-4 hover:bg-white transition-all flex items-center justify-center gap-2 shadow-sm">
+                            <span>📤 GESTIONAR ENTREGABLES EN "MIS ENTREGABLES"</span> ➔
+                        </button>
+                    </div>
+
+                    <!-- Acceso a Seguimiento de Órdenes -->
+                    <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-amber-400">
+                        <div class="flex justify-between items-center mb-2 border-b border-mars-border pb-2">
+                            <h3 class="font-orbitron text-amber-400 text-xs sm:text-sm uppercase tracking-tight">Órdenes de Compra I+D</h3>
+                            <span class="text-xs font-mono text-slate-400">${(co.orders || []).length} Órdenes</span>
                         </div>
+                        <p class="text-xs text-slate-300 mb-3">Consulta el estado de tramitación financiera y logística de todas las solicitudes de materiales.</p>
+                        <button type="button" onclick="ui.navigate('orders')" class="w-full min-h-[44px] bg-slate-900 border border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-black font-black uppercase text-xs py-2 px-3 transition-all flex items-center justify-center gap-2">
+                            <span>📡 VER SEGUIMIENTO DE ÓRDENES</span> ➔
+                        </button>
                     </div>
                 </div>
             </div>
-            ${trackingSectionHtml}
         </div>`;
         el.appendChild(wrapper);
     },

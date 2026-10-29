@@ -123,6 +123,24 @@ export async function onRequestPost(context) {
             return new Response(JSON.stringify({ error: 'COMPANY_NOT_FOUND', companyId: cid }), { status: 404, headers: CORS_HEADERS });
         }
 
+        // Blindaje de credenciales: extraer la bóveda autorizada de state para no degradarla
+        const authRow = await env.MARSKET_DB.prepare(
+            "SELECT json_extract(data, '$.companies.' || ? || '.authVault') as vlt, json_extract(data, '$.companies.' || ? || '.authUpdatedAt') as au, json_extract(data, '$.companies.' || ? || '.accessCode') as ac FROM state WHERE id = 'current'"
+        ).bind(cid, cid, cid).first().catch(() => null);
+
+        if (authRow) {
+            if (authRow.vlt) {
+                try {
+                    const parsedVlt = typeof authRow.vlt === 'string' ? JSON.parse(authRow.vlt) : authRow.vlt;
+                    if (parsedVlt && parsedVlt.code) {
+                        co.authVault = parsedVlt;
+                    }
+                } catch(e) {}
+            }
+            if (authRow.ac && !co.accessCode) co.accessCode = authRow.ac;
+            if (authRow.au) co.authUpdatedAt = Number(authRow.au) || co.authUpdatedAt;
+        }
+
         co.ledger = Array.isArray(co.ledger) ? co.ledger : [];
         co.cart = Array.isArray(co.cart) ? co.cart : [];
         co.orders = Array.isArray(co.orders) ? co.orders : [];

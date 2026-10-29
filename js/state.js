@@ -86,6 +86,8 @@ const state = {
     _hasWarnedCloudNetwork: false,
     _clockInterval: null,
     _vaultKey: 'MARS_AEE_2026_SECRET_KEY',
+    _adminCredentialsFetched: false,
+    _fetchingCredentials: false,
 
     // WP5: Acceso encapsulado a la estructura reactiva sin congelar state.data
     get(path) {
@@ -360,6 +362,7 @@ const state = {
                     const prevSched = d.config.deliverableSchedule[def.key] || {};
                     d.config.deliverableSchedule[def.key] = {
                         ...prevSched,
+                        phase: def.phase || "I",
                         openDate: def.defaultOpenDate,
                         deadline: def.defaultDate,
                         guideDocUrl: prevSched.guideDocUrl || def.defaultGuideDocUrl || "",
@@ -368,7 +371,11 @@ const state = {
                 });
             }
         } else if (typeof DELIVERABLES_DEF !== 'undefined') {
+            d.config.deliverableSchedule = d.config.deliverableSchedule || {};
             DELIVERABLES_DEF.forEach(def => {
+                if (d.config.deliverableSchedule[def.key]) {
+                    d.config.deliverableSchedule[def.key].phase = d.config.deliverableSchedule[def.key].phase || def.phase || "I";
+                }
                 if (!d.config.deadlines[def.key]) {
                     if (def.key === 'technicalReport' && d.config.deadlines.techReport) {
                         d.config.deadlines[def.key] = d.config.deadlines.techReport;
@@ -434,7 +441,20 @@ const state = {
             oralPresentation: null, writtenEssays: null
         };
 
-        const defaultCodes = { astra: 'AST-1010', orion: 'ORI-2020', stellar: 'STL-3030' };
+        const defaultCodes = {
+            astromars: 'AST-1010',
+            redares: 'RED-2020',
+            olympus: 'OLY-3030',
+            curiosity: 'CUR-4040',
+            phoenix: 'PHX-5050',
+            valleys: 'VAL-6060',
+            titan: 'TTN-7070',
+            nova: 'NOV-8080',
+            vortex: 'VTX-9090',
+            astra: 'AST-1010',
+            orion: 'ORI-2020',
+            stellar: 'STL-3030'
+        };
 
         for(let k in d.companies) {
             let co = d.companies[k];
@@ -445,7 +465,7 @@ const state = {
             co.balance = this.calculateBalance(co);
             co.updatedAt = co.updatedAt || Date.now();
             co.authUpdatedAt = Number(co.authUpdatedAt) || 0;
-            co.roles = co.roles || { CEO:'1234', TECNICO:'1234', FINANZAS:'1234', MARKETING:'1234', OPERACIONES_IA:'1234' };
+            co.roles = co.roles || {};
             
             if(co.roles.QUIMICA || co.roles.AERODINAMICA || co.roles.IA) {
                 const defaultPin = co.roles.CEO || '1234';
@@ -462,18 +482,16 @@ const state = {
             co.authVault.roles = co.authVault.roles || {};
 
             let currentPlainCode = this.getCompanyCode(co);
-            if (!currentPlainCode) {
-                currentPlainCode = defaultCodes[k] || this.generateCompanyCode(co.name);
+            if (!currentPlainCode && defaultCodes[k]) {
+                currentPlainCode = defaultCodes[k];
+                this.setCompanyCode(co, currentPlainCode, false);
             }
-            this.setCompanyCode(co, currentPlainCode, false);
 
             const baseRoles = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'];
             baseRoles.forEach(r => {
                 const existingPin = this.getRolePin(co, r);
                 if (existingPin && existingPin !== 'PROTECTED') {
                     this.setRolePin(co, r, existingPin, false);
-                } else if (!existingPin && r !== 'AUXILIAR') {
-                    this.setRolePin(co, r, '1234', false);
                 }
             });
 
@@ -489,7 +507,7 @@ const state = {
             co.auxRoleRequest = co.auxRoleRequest || { status: co.roles['AUXILIAR'] ? 'APROBADO' : 'INACTIVO', dept: co.auxRoleDept || '', pin: this.getRolePin(co, 'AUXILIAR') || '' };
             co.deliverables = co.deliverables || {};
             
-            const validHojaStatuses = ['DRAFT_TECNICO', 'EN_TALLER_OPERARIO', 'DEVUELTO_A_TECNICO', 'SUBMITTED_TO_CEO', 'DELIVERED_TO_TEACHER'];
+            const validHojaStatuses = ['DRAFT_TECNICO', 'EN_TALLER_OPERARIO', 'DEVUELTO_A_TECNICO', 'CEO_REVISION', 'SUBMITTED_TO_CEO', 'DELIVERED_TO_TEACHER'];
             for (let docKey in defDocs) {
                 if (co.deliverables[docKey] === undefined) {
                     co.deliverables[docKey] = null;
@@ -709,29 +727,37 @@ const state = {
             const lCo = localData.companies[k];
             
             if (sCo && lCo) {
-                // Protección de memoria local: nunca sobreescribir secretos con nulos de la sanitización
-                if (lCo.authVault && (!sCo.authVault || !sCo.authVault.code)) {
-                    sCo.authVault = JSON.parse(JSON.stringify(lCo.authVault));
-                }
-                if (lCo.accessCode && !sCo.accessCode) {
-                    sCo.accessCode = lCo.accessCode;
-                }
-                if (lCo.roles && (!sCo.roles || Object.keys(sCo.roles).length === 0)) {
-                    sCo.roles = JSON.parse(JSON.stringify(lCo.roles));
-                }
-
                 const sTime = sCo.updatedAt || 0;
                 const lTime = lCo.updatedAt || 0;
                 const sAuthTime = sCo.authUpdatedAt || 0;
                 const lAuthTime = lCo.authUpdatedAt || 0;
+
+                // Protección de memoria local: nunca sobreescribir secretos con nulos de la sanitización
+                if (lCo.authVault && lCo.authVault.code) {
+                    if (!sCo.authVault || !sCo.authVault.code || lAuthTime >= sAuthTime) {
+                        sCo.authVault = JSON.parse(JSON.stringify(lCo.authVault));
+                        sCo.roles = JSON.parse(JSON.stringify(lCo.roles || {}));
+                        sCo.accessCode = lCo.accessCode || '';
+                        sCo.authUpdatedAt = Math.max(lAuthTime, sAuthTime);
+                    }
+                } else if (lCo.roles && Object.keys(lCo.roles).length > 0) {
+                    if (!sCo.roles || Object.keys(sCo.roles).length === 0) {
+                        sCo.roles = JSON.parse(JSON.stringify(lCo.roles));
+                    }
+                }
+                if (lCo.accessCode && !sCo.accessCode) {
+                    sCo.accessCode = lCo.accessCode;
+                }
                 
                 if (lTime > sTime) {
                     merged.companies[k] = JSON.parse(JSON.stringify(lCo));
                     if (sAuthTime > lAuthTime && sCo.authVault && sCo.authVault.code) {
                         merged.companies[k].authVault = JSON.parse(JSON.stringify(sCo.authVault));
-                        merged.companies[k].roles = JSON.parse(JSON.stringify(sCo.roles));
-                        merged.companies[k].auxRoleDept = sCo.auxRoleDept;
-                        merged.companies[k].auxRoleRequest = JSON.parse(JSON.stringify(sCo.auxRoleRequest));
+                        merged.companies[k].roles = JSON.parse(JSON.stringify(sCo.roles || {}));
+                        merged.companies[k].auxRoleDept = sCo.auxRoleDept || null;
+                        if (sCo.auxRoleRequest) {
+                            merged.companies[k].auxRoleRequest = JSON.parse(JSON.stringify(sCo.auxRoleRequest));
+                        }
                         merged.companies[k].authUpdatedAt = sAuthTime;
                     }
                     // Preservar siempre calificaciones docentes sCo.grades de la nube
@@ -752,6 +778,26 @@ const state = {
                             merged.companies[k].sponsorData = JSON.parse(JSON.stringify(sCo.sponsorData || {}));
                         }
                     }
+                    // Fusión de estadísticas de login (Math.max para evitar pérdidas de telemetría entre sesiones)
+                    const sStats = sCo.loginStats || { totalLogins: 0, roles: {} };
+                    const lStats = lCo.loginStats || { totalLogins: 0, roles: {} };
+                    const mergedLoginStats = {
+                        totalLogins: Math.max(Number(sStats.totalLogins) || 0, Number(lStats.totalLogins) || 0),
+                        roles: {}
+                    };
+                    const allLoginRoles = new Set([...Object.keys(sStats.roles || {}), ...Object.keys(lStats.roles || {})]);
+                    allLoginRoles.forEach(r => {
+                        const sR = sStats.roles?.[r] || { count: 0, lastLogin: null };
+                        const lR = lStats.roles?.[r] || { count: 0, lastLogin: null };
+                        mergedLoginStats.roles[r] = {
+                            count: Math.max(Number(sR.count) || 0, Number(lR.count) || 0),
+                            lastLogin: (sR.lastLogin && lR.lastLogin)
+                                ? (new Date(sR.lastLogin) > new Date(lR.lastLogin) ? sR.lastLogin : lR.lastLogin)
+                                : (sR.lastLogin || lR.lastLogin || null)
+                        };
+                    });
+                    merged.companies[k].loginStats = mergedLoginStats;
+
                     // Fusión de entregables: no pisar entregables docentes ni estados más recientes
                     merged.companies[k].deliverables = merged.companies[k].deliverables || {};
                     if (sCo.deliverables) {
@@ -811,10 +857,12 @@ const state = {
                     }
                 } else {
                     if (lAuthTime > sAuthTime) {
-                        sCo.authVault = JSON.parse(JSON.stringify(lCo.authVault));
-                        sCo.roles = JSON.parse(JSON.stringify(lCo.roles));
-                        sCo.auxRoleDept = lCo.auxRoleDept;
-                        sCo.auxRoleRequest = JSON.parse(JSON.stringify(lCo.auxRoleRequest));
+                        if (lCo.authVault) sCo.authVault = JSON.parse(JSON.stringify(lCo.authVault));
+                        if (lCo.roles) sCo.roles = JSON.parse(JSON.stringify(lCo.roles || {}));
+                        sCo.auxRoleDept = lCo.auxRoleDept || null;
+                        if (lCo.auxRoleRequest) {
+                            sCo.auxRoleRequest = JSON.parse(JSON.stringify(lCo.auxRoleRequest));
+                        }
                         sCo.authUpdatedAt = lAuthTime;
                     }
                     // Preservar resolución de solicitudes de cambio de nombre frente a estados pendientes desactualizados
@@ -1080,6 +1128,7 @@ const state = {
                 const resJson = await res.json().catch(() => null);
                 if (resJson && resJson.newVersion) {
                     this.data.version = resJson.newVersion;
+                    this.lastETag = 'W/"v-' + resJson.newVersion + '"';
                     this.saveLocalOnly();
                 }
                 ok = true;
@@ -1127,6 +1176,7 @@ const state = {
                 const resJson = await res.json().catch(() => null);
                 if (resJson && resJson.newVersion) {
                     this.data.version = resJson.newVersion;
+                    this.lastETag = 'W/"v-' + resJson.newVersion + '"';
                     this.saveLocalOnly();
                 }
                 ok = true;
@@ -1176,6 +1226,7 @@ const state = {
                 const resJson = await res.json().catch(() => null);
                 if (resJson && resJson.newVersion) {
                     this.data.version = resJson.newVersion;
+                    this.lastETag = 'W/"v-' + resJson.newVersion + '"';
                     this.saveLocalOnly();
                 }
                 ok = true;
@@ -1221,6 +1272,7 @@ const state = {
                 const resJson = await res.json().catch(() => null);
                 if (resJson && resJson.newVersion) {
                     this.data.version = resJson.newVersion;
+                    this.lastETag = 'W/"v-' + resJson.newVersion + '"';
                     this.saveLocalOnly();
                 }
                 ok = true;
@@ -1231,6 +1283,81 @@ const state = {
             this.pausePolling = false;
         }
         return ok;
+    },
+
+    async fetchAdminCredentials() {
+        if (!this.user || !this.user.admin || !this.user.role || !this.user.role.startsWith('COORD')) {
+            return false;
+        }
+        const token = this.getAuthToken(this.user, this.data);
+        if (!token) return false;
+
+        try {
+            const res = await fetch('/api/admin/credentials', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Marsket-Auth': token
+                }
+            });
+            if (!res.ok) return false;
+            const creds = await res.json().catch(() => null);
+            if (!creds || typeof creds !== 'object') return false;
+
+            // Hidratar PINs docentes
+            if (creds.teachers && this.data.config) {
+                this.data.config.teachers = this.data.config.teachers || {};
+                for (const tKey in creds.teachers) {
+                    if (this.data.config.teachers[tKey]) {
+                        this.data.config.teachers[tKey].pin = creds.teachers[tKey].pin;
+                        if (creds.teachers[tKey].pinUpdatedAt) {
+                            this.data.config.teachers[tKey].pinUpdatedAt = creds.teachers[tKey].pinUpdatedAt;
+                        }
+                    } else {
+                        this.data.config.teachers[tKey] = creds.teachers[tKey];
+                    }
+                }
+            }
+
+            // Hidratar Códigos de Empresa y PINs departamentales
+            if (creds.companies && this.data.companies) {
+                for (const cKey in creds.companies) {
+                    const sCred = creds.companies[cKey];
+                    const lCo = this.data.companies[cKey];
+                    if (lCo && sCred) {
+                        if (sCred.accessCode) {
+                            this.setCompanyCode(lCo, sCred.accessCode, false);
+                        }
+                        if (sCred.roles && typeof sCred.roles === 'object') {
+                            for (const r in sCred.roles) {
+                                if (sCred.roles[r]) {
+                                    this.setRolePin(lCo, r, sCred.roles[r], false);
+                                }
+                            }
+                        }
+                        if (sCred.auxRoleDept) {
+                            lCo.auxRoleDept = sCred.auxRoleDept;
+                        }
+                    }
+                }
+            }
+            this._adminCredentialsFetched = true;
+            this.saveLocalOnly();
+            const etag = res.headers.get('ETag');
+            if (etag) {
+                this.lastETag = etag;
+            } else if (creds.version) {
+                this.lastETag = 'W/"v-' + creds.version + '"';
+            }
+            if (typeof ui !== 'undefined' && ui.adminTab === 'startups' && typeof ui.renderAdminStartups === 'function') {
+                const subContainer = document.getElementById('admin-subtab-container');
+                if (subContainer) subContainer.innerHTML = ui.renderAdminStartups();
+            }
+            return true;
+        } catch(e) {
+            console.warn("[STATE] fetchAdminCredentials falló:", e);
+            return false;
+        }
     },
 
     async init() {
@@ -1283,6 +1410,9 @@ const state = {
                 // Sesión legítima validada
                 this.user = Object.freeze(sessionUser);
                 this.currentUser = this.user;
+                if (this.user.admin && this.user.role && this.user.role.startsWith('COORD')) {
+                    await this.fetchAdminCredentials().catch(() => {});
+                }
                 if (typeof ui !== 'undefined' && typeof ui.setHUDVisibility === 'function') {
                     ui.setHUDVisibility(true);
                 }
@@ -1355,6 +1485,9 @@ const state = {
         }
         
         await this.fetchFromCloud();
+        if (this.user && this.user.admin && this.user.role && this.user.role.startsWith('COORD')) {
+            await this.fetchAdminCredentials().catch(() => {});
+        }
     },
 
     resumePolling() {
@@ -2160,6 +2293,8 @@ const state = {
                                     status: d.status || 'DELIVERED_TO_TEACHER',
                                     returnReasonId: d.returnReasonId || null,
                                     returnReason: d.returnReason || null,
+                                    returnDriveUrl: d.returnDriveUrl || null,
+                                    returnByTeacher: Boolean(d.returnByTeacher),
                                     updatedAt: d.updatedAt || d.date || new Date().toISOString()
                                 };
                             }

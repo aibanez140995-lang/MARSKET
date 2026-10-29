@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v1.1.07
+// Versión: v1.1.48
 
 declare(strict_types=1);
 
@@ -400,6 +400,29 @@ try {
                     }
                     $authStamp = (int)($row['auth_stamp'] ?? 0);
                     $verified = ($expectedPin !== '' && $expectedPin === $pinAttempt);
+
+                    if ($verified) {
+                        try {
+                            $nowStr = date('c');
+                            $statStmt = $pdo->prepare("
+                                UPDATE state
+                                SET data = json_set(
+                                    data,
+                                    '$.companies.' || :coId || '.loginStats.totalLogins', COALESCE(json_extract(data, '$.companies.' || :coId || '.loginStats.totalLogins'), 0) + 1,
+                                    '$.companies.' || :coId || '.loginStats.roles.' || :role || '.count', COALESCE(json_extract(data, '$.companies.' || :coId || '.loginStats.roles.' || :role || '.count'), 0) + 1,
+                                    '$.companies.' || :coId || '.loginStats.roles.' || :role || '.lastLogin', :lastLogin,
+                                    '$.telemetry.totalLogins', COALESCE(json_extract(data, '$.telemetry.totalLogins'), 0) + 1
+                                )
+                                WHERE id = 'current'
+                            ");
+                            $statStmt->execute([
+                                ':coId' => $coId,
+                                ':role' => $role,
+                                ':lastLogin' => $nowStr
+                            ]);
+                        } catch(\Exception $e) {}
+                    }
+
                     http_response_code($verified ? 200 : 401);
                     echo json_encode([
                         'verified' => $verified,
@@ -542,10 +565,15 @@ try {
                 foreach ($payload['companies'] as $cid => &$co) {
                     $sCo = $currentState['companies'][$cid] ?? null;
                     if ($sCo) {
-                        if (!empty($sCo['authVault'])) $co['authVault'] = $sCo['authVault'];
-                        if (!empty($sCo['accessCode'])) $co['accessCode'] = $sCo['accessCode'];
-                        if (!empty($sCo['roles'])) $co['roles'] = $sCo['roles'];
-                        if (!empty($sCo['authUpdatedAt'])) $co['authUpdatedAt'] = $sCo['authUpdatedAt'];
+                        $coordHasUpdatedAuth = $isCoord && !empty($co['authUpdatedAt']) && (!isset($sCo['authUpdatedAt']) || $co['authUpdatedAt'] >= $sCo['authUpdatedAt']);
+                        if (!$coordHasUpdatedAuth) {
+                            if (!empty($sCo['authVault']['code']) || !empty($sCo['authVault']['roles'])) {
+                                $co['authVault'] = $sCo['authVault'];
+                            }
+                            if (!empty($sCo['accessCode'])) $co['accessCode'] = $sCo['accessCode'];
+                            if (!empty($sCo['roles'])) $co['roles'] = $sCo['roles'];
+                            if (!empty($sCo['authUpdatedAt'])) $co['authUpdatedAt'] = $sCo['authUpdatedAt'];
+                        }
                     }
                 }
             } elseif (isset($currentState['companies'])) {
@@ -711,6 +739,29 @@ try {
             exit;
         }
 
+        // Blindaje de credenciales: extraer la bóveda autorizada de state para no degradarla
+        try {
+            $stmtAuth = $pdo->prepare("
+                SELECT 
+                    json_extract(data, '$.companies.' || :cid || '.authVault') AS vlt,
+                    json_extract(data, '$.companies.' || :cid || '.authUpdatedAt') AS au,
+                    json_extract(data, '$.companies.' || :cid || '.accessCode') AS ac
+                FROM state WHERE id = 'current'
+            ");
+            $stmtAuth->execute([':cid' => $cid]);
+            $aRow = $stmtAuth->fetch();
+            if ($aRow) {
+                if (!empty($aRow['vlt'])) {
+                    $parsedVlt = is_string($aRow['vlt']) ? json_decode($aRow['vlt'], true) : $aRow['vlt'];
+                    if (!empty($parsedVlt['code'])) {
+                        $co['authVault'] = $parsedVlt;
+                    }
+                }
+                if (!empty($aRow['ac']) && empty($co['accessCode'])) $co['accessCode'] = $aRow['ac'];
+                if (!empty($aRow['au'])) $co['authUpdatedAt'] = (int)$aRow['au'];
+            }
+        } catch(\Exception $e) {}
+
         $now = round(microtime(true) * 1000);
         $co['ledger'] = is_array($co['ledger'] ?? null) ? $co['ledger'] : [];
         $co['cart'] = is_array($co['cart'] ?? null) ? $co['cart'] : [];
@@ -848,7 +899,7 @@ try {
 
                     if ($rawKey === 'hoja_taller_fyq') {
                         $reqStatus = trim((string)($payload['status'] ?? ''));
-                        $validWorkshop = ['DRAFT_TECNICO', 'EN_TALLER_OPERARIO', 'DEVUELTO_A_TECNICO', 'SUBMITTED_TO_CEO', 'DELIVERED_TO_TEACHER'];
+                        $validWorkshop = ['DRAFT_TECNICO', 'EN_TALLER_OPERARIO', 'DEVUELTO_A_TECNICO', 'CEO_REVISION', 'SUBMITTED_TO_CEO', 'DELIVERED_TO_TEACHER'];
                         if (in_array($reqStatus, $validWorkshop, true)) {
                             $status = $reqStatus;
                         } elseif ($isCEO) {
@@ -860,11 +911,17 @@ try {
                         $returnReason = $payload['returnReason'] ?? null;
                     }
 
+                    $prevDoc = $co['deliverables'][$rawKey] ?? null;
+                    $retDrive = $payload['returnDriveUrl'] ?? ($prevDoc['returnDriveUrl'] ?? null);
+                    $retTeacher = !empty($payload['returnByTeacher']) || !empty($prevDoc['returnByTeacher']);
+
                     $co['deliverables'][$rawKey] = [
                         'driveUrl' => $driveUrl,
                         'status' => $status,
                         'returnReasonId' => $returnReasonId,
                         'returnReason' => $returnReason,
+                        'returnDriveUrl' => $retDrive,
+                        'returnByTeacher' => $retTeacher,
                         'updatedAt' => date('c')
                     ];
                 }
@@ -890,18 +947,30 @@ try {
                         $currentDoc = ['driveUrl' => $currentDoc, 'status' => 'DELIVERED_TO_TEACHER', 'updatedAt' => date('c')];
                     } else {
                         $currentDoc['status'] = 'DELIVERED_TO_TEACHER';
-                        unset($currentDoc['returnReasonId'], $currentDoc['returnReason']);
+                        unset($currentDoc['returnReasonId'], $currentDoc['returnReason'], $currentDoc['returnDriveUrl']);
                         $currentDoc['updatedAt'] = date('c');
                     }
                 } elseif ($subAction === 'RETURN') {
                     $reasonId = trim((string)($payload['reasonId'] ?? ''));
                     $reasonText = trim((string)($payload['reason'] ?? $reasonId));
+                    $retDriveUrl = trim((string)($payload['returnDriveUrl'] ?? ''));
                     if (is_string($currentDoc)) {
-                        $currentDoc = ['driveUrl' => $currentDoc, 'status' => 'CEO_REVISION', 'returnReasonId' => $reasonId, 'returnReason' => $reasonText, 'updatedAt' => date('c')];
+                        $currentDoc = [
+                            'driveUrl' => $currentDoc,
+                            'status' => 'CEO_REVISION',
+                            'returnReasonId' => $reasonId,
+                            'returnReason' => $reasonText,
+                            'returnDriveUrl' => $retDriveUrl ?: null,
+                            'returnByTeacher' => false,
+                            'updatedAt' => date('c')
+                        ];
                     } else {
                         $currentDoc['status'] = 'CEO_REVISION';
                         $currentDoc['returnReasonId'] = $reasonId;
                         $currentDoc['returnReason'] = $reasonText;
+                        if ($retDriveUrl) {
+                            $currentDoc['returnDriveUrl'] = $retDriveUrl;
+                        }
                         $currentDoc['updatedAt'] = date('c');
                     }
                 } else {
@@ -1218,11 +1287,43 @@ try {
             $teachers = $currentState['config']['teachers'] ?? [];
             $companies = [];
             $allRoles = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'];
+            $defaultCodes = [
+                'astromars' => 'AST-1010',
+                'redares' => 'RED-2020',
+                'olympus' => 'OLY-3030',
+                'curiosity' => 'CUR-4040',
+                'phoenix' => 'PHX-5050',
+                'valleys' => 'VAL-6060',
+                'titan' => 'TTN-7070',
+                'nova' => 'NOV-8080',
+                'vortex' => 'VTX-9090',
+                'astra' => 'AST-1010',
+                'orion' => 'ORI-2020',
+                'stellar' => 'STL-3030'
+            ];
+            $hasMutations = false;
+            $now = round(microtime(true) * 1000);
 
-            foreach ($currentState['companies'] ?? [] as $cid => $co) {
-                $plainCode = $co['accessCode'] ?? '';
+            foreach ($currentState['companies'] ?? [] as $cid => &$co) {
+                if (!isset($co['authVault']) || !is_array($co['authVault'])) {
+                    $co['authVault'] = ['code' => '', 'roles' => []];
+                }
+                if (!isset($co['authVault']['roles']) || !is_array($co['authVault']['roles'])) {
+                    $co['authVault']['roles'] = [];
+                }
+
+                $plainCode = '';
                 if (!empty($co['authVault']['code'])) {
                     $plainCode = decodeSecret($co['authVault']['code']);
+                }
+                if (empty($plainCode) && !empty($co['accessCode'])) {
+                    $plainCode = (string)$co['accessCode'];
+                }
+                if (empty($plainCode)) {
+                    $plainCode = $defaultCodes[$cid] ?? (strtoupper(substr($cid, 0, 3)) . '-1010');
+                    $co['authVault']['code'] = encodeSecret($plainCode);
+                    unset($co['accessCode']);
+                    $hasMutations = true;
                 }
 
                 $plainRoles = [];
@@ -1230,10 +1331,16 @@ try {
                     $rPin = '';
                     if (!empty($co['authVault']['roles'][$r])) {
                         $rPin = decodeSecret($co['authVault']['roles'][$r]);
-                    } elseif (!empty($co['roles'][$r]) && strpos((string)$co['roles'][$r], 'VLT_') !== 0) {
+                    } elseif (!empty($co['roles'][$r]) && strpos((string)$co['roles'][$r], 'VLT_') !== 0 && (string)$co['roles'][$r] !== 'PROTECTED') {
                         $rPin = (string)$co['roles'][$r];
                     }
-                    if ($rPin !== '') {
+                    if ($r !== 'AUXILIAR' && (empty($rPin) || $rPin === 'PROTECTED')) {
+                        $rPin = '1234';
+                        $co['authVault']['roles'][$r] = encodeSecret($rPin);
+                        $co['roles'][$r] = 'PROTECTED';
+                        $hasMutations = true;
+                    }
+                    if ($rPin !== '' && $rPin !== 'PROTECTED') {
                         $plainRoles[$r] = $rPin;
                     }
                 }
@@ -1247,11 +1354,21 @@ try {
                     'auxRoleDept' => $co['auxRoleDept'] ?? ''
                 ];
             }
+            unset($co);
 
+            if ($hasMutations) {
+                $currentState['lastUpdated'] = $now;
+                $saveStmt = $pdo->prepare("UPDATE state SET data = :data, updated_at = CURRENT_TIMESTAMP WHERE id = 'current'");
+                $saveStmt->execute([':data' => json_encode($currentState, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
+            }
+
+            $currentVersion = $currentState['version'] ?? 1;
+            header('ETag: W/"v-' . $currentVersion . '"');
+            header('Cache-Control: private, no-cache');
             echo json_encode([
                 'teachers' => $teachers,
                 'companies' => $companies,
-                'version' => $currentState['version'] ?? 1
+                'version' => $currentVersion
             ], JSON_UNESCAPED_UNICODE);
             exit;
         }
@@ -1288,13 +1405,29 @@ try {
                 $currentState['config']['updatedAt'] = $now;
             } else {
                 if (empty($currentState['companies'][$id])) {
-                    http_response_code(404);
-                    echo json_encode(['error' => "Empresa $id no encontrada"]);
-                    exit;
+                    $currentState['companies'][$id] = [
+                        'id' => $id,
+                        'name' => strtoupper($id),
+                        'authVault' => ['code' => '', 'roles' => []],
+                        'roles' => [],
+                        'updatedAt' => $now,
+                        'authUpdatedAt' => $now
+                    ];
                 }
                 $co = &$currentState['companies'][$id];
                 if (!isset($co['authVault']) || !is_array($co['authVault'])) {
                     $co['authVault'] = ['code' => '', 'roles' => []];
+                }
+
+                if (!empty($body['newCode']) || (!empty($body['newPin']) && empty($role) && empty($body['roles']))) {
+                    $cleanCode = strtoupper(trim(!empty($body['newCode']) ? (string)$body['newCode'] : (string)$newPin));
+                    if (strlen($cleanCode) < 3) {
+                        http_response_code(400);
+                        echo json_encode(['error' => 'El código de empresa debe tener al menos 3 caracteres']);
+                        exit;
+                    }
+                    $co['authVault']['code'] = encodeSecret($cleanCode);
+                    unset($co['accessCode']);
                 }
 
                 if (!empty($body['roles']) && is_array($body['roles'])) {
@@ -1322,15 +1455,6 @@ try {
                         $co['authVault']['roles'][$role] = encodeSecret($cleanPin);
                         $co['roles'][$role] = 'PROTECTED';
                     }
-                } else {
-                    $cleanCode = strtoupper(trim($newCode));
-                    if (strlen($cleanCode) < 3) {
-                        http_response_code(400);
-                        echo json_encode(['error' => 'El código de empresa debe tener al menos 3 caracteres']);
-                        exit;
-                    }
-                    $co['authVault']['code'] = encodeSecret($cleanCode);
-                    unset($co['accessCode']);
                 }
 
                 $co['updatedAt'] = $now;
@@ -1343,7 +1467,31 @@ try {
             $saveStmt = $pdo->prepare("UPDATE state SET data = :data, updated_at = CURRENT_TIMESTAMP WHERE id = 'current'");
             $saveStmt->execute([':data' => json_encode($currentState, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
 
-            echo json_encode(['success' => true, 'newVersion' => $currentState['version']]);
+            if ($type === 'company' && isset($currentState['companies'][$id])) {
+                $upCo = $currentState['companies'][$id];
+                try {
+                    $upCoStmt = $pdo->prepare("
+                        UPDATE company_state 
+                        SET data = json_set(
+                            data,
+                            '$.authVault', json(:vlt),
+                            '$.authUpdatedAt', :au,
+                            '$.updatedAt', :up
+                        )
+                        WHERE company_id = :cid
+                    ");
+                    $upCoStmt->execute([
+                        ':vlt' => json_encode($upCo['authVault'] ?? [], JSON_UNESCAPED_UNICODE),
+                        ':au' => $now,
+                        ':up' => $now,
+                        ':cid' => $id
+                    ]);
+                } catch (\Exception $e) {}
+            }
+
+            $etag = 'W/"v-' . $currentState['version'] . '"';
+            header('ETag: ' . $etag);
+            echo json_encode(['success' => true, 'newVersion' => $currentState['version'], 'etag' => $etag]);
             exit;
         }
 

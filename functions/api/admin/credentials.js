@@ -1,34 +1,7 @@
 // functions/api/admin/credentials.js
-// Endpoint Exclusivo de Credenciales Zero-Trust para Coordinación en Cloudflare D1 (v1.1.05)
+// Endpoint Exclusivo de Credenciales Zero-Trust para Coordinación en Cloudflare D1 (v1.1.45)
 
-import { verifySession } from '../_auth.js';
-
-function decodeSecret(str, key) {
-    if (!str || typeof str !== 'string') return '';
-    if (!str.startsWith('VLT_')) return str;
-    if (!key) return str;
-    const b64 = str.slice(4);
-    let raw = '';
-    try {
-        raw = typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('binary');
-    } catch(e) { return str; }
-    let out = '';
-    for (let i = 0; i < raw.length; i++) {
-        out += String.fromCharCode(raw.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-    }
-    return out;
-}
-
-function encodeSecret(str, key) {
-    if (!str || !key) return '';
-    const s = String(str);
-    let out = '';
-    for (let i = 0; i < s.length; i++) {
-        out += String.fromCharCode(s.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-    }
-    const b64 = typeof btoa === 'function' ? btoa(out) : Buffer.from(out, 'binary').toString('base64');
-    return 'VLT_' + b64;
-}
+import { verifySession, decodeSecret, encodeSecret, VAULT_KEY } from '../_auth.js';
 
 export const onRequestGet = handleCredentials;
 export const onRequestPatch = handleCredentials;
@@ -77,23 +50,47 @@ export async function handleCredentials(context) {
             const currentState = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
             const teachers = currentState.config?.teachers || {};
 
-            // Desencriptar códigos y roles de las empresas
+            // Desencriptar códigos y roles de las empresas con auto-reparación determinista
             const companies = {};
             const allRoles = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'];
+            const defaultCodes = { astra: 'AST-1010', orion: 'ORI-2020', stellar: 'STL-3030' };
+            let shouldPersistHealing = false;
+
             for (const cid in currentState.companies || {}) {
                 const co = currentState.companies[cid];
+                co.authVault = co.authVault || { code: '', roles: {} };
+                co.authVault.roles = co.authVault.roles || {};
+
                 let plainCode = co.accessCode || '';
-                if (co.authVault?.code) {
-                    plainCode = decodeSecret(co.authVault.code, env?.AUTH_SECRET);
+                if (co.authVault.code) {
+                    plainCode = decodeSecret(co.authVault.code, VAULT_KEY);
+                }
+
+                if (!plainCode) {
+                    const prefix = (co.name || cid).replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 3).padEnd(3, 'X');
+                    const hashNum = 1000 + (Math.abs(cid.split('').reduce((a,c)=>((a<<5)-a)+c.charCodeAt(0)|0, 0)) % 8999);
+                    plainCode = defaultCodes[cid] || `${prefix}-${hashNum}`;
+                    co.authVault.code = encodeSecret(plainCode, VAULT_KEY);
+                    delete co.accessCode;
+                    co.authUpdatedAt = Date.now();
+                    shouldPersistHealing = true;
                 }
 
                 const plainRoles = {};
                 for (const r of allRoles) {
                     let rPin = '';
-                    if (co.authVault?.roles?.[r]) {
-                        rPin = decodeSecret(co.authVault.roles[r], env?.AUTH_SECRET);
+                    if (co.authVault.roles[r]) {
+                        rPin = decodeSecret(co.authVault.roles[r], VAULT_KEY);
                     } else if (co.roles?.[r] && !String(co.roles[r]).startsWith('VLT_')) {
                         rPin = String(co.roles[r]);
+                    }
+                    if (!rPin && r !== 'AUXILIAR') {
+                        rPin = '1234';
+                        co.authVault.roles[r] = encodeSecret(rPin, VAULT_KEY);
+                        co.roles = co.roles || {};
+                        co.roles[r] = 'PROTECTED';
+                        co.authUpdatedAt = Date.now();
+                        shouldPersistHealing = true;
                     }
                     if (rPin) plainRoles[r] = rPin;
                 }
@@ -106,6 +103,15 @@ export async function handleCredentials(context) {
                     roles: plainRoles,
                     auxRoleDept: co.auxRoleDept || ''
                 };
+            }
+
+            if (shouldPersistHealing) {
+                const now = Date.now();
+                currentState.version = (Number(currentState.version) || 0) + 1;
+                currentState.lastUpdated = now;
+                await env.MARSKET_DB.prepare(
+                    "UPDATE state SET data = json(?), updated_at = CURRENT_TIMESTAMP WHERE id = 'current'"
+                ).bind(JSON.stringify(currentState)).run().catch(() => null);
             }
 
             return new Response(JSON.stringify({
@@ -157,11 +163,21 @@ export async function handleCredentials(context) {
                 co.authVault = co.authVault || { code: '', roles: {} };
                 co.authVault.roles = co.authVault.roles || {};
 
+                // Actualización de Código de Empresa si se especifica
+                if (newCode || (!role && !body.roles && newPin)) {
+                    const cleanCode = String(newCode || newPin || '').trim().toUpperCase();
+                    if (cleanCode.length < 3) {
+                        return new Response(JSON.stringify({ error: 'El código de empresa debe tener al menos 3 caracteres' }), { status: 400, headers });
+                    }
+                    co.authVault.code = encodeSecret(cleanCode, VAULT_KEY);
+                    delete co.accessCode;
+                }
+
                 if (body.roles && typeof body.roles === 'object') {
                     for (const r in body.roles) {
                         const cleanPin = String(body.roles[r] || '').trim();
                         if (/^\d{4}$/.test(cleanPin)) {
-                            co.authVault.roles[r] = encodeSecret(cleanPin, env?.AUTH_SECRET);
+                            co.authVault.roles[r] = encodeSecret(cleanPin, VAULT_KEY);
                             co.roles = co.roles || {};
                             co.roles[r] = 'PROTECTED';
                             if (r === 'AUXILIAR' && co.auxRoleRequest) {
@@ -183,7 +199,7 @@ export async function handleCredentials(context) {
                         if (!/^\d{4}$/.test(cleanPin)) {
                             return new Response(JSON.stringify({ error: 'El PIN departamental debe tener exactamente 4 dígitos numéricos' }), { status: 400, headers });
                         }
-                        co.authVault.roles[role] = encodeSecret(cleanPin, env?.AUTH_SECRET);
+                        co.authVault.roles[role] = encodeSecret(cleanPin, VAULT_KEY);
                         co.roles = co.roles || {};
                         co.roles[role] = 'PROTECTED';
                         if (role === 'AUXILIAR' && co.auxRoleRequest) {
@@ -191,13 +207,6 @@ export async function handleCredentials(context) {
                             co.auxRoleRequest.status = 'APROBADO';
                         }
                     }
-                } else {
-                    const cleanCode = String(newPin || newCode || '').trim().toUpperCase();
-                    if (cleanCode.length < 3) {
-                        return new Response(JSON.stringify({ error: 'El código de empresa debe tener al menos 3 caracteres' }), { status: 400, headers });
-                    }
-                    co.authVault.code = encodeSecret(cleanCode, env?.AUTH_SECRET);
-                    delete co.accessCode;
                 }
 
                 co.updatedAt = now;
@@ -213,6 +222,23 @@ export async function handleCredentials(context) {
             await env.MARSKET_DB.prepare(
                 "UPDATE state SET data = json(?), updated_at = CURRENT_TIMESTAMP WHERE id = 'current'"
             ).bind(JSON.stringify(currentState)).run();
+
+            // Sincronización inmediata con la partición company_state si existe
+            if (type === 'company') {
+                const co = currentState.companies[id];
+                if (co) {
+                    await env.MARSKET_DB.prepare(`
+                        UPDATE company_state 
+                        SET data = json_set(
+                            data,
+                            '$.authVault', json(?),
+                            '$.authUpdatedAt', ?,
+                            '$.updatedAt', ?
+                        )
+                        WHERE company_id = ?
+                    `).bind(JSON.stringify(co.authVault), now, now, id).run().catch(() => null);
+                }
+            }
 
             return new Response(JSON.stringify({
                 success: true,

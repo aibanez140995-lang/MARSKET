@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.44) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.48) ---
 
-const APP_VERSION = "1.1.44";
+const APP_VERSION = "1.1.48";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -238,6 +238,7 @@ const DELIVERABLES_DEF = [
     {
       key: "preliminaryReport",
       subject: "FYQ",
+      phase: "I",
       name: "1. Informe Técnico Preliminar, Boceto y Foto",
       shortName: "Preliminar FYQ",
       desc: "Informe preliminar, boceto inicial y foto del diseño del cohete (Física y Química).",
@@ -250,6 +251,7 @@ const DELIVERABLES_DEF = [
     {
       key: "technicalReport",
       subject: "FYQ",
+      phase: "IV",
       name: "2. Informe Técnico Final Exhaustivo",
       shortName: "Técnico Final FYQ",
       desc: "Memoria técnica completa de rendimiento y física de vuelo (Física y Química).",
@@ -262,6 +264,7 @@ const DELIVERABLES_DEF = [
     {
       key: "hoja_taller_fyq",
       subject: "FYQ",
+      phase: "IV",
       title: "Hoja de Taller: BOM y Control de Ensamble",
       name: "3. Hoja de Taller: BOM y Control de Ensamble",
       shortName: "Hoja de Taller (FYQ)",
@@ -277,6 +280,7 @@ const DELIVERABLES_DEF = [
     {
       key: "brandIdentity_dec",
       subject: "LYE",
+      phase: "I",
       name: "1A. Nombre, Logo, Tagline, Imagen de Marca — DICIEMBRE",
       shortName: "Marca Dic (LYE)",
       desc: "Identidad inicial de marca, logotipo y misión corporativa.",
@@ -289,6 +293,7 @@ const DELIVERABLES_DEF = [
     {
       key: "brandIdentity_apr",
       subject: "LYE",
+      phase: "IV",
       name: "1B. Nombre, Logo, Tagline, Imagen de Marca — ABRIL",
       shortName: "Marca Abr (LYE)",
       desc: "Evolución y consolidación de la marca, manual de identidad y defensa.",
@@ -301,6 +306,7 @@ const DELIVERABLES_DEF = [
     {
       key: "businessModelDoc",
       subject: "LYE",
+      phase: "II",
       name: "2. Business Model — Documento Escrito",
       shortName: "Business Model (Doc)",
       desc: "Desarrollo argumentado del modelo de negocio de la startup.",
@@ -313,6 +319,7 @@ const DELIVERABLES_DEF = [
     {
       key: "businessModelCanvas",
       subject: "LYE",
+      phase: "II",
       name: "3. Business Model Canvas (Lienzo Estratégico)",
       shortName: "Canvas (LYE)",
       desc: "Lienzo de modelo de negocio con los 9 módulos estratégicos.",
@@ -325,6 +332,7 @@ const DELIVERABLES_DEF = [
     {
       key: "decisionDiary_dec",
       subject: "LYE",
+      phase: "I",
       name: "4A. Diario / Bitácora — DICIEMBRE",
       shortName: "Diario/Bitácora Dic (LYE)",
       desc: "Diario de decisiones, resolución de conflictos y registro ético de IA (Diciembre).",
@@ -337,6 +345,7 @@ const DELIVERABLES_DEF = [
     {
       key: "decisionDiary_apr",
       subject: "LYE",
+      phase: "IV",
       name: "4B. Diario / Bitácora — ABRIL",
       shortName: "Diario/Bitácora Abr (LYE)",
       desc: "Diario de decisiones, resolución de conflictos y registro ético de IA (Abril).",
@@ -351,6 +360,7 @@ const DELIVERABLES_DEF = [
     {
       key: "investorDossier",
       subject: "LEN",
+      phase: "III",
       name: "1. Dossier para Inversores (Texto Argumentativo)",
       shortName: "Dossier Inversores (LEN)",
       desc: "Dossier argumentativo formal dirigido a inversores y patrocinadores.",
@@ -365,6 +375,7 @@ const DELIVERABLES_DEF = [
     {
       key: "mathReportDist",
       subject: "MAT",
+      phase: "II",
       name: "1. Informe Técnico con Datos Empíricos de Distancia Conocida",
       shortName: "Dist. Conocida (MAT)",
       desc: "Cálculo trigonométrico de apogeo con distancia base fija conocida.",
@@ -377,6 +388,7 @@ const DELIVERABLES_DEF = [
     {
       key: "mathReportTwoPoints",
       subject: "MAT",
+      phase: "II",
       name: "2. Informe Técnico con Dos Mediciones",
       shortName: "Dos Mediciones (MAT)",
       desc: "Triangulación matemática desde dos puntos de observación independientes.",
@@ -389,6 +401,7 @@ const DELIVERABLES_DEF = [
     {
       key: "mathReportFinal",
       subject: "MAT",
+      phase: "III",
       name: "3. Informe Técnico Final Comparativo",
       shortName: "Comparativo Final (MAT)",
       desc: "Análisis comparativo de modelos matemáticos y desviaciones reales de apogeo.",
@@ -401,6 +414,7 @@ const DELIVERABLES_DEF = [
     {
       key: "goniometerEvidence",
       subject: "MAT",
+      phase: "I",
       name: "4. Goniómetro (Evidencia y Construcción)",
       shortName: "Goniómetro (MAT)",
       desc: "Construcción física, calibración y registro fotográfico del goniómetro.",
@@ -415,6 +429,7 @@ const DELIVERABLES_DEF = [
     {
       key: "budgetInitial",
       subject: "ECO",
+      phase: "I",
       name: "1. Presupuesto Inicial",
       shortName: "Presupuesto Inicial",
       desc: "Presupuesto inicial de aprovisionamiento y proyección financiera de la startup.",
@@ -427,6 +442,7 @@ const DELIVERABLES_DEF = [
     {
       key: "incomeStatement",
       subject: "ECO",
+      phase: "I",
       name: "2. Cuenta de Resultados",
       shortName: "Cuenta de Resultados",
       desc: "Cuenta de pérdidas y ganancias provisional y control de márgenes.",
@@ -439,6 +455,7 @@ const DELIVERABLES_DEF = [
     {
       key: "budgetPostProto",
       subject: "ECO",
+      phase: "II",
       name: "3. Presupuesto tras Presentación de Prototipo",
       shortName: "Presupuesto Post-Proto",
       desc: "Presupuesto recalculado tras las pruebas físicas de apogeo y taller.",
@@ -451,6 +468,7 @@ const DELIVERABLES_DEF = [
     {
       key: "balanceSheet",
       subject: "ECO",
+      phase: "IV",
       name: "4. Balance",
       shortName: "Balance de Situación",
       desc: "Balance de situación cerrado con activo, pasivo y patrimonio neto final.",
@@ -527,8 +545,79 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.06
+// Changelog Oficial de Producción v1.1.48
 const APP_CHANGELOG = [
+    {
+      version: "1.1.48",
+      date: new Date().toISOString().split('T')[0],
+      title: "Arquitectura Departamental de 5 Botones, Pestaña Universal de Seguimiento de Órdenes, Control de Fases y UX Guiada de Entregables",
+      items: [
+        "Nueva barra de navegación por rol estructurada en 5 botones (6 para Técnico): accesos directos y fluidos para CEO (Sala de Mando), Técnico (Banco I+D y Taller), Finanzas, Operaciones IA, Marketing y Auxiliar.",
+        "Descongestión integral de módulos: eliminación de bloques de entregables incrustados en Banco I+D, Finanzas, Bitácora IA y Marca, centralizándolos en 'Mis Entregables'.",
+        "Pestaña universal 'Seguimiento de Órdenes' accesible a todos los roles, con 3 vistas unificadas (En Proceso, Completadas, Denegadas), permisos de aprobación para CEO y Finanzas y modo seguimiento para los demás.",
+        "Ergonomía UX guiada en 'Mis Entregables': resumen superior con contadores, filtros por Fase (I a IV) y Estado, Stepper visual interactivo de 4 pasos por entregable y banners destacados de correcciones con enlace Drive.",
+        "Control Rápido de Fases (I-IV) en el Cronograma Maestro del Panel Docente con desbloqueo y bloqueo en un clic, y reorganización dinámica del Dossier en 4 fases curriculares.",
+        "Blindaje de Hoja de Taller (DOC_10): soporte oficial de CEO_REVISION, preservación de enlaces de devolución y corrección en Drive, y reenvío técnico continuo.",
+        "Telemetría atómica por rol en SQLite y D1, fusión Math.max de sesiones y soporte para AUXILIAR en la matriz de conexiones del Claustro Docente.",
+        "Globos inteligentes (badges) en la barra de navegación para Mis Entregables, Taller y Seguimiento de Órdenes."
+      ],
+      highlights: [
+        { type: "ARQUITECTURA", text: "Navegación limpia y descongestionada: 5 botones por rol (6 para Técnico) y Seguimiento de Órdenes universal." },
+        { type: "PEDAGOGÍA", text: "Fases I a IV: control docente centralizado del cronograma y visualización curricular por fases en Dossier y Entregables." },
+        { type: "ERGONOMÍA", text: "Stepper visual de 4 pasos y banner de correcciones en 'Mis Entregables' para máxima claridad del alumno." },
+        { type: "TELEMETRÍA", text: "Registro atómico en base de datos de inicios de sesión departamentales incluyendo AUXILIAR." }
+      ]
+    },
+    {
+      version: "1.1.47",
+      date: new Date().toISOString().split('T')[0],
+      title: "Habilitación Universal de Declaración de IA y Modal Oficial para Todos los Roles Departamentales",
+      items: [
+        "Apertura directa del modal oficial de Declaración de IA desde el botón de cabecera [ 🤖 IA ] para todos los roles (CEO, Técnico, Finanzas, Marketing, Operaciones y Auxiliar).",
+        "Enlace automático con la plantilla oficial Google Docs DOC_4_BITACORA_IA y selector tipificado de proveedores de IA autorizados.",
+        "Validación estricta de enlace Google Docs/Drive con permisos de lectura compartidos antes de registrar el prompt.",
+        "Enrutamiento contextual del flujo: auto-aprobación inmediata para Operaciones e IA, y envío con notificación y estado pendiente para el resto de departamentos.",
+        "Alineación visual del modal con la estética Cyberpunk oficial de MARS-KET OS y target táctil >= 44px."
+      ],
+      highlights: [
+        { type: "CRÍTICO", text: "Acceso Universal a IA: todos los miembros de la empresa pueden declarar prompts y bitácoras de IA sin bloqueos de navegación." },
+        { type: "DOCS", text: "Plantilla Oficial DOC_4: acceso directo al modelo de Google Docs con copia guiada." },
+        { type: "TRAZABILIDAD", text: "Validación Ética: Operaciones e IA recibe alertas y visados pendientes en su panel de Bitácora." }
+      ]
+    },
+    {
+      version: "1.1.46",
+      date: new Date().toISOString().split('T')[0],
+      title: "Blindaje Atómico de Códigos de Empresa y PINs en CDMON, Saneamiento de Caché HTTP y Sincronización Llavero Maestro",
+      items: [
+        "Inmutabilidad absoluta de Códigos de Empresa y PINs departamentales modificados por Coordinación: eliminación de mutaciones por reconciliación o migración local.",
+        "Auto-reparación determinista y persistente en SQLite de Códigos y PINs en /api/admin/credentials, con supresión de falsos positivos 'PROTECTED'.",
+        "Control optimista estricto con versionado ETag sincronizado para evitar sobreescritura por sondeo reactivo de fondo.",
+        "Corrección de pestaña activa en renderAdminStartups y pre-declaración de banderas de hidratación en Object.seal(state).",
+        "Invalidación completa de Service Worker y caché HTTP de Apache (.htaccess) para garantizar ejecución de scripts actualizados en producción."
+      ],
+      highlights: [
+        { type: "CRÍTICO", text: "Estabilidad Total en Aula: códigos de empresa y PINs no vuelven a mutar tras la asignación por Coordinación." },
+        { type: "PERSISTENCIA", text: "Sincronización Bidireccional SQLite: credenciales respaldadas atómicamente en el backend CDMON." },
+        { type: "CACHE_BUSTER", text: "Cero Caché Obsoleta: actualización transparente y obligatoria de scripts del cliente y Service Worker." }
+      ]
+    },
+    {
+      version: "1.1.45",
+      date: new Date().toISOString().split('T')[0],
+      title: "Blindaje Definitivo de Códigos de Empresa, PINs Departamentales y Sincronización Llavero Maestro",
+      items: [
+        "Erradicación de la generación aleatoria de Códigos de Empresa y PINs en migraciones locales: las credenciales asignadas son estables y permanentes.",
+        "Sincronización bidireccional prioritaria del Llavero Maestro con el almacenamiento atómico D1/SQLite para roles de Coordinación (COORD_*).",
+        "Unificación de claves de cifrado y aislamiento de particiones entre la tabla de estado global y company_state.",
+        "Preservación inmutable de credenciales en exportación de carnets físicos de aula (PDF) y descarga de llavero CSV."
+      ],
+      highlights: [
+        { type: "CRÍTICO", text: "Blindaje de Códigos de Empresa: estabilidad total en códigos de acceso para alumnos de secundaria sin mutaciones aleatorias." },
+        { type: "SEGURIDAD", text: "Sincronización Segura D1: hidratación inmediata de credenciales para Coordinación Docente preservando Zero-Trust para alumnos." },
+        { type: "CONCURRENCIA", text: "Protección de Particiones: las acciones de aula de los alumnos no pueden sobrescribir credenciales modificadas por el Claustro." }
+      ]
+    },
     {
       version: "1.1.44",
       date: new Date().toISOString().split('T')[0],

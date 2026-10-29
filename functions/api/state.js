@@ -1,7 +1,7 @@
 // functions/api/state.js
 // Endpoint de Estado Zero-Trust y Control de Persistencia en Cloudflare D1 (v1.1.13beta)
 
-import { verifySession, signSessionToken, decodeSecret, encodeSecret } from './_auth.js';
+import { verifySession, signSessionToken, decodeSecret, encodeSecret, VAULT_KEY } from './_auth.js';
 
 /**
  * Aplica sanitización quirúrgica in-place sin deep-cloning JSON.parse(JSON.stringify())
@@ -214,7 +214,7 @@ export async function onRequest(context) {
                         for (const r of rows.results) {
                             let coCode = '';
                             if (r.vlt_code) {
-                                coCode = decodeSecret(r.vlt_code, env.AUTH_SECRET).trim().toUpperCase();
+                                coCode = decodeSecret(r.vlt_code, VAULT_KEY).trim().toUpperCase();
                             } else if (r.access_code) {
                                 coCode = String(r.access_code).trim().toUpperCase();
                             }
@@ -257,7 +257,7 @@ export async function onRequest(context) {
                     if (row) {
                         let expectedPin = '';
                         if (row.vltPin) {
-                            expectedPin = decodeSecret(row.vltPin, env.AUTH_SECRET).trim();
+                            expectedPin = decodeSecret(row.vltPin, VAULT_KEY).trim();
                         } else if (row.plainPin && !String(row.plainPin).startsWith('VLT_')) {
                             expectedPin = String(row.plainPin).trim();
                         }
@@ -266,6 +266,24 @@ export async function onRequest(context) {
                         }
                         const authStamp = Number(row.authStamp) || 0;
                         const verified = Boolean(expectedPin && expectedPin === String(pin).trim());
+
+                        if (verified) {
+                            try {
+                                const nowIso = new Date().toISOString();
+                                await env.MARSKET_DB.prepare(`
+                                    UPDATE state
+                                    SET data = json_set(
+                                        data,
+                                        '$.companies.' || ? || '.loginStats.totalLogins', COALESCE(json_extract(data, '$.companies.' || ? || '.loginStats.totalLogins'), 0) + 1,
+                                        '$.companies.' || ? || '.loginStats.roles.' || ? || '.count', COALESCE(json_extract(data, '$.companies.' || ? || '.loginStats.roles.' || ? || '.count'), 0) + 1,
+                                        '$.companies.' || ? || '.loginStats.roles.' || ? || '.lastLogin', ?,
+                                        '$.telemetry.totalLogins', COALESCE(json_extract(data, '$.telemetry.totalLogins'), 0) + 1
+                                    )
+                                    WHERE id = 'current'
+                                `).bind(coId, coId, coId, role, coId, role, coId, role, nowIso).run();
+                            } catch(e) {}
+                        }
+
                         const token = verified ? await signSessionToken({ role, coId, admin: false }, env.AUTH_SECRET) : undefined;
                         return new Response(JSON.stringify({
                             verified,
@@ -479,17 +497,23 @@ export async function onRequest(context) {
                 for (const cid in payload.companies) {
                     if (currentState.companies && currentState.companies[cid]) {
                         const sCo = currentState.companies[cid];
-                        if (sCo.authVault) {
-                            payload.companies[cid].authVault = sCo.authVault;
-                        }
-                        if (sCo.accessCode) {
-                            payload.companies[cid].accessCode = sCo.accessCode;
-                        }
-                        if (sCo.roles) {
-                            payload.companies[cid].roles = sCo.roles;
-                        }
-                        if (sCo.authUpdatedAt) {
-                            payload.companies[cid].authUpdatedAt = sCo.authUpdatedAt;
+                        const pCo = payload.companies[cid];
+                        const coordHasUpdatedAuth = isCoord && pCo.authUpdatedAt && (!sCo.authUpdatedAt || pCo.authUpdatedAt >= sCo.authUpdatedAt);
+                        if (!coordHasUpdatedAuth) {
+                            if (sCo.authVault && sCo.authVault.code) {
+                                payload.companies[cid].authVault = sCo.authVault;
+                            } else if (!payload.companies[cid].authVault && sCo.authVault) {
+                                payload.companies[cid].authVault = sCo.authVault;
+                            }
+                            if (sCo.accessCode) {
+                                payload.companies[cid].accessCode = sCo.accessCode;
+                            }
+                            if (sCo.roles && (!payload.companies[cid].roles || Object.keys(payload.companies[cid].roles).length === 0)) {
+                                payload.companies[cid].roles = sCo.roles;
+                            }
+                            if (sCo.authUpdatedAt) {
+                                payload.companies[cid].authUpdatedAt = sCo.authUpdatedAt;
+                            }
                         }
                     }
                 }

@@ -67,6 +67,10 @@ const auth = (function() {
         state.currentUser = state.user;
         state.pin = '';
 
+        if (isTeacher && userObj.role && userObj.role.startsWith('COORD') && typeof state.fetchAdminCredentials === 'function') {
+            await state.fetchAdminCredentials().catch(e => console.warn("[AUTH] Error hidratando credenciales:", e));
+        }
+
         // Guardar exclusivamente en sessionStorage, no en localStorage
         try {
             sessionStorage.setItem(state.sessionKey, JSON.stringify(sessionPayload));
@@ -471,33 +475,36 @@ const auth = (function() {
             }
 
             const tabDefs = {
-                'orders': { id: 'orders', label: '🔐 Bóveda Órdenes', badge: 'badge-orders' },
+                'dashboard': { id: 'dashboard', label: '🎖️ Sala de Mando' },
+                'orders': { id: 'orders', label: '📡 Seguimiento de Órdenes', badge: 'badge-orders' },
+                'role_deliverables': { id: 'role_deliverables', label: '📤 Mis Entregables', badge: 'badge-deliverables' },
                 'finance': { id: 'finance', label: '💰 Finanzas & ECO' },
                 'tech': { id: 'tech', label: '🧪 Banco I+D' },
-                'tech_workshop': { id: 'tech_workshop', label: '🔧 Taller' },
+                'tech_workshop': { id: 'tech_workshop', label: '🔧 Taller', badge: 'badge-workshop' },
                 'market': { id: 'market', label: '🛒 SUPERMARS-KET' },
                 'brand': { id: 'brand', label: '🎨 Marca & MKT' },
                 'campaigns': { id: 'campaigns', label: '📢 Campañas', badge: 'badge-campaigns' },
                 'cart': { id: 'cart', label: '📦 Taller Ensamble', badge: 'badge-cart' },
                 'ailog': { id: 'ailog', label: '🤖 Bitácora IA', badge: 'badge-ailog' },
                 'dossier': { id: 'dossier', label: '📋 Dossier (19)', badge: 'badge-dossier' },
-                'resolutions': { id: 'resolutions', label: '⚖️ Gobernanza', badge: 'badge-resolutions' }
+                'resolutions': { id: 'resolutions', label: '⚖️ Trámites', badge: 'badge-resolutions' }
             };
 
             const roleTabOrders = {
-                'CEO': ['orders', 'finance', 'dossier', 'resolutions'],
-                'TECNICO': ['market', 'tech', 'tech_workshop', 'dossier', 'resolutions'],
-                'FINANZAS': ['orders', 'finance', 'dossier', 'resolutions'],
-                'MARKETING': ['brand', 'campaigns', 'dossier', 'resolutions'],
-                'OPERACIONES_IA': ['cart', 'ailog', 'dossier', 'resolutions'],
-                'OPERACIONES': ['cart', 'ailog', 'dossier', 'resolutions']
+                'CEO': ['dashboard', 'dossier', 'orders', 'resolutions', 'role_deliverables'],
+                'TECNICO': ['tech', 'tech_workshop', 'dossier', 'orders', 'resolutions', 'role_deliverables'],
+                'FINANZAS': ['finance', 'dossier', 'orders', 'resolutions', 'role_deliverables'],
+                'MARKETING': ['brand', 'campaigns', 'dossier', 'orders', 'resolutions', 'role_deliverables'],
+                'OPERACIONES_IA': ['cart', 'ailog', 'dossier', 'orders', 'resolutions', 'role_deliverables'],
+                'OPERACIONES': ['cart', 'ailog', 'dossier', 'orders', 'resolutions', 'role_deliverables'],
+                'AUXILIAR': ['dashboard', 'dossier', 'orders', 'resolutions', 'role_deliverables']
             };
 
             let activeTabIds = [];
             if (role === 'AUXILIAR') {
-                activeTabIds = roleTabOrders[auxDept] || ['cart', 'ailog', 'dossier', 'resolutions'];
+                activeTabIds = roleTabOrders[auxDept] || roleTabOrders['AUXILIAR'];
             } else {
-                activeTabIds = roleTabOrders[role] || ['orders', 'finance', 'dossier', 'resolutions'];
+                activeTabIds = roleTabOrders[role] || roleTabOrders['CEO'];
             }
 
             nav.innerHTML = activeTabIds.map(tid => {

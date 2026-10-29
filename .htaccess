@@ -1,7 +1,7 @@
 # ==============================================================================
 # MARS-KET OS - Configuración Apache (.htaccess) para Hosting CDMON
 # Servidor: Apache 2.4+ / PHP 8.x
-# Versión: v1.1.11
+# Versión: v1.1.48
 # ==============================================================================
 
 # EXENCIÓN LOADER.IO PARA VALIDACIÓN DE ESTRÉS
@@ -100,5 +100,10 @@
     # Prevenir almacenamiento en caché estática pero permitir validación ETag / HTTP 304 en la API
     <FilesMatch "index\.php$">
         Header set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
+
+    # Service Worker y Manifest: validación estricta sin caché HTTP para actualizaciones inmediatas
+    <FilesMatch "^(sw\.js|manifest\.json)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
     </FilesMatch>
 </IfModule>

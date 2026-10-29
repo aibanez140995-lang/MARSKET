@@ -874,76 +874,32 @@ Object.assign(ui, {
         const netOpCosts = (opCosts && typeof opCosts.net === 'number') ? opCosts.net : ((typeof opCosts === 'number') ? opCosts : grossCosts);
         const sponsorTierLabel = co.sponsorAwarded ? (co.sponsorData?.tier || co.sponsorAwarded || 'SPONSOR') : null;
 
-        const isLyeAllLocked = !state.user?.admin && ['brandIdentity_dec', 'brandIdentity_apr', 'businessModelDoc', 'businessModelCanvas'].every(k => this.isDeliverableLocked(k, co));
-        const isLenAllLocked = !state.user?.admin && ['investorDossier'].every(k => this.isDeliverableLocked(k, co));
-
-        let docTabContent = '';
-        if (activeDocTab === 'LYE') {
-            docTabContent = `
-                <div class="mb-3 flex justify-between items-center">
-                    <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan text-xs font-black px-2.5 py-1 uppercase">Peso en Proyecto: 40% Global (Rúbrica Desglosada)</span>
+        const englishRubricHtml = `
+            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow w-full">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-orbitron text-mars-yellow text-sm font-bold uppercase tracking-wider">Evaluación Inglés (5% Global)</h3>
+                    <span class="text-xs font-mono font-bold text-mars-yellow bg-mars-yellow/10 border border-mars-yellow/30 px-2 py-0.5 rounded">Aula Presencial</span>
                 </div>
-                <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Entregables oficiales de Liderazgo y Emprendimiento (Solo Enlaces verificados de Google Drive).</p>
-                <div class="space-y-4">
-                    ${isLyeAllLocked ? `
-                        <div class="p-6 bg-slate-900/40 border border-slate-800 text-center rounded">
-                            <p class="text-xs font-mono text-slate-400 uppercase">🔒 No hay entregables activos en esta fase. Se habilitarán según el cronograma oficial.</p>
+                <p class="text-xs text-slate-300 mb-3 uppercase leading-relaxed">Criterios oficiales evaluados de forma continua por el profesorado durante las sesiones lectivas y pitch de prototipo.</p>
+                <div class="space-y-2 mb-3">
+                    <div class="flex justify-between items-center p-2.5 bg-slate-900 border border-slate-800">
+                        <div>
+                            <span class="text-white font-bold text-xs block">1. Expresión Oral (Presentación / Pitch)</span>
+                            <span class="text-[11px] text-slate-400">Defensa oral, fluidez y respuesta a preguntas</span>
                         </div>
-                    ` : `
-                        ${this.renderDriveLinkBox('1A. Identidad de Marca, Misión y Visión — DICIEMBRE (10%)', 'Nombre, Logo, Tagline, sector elegido y justificación (1ª Entrega). Resp: Marketing.', 'brandIdentity_dec', docs.brandIdentity_dec)}
-                        ${this.renderDriveLinkBox('1B. Identidad de Marca, Misión y Visión — ABRIL (10%)', 'Revisión evolutiva de marca, misión y visión tras pruebas (2ª Entrega). Resp: Marketing.', 'brandIdentity_apr', docs.brandIdentity_apr)}
-                        ${this.renderDriveLinkBox('2. Business Model — Documento Escrito (25%)', 'Documento formal con portada, índice, integrantes del equipo, roles y funciones. Resp: Marketing/CEO.', 'businessModelDoc', docs.businessModelDoc)}
-                        ${this.renderDriveLinkBox('3. Business Model Canvas (15%)', 'Lienzo estratégico del modelo de negocio de la startup aeroespacial. Resp: Marketing.', 'businessModelCanvas', docs.businessModelCanvas)}
-                    `}
-                </div>
-            `;
-        } else if (activeDocTab === 'LEN') {
-            docTabContent = `
-                <div class="mb-3">
-                    <span class="bg-mars-magenta/10 border border-mars-magenta text-mars-magenta text-xs font-black px-2.5 py-1 uppercase">Peso en Proyecto: 15% Global (50% Oral / 50% Escrito)</span>
-                </div>
-                <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Entregable oficial para Lengua Castellana (Solo Enlace verificado de Google Drive).</p>
-                <div class="space-y-4">
-                    ${isLenAllLocked ? `
-                        <div class="p-6 bg-slate-900/40 border border-slate-800 text-center rounded">
-                            <p class="text-xs font-mono text-slate-400 uppercase">🔒 No hay entregables activos en esta fase. Se habilitarán según el cronograma oficial.</p>
-                        </div>
-                    ` : `
-                        ${this.renderDriveLinkBox('1. Dossier para Inversores (Texto Argumentativo)', 'Documento persuasivo y formal para captación de inversión. Resp: Marketing / CEO.', 'investorDossier', docs.investorDossier)}
-                    `}
-                </div>
-            `;
-        } else {
-            docTabContent = `
-                <div class="mb-3">
-                    <span class="bg-mars-yellow/10 border border-mars-yellow text-mars-yellow text-xs font-black px-2.5 py-1 uppercase">Peso en Proyecto: 5% Global (Rúbrica Oficial de Aula)</span>
-                </div>
-                <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Evaluación del departamento de Inglés (100% evaluación docente directa en clase).</p>
-                <div class="bg-black/80 border border-mars-yellow/40 p-4 text-xs text-slate-300 space-y-3 mb-4">
-                    <p class="text-white font-bold uppercase text-xs flex items-center gap-1.5"><span>📋</span> Criterios Oficiales de Evaluación (Rúbrica Docente):</p>
-                    <div class="space-y-2">
-                        <div class="flex justify-between items-center p-2.5 bg-slate-900 border border-slate-800">
-                            <div>
-                                <span class="text-white font-bold block">1. Expresión Oral (Presentación / Pitch de Prototipo)</span>
-                                <span class="text-[11px] text-slate-400">Defensa oral, pronunciación, fluidez y respuesta a preguntas</span>
-                            </div>
-                            <span class="text-mars-yellow font-mono font-bold text-sm bg-mars-yellow/10 border border-mars-yellow/30 px-2 py-0.5 shrink-0">70%</span>
-                        </div>
-                        <div class="flex justify-between items-center p-2.5 bg-slate-900 border border-slate-800">
-                            <div>
-                                <span class="text-white font-bold block">2. Expresión Escrita (Redacciones y Fichas Técnicas)</span>
-                                <span class="text-[11px] text-slate-400">Vocabulario técnico aeroespacial, gramática y corrección textual</span>
-                            </div>
-                            <span class="text-mars-yellow font-mono font-bold text-sm bg-mars-yellow/10 border border-mars-yellow/30 px-2 py-0.5 shrink-0">30%</span>
-                        </div>
+                        <span class="text-mars-yellow font-mono font-bold text-xs bg-mars-yellow/10 border border-mars-yellow/30 px-2 py-0.5 shrink-0">70%</span>
                     </div>
-                    <p class="text-slate-300 text-[11px] leading-relaxed pt-1">
-                        Las competencias de expresión oral y escrita en lengua inglesa son evaluadas de forma continua por el profesorado durante las sesiones lectivas presenciales y defensas orales.
-                    </p>
-                    <p class="text-mars-yellow font-mono text-[11px] font-bold">ℹ️ No se requiere la subida de enlaces de Google Drive en este panel.</p>
+                    <div class="flex justify-between items-center p-2.5 bg-slate-900 border border-slate-800">
+                        <div>
+                            <span class="text-white font-bold text-xs block">2. Expresión Escrita (Fichas Técnicas)</span>
+                            <span class="text-[11px] text-slate-400">Vocabulario aeroespacial y corrección textual</span>
+                        </div>
+                        <span class="text-mars-yellow font-mono font-bold text-xs bg-mars-yellow/10 border border-mars-yellow/30 px-2 py-0.5 shrink-0">30%</span>
+                    </div>
                 </div>
-            `;
-        }
+                <p class="text-slate-400 text-[11px] font-mono">ℹ️ Evaluación docente directa en clase. No requiere entrega digital en plataforma.</p>
+            </div>
+        `;
 
         const coCode = co.code || state.user.coId;
         const expId = (co.brandApproval && co.brandApproval.expId) || ('PROP-SLOGAN-' + coCode + '-001');
@@ -1087,20 +1043,46 @@ Object.assign(ui, {
             </div>
 
             <!-- Columna Derecha: Entregables Oficiales LyE, Lengua e Inglés -->
-            <div class="lg:col-span-6 space-y-6 w-full overflow-hidden">
-                <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan h-fit w-full overflow-hidden">
+            <div class="lg:col-span-6 space-y-6 w-full">
+                <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan w-full">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-2">
-                        <h2 class="font-orbitron text-mars-cyan text-base uppercase tracking-tighter">Entregables Oficiales (Drive)</h2>
-                        <div role="tablist" aria-label="Materias de comunicación y emprendimiento" class="flex flex-wrap gap-1 bg-black p-1 border border-mars-border">
-                            <button type="button" role="tab" aria-selected="${activeDocTab === 'LYE'}" onclick="ui.setBrandDocTab('LYE')" class="min-h-[44px] px-3 py-2 text-xs font-bold uppercase transition-colors ${activeDocTab === 'LYE' ? 'bg-mars-cyan text-black' : 'text-slate-300 hover:text-white'}">LyE (40%)</button>
-                            <button type="button" role="tab" aria-selected="${activeDocTab === 'LEN'}" onclick="ui.setBrandDocTab('LEN')" class="min-h-[44px] px-3 py-2 text-xs font-bold uppercase transition-colors ${activeDocTab === 'LEN' ? 'bg-mars-magenta text-white' : 'text-slate-300 hover:text-white'}">Lengua (15%)</button>
-                            <button type="button" role="tab" aria-selected="${activeDocTab === 'ING'}" onclick="ui.setBrandDocTab('ING')" class="min-h-[44px] px-3 py-2 text-xs font-bold uppercase transition-colors ${activeDocTab === 'ING' ? 'bg-mars-yellow text-black' : 'text-slate-300 hover:text-white'}">Inglés (5%)</button>
+                        <div>
+                            <span class="text-xs font-bold uppercase text-mars-cyan bg-mars-cyan/10 border border-mars-cyan/40 px-2.5 py-1 tracking-wider">[LIDERAZGO Y COMUNICACIÓN]</span>
+                            <h2 class="font-orbitron text-white text-base uppercase tracking-tighter mt-2">Entregables Curriculares de Marca y Negocio</h2>
+                        </div>
+                        <span class="text-xs bg-black text-mars-cyan border border-mars-cyan px-2.5 py-1 font-bold font-mono">5 Hitos Oficiales</span>
+                    </div>
+                    <p class="text-xs text-slate-300 mb-4 leading-relaxed">
+                        Los documentos oficiales de <strong class="text-white">Identidad de Marca (10%+10%)</strong>, <strong class="text-white">Business Model (25%)</strong>, <strong class="text-white">Canvas (15%)</strong> y <strong class="text-white">Dossier de Inversores (15%)</strong> se gestionan y supervisan de forma centralizada con trazabilidad completa de versiones y correcciones docentes.
+                    </p>
+                    <div class="space-y-2 mb-6">
+                        <div class="bg-black/60 border border-slate-800 p-3 rounded flex justify-between items-center text-xs">
+                            <span class="text-slate-300">1A. Identidad de Marca (Diciembre) • LyE</span>
+                            <span class="text-mars-cyan font-mono font-bold">10%</span>
+                        </div>
+                        <div class="bg-black/60 border border-slate-800 p-3 rounded flex justify-between items-center text-xs">
+                            <span class="text-slate-300">1B. Identidad de Marca (Abril) • LyE</span>
+                            <span class="text-mars-cyan font-mono font-bold">10%</span>
+                        </div>
+                        <div class="bg-black/60 border border-slate-800 p-3 rounded flex justify-between items-center text-xs">
+                            <span class="text-slate-300">2. Business Model Escrito • LyE</span>
+                            <span class="text-mars-cyan font-mono font-bold">25%</span>
+                        </div>
+                        <div class="bg-black/60 border border-slate-800 p-3 rounded flex justify-between items-center text-xs">
+                            <span class="text-slate-300">3. Business Model Canvas • LyE</span>
+                            <span class="text-mars-cyan font-mono font-bold">15%</span>
+                        </div>
+                        <div class="bg-black/60 border border-slate-800 p-3 rounded flex justify-between items-center text-xs">
+                            <span class="text-slate-300">Dossier para Inversores • Lengua Castellana</span>
+                            <span class="text-mars-magenta font-mono font-bold">15%</span>
                         </div>
                     </div>
-                    <div class="max-h-[750px] overflow-y-auto pr-1">
-                        ${docTabContent}
-                    </div>
+                    <button type="button" onclick="ui.navigate('role_deliverables')" class="w-full min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_12px_rgba(0,255,204,0.3)] flex items-center justify-center gap-2">
+                        <span>📤 Gestionar Entregables en "Mis Entregables" ↗</span>
+                    </button>
                 </div>
+
+                ${englishRubricHtml}
             </div>
         </div>`;
         el.appendChild(wrapper);

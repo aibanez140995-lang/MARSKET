@@ -289,6 +289,18 @@ Object.assign(ui, {
 
     renderAdminStartups() {
         const isCoord = state.user.role.startsWith('COORD');
+        if (isCoord && !state._adminCredentialsFetched && !this._fetchingCredentials && typeof state.fetchAdminCredentials === 'function') {
+            this._fetchingCredentials = true;
+            state.fetchAdminCredentials().then(ok => {
+                this._fetchingCredentials = false;
+                if (ok && (typeof ui !== 'undefined' && (ui.adminTab === 'startups' || ui.currentSubTab === 'startups'))) {
+                    const subContainer = document.getElementById('admin-subtab-container');
+                    if (subContainer) subContainer.innerHTML = this.renderAdminStartups();
+                }
+            }).catch(() => {
+                this._fetchingCredentials = false;
+            });
+        }
         const currentKeychainClass = this.selectedKeychainClass || 'ALL';
         const rawClasses = Object.values(state.data.companies || {}).map(c => c.classGroup).filter(Boolean);
         const uniqueClasses = [...new Set(['A', 'B', ...rawClasses])].sort();
@@ -594,6 +606,129 @@ Object.assign(ui, {
         this.notify("Plazo actualizado en el Cronograma Maestro.", "success");
     },
 
+    modalManagePhases() {
+        if (!state.user || !state.user.role.startsWith('COORD')) {
+            return this.notify("Acceso restringido a Coordinación Docente.", "error");
+        }
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const sched = state.data.config?.deliverableSchedule || {};
+        const phases = [
+            { id: 'I', title: 'Fase I: Constitución, Misión y Especificaciones Preliminares', color: 'border-mars-cyan' },
+            { id: 'II', title: 'Fase II: Modelo de Negocio, Matemáticas y Prototipado', color: 'border-mars-yellow' },
+            { id: 'III', title: 'Fase III: Dossier de Inversores y Modelo Matemático Final', color: 'border-purple-500' },
+            { id: 'IV', title: 'Fase IV: Reporte Técnico, Taller, Marca Final y Cierre Contable', color: 'border-mars-green' }
+        ];
+
+        const nowIso = new Date().toISOString().slice(0, 16);
+
+        const phasesHtml = phases.map(p => {
+            const pDefs = defs.filter(d => d.phase === p.id);
+            let openCount = 0;
+            pDefs.forEach(d => {
+                const s = sched[d.key] || {};
+                const openD = s.openDate || d.defaultOpenDate;
+                if (!openD || openD <= nowIso) openCount++;
+            });
+
+            return `
+            <div class="terminal-border bg-slate-900/90 border p-4 rounded mb-4 ${p.color}">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 border-b border-slate-800 pb-2">
+                    <div>
+                        <h4 class="font-orbitron font-bold text-xs uppercase text-white">${this.escapeHTML(p.title)}</h4>
+                        <span class="text-[10px] text-slate-400 font-mono">${pDefs.length} Entregables • ${openCount}/${pDefs.length} Desbloqueados</span>
+                    </div>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <button type="button" onclick="ui.batchSetPhaseState('${p.id}', true)" class="min-h-[40px] flex-1 sm:flex-none px-3.5 py-1.5 bg-mars-green text-black font-black uppercase text-xs hover:bg-white transition-colors">
+                            🔓 Abrir Fase
+                        </button>
+                        <button type="button" onclick="ui.batchSetPhaseState('${p.id}', false)" class="min-h-[40px] flex-1 sm:flex-none px-3.5 py-1.5 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs hover:bg-mars-magenta hover:text-white transition-colors">
+                            🔒 Bloquear Fase
+                        </button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    ${pDefs.map(d => {
+                        const s = sched[d.key] || {};
+                        const openD = s.openDate || d.defaultOpenDate;
+                        const isOpen = !openD || openD <= nowIso;
+                        return `
+                        <div class="bg-black/60 border border-slate-800 p-2 text-xs rounded">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-slate-200 truncate pr-1" title="${this.escapeHTML(d.name)}">${this.escapeHTML(d.name)}</span>
+                                <span class="text-[9px] font-mono px-1 py-0.2 rounded font-bold ${isOpen ? 'bg-emerald-950 text-emerald-400 border border-emerald-500' : 'bg-rose-950 text-rose-400 border border-rose-500'}">${isOpen ? 'ABIERTO' : 'BLOQUEADO'}</span>
+                            </div>
+                            <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+                                <span>${this.escapeHTML(d.subject)}</span>
+                                <span>${this.escapeHTML(d.weight)}</span>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>`;
+        }).join('');
+
+        const content = `
+            <div class="space-y-4">
+                <div class="bg-slate-900 border border-slate-800 p-3 text-xs text-slate-300">
+                    <p class="mb-1"><strong class="text-white">Control Rápido de Fases del Cronograma:</strong></p>
+                    <p>Permite abrir o bloquear masivamente todos los entregables de una fase curricular con un solo clic, sincronizando inmediatamente la configuración en la nube.</p>
+                </div>
+                ${phasesHtml}
+            </div>
+        `;
+
+        this.showModal("🎛️ CONTROL RÁPIDO DE FASES (I - IV)", content, `<button type="button" onclick="ui.closeModal(); ui.render();" class="min-h-[44px] px-5 py-2 bg-slate-800 text-white font-bold uppercase text-xs hover:bg-slate-700">Cerrar</button>`);
+    },
+
+    async batchSetPhaseState(phaseNum, isOpen) {
+        if (!state.user || !state.user.role.startsWith('COORD')) {
+            return this.notify("Acceso restringido a Coordinación Docente.", "error");
+        }
+        const defs = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).filter(d => d.phase === phaseNum);
+        if (defs.length === 0) return this.notify("No se encontraron entregables para la Fase " + phaseNum, "warning");
+
+        state.pausePolling = true;
+        const now = Date.now();
+        state.data.config = state.data.config || {};
+        state.data.config.deliverableSchedule = state.data.config.deliverableSchedule || {};
+        state.data.config.deadlines = state.data.config.deadlines || {};
+
+        const openIso = isOpen 
+            ? new Date(Date.now() - 3600000).toISOString().slice(0, 16) 
+            : '2099-12-31T23:59';
+
+        defs.forEach(d => {
+            const currentSched = state.data.config.deliverableSchedule[d.key] || {};
+            let currentDeadline = currentSched.deadline || state.data.config.deadlines[d.key] || d.defaultDate;
+            if (isOpen && (!currentDeadline || currentDeadline < openIso)) {
+                currentDeadline = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 16);
+            }
+            state.data.config.deliverableSchedule[d.key] = {
+                ...currentSched,
+                openDate: openIso,
+                deadline: currentDeadline,
+                phase: phaseNum,
+                updatedAt: now
+            };
+            if (currentDeadline) {
+                state.data.config.deadlines[d.key] = currentDeadline;
+            }
+        });
+
+        state.data.config.updatedAt = now;
+        state.saveLocalOnly();
+        try {
+            await state.pushToCloud(false);
+            this.notify(`✅ Fase ${phaseNum} ${isOpen ? 'ABIERTA y desbloqueada' : 'BLOQUEADA'} para todos los alumnos.`, "success");
+            this.modalManagePhases();
+        } catch(e) {
+            console.error("Error al actualizar estado de fase:", e);
+            this.notify("Error al persistir fase en la nube.", "error");
+        } finally {
+            state.pausePolling = false;
+        }
+    },
+
     renderAdminSettings() {
         const isCoord = state.user && state.user.role && state.user.role.startsWith('COORD');
         const dl = state.data.config.deadlines || {};
@@ -678,6 +813,7 @@ Object.assign(ui, {
                         <p class="text-xs text-slate-300 uppercase mt-0.5">Control centralizado de aperturas automáticas, plazos de entrega y plantillas Google Docs (${defs.length} Hitos).</p>
                     </div>
                     <div class="flex items-center gap-2">
+                        ${isCoord ? `<button type="button" onclick="ui.modalManagePhases()" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">[ 🎛️ Control Rápido de Fases (I-IV) ]</button>` : ''}
                         ${isCoord ? `<button type="button" onclick="ui.saveAllDeliverableSchedules()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)]">[ 💾 Guardar Todo el Cronograma ]</button>` : ''}
                         <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-3 py-1 text-xs font-black uppercase font-mono">${defs.length} Entregables</span>
                     </div>
@@ -857,8 +993,11 @@ Object.assign(ui, {
         );
     },
 
-    exportCredentialsCSV() {
+    async exportCredentialsCSV() {
         if (!state.user || !state.user.role.startsWith('COORD')) return;
+        if (typeof state.fetchAdminCredentials === 'function') {
+            await state.fetchAdminCredentials().catch(() => {});
+        }
         let csv = "Empresa,Clase,Codigo_Empresa,PIN_CEO,PIN_TECNICO,PIN_FINANZAS,PIN_MARKETING,PIN_OPERACIONES_IA,PIN_AUXILIAR,DPTO_AUXILIAR\n";
         Object.values(state.data.companies).forEach(co => {
             const code = state.getCompanyCode(co);
@@ -910,7 +1049,7 @@ Object.assign(ui, {
         });
 
         if (companies.length === 0) {
-            return `<tr><td colspan="7" class="py-4 text-center text-slate-400 italic text-xs">No hay startups registradas en el grupo seleccionado.</td></tr>`;
+            return `<tr><td colspan="8" class="py-4 text-center text-slate-400 italic text-xs">No hay startups registradas en el grupo seleccionado.</td></tr>`;
         }
 
         companies.forEach(cid => {
@@ -919,7 +1058,7 @@ Object.assign(ui, {
             matRows += `<tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
                 <td class="py-3 font-orbitron text-white font-bold pr-4 max-w-[220px] truncate" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)} <span class="text-[10px] text-slate-400 font-mono">[Clase ${this.escapeHTML(co.classGroup || 'A')}]</span></td>
                 <td class="py-3 font-mono text-mars-cyan font-bold pr-4 text-center border-r border-mars-border/50">${s.totalLogins}</td>`;
-            ['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA'].forEach(r => {
+            ['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA','AUXILIAR'].forEach(r => {
                 const count = s.roles[r]?.count || 0;
                 const color = count > 4 ? 'text-mars-green' : (count > 0 ? 'text-mars-yellow' : 'text-mars-magenta animate-pulse');
                 matRows += `<td class="py-3 font-mono ${color} text-center font-bold px-2">${count}</td>`;
@@ -972,7 +1111,7 @@ Object.assign(ui, {
                 </div>
                 <div class="overflow-x-auto w-full">
                     <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
-                        <thead class="text-slate-300 uppercase border-b border-mars-border"><tr><th class="py-2 pr-4">Startup</th><th class="pr-4 text-center border-r border-mars-border/50">Total</th><th class="text-center px-2">CEO</th><th class="text-center px-2">TEC</th><th class="text-center px-2">FIN</th><th class="text-center px-2">MKT</th><th class="text-center px-2">OP_IA</th></tr></thead>
+                        <thead class="text-slate-300 uppercase border-b border-mars-border"><tr><th class="py-2 pr-4">Startup</th><th class="pr-4 text-center border-r border-mars-border/50">Total</th><th class="text-center px-2">CEO</th><th class="text-center px-2">TEC</th><th class="text-center px-2">FIN</th><th class="text-center px-2">MKT</th><th class="text-center px-2">OP_IA</th><th class="text-center px-2">AUX</th></tr></thead>
                         <tbody id="telemetry-matrix-tbody">${this.renderTelemetryMatrixRows(currentFilter)}</tbody>
                     </table>
                 </div>
@@ -1420,7 +1559,7 @@ Object.assign(ui, {
         this.render();
     },
 
-    createStartup() {
+    async createStartup() {
         const elName = document.getElementById('new-co-name');
         const elCap = document.getElementById('new-co-cap');
         const elClass = document.getElementById('new-co-class');
@@ -1447,17 +1586,46 @@ Object.assign(ui, {
         };
 
         state.setCompanyCode(newCo, generatedCode);
-        ['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA'].forEach(r => state.setRolePin(newCo, r, '1234'));
+        const initialPins = { CEO: '1234', TECNICO: '1234', FINANZAS: '1234', MARKETING: '1234', OPERACIONES_IA: '1234' };
+        ['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA'].forEach(r => state.setRolePin(newCo, r, initialPins[r]));
 
         state.data.companies[cid] = newCo;
-        state.save(); 
+        await state.pushToCloud(false).catch(() => {});
+
+        try {
+            const token = state.getAuthToken(state.user, state.data);
+            const res = await fetch('/api/admin/credentials', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'X-Marsket-Auth': token } : {})
+                },
+                body: JSON.stringify({
+                    type: 'company',
+                    id: cid,
+                    newCode: generatedCode,
+                    roles: initialPins
+                })
+            });
+            if (res.ok) {
+                const resJson = await res.json().catch(() => null);
+                if (resJson && resJson.newVersion) {
+                    state.data.version = resJson.newVersion;
+                    state.lastETag = 'W/"v-' + resJson.newVersion + '"';
+                    state.saveLocalOnly();
+                }
+            }
+        } catch (e) {
+            console.warn("[STARTUP] Error persistiendo credenciales iniciales en /api/admin/credentials:", e);
+        }
+
         this.notify(`Startup "${name}" creada. Código Privado: ${generatedCode}`, "success");
         this.render();
     },
 
     deleteStartup(cid) { 
         delete state.data.companies[cid]; 
-        state.save(); 
+        state.save();
         this.render(); 
     },
 
@@ -2233,8 +2401,11 @@ Object.assign(ui, {
         </div>`;
     },
 
-    generateRoleCredentialCard(cid, role) {
+    async generateRoleCredentialCard(cid, role) {
         if (!this.checkCoordinatorAccess()) return;
+        if (typeof state.fetchAdminCredentials === 'function') {
+            await state.fetchAdminCredentials().catch(() => {});
+        }
         const co = state.data.companies[cid];
         if (!co) return this.notify("Startup no encontrada.", "error");
         const code = state.getCompanyCode(co);
@@ -2255,8 +2426,11 @@ Object.assign(ui, {
         this.showCredentialsModal(`CREDENCIAL OFICIAL // ${role} - ${co.name}`, previewHtml, cardHtml);
     },
 
-    generateCompanyCredentialCards(cid) {
+    async generateCompanyCredentialCards(cid) {
         if (!this.checkCoordinatorAccess()) return;
+        if (typeof state.fetchAdminCredentials === 'function') {
+            await state.fetchAdminCredentials().catch(() => {});
+        }
         const co = state.data.companies[cid];
         if (!co) return this.notify("Startup no encontrada.", "error");
         const code = state.getCompanyCode(co);
@@ -2291,8 +2465,11 @@ Object.assign(ui, {
         this.showCredentialsModal(`CREDENCIALES DE FLOTA // ${co.name}`, previewHtml, cardsGrid);
     },
 
-    generateAllCompaniesCredentialCards() {
+    async generateAllCompaniesCredentialCards() {
         if (!this.checkCoordinatorAccess()) return;
+        if (typeof state.fetchAdminCredentials === 'function') {
+            await state.fetchAdminCredentials().catch(() => {});
+        }
         const cos = Object.keys(state.data.companies || {});
         if (cos.length === 0) return this.notify("No hay startups registradas en el sistema.", "warning");
         

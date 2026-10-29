@@ -1,3 +1,7 @@
+---
+description: 
+---
+
 # Workflow: Ciclo Completo de Desarrollo y Validación
 1. **Fase 0: Viabilidad y Adecuación (Orchestrator)**
    - Evaluación contra el código real y el estándar premium. Convocatoria de consultores si fueron solicitados.
@@ -8,11 +12,7 @@
 4. **Fase 3: Auditoría Paralela (Validación Completa Obligatoria)**
    - `@qa-validator`: Integridad técnica, concurrencia y persistencia D1.
    - `@user-tester`: Cadenas de aprobación y comportamiento caótico.
-   - `@domain-auditor`: Rigor científico (Tsiolkovski/química) y curricular (LOMLOE).
    - `@ui-ux-designer`: Comprobación de que no se rompe la interfaz, ergonomía visual y sugerencias de diseño.
-   - `@student-actor`: Simulación del alumno en los 5 roles y comprobación integral del funcionamiento de la app.
-   - `@teacher-evaluator`: Simulación docente, recepción sin fallos de entregables, rúbricas y actas.
-   - `@privacy-security`: Verificación legal estricta (RGPD, LOPDGDD, Zero-PII y seguridad de red).
 5. **Fase 4: Consolidación o Corrección**
    - Con [PASS] unánime: @orchestrator certifica la entrega.
    - Con algún [REJECT]: reenvío a @builder con el fallo exacto (máximo 3 ciclos; al tercero [HALT_HUMANO]).

@@ -946,7 +946,7 @@ const ui = {
                 if (msg.includes('taller') || msg.includes('hoja de taller') || msg.includes('ensamble') || msg.includes('ensamblaje')) {
                     return { view: 'tech_workshop', anchorId: 'tech-hoja-taller-panel' };
                 }
-                return { view: 'tech', anchorId: 'tech-orders-tracking-panel' };
+                return { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' };
             }
             return { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' };
         }
@@ -1880,9 +1880,9 @@ const ui = {
                 </span>
             </div>
 
-            <!-- Derecha: Acceso directo a la bitácora de IA [ 🤖 IA ] que invoca ui.navigate('ailog') -->
+            <!-- Derecha: Acceso directo a la declaración de IA [ 🤖 IA ] para todos los roles de la empresa -->
             <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                <button type="button" onclick="ui.navigate('ailog')" class="bg-cyan-950/40 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-2.5 sm:px-3 py-1.5 text-xs font-bold uppercase transition-all shadow-[0_0_10px_rgba(0,240,255,0.25)] min-h-[44px] min-w-[44px] flex items-center justify-center gap-1.5 shrink-0 active:scale-95" title="Bitácora y Registro de Prompts IA">
+                <button type="button" onclick="ui.modalReportAI()" class="bg-cyan-950/40 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-2.5 sm:px-3 py-1.5 text-xs font-bold uppercase transition-all shadow-[0_0_10px_rgba(0,240,255,0.25)] min-h-[44px] min-w-[44px] flex items-center justify-center gap-1.5 shrink-0 active:scale-95" title="Declaración y Registro Oficial de Uso de IA">
                     <span>🤖</span> <span class="hidden sm:inline">IA</span>
                 </button>
             </div>
@@ -1982,6 +1982,45 @@ const ui = {
             }
             if (pendingDossier > 0) { elDossier.innerText = pendingDossier; elDossier.classList.remove('hidden'); }
             else { elDossier.classList.add('hidden'); }
+        }
+
+        const elDeliverables = document.getElementById('badge-deliverables');
+        if (elDeliverables) {
+            let pendingDeliverables = 0;
+            const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+            const role = state.user.role;
+            const myDefs = (role === 'CEO' || role === 'AUXILIAR') 
+                ? defs.map(d => d.key)
+                : defs.filter(d => d.role === role).map(d => d.key);
+
+            if (role === 'CEO') {
+                pendingDeliverables = Object.values(co.deliverables || {}).filter(d => d && d.status === 'SUBMITTED_TO_CEO').length;
+            } else {
+                pendingDeliverables = Object.entries(co.deliverables || {}).filter(([k, d]) => myDefs.includes(k) && d && (d.status === 'CEO_REVISION' || d.status === 'DEVUELTO_A_TECNICO')).length;
+            }
+            if (pendingDeliverables > 0) {
+                elDeliverables.innerText = pendingDeliverables;
+                elDeliverables.classList.remove('hidden');
+            } else {
+                elDeliverables.classList.add('hidden');
+            }
+        }
+
+        const elWorkshop = document.getElementById('badge-workshop');
+        if (elWorkshop) {
+            let workshopAlerts = 0;
+            const hoja = co.deliverables?.hoja_taller_fyq;
+            if (state.user.role === 'TECNICO' && hoja && (hoja.status === 'DEVUELTO_A_TECNICO' || hoja.status === 'CEO_REVISION')) {
+                workshopAlerts++;
+            } else if ((state.user.role === 'OPERACIONES_IA' || state.user.role === 'OPERACIONES') && hoja && (hoja.status === 'EN_TALLER_OPERARIO' || hoja.status === 'CEO_REVISION')) {
+                workshopAlerts++;
+            }
+            if (workshopAlerts > 0) {
+                elWorkshop.innerText = workshopAlerts;
+                elWorkshop.classList.remove('hidden');
+            } else {
+                elWorkshop.classList.add('hidden');
+            }
         }
 
         const elCart = document.getElementById('badge-cart');
@@ -2174,11 +2213,12 @@ const ui = {
         const co = !state.user.admin ? state.data.companies[state.user.coId] : null;
 
         const roleAllowedMap = {
-            'CEO': ['orders', 'resolutions', 'finance', 'dossier', 'market'],
-            'TECNICO': ['tech', 'tech_workshop', 'market', 'cart', 'orders', 'dossier', 'resolutions'],
-            'FINANZAS': ['finance', 'orders', 'dossier', 'market', 'resolutions'],
-            'MARKETING': ['brand', 'campaigns', 'dossier', 'resolutions'],
-            'OPERACIONES_IA': ['cart', 'ailog', 'dossier', 'market', 'resolutions']
+            'CEO': ['dashboard', 'orders', 'resolutions', 'finance', 'dossier', 'role_deliverables', 'market'],
+            'TECNICO': ['tech', 'tech_workshop', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'market', 'cart'],
+            'FINANZAS': ['finance', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'market'],
+            'MARKETING': ['brand', 'campaigns', 'dossier', 'orders', 'resolutions', 'role_deliverables'],
+            'OPERACIONES_IA': ['cart', 'ailog', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'market'],
+            'AUXILIAR': ['dashboard', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'finance', 'tech', 'tech_workshop', 'brand', 'campaigns', 'cart', 'ailog', 'market']
         };
 
         let currentAllowed = [];
@@ -2188,17 +2228,18 @@ const ui = {
         } else {
             const auxDept = (role === 'AUXILIAR') ? co?.auxRoleDept : null;
             const effectiveRole = (role === 'AUXILIAR' && auxDept) ? auxDept : role;
-            const allowed = (roleAllowedMap[effectiveRole] || ['orders', 'finance', 'dossier', 'resolutions']).concat(['company']);
+            const allowed = (roleAllowedMap[effectiveRole] || ['dashboard', 'orders', 'finance', 'dossier', 'resolutions', 'role_deliverables']).concat(['company']);
             if (!allowed.includes(this.current)) {
                 const landingByRole = {
                     'TECNICO': 'tech',
-                    'FINANZAS': 'orders',
+                    'FINANZAS': 'finance',
                     'OPERACIONES_IA': 'cart',
                     'OPERACIONES': 'cart',
-                    'CEO': 'orders',
-                    'MARKETING': 'brand'
+                    'CEO': 'dashboard',
+                    'MARKETING': 'brand',
+                    'AUXILIAR': 'dashboard'
                 };
-                this.current = (role === 'AUXILIAR' ? landingByRole[auxDept] : landingByRole[role]) || 'orders';
+                this.current = (role === 'AUXILIAR' ? (landingByRole[auxDept] || 'dashboard') : landingByRole[role]) || 'dashboard';
             }
         }
         
@@ -2207,6 +2248,8 @@ const ui = {
         const notifs = state.user.admin ? '' : (this.renderNotifications ? this.renderNotifications() : '');
         
         switch(this.current) {
+            case 'dashboard': vp.innerHTML = hero + notifs; this.viewDashboard(vp); break;
+            case 'role_deliverables': vp.innerHTML = hero + notifs; this.viewRoleDeliverables(vp); break;
             case 'market': vp.innerHTML = hero + notifs; this.viewMarket(vp); break;
             case 'cart': vp.innerHTML = hero + notifs; this.viewCart(vp); break;
             case 'orders': vp.innerHTML = hero + notifs; this.viewOrders(vp); break;
@@ -2232,7 +2275,7 @@ const ui = {
             case 'company': vp.innerHTML = hero + notifs; this.viewCompany(vp); break;
             default: {
                 vp.innerHTML = hero + notifs;
-                this.viewOrders(vp);
+                this.viewDashboard(vp);
                 break;
             }
         }

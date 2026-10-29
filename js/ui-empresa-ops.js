@@ -14,17 +14,14 @@ Object.assign(ui, {
         co.orders = co.orders || []; 
         const isOperario = (state.user.role === 'OPERACIONES_IA' || state.user.role === 'OPERACIONES' || state.user.admin);
         
-        const opsTab = this.opsOrdersTab || 'APROBADAS';
         const allOrders = co.orders || [];
         const approvedOrders = allOrders.filter(o => o.status === 'APROBADO_FINANZAS');
-        const pendingFinOrders = allOrders.filter(o => o.status === 'PENDIENTE_FINANZAS');
-        const historyOrders = allOrders.filter(o => o.status === 'EJECUTADO' || o.status === 'RECHAZADO');
 
         const wrapper = document.createElement('div');
 
         let ordersTabContentHtml = '';
 
-        if (opsTab === 'APROBADAS') {
+        if (approvedOrders.length > 0) {
             ordersTabContentHtml = approvedOrders.map(order => `
                 <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-green mb-6 w-full">
                     ${ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Logística (Ejecuta)'], 1)}
@@ -73,71 +70,15 @@ Object.assign(ui, {
                         : `<div class="p-3 bg-slate-950 border border-slate-800 text-center text-xs text-slate-400 uppercase font-mono">🔒 Vista de Sólo Lectura: Registro de compra física reservado exclusivamente al Operario de Taller.</div>`
                     }
                 </div>
-            `).join('') || `<div class="terminal-border border-dashed p-8 text-center text-slate-400 italic text-xs uppercase">No hay órdenes aprobadas pendientes de ejecución logística.</div>`;
-        } else if (opsTab === 'PENDIENTES') {
-            ordersTabContentHtml = pendingFinOrders.map(order => `
-                <div class="terminal-border bg-slate-900/90 border border-mars-border p-4 mb-4">
-                    ${ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Logística (Ejecuta)'], 0)}
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-2 mb-2 gap-2 mt-2">
-                        <div>
-                            <span class="text-xs font-bold uppercase px-2 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-500">⏳ EN AUDITORÍA POR FINANZAS</span>
-                            <h3 class="text-white font-orbitron mt-1.5 uppercase text-xs sm:text-sm font-bold">ORDEN #${this.escapeHTML(order.id)}</h3>
-                        </div>
-                        <div class="text-left sm:text-right">
-                            <span class="text-mars-green font-mono font-bold text-sm">${Number(order.total).toFixed(2)} €v</span>
-                            <span class="block text-xs text-slate-400 font-mono">${this.escapeHTML(order.date)}</span>
-                        </div>
-                    </div>
-                    <div class="space-y-1 bg-black/60 p-2.5 border border-slate-800 rounded text-xs">
-                        <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Materiales en Espera:</p>
-                        ${(order.items || []).map(it => `
-                            <div class="flex justify-between text-slate-300">
-                                <span>${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
-                                <span class="font-mono text-white">${Number(it.price).toFixed(2)} €v</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `).join('') || `<div class="terminal-border border-dashed p-8 text-center text-slate-400 italic text-xs uppercase">No hay órdenes en cola de auditoría de finanzas.</div>`;
+            `).join('');
         } else {
-            ordersTabContentHtml = historyOrders.map(order => {
-                const isExecuted = order.status === 'EJECUTADO';
-                const totalRealEur = (order.items || []).reduce((s, it) => s + (Number(it.realEur) || 0), 0);
-                return `
-                <div class="terminal-border bg-slate-900/90 border border-slate-800 p-4 mb-4">
-                    ${ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Logística (Ejecuta)'], isExecuted ? 2 : 0)}
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-2 mb-2 gap-2 mt-2">
-                        <div>
-                            <span class="text-xs font-bold uppercase px-2 py-0.5 rounded ${isExecuted ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500' : 'bg-rose-950/40 text-rose-400 border border-rose-500'}">
-                                ${isExecuted ? '✓ EJECUTADA EN TALLER' : '❌ DENEGADA / RECHAZADA'}
-                            </span>
-                            <h3 class="text-white font-orbitron mt-1.5 uppercase text-xs sm:text-sm font-bold">ORDEN #${this.escapeHTML(order.id)}</h3>
-                        </div>
-                        <div class="text-left sm:text-right">
-                            <span class="text-mars-green font-mono font-bold text-sm">${Number(order.total).toFixed(2)} €v</span>
-                            ${isExecuted ? `<span class="block text-xs text-mars-yellow font-mono">Coste Real Total: ${totalRealEur.toFixed(2)} €</span>` : ''}
-                            <span class="block text-[11px] text-slate-400 font-mono">${this.escapeHTML(order.date)}</span>
-                        </div>
-                    </div>
-                    ${isExecuted ? `
-                    <div class="mt-2.5 pt-2 border-t border-slate-800 bg-black/50 p-2.5 rounded text-xs space-y-1.5 font-mono">
-                        <p class="text-[10px] text-mars-green font-bold uppercase">Detalle de Compras Físicas Realizadas:</p>
-                        ${(order.items || []).map(it => `
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-300 gap-1 border-b border-slate-900 pb-1 last:border-0">
-                                <span class="text-white">${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
-                                <div class="flex items-center gap-2">
-                                    <span>Real: <strong class="text-mars-yellow">${it.realEur !== undefined ? Number(it.realEur).toFixed(2) : '--'} €</strong></span>
-                                    <span>Comercio: <strong class="text-slate-200">${this.escapeHTML(it.realShop || 'Comercio')}</strong></span>
-                                    ${(it.ticketUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(it.ticketUrl))
-                                        ? `<a href="${encodeURI(it.ticketUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-mars-cyan hover:underline font-bold">[Ticket Drive ↗]</a>`
-                                        : ''
-                                    }
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>` : ''}
-                </div>`;
-            }).join('') || `<div class="terminal-border border-dashed p-8 text-center text-slate-400 italic text-xs uppercase">No hay órdenes en el historial de ejecución o denegadas.</div>`;
+            ordersTabContentHtml = `
+            <div class="terminal-border border-dashed p-8 text-center text-slate-400 italic text-xs uppercase bg-black/40">
+                <p class="mb-3">No hay órdenes aprobadas pendientes de ejecución logística o ensamble.</p>
+                <button type="button" onclick="ui.navigate('orders')" class="min-h-[44px] inline-flex items-center gap-2 px-4 py-2 bg-slate-900 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold uppercase text-xs transition-colors">
+                    <span>📡 Consultar Estado en "Seguimiento de Órdenes" ↗</span>
+                </button>
+            </div>`;
         }
 
         const ordersPanelHtml = `
@@ -145,22 +86,14 @@ Object.assign(ui, {
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-3">
                 <div>
                     <h2 class="font-orbitron text-mars-green text-sm sm:text-base uppercase tracking-tighter flex items-center gap-2">
-                        <span>📦 Panel de Seguimiento Logístico de Taller</span>
-                        <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 border border-slate-700 font-normal">Operaciones Físicas</span>
+                        <span>📦 Compras Físicas y Ensamble en Taller</span>
+                        <span class="text-[10px] font-mono text-mars-green bg-mars-green/10 px-2 py-0.5 border border-mars-green/30 font-bold">${approvedOrders.length} LISTAS</span>
                     </h2>
-                    <p class="text-xs text-slate-300 uppercase mt-0.5">Control de órdenes autorizadas para compra física y ensamble en taller.</p>
+                    <p class="text-xs text-slate-300 uppercase mt-0.5">Control de componentes autorizados por Finanzas para adquisición real y montaje.</p>
                 </div>
-                <div role="tablist" aria-label="Filtro de Órdenes de Taller" class="flex flex-wrap gap-1.5 bg-black p-1 border border-mars-border">
-                    <button type="button" role="tab" aria-selected="${opsTab === 'APROBADAS'}" onclick="ui.setOpsOrdersTab('APROBADAS')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${opsTab === 'APROBADAS' ? 'bg-mars-green text-black' : 'text-slate-300 hover:text-white'}">
-                        ⚙️ Listas para Ensamble (${approvedOrders.length})
-                    </button>
-                    <button type="button" role="tab" aria-selected="${opsTab === 'PENDIENTES'}" onclick="ui.setOpsOrdersTab('PENDIENTES')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${opsTab === 'PENDIENTES' ? 'bg-mars-yellow text-black' : 'text-slate-300 hover:text-white'}">
-                        ⏳ En Cola Finanzas (${pendingFinOrders.length})
-                    </button>
-                    <button type="button" role="tab" aria-selected="${opsTab === 'HISTORIAL'}" onclick="ui.setOpsOrdersTab('HISTORIAL')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${opsTab === 'HISTORIAL' ? 'bg-slate-700 text-white' : 'text-slate-300 hover:text-white'}">
-                        ✅ Historial (${historyOrders.length})
-                    </button>
-                </div>
+                <button type="button" onclick="ui.navigate('orders')" class="min-h-[44px] px-3.5 py-2 bg-black border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold uppercase text-xs transition-colors flex items-center gap-2">
+                    <span>📡 Seguimiento Completo de Órdenes ↗</span>
+                </button>
             </div>
             <div>
                 ${ordersTabContentHtml}
@@ -407,24 +340,19 @@ Object.assign(ui, {
             </div>`;
         }
 
-        const isDiaryAllLocked = !state.user?.admin && ['decisionDiary_dec', 'decisionDiary_apr'].every(k => this.isDeliverableLocked(k, co));
         const diaryDocsHtml = `
-        <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan mb-8">
-            <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
-                <h3 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter">Entregables Oficiales: Diario de Decisiones, Conflictos e IA (LyE)</h3>
-                <span class="text-xs bg-mars-cyan/10 text-mars-cyan border border-mars-cyan px-2.5 py-1 font-bold uppercase">Resp: Operaciones IA / Marketing</span>
+        <div class="terminal-border bg-mars-card p-4 sm:p-5 border-l-4 border-l-mars-cyan mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs bg-mars-cyan/20 text-mars-cyan border border-mars-cyan/40 px-2 py-0.5 font-bold uppercase font-mono">Entregables Curriculares</span>
+                    <span class="text-xs text-slate-400 font-mono">Lengua Castellana y Literatura (LyE)</span>
+                </div>
+                <h3 class="text-white font-orbitron text-sm sm:text-base font-bold uppercase">Diario de Decisiones, Conflictos e IA (1ª y 2ª Entrega)</h3>
+                <p class="text-xs text-slate-300 mt-1 uppercase leading-relaxed">El registro de enlaces Drive oficiales, estado docente y fechas de entrega para Diciembre y Abril se gestiona de forma centralizada.</p>
             </div>
-            <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Sube los enlaces verificados de Google Drive correspondientes a las dos entregas oficiales de la bitácora del proyecto con permisos de lectura compartidos ("Cualquiera con el enlace puede ver").</p>
-            ${isDiaryAllLocked ? `
-                <div class="terminal-border border-dashed p-6 text-center text-slate-400 italic text-xs uppercase">
-                    🔒 No hay entregables activos en esta fase. Se habilitarán según el cronograma oficial.
-                </div>
-            ` : `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    ${this.renderDriveLinkBox('4A. Diario Decisiones, Conflictos e IA — DICIEMBRE', 'Enlace Drive a la 1ª Entrega (Diciembre) de gobernanza y auditoría IA.', 'decisionDiary_dec', docs.decisionDiary_dec)}
-                    ${this.renderDriveLinkBox('4B. Diario Decisiones, Conflictos e IA — ABRIL', 'Enlace Drive a la 2ª Entrega (Abril) de cierre de bitácora e IA.', 'decisionDiary_apr', docs.decisionDiary_apr)}
-                </div>
-            `}
+            <button type="button" onclick="ui.navigate('role_deliverables')" class="min-h-[44px] whitespace-nowrap px-4 py-2.5 bg-black border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold uppercase text-xs transition-colors flex items-center gap-2 shadow-[0_0_10px_rgba(0,240,255,0.2)]">
+                <span>📤 Gestionar en "Mis Entregables" ↗</span>
+            </button>
         </div>`;
 
         wrapper.innerHTML = `
@@ -520,18 +448,25 @@ Object.assign(ui, {
     },
 
     modalReportAI() {
-        if (!state.user) return;
+        if (!state.user || state.user.admin || !state.data.companies?.[state.user.coId]) return;
         const aiProviders = typeof AUTHORIZED_AI_PROVIDERS !== 'undefined' ? AUTHORIZED_AI_PROVIDERS : [
             "Google Gemini", "OpenAI ChatGPT", "Anthropic Claude", "Microsoft Copilot", "Perplexity AI", "DeepSeek", "Otro autorizado por Coordinación"
         ];
         const optionsHtml = aiProviders.map(p => `<option value="${this.escapeHTML(p)}">${this.escapeHTML(p)}</option>`).join('');
+        const isOps = state.user.role === 'OPERACIONES_IA' || state.user.role === 'OPERACIONES';
 
         const html = `
-            <p class="text-xs text-slate-300 mb-3 leading-relaxed">Todo uso de IA generativa debe registrarse en el Cuaderno de Bitácora oficial (Google Docs) con permisos de lectura antes de integrarse en el proyecto.</p>
+            <p class="text-xs text-slate-300 mb-3 leading-relaxed">Todo uso de IA generativa debe registrarse en el Cuaderno de Bitácora oficial (Google Docs) con permisos de lectura compartidos antes de integrarse en cualquier entregable.</p>
+            <div class="bg-cyan-950/30 border border-cyan-500/30 p-2.5 mb-3 text-xs text-slate-300 font-mono">
+                ${isOps 
+                    ? `<span class="text-mars-cyan font-bold">ℹ️ MODO OPERACIONES:</span> Tu registro se consolidará directamente en la Bitácora oficial del equipo.` 
+                    : `<span class="text-mars-yellow font-bold">ℹ️ FLUJO INTERDEPARTAMENTAL:</span> Tu declaración (${this.escapeHTML(state.user.role)}) se enviará a Operaciones e IA para su validación ética y consolidación.`
+                }
+            </div>
             <div class="space-y-3">
                 <div>
-                    <label for="ai-tool" class="text-xs text-blue-400 font-bold uppercase block mb-1">Proveedor / Herramienta IA Autorizada</label>
-                    <select id="ai-tool" class="w-full min-h-[44px] bg-slate-900 border border-blue-500/50 p-2.5 text-base sm:text-xs text-white outline-none focus:border-blue-400">
+                    <label for="ai-tool" class="text-xs text-mars-cyan font-bold uppercase block mb-1">Proveedor / Herramienta IA Autorizada</label>
+                    <select id="ai-tool" class="w-full min-h-[44px] bg-slate-900 border border-cyan-500/50 p-2.5 text-base sm:text-xs text-white outline-none focus:border-cyan-400 font-mono">
                         ${optionsHtml}
                     </select>
                 </div>
@@ -549,17 +484,18 @@ Object.assign(ui, {
                            placeholder="https://docs.google.com/document/d/..." 
                            class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white rounded font-mono outline-none focus:border-cyan-400 min-h-[44px]">
                     <p class="text-[10px] text-slate-400">
-                        El registro se realiza en el Google Doc corporativo con permisos de lectura.
+                        El enlace debe pertenecer al Google Doc corporativo con permisos de lectura.
                     </p>
                 </div>
             </div>
         `;
-        const actions = `<button type="button" onclick="ui.submitReportAI()" class="min-h-[44px] bg-blue-600 text-white px-5 py-2.5 text-xs font-bold uppercase hover:bg-blue-500 transition-colors">Enviar a Operaciones IA</button>`;
+        const actionLabel = isOps ? 'Registrar en Bitácora' : 'Enviar a Operaciones IA';
+        const actions = `<button type="button" onclick="ui.submitReportAI()" class="min-h-[44px] bg-mars-cyan text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-colors">${actionLabel}</button>`;
         this.showModal("Declaración de Uso de IA", html, actions);
     },
 
     submitReportAI() {
-        if (!state.user) return;
+        if (!state.user || state.user.admin) return;
         const elTool = document.getElementById('ai-tool');
         const elUrl = document.getElementById('input-bitacora-url');
         if (!elTool || !elUrl) return;
@@ -575,11 +511,11 @@ Object.assign(ui, {
             return;
         }
         
-        const co = state.data.companies[state.user.coId];
+        const co = state.data.companies?.[state.user.coId];
         if (!co) return auth.logout();
         co.aiPrompts = co.aiPrompts || [];
         
-        const autoApprove = state.user.role === 'OPERACIONES_IA';
+        const autoApprove = state.user.role === 'OPERACIONES_IA' || state.user.role === 'OPERACIONES';
         const newPrompt = {
             id: 'AI-' + Date.now(),
             role: state.user.role,
