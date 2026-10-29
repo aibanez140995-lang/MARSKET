@@ -586,8 +586,40 @@ Object.assign(ui, {
 
     deleteSuggestion(suggId) {
         state.data.suggestionsToAlex = state.data.suggestionsToAlex || [];
-        state.data.suggestionsToAlex = state.data.suggestionsToAlex.filter(x => x.id !== suggId);
+        state.data.deletedSuggestionIds = state.data.deletedSuggestionIds || [];
+        if (suggId && !state.data.deletedSuggestionIds.includes(String(suggId))) {
+            state.data.deletedSuggestionIds.push(String(suggId));
+        }
+        state.data.suggestionsToAlex = state.data.suggestionsToAlex.filter(x => String(x.id) !== String(suggId));
         state.save();
+        this.render();
+    },
+
+    purgeResolvedSuggestions() {
+        state.data.suggestionsToAlex = state.data.suggestionsToAlex || [];
+        state.data.deletedSuggestionIds = state.data.deletedSuggestionIds || [];
+        const isResolvedStatus = (s) => s.status === 'IMPLEMENTADO' || s.status === 'RESUELTO' || s.resolved === true;
+        const now = Date.now();
+        const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+        const isOlderThan7Days = (s) => {
+            const time = s.timestamp || (s.date ? new Date(s.date).getTime() : 0);
+            return time > 0 && (now - time) > SEVEN_DAYS_MS;
+        };
+
+        const toPurge = state.data.suggestionsToAlex.filter(s => isResolvedStatus(s) || isOlderThan7Days(s));
+        if (toPurge.length === 0) {
+            return this.notify("No hay mensajes resueltos o con más de 7 días para purgar.", "info");
+        }
+
+        toPurge.forEach(s => {
+            if (s && s.id && !state.data.deletedSuggestionIds.includes(String(s.id))) {
+                state.data.deletedSuggestionIds.push(String(s.id));
+            }
+        });
+
+        state.data.suggestionsToAlex = state.data.suggestionsToAlex.filter(s => !isResolvedStatus(s) && !isOlderThan7Days(s));
+        state.save();
+        this.notify(`🗑️ Se han purgado permanentemente ${toPurge.length} mensajes del buzón.`, "success");
         this.render();
     },
 

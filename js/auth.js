@@ -101,7 +101,7 @@ const auth = (function() {
                 ui.current = 'admin';
             } else {
                 const landingByRole = {
-                    'TECNICO': 'tech',
+                    'TECNICO': 'market',
                     'FINANZAS': 'finance',
                     'OPERACIONES_IA': 'cart',
                     'OPERACIONES': 'cart',
@@ -492,7 +492,7 @@ const auth = (function() {
 
             const roleTabOrders = {
                 'CEO': ['dashboard', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
-                'TECNICO': ['tech', 'tech_workshop', 'market', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
+                'TECNICO': ['market', 'tech_workshop', 'orders', 'tech', 'resolutions', 'role_deliverables', 'dossier'],
                 'FINANZAS': ['finance', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
                 'MARKETING': ['brand', 'campaigns', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
                 'OPERACIONES_IA': ['cart', 'ailog', 'orders', 'resolutions', 'role_deliverables', 'dossier'],

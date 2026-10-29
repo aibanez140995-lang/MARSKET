@@ -18,15 +18,47 @@ const ui = {
     _cleanupHooks: [],
     _delegationAttached: false,
 
+    getGoogleCopyUrl(url) {
+        if (!url || typeof url !== 'string') return '';
+        let trimmed = url.trim();
+        if (trimmed.includes('/copy')) return trimmed;
+        if (/\/(edit|view|preview)([\?#].*)?$/.test(trimmed)) {
+            return trimmed.replace(/\/(edit|view|preview)([\?#].*)?$/, '/copy');
+        }
+        if (/\/d\/[a-zA-Z0-9_-]+\/?$/.test(trimmed)) {
+            return trimmed.replace(/\/?$/, '/copy');
+        }
+        return trimmed;
+    },
+
     renderDocTemplateBtn(docKey, customLabel = null) {
-        const tpl = (typeof OFFICIAL_DOC_TEMPLATES !== 'undefined' && OFFICIAL_DOC_TEMPLATES[docKey]) ? OFFICIAL_DOC_TEMPLATES[docKey] : null;
-        if (!tpl) return '';
-        const label = customLabel || '📄 Modelo de documento (Hacer copia)';
-        return `<a href="${encodeURI(tpl.copyUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 min-h-[44px] bg-slate-900 border border-blue-500/70 hover:border-blue-400 text-blue-300 hover:text-white px-3.5 py-2 text-xs font-bold uppercase transition-all shadow-sm group">
-            <span class="group-hover:scale-110 transition-transform">📄</span>
-            <span>${this.escapeHTML(label)}</span>
-            <span class="text-[10px] text-blue-400 font-mono">↗</span>
-        </a>`;
+        let tplUrl = '';
+        if (typeof state !== 'undefined' && state.data?.config?.deliverableSchedule?.[docKey]?.guideDocUrl) {
+            tplUrl = state.data.config.deliverableSchedule[docKey].guideDocUrl.trim();
+        } else if (typeof OFFICIAL_DOC_TEMPLATES !== 'undefined' && OFFICIAL_DOC_TEMPLATES[docKey]) {
+            tplUrl = OFFICIAL_DOC_TEMPLATES[docKey].copyUrl || '';
+        } else if (typeof DELIVERABLES_DEF !== 'undefined') {
+            const def = DELIVERABLES_DEF.find(d => d.key === docKey);
+            if (def && def.defaultGuideDocUrl) tplUrl = def.defaultGuideDocUrl.trim();
+        }
+
+        if (!tplUrl) return '';
+
+        const copyUrl = this.getGoogleCopyUrl(tplUrl);
+        const viewUrl = tplUrl;
+
+        return `
+            <div class="inline-flex flex-wrap items-center gap-1.5">
+                <a href="${encodeURI(viewUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-1.5 min-h-[40px] bg-slate-900 border border-blue-500/70 hover:border-blue-400 text-blue-300 hover:text-white px-3 py-1.5 text-xs font-bold uppercase transition-all shadow-sm group">
+                    <span>📄 Ver Plantilla Oficial</span>
+                    <span class="text-[10px] text-blue-400 font-mono">↗</span>
+                </a>
+                <a href="${encodeURI(copyUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-1.5 min-h-[40px] bg-blue-950/50 border border-cyan-400 text-cyan-200 hover:bg-blue-900/60 hover:text-white px-3 py-1.5 text-xs font-bold uppercase transition-all shadow-sm group">
+                    <span>📋 Hacer Copia en mi Drive</span>
+                    <span class="text-[10px] text-cyan-400 font-mono">↗</span>
+                </a>
+            </div>
+        `;
     },
 
     onCleanup(fn) {
@@ -1833,10 +1865,16 @@ const ui = {
             </div>
 
             <!-- Acciones -->
-            <div class="pt-2 flex flex-wrap gap-2 justify-between border-t border-slate-800">
-                <button type="button" onclick="ui.modalSuggestion()" class="min-h-[44px] bg-slate-800 border border-slate-600 text-white font-bold px-4 py-2 text-xs uppercase hover:bg-white hover:text-black transition-all">
-                    + Redactar Nuevo Mensaje
-                </button>
+            <div class="pt-2 flex flex-wrap gap-2 justify-between items-center border-t border-slate-800">
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="ui.modalSuggestion()" class="min-h-[44px] bg-slate-800 border border-slate-600 text-white font-bold px-4 py-2 text-xs uppercase hover:bg-white hover:text-black transition-all">
+                        + Redactar Nuevo Mensaje
+                    </button>
+                    ${state.user?.admin ? `
+                    <button type="button" onclick="ui.confirmAction('Purgar Mensajes', '¿Deseas purgar permanentemente todos los mensajes resueltos o con más de 7 días del buzón?', () => { ui.purgeResolvedSuggestions(); ui.modalCoordinatorInbox('${filterCategory}'); }, 'Purgar', true);" class="min-h-[44px] bg-red-950/40 border border-red-500 text-red-300 font-bold px-3 py-2 text-xs uppercase hover:bg-red-700 hover:text-white transition-all">
+                        🗑️ Purgar Resueltos / Antiguos
+                    </button>` : ''}
+                </div>
                 <button type="button" onclick="ui.closeModal(); ui.adminTab='settings'; ui.render();" class="min-h-[44px] bg-mars-cyan text-black font-black px-4 py-2 text-xs uppercase hover:bg-white transition-all">
                     ⚙️ Ir a Panel de Ajustes y Plazos
                 </button>
@@ -2432,6 +2470,21 @@ const ui = {
             </button>
             <div class="${this.cronogramaExpanded ? 'grid' : 'hidden sm:grid'} grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                 ${deadlineCardsHtml}
+                ${(activeSubj === 'ALL') ? `
+                <div class="terminal-border bg-slate-950 p-4 border border-mars-green/50 col-span-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mt-1">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-xs font-black uppercase px-2 py-0.5 bg-black border border-mars-green text-mars-green">FASE V // 19/05/2027</span>
+                            <span class="text-xs text-mars-green font-mono font-bold uppercase">🏆 CONCURSO FINAL</span>
+                        </div>
+                        <h4 class="text-white font-bold text-sm uppercase leading-snug">Culminación del Proyecto MARS-KET</h4>
+                        <p class="text-xs text-slate-300 mt-0.5">Lanzamiento oficial de prototipos definitivos, defensa ante tribunal e inversores y premiación general.</p>
+                    </div>
+                    <div class="text-left sm:text-right shrink-0">
+                        <span class="text-xs text-slate-400 font-mono block">Fecha del Evento:</span>
+                        <span class="text-sm font-orbitron font-bold text-mars-green">19/05/2027</span>
+                    </div>
+                </div>` : ''}
             </div>
         </div>`;
     },
@@ -2620,6 +2673,13 @@ const ui = {
                         ${optionsHtml}
                     </select>
                 </div>
+                <div>
+                    <label for="ceo-return-drive-url" class="text-xs text-mars-cyan font-bold uppercase block mb-1">
+                        📄 Documento con Correcciones / Observaciones en Google Docs (Opcional)
+                    </label>
+                    <input type="url" id="ceo-return-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-mars-cyan font-mono outline-none focus:border-mars-cyan">
+                    <p class="text-[10px] text-slate-400 mt-1 font-sans">Adjunta un enlace con permisos de lectura para que el equipo consulte las indicaciones exactas.</p>
+                </div>
             </div>
         `;
         const actions = `<button type="button" onclick="ui.confirmCeoReturnDeliverable('${docKey}')" class="min-h-[44px] bg-red-700 text-white font-black px-5 py-2.5 text-xs uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">Devolver para Subsanación</button>`;
@@ -2631,8 +2691,13 @@ const ui = {
         const el = document.getElementById('ceo-return-reason');
         if (!el) return;
         const reasonId = el.value;
+        const elDrive = document.getElementById('ceo-return-drive-url');
+        const returnDriveUrl = elDrive ? elDrive.value.trim() : '';
+        if (returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(returnDriveUrl)) {
+            return this.notify("El enlace con correcciones debe ser una URL válida de Google Drive / Docs.", "error");
+        }
         this.closeModal();
-        state.returnDeliverableByCEO(docKey, reasonId);
+        state.returnDeliverableByCEO(docKey, reasonId, returnDriveUrl);
     },
 
     modalTeacherReturnDeliverable(coId, docKey) {
@@ -2660,6 +2725,13 @@ const ui = {
                         ${optionsHtml}
                     </select>
                 </div>
+                <div>
+                    <label for="teacher-return-drive-url" class="text-xs text-mars-cyan font-bold uppercase block mb-1">
+                        📄 Documento con Correcciones / Rúbrica en Google Docs (Opcional)
+                    </label>
+                    <input type="url" id="teacher-return-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-mars-cyan font-mono outline-none focus:border-mars-cyan">
+                    <p class="text-[10px] text-slate-400 mt-1 font-sans">Adjunta el enlace a las correcciones o rúbrica de subsanación para el alumnado.</p>
+                </div>
             </div>
         `;
         const actions = `
@@ -2674,8 +2746,13 @@ const ui = {
         const el = document.getElementById('teacher-return-reason');
         if (!el) return;
         const reasonId = el.value;
+        const elDrive = document.getElementById('teacher-return-drive-url');
+        const returnDriveUrl = elDrive ? elDrive.value.trim() : '';
+        if (returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(returnDriveUrl)) {
+            return this.notify("El enlace con correcciones debe ser una URL válida de Google Drive / Docs.", "error");
+        }
         this.closeModal();
-        state.returnDeliverableByTeacher(coId, docKey, reasonId);
+        state.returnDeliverableByTeacher(coId, docKey, reasonId, returnDriveUrl);
     },
 
     approveDeliverableByCEO(docKey) {

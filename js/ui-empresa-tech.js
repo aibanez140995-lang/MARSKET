@@ -187,6 +187,46 @@ Object.assign(ui, {
 
         const trackingSectionHtml = '';
 
+        const myPendingCustom = (state.data.pendingCustom || []).filter(p => p && p.company === state.user.coId);
+        const myHistoryCustom = Array.isArray(co.specialItemRequests) ? co.specialItemRequests : [];
+        const allMyCustom = [...myPendingCustom.map(p => ({ ...p, status: 'PENDIENTE' })), ...myHistoryCustom];
+
+        const specialItemsListHtml = allMyCustom.length === 0
+            ? `<div class="p-5 bg-slate-900/50 border border-slate-800 text-center rounded"><span class="text-xs font-mono uppercase text-slate-400 italic">No hay solicitudes de material especial registradas. Si tu diseño requiere componentes fuera de catálogo, pulsa [+ Solicitar Material I+D a Coordinación].</span></div>`
+            : `<div class="space-y-3">
+                ${allMyCustom.map(item => {
+                    let stBadge = '<span class="px-2 py-0.5 text-xs font-black uppercase bg-amber-950/40 border border-amber-500 text-amber-400 animate-pulse">🟡 PENDIENTE CLAUSTRO</span>';
+                    if (item.status === 'APROBADA') {
+                        stBadge = `<span class="px-2 py-0.5 text-xs font-black uppercase bg-emerald-950/40 border border-emerald-500 text-emerald-400">🟢 APROBADA (${item.price !== undefined ? item.price + ' €v' : 'En Catálogo'})</span>`;
+                    } else if (item.status === 'DENEGADA') {
+                        stBadge = '<span class="px-2 py-0.5 text-xs font-black uppercase bg-red-950/40 border border-red-500 text-red-400">🔴 DENEGADA</span>';
+                    }
+
+                    return `
+                    <div class="bg-slate-900 border border-slate-800 p-3.5 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div class="min-w-0 flex-grow">
+                            <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                ${stBadge}
+                                <span class="text-xs text-slate-400 font-mono">${this.escapeHTML(item.date || '--')}</span>
+                            </div>
+                            <h4 class="text-white font-bold text-xs sm:text-sm uppercase leading-snug">${this.escapeHTML(item.name || 'Componente Especial I+D')}</h4>
+                            <div class="mt-2 flex flex-wrap items-center gap-2">
+                                ${item.driveUrl ? `
+                                    <a href="${encodeURI(item.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[36px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-300 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50 transition-colors">
+                                        <span>📄 Abrir Mi Solicitud en Docs ↗</span>
+                                    </a>
+                                ` : ''}
+                                ${(item.status === 'DENEGADA' && item.responseDriveUrl) ? `
+                                    <a href="${encodeURI(item.responseDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[36px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/50 text-red-200 border border-red-400 rounded font-mono hover:bg-red-900/60 transition-colors font-bold">
+                                        <span>📄 Ver Dictamen / Respuesta de Coordinación ↗</span>
+                                    </a>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>`;
+
         wrapper.innerHTML = `
         <div class="space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -290,6 +330,28 @@ Object.assign(ui, {
                         </button>
                     </div>
                 </div>
+            </div>
+
+            <!-- Panel de Solicitudes de Material I+D a Coordinación -->
+            <div class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-magenta shadow-sm">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-mars-border pb-3 mb-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="px-2 py-0.5 text-xs font-black uppercase bg-mars-magenta/20 border border-mars-magenta text-mars-magenta">I+D ESPECIAL // FUERA DE CATÁLOGO</span>
+                            <span class="text-xs text-slate-400 font-mono">TÉCNICO ➔ COORDINACIÓN</span>
+                        </div>
+                        <h3 class="font-orbitron text-mars-magenta text-sm sm:text-base uppercase tracking-tight font-black">
+                            📡 Solicitudes de Material I+D a Coordinación
+                        </h3>
+                        <p class="text-xs text-slate-300 uppercase mt-0.5">
+                            Solicita al claustro la autorización de piezas o reactivos especiales no listados en el catálogo mediante memoria técnica oficial en Google Drive.
+                        </p>
+                    </div>
+                    <button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] bg-mars-magenta text-white font-black px-4 py-2 text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all whitespace-nowrap shadow-[0_0_10px_rgba(255,0,85,0.3)]">
+                        + Solicitar Material I+D
+                    </button>
+                </div>
+                ${specialItemsListHtml}
             </div>
         </div>`;
         el.appendChild(wrapper);
@@ -531,7 +593,6 @@ Object.assign(ui, {
                                 </div>
                             </div>
                             <div class="flex flex-wrap items-center gap-2 w-full pt-1">
-                                <button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta hover:bg-mars-magenta hover:text-white px-3 py-2 text-xs font-bold uppercase transition-all whitespace-nowrap">[ + Solicitar Ítem Especial / Fuera de Mercado ]</button>
                                 <button type="button" onclick="ui.navigate('dossier')" class="min-h-[44px] bg-mars-cyan/10 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-3 py-2 text-xs font-bold uppercase transition-all whitespace-nowrap">[ 📄 Ver Dossier Inversores ↗ ]</button>
                                 <button type="button" onclick="ui.setMarketTab('b2b'); ui.navigate('market')" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-4 py-2 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-all whitespace-nowrap">[ 🤝 Ver Mercado B2B ]</button>
                             </div>
@@ -753,6 +814,11 @@ Object.assign(ui, {
                     <p class="text-[10px] text-slate-400 mt-1 font-sans">
                         Configura los permisos del documento en Google Drive como <em>"Cualquiera con el enlace puede ver"</em> para que el claustro docente examine los planos y especificaciones.
                     </p>
+                </div>
+                <div class="pt-1">
+                    <a href="https://docs.google.com/document/d/1HigoiUvPfZQhMu67MR7cGyiW8XecIQlAW_29kp3LfDc/copy" target="_blank" rel="noopener noreferrer" class="min-h-[44px] w-full inline-flex items-center justify-center gap-2 bg-blue-950/60 border border-blue-400 text-cyan-200 hover:bg-blue-900/80 hover:text-white px-4 py-2 text-xs font-bold uppercase transition-all shadow-sm">
+                        <span>📋 Clonar Modelo Oficial de Solicitud I+D (DOC_13) en Drive ↗</span>
+                    </a>
                 </div>
             </div>
         `;

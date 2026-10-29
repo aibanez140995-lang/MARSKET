@@ -352,9 +352,11 @@ const state = {
         d.b2bContracts = Array.isArray(d.b2bContracts) ? d.b2bContracts : [];
         d.securityIncidents = Array.isArray(d.securityIncidents) ? d.securityIncidents : [];
         
-                d.config.deadlines = d.config.deadlines || {};
-        if (!d.config.scheduleBaselineVersion || d.config.scheduleBaselineVersion < 1130) {
-            d.config.scheduleBaselineVersion = 1130;
+                d.deletedSuggestionIds = Array.isArray(d.deletedSuggestionIds) ? d.deletedSuggestionIds : [];
+        d.dismissedNotificationIds = Array.isArray(d.dismissedNotificationIds) ? d.dismissedNotificationIds : [];
+        d.config.deadlines = d.config.deadlines || {};
+        if (!d.config.scheduleBaselineVersion || d.config.scheduleBaselineVersion < 1151) {
+            d.config.scheduleBaselineVersion = 1151;
             d.config.deliverableSchedule = d.config.deliverableSchedule || {};
             if (typeof DELIVERABLES_DEF !== 'undefined') {
                 DELIVERABLES_DEF.forEach(def => {
@@ -838,7 +840,15 @@ const state = {
                         });
                         const localIds = new Set(arrLocal.map(i => String(i?.id)));
                         const missingInLocal = arrServer.filter(i => i && i.id && !localIds.has(String(i.id)));
-                        return [...mergedLocal, ...missingInLocal];
+                        let finalMerged = [...mergedLocal, ...missingInLocal];
+                        if (arrName === 'notifications') {
+                            const dismissedIds = new Set([
+                                ...(Array.isArray(serverData.dismissedNotificationIds) ? serverData.dismissedNotificationIds.map(String) : []),
+                                ...(Array.isArray(localData.dismissedNotificationIds) ? localData.dismissedNotificationIds.map(String) : [])
+                            ]);
+                            finalMerged = finalMerged.filter(n => n && n.id && !dismissedIds.has(String(n.id)));
+                        }
+                        return finalMerged;
                     };
                     const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'cart', 'bom', 'coordinatorReports'];
                     arraysToMerge.forEach(arrName => {
@@ -993,7 +1003,20 @@ const state = {
             merged.telemetry.totalLogins = Math.max(merged.telemetry.totalLogins || 0, localData.telemetry.totalLogins || 0);
         }
         
-        merged.suggestionsToAlex = mergeArraysGlobal(merged.suggestionsToAlex, localData.suggestionsToAlex);
+        const allDeletedSuggestionIds = new Set([
+            ...(Array.isArray(serverData.deletedSuggestionIds) ? serverData.deletedSuggestionIds.map(String) : []),
+            ...(Array.isArray(localData.deletedSuggestionIds) ? localData.deletedSuggestionIds.map(String) : [])
+        ]);
+        merged.deletedSuggestionIds = Array.from(allDeletedSuggestionIds);
+
+        const allDismissedNotificationIds = new Set([
+            ...(Array.isArray(serverData.dismissedNotificationIds) ? serverData.dismissedNotificationIds.map(String) : []),
+            ...(Array.isArray(localData.dismissedNotificationIds) ? localData.dismissedNotificationIds.map(String) : [])
+        ]);
+        merged.dismissedNotificationIds = Array.from(allDismissedNotificationIds);
+
+        merged.suggestionsToAlex = mergeArraysGlobal(merged.suggestionsToAlex, localData.suggestionsToAlex)
+            .filter(s => s && s.id && !allDeletedSuggestionIds.has(String(s.id)));
         merged.pendingCustom = mergeArraysGlobal(merged.pendingCustom, localData.pendingCustom);
         merged.b2bMarket = mergeArraysGlobal(merged.b2bMarket, localData.b2bMarket);
         merged.b2bContracts = mergeArraysGlobal(merged.b2bContracts, localData.b2bContracts);
@@ -1544,7 +1567,7 @@ const state = {
 
                 // Si la versión remota o la configuración docente es posterior a la local, sincronizar estado completo
                 if (remoteUpdated > localUpdated || configUpdated > localConfigUpdated || !this.lastETag) {
-                    await this.fetchFromCloud();
+                    await this.fetchFromCloud(true);
                 }
                 return true;
             } else {
@@ -1597,7 +1620,7 @@ const state = {
                     this.data.companies[coId].updatedAt = data.updatedAt || Date.now();
                 }
                 this.lastCompanyETag = `W/"co-${coId}-${data.version}-${data.updatedAt}"`;
-                await this.fetchFromCloud();
+                await this.fetchFromCloud(true);
                 return { success: true, data };
             } else {
                 const errData = await res.json().catch(() => ({}));
@@ -1885,7 +1908,7 @@ const state = {
         }
     },
 
-    async returnDeliverableByCEO(docType, reasonId) {
+    async returnDeliverableByCEO(docType, reasonId, returnDriveUrl = null) {
         if (!this.user || !this.user.coId || this.user.role !== 'CEO') return;
         const coId = this.user.coId;
         const co = this.data.companies?.[coId];
@@ -1898,6 +1921,7 @@ const state = {
         co.deliverables[docType].status = 'CEO_REVISION';
         co.deliverables[docType].returnReasonId = reasonId;
         co.deliverables[docType].returnReason = reasonText;
+        co.deliverables[docType].returnDriveUrl = returnDriveUrl || null;
         co.deliverables[docType].updatedAt = new Date().toISOString();
 
         if (typeof telemetry !== 'undefined' && telemetry.log) {
@@ -1927,14 +1951,15 @@ const state = {
                 key: docType,
                 action: 'RETURN',
                 reasonId: reasonId,
-                reasonText: reasonText
+                reasonText: reasonText,
+                returnDriveUrl: returnDriveUrl || null
             });
         } catch(e) {
             console.warn("[ACTION] Error sincronizando devolución del CEO:", e);
         }
     },
 
-    async returnDeliverableByTeacher(coId, docType, reasonId) {
+    async returnDeliverableByTeacher(coId, docType, reasonId, returnDriveUrl = null) {
         if (!this.user || !this.user.admin) return;
         const co = this.data.companies?.[coId];
         if (!co || !co.deliverables || !co.deliverables[docType]) return;
@@ -1945,6 +1970,9 @@ const state = {
 
         co.deliverables[docType].status = 'CEO_REVISION';
         co.deliverables[docType].returnReasonId = reasonId;
+        co.deliverables[docType].returnReason = reasonText;
+        co.deliverables[docType].returnDriveUrl = returnDriveUrl || null;
+        co.deliverables[docType].returnByTeacher = true;
         co.deliverables[docType].returnReason = reasonText;
         co.deliverables[docType].returnByTeacher = true;
         co.deliverables[docType].updatedAt = new Date().toISOString();
@@ -2095,8 +2123,8 @@ const state = {
         }
     },
 
-    async fetchFromCloud() {
-        if (this.pausePolling) return false;
+    async fetchFromCloud(force = false) {
+        if (!force && this.pausePolling) return false;
         this.isSyncing = true;
         try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
         let shouldRender = false;
@@ -2402,7 +2430,7 @@ const state = {
                 if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
                     ui.notify("⚠️ Conflicto de concurrencia detectado. Se ha sincronizado el registro más reciente de la nube sin sobrescribir datos ajenos.", "warning");
                 }
-                await this.fetchFromCloud();
+                await this.fetchFromCloud(true);
                 this.isCloudOnline = true;
             } else {
                 this.isCloudOnline = false;

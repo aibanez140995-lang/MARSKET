@@ -306,9 +306,9 @@ Object.assign(ui, {
                 this._fetchingCredentials = false;
             });
         }
-        const currentKeychainClass = this.selectedKeychainClass || 'ALL';
         const rawClasses = Object.values(state.data.companies || {}).map(c => c.classGroup).filter(Boolean);
         const uniqueClasses = [...new Set(['A', 'B', ...rawClasses])].sort();
+        const currentKeychainClass = this.selectedKeychainClass || (uniqueClasses[0] || 'A');
         
         const pendingAuxCoIds = Object.keys(state.data.companies).filter(cid => {
             const co = state.data.companies[cid];
@@ -407,16 +407,20 @@ Object.assign(ui, {
                         ${isCoord ? `<button onclick="ui.exportCredentialsCSV()" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">[📥 Exportar Llavero CSV]</button>` : ''}
                     </div>
                 </div>
-                <div class="flex items-center gap-2 mb-3">
-                    <label for="keychain-class-filter" class="text-xs text-slate-300 font-bold uppercase shrink-0">Filtrar por Clase:</label>
-                    <select id="keychain-class-filter" onchange="ui.filterKeychainClass(this.value)" class="min-h-[44px] bg-black border border-mars-yellow text-mars-yellow text-xs p-2.5 uppercase font-bold outline-none cursor-pointer">
-                        <option value="ALL" ${currentKeychainClass === 'ALL' ? 'selected' : ''}>Todas las Clases</option>
-                        ${uniqueClasses.map(cls => `<option value="${this.escapeHTML(cls)}" ${currentKeychainClass === cls ? 'selected' : ''}>Clase ${this.escapeHTML(cls)}</option>`).join('')}
-                    </select>
+                <div class="flex flex-wrap items-center gap-2 mb-3">
+                    <span class="text-xs text-slate-300 font-bold uppercase shrink-0">Filtrar por Clase:</span>
+                    ${uniqueClasses.map(cls => `
+                        <button type="button" onclick="ui.filterKeychainClass('${this.escapeHTML(cls)}')" class="min-h-[40px] px-3.5 py-1.5 text-xs font-bold uppercase transition-colors ${currentKeychainClass === cls ? 'bg-mars-yellow text-black font-black shadow-sm' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-700'}">
+                            Clase ${this.escapeHTML(cls)}
+                        </button>
+                    `).join('')}
+                    <button type="button" onclick="ui.filterKeychainClass('ALL')" class="min-h-[40px] px-3.5 py-1.5 text-xs font-bold uppercase transition-colors ${currentKeychainClass === 'ALL' ? 'bg-mars-cyan text-black font-black shadow-sm' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-700'}">
+                        Todas las Clases
+                    </button>
                 </div>
-                <div class="overflow-x-auto w-full">
+                <div class="overflow-x-auto w-full max-h-[580px] overflow-y-auto border border-mars-border/40">
                     <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
-                        <thead class="text-slate-300 uppercase border-b border-mars-border">
+                        <thead class="text-slate-300 uppercase border-b border-mars-border sticky top-0 bg-slate-950 z-10 shadow-sm">
                             <tr>
                                 <th class="py-2 pr-3">Empresa</th>
                                 <th class="pr-2">Clase</th>
@@ -516,7 +520,13 @@ Object.assign(ui, {
     },
 
     async saveDeliverableSchedule(docKey) {
-        if (!state.user || !state.user.role.startsWith('COORD')) return;
+        if (!state.user || !state.user.admin) return;
+        const def = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).find(x => x.key === docKey);
+        const isCoord = state.user.role && (state.user.role === 'COORD' || state.user.role.startsWith('COORD'));
+        const isOwnerTeacher = def && state.user.role === def.subject;
+        if (!isCoord && !isOwnerTeacher) {
+            return this.notify("Solo el docente de la materia o Coordinación pueden editar este entregable.", "error");
+        }
         const elOpen = document.getElementById(`sched-open-${docKey}`);
         const elDead = document.getElementById(`sched-dead-${docKey}`);
         const elGuide = document.getElementById(`sched-guide-${docKey}`);
@@ -537,7 +547,7 @@ Object.assign(ui, {
         const prevSched = state.data.config.deliverableSchedule[docKey] || {};
         state.data.config.deliverableSchedule[docKey] = {
             ...prevSched,
-            phase: prevSched.phase || (this.getDeliverablePhase ? this.getDeliverablePhase(docKey) : 'I'),
+            phase: prevSched.phase || (this.getDeliverablePhase ? this.getDeliverablePhase(docKey) : (def?.phase || 'I')),
             openDate,
             deadline,
             guideDocUrl: guideDocUrl || "",
@@ -562,7 +572,9 @@ Object.assign(ui, {
     },
 
     async saveAllDeliverableSchedules() {
-        if (!state.user || !state.user.role.startsWith('COORD')) return;
+        if (!state.user || !state.user.admin) return;
+        const isCoord = state.user.role && (state.user.role === 'COORD' || state.user.role.startsWith('COORD'));
+        const teacherRole = state.user.role;
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
         state.pausePolling = true;
         const now = Date.now();
@@ -570,7 +582,10 @@ Object.assign(ui, {
         state.data.config.deliverableSchedule = state.data.config.deliverableSchedule || {};
         state.data.config.deadlines = state.data.config.deadlines || {};
 
+        let savedCount = 0;
         defs.forEach(d => {
+            const canEdit = isCoord || (d.subject === teacherRole);
+            if (!canEdit) return;
             const elOpen = document.getElementById(`sched-open-${d.key}`);
             const elDead = document.getElementById(`sched-dead-${d.key}`);
             const elGuide = document.getElementById(`sched-guide-${d.key}`);
@@ -581,7 +596,7 @@ Object.assign(ui, {
                 const prevSched = state.data.config.deliverableSchedule[d.key] || {};
                 state.data.config.deliverableSchedule[d.key] = {
                     ...prevSched,
-                    phase: prevSched.phase || (this.getDeliverablePhase ? this.getDeliverablePhase(d.key) : 'I'),
+                    phase: prevSched.phase || (this.getDeliverablePhase ? this.getDeliverablePhase(d.key) : (d.phase || 'I')),
                     openDate,
                     deadline,
                     guideDocUrl: guideDocUrl || "",
@@ -590,6 +605,7 @@ Object.assign(ui, {
                 if (deadline) {
                     state.data.config.deadlines[d.key] = deadline;
                 }
+                savedCount++;
             }
         });
 
@@ -597,7 +613,7 @@ Object.assign(ui, {
         state.saveLocalOnly();
         try {
             await state.pushToCloud(false);
-            this.notify("✅ Todos los cronogramas han sido sincronizados en la nube.", "success");
+            this.notify(`✅ Sincronizados ${savedCount} cronogramas y plantillas en la nube.`, "success");
         } catch(e) {
             console.error("Error al persistir todos los cronogramas:", e);
         } finally {
@@ -880,9 +896,10 @@ Object.assign(ui, {
             const openVal = sched.openDate || d.defaultOpenDate || '';
             const deadVal = sched.deadline || dl[d.key] || d.defaultDate || '';
             const guideVal = sched.guideDocUrl || d.defaultGuideDocUrl || '';
+            const canEdit = isCoord || (state.user && state.user.admin && (d.subject === (state.user.role || '') || state.user.role === 'DOCENTE'));
 
             return `
-            <div class="bg-slate-900 border border-slate-800 p-3.5 flex flex-col justify-between space-y-2.5 rounded">
+            <div class="bg-slate-900 border ${canEdit ? 'border-mars-cyan/40 bg-slate-900/90' : 'border-slate-800 opacity-90'} p-3.5 flex flex-col justify-between space-y-2.5 rounded">
                 <div>
                     <div class="flex justify-between items-center mb-1">
                         <span class="text-xs font-black uppercase px-2 py-0.5 bg-mars-cyan/10 text-mars-cyan border border-mars-cyan/40">${this.escapeHTML(d.subject)} • ${this.escapeHTML(d.weight)}</span>
@@ -892,21 +909,26 @@ Object.assign(ui, {
                 </div>
                 <div class="space-y-1">
                     <label for="sched-open-${this.escapeHTML(d.key)}" class="text-[10px] text-mars-cyan uppercase font-bold block">1. Apertura (Desbloqueo)</label>
-                    <input type="datetime-local" id="sched-open-${this.escapeHTML(d.key)}" value="${this.escapeHTML(openVal)}" ${isCoord ? `onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')"` : 'disabled'} class="input-open-date min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-cyan">
+                    <input type="datetime-local" id="sched-open-${this.escapeHTML(d.key)}" value="${this.escapeHTML(openVal)}" ${canEdit ? `onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')"` : 'disabled'} class="input-open-date min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-cyan disabled:opacity-50">
                 </div>
                 <div class="space-y-1">
                     <label for="sched-dead-${this.escapeHTML(d.key)}" class="text-[10px] text-mars-yellow uppercase font-bold block">2. Cierre (Límite Entrega)</label>
-                    <input type="datetime-local" id="sched-dead-${this.escapeHTML(d.key)}" value="${this.escapeHTML(deadVal)}" ${isCoord ? `onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')"` : 'disabled'} class="input-deadline min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-mars-yellow font-mono outline-none focus:border-mars-yellow">
+                    <input type="datetime-local" id="sched-dead-${this.escapeHTML(d.key)}" value="${this.escapeHTML(deadVal)}" ${canEdit ? `onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')"` : 'disabled'} class="input-deadline min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-mars-yellow font-mono outline-none focus:border-mars-yellow disabled:opacity-50">
                 </div>
                 <div class="space-y-1">
                     <label for="sched-guide-${this.escapeHTML(d.key)}" class="text-[10px] text-mars-green uppercase font-bold block">3. Plantilla Oficial Drive (Opcional)</label>
-                    <input type="url" id="sched-guide-${this.escapeHTML(d.key)}" value="${this.escapeAttr(guideVal)}" placeholder="https://docs.google.com/document/d/..." ${isCoord ? `onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')"` : 'disabled'} class="input-guide-url min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-mars-green font-mono outline-none focus:border-mars-green">
+                    <input type="url" id="sched-guide-${this.escapeHTML(d.key)}" value="${this.escapeAttr(guideVal)}" placeholder="https://docs.google.com/document/d/..." ${canEdit ? `onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')"` : 'disabled'} class="input-guide-url min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-mars-green font-mono outline-none focus:border-mars-green disabled:opacity-50">
                 </div>
-                <div class="pt-1.5 border-t border-slate-800">
+                <div class="pt-1.5 border-t border-slate-800 space-y-2">
                     <button type="button" ${isCoord ? `onclick="ui.modalSelectDeliverablePhase('${this.escapeHTML(d.key)}')"` : 'disabled'} class="min-h-[44px] w-full bg-slate-800/90 hover:bg-slate-800 border border-mars-cyan/40 hover:border-mars-cyan text-mars-cyan font-bold text-xs uppercase px-2.5 py-2 flex items-center justify-between transition-colors disabled:opacity-50">
                         <span>🗂️ Fase Actual: FASE ${this.escapeHTML(currPhase)}</span>
                         ${isCoord ? `<span class="text-[10px] text-amber-400 font-mono">[ Cambiar Fase ➔ ]</span>` : ''}
                     </button>
+                    ${canEdit ? `
+                    <button type="button" onclick="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')" class="min-h-[44px] w-full bg-mars-green/20 hover:bg-mars-green/30 border border-mars-green text-mars-green font-bold text-xs uppercase px-2 py-1.5 flex items-center justify-center gap-1.5 transition-colors">
+                        <span>💾 Guardar Plantilla y Fechas</span>
+                    </button>
+                    ` : ''}
                 </div>
             </div>`;
         }).join('');
@@ -921,7 +943,7 @@ Object.assign(ui, {
                     </div>
                     <div class="flex items-center gap-2">
                         ${isCoord ? `<button type="button" onclick="ui.modalManagePhases()" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">[ 🎛️ Control Rápido de Fases (I-IV) ]</button>` : ''}
-                        ${isCoord ? `<button type="button" onclick="ui.saveAllDeliverableSchedules()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)]">[ 💾 Guardar Todo el Cronograma ]</button>` : ''}
+                        <button type="button" onclick="ui.saveAllDeliverableSchedules()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)]">[ 💾 Guardar Cronograma ]</button>
                         <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-3 py-1 text-xs font-black uppercase font-mono">${defs.length} Entregables</span>
                     </div>
                 </div>
@@ -1404,7 +1426,7 @@ Object.assign(ui, {
                         <input type="text" id="val-name-${this.escapeHTML(p.id)}" aria-label="Nombre oficial en catálogo" class="min-h-[44px] w-40 sm:w-48 bg-black border border-slate-700 p-2 text-white text-xs" placeholder="Nombre en Catálogo" value="${this.escapeAttr(p.name || 'Pieza Especial')}">
                         <input type="number" id="val-price-${this.escapeHTML(p.id)}" aria-label="Precio €v" class="min-h-[44px] w-20 bg-black border border-mars-border p-2 text-mars-green text-center font-bold text-xs" placeholder="€v" min="1" step="0.5">
                         <button onclick="ui.teacherValidate('${this.escapeHTML(p.id)}', true)" class="min-h-[44px] bg-mars-green text-black px-4 py-2 font-black text-xs hover:bg-white transition-colors" title="Aprobar e integrar en catálogo">OK</button>
-                        <button onclick="ui.teacherValidate('${this.escapeHTML(p.id)}', false)" class="min-h-[44px] text-mars-magenta font-bold px-3 py-2 text-xs border border-mars-magenta hover:bg-mars-magenta hover:text-white transition-colors" title="Denegar solicitud">X</button>
+                        <button onclick="ui.modalDenySpecialItem('${this.escapeHTML(p.id)}')" class="min-h-[44px] text-mars-magenta font-bold px-3 py-2 text-xs border border-mars-magenta hover:bg-mars-magenta hover:text-white transition-colors" title="Denegar solicitud con dictamen">X</button>
                     </div>
                 </div>`).join('') || '<p class="text-slate-300 text-xs italic">Nada pendiente.</p>'}
             </div>
@@ -1625,38 +1647,125 @@ Object.assign(ui, {
         this.render();
     },
 
+    modalDenySpecialItem(pid) {
+        const req = (state.data.pendingCustom || []).find(p => p.id == pid);
+        if (!req) return this.notify("Solicitud no encontrada.", "error");
+        const coName = state.data.companies[req.company]?.name || 'Empresa';
+
+        const html = `
+            <div class="space-y-4">
+                <div class="p-3 bg-red-950/20 border border-red-500/40 rounded">
+                    <p class="text-xs text-red-300 font-bold uppercase mb-1">Empresa: <span class="text-white">${this.escapeHTML(coName)}</span></p>
+                    <p class="text-xs text-slate-300">Material solicitado: <span class="text-white font-mono">${this.escapeHTML(req.name || 'Componente Especial')}</span></p>
+                    ${req.driveUrl ? `
+                    <div class="mt-2">
+                        <a href="${this.escapeHTML(req.driveUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-mars-cyan hover:underline font-mono bg-mars-cyan/10 px-2.5 py-1.5 border border-mars-cyan/40 min-h-[36px]">
+                            <span>📄 Abrir Solicitud del Alumno en Google Drive ↗</span>
+                        </a>
+                    </div>` : ''}
+                </div>
+
+                <div>
+                    <label for="deny-response-drive-url" class="block text-xs font-mono uppercase text-mars-yellow font-bold mb-1">
+                        Enlace al Dictamen / Documento de Denegación en Google Drive: *
+                    </label>
+                    <p class="text-[11px] text-slate-400 mb-2 font-sans leading-relaxed">
+                        De conformidad con la política Zero-Text de MARS-KET, la justificación técnica de la denegación debe remitirse mediante un documento oficial de Google Drive/Docs para que el equipo técnico pueda reformular su solicitud.
+                    </p>
+                    <input type="url" id="deny-response-drive-url" placeholder="https://docs.google.com/document/d/..." class="min-h-[44px] w-full bg-black border border-slate-700 p-2 text-xs font-mono text-white outline-none focus:border-red-400">
+                </div>
+            </div>`;
+
+        const actions = `
+            <button type="button" onclick="ui.closeModal()" class="min-h-[44px] px-4 py-2 border border-slate-700 text-slate-400 hover:text-white uppercase font-bold text-xs transition-colors">Cancelar</button>
+            <button type="button" onclick="ui.confirmDenySpecialItem('${this.escapeHTML(pid)}')" class="min-h-[44px] px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white font-black uppercase text-xs transition-colors shadow-[0_0_10px_rgba(239,68,68,0.4)] border border-red-500">[ ❌ Confirmar Denegación y Notificar al Técnico ]</button>
+        `;
+
+        this.showModal("🔴 Denegar Solicitud de Material I+D", html, actions);
+    },
+
+    async confirmDenySpecialItem(pid) {
+        const reqIdx = (state.data.pendingCustom || []).findIndex(p => p.id == pid);
+        if (reqIdx === -1) return this.notify("Solicitud no encontrada.", "error");
+
+        const elUrl = document.getElementById('deny-response-drive-url');
+        const responseUrl = elUrl ? elUrl.value.trim() : '';
+
+        if (!responseUrl || (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(responseUrl))) {
+            return this.notify("Debes proporcionar una URL válida de Google Drive / Docs con la justificación técnica de la denegación.", "warning");
+        }
+
+        const req = state.data.pendingCustom[reqIdx];
+        const coId = req.company;
+
+        if (state.data.companies && state.data.companies[coId]) {
+            state.data.companies[coId].specialItemRequests = state.data.companies[coId].specialItemRequests || [];
+            state.data.companies[coId].specialItemRequests.unshift({
+                id: req.id,
+                name: req.name || 'Componente Especial I+D',
+                driveUrl: req.driveUrl || '',
+                date: req.date || new Date().toLocaleDateString('es-ES'),
+                status: 'DENEGADA',
+                responseDriveUrl: responseUrl,
+                resolvedAt: Date.now()
+            });
+            state.data.companies[coId].updatedAt = Date.now();
+        }
+
+        ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial "${req.name || 'Componente'}" ha sido DENEGADA. Puedes revisar el dictamen técnico adjunto en tu Banco de I+D.`, 'error');
+
+        state.data.pendingCustom.splice(reqIdx, 1);
+        this.closeModal();
+        await state.save(coId);
+        this.notify("Solicitud de I+D denegada y dictamen adjuntado.", "info");
+        this.render();
+    },
+
     teacherValidate(pid, ok) {
+        if (!ok) {
+            return this.modalDenySpecialItem(pid);
+        }
         const reqIdx = state.data.pendingCustom.findIndex(p => p.id == pid);
         if (reqIdx === -1) return;
         
         const req = state.data.pendingCustom[reqIdx];
         const coId = req.company;
         
-        if(ok) {
-            const elPrice = document.getElementById(`val-price-${pid}`);
-            const elName = document.getElementById(`val-name-${pid}`);
-            if (!elPrice) return;
-            const price = parseFloat(elPrice.value);
-            if(isNaN(price) || price <= 0) return this.notify("Introduce un precio €v válido mayor que cero.", "warning");
-            
-            const rawOfficialName = elName && elName.value.trim() ? elName.value.trim() : (req.name || 'Componente Especial I+D');
-            const cleanOfficialName = this.cleanInput(rawOfficialName);
-            
-            state.data.catalog.unshift({ 
-                id: 'CUST-' + pid, 
-                name: `[ESP] ${cleanOfficialName}`, 
-                price: price, 
-                unit: 'Especial', 
-                category: 'Externo',
-                origin: 'I+D Local',
-                exclusiveFor: coId,
-                driveUrl: req.driveUrl || ''
+        const elPrice = document.getElementById(`val-price-${pid}`);
+        const elName = document.getElementById(`val-name-${pid}`);
+        if (!elPrice) return;
+        const price = parseFloat(elPrice.value);
+        if(isNaN(price) || price <= 0) return this.notify("Introduce un precio €v válido mayor que cero.", "warning");
+        
+        const rawOfficialName = elName && elName.value.trim() ? elName.value.trim() : (req.name || 'Componente Especial I+D');
+        const cleanOfficialName = this.cleanInput(rawOfficialName);
+        
+        state.data.catalog.unshift({ 
+            id: 'CUST-' + pid, 
+            name: `[ESP] ${cleanOfficialName}`, 
+            price: price, 
+            unit: 'Especial', 
+            category: 'Externo',
+            origin: 'I+D Local',
+            exclusiveFor: coId,
+            driveUrl: req.driveUrl || ''
+        });
+
+        if (state.data.companies && state.data.companies[coId]) {
+            state.data.companies[coId].specialItemRequests = state.data.companies[coId].specialItemRequests || [];
+            state.data.companies[coId].specialItemRequests.unshift({
+                id: req.id,
+                name: cleanOfficialName,
+                driveUrl: req.driveUrl || '',
+                date: req.date || new Date().toLocaleDateString('es-ES'),
+                status: 'APROBADA',
+                price: price,
+                resolvedAt: Date.now()
             });
-            
-            ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial "${cleanOfficialName}" ha sido APROBADA e integrada al catálogo por ${price} €v.`, 'success');
-        } else {
-            ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial ha sido DENEGADA por el Claustro.`, 'error');
+            state.data.companies[coId].updatedAt = Date.now();
         }
+        
+        ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial "${cleanOfficialName}" ha sido APROBADA e integrada al catálogo por ${price} €v.`, 'success');
         
         if (state.data.companies && state.data.companies[coId]) {
             state.data.companies[coId].updatedAt = Date.now();

@@ -131,6 +131,10 @@ Object.assign(ui, {
         if (myNotifs.length === 0) return '';
         
         return `<div class="mb-6 space-y-2 animate-in fade-in slide-in-from-top-4" role="region" aria-label="Notificaciones operativas">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-xs font-mono uppercase text-slate-400">Avisos y Notificaciones (${myNotifs.length})</span>
+                <button type="button" onclick="ui.dismissAllRoleNotifications()" class="min-h-[36px] bg-slate-900 border border-slate-700 text-slate-300 hover:text-white px-2.5 py-1 text-xs font-bold uppercase transition-all">[ 🧹 Borrar Todos los Avisos ]</button>
+            </div>
             ${myNotifs.map(n => {
                 let colors = 'border-mars-cyan bg-mars-cyan/10 text-mars-cyan';
                 if (n.type === 'error') colors = 'border-mars-magenta bg-mars-magenta/10 text-mars-magenta';
@@ -158,13 +162,38 @@ Object.assign(ui, {
         if (!co) return auth.logout();
         
         co.notifications = co.notifications || [];
+        state.data.dismissedNotificationIds = state.data.dismissedNotificationIds || [];
         const notif = co.notifications.find(n => n.id === id);
         if (notif) {
             notif.read = true;
             notif.updatedAt = Date.now();
+            if (id && !state.data.dismissedNotificationIds.includes(String(id))) {
+                state.data.dismissedNotificationIds.push(String(id));
+            }
         }
         co.updatedAt = Date.now();
         state.save();
+        this.render();
+    },
+
+    dismissAllRoleNotifications() {
+        if (!state.user) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout();
+        
+        co.notifications = co.notifications || [];
+        state.data.dismissedNotificationIds = state.data.dismissedNotificationIds || [];
+        (co.notifications || []).forEach(n => {
+            if (n && n.role === state.user.role && !n.read) {
+                n.read = true;
+                if (n.id && !state.data.dismissedNotificationIds.includes(String(n.id))) {
+                    state.data.dismissedNotificationIds.push(String(n.id));
+                }
+            }
+        });
+        co.updatedAt = Date.now();
+        state.save();
+        this.notify("🧹 Todos los avisos han sido descartados.", "info");
         this.render();
     },
 
@@ -316,33 +345,38 @@ Object.assign(ui, {
             const activeGroup = this.activeMilestoneGroup || 'PHASE_I';
             const isCEO = state.user && state.user.role === 'CEO';
 
+            const pDefs = typeof PROJECT_PHASES_DEF !== 'undefined' ? PROJECT_PHASES_DEF : {};
             const milestonePhases = [
                 {
                     id: 'PHASE_I',
                     phaseCode: 'I',
-                    title: 'FASE I: LANZAMIENTO, I+D PRELIMINAR Y ESTRATEGIA',
-                    badge: 'FASE I // INICIAL',
+                    title: pDefs.I ? pDefs.I.name : 'FASE I: PREPARACIÓN, IDENTIDAD Y PRESUPUESTO INICIAL',
+                    desc: pDefs.I ? pDefs.I.desc : '',
+                    badge: 'FASE I // INICIO: 02/11/2026',
                     accent: 'border-mars-cyan text-mars-cyan'
                 },
                 {
                     id: 'PHASE_II',
                     phaseCode: 'II',
-                    title: 'FASE II: PROTOTIPADO Y VALIDACIÓN EMPÍRICA',
-                    badge: 'FASE II // EMPÍRICA',
+                    title: pDefs.II ? pDefs.II.name : 'FASE II: ANÁLISIS MATEMÁTICO Y LANZAMIENTOS DE PRUEBA',
+                    desc: pDefs.II ? pDefs.II.desc : '',
+                    badge: 'FASE II // INICIO: 15/12/2026',
                     accent: 'border-mars-yellow text-mars-yellow'
                 },
                 {
                     id: 'PHASE_III',
                     phaseCode: 'III',
-                    title: 'FASE III: TRACCIÓN, CAMPAÑAS Y ESCALADO COMERCIAL',
-                    badge: 'FASE III // TRACCIÓN',
+                    title: pDefs.III ? pDefs.III.name : 'FASE III: DOCUMENTACIÓN TÉCNICA, BALANCE Y MODELO DE NEGOCIO',
+                    desc: pDefs.III ? pDefs.III.desc : '',
+                    badge: 'FASE III // INICIO: 15/02/2027',
                     accent: 'border-blue-400 text-blue-400'
                 },
                 {
                     id: 'PHASE_IV',
                     phaseCode: 'IV',
-                    title: 'FASE IV: CIERRE DE MISIÓN, ENSAMBLE FINAL Y DEFENSA',
-                    badge: 'FASE IV // CIERRE',
+                    title: pDefs.IV ? pDefs.IV.name : 'FASE IV: CIERRE FORMAL, DOSSIER DE INVERSIÓN Y CUENTA DE RESULTADOS',
+                    desc: pDefs.IV ? pDefs.IV.desc : '',
+                    badge: 'FASE IV // INICIO: 31/03/2027',
                     accent: 'border-mars-magenta text-mars-magenta'
                 }
             ];
@@ -396,9 +430,7 @@ Object.assign(ui, {
                         borderColor = 'border-mars-green/60';
                     }
 
-                    const templateBtn = sched.guideDocUrl
-                        ? `<a href="${encodeURI(sched.guideDocUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-mars-cyan border border-mars-cyan/30 rounded hover:bg-cyan-900/50 transition-colors font-mono min-h-[44px]"><span>📄 VER PLANTILLA DOCENTE ↗</span></a>`
-                        : '';
+                    const templateBtn = this.renderDocTemplateBtn(def.key);
 
                     let ceoDirectActions = '';
                     if (isCEO && docObj && (st === 'SUBMITTED_TO_CEO' || st === 'CEO_REVISION')) {
@@ -442,6 +474,7 @@ Object.assign(ui, {
                                 <span class="text-xs text-slate-300 font-mono uppercase">Visados / Entregados: <strong class="text-white">${phaseDelivered}/${phaseDefs.length}</strong></span>
                             </div>
                             <h4 class="font-orbitron font-black text-xs sm:text-sm text-white uppercase tracking-wider break-words">${phase.title}</h4>
+                            ${phase.desc ? `<p class="text-[11px] text-slate-400 mt-0.5 line-clamp-1">${this.escapeHTML(phase.desc)}</p>` : ''}
                         </div>
                         <span class="text-mars-cyan font-orbitron font-black text-sm shrink-0 px-2 py-1 border border-slate-700 bg-black">${isExpanded ? '▲ PLEGAR' : '▼ DESPLEGAR'}</span>
                     </button>
@@ -450,6 +483,16 @@ Object.assign(ui, {
                     </div>
                 </div>`;
             }).join('');
+
+            const phaseVCardHtml = `
+            <div class="terminal-border bg-mars-card border-l-4 border-mars-green p-4 bg-slate-900/70">
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                    <span class="text-xs font-black uppercase px-2 py-0.5 border border-mars-green text-mars-green bg-black">FASE V // 19/05/2027</span>
+                    <span class="text-xs text-mars-green font-mono font-bold uppercase">🏆 EVENTO CULMINANTE</span>
+                </div>
+                <h4 class="font-orbitron font-black text-xs sm:text-sm text-white uppercase tracking-wider">${pDefs.V ? this.escapeHTML(pDefs.V.name) : 'Fase V: Concurso Final'}</h4>
+                <p class="text-xs text-slate-300 mt-1">${pDefs.V ? this.escapeHTML(pDefs.V.desc) : 'Culminación del proyecto con la celebración del Concurso Final (19/05/2027).'}</p>
+            </div>`;
 
             container.innerHTML = `
             <div class="terminal-border bg-mars-card p-4 mb-6 border-l-4 border-l-mars-cyan flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -461,6 +504,7 @@ Object.assign(ui, {
             </div>
             <div class="space-y-4 w-full">
                 ${accordionsHtml}
+                ${phaseVCardHtml}
             </div>`;
         }
     },
@@ -493,6 +537,64 @@ Object.assign(ui, {
                 if (a.status === 'PENDIENTE_CEO') pendingMktActions++;
             });
         });
+
+        const submittedCeoDefs = defs.filter(d => docs[d.key] && docs[d.key].status === 'SUBMITTED_TO_CEO');
+        let ceoTrayHtml = '';
+        if (isCEO) {
+            ceoTrayHtml = `
+            <div class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-yellow shadow-[0_0_15px_rgba(255,204,0,0.15)]">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-mars-border pb-3 mb-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="px-2.5 py-0.5 text-xs font-black uppercase bg-mars-yellow/20 border border-mars-yellow text-mars-yellow ${submittedCeoDefs.length > 0 ? 'animate-pulse' : ''}">SUPERVISIÓN DIRECTIVA</span>
+                            <span class="text-xs text-slate-400 font-mono">${submittedCeoDefs.length} PENDIENTES DE VISADO</span>
+                        </div>
+                        <h3 class="text-base sm:text-lg font-orbitron font-black text-white uppercase tracking-tight">
+                            📋 Bandeja de Visado Ejecutivo
+                        </h3>
+                        <p class="text-xs text-slate-300 uppercase mt-0.5">Revisa, visa y eleva al claustro o devuelve con justificación técnica los entregables del equipo.</p>
+                    </div>
+                    <button type="button" onclick="ui.navigate('role_deliverables')" class="min-h-[44px] bg-slate-900 border border-mars-yellow text-mars-yellow hover:bg-mars-yellow hover:text-black font-black uppercase text-xs px-4 py-2 transition-all whitespace-nowrap">
+                        Ver Mis Entregables ➔
+                    </button>
+                </div>
+                ${submittedCeoDefs.length === 0 ? `
+                    <div class="p-6 bg-slate-900/60 border border-slate-800 text-center rounded">
+                        <p class="text-xs font-mono text-emerald-400 uppercase font-bold">✨ Todos los entregables departamentales están al día o ya visados.</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Cuando los departamentos (Técnico, Finanzas, Marketing, Operaciones) envíen sus borradores, aparecerán aquí para tu firma o devolución.</p>
+                    </div>
+                ` : `
+                    <div class="space-y-3">
+                        ${submittedCeoDefs.map(d => {
+                            const doc = docs[d.key];
+                            return `
+                            <div class="bg-slate-900/90 border border-amber-500/50 p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div class="min-w-0 flex-grow">
+                                    <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                                        <span class="text-xs font-black uppercase px-2 py-0.5 bg-black border border-mars-cyan text-mars-cyan">FASE ${ui.getDeliverablePhase ? ui.getDeliverablePhase(d.key) : (d.phase || 'I')}</span>
+                                        <span class="text-xs font-bold uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2 py-0.5">Resp: ${this.escapeHTML(d.role.replace('_', ' '))}</span>
+                                        <span class="text-xs text-slate-400 font-mono">${this.escapeHTML(d.subject)} • ${this.escapeHTML(d.weight)}</span>
+                                    </div>
+                                    <h4 class="text-white font-bold text-sm uppercase leading-snug">${this.escapeHTML(d.name)}</h4>
+                                    <div class="mt-2.5 flex flex-wrap items-center gap-2">
+                                        ${this.renderDocTemplateBtn(d.key)}
+                                        ${doc?.driveUrl ? `
+                                            <a href="${encodeURI(doc.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                                <span>📄 Abrir Documento en Docs ↗</span>
+                                            </a>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                                <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
+                                    <button type="button" onclick="ui.approveDeliverableByCEO('${this.escapeHTML(d.key)}')" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">[ ✓ VISAR Y ELEVAR AL CLAUSTRO ]</button>
+                                    <button type="button" onclick="ui.modalCeoReturnDeliverable('${this.escapeHTML(d.key)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-4 py-2 hover:bg-mars-magenta hover:text-white transition-all">[ ↩ DEVOLVER A DEPARTAMENTO ]</button>
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                `}
+            </div>`;
+        }
 
         // Alerta de Crisis AEE
         const unreadCrisis = (co.crisisAlerts || []).filter(a => !a.read);
@@ -565,6 +667,8 @@ Object.assign(ui, {
                     </div>
                 </div>
             </div>
+
+            ${ceoTrayHtml}
 
             <!-- CUADRO DE MANDOS DE ACCESOS TÁCTICOS -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
@@ -697,6 +801,8 @@ Object.assign(ui, {
         // 4. Filtrado por Estado
         if (statusFilter === 'ACTION_REQUIRED') {
             filteredDefs = filteredDefs.filter(d => docs[d.key] && (docs[d.key].status === 'CEO_REVISION' || docs[d.key].status === 'DEVUELTO_A_TECNICO'));
+        } else if (statusFilter === 'CEO_REVIEW') {
+            filteredDefs = filteredDefs.filter(d => docs[d.key] && docs[d.key].status === 'SUBMITTED_TO_CEO');
         } else if (statusFilter === 'COMPLETED') {
             filteredDefs = filteredDefs.filter(d => docs[d.key] && docs[d.key].status === 'DELIVERED_TO_TEACHER');
         } else if (statusFilter === 'OPEN') {
@@ -724,7 +830,7 @@ Object.assign(ui, {
                 <p class="text-xl sm:text-2xl font-orbitron font-black text-mars-green">${deliveredCount}</p>
                 <span class="text-[10px] text-slate-400 block mt-1 font-mono">Calificación final</span>
             </button>
-            <button type="button" onclick="ui.setRoleDeliverablesStatusFilter('ALL')" class="terminal-border p-4 text-left transition-all ${statusFilter === 'ALL' && ceoReviewCount > 0 ? 'bg-amber-950/60 border-2 border-amber-400' : 'bg-mars-card border-t-2 border-t-mars-yellow hover:border-mars-yellow'}">
+            <button type="button" onclick="ui.setRoleDeliverablesStatusFilter('CEO_REVIEW')" class="terminal-border p-4 text-left transition-all ${statusFilter === 'CEO_REVIEW' ? 'bg-amber-950/60 border-2 border-amber-400 shadow-[0_0_12px_rgba(255,204,0,0.3)]' : 'bg-mars-card border-t-2 border-t-mars-yellow hover:border-mars-yellow'}">
                 <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">🟡 En Revisión CEO</span>
                 <p class="text-xl sm:text-2xl font-orbitron font-black text-mars-yellow">${ceoReviewCount}</p>
                 <span class="text-[10px] text-slate-400 block mt-1 font-mono">Pendientes de visado</span>
@@ -756,6 +862,7 @@ Object.assign(ui, {
 
         const statusTabsHtml = [
             { id: 'ALL', label: 'Todos los Estados' },
+            { id: 'CEO_REVIEW', label: `🟡 En Revisión CEO (${ceoReviewCount})` },
             { id: 'ACTION_REQUIRED', label: `⚠️ Requieren Acción (${actionRequiredCount})` },
             { id: 'OPEN', label: 'Abiertos / En Plazo' },
             { id: 'COMPLETED', label: 'Completados' }

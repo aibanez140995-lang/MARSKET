@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.50) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.51) ---
 
-const APP_VERSION = "1.1.50";
+const APP_VERSION = "1.1.51";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -91,6 +91,12 @@ const OFFICIAL_DOC_TEMPLATES = Object.freeze({
         title: 'FICHA TÉCNICA Y CONTROL DE ACCIÓN PUBLICITARIA',
         flow: 'Marketing ➔ CEO ➔ Docente de Liderazgo y Coordinación',
         copyUrl: 'https://docs.google.com/document/d/18ApF6IytTExv4wGGkID1W2w0W_iXAAgw5UxuLB41Mkc/copy'
+    },
+    DOC_13_SOLICITUD_ID: {
+        id: 'DOC_13_SOLICITUD_ID',
+        title: 'SOLICITUD OFICIAL DE MATERIAL ESPECIAL I+D A COORDINACIÓN',
+        flow: 'Técnico ➔ Coordinación Docente',
+        copyUrl: 'https://docs.google.com/document/d/1HigoiUvPfZQhMu67MR7cGyiW8XecIQlAW_29kp3LfDc/copy'
     }
 });
 
@@ -232,6 +238,40 @@ const RUBRIC_CONFIG = {
     ] }
 };
 
+// Definición Oficial de las 5 Fases del Proyecto MARS-KET
+const PROJECT_PHASES_DEF = Object.freeze({
+    I: {
+        id: "I",
+        name: "Fase I: Preparación, Identidad y Presupuesto Inicial",
+        startDate: "2026-11-02",
+        desc: "Enfocada en la preparación inicial, el registro conceptual del cohete (Física y Química), la creación de la identidad de marca (Liderazgo y Emprendimiento) y la elaboración del presupuesto inicial (Economía). Las entregas se completarán entre noviembre y diciembre de 2026. Se hace la primera búsqueda de patrocinio con una presentación en inglés."
+    },
+    II: {
+        id: "II",
+        name: "Fase II: Análisis Matemático y Lanzamientos de Prueba",
+        startDate: "2026-12-15",
+        desc: "Centrada en el análisis matemático a través de informes técnicos con datos empíricos y la elaboración de un goniómetro (Matemáticas), además de la actualización del presupuesto tras la presentación del prototipo (Economía). Fase de lanzamientos de prueba."
+    },
+    III: {
+        id: "III",
+        name: "Fase III: Documentación Técnica, Balance y Modelo de Negocio",
+        startDate: "2027-02-15",
+        desc: "Consiste en la documentación técnica del montaje del prototipo definitivo mediante la hoja de taller (Física y Química), el balance económico (Economía), la definición de la imagen corporativa y la redacción del modelo de negocio (Liderazgo y Emprendimiento)."
+    },
+    IV: {
+        id: "IV",
+        name: "Fase IV: Cierre Formal, Dossier de Inversión y Cuenta de Resultados",
+        startDate: "2027-03-31",
+        desc: "Fase de síntesis y cierre formal que abarca el informe técnico exhaustivo (Física y Química), el Business Model Canvas y la bitácora de decisiones (Liderazgo y Emprendimiento), el dossier argumentativo para inversores (Lengua) y la cuenta de resultados (Economía). Se realiza la presentación de la Start-up ante inversores."
+    },
+    V: {
+        id: "V",
+        name: "Fase V: Concurso Final",
+        startDate: "2027-05-19",
+        desc: "Culminación del proyecto con la celebración del Concurso Final (19/05/2027)."
+    }
+});
+
 // Definición Maestra Oficial de los 18 Entregables Curriculares en Google Drive
 const DELIVERABLES_DEF = [
     // Física y Química (3)
@@ -243,37 +283,37 @@ const DELIVERABLES_DEF = [
       shortName: "Preliminar FYQ",
       desc: "Informe preliminar, boceto inicial y foto del diseño del cohete (Física y Química).",
       role: "TECNICO",
-      defaultOpenDate: "2026-10-25T00:00",
+      defaultOpenDate: "2026-11-02T00:00",
       defaultDate: "2026-12-15T23:59",
       weight: "10% FYQ",
       defaultGuideDocUrl: ""
     },
     {
-      key: "technicalReport",
-      subject: "FYQ",
-      phase: "IV",
-      name: "2. Informe Técnico Final Exhaustivo",
-      shortName: "Técnico Final FYQ",
-      desc: "Memoria técnica completa de rendimiento y física de vuelo (Física y Química).",
-      role: "TECNICO",
-      defaultOpenDate: "2026-10-25T00:00",
-      defaultDate: "2027-04-10T23:59",
-      weight: "30% FYQ",
-      defaultGuideDocUrl: ""
-    },
-    {
       key: "hoja_taller_fyq",
       subject: "FYQ",
-      phase: "IV",
+      phase: "III",
       title: "Hoja de Taller: BOM y Control de Ensamble",
-      name: "3. Hoja de Taller: BOM y Control de Ensamble",
+      name: "2. Hoja de Taller: BOM y Control de Ensamble",
       shortName: "Hoja de Taller (FYQ)",
       desc: "Registro de desglose de materiales y control de calidad físico (Física y Química).",
       role: "OPERACIONES_IA",
-      defaultOpenDate: "2026-10-25T00:00",
-      defaultDate: "2027-04-10T23:59",
+      defaultOpenDate: "2027-02-15T00:00",
+      defaultDate: "2027-03-31T23:59",
       weight: "10% FYQ",
       defaultGuideDocUrl: "https://docs.google.com/document/d/1ehTeMTmHzY5Jl8dcVjvF-2AkfQQBNRR0tctTWdqSI1o/copy"
+    },
+    {
+      key: "technicalReport",
+      subject: "FYQ",
+      phase: "IV",
+      name: "3. Informe Técnico Final Exhaustivo",
+      shortName: "Técnico Final FYQ",
+      desc: "Memoria técnica completa de rendimiento y física de vuelo (Física y Química).",
+      role: "TECNICO",
+      defaultOpenDate: "2027-03-31T00:00",
+      defaultDate: "2027-04-10T23:59",
+      weight: "30% FYQ",
+      defaultGuideDocUrl: ""
     },
     
     // Liderazgo y Emprendimiento (6)
@@ -285,48 +325,9 @@ const DELIVERABLES_DEF = [
       shortName: "Marca Dic (LYE)",
       desc: "Identidad inicial de marca, logotipo y misión corporativa.",
       role: "MARKETING",
-      defaultOpenDate: "2026-10-25T00:00",
+      defaultOpenDate: "2026-11-02T00:00",
       defaultDate: "2026-12-15T23:59",
       weight: "10% LYE",
-      defaultGuideDocUrl: ""
-    },
-    {
-      key: "brandIdentity_apr",
-      subject: "LYE",
-      phase: "IV",
-      name: "1B. Nombre, Logo, Tagline, Imagen de Marca — ABRIL",
-      shortName: "Marca Abr (LYE)",
-      desc: "Evolución y consolidación de la marca, manual de identidad y defensa.",
-      role: "MARKETING",
-      defaultOpenDate: "2027-01-15T00:00",
-      defaultDate: "2027-04-10T23:59",
-      weight: "10% LYE",
-      defaultGuideDocUrl: ""
-    },
-    {
-      key: "businessModelDoc",
-      subject: "LYE",
-      phase: "II",
-      name: "2. Business Model — Documento Escrito",
-      shortName: "Business Model (Doc)",
-      desc: "Desarrollo argumentado del modelo de negocio de la startup.",
-      role: "MARKETING",
-      defaultOpenDate: "2027-01-15T00:00",
-      defaultDate: "2027-04-10T23:59",
-      weight: "25% LYE",
-      defaultGuideDocUrl: ""
-    },
-    {
-      key: "businessModelCanvas",
-      subject: "LYE",
-      phase: "II",
-      name: "3. Business Model Canvas (Lienzo Estratégico)",
-      shortName: "Canvas (LYE)",
-      desc: "Lienzo de modelo de negocio con los 9 módulos estratégicos.",
-      role: "MARKETING",
-      defaultOpenDate: "2027-01-15T00:00",
-      defaultDate: "2027-04-10T23:59",
-      weight: "15% LYE",
       defaultGuideDocUrl: ""
     },
     {
@@ -337,10 +338,49 @@ const DELIVERABLES_DEF = [
       shortName: "Diario/Bitácora Dic (LYE)",
       desc: "Diario de decisiones, resolución de conflictos y registro ético de IA (Diciembre).",
       role: "OPERACIONES_IA",
-      defaultOpenDate: "2026-10-25T00:00",
+      defaultOpenDate: "2026-11-02T00:00",
       defaultDate: "2026-12-15T23:59",
       weight: "10% LYE",
       defaultGuideDocUrl: "https://docs.google.com/document/d/1QDzumCcDHLWcQJlkPSaA1Q16Kj0Ff9wsHiPf_clLau8/copy"
+    },
+    {
+      key: "brandIdentity_apr",
+      subject: "LYE",
+      phase: "III",
+      name: "1B. Nombre, Logo, Tagline, Imagen de Marca — ACTUALIZACIÓN",
+      shortName: "Marca Act (LYE)",
+      desc: "Evolución y consolidación de la marca, manual de identidad y defensa.",
+      role: "MARKETING",
+      defaultOpenDate: "2027-02-15T00:00",
+      defaultDate: "2027-03-31T23:59",
+      weight: "10% LYE",
+      defaultGuideDocUrl: ""
+    },
+    {
+      key: "businessModelDoc",
+      subject: "LYE",
+      phase: "III",
+      name: "2. Business Model — Documento Escrito",
+      shortName: "Business Model (Doc)",
+      desc: "Desarrollo argumentado del modelo de negocio de la startup.",
+      role: "MARKETING",
+      defaultOpenDate: "2027-02-15T00:00",
+      defaultDate: "2027-03-31T23:59",
+      weight: "25% LYE",
+      defaultGuideDocUrl: ""
+    },
+    {
+      key: "businessModelCanvas",
+      subject: "LYE",
+      phase: "IV",
+      name: "3. Business Model Canvas (Lienzo Estratégico)",
+      shortName: "Canvas (LYE)",
+      desc: "Lienzo de modelo de negocio con los 9 módulos estratégicos.",
+      role: "MARKETING",
+      defaultOpenDate: "2027-03-31T00:00",
+      defaultDate: "2027-04-23T23:59",
+      weight: "15% LYE",
+      defaultGuideDocUrl: ""
     },
     {
       key: "decisionDiary_apr",
@@ -350,8 +390,8 @@ const DELIVERABLES_DEF = [
       shortName: "Diario/Bitácora Abr (LYE)",
       desc: "Diario de decisiones, resolución de conflictos y registro ético de IA (Abril).",
       role: "OPERACIONES_IA",
-      defaultOpenDate: "2027-01-15T00:00",
-      defaultDate: "2027-04-10T23:59",
+      defaultOpenDate: "2027-03-31T00:00",
+      defaultDate: "2027-04-23T23:59",
       weight: "10% LYE",
       defaultGuideDocUrl: "https://docs.google.com/document/d/1QDzumCcDHLWcQJlkPSaA1Q16Kj0Ff9wsHiPf_clLau8/copy"
     },
@@ -360,28 +400,41 @@ const DELIVERABLES_DEF = [
     {
       key: "investorDossier",
       subject: "LEN",
-      phase: "III",
+      phase: "IV",
       name: "1. Dossier para Inversores (Texto Argumentativo)",
       shortName: "Dossier Inversores (LEN)",
       desc: "Dossier argumentativo formal dirigido a inversores y patrocinadores.",
       role: "MARKETING",
-      defaultOpenDate: "2027-01-15T00:00",
-      defaultDate: "2027-04-10T23:59",
+      defaultOpenDate: "2027-03-31T00:00",
+      defaultDate: "2027-04-23T23:59",
       weight: "50% LEN",
       defaultGuideDocUrl: ""
     },
 
     // Matemáticas (4)
     {
+      key: "goniometerEvidence",
+      subject: "MAT",
+      phase: "II",
+      name: "1. Goniómetro (Evidencia y Construcción)",
+      shortName: "Goniómetro (MAT)",
+      desc: "Construcción física, calibración y registro fotográfico del goniómetro.",
+      role: "TECNICO",
+      defaultOpenDate: "2026-12-15T00:00",
+      defaultDate: "2027-02-15T23:59",
+      weight: "25% MAT",
+      defaultGuideDocUrl: ""
+    },
+    {
       key: "mathReportDist",
       subject: "MAT",
       phase: "II",
-      name: "1. Informe Técnico con Datos Empíricos de Distancia Conocida",
+      name: "2. Informe Técnico con Datos Empíricos de Distancia Conocida",
       shortName: "Dist. Conocida (MAT)",
       desc: "Cálculo trigonométrico de apogeo con distancia base fija conocida.",
       role: "TECNICO",
-      defaultOpenDate: "2027-01-15T00:00",
-      defaultDate: "2027-02-10T23:59",
+      defaultOpenDate: "2026-12-15T00:00",
+      defaultDate: "2027-02-15T23:59",
       weight: "25% MAT",
       defaultGuideDocUrl: ""
     },
@@ -389,38 +442,25 @@ const DELIVERABLES_DEF = [
       key: "mathReportTwoPoints",
       subject: "MAT",
       phase: "II",
-      name: "2. Informe Técnico con Dos Mediciones",
+      name: "3. Informe Técnico con Dos Mediciones",
       shortName: "Dos Mediciones (MAT)",
-      desc: "Triangulación matemática desde dos puntos de observación independientes.",
+      desc: "Triangulación matemática desde dos puntos de observation independientes.",
       role: "TECNICO",
-      defaultOpenDate: "2027-01-15T00:00",
-      defaultDate: "2027-02-10T23:59",
+      defaultOpenDate: "2026-12-15T00:00",
+      defaultDate: "2027-02-15T23:59",
       weight: "25% MAT",
       defaultGuideDocUrl: ""
     },
     {
       key: "mathReportFinal",
       subject: "MAT",
-      phase: "III",
-      name: "3. Informe Técnico Final Comparativo",
+      phase: "II",
+      name: "4. Informe Técnico Final Comparativo",
       shortName: "Comparativo Final (MAT)",
       desc: "Análisis comparativo de modelos matemáticos y desviaciones reales de apogeo.",
       role: "TECNICO",
-      defaultOpenDate: "2027-01-15T00:00",
-      defaultDate: "2027-02-10T23:59",
-      weight: "25% MAT",
-      defaultGuideDocUrl: ""
-    },
-    {
-      key: "goniometerEvidence",
-      subject: "MAT",
-      phase: "I",
-      name: "4. Goniómetro (Evidencia y Construcción)",
-      shortName: "Goniómetro (MAT)",
-      desc: "Construcción física, calibración y registro fotográfico del goniómetro.",
-      role: "TECNICO",
-      defaultOpenDate: "2027-01-15T00:00",
-      defaultDate: "2027-02-10T23:59",
+      defaultOpenDate: "2026-12-15T00:00",
+      defaultDate: "2027-02-15T23:59",
       weight: "25% MAT",
       defaultGuideDocUrl: ""
     },
@@ -434,21 +474,8 @@ const DELIVERABLES_DEF = [
       shortName: "Presupuesto Inicial",
       desc: "Presupuesto inicial de aprovisionamiento y proyección financiera de la startup.",
       role: "FINANZAS",
-      defaultOpenDate: "2026-10-25T00:00",
-      defaultDate: "2026-12-15T23:59",
-      weight: "20% ECO",
-      defaultGuideDocUrl: ""
-    },
-    {
-      key: "incomeStatement",
-      subject: "ECO",
-      phase: "I",
-      name: "2. Cuenta de Resultados",
-      shortName: "Cuenta de Resultados",
-      desc: "Cuenta de pérdidas y ganancias provisional y control de márgenes.",
-      role: "FINANZAS",
-      defaultOpenDate: null,
-      defaultDate: "2026-11-08T23:59",
+      defaultOpenDate: "2026-11-02T00:00",
+      defaultDate: "2026-11-09T23:59",
       weight: "20% ECO",
       defaultGuideDocUrl: ""
     },
@@ -456,25 +483,38 @@ const DELIVERABLES_DEF = [
       key: "budgetPostProto",
       subject: "ECO",
       phase: "II",
-      name: "3. Presupuesto tras Presentación de Prototipo",
+      name: "2. Presupuesto tras Presentación de Prototipo",
       shortName: "Presupuesto Post-Proto",
       desc: "Presupuesto recalculado tras las pruebas físicas de apogeo y taller.",
       role: "FINANZAS",
       defaultOpenDate: "2026-12-15T00:00",
-      defaultDate: "2027-01-10T23:59",
+      defaultDate: "2027-01-09T23:59",
       weight: "20% ECO",
       defaultGuideDocUrl: ""
     },
     {
       key: "balanceSheet",
       subject: "ECO",
-      phase: "IV",
-      name: "4. Balance",
+      phase: "III",
+      name: "3. Balance",
       shortName: "Balance de Situación",
       desc: "Balance de situación cerrado con activo, pasivo y patrimonio neto final.",
       role: "FINANZAS",
       defaultOpenDate: "2027-02-15T00:00",
-      defaultDate: "2027-04-10T23:59",
+      defaultDate: "2027-03-31T23:59",
+      weight: "20% ECO",
+      defaultGuideDocUrl: ""
+    },
+    {
+      key: "incomeStatement",
+      subject: "ECO",
+      phase: "IV",
+      name: "4. Cuenta de Resultados",
+      shortName: "Cuenta de Resultados",
+      desc: "Cuenta de pérdidas y ganancias provisional y control de márgenes.",
+      role: "FINANZAS",
+      defaultOpenDate: "2027-03-31T00:00",
+      defaultDate: "2027-04-23T23:59",
       weight: "20% ECO",
       defaultGuideDocUrl: ""
     }
@@ -545,8 +585,29 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.50
+// Changelog Oficial de Producción v1.1.51
 const APP_CHANGELOG = [
+    {
+      version: "1.1.51",
+      date: new Date().toISOString().split('T')[0],
+      title: "Plantillas Integradas en Entregables, Bandeja de Visado CEO, Banco I+D con Solicitud Oficial, Llavero Maestro Filtrable y 5 Fases Oficiales",
+      items: [
+        "Acceso directo y dual a plantillas de entregables (Ver Plantilla y Hacer Copia en Google Drive) para todos los roles, con persistencia y sincronización garantizada para el profesorado.",
+        "Reordenación de navegación del Técnico: apertura directa en SUPER-MARSKET, seguido de Taller, Seguimiento de Órdenes, Banco I+D, Trámites, Mis Entregables y Dossier.",
+        "Solicitud de material I+D trasladada al Banco de I+D con plantilla oficial para clonar (DOC_13) y circuito de resolución con Google Doc de dictamen docente.",
+        "Bandeja de Visado Ejecutivo en la Sala de Mando del CEO con circuito de aprobación y devolución justificada con observaciones en Google Drive.",
+        "Filtro rápido por clases (Clase A, Clase B, Todas) en el Llavero Maestro y panel de control de 30 empresas con scroll optimizado.",
+        "Purga persistente de buzón y notificaciones mediante registro de eliminados (tombstones) que previene la reaparición tras la sincronización con la nube.",
+        "Actualización oficial de las 5 Fases del proyecto, fechas de inicio y entrega de los 18 entregables curriculares y cierre con el Concurso Final (Fase V)."
+      ],
+      highlights: [
+        { type: "ENTREGABLES", text: "Botones duales de plantilla oficial y clonación inmediata en Google Drive para todos los roles." },
+        { type: "TÉCNICO", text: "Nueva secuencia ergonómica de pestañas con SUPER-MARSKET en primer lugar y Banco de I+D potenciado." },
+        { type: "CEO", text: "Bandeja de Visado Ejecutivo en Sala de Mando con flujo de devolución documentado." },
+        { type: "DOCENTE", text: "Llavero Maestro con selector por clase para gestión fluida de 30 empresas y purga real de buzón." },
+        { type: "FASES", text: "Estructura oficial de 5 Fases con Concurso Final el 19/05/2027 y fechas calibradas de los 18 entregables." }
+      ]
+    },
     {
       version: "1.1.50",
       date: new Date().toISOString().split('T')[0],
