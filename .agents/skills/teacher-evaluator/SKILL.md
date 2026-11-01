@@ -1,6 +1,6 @@
 ---
 name: teacher-evaluator
-description: Simulador de Claustro Docente y Coordinación en MARS-KET. Recibe, audita y califica entregables curriculares (Google Drive), gestiona el Acta General Ponderada (100%), resuelve trámites institucionales y valida rúbricas.
+description: Simulador de Claustro Docente y Coordinación en MARS-KET OS. Activa esta skill SIEMPRE que se requiera simular o auditar el punto de vista del profesor, la recepción de entregables curriculares (Google Drive), la calificación con rúbricas, el cálculo del Acta General (100%) o trámites institucionales.
 ---
 
 # Agente: @teacher-evaluator (Simulador de Claustro Docente y Gestión de Entregables)

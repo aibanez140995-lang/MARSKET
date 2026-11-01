@@ -1169,31 +1169,42 @@ const ui = {
             const isLocked = Boolean(openDate && !isNaN(new Date(openDate).getTime()) && (new Date() < new Date(openDate)));
             const lockLabel = isLocked ? '<span class="text-amber-400 font-bold">[🔒 BLOQUEADO]</span>' : '<span class="text-mars-green font-bold">[🟢 ACTIVO]</span>';
             const statusLabel = docObj ? '<span class="text-mars-green font-bold">✓ Entregado</span>' : '<span class="text-mars-magenta font-bold">⏳ Pendiente</span>';
-            return `<li class="border-b border-slate-800/80 pb-1.5 flex justify-between items-center gap-2 flex-wrap"><span><strong class="text-white">${this.escapeHTML(d.shortName || d.name)}</strong> (${this.escapeHTML(d.subject)}): ${statusLabel}</span>${lockLabel}</li>`;
+            const tplUrl = sched.guideDocUrl || d.defaultGuideDocUrl || '';
+            const tplBadge = tplUrl ? `<a href="${encodeURI(tplUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-[10px] text-mars-cyan hover:underline font-mono ml-1.5 inline-flex items-center gap-0.5">📄 Plantilla Drive ↗</a>` : '';
+            return `<li class="border-b border-slate-800/80 pb-1.5 flex justify-between items-center gap-2 flex-wrap"><span><strong class="text-white">${this.escapeHTML(d.shortName || d.name)}</strong> (${this.escapeHTML(d.subject)}): ${statusLabel}${tplBadge}</span>${lockLabel}</li>`;
         }).join('') : '<li class="text-slate-400 italic">No tienes entregables curriculares activos asignados directamente a tu rol en esta fase. Supervisa o asiste al equipo en el Dossier.</li>';
 
         let roleTitle = '';
         let roleDesc = '';
-        let tasksList = '';
+        let checklist3Min = '';
+        let teamChain = '';
+        let contingencyHtml = '';
         let roleButtons = '';
         let roleWarning = '';
 
         switch(targetRole) {
             case 'CEO':
                 roleTitle = 'DIRECCIÓN GENERAL // CEO';
-                roleDesc = 'Liderar la estrategia global de la empresa, visar entregables en el Dossier, validar campañas de marketing, emitir comunicados de crisis y coordinar la gobernanza corporativa.';
-                tasksList = `
+                roleDesc = 'Liderar la estrategia global de la empresa, visar entregables en el Dossier, validar campañas de marketing y coordinar la gobernanza corporativa.';
+                checklist3Min = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] Entra en <strong>[📋 Dossier]</strong>, abre los enlaces de tu equipo en Google Drive y pulsa <strong>[✓ APROBAR Y ELEVAR A DOCENTE]</strong> o <strong>[↩ DEVOLVER CON MOTIVO]</strong>.</li>
-                    <li>[ ] Entra en <strong>[🎨 Marca & MKT]</strong> para revisar las acciones publicitarias presentadas por Marketing: pulsa <strong>[✓ APROBAR ACCIÓN]</strong> para elevarlas a Liderazgo, o <strong>[↩ DEVOLVER]</strong> indicando motivo tipificado y enlace en Drive.</li>
-                    <li>[ ] Si la AEE incoa una sanción regulatoria, pulsa <strong>[📢 Redactar Comunicado de Crisis]</strong>, redacta el comunicado oficial en el modelo Google Docs (DOC_3) y difúndelo a todos los departamentos con su enlace obligatorio.</li>
-                    <li>[ ] Entra en <strong>[⚖️ Gobernanza]</strong> para convocar votaciones asamblearias y avalar la propuesta oficial de eslogan ante Coordinación Docente.</li>
-                    <li>[ ] Revisa el saldo corporativo en el HUD antes de autorizar órdenes de gasto de gran envergadura.</li>
+                    <li>[ ] <strong>1. Revisa el saldo:</strong> Comprueba el capital en el HUD superior antes de autorizar decisiones de gasto.</li>
+                    <li>[ ] <strong>2. Revisa entregables:</strong> Entra en <strong>[📋 Dossier]</strong>, abre los enlaces de tu equipo en Google Drive y pulsa <strong>[✓ APROBAR Y ELEVAR A DOCENTE]</strong>.</li>
+                    <li>[ ] <strong>3. Valida Marketing:</strong> Entra en <strong>[🎨 Marca & MKT]</strong> para autorizar las acciones publicitarias presentadas por tu equipo.</li>
                 </ul>`;
+                teamChain = `Tus directores (Técnico, Finanzas, Marketing, Operaciones) redactan en Google Drive ➔ Tú revisas en Dossier ➔ Elevas la entrega al Claustro Docente.`;
+                contingencyHtml = `
+                <details class="bg-black/60 border border-slate-800 p-2.5 rounded text-xs mt-3">
+                    <summary class="cursor-pointer text-mars-cyan font-bold uppercase select-none">⚙️ Procedimientos Especiales (Sanciones y Gobernanza)</summary>
+                    <div class="mt-2 space-y-2 text-slate-300 border-t border-slate-800 pt-2 leading-relaxed">
+                        <p>• <strong>Expediente AEE:</strong> Si recibes una sanción, pulsa <strong>[📢 Redactar Comunicado de Crisis]</strong>, redacta el descargo en el modelo DOC_3 y difúndelo con su enlace.</p>
+                        <p>• <strong>Asamblea de Socios:</strong> En <strong>[⚖️ Gobernanza]</strong> convoca votaciones de socios y avala la propuesta oficial de eslogan ante Coordinación.</p>
+                        <p>• <strong>Devolución de entregables:</strong> Si un documento no cumple la rúbrica o tiene permisos cerrados, pulsa <strong>[↩ DEVOLVER CON MOTIVO]</strong> para que el departamento subsane.</p>
+                    </div>
+                </details>`;
                 roleButtons = `
                     <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
                     <button type="button" onclick="ui.navigate('orders'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bóveda de Órdenes</button>
-                    <button type="button" onclick="ui.navigate('resolutions'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Gobernanza</button>
                     <button type="button" onclick="ui.navigate('brand'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Marca & MKT</button>
                 `;
                 roleWarning = 'Nunca apruebes un documento o acción sin abrir su enlace de Google Drive para comprobar que la plantilla oficial está completa y con permisos de lectura abiertos.';
@@ -1201,33 +1212,48 @@ const ui = {
 
             case 'TECNICO':
                 roleTitle = 'DPTO. TÉCNICO // I+D';
-                roleDesc = 'Diseñar el prototipo aeroespacial, adquirir componentes en SUPER-MARSKET, registrar lanzamientos en el Banco de Pruebas y tramitar contratos de aduana B2B.';
-                tasksList = `
+                roleDesc = 'Diseñar el prototipo aeroespacial, adquirir componentes en SUPER-MARSKET y registrar lanzamientos en el Banco de Pruebas.';
+                checklist3Min = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] En <strong>[🛒 SUPER-MARSKET]</strong>, añade componentes al carrito, adjunta el enlace a tu orden en Google Drive y remítela a Finanzas.</li>
-                    <li>[ ] En <strong>[🧪 Banco I+D]</strong>, registra las pruebas introduciendo vinagre (ml), bicarbonato (g) y la altura alcanzada en <strong>milímetros (mm)</strong>.</li>
-                    <li>[ ] Si vendes componentes sobrantes en B2B, genera el modelo oficial en Google Docs y tramítalo ante la Aduana Docente.</li>
-                    <li>[ ] Mantén sincronizada la lista de piezas con Operaciones e IA para asegurar el ensamblaje en taller.</li>
+                    <li>[ ] <strong>1. Selecciona material:</strong> Entra en <strong>[🛒 SUPER-MARSKET]</strong>, añade componentes al carrito y remite el pedido a Finanzas.</li>
+                    <li>[ ] <strong>2. Registra vuelos:</strong> En <strong>[🧪 Banco I+D]</strong>, introduce vinagre (ml), bicarbonato (g) y la altura en <strong>milímetros (mm)</strong>.</li>
+                    <li>[ ] <strong>3. Comunica al taller:</strong> Coordina con Operaciones e IA para asegurar que las piezas recepcionadas se montan en el cohete.</li>
                 </ul>`;
+                teamChain = `Tú solicitas componentes en SUPER-MARSKET ➔ Finanzas autoriza el presupuesto ➔ Operaciones recepciona y monta en taller.`;
+                contingencyHtml = `
+                <details class="bg-black/60 border border-slate-800 p-2.5 rounded text-xs mt-3">
+                    <summary class="cursor-pointer text-mars-cyan font-bold uppercase select-none">⚙️ Procedimientos Especiales (Aduana B2B y Pedidos)</summary>
+                    <div class="mt-2 space-y-2 text-slate-300 border-t border-slate-800 pt-2 leading-relaxed">
+                        <p>• <strong>Mercado Secundario B2B:</strong> Si necesitas vender componentes sobrantes a otra startup, tramita el contrato ante la Aduana Docente.</p>
+                        <p>• <strong>Órdenes Rechazadas:</strong> Si Finanzas rechaza un pedido por falta de fondos, ajusta las cantidades en el carrito y reenvía.</p>
+                    </div>
+                </details>`;
                 roleButtons = `
                     <button type="button" onclick="ui.navigate('market'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a SUPER-MARSKET</button>
                     <button type="button" onclick="ui.navigate('tech'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Banco I+D</button>
                     <button type="button" onclick="ui.navigate('tech_workshop'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Taller</button>
-                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
                 `;
                 roleWarning = 'La altura del lanzamiento se registra siempre en milímetros (mm) y toda justificación técnica o de aduana requiere enlace oficial de Google Drive.';
                 break;
 
             case 'FINANZAS':
                 roleTitle = 'DPTO. FINANCIERO // TESORERÍA';
-                roleDesc = 'Administrar el capital en euros virtuales (€v), auditar y autorizar órdenes de compra en la Bóveda, gestionar el Libro Mayor y controlar el balance presupuestario.';
-                tasksList = `
+                roleDesc = 'Administrar el capital en euros virtuales (€v), auditar órdenes en la Bóveda y vigilar el balance presupuestario.';
+                checklist3Min = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] En <strong>[🔐 Bóveda Órdenes]</strong>, revisa los pedidos de I+D y solicitudes de Marketing, aprobando si hay fondos suficientes.</li>
-                    <li>[ ] En <strong>[💰 Finanzas & ECO]</strong>, audita el Libro Mayor con ingresos de patrocinio, retenciones de aduana y costes operativos.</li>
-                    <li>[ ] En <strong>[📋 Dossier]</strong>, entrega los balances de Economía y modelos presupuestarios en Google Sheets.</li>
-                    <li>[ ] Supervisa la tesorería corporativa tras la aplicación de cualquier sanción regulatoria o deducción de costes fijos.</li>
+                    <li>[ ] <strong>1. Controla tesorería:</strong> En <strong>[💰 Finanzas & ECO]</strong>, audita el saldo y comprueba los fondos disponibles.</li>
+                    <li>[ ] <strong>2. Audita pedidos:</strong> En <strong>[🔐 Bóveda Órdenes]</strong>, revisa las solicitudes de Técnico y Marketing.</li>
+                    <li>[ ] <strong>3. Decide liberación:</strong> Pulsa <strong>[Aprobar]</strong> si la startup tiene fondos o <strong>[Rechazar]</strong> si excede el presupuesto.</li>
                 </ul>`;
+                teamChain = `Técnico o Marketing te envían peticiones de compra ➔ Tú autorizas los fondos en la Bóveda ➔ Se descuenta del saldo líquido.`;
+                contingencyHtml = `
+                <details class="bg-black/60 border border-slate-800 p-2.5 rounded text-xs mt-3">
+                    <summary class="cursor-pointer text-mars-cyan font-bold uppercase select-none">⚙️ Procedimientos Especiales (Patrocinios y Costes Fijos)</summary>
+                    <div class="mt-2 space-y-2 text-slate-300 border-t border-slate-800 pt-2 leading-relaxed">
+                        <p>• <strong>Patrocinios:</strong> Si la empresa obtiene un patrocinador (Oro, Plata, Bronce), el descuento se aplica automáticamente a los costes operativos.</p>
+                        <p>• <strong>Balances de Economía:</strong> En <strong>[📋 Dossier]</strong> entrega los balances y cuentas de resultados en Google Sheets cuando se abra la fase.</p>
+                    </div>
+                </details>`;
                 roleButtons = `
                     <button type="button" onclick="ui.navigate('orders'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bóveda de Órdenes</button>
                     <button type="button" onclick="ui.navigate('finance'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Finanzas & ECO</button>
@@ -1238,15 +1264,22 @@ const ui = {
 
             case 'MARKETING':
                 roleTitle = 'DPTO. MARKETING // COMUNICACIÓN';
-                roleDesc = 'Construir la identidad corporativa, redactar la propuesta de slogan oficial (DOC_11), contratar paquetes de campaña y publicar acciones promocionales (DOC_12).';
-                tasksList = `
+                roleDesc = 'Construir la identidad corporativa, redactar el slogan oficial (DOC_11) y publicar acciones promocionales (DOC_12).';
+                checklist3Min = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] En <strong>[🎨 Marca & MKT]</strong>, pulsa <strong>[📄 Modelo DOC_11]</strong>, formula el eslogan en Google Docs y elévalo al CEO.</li>
-                    <li>[ ] Contrata un paquete publicitario adjuntando el dossier ROI (DOC_5) para la aprobación presupuestaria de Finanzas.</li>
-                    <li>[ ] Tras aprobar Finanzas, pulsa <strong>[+ Publicar Acción]</strong>, cumplimenta el modelo oficial <strong>DOC_12</strong> en Google Docs y entrégalo al <strong>CEO</strong>.</li>
-                    <li>[ ] En caso de devolución del CEO, revisa las observaciones en Drive y pulsa <strong>[✏️ Subsanar Enlace y Reenviar al CEO]</strong>.</li>
-                    <li>[ ] En <strong>[📋 Dossier]</strong>, sube las evidencias de Lengua, LyE e Iniciación a la Actividad Emprendedora.</li>
+                    <li>[ ] <strong>1. Eslogan de marca:</strong> En <strong>[🎨 Marca & MKT]</strong>, pulsa <strong>[📄 Modelo DOC_11]</strong>, redacta en Docs y elévalo al CEO.</li>
+                    <li>[ ] <strong>2. Contrata paquete:</strong> Elige un pack de difusión y adjunta el dossier ROI (DOC_5) para validación de Finanzas.</li>
+                    <li>[ ] <strong>3. Publica acción:</strong> Tras el visto bueno financiero, pulsa <strong>[+ Publicar Acción]</strong> con la ficha técnica DOC_12 y remite al CEO.</li>
                 </ul>`;
+                teamChain = `Tú formulas la creatividad publicitaria ➔ Finanzas aprueba la partida presupuestaria ➔ CEO autoriza la publicación oficial.`;
+                contingencyHtml = `
+                <details class="bg-black/60 border border-slate-800 p-2.5 rounded text-xs mt-3">
+                    <summary class="cursor-pointer text-mars-cyan font-bold uppercase select-none">⚙️ Procedimientos Especiales (Subsanación de Acciones)</summary>
+                    <div class="mt-2 space-y-2 text-slate-300 border-t border-slate-800 pt-2 leading-relaxed">
+                        <p>• <strong>Subsanación CEO:</strong> Si el CEO devuelve una acción con observaciones, corrige el documento en Drive y pulsa <strong>[✏️ Subsanar Enlace y Reenviar]</strong>.</p>
+                        <p>• <strong>Logotipo:</strong> El logotipo corporativo debe cumplir las normas de diseño marciano y recibir validación previa.</p>
+                    </div>
+                </details>`;
                 roleButtons = `
                     <button type="button" onclick="ui.navigate('brand'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Marca & MKT</button>
                     <button type="button" onclick="ui.navigate('campaigns'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Campañas</button>
@@ -1257,14 +1290,22 @@ const ui = {
 
             case 'OPERACIONES_IA':
                 roleTitle = 'DPTO. OPERACIONES E IA // TALLER';
-                roleDesc = 'Gestionar la recepción física de piezas en Taller Ensamble, confeccionar la Hoja de Taller (BOM) y auditar éticamente todo uso de inteligencia artificial en la Bitácora.';
-                tasksList = `
+                roleDesc = 'Gestionar la recepción física de piezas en Taller Ensamble, confeccionar la Hoja de Taller (BOM) y auditar prompts en la Bitácora de IA.';
+                checklist3Min = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] En <strong>[📦 Taller Ensamble]</strong>, recepciona los pedidos aprobados por Finanzas, anota el comercio físico y su coste en euros reales (€).</li>
-                    <li>[ ] Confecciona la Hoja de Taller (BOM) garantizando la trazabilidad de los materiales empleados en el cohete.</li>
-                    <li>[ ] En <strong>[🤖 Bitácora IA]</strong>, registra obligatoriamente cada prompt y herramienta de IA utilizada en el consorcio con validación humana.</li>
-                    <li>[ ] En <strong>[📋 Dossier]</strong>, entrega la bitácora ética bimestral en Google Docs para supervisión docente.</li>
+                    <li>[ ] <strong>1. Recepción en taller:</strong> En <strong>[📦 Taller Ensamble]</strong>, recepciona los pedidos aprobados y anota su coste en euros reales (€).</li>
+                    <li>[ ] <strong>2. Confecciona BOM:</strong> Completa la Hoja de Taller (DOC_10) garantizando la trazabilidad de cada material del cohete.</li>
+                    <li>[ ] <strong>3. Bitácora ética:</strong> En <strong>[🤖 Bitácora IA]</strong>, registra obligatoriamente cada prompt y herramienta de IA utilizada por el equipo.</li>
                 </ul>`;
+                teamChain = `Finanzas libera los fondos ➔ Tú recepcionas las piezas físicas y ensamblas en taller ➔ Registras el uso ético en la Bitácora IA.`;
+                contingencyHtml = `
+                <details class="bg-black/60 border border-slate-800 p-2.5 rounded text-xs mt-3">
+                    <summary class="cursor-pointer text-mars-cyan font-bold uppercase select-none">⚙️ Procedimientos Especiales (Auditoría de IA y Taller)</summary>
+                    <div class="mt-2 space-y-2 text-slate-300 border-t border-slate-800 pt-2 leading-relaxed">
+                        <p>• <strong>Evidencias Éticas de IA:</strong> Documenta siempre el prompt, el modelo usado y la comprobación humana; el uso opaco de IA conlleva sanción.</p>
+                        <p>• <strong>Entrega de Hoja de Taller:</strong> Cuando el prototipo esté montado, el Técnico eleva la Hoja de Taller completada a revisión del CEO.</p>
+                    </div>
+                </details>`;
                 roleButtons = `
                     <button type="button" onclick="ui.navigate('cart'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Taller Ensamble</button>
                     <button type="button" onclick="ui.navigate('ailog'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bitácora IA</button>
@@ -1276,12 +1317,20 @@ const ui = {
             default: // AUXILIAR
                 roleTitle = 'OBSERVADOR AUXILIAR // CALIDAD';
                 roleDesc = 'Apoyar operativamente a los departamentos de la empresa, auditar permisos de Google Drive y ejercer derecho a voto en las asambleas de socios.';
-                tasksList = `
+                checklist3Min = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] En <strong>[📋 Dossier]</strong>, abre todos los enlaces del equipo en ventana de incógnito para verificar que el docente tendrá acceso de lectura.</li>
-                    <li>[ ] En <strong>[⚖️ Gobernanza]</strong>, participa activamente con voz y voto en las mociones y resoluciones de la empresa.</li>
-                    <li>[ ] Da soporte operativo puntual al departamento asignado en la sesión (compras, banco de pruebas, creatividad o taller).</li>
+                    <li>[ ] <strong>1. Auditoría Drive:</strong> En <strong>[📋 Dossier]</strong>, abre todos los enlaces del equipo en ventana de incógnito para verificar acceso público.</li>
+                    <li>[ ] <strong>2. Voto Asambleario:</strong> En <strong>[⚖️ Gobernanza]</strong>, vota en las mociones y resoluciones de socios.</li>
+                    <li>[ ] <strong>3. Apoyo operativo:</strong> Ayuda al departamento que tenga mayor carga de trabajo en la sesión de hoy.</li>
                 </ul>`;
+                teamChain = `Auditas permisos y calidad de enlaces de Drive ➔ Respaldas al departamento con más carga ➔ Desbloqueas votaciones con tu voto.`;
+                contingencyHtml = `
+                <details class="bg-black/60 border border-slate-800 p-2.5 rounded text-xs mt-3">
+                    <summary class="cursor-pointer text-mars-cyan font-bold uppercase select-none">⚙️ Procedimientos Especiales (Rol Asignado)</summary>
+                    <div class="mt-2 space-y-2 text-slate-300 border-t border-slate-800 pt-2 leading-relaxed">
+                        <p>• <strong>Vinculación Departamental:</strong> Coordinación puede asignarte a un departamento específico para reforzar su operativa.</p>
+                    </div>
+                </details>`;
                 roleButtons = `
                     <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
                     <button type="button" onclick="ui.navigate('resolutions'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Gobernanza</button>
@@ -1292,18 +1341,29 @@ const ui = {
 
         return `
         <div class="space-y-4 font-mono text-xs leading-relaxed text-slate-200">
-            <!-- 1. Tarjeta de Responsabilidad y Tareas Operativas -->
+            <!-- 1. Tarjeta de Misión y Checklist de Entrada (3 Minutos) -->
             <div class="bg-mars-cyan/10 border-l-4 border-mars-cyan p-3.5 bg-slate-950">
                 <div class="flex items-center justify-between gap-2 flex-wrap mb-1.5">
                     <span class="text-xs font-black uppercase text-mars-cyan tracking-wider">🎯 PUESTO: ${roleTitle}</span>
                     <span class="text-[10px] bg-black text-mars-green border border-mars-green/40 px-2 py-0.5 font-bold uppercase">FICHA OPERATIVA</span>
                 </div>
                 <p class="text-white text-xs font-semibold leading-relaxed mb-3">${roleDesc}</p>
-                <div class="border-t border-slate-800 pt-2.5 space-y-1.5 text-xs text-slate-300">
-                    <p class="text-mars-green font-bold uppercase text-[11px] mb-1">Tareas Operativas Clave:</p>
-                    ${tasksList}
+
+                <!-- Bloque 3 Minutos -->
+                <div class="bg-slate-900/90 border border-mars-cyan/30 p-2.5 rounded mb-3">
+                    <p class="text-mars-cyan font-black uppercase text-[11px] mb-1.5 flex items-center gap-1.5">
+                        <span>⚡ TU MISIÓN EN 3 MINUTOS (CHECKLIST DE ENTRADA):</span>
+                    </p>
+                    ${checklist3Min}
                 </div>
-                <div class="pt-3 flex flex-wrap gap-2">
+
+                <!-- Bloque Cadena en Equipo -->
+                <div class="bg-black/60 border border-slate-800 p-2.5 rounded mb-3 text-xs text-slate-300">
+                    <span class="text-mars-yellow font-bold uppercase text-[10px] block mb-1">🔄 CADENA DE TRABAJO EN EQUIPO:</span>
+                    <p class="text-white font-mono text-[11px] leading-relaxed">${teamChain}</p>
+                </div>
+
+                <div class="pt-1 flex flex-wrap gap-2">
                     ${roleButtons}
                 </div>
             </div>
@@ -1318,7 +1378,10 @@ const ui = {
                 </ul>
             </div>
 
-            <!-- 3. Aviso Clave -->
+            <!-- 3. Contingencias y Procedimientos Especiales (Desplegable) -->
+            ${contingencyHtml}
+
+            <!-- 4. Aviso Clave -->
             <div class="bg-slate-900/80 border border-amber-400/40 p-3.5 text-xs text-slate-300 space-y-1">
                 <p class="text-amber-400 font-bold uppercase text-xs mb-1">⚠️ Aviso Clave:</p>
                 <p>${roleWarning}</p>
@@ -2131,13 +2194,13 @@ const ui = {
         if(cloudEl) {
             if(state.isSyncing) {
                 cloudEl.className = 'text-xs font-bold uppercase tracking-normal sm:tracking-wider px-2 sm:px-2.5 py-1 border border-mars-cyan text-mars-cyan bg-mars-cyan/10 animate-pulse whitespace-nowrap';
-                cloudEl.innerText = '[CLOUD: SYNCING]';
+                cloudEl.innerHTML = '<span class="inline sm:hidden">☁️⚡</span><span class="hidden sm:inline">[CLOUD: SYNCING]</span>';
             } else if(state.isCloudOnline) {
                 cloudEl.className = 'text-xs font-bold uppercase tracking-normal sm:tracking-wider px-2 sm:px-2.5 py-1 border border-mars-green/60 text-mars-green bg-mars-green/10 whitespace-nowrap';
-                cloudEl.innerText = '[D1: SYNCED]';
+                cloudEl.innerHTML = '<span class="inline sm:hidden">☁️✓</span><span class="hidden sm:inline">[D1: SYNCED]</span>';
             } else {
                 cloudEl.className = 'text-xs font-bold uppercase tracking-normal sm:tracking-wider px-2 sm:px-2.5 py-1 border border-mars-yellow/60 text-mars-yellow bg-slate-900 whitespace-nowrap';
-                cloudEl.innerText = '[D1: OFFLINE]';
+                cloudEl.innerHTML = '<span class="inline sm:hidden">☁️⚠️</span><span class="hidden sm:inline">[D1: OFFLINE]</span>';
             }
         }
 

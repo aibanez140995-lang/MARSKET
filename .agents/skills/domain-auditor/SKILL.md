@@ -1,6 +1,6 @@
 ---
 name: domain-auditor
-description: Auditor Científico y Pedagógico Cíclico. Supervisa el rigor físico (Tsiolkovski), químico (propulsores), contable y el andamiaje curricular LOMLOE.
+description: Auditor Científico y Pedagógico Cíclico de MARS-KET OS. Activa esta skill SIEMPRE que se modifiquen cálculos físicos (ecuación de Tsiolkovski, empuje, gravedad marciana g = 3.71 m/s²), química de reactivos y estequiometría de propelentes, balances contables o rúbricas curriculares LOMLOE de Física y Química.
 ---
 # Agente: @domain-auditor (Auditor Científico y Pedagógico)
 ## Rol

@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.51) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.52) ---
 
-const APP_VERSION = "1.1.51";
+const APP_VERSION = "1.1.52";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -587,6 +587,24 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.51
 const APP_CHANGELOG = [
+    {
+      version: "1.1.52",
+      date: new Date().toISOString().split('T')[0],
+      title: "Píldoras de Categoría en Catálogo B2C, HUD Móvil Compacto, Empty States Tácticos, Contador en Archivo Docente y Guía 'Misión en 3 Minutos'",
+      items: [
+        "Barra de píldoras táctiles por categoría en el Catálogo Aeroespacial (B2C) con recuento dinámico de artículos por sección (Todas, Propulsión, Reactivos, Estructura, etc.) y filtrado inmediato.",
+        "Telemetría compacta del HUD en dispositivos móviles: indicador de estado D1 optimizado con orbe pulsante que preserva el espacio horizontal y evita saltos de línea con el saldo en €v.",
+        "Estados vacíos (Empty States) tácticos y guiados en Banco de Pruebas I+D y Bóveda de Órdenes, eliminando pantallas muertas e indicando al alumno qué acción realizar.",
+        "Filtro rápido 'Solo Incompletos' y contador global de entregables recibidos en el Archivo Documental Central de Coordinación Docente.",
+        "Rediseño pedagógico de la Guía de Roles por @guide-simplifier: 'Misión en 3 Minutos' con checklist de entrada, tarjeta de dependencias en equipo y acceso directo a plantillas Google Docs."
+      ],
+      highlights: [
+        { type: "CATÁLOGO", text: "Barra deslizante de píldoras de categoría con recuento de piezas para filtrado en un clic." },
+        { type: "MÓVIL", text: "HUD ultra-compacto con orbe de telemetría D1 para pantallas estrechas." },
+        { type: "DOCENTE", text: "Archivo Documental con contador de entregables y filtro rápido de empresas pendientes." },
+        { type: "GUÍA", text: "Estructura 'Misión en 3 Minutos', mapa de equipo y enlaces a plantillas Google Docs." }
+      ]
+    },
     {
       version: "1.1.51",
       date: new Date().toISOString().split('T')[0],

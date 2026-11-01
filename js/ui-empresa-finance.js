@@ -361,7 +361,22 @@ Object.assign(ui, {
 
         const hiddenOrdersCount = Math.max(0, allUnifiedItems.length - visibleLimit);
         let ordersListHtml = allUnifiedItems.length === 0
-            ? `<div class="terminal-border border-dashed p-6 text-center text-slate-300 italic text-xs uppercase">Sin órdenes ni acciones en esta vista para el filtro seleccionado.</div>`
+            ? `<div class="terminal-border bg-slate-950 p-6 my-2 text-center border-dashed border-mars-cyan/40">
+                <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-mars-cyan/10 border border-mars-cyan/50 flex items-center justify-center text-xl">
+                    📦
+                </div>
+                <h4 class="font-orbitron text-mars-cyan text-xs sm:text-sm font-bold uppercase tracking-wider mb-1.5">BÓVEDA DE ÓRDENES VACÍA</h4>
+                <p class="text-xs text-slate-300 max-w-md mx-auto mb-4 leading-relaxed">No hay órdenes registradas con este filtro. Explora el SUPER-MARSKET o revisa las solicitudes de compras de los departamentos.</p>
+                <div class="flex flex-wrap justify-center gap-2">
+                    <button type="button" onclick="ui.navigate('market')" class="min-h-[44px] px-4 py-2 bg-mars-cyan text-black font-bold text-xs uppercase tracking-wider hover:bg-white transition-all shadow-sm">
+                        🛒 Explorar SUPER-MARSKET
+                    </button>
+                    ${isFinanzas ? `
+                    <button type="button" onclick="ui.navigate('finance')" class="min-h-[44px] px-4 py-2 bg-slate-900 border border-slate-700 text-slate-200 hover:text-white font-bold text-xs uppercase tracking-wider transition-all">
+                        💰 Consultar Libro Mayor
+                    </button>` : ''}
+                </div>
+            </div>`
             : allUnifiedItems.slice(0, visibleLimit).map(it => it.html).join('');
         if (hiddenOrdersCount > 0) {
             ordersListHtml += `<button type="button" onclick="ui.loadMoreOrders()" class="w-full min-h-[44px] bg-slate-950 border border-mars-cyan text-mars-cyan font-black uppercase text-xs py-2.5 px-4 tracking-widest hover:bg-mars-cyan hover:text-black transition-all">[ VER MÁS TELÉMETRO (+${hiddenOrdersCount}) ]</button>`;

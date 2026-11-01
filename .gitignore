@@ -5,6 +5,11 @@ node_modules/
 marsket_cdmon.sql
 *.log
 .env*
+.env
+.env.local
+.dev.vars
+credentials*.json
+ftp-secrets*
 api/
 
 # Bases de datos SQLite locales en tiempo de ejecución

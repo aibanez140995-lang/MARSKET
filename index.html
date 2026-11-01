@@ -9,14 +9,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MARS-KET 2.0">
-    <link rel="manifest" href="manifest.json?v=1.1.51">
-    <link rel="icon" type="image/jpeg" href="logo.jpg?v=1.1.51">
-    <link rel="shortcut icon" href="logo.jpg?v=1.1.51">
-    <link rel="apple-touch-icon" href="logo.jpg?v=1.1.51">
-    <link rel="apple-touch-icon-precomposed" href="logo.jpg?v=1.1.51">
+    <link rel="manifest" href="manifest.json?v=1.1.52">
+    <link rel="icon" type="image/jpeg" href="logo.jpg?v=1.1.52">
+    <link rel="shortcut icon" href="logo.jpg?v=1.1.52">
+    <link rel="apple-touch-icon" href="logo.jpg?v=1.1.52">
+    <link rel="apple-touch-icon-precomposed" href="logo.jpg?v=1.1.52">
     
     <!-- Tailwind CSS (Compilado localmente v1.1.03 - Bloque T) -->
-    <link rel="stylesheet" href="css/tailwind.css?v=1.1.51">
+    <link rel="stylesheet" href="css/tailwind.css?v=1.1.52">
     <style>
         :root {
             color-scheme: dark;
@@ -117,10 +117,15 @@
         }
         #hud-cloud-status {
             font-variant-numeric: tabular-nums;
-            min-width: 120px;
+            min-width: 44px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+        }
+        @media (min-width: 640px) {
+            #hud-cloud-status {
+                min-width: 120px;
+            }
         }
         #hud-balance {
             font-variant-numeric: tabular-nums;
@@ -419,12 +424,12 @@
                         <h1 class="font-orbitron font-black text-xs sm:text-lg text-white tracking-wider sm:tracking-widest leading-none flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
                             MARS-KET <span class="text-mars-cyan">2.0</span>
                         </h1>
-                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v1.1.51</span>
+                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v1.1.52</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
                     <div id="hud-mini-logo" class="w-8 h-8 sm:w-9 sm:h-9 hex-clip border border-mars-cyan bg-black overflow-hidden flex items-center justify-center hidden" title="Emblema de Entidad Activa"></div>
-                    <span id="hud-cloud-status" role="status" aria-live="polite" class="text-xs font-bold uppercase tracking-normal sm:tracking-wider px-2 sm:px-2.5 py-1 border border-mars-green/60 text-mars-green bg-mars-green/10 whitespace-nowrap">[D1: SYNCED]</span>
+                    <span id="hud-cloud-status" role="status" aria-live="polite" class="text-xs font-bold uppercase tracking-normal sm:tracking-wider px-2 sm:px-2.5 py-1 border border-mars-green/60 text-mars-green bg-mars-green/10 whitespace-nowrap"><span class="inline sm:hidden">☁️✓</span><span class="hidden sm:inline">[D1: SYNCED]</span></span>
                 </div>
             </div>
 
@@ -476,7 +481,7 @@
             <div class="font-orbitron font-black text-xs sm:text-sm tracking-[0.2em] text-white uppercase mb-1.5 flex items-center justify-center gap-2">
                 <span>MARS-KET <span class="text-mars-cyan">2.0</span></span>
                 <span class="text-slate-600 font-mono">|</span>
-                <span id="footer-version" class="text-slate-400 font-mono text-[11px] sm:text-xs tracking-widest font-normal">v1.1.51</span>
+                <span id="footer-version" class="text-slate-400 font-mono text-[11px] sm:text-xs tracking-widest font-normal">v1.1.52</span>
             </div>
 
             <!-- Capa 2: Descriptor Institucional y Académico -->
@@ -563,20 +568,20 @@
     <div id="credentials-print-area" class="hidden"></div>
 
     <!-- SCRIPTS ORDENADOS DEL SISTEMA -->
-    <script src="js/lexicon-data.js?v=1.1.51"></script>
-    <script src="js/config.js?v=1.1.51"></script>
-    <script src="js/state.js?v=1.1.51"></script>
-    <script src="js/auth.js?v=1.1.51"></script>
-    <script src="js/ui-core.js?v=1.1.51"></script>
-    <script src="js/ui-empresa-core.js?v=1.1.51"></script>
-    <script src="js/ui-empresa-market.js?v=1.1.51"></script>
-    <script src="js/ui-empresa-tech.js?v=1.1.51"></script>
-    <script src="js/ui-empresa-finance.js?v=1.1.51"></script>
-    <script src="js/ui-empresa-ops.js?v=1.1.51"></script>
-    <script src="js/ui-empresa-gov-brand.js?v=1.1.51"></script>
-    <script src="js/ui-docente-core.js?v=1.1.51"></script>
-    <script src="js/ui-docente-eval.js?v=1.1.51"></script>
-    <script src="js/ui-docente-management.js?v=1.1.51"></script>
+    <script src="js/lexicon-data.js?v=1.1.52"></script>
+    <script src="js/config.js?v=1.1.52"></script>
+    <script src="js/state.js?v=1.1.52"></script>
+    <script src="js/auth.js?v=1.1.52"></script>
+    <script src="js/ui-core.js?v=1.1.52"></script>
+    <script src="js/ui-empresa-core.js?v=1.1.52"></script>
+    <script src="js/ui-empresa-market.js?v=1.1.52"></script>
+    <script src="js/ui-empresa-tech.js?v=1.1.52"></script>
+    <script src="js/ui-empresa-finance.js?v=1.1.52"></script>
+    <script src="js/ui-empresa-ops.js?v=1.1.52"></script>
+    <script src="js/ui-empresa-gov-brand.js?v=1.1.52"></script>
+    <script src="js/ui-docente-core.js?v=1.1.52"></script>
+    <script src="js/ui-docente-eval.js?v=1.1.52"></script>
+    <script src="js/ui-docente-management.js?v=1.1.52"></script>
 
     <script>
         window.addEventListener('DOMContentLoaded', () => {
@@ -608,7 +613,7 @@
                 }).observe(loginScreenEl, { childList: true, subtree: true });
             }
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-                navigator.serviceWorker.register('sw.js?v=1.1.51').catch(() => {});
+                navigator.serviceWorker.register('sw.js?v=1.1.52').catch(() => {});
             }
         });
     </script>

@@ -3,6 +3,12 @@
 
 Object.assign(ui, {
     marketTab: 'B2C',
+    catalogCategoryFilter: 'ALL',
+
+    setCatalogCategory(cat) {
+        this.catalogCategoryFilter = cat;
+        this.render();
+    },
 
     modalCustomOrder() {
         if (typeof this.modalCheckout === 'function') {
@@ -46,7 +52,31 @@ Object.assign(ui, {
         });
 
         let categories = [...new Set(visibleItems.map(i => i.category))];
-        let groupsHtml = categories.map(cat => {
+        const activeCat = this.catalogCategoryFilter || 'ALL';
+        const filteredCategories = activeCat === 'ALL' ? categories : categories.filter(c => c === activeCat);
+
+        const pillsHtml = `
+        <div class="flex items-center gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide text-xs" role="tablist" aria-label="Filtrar por categoría">
+            <button type="button" onclick="ui.setCatalogCategory('ALL')" class="min-h-[44px] px-3.5 py-2 font-bold uppercase transition-all rounded-sm whitespace-nowrap shrink-0 ${activeCat === 'ALL' ? 'bg-mars-cyan text-black font-black shadow-[0_0_10px_rgba(0,240,255,0.4)]' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-700'}">
+                ✨ Todas (${visibleItems.length})
+            </button>
+            ${categories.map(cat => {
+                const count = visibleItems.filter(i => i.category === cat).length;
+                const isSelected = activeCat === cat;
+                return `
+                <button type="button" onclick="ui.setCatalogCategory('${this.escapeAttr(cat)}')" class="min-h-[44px] px-3.5 py-2 font-bold uppercase transition-all rounded-sm whitespace-nowrap shrink-0 ${isSelected ? 'bg-mars-cyan text-black font-black shadow-[0_0_10px_rgba(0,240,255,0.4)]' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-700'}">
+                    ${this.escapeHTML(cat)} (${count})
+                </button>
+                `;
+            }).join('')}
+        </div>`;
+
+        let groupsHtml = filteredCategories.length === 0
+            ? `<div class="terminal-border bg-slate-950 p-6 my-4 text-center border-dashed border-mars-cyan/40">
+                <p class="text-xs text-slate-300 uppercase">No hay artículos disponibles en esta categoría.</p>
+                <button type="button" onclick="ui.setCatalogCategory('ALL')" class="mt-3 min-h-[44px] px-4 py-2 bg-mars-cyan text-black font-bold text-xs uppercase">Ver Todas las Categorías</button>
+               </div>`
+            : filteredCategories.map(cat => {
             const items = visibleItems.filter(i => i.category === cat);
             const itemsHtml = items.map(item => {
                 let actionBtn = canBuy 
@@ -95,11 +125,11 @@ Object.assign(ui, {
         </div>`;
 
         const searchBarHtml = `
-        <div class="mb-4">
+        <div class="mb-3">
             <input type="text" id="catalog-search-input" oninput="ui.filterCatalog(this.value)" placeholder="🔍 Buscar material o reactivo (ej: Manómetro, Bicarbonato, Válvula...)" class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan/50 p-2.5 text-xs text-white uppercase outline-none focus:border-mars-cyan font-mono">
         </div>`;
 
-        return header + searchBarHtml + groupsHtml;
+        return header + searchBarHtml + pillsHtml + groupsHtml;
     },
 
     filterCatalog(query) {

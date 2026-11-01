@@ -2,6 +2,13 @@
 // --- MÓDULO DOCENTE: RÚBRICAS PONDERADAS (100%), ACTAS Y ARCHIVO DOCUMENTAL OFICIAL (v1.1.32) ---
 
 Object.assign(ui, {
+    archiveFilterPending: false,
+
+    toggleArchiveFilterPending() {
+        this.archiveFilterPending = !this.archiveFilterPending;
+        this.render();
+    },
+
     renderAdminEval() {
         const isCoord = state.user.role.startsWith('COORD');
         const activeSubject = isCoord ? (this.coordEvalView === 'ACTA' || this.coordEvalView === 'ARCHIVE' ? null : this.coordEvalView) : state.user.role;
@@ -117,12 +124,30 @@ Object.assign(ui, {
                 { key: 'mathReportFinal', label: 'MAT 4: Inf. Final' }
             ];
 
+            const filteredCos = Object.keys(state.data.companies)
+                .filter(cid => this.evalClassFilter === 'ALL' || state.data.companies[cid].classGroup === this.evalClassFilter);
+            const totalPossible = filteredCos.length * docCols.length;
+            let totalDelivered = 0;
+            filteredCos.forEach(cid => {
+                const d = state.data.companies[cid]?.deliverables || {};
+                totalDelivered += docCols.filter(col => !!d[col.key]).length;
+            });
+            const pctGlobal = totalPossible > 0 ? Math.round((totalDelivered / totalPossible) * 100) : 0;
+
             adminHtml += `
             <div class="terminal-border bg-mars-card p-6 w-full overflow-hidden">
-                <div class="mb-4 border-b border-mars-border pb-2 flex justify-between items-center">
+                <div class="mb-4 border-b border-mars-border pb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
                         <h4 class="font-orbitron text-mars-cyan text-xs uppercase tracking-widest">Auditoría del Archivo Documental Central (${docCols.length} Entregables Oficiales Drive)</h4>
                         <p class="text-xs text-slate-300 uppercase mt-0.5">Control de subida de enlaces en Google Drive (Desliza horizontalmente ➔)</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs bg-black border border-mars-cyan/60 px-3 py-1.5 text-mars-cyan font-mono font-bold">
+                            Recibidos: <strong class="text-white">${totalDelivered}/${totalPossible}</strong> (${pctGlobal}%)
+                        </span>
+                        <button type="button" onclick="ui.toggleArchiveFilterPending()" class="min-h-[36px] px-3 py-1.5 text-xs font-bold uppercase transition-all rounded-sm ${this.archiveFilterPending ? 'bg-mars-yellow text-black shadow-sm font-black' : 'bg-slate-900 text-slate-300 border border-slate-700 hover:text-white'}">
+                            ${this.archiveFilterPending ? '⚡ Mostrando: Solo Incompletos' : '🔍 Filtrar: Solo Incompletos'}
+                        </button>
                     </div>
                 </div>
                 <div class="overflow-x-auto w-full pb-2">
@@ -136,8 +161,13 @@ Object.assign(ui, {
                             </tr>
                         </thead>
                         <tbody>
-                            ${Object.keys(state.data.companies)
-                                .filter(cid => this.evalClassFilter === 'ALL' || state.data.companies[cid].classGroup === this.evalClassFilter)
+                            ${filteredCos
+                                .filter(cid => {
+                                    if (!this.archiveFilterPending) return true;
+                                    const d = state.data.companies[cid]?.deliverables || {};
+                                    const deliveredTotal = docCols.filter(col => !!d[col.key]).length;
+                                    return deliveredTotal < docCols.length;
+                                })
                                 .map(cid => {
                                 const co = state.data.companies[cid];
                                 const d = co.deliverables || {}; 

@@ -1,6 +1,6 @@
 ---
 name: student-actor
-description: Simulador de Usuario y Roles de Alumno en MARS-KET. Encarna a CEO, Finanzas, Técnico, Operaciones y Marketing para validar de forma interactiva y cruzada todas las funciones de la app, flujos interdepartamentales y el envío de entregables.
+description: Simulador de Roles de Alumno en MARS-KET OS. Activa esta skill SIEMPRE que se requiera simular el uso real de la app por alumnos, encarnando a CEO, Finanzas, Técnico, Operaciones o Marketing para comprobar la interacción entre departamentos y el envío de entregables a Google Drive.
 ---
 
 # Agente: @student-actor (Simulador de Roles de Alumno y Flujos Interdepartamentales)

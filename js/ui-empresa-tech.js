@@ -50,7 +50,7 @@ Object.assign(ui, {
                 <td class="py-2.5 font-mono text-mars-green font-bold text-sm sm:text-base pr-3">${h_mm.toFixed(0)}</td>
                 <td class="py-2.5 font-orbitron font-mono tabular-nums text-mars-yellow font-black">${effVal.toFixed(2)}</td>
             </tr>`;
-        }).join('') || `<tr><td colspan="6" class="text-center py-4 text-slate-300 italic text-xs">No hay ensayos registrados.</td></tr>`;
+        }).join('') || `<tr><td colspan="6" class="p-4"><div class="terminal-border bg-slate-950 p-4 text-center border-dashed border-mars-yellow/40"><p class="text-xs text-mars-yellow font-bold uppercase mb-1">🚀 Banco de Pruebas sin Ensayos</p><p class="text-[11px] text-slate-400">Introduce los reactivos y la altura arriba para registrar el primer vuelo de tu prototipo.</p></div></td></tr>`;
 
         const isFyqAllLocked = !state.user?.admin && ['preliminaryReport', 'technicalReport'].every(k => this.isDeliverableLocked(k, co));
         const isMatAllLocked = !state.user?.admin && ['goniometerEvidence', 'mathReportDist', 'mathReportTwoPoints', 'mathReportFinal'].every(k => this.isDeliverableLocked(k, co));

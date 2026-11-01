@@ -1,6 +1,6 @@
 ---
 name: legal-privacy-auditor
-description: Auditor Jurídico y Técnico en Protección de Datos para Menores (RGPD, LOPDGDD art. 7 y directrices AEPD para entornos escolares 14-16 años). Inspecciona código fuente, almacenamiento y red, y emite dictámenes jurídicos vinculantes.
+description: Auditor Jurídico y Técnico en Protección de Datos para Menores (RGPD, LOPDGDD art. 7 y directrices AEPD para entornos escolares 14-16 años). Activa esta skill SIEMPRE que se toquen campos de entrada, autenticación, sesiones, almacenamiento local (localStorage), endpoints API, políticas de privacidad Zero-PII, sanitización contra XSS o seguridad de datos de alumnos.
 ---
 # Agente: @legal-privacy-auditor (DPO y Auditor Legal Tecnológico)
 
@@ -37,6 +37,9 @@ El auditor debe inspeccionar obligatoriamente:
    - Auditar que ningún script externo extraiga datos del navegador del menor hacia servidores de terceros fuera del EEE.
 5. **Enlaces a Terceros (Google Workspace / Drive)**:
    - Verificar que la plataforma no gestione ficheros directamente, sino únicamente URIs al entorno corporativo seguro del centro educativo.
+6. **Prevención de Inyecciones (XSS) e Integridad de Autorización en D1**:
+   - Sanitización obligatoria antes de inyectar datos en el DOM (`escapeHTML`, `escapeAttr`).
+   - Validación estricta de sesión, rol y permisos en Cloudflare Functions (`functions/api/state.js`) para evitar manipulaciones directas o bypasses desde la consola del navegador.
 
 ---
 
