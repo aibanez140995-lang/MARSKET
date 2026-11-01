@@ -3,10 +3,17 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-const FTP_HOST = '185.42.104.199';
-const FTP_USER = 'marsketf1';
-const FTP_PASS = 'Marsket2026!';
+// Credenciales por variables de entorno (en GitHub: Settings > Secrets > Actions).
+const FTP_HOST = process.env.FTP_HOST;
+const FTP_USER = process.env.FTP_USER;
+const FTP_PASS = process.env.FTP_PASS;
 const BASE_REMOTE = '/web';
+const CURL_BIN = process.platform === 'win32' ? 'curl.exe' : 'curl';
+
+if (!FTP_HOST || !FTP_USER || !FTP_PASS) {
+    console.error('[DEPLOY] Faltan variables de entorno FTP_HOST, FTP_USER o FTP_PASS.');
+    process.exit(1);
+}
 
 const filesToUpload = [
     // Root files
@@ -58,7 +65,7 @@ for (const relPath of filesToUpload) {
         continue;
     }
     const remoteTarget = `${BASE_REMOTE}/${relPath.replace(/\\/g, '/')}`;
-    const cmd = `curl.exe -s --ftp-create-dirs -T "${relPath}" -u "${FTP_USER}:${FTP_PASS}" "ftp://${FTP_HOST}${remoteTarget}"`;
+    const cmd = `${CURL_BIN} -sS --fail --connect-timeout 20 --ftp-create-dirs -T "${relPath}" -u "${FTP_USER}:${FTP_PASS}" "ftp://${FTP_HOST}${remoteTarget}"`;
     try {
         execSync(cmd, { stdio: 'pipe' });
         console.log(`[OK] Subido: ${relPath} -> ${remoteTarget}`);
