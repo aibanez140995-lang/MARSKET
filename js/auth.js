@@ -470,6 +470,7 @@ const auth = (function() {
                     <button type="button" role="tab" data-tab-id="admin" onclick="ui.navigate('admin')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">🎖️ Centro de Mando</button>
                     <button type="button" role="tab" data-tab-id="market" onclick="ui.navigate('market')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">🛒 Inspeccionar Mercado</button>
                     <button type="button" role="tab" data-tab-id="dossier" onclick="ui.navigate('dossier')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">📁 Inspeccionar Dossiers</button>
+                    <button type="button" role="tab" data-tab-id="news" onclick="ui.navigate('news')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">📰 Tablón de Noticias</button>
                 `;
                 return;
             }
@@ -487,17 +488,18 @@ const auth = (function() {
                 'cart': { id: 'cart', label: '📦 Taller Ensamble', badge: 'badge-cart' },
                 'ailog': { id: 'ailog', label: '🤖 Bitácora IA', badge: 'badge-ailog' },
                 'dossier': { id: 'dossier', label: '📋 Dossier', badge: 'badge-dossier' },
-                'resolutions': { id: 'resolutions', label: '⚖️ Trámites', badge: 'badge-resolutions' }
+                'resolutions': { id: 'resolutions', label: '⚖️ Trámites', badge: 'badge-resolutions' },
+                'news': { id: 'news', label: '📰 Tablón de Noticias', badge: 'badge-news' }
             };
 
             const roleTabOrders = {
-                'CEO': ['dashboard', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
-                'TECNICO': ['market', 'tech_workshop', 'orders', 'tech', 'resolutions', 'role_deliverables', 'dossier'],
-                'FINANZAS': ['finance', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
-                'MARKETING': ['brand', 'campaigns', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
-                'OPERACIONES_IA': ['cart', 'ailog', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
-                'OPERACIONES': ['cart', 'ailog', 'orders', 'resolutions', 'role_deliverables', 'dossier'],
-                'AUXILIAR': ['dashboard', 'orders', 'resolutions', 'role_deliverables', 'dossier']
+                'CEO': ['dashboard', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier'],
+                'TECNICO': ['market', 'tech_workshop', 'orders', 'tech', 'resolutions', 'role_deliverables', 'news', 'dossier'],
+                'FINANZAS': ['finance', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier'],
+                'MARKETING': ['brand', 'campaigns', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier'],
+                'OPERACIONES_IA': ['cart', 'ailog', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier'],
+                'OPERACIONES': ['cart', 'ailog', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier'],
+                'AUXILIAR': ['dashboard', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier']
             };
 
             let activeTabIds = [];

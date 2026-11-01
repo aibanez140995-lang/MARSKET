@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.52) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.53) ---
 
-const APP_VERSION = "1.1.52";
+const APP_VERSION = "1.1.53";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -95,10 +95,61 @@ const OFFICIAL_DOC_TEMPLATES = Object.freeze({
     DOC_13_SOLICITUD_ID: {
         id: 'DOC_13_SOLICITUD_ID',
         title: 'SOLICITUD OFICIAL DE MATERIAL ESPECIAL I+D A COORDINACIÓN',
-        flow: 'Técnico ➔ Coordinación Docente',
+        flow: 'Técnico ➔ CEO ➔ Coordinación Docente',
         copyUrl: 'https://docs.google.com/document/d/1HigoiUvPfZQhMu67MR7cGyiW8XecIQlAW_29kp3LfDc/copy'
+    },
+    DOC_14_LICENCIA_AESA: {
+        id: 'DOC_14_LICENCIA_AESA',
+        title: 'SOLICITUD DE PERMISO OFICIAL DE LANZAMIENTO Y SEGURIDAD AESA',
+        flow: 'CEO ➔ Claustro Docente / AESA',
+        copyUrl: 'https://docs.google.com/document/d/1NZU7849Zts-fQEv4AhqbQdxrP0sAp44_PaYj2JOosOU/copy'
+    },
+    DOC_15_NOTA_PRENSA: {
+        id: 'DOC_15_NOTA_PRENSA',
+        title: 'NOTA DE PRENSA CORPORATIVA // COMUNICADO OFICIAL',
+        flow: 'CEO ➔ Tablón de Noticias / Prensa de la Misión',
+        copyUrl: 'https://docs.google.com/document/d/1BQVeds2j0lCe4AG6N2ciYDv5XqrSxb5i3wlsyAMUm2Y/copy'
+    },
+    DOC_16_ACTA_COMITE: {
+        id: 'DOC_16_ACTA_COMITE',
+        title: 'ACTA DE COMITÉ DE DIRECCIÓN // DIARIO DE REUNIONES',
+        flow: 'Todos los Dptos. ➔ Gobernanza y Claustro',
+        copyUrl: 'https://docs.google.com/document/d/1lvpFHohpJPN-AlhU1jCLWYdx6tDYzljbTyKXcGBxmR0/copy'
     }
 });
+
+const LAUNCH_LICENSE_FEE = 50;
+const NAME_CHANGE_FEE = 50;
+
+const PRESS_RELEASE_PHASES = Object.freeze([
+    {
+        phase: 'I',
+        phaseName: 'Fase I: Fundación y Viabilidad',
+        deadline: '2026-12-15T23:59',
+        deadlineLabel: '15/12/2026',
+        title: 'Nota de Prensa Oficial — Cierre Fase I',
+        requiredContent: 'Presentación del concepto de cohete, capital obtenido por patrocinio y objetivos corporativos.',
+        docKey: 'DOC_15_NOTA_PRENSA'
+    },
+    {
+        phase: 'II',
+        phaseName: 'Fase II: I+D y Prototipado Aeroespacial',
+        deadline: '2027-02-15T23:59',
+        deadlineLabel: '15/02/2027',
+        title: 'Nota de Prensa Oficial — Cierre Fase II',
+        requiredContent: 'Resultados preliminares de las pruebas de vuelo, mediciones angulares y estado financiero a mitad del proyecto.',
+        docKey: 'DOC_15_NOTA_PRENSA'
+    },
+    {
+        phase: 'III',
+        phaseName: 'Fase III: Producción y Finanzas B2B',
+        deadline: '2027-03-31T23:59',
+        deadlineLabel: '31/03/2027',
+        title: 'Nota de Prensa Oficial — Cierre Fase III',
+        requiredContent: 'Conclusiones de taller, dificultades de montaje superadas y preparación para el Pitch final.',
+        docKey: 'DOC_15_NOTA_PRENSA'
+    }
+]);
 
 const NAME_CHANGE_REASONS_DEF = Object.freeze([
     { id: 'REORIENTACION_ESTRATEGICA', label: 'Reorientación estratégica y pivotaje del modelo de negocio' },
@@ -419,7 +470,7 @@ const DELIVERABLES_DEF = [
       name: "1. Goniómetro (Evidencia y Construcción)",
       shortName: "Goniómetro (MAT)",
       desc: "Construcción física, calibración y registro fotográfico del goniómetro.",
-      role: "TECNICO",
+      role: "OPERACIONES_IA",
       defaultOpenDate: "2026-12-15T00:00",
       defaultDate: "2027-02-15T23:59",
       weight: "25% MAT",
@@ -432,7 +483,7 @@ const DELIVERABLES_DEF = [
       name: "2. Informe Técnico con Datos Empíricos de Distancia Conocida",
       shortName: "Dist. Conocida (MAT)",
       desc: "Cálculo trigonométrico de apogeo con distancia base fija conocida.",
-      role: "TECNICO",
+      role: "OPERACIONES_IA",
       defaultOpenDate: "2026-12-15T00:00",
       defaultDate: "2027-02-15T23:59",
       weight: "25% MAT",
@@ -444,8 +495,8 @@ const DELIVERABLES_DEF = [
       phase: "II",
       name: "3. Informe Técnico con Dos Mediciones",
       shortName: "Dos Mediciones (MAT)",
-      desc: "Triangulación matemática desde dos puntos de observation independientes.",
-      role: "TECNICO",
+      desc: "Triangulación matemática desde dos puntos de observación independientes.",
+      role: "OPERACIONES_IA",
       defaultOpenDate: "2026-12-15T00:00",
       defaultDate: "2027-02-15T23:59",
       weight: "25% MAT",
@@ -458,7 +509,7 @@ const DELIVERABLES_DEF = [
       name: "4. Informe Técnico Final Comparativo",
       shortName: "Comparativo Final (MAT)",
       desc: "Análisis comparativo de modelos matemáticos y desviaciones reales de apogeo.",
-      role: "TECNICO",
+      role: "OPERACIONES_IA",
       defaultOpenDate: "2026-12-15T00:00",
       defaultDate: "2027-02-15T23:59",
       weight: "25% MAT",
@@ -585,8 +636,31 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.51
+// Changelog Oficial de Producción v1.1.53
 const APP_CHANGELOG = [
+    {
+      version: "1.1.53",
+      date: new Date().toISOString().split('T')[0],
+      title: "Traspaso de Matemáticas a Operaciones, Circuito I+D con Visado CEO, Licencia AESA Gatekeeper, Tablón de Noticias y Modificación Estatutaria",
+      items: [
+        "Reasignación curricular oficial de los 4 entregables de Matemáticas (Goniómetro, Distancia Fija, 2 Puntos y Comparativo Final) al departamento de Operaciones e IA (OPERACIONES_IA).",
+        "Circuito de Solicitudes Especiales de Material I+D: las peticiones fuera de catálogo del Técnico son revisadas y visadas por el CEO antes de elevarse a Coordinación Docente con notificación automática.",
+        "Unificación ergonómica a botón único de acceso a plantillas de Google Docs en formato /copy directo, eliminando botones redundantes de clonación.",
+        "Gatekeeper funcional de Licencia de Lanzamiento AESA (DOC_14): bloqueo preventivo de ensayos en el Banco de Pruebas de Fase II hasta su tramitación por el CEO (tasa de 50 €v) y validación por Claustro Docente.",
+        "Notas de Prensa Corporativas de Cierre de Fase (DOC_15) con fechas de corte y estructura obligatoria, y despliegue del nuevo Tablón de Noticias con filtros por clase y fase.",
+        "Diario de Reuniones de Departamento // Actas de Comité de Dirección (DOC_16) integrado en Gobernanza para registro recurrente de acuerdos.",
+        "Modificación Estatutaria de Razón Social en Gobernanza: trámite exclusivo para CEO con justificación estratégica tipificada y cargo inmediato de tasa mercantil de 50 €v en el Libro Mayor.",
+        "Actualización integral del Protocolo de Privacidad y Blindaje RGPD (Art. 13 RGPD / Art. 7 LOPDGDD para menores en entornos educativos, Zero-PII, Zero-Text libre y sin cookies de rastreo)."
+      ],
+      highlights: [
+        { type: "MATEMÁTICAS", text: "Traspaso curricular de los 4 hitos de Matemáticas a Operaciones e IA." },
+        { type: "I+D // CEO", text: "Visado previo del CEO para materiales fuera de catálogo antes de Coordinación." },
+        { type: "AESA", text: "Gatekeeper de Licencia de Vuelo DOC_14 con tasa de 50 €v y validación docente." },
+        { type: "PRENSA", text: "Tablón Oficial de Noticias con notas de prensa corporativas de corte de fase." },
+        { type: "GOBERNANZA", text: "Modificación Estatutaria con tasa mercantil de 50 €v y Actas de Comité DOC_16." },
+        { type: "RGPD", text: "Blindaje de privacidad escolar por capas, Zero-PII y Cero Cookies." }
+      ]
+    },
     {
       version: "1.1.52",
       date: new Date().toISOString().split('T')[0],

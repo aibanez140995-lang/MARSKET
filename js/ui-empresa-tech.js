@@ -187,16 +187,20 @@ Object.assign(ui, {
 
         const trackingSectionHtml = '';
 
-        const myPendingCustom = (state.data.pendingCustom || []).filter(p => p && p.company === state.user.coId);
         const myHistoryCustom = Array.isArray(co.specialItemRequests) ? co.specialItemRequests : [];
-        const allMyCustom = [...myPendingCustom.map(p => ({ ...p, status: 'PENDIENTE' })), ...myHistoryCustom];
+        const legacyCustom = (state.data.pendingCustom || []).filter(p => p && p.company === state.user.coId && !myHistoryCustom.some(m => m.id === p.id));
+        const allMyCustom = [...myHistoryCustom, ...legacyCustom.map(p => ({ ...p, status: 'PENDIENTE_COORDINACION' }))];
 
         const specialItemsListHtml = allMyCustom.length === 0
-            ? `<div class="p-5 bg-slate-900/50 border border-slate-800 text-center rounded"><span class="text-xs font-mono uppercase text-slate-400 italic">No hay solicitudes de material especial registradas. Si tu diseño requiere componentes fuera de catálogo, pulsa [+ Solicitar Material I+D a Coordinación].</span></div>`
+            ? `<div class="p-5 bg-slate-900/50 border border-slate-800 text-center rounded"><span class="text-xs font-mono uppercase text-slate-400 italic">No hay solicitudes de material especial registradas. Si tu diseño requiere componentes fuera de catálogo, pulsa [+ Solicitar Material I+D].</span></div>`
             : `<div class="space-y-3">
                 ${allMyCustom.map(item => {
-                    let stBadge = '<span class="px-2 py-0.5 text-xs font-black uppercase bg-amber-950/40 border border-amber-500 text-amber-400 animate-pulse">🟡 PENDIENTE CLAUSTRO</span>';
-                    if (item.status === 'APROBADA') {
+                    let stBadge = '<span class="px-2 py-0.5 text-xs font-black uppercase bg-amber-950/40 border border-amber-500 text-amber-400 animate-pulse">🟡 PENDIENTE VISADO CEO</span>';
+                    if (item.status === 'PENDIENTE_COORDINACION' || item.status === 'PENDIENTE') {
+                        stBadge = '<span class="px-2 py-0.5 text-xs font-black uppercase bg-cyan-950/40 border border-cyan-500 text-cyan-400 animate-pulse">🟠 EN EVALUACIÓN COORDINACIÓN</span>';
+                    } else if (item.status === 'DEVUELTO_CEO' || item.status === 'RECHAZADO_CEO') {
+                        stBadge = '<span class="px-2 py-0.5 text-xs font-black uppercase bg-rose-950/40 border border-rose-500 text-rose-400">↩ DEVUELTO POR CEO</span>';
+                    } else if (item.status === 'APROBADA') {
                         stBadge = `<span class="px-2 py-0.5 text-xs font-black uppercase bg-emerald-950/40 border border-emerald-500 text-emerald-400">🟢 APROBADA (${item.price !== undefined ? item.price + ' €v' : 'En Catálogo'})</span>`;
                     } else if (item.status === 'DENEGADA') {
                         stBadge = '<span class="px-2 py-0.5 text-xs font-black uppercase bg-red-950/40 border border-red-500 text-red-400">🔴 DENEGADA</span>';
@@ -210,6 +214,7 @@ Object.assign(ui, {
                                 <span class="text-xs text-slate-400 font-mono">${this.escapeHTML(item.date || '--')}</span>
                             </div>
                             <h4 class="text-white font-bold text-xs sm:text-sm uppercase leading-snug">${this.escapeHTML(item.name || 'Componente Especial I+D')}</h4>
+                            ${item.returnReason ? `<p class="text-xs text-rose-300 font-mono mt-1"><strong>Observación CEO:</strong> ${this.escapeHTML(item.returnReason)}</p>` : ''}
                             <div class="mt-2 flex flex-wrap items-center gap-2">
                                 ${item.driveUrl ? `
                                     <a href="${encodeURI(item.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[36px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-300 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50 transition-colors">
@@ -242,6 +247,53 @@ Object.assign(ui, {
                                 🔧 Ir a Taller y BOM ➔
                             </button>
                         </div>
+
+                        ${(() => {
+                            const license = co.launchLicense;
+                            const isLicenseApproved = Boolean(state.user?.admin || (license && license.status === 'APROBADA'));
+                            if (isLicenseApproved) {
+                                return `
+                                    <div class="p-3 mb-4 bg-emerald-950/40 border border-emerald-500 rounded text-xs flex items-center justify-between gap-2">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-emerald-400 font-bold uppercase">✅ LICENCIA DE LANZAMIENTO AESA CONCEDIDA</span>
+                                            <span class="text-[10px] text-slate-400 font-mono">Protocolo de seguridad verificado</span>
+                                        </div>
+                                        ${license?.driveUrl ? `<a href="${encodeURI(license.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-emerald-300 underline font-mono text-[11px]">Ver DOC_14 ↗</a>` : ''}
+                                    </div>`;
+                            }
+                            if (license && license.status === 'PENDIENTE_DOCENTE') {
+                                return `
+                                    <div class="p-3.5 mb-4 bg-amber-950/60 border border-amber-500 rounded text-xs space-y-1">
+                                        <div class="flex items-center gap-2 text-amber-400 font-bold uppercase">
+                                            <span>⏳ LICENCIA AESA TRAMITADA // PENDIENTE DE VALIDACIÓN DOCENTE</span>
+                                        </div>
+                                        <p class="text-slate-200">
+                                            El CEO ha tramitado y abonado la tasa de la Licencia AESA (50 €v). El banco de pruebas se desbloqueará tan pronto como el Claustro valide el expediente.
+                                        </p>
+                                    </div>`;
+                            }
+                            if (license && license.status === 'DENEGADA') {
+                                return `
+                                    <div class="p-3.5 mb-4 bg-red-950/70 border border-red-500 rounded text-xs space-y-1">
+                                        <div class="flex items-center gap-2 text-red-400 font-bold uppercase">
+                                            <span>❌ LICENCIA AESA DENEGADA POR COORDINACIÓN</span>
+                                        </div>
+                                        <p class="text-slate-200">
+                                            El Claustro ha rechazado la solicitud de vuelo por incumplimiento de protocolos. El CEO debe subsanar y reenviar la solicitud en la Sala de Mando.
+                                        </p>
+                                    </div>`;
+                            }
+                            return `
+                                <div class="p-3.5 mb-4 bg-red-950/60 border border-red-500 rounded text-xs space-y-1">
+                                    <div class="flex items-center gap-2 text-red-400 font-bold uppercase">
+                                        <span>🔒 BANCO DE PRUEBAS BLOQUEADO // LICENCIA AESA REQUERIDA (FASE II)</span>
+                                    </div>
+                                    <p class="text-slate-200">
+                                        Para registrar vuelos, el <strong>CEO</strong> debe rellenar, firmar y tramitar la <strong>Solicitud de Permiso Oficial AESA (DOC_14)</strong> con tasa de 50 €v en la Sala de Mando para validación del Claustro Docente.
+                                    </p>
+                                </div>`;
+                        })()}
+
                         <div class="bg-black border border-mars-border p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                             <div>
                                 <label for="ft-bottle" class="text-xs text-slate-300 uppercase block mb-1">Fuselaje / Botella</label>
@@ -273,7 +325,11 @@ Object.assign(ui, {
                                 <input type="number" id="ft-height-mm" placeholder="Altura H (mm)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-green font-bold w-full" step="1">
                             </div>
                             <div class="flex items-end">
-                                <button type="button" onclick="ui.submitFlightTest()" class="min-h-[44px] bg-mars-yellow text-black font-black uppercase tracking-wider hover:bg-white transition-all py-2.5 px-3 w-full">Registrar Vuelo</button>
+                                ${Boolean(state.user?.admin || (co.launchLicense && co.launchLicense.status === 'APROBADA')) ? `
+                                    <button type="button" onclick="ui.submitFlightTest()" class="min-h-[44px] bg-mars-yellow text-black font-black uppercase tracking-wider hover:bg-white transition-all py-2.5 px-3 w-full">Registrar Vuelo</button>
+                                ` : `
+                                    <button type="button" onclick="ui.notify('⛔ Banco bloqueado: Requiere Licencia de Lanzamiento AESA (DOC_14) tramitada por el CEO y aprobada por Coordinación.', 'error')" class="min-h-[44px] bg-slate-800 text-slate-500 border border-slate-700 font-black uppercase tracking-wider cursor-not-allowed py-2.5 px-3 w-full">🔒 Vuelos Bloqueados</button>
+                                `}
                             </div>
                         </div>
                         <div class="overflow-x-auto w-full max-h-60 overflow-y-auto">
@@ -291,11 +347,11 @@ Object.assign(ui, {
                 <div class="lg:col-span-5 space-y-6">
                     <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
                         <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-3 flex-wrap gap-2">
-                            <h2 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter">Entregables Científicos (FYQ & MAT)</h2>
+                            <h2 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter">Entregables Científicos (FYQ - 25%)</h2>
                             <span class="text-xs bg-mars-cyan/10 text-mars-cyan border border-mars-cyan/40 px-2 py-0.5 font-bold uppercase">Resp: Dpto. Técnico</span>
                         </div>
                         <p class="text-xs text-slate-300 leading-relaxed mb-4">
-                            Los 6 hitos científicos (Informes de Propulsión de Física y Química, Calibración del Goniómetro e Informes Trigonométricos de Matemáticas) se gestionan de forma guiada en <strong>Mis Entregables</strong>.
+                            Los 2 hitos de Física y Química (Hoja de Registro Preliminar e Informe Técnico Exhaustivo) se gestionan de forma guiada en <strong>Mis Entregables</strong>.
                         </p>
                         <div class="space-y-3 mb-4">
                             <div class="p-3 bg-black/60 border border-slate-800 rounded text-xs flex justify-between items-center">
@@ -305,12 +361,12 @@ Object.assign(ui, {
                                 </div>
                                 <span class="text-xs font-mono text-mars-cyan font-bold">2 Hitos</span>
                             </div>
-                            <div class="p-3 bg-black/60 border border-slate-800 rounded text-xs flex justify-between items-center">
-                                <div>
-                                    <span class="text-white font-bold block uppercase">Matemáticas (5%)</span>
-                                    <span class="text-[11px] text-slate-400">Goniómetro, Distancia Fija, 2 Puntos y Comparativo</span>
+                            <div class="p-3 bg-black/60 border border-slate-800/60 rounded text-xs">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-300 font-bold block uppercase">Matemáticas (4 Hitos)</span>
+                                    <span class="text-[10px] text-mars-yellow font-mono font-bold">Operaciones e IA</span>
                                 </div>
-                                <span class="text-xs font-mono text-mars-yellow font-bold">4 Hitos</span>
+                                <span class="text-[10px] text-slate-400 block mt-0.5">Goniómetro, mediciones angulares e informe final transferidos al Dpto. de Operaciones.</span>
                             </div>
                         </div>
                         <button type="button" onclick="ui.navigate('role_deliverables')" class="w-full min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs py-2.5 px-4 hover:bg-white transition-all flex items-center justify-center gap-2 shadow-sm">
@@ -748,6 +804,13 @@ Object.assign(ui, {
 
     submitFlightTest() {
         if (!state.user) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout();
+
+        if (!state.user?.admin && (!co.launchLicense || co.launchLicense.status !== 'APROBADA')) {
+            return this.notify("⛔ Lanzamiento bloqueado: Se requiere Licencia de Lanzamiento AESA (DOC_14) tramitada por el CEO y validada por Coordinación Docente.", "error");
+        }
+
         const elBottle = document.getElementById('ft-bottle');
         const elNahco3 = document.getElementById('ft-nahco3');
         const elVinegar = document.getElementById('ft-vinegar');
@@ -782,8 +845,6 @@ Object.assign(ui, {
 
         // Eficiencia: Milímetros por cada € virtual gastado
         const efficiency = heightMm / costEurV;
-        const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
         
         co.flightTests = co.flightTests || [];
         co.flightTests.unshift({ id: 'FLT-'+Date.now(), date: new Date().toLocaleDateString(), bottle, naHCO3, vinegar, costEurV, heightMm, efficiency });
@@ -812,17 +873,15 @@ Object.assign(ui, {
                     </label>
                     <input type="url" id="special-item-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." required class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow">
                     <p class="text-[10px] text-slate-400 mt-1 font-sans">
-                        Configura los permisos del documento en Google Drive como <em>"Cualquiera con el enlace puede ver"</em> para que el claustro docente examine los planos y especificaciones.
+                        Configura los permisos del documento en Google Drive como <em>"Cualquiera con el enlace puede ver"</em> para que el CEO y el claustro docente examinen los planos y especificaciones.
                     </p>
                 </div>
                 <div class="pt-1">
-                    <a href="https://docs.google.com/document/d/1HigoiUvPfZQhMu67MR7cGyiW8XecIQlAW_29kp3LfDc/copy" target="_blank" rel="noopener noreferrer" class="min-h-[44px] w-full inline-flex items-center justify-center gap-2 bg-blue-950/60 border border-blue-400 text-cyan-200 hover:bg-blue-900/80 hover:text-white px-4 py-2 text-xs font-bold uppercase transition-all shadow-sm">
-                        <span>📋 Clonar Modelo Oficial de Solicitud I+D (DOC_13) en Drive ↗</span>
-                    </a>
+                    ${this.renderDocTemplateBtn('DOC_13_SOLICITUD_ID', '📄 Ver Plantilla Solicitud I+D (DOC_13)')}
                 </div>
             </div>
         `;
-        const actions = `<button type="button" onclick="ui.submitSpecialItem()" class="min-h-[44px] bg-mars-magenta text-white px-5 py-2.5 text-xs font-black uppercase hover:bg-white hover:text-mars-magenta transition-colors tracking-wider">Enviar a Claustro</button>`;
+        const actions = `<button type="button" onclick="ui.submitSpecialItem()" class="min-h-[44px] bg-mars-magenta text-white px-5 py-2.5 text-xs font-black uppercase hover:bg-white hover:text-mars-magenta transition-colors tracking-wider">Enviar a CEO para Aprobación</button>`;
         this.showModal("Solicitar Ítem Especial / Fuera de Mercado", html, actions);
     },
 
@@ -838,20 +897,31 @@ Object.assign(ui, {
         }
         
         const coId = state.user.coId;
-        const coName = state.data.companies?.[coId]?.name || 'STARTUP';
+        const co = state.data.companies?.[coId];
+        if (!co) return auth.logout();
+        const coName = co.name || 'STARTUP';
         const defaultName = `Componente Especial I+D (${coName})`;
         
-        state.data.pendingCustom = state.data.pendingCustom || [];
-        state.data.pendingCustom.push({ 
-            id: Date.now(), 
-            company: coId, 
+        co.specialItemRequests = co.specialItemRequests || [];
+        const reqId = 'SP-' + Date.now();
+        co.specialItemRequests.unshift({ 
+            id: reqId, 
+            companyId: coId, 
+            companyName: coName, 
             name: defaultName, 
             driveUrl: driveUrl, 
-            date: new Date().toLocaleDateString() 
+            date: new Date().toLocaleDateString(), 
+            status: 'PENDIENTE_CEO',
+            createdAt: Date.now()
         });
-        state.save();
+        
+        ui.pushNotification(coId, 'CEO', `🔬 Solicitud de Material I+D fuera de catálogo remitida por el Dpto. Técnico para visado.`, 'info', { view: 'dashboard' });
+        
+        co.updatedAt = Date.now();
+        state.save(coId);
         this.closeModal();
-        this.notify("✅ Solicitud de ítem especial enviada al claustro mediante enlace Drive.", "success");
+        this.notify("✅ Solicitud de material I+D enviada al CEO para su aprobación previa.", "success");
+        this.render();
     },
 
     modalCustom() {

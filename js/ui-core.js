@@ -44,18 +44,14 @@ const ui = {
 
         if (!tplUrl) return '';
 
-        const copyUrl = this.getGoogleCopyUrl(tplUrl);
-        const viewUrl = tplUrl;
+        const targetUrl = this.getGoogleCopyUrl(tplUrl);
+        const label = customLabel || '📄 Ver Plantilla Oficial';
 
         return `
-            <div class="inline-flex flex-wrap items-center gap-1.5">
-                <a href="${encodeURI(viewUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-1.5 min-h-[40px] bg-slate-900 border border-blue-500/70 hover:border-blue-400 text-blue-300 hover:text-white px-3 py-1.5 text-xs font-bold uppercase transition-all shadow-sm group">
-                    <span>📄 Ver Plantilla Oficial</span>
-                    <span class="text-[10px] text-blue-400 font-mono">↗</span>
-                </a>
-                <a href="${encodeURI(copyUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-1.5 min-h-[40px] bg-blue-950/50 border border-cyan-400 text-cyan-200 hover:bg-blue-900/60 hover:text-white px-3 py-1.5 text-xs font-bold uppercase transition-all shadow-sm group">
-                    <span>📋 Hacer Copia en mi Drive</span>
-                    <span class="text-[10px] text-cyan-400 font-mono">↗</span>
+            <div class="inline-flex items-center">
+                <a href="${encodeURI(targetUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 min-h-[44px] bg-slate-900 border border-blue-500/70 hover:border-cyan-400 text-blue-300 hover:text-white px-4 py-2 text-xs font-bold uppercase transition-all shadow-sm group">
+                    <span>${label}</span>
+                    <span class="text-xs text-cyan-400 font-mono group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">↗</span>
                 </a>
             </div>
         `;
@@ -2325,22 +2321,22 @@ const ui = {
         const co = !state.user.admin ? state.data.companies[state.user.coId] : null;
 
         const roleAllowedMap = {
-            'CEO': ['dashboard', 'orders', 'resolutions', 'finance', 'dossier', 'role_deliverables', 'market'],
-            'TECNICO': ['tech', 'tech_workshop', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'market', 'cart'],
-            'FINANZAS': ['finance', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'market'],
-            'MARKETING': ['brand', 'campaigns', 'dossier', 'orders', 'resolutions', 'role_deliverables'],
-            'OPERACIONES_IA': ['cart', 'ailog', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'market'],
-            'AUXILIAR': ['dashboard', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'finance', 'tech', 'tech_workshop', 'brand', 'campaigns', 'cart', 'ailog', 'market']
+            'CEO': ['dashboard', 'orders', 'resolutions', 'finance', 'dossier', 'role_deliverables', 'news', 'market'],
+            'TECNICO': ['tech', 'tech_workshop', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'market', 'cart'],
+            'FINANZAS': ['finance', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'market'],
+            'MARKETING': ['brand', 'campaigns', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news'],
+            'OPERACIONES_IA': ['cart', 'ailog', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'market'],
+            'AUXILIAR': ['dashboard', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'finance', 'tech', 'tech_workshop', 'brand', 'campaigns', 'cart', 'ailog', 'market']
         };
 
         let currentAllowed = [];
         if (state.user.admin) {
-            currentAllowed = ['admin', 'market', 'dossier'];
+            currentAllowed = ['admin', 'market', 'dossier', 'news'];
             if (!currentAllowed.includes(this.current)) this.current = 'admin';
         } else {
             const auxDept = (role === 'AUXILIAR') ? co?.auxRoleDept : null;
             const effectiveRole = (role === 'AUXILIAR' && auxDept) ? auxDept : role;
-            const allowed = (roleAllowedMap[effectiveRole] || ['dashboard', 'orders', 'finance', 'dossier', 'resolutions', 'role_deliverables']).concat(['company']);
+            const allowed = (roleAllowedMap[effectiveRole] || ['dashboard', 'orders', 'finance', 'dossier', 'resolutions', 'role_deliverables', 'news']).concat(['company']);
             if (!allowed.includes(this.current)) {
                 const landingByRole = {
                     'TECNICO': 'tech',
@@ -2362,6 +2358,7 @@ const ui = {
         switch(this.current) {
             case 'dashboard': vp.innerHTML = hero + notifs; this.viewDashboard(vp); break;
             case 'role_deliverables': vp.innerHTML = hero + notifs; this.viewRoleDeliverables(vp); break;
+            case 'news': vp.innerHTML = hero + notifs; this.viewNewsBoard(vp); break;
             case 'market': vp.innerHTML = hero + notifs; this.viewMarket(vp); break;
             case 'cart': vp.innerHTML = hero + notifs; this.viewCart(vp); break;
             case 'orders': vp.innerHTML = hero + notifs; this.viewOrders(vp); break;
@@ -3040,18 +3037,48 @@ const ui = {
 
     openRgpdModal() {
         const html = `
-            <div class="space-y-3 text-xs text-slate-200 font-mono leading-relaxed">
-                <div class="p-2.5 bg-slate-900 border border-cyan-500/30">
-                    <p><strong class="text-cyan-400">RESPONSABLE DEL TRATAMIENTO:</strong> Colegio Miravalles-El Redín</p>
-                    <p class="mt-1"><strong class="text-cyan-400">FINALIDAD:</strong> Simulación aeroespacial y evaluación pedagógica competencial del alumnado.</p>
-                    <p class="mt-1"><strong class="text-cyan-400">LEGITIMACIÓN:</strong> Misión de interés público y función docente (Art. 6.1.e RGPD).</p>
-                    <p class="mt-1"><strong class="text-cyan-400">DESTINATARIOS:</strong> Sin cesión de datos a terceros ni transferencias internacionales.</p>
-                    <p class="mt-1"><strong class="text-cyan-400">DERECHOS:</strong> Acceso, rectificación y supresión ante la dirección o profesorado del centro.</p>
+            <div class="space-y-4 text-xs text-slate-200 leading-relaxed font-sans max-h-[70vh] overflow-y-auto pr-1">
+                <!-- 1ª Capa: Resumen Informativo Básico (Art. 13 RGPD / Art. 11 LOPDGDD) -->
+                <div class="p-3.5 bg-slate-900/90 border border-mars-cyan/40 space-y-2 font-mono">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="px-2 py-0.5 bg-mars-cyan/20 border border-mars-cyan text-mars-cyan text-[10px] font-black uppercase">1ª CAPA: RESUMEN INFORMATIVO</span>
+                        <span class="text-[10px] text-slate-400">RGPD (UE) 2016/679 & LOPDGDD 3/2018</span>
+                    </div>
+                    <p><strong class="text-mars-cyan">RESPONSABLE:</strong> Colegio Miravalles-El Redín (Dirección y Claustro Docente de Secundaria y Bachillerato).</p>
+                    <p><strong class="text-mars-cyan">FINALIDAD:</strong> Desarrollo del proyecto pedagógico interdisciplinar MARS-KET OS y evaluación competencial curricular LOMLOE.</p>
+                    <p><strong class="text-mars-cyan">LEGITIMACIÓN:</strong> Ejercicio de la función educativa y cumplimiento de una misión de interés público (Art. 6.1.e RGPD / Disposición Adicional 23ª LOMLOE).</p>
+                    <p><strong class="text-mars-cyan">DESTINATARIOS:</strong> Sin cesión de datos personales a terceros, sin venta publicitaria y sin transferencias internacionales.</p>
+                    <p><strong class="text-mars-cyan">DERECHOS:</strong> Acceso, rectificación, supresión y limitación ante la dirección del centro o ante la Agencia Española de Protección de Datos (AEPD, www.aepd.es).</p>
                 </div>
-                <p class="text-[11px] text-slate-400 italic">La plataforma opera bajo el principio de minimización de datos: prohibido el uso de nombres reales o datos de contacto.</p>
+
+                <!-- 2ª Capa: Protocolos Clave de Seguridad Escolar y Menores (Art. 7 LOPDGDD 14-16 años) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="p-3 bg-black/60 border border-slate-800 space-y-1.5">
+                        <h4 class="text-xs font-bold text-mars-yellow uppercase flex items-center gap-1.5">
+                            <span>🛡️ Política Zero-PII</span>
+                        </h4>
+                        <p class="text-[11px] text-slate-300">
+                            MARS-KET OS no almacena nombres reales de alumnos, ni DNI, ni teléfonos, ni cuentas personales. El acceso es exclusivamente seudónimo mediante roles corporativos (CEO, Finanzas, Técnico, Operaciones, Marketing, Auxiliar) y códigos de startup alfanuméricos.
+                        </p>
+                    </div>
+                    <div class="p-3 bg-black/60 border border-slate-800 space-y-1.5">
+                        <h4 class="text-xs font-bold text-mars-magenta uppercase flex items-center gap-1.5">
+                            <span>🚫 Directiva Zero-Text Libre</span>
+                        </h4>
+                        <p class="text-[11px] text-slate-300">
+                            Queda terminantemente prohibido cualquier campo de chat abierto o texto libre entre alumnos en la app para prevenir ciberacoso y filtraciones. Todo intercambio se realiza mediante motivos tipificados o enlaces compartidos en Google Drive bajo las cuentas auditadas del centro escolar.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 3ª Capa: Almacenamiento Técnico, Cero Cookies y Auditoría AEPD -->
+                <div class="p-3 bg-slate-900/60 border border-slate-800 space-y-2 text-[11px] text-slate-300">
+                    <p><strong class="text-white">🍪 Almacenamiento Técnico y Cero Cookies:</strong> Esta plataforma no utiliza cookies analíticas de terceros ni píxeles de rastreo publicitario. Únicamente emplea almacenamiento técnico local (<code class="text-mars-cyan font-mono">localStorage</code>) estrictamente imprescindible para mantener la sesión didáctica activa (Art. 22.2 LSSI-CE exento).</p>
+                    <p><strong class="text-white">🔒 Criptografía y Persistencia:</strong> Generación de claves mediante CSPRNG nativo (<code class="text-mars-cyan font-mono">crypto.getRandomValues</code>) alineado con directrices VALiDA de la AEPD y persistencia híbrida segura en servidor nacional CDMON.</p>
+                </div>
             </div>
         `;
-        this.showModal("Protocolo de Privacidad y RGPD (Art. 13)", html, "");
+        this.showModal("Protocolo de Privacidad y Blindaje RGPD (Art. 13 & LOPDGDD)", html, "");
     },
 
     closeModal() { 

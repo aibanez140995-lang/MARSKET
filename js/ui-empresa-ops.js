@@ -343,15 +343,17 @@ Object.assign(ui, {
         const diaryDocsHtml = `
         <div class="terminal-border bg-mars-card p-4 sm:p-5 border-l-4 border-l-mars-cyan mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-                <div class="flex items-center gap-2 mb-1">
+                <div class="flex items-center gap-2 mb-1.5 flex-wrap">
                     <span class="text-xs bg-mars-cyan/20 text-mars-cyan border border-mars-cyan/40 px-2 py-0.5 font-bold uppercase font-mono">Entregables Curriculares</span>
-                    <span class="text-xs text-slate-400 font-mono">Lengua Castellana y Literatura (LyE)</span>
+                    <span class="text-xs text-mars-yellow font-bold uppercase font-mono">Matemáticas (4 Hitos) & Lengua (LyE)</span>
                 </div>
-                <h3 class="text-white font-orbitron text-sm sm:text-base font-bold uppercase">Diario de Decisiones, Conflictos e IA (1ª y 2ª Entrega)</h3>
-                <p class="text-xs text-slate-300 mt-1 uppercase leading-relaxed">El registro de enlaces Drive oficiales, estado docente y fechas de entrega para Diciembre y Abril se gestiona de forma centralizada.</p>
+                <h3 class="text-white font-orbitron text-sm sm:text-base font-bold uppercase">Entregables Asignados a Operaciones e IA</h3>
+                <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+                    Operaciones gestiona los 4 hitos de <strong>Matemáticas</strong> (Goniómetro, mediciones angulares, informe de distancia y comparativo final) junto al <strong>Diario de Bitácora e IA</strong>.
+                </p>
             </div>
             <button type="button" onclick="ui.navigate('role_deliverables')" class="min-h-[44px] whitespace-nowrap px-4 py-2.5 bg-black border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold uppercase text-xs transition-colors flex items-center gap-2 shadow-[0_0_10px_rgba(0,240,255,0.2)]">
-                <span>📤 Gestionar en "Mis Entregables" ↗</span>
+                <span>📤 Gestionar en "Mis Entregables" ➔</span>
             </button>
         </div>`;
 

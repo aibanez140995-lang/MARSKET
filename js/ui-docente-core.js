@@ -147,10 +147,11 @@ Object.assign(ui, {
                 case 'dash': {
                     const isFyqOrCoord = state.user.role === 'FYQ' || (state.user.role && state.user.role.startsWith('COORD')) || state.user.admin;
                     const isLyeOrCoord = state.user.role === 'LYE' || (state.user.role && state.user.role.startsWith('COORD')) || state.user.admin;
+                    const launchLicensePanel = isFyqOrCoord ? this.renderAdminLaunchLicensePanel() : '';
                     const fyqPanel = isFyqOrCoord ? this.renderFyqReceptionPanel() : '';
                     const mktActionPanel = isLyeOrCoord ? this.renderMktActionReceptionPanel() : '';
                     const brandPanel = isCoord ? this.renderAdminBrandReview() : '';
-                    subContainer.innerHTML = brandPanel + fyqPanel + mktActionPanel + this.renderAdminDash();
+                    subContainer.innerHTML = launchLicensePanel + brandPanel + fyqPanel + mktActionPanel + this.renderAdminDash();
                     break;
                 }
                 case 'eval': subContainer.innerHTML = this.renderAdminEval(); break;
@@ -921,5 +922,126 @@ Object.assign(ui, {
             <button type="button" onclick="ui.closeModal()" class="min-h-[44px] bg-slate-800 text-white px-4 py-2 text-xs font-bold uppercase hover:bg-white hover:text-black transition-all">Cerrar</button>
         `;
         this.showModal("REGISTRO DE INFRACCIONES LÉXICAS", body, actions);
+    },
+
+    renderAdminLaunchLicensePanel() {
+        const companies = state.data.companies || {};
+        const pendingCos = Object.keys(companies).filter(cid => {
+            const co = companies[cid];
+            return co && co.launchLicense && co.launchLicense.status === 'PENDIENTE_DOCENTE';
+        });
+
+        if (pendingCos.length === 0) return '';
+
+        return `
+        <div class="terminal-border bg-mars-card p-5 border-t-4 border-t-mars-yellow mb-6 shadow-[0_0_15px_rgba(255,204,0,0.15)]">
+            <div class="flex justify-between items-center mb-3 flex-wrap gap-2 border-b border-mars-border pb-2">
+                <div>
+                    <h3 class="font-orbitron text-mars-yellow text-sm sm:text-base uppercase tracking-tight font-black flex items-center gap-2">
+                        <span>🚀 Licencias de Lanzamiento AESA Pendientes de Validación (Fase II)</span>
+                    </h3>
+                    <p class="text-xs text-slate-300 mt-0.5">Startups con solicitud formal DOC_14 tramitada y tasa de 50 €v abonada. Valida para autorizar vuelos en el banco de pruebas.</p>
+                </div>
+                <span class="bg-mars-yellow text-black px-2.5 py-1 text-xs font-black uppercase font-mono animate-pulse">${pendingCos.length} PENDIENTES</span>
+            </div>
+            <div class="space-y-3">
+                ${pendingCos.map(cid => {
+                    const co = companies[cid];
+                    const lic = co.launchLicense;
+                    return `
+                    <div class="bg-slate-900 border border-amber-500/50 p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div class="min-w-0 flex-grow">
+                            <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                <span class="text-sm font-black text-white uppercase">${this.escapeHTML(co.name)}</span>
+                                <span class="text-xs text-slate-400 font-mono">[CLASE ${this.escapeHTML(co.classGroup || 'A')}]</span>
+                                <span class="text-xs text-emerald-400 font-mono font-bold bg-emerald-950/40 border border-emerald-500/40 px-2 py-0.5">50 €v Abonados</span>
+                            </div>
+                            <p class="text-xs text-slate-300 font-mono">Firmado por: <strong>${this.escapeHTML(lic.signedBy || 'CEO')}</strong> • Fecha: ${this.escapeHTML(lic.appliedDate || '--')}</p>
+                            <div class="mt-2.5">
+                                ${lic.driveUrl ? `
+                                    <a href="${encodeURI(lic.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                        <span>📄 Abrir Solicitud Oficial DOC_14 en Google Docs ↗</span>
+                                    </a>
+                                ` : ''}
+                            </div>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
+                            <button type="button" onclick="ui.approveLaunchLicense('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">[ ✓ VALIDAR LICENCIA Y DESBLOQUEAR VUELOS ]</button>
+                            <button type="button" onclick="ui.modalRejectLaunchLicense('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-4 py-2 hover:bg-mars-magenta hover:text-white transition-all">[ ❌ DENEGAR ]</button>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`;
+    },
+
+    approveLaunchLicense(coId) {
+        if (!state.user || !state.user.admin) return;
+        const co = state.data.companies?.[coId];
+        if (!co || !co.launchLicense) return;
+
+        co.launchLicense.status = 'APROBADA';
+        co.launchLicense.approvedAt = Date.now();
+        co.launchLicense.validatedBy = state.user.name || 'Coordinación';
+        co.updatedAt = Date.now();
+
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
+        ui.pushNotification(coId, 'ALL', '🚀 ¡Licencia de Lanzamiento AESA aprobada por Coordinación Docente! El banco de pruebas de vuelo ha quedado desbloqueado.', 'success', { view: 'tech' });
+        this.notify(`✅ Licencia AESA aprobada para "${co.name}". Banco de pruebas desbloqueado.`, "success");
+        this.render();
+    },
+
+    modalRejectLaunchLicense(coId) {
+        if (!state.user || !state.user.admin) return;
+        const reasons = [
+            "Protocolos de seguridad física en zona de lanzamiento incompletos",
+            "Cálculos estequiométricos de propelente o proporciones de masa no coherentes",
+            "El enlace de Google Drive no cuenta con permisos de lectura abiertos",
+            "Fuselaje o materiales no conformes a las directrices de la misión AEE",
+            "Requiere subsanación técnica y nueva justificación por el CEO"
+        ];
+        const reasonOptions = reasons.map(r => `<option value="${this.escapeHTML(r)}">${this.escapeHTML(r)}</option>`).join('');
+
+        const html = `
+            <div class="space-y-4 font-mono text-xs">
+                <div class="p-3 bg-red-950/40 border border-red-500/50 text-slate-200">
+                    <p class="text-red-400 font-bold uppercase mb-1">❌ Denegar Licencia de Lanzamiento AESA (Zero-Text):</p>
+                    <p class="font-sans text-[11px]">Selecciona el motivo tipificado para denegar la solicitud. La empresa mantendrá el banco de pruebas bloqueado hasta su subsanación.</p>
+                </div>
+                <div>
+                    <label for="reject-launch-license-reason" class="text-mars-yellow uppercase font-bold block mb-1">Motivo Tipificado de Denegación</label>
+                    <select id="reject-launch-license-reason" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white uppercase outline-none focus:border-red-400">
+                        ${reasonOptions}
+                    </select>
+                </div>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.rejectLaunchLicense('${this.escapeHTML(coId)}')" class="min-h-[44px] bg-red-600 text-white px-5 py-2.5 text-xs font-black uppercase hover:bg-white hover:text-red-600 transition-all">[ ❌ Confirmar Denegación ]</button>`;
+        this.showModal("Denegar Licencia de Lanzamiento AESA", html, actions);
+    },
+
+    rejectLaunchLicense(coId) {
+        if (!state.user || !state.user.admin) return;
+        const elReason = document.getElementById('reject-launch-license-reason');
+        if (!elReason) return;
+        const reason = this.cleanInput(elReason.value).trim();
+
+        const co = state.data.companies?.[coId];
+        if (!co || !co.launchLicense) return;
+
+        co.launchLicense.status = 'DENEGADA';
+        co.launchLicense.rejectReason = reason;
+        co.launchLicense.rejectedAt = Date.now();
+        co.updatedAt = Date.now();
+
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
+        ui.pushNotification(coId, 'CEO', `❌ Licencia de Lanzamiento AESA denegada por Coordinación. Motivo: "${reason}". El CEO debe subsanar y reenviar la solicitud.`, 'error', { view: 'dashboard' });
+        this.closeModal();
+        this.notify(`Licencia AESA denegada para "${co.name}".`, "info");
+        this.render();
     }
 });

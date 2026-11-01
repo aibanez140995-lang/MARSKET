@@ -596,6 +596,165 @@ Object.assign(ui, {
             </div>`;
         }
 
+        const pendingSpecialItems = (co.specialItemRequests || []).filter(r => r.status === 'PENDIENTE_CEO');
+        let ceoSpecialItemsHtml = '';
+        if (isCEO && pendingSpecialItems.length > 0) {
+            ceoSpecialItemsHtml = `
+            <div class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-magenta shadow-[0_0_15px_rgba(255,0,85,0.15)]">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-mars-border pb-3 mb-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="px-2.5 py-0.5 text-xs font-black uppercase bg-mars-magenta/20 border border-mars-magenta text-mars-magenta animate-pulse">I+D // MATERIAL ESPECIAL</span>
+                            <span class="text-xs text-slate-400 font-mono">${pendingSpecialItems.length} PENDIENTES DE VISADO CEO</span>
+                        </div>
+                        <h3 class="text-base sm:text-lg font-orbitron font-black text-white uppercase tracking-tight">
+                            🔬 Solicitudes Especiales de Material I+D (Técnico ➔ CEO)
+                        </h3>
+                        <p class="text-xs text-slate-300 uppercase mt-0.5">El Dpto. Técnico ha solicitado componentes fuera de catálogo. Revisa la memoria técnica DOC_13 y autoriza su envío a Coordinación.</p>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    ${pendingSpecialItems.map(item => `
+                        <div class="bg-slate-900/90 border border-mars-magenta/50 p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div class="min-w-0 flex-grow">
+                                <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                                    <span class="text-xs font-black uppercase px-2 py-0.5 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta">I+D FUERA DE CATÁLOGO</span>
+                                    <span class="text-xs text-slate-400 font-mono">${this.escapeHTML(item.date || '--')}</span>
+                                </div>
+                                <h4 class="text-white font-bold text-sm uppercase leading-snug">${this.escapeHTML(item.name || 'Componente Especial I+D')}</h4>
+                                <div class="mt-2.5 flex flex-wrap items-center gap-2">
+                                    <a href="${encodeURI(item.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                        <span>📄 Ver Memoria Técnica DOC_13 ↗</span>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
+                                <button type="button" onclick="ui.approveSpecialItemByCEO('${this.escapeHTML(item.id)}')" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">[ ✓ APROBAR Y ELEVAR A COORDINACIÓN ]</button>
+                                <button type="button" onclick="ui.modalRejectSpecialItemByCEO('${this.escapeHTML(item.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-4 py-2 hover:bg-mars-magenta hover:text-white transition-all">[ ↩ DEVOLVER A TÉCNICO ]</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>`;
+        }
+
+        let ceoGovernanceModulesHtml = '';
+        if (isCEO) {
+            const license = co.launchLicense;
+            let licenseCardHtml = '';
+            if (!license || license.status === 'SIN_SOLICITAR' || license.status === 'DENEGADA') {
+                licenseCardHtml = `
+                <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-yellow flex flex-col justify-between hover:border-mars-yellow transition-all">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-black uppercase text-mars-yellow bg-mars-yellow/10 border border-mars-yellow/40 px-2 py-0.5">SEGURIDAD AEROESPACIAL</span>
+                            <span class="text-xs font-mono text-amber-400">Tasa: 50 €v</span>
+                        </div>
+                        <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">🚀 Licencia de Lanzamiento AESA (Fase II)</h3>
+                        <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
+                            Los lanzamientos en el banco de pruebas están bloqueados para Técnico y Operaciones. Tramita y firma la Solicitud AESA (DOC_14) con tasa de 50 €v para validación del Claustro.
+                        </p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
+                        <span class="text-[11px] text-slate-400 font-mono">DOC_14 AESA</span>
+                        <button type="button" onclick="ui.modalLaunchLicense()" class="min-h-[44px] bg-mars-yellow text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">[ 🚀 Tramitar Licencia AESA (50 €v) ]</button>
+                    </div>
+                </div>`;
+            } else if (license.status === 'PENDIENTE_DOCENTE') {
+                licenseCardHtml = `
+                <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-amber-400 flex flex-col justify-between hover:border-amber-400 transition-all">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-black uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2 py-0.5">EN EVALUACIÓN DOCENTE</span>
+                            <span class="text-xs font-mono text-emerald-400 font-bold">50 €v Abonados</span>
+                        </div>
+                        <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">🚀 Licencia AESA Tramitada</h3>
+                        <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
+                            Solicitud formal tramitada y firmada por el CEO. En espera del visado de Coordinación Docente para desbloquear los ensayos en el banco de pruebas.
+                        </p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
+                        <a href="${encodeURI(license.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-xs text-cyan-300 underline font-mono">Ver DOC_14 Tramitado ↗</a>
+                        <span class="text-xs text-amber-400 font-mono font-bold animate-pulse">⏳ Pendiente Claustro</span>
+                    </div>
+                </div>`;
+            } else {
+                licenseCardHtml = `
+                <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-emerald-400 flex flex-col justify-between hover:border-emerald-400 transition-all">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-black uppercase text-emerald-400 bg-emerald-950/40 border border-emerald-500/40 px-2 py-0.5">AUTORIZADA</span>
+                            <span class="text-xs font-mono text-emerald-400 font-bold">Vuelos Activos</span>
+                        </div>
+                        <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">🚀 Licencia AESA Autorizada</h3>
+                        <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
+                            Permiso oficial de vuelo y seguridad concedido por Coordinación Docente. El banco de pruebas se encuentra 100% operativo.
+                        </p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
+                        <a href="${encodeURI(license.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-xs text-emerald-300 underline font-mono">Ver DOC_14 Concedido ↗</a>
+                        <span class="text-xs text-emerald-400 font-mono font-bold">✓ Operativo</span>
+                    </div>
+                </div>`;
+            }
+
+            const prPhases = typeof PRESS_RELEASE_PHASES !== 'undefined' ? PRESS_RELEASE_PHASES : [
+                { phase: 'I', title: 'Cierre Fase I', deadlineLabel: '15/12/2026' },
+                { phase: 'II', title: 'Cierre Fase II', deadlineLabel: '15/02/2027' },
+                { phase: 'III', title: 'Cierre Fase III', deadlineLabel: '31/03/2027' }
+            ];
+            const coReleases = co.pressReleases || {};
+            const publishedPrCount = prPhases.filter(p => coReleases[p.phase]).length;
+
+            const pressReleaseCardHtml = `
+            <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-cyan flex flex-col justify-between hover:border-mars-cyan transition-all">
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-black uppercase text-mars-cyan bg-mars-cyan/10 border border-mars-cyan/40 px-2 py-0.5">COMUNICACIÓN OFICIAL</span>
+                        <span class="text-xs font-mono text-slate-400">${publishedPrCount}/3 Notas Publicadas</span>
+                    </div>
+                    <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">📰 Notas de Prensa Corporativas (CEO)</h3>
+                    <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
+                        Publica los comunicados oficiales de balance al corte de cada fase en el Tablón de Noticias mediante la plantilla DOC_15.
+                    </p>
+                    <div class="mt-3 space-y-2">
+                        ${prPhases.map(p => {
+                            const published = coReleases[p.phase];
+                            return `
+                            <div class="p-2 bg-black/60 border border-slate-800 rounded text-xs flex justify-between items-center flex-wrap gap-2">
+                                <div>
+                                    <span class="text-white font-bold block uppercase">${this.escapeHTML(p.title)}</span>
+                                    <span class="text-[10px] text-slate-400 font-mono">Corte: ${this.escapeHTML(p.deadlineLabel)}</span>
+                                </div>
+                                <div>
+                                    ${published ? `
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-[10px] text-emerald-400 font-bold uppercase bg-emerald-950/40 border border-emerald-500/40 px-1.5 py-0.5">✓ Publicada</span>
+                                            <a href="${encodeURI(published.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-[11px] text-cyan-300 underline font-mono">Ver DOC_15 ↗</a>
+                                        </div>
+                                    ` : `
+                                        <button type="button" onclick="ui.modalPublishPressRelease('${this.escapeHTML(p.phase)}')" class="min-h-[36px] bg-cyan-950/60 border border-cyan-400 text-cyan-300 hover:bg-cyan-400 hover:text-black font-bold uppercase text-[11px] px-2.5 py-1 transition-all">
+                                            + Redactar y Publicar
+                                        </button>
+                                    `}
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
+                    <span class="text-[11px] text-slate-400 font-mono">Tablón de Noticias</span>
+                    <button type="button" onclick="ui.navigate('news')" class="min-h-[44px] bg-slate-900 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-black uppercase text-xs px-4 py-2 transition-all">Ver Tablón ➔</button>
+                </div>
+            </div>`;
+
+            ceoGovernanceModulesHtml = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                ${licenseCardHtml}
+                ${pressReleaseCardHtml}
+            </div>`;
+        }
+
         // Alerta de Crisis AEE
         const unreadCrisis = (co.crisisAlerts || []).filter(a => !a.read);
         let crisisHtml = '';
@@ -669,6 +828,8 @@ Object.assign(ui, {
             </div>
 
             ${ceoTrayHtml}
+            ${ceoSpecialItemsHtml}
+            ${ceoGovernanceModulesHtml}
 
             <!-- CUADRO DE MANDOS DE ACCESOS TÁCTICOS -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
@@ -1182,5 +1343,446 @@ Object.assign(ui, {
         ui.closeModal();
         this.notify(state.user.role === 'CEO' ? "✅ Entregable visado y remitido al Claustro Docente." : "✅ Entregable transmitido al CEO para su visado formal.", "success");
         this.render();
+    },
+
+    approveSpecialItemByCEO(reqId) {
+        if (!state.user || state.user.role !== 'CEO') return;
+        const coId = state.user.coId;
+        const co = state.data.companies[coId];
+        if (!co || !co.specialItemRequests) return;
+
+        const req = co.specialItemRequests.find(r => r.id === reqId);
+        if (!req) return this.notify("Solicitud de material I+D no localizada.", "error");
+
+        req.status = 'PENDIENTE_COORDINACION';
+        req.approvedByCEO = true;
+        req.approvedAt = Date.now();
+
+        state.data.pendingCustom = state.data.pendingCustom || [];
+        const existingIdx = state.data.pendingCustom.findIndex(p => p.id === req.id);
+        const customObj = {
+            id: req.id,
+            company: coId,
+            name: req.name,
+            driveUrl: req.driveUrl,
+            date: req.date || new Date().toLocaleDateString(),
+            status: 'PENDIENTE_COORDINACION',
+            approvedByCEO: true,
+            approvedAt: Date.now()
+        };
+        if (existingIdx >= 0) {
+            state.data.pendingCustom[existingIdx] = customObj;
+        } else {
+            state.data.pendingCustom.push(customObj);
+        }
+
+        co.updatedAt = Date.now();
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
+        // Notificación al Coordinador docente ("Este último que reciba notificación de aviso")
+        ui.pushNotification('ADMIN', 'ALL', `🔬 [${co.name}] Nueva solicitud de material I+D aprobada por el CEO y elevada a Coordinación.`, 'info', { view: 'coordination' });
+        // Notificación al Técnico
+        ui.pushNotification(coId, 'TECNICO', `✓ Tu solicitud de material I+D ha sido visada por el CEO y elevada a Coordinación Docente.`, 'success');
+
+        this.notify("✅ Solicitud de material I+D visada y elevada a Coordinación Docente con notificación de aviso.", "success");
+        this.render();
+    },
+
+    modalRejectSpecialItemByCEO(reqId) {
+        if (!state.user || state.user.role !== 'CEO') return;
+        const reasons = [
+            "Presupuesto de tesorería insuficiente para este componente",
+            "La memoria técnica DOC_13 requiere mayor concreción de planos y tolerancias",
+            "Componente redundante con materiales ya disponibles en SUPER-MARSKET",
+            "Incompatible con las directrices y normas de seguridad aeroespacial AEE",
+            "Revisar permisos de lectura compartidos en Google Drive"
+        ];
+        const reasonOptions = reasons.map(r => `<option value="${this.escapeHTML(r)}">${this.escapeHTML(r)}</option>`).join('');
+
+        const html = `
+            <div class="space-y-4 font-mono text-xs">
+                <div class="p-3 bg-red-950/40 border border-red-500/50 text-slate-200">
+                    <p class="text-red-400 font-bold uppercase mb-1">↩ Devolución a I+D (Zero-Text):</p>
+                    <p class="font-sans text-[11px]">Selecciona el motivo tipificado para devolver la solicitud de material fuera de catálogo al Dpto. Técnico.</p>
+                </div>
+                <div>
+                    <label for="reject-special-item-reason" class="text-mars-yellow uppercase font-bold block mb-1">Motivo Tipificado de Devolución</label>
+                    <select id="reject-special-item-reason" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white uppercase outline-none focus:border-red-400">
+                        ${reasonOptions}
+                    </select>
+                </div>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.rejectSpecialItemByCEO('${this.escapeHTML(reqId)}')" class="min-h-[44px] bg-red-600 text-white px-5 py-2.5 text-xs font-black uppercase hover:bg-white hover:text-red-600 transition-all">[ ↩ Devolver a Técnico ]</button>`;
+        this.showModal("Devolver Solicitud de Material I+D", html, actions);
+    },
+
+    rejectSpecialItemByCEO(reqId) {
+        if (!state.user || state.user.role !== 'CEO') return;
+        const elReason = document.getElementById('reject-special-item-reason');
+        if (!elReason) return;
+        const reason = this.cleanInput(elReason.value).trim();
+
+        const coId = state.user.coId;
+        const co = state.data.companies[coId];
+        if (!co || !co.specialItemRequests) return;
+
+        const req = co.specialItemRequests.find(r => r.id === reqId);
+        if (!req) return;
+
+        req.status = 'DEVUELTO_CEO';
+        req.returnReason = reason;
+        req.rejectedAt = Date.now();
+
+        co.updatedAt = Date.now();
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
+        ui.pushNotification(coId, 'TECNICO', `↩ Solicitud de material I+D devuelta por el CEO: "${reason}".`, 'warning', { view: 'tech' });
+        this.closeModal();
+        this.notify("Solicitud de material devuelta al Dpto. Técnico.", "info");
+        this.render();
+    },
+
+    modalLaunchLicense() {
+        if (!state.user || state.user.role !== 'CEO') return;
+        const co = state.data.companies[state.user.coId];
+        if (!co) return;
+
+        const html = `
+            <div class="space-y-4 font-mono text-xs">
+                <div class="p-3 bg-mars-yellow/10 border border-mars-yellow text-slate-200 space-y-1">
+                    <p class="text-mars-yellow font-bold uppercase flex items-center gap-1.5">
+                        <span>🚀 Procedimiento de Seguridad AESA (DOC_14)</span>
+                    </p>
+                    <p class="font-sans text-[11px] leading-relaxed">
+                        Conforme a la normativa aeroespacial simulada de la Fase II, los lanzamientos en el banco de pruebas están bloqueados. Para desbloquearlos, el CEO debe cumplimentar y firmar digitalmente la solicitud oficial y remitirla a Coordinación Docente con abono de la tasa administrativa de <strong>50 €v</strong>.
+                    </p>
+                </div>
+                <div class="mb-2">
+                    ${this.renderDocTemplateBtn('DOC_14_LICENCIA_AESA', '📄 Ver Plantilla Licencia AESA (DOC_14)')}
+                </div>
+                <div>
+                    <label for="launch-license-drive-url" class="text-mars-cyan uppercase font-bold block mb-1">
+                        Enlace a Solicitud Formal AESA en Google Drive / Docs (URL)
+                    </label>
+                    <input type="url" id="launch-license-drive-url" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                    <p class="text-[10px] text-slate-400 mt-1 font-sans">Asegúrate de compartir el documento con permisos de lectura abiertos ("Cualquiera con el enlace puede ver").</p>
+                </div>
+                <div class="p-3 bg-black/60 border border-slate-800 space-y-2">
+                    <label class="flex items-start gap-2.5 cursor-pointer text-slate-200 text-xs font-sans">
+                        <input type="checkbox" id="launch-license-sign-check" class="mt-0.5 min-h-[20px] min-w-[20px] accent-mars-yellow">
+                        <span>D./Dª CEO certifica la veracidad de los cálculos estequiométricos de propelente, medidas de fuselaje y protocolos de seguridad física del banco de pruebas.</span>
+                    </label>
+                </div>
+                <div class="p-2.5 bg-black/60 border border-slate-800 flex justify-between items-center text-xs">
+                    <span class="text-slate-300">Tasa Administrativa AESA:</span>
+                    <span class="text-mars-yellow font-bold font-orbitron">-50.00 €v</span>
+                </div>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.submitLaunchLicense()" class="min-h-[44px] bg-mars-yellow text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">[ ✍️ Firmar y Tramitar Licencia (-50 €v) ]</button>`;
+        this.showModal("Tramitación de Licencia de Lanzamiento AESA (DOC_14)", html, actions);
+    },
+
+    submitLaunchLicense() {
+        if (!state.user || state.user.role !== 'CEO') return;
+        const elUrl = document.getElementById('launch-license-drive-url');
+        const elCheck = document.getElementById('launch-license-sign-check');
+        if (!elUrl || !elCheck) return;
+
+        const driveUrl = this.cleanInput(elUrl.value).trim();
+        if (!driveUrl) return this.notify("Debes indicar el enlace Drive de la solicitud formal AESA.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+        }
+        if (!elCheck.checked) {
+            return this.notify("Debes marcar la casilla de certificación y firma digital del CEO.", "warning");
+        }
+
+        const coId = state.user.coId;
+        const co = state.data.companies[coId];
+        if (!co) return;
+
+        if (Number(co.balance || 0) < 50) {
+            return this.notify("Saldo insuficiente: se requieren 50 €v de tesorería para la tasa administrativa de la licencia AESA.", "error");
+        }
+
+        // Deducción de 50 €v y registro en Libro Mayor
+        co.balance -= 50;
+        state.addToLedger(coId, 'Tasa Administrativa AESA // Licencia de Lanzamiento (DOC_14)', 'TASAS_ADMINISTRATIVAS', -50);
+
+        co.launchLicense = {
+            id: 'AESA-' + Date.now(),
+            driveUrl: driveUrl,
+            status: 'PENDIENTE_DOCENTE',
+            appliedAt: Date.now(),
+            appliedDate: new Date().toLocaleDateString(),
+            feePaid: 50,
+            signedBy: state.user.name || 'CEO'
+        };
+        co.updatedAt = Date.now();
+
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
+        ui.pushNotification('ADMIN', 'ALL', `🚀 [${co.name}] El CEO ha tramitado y abonado la Licencia de Lanzamiento AESA (50 €v). Pendiente de validación.`, 'info', { view: 'coordination' });
+        ui.pushNotification(coId, 'ALL', `🚀 El CEO ha tramitado la Licencia de Lanzamiento AESA. Pendiente de validación por Coordinación Docente.`, 'info');
+
+        this.closeModal();
+        this.notify("✅ Licencia AESA tramitada exitosamente. Tasa de 50 €v abonada y remitida al claustro para su validación.", "success");
+        this.updateHUD();
+        this.render();
+    },
+
+    modalPublishPressRelease(phaseKey) {
+        if (!state.user || state.user.role !== 'CEO') return;
+        const prPhases = typeof PRESS_RELEASE_PHASES !== 'undefined' ? PRESS_RELEASE_PHASES : [
+            { phase: 'I', title: 'Nota de Prensa Oficial — Cierre Fase I', deadlineLabel: '15/12/2026', requiredContent: 'Presentación del concepto de cohete, capital obtenido por patrocinio y objetivos corporativos.' },
+            { phase: 'II', title: 'Nota de Prensa Oficial — Cierre Fase II', deadlineLabel: '15/02/2027', requiredContent: 'Resultados preliminares de las pruebas de vuelo, mediciones angulares y estado financiero a mitad del proyecto.' },
+            { phase: 'III', title: 'Nota de Prensa Oficial — Cierre Fase III', deadlineLabel: '31/03/2027', requiredContent: 'Conclusiones de taller, dificultades de montaje superadas y preparación para el Pitch final.' }
+        ];
+        const phaseDef = prPhases.find(p => p.phase === phaseKey) || prPhases[0];
+
+        const html = `
+            <div class="space-y-4 font-mono text-xs">
+                <div class="p-3 bg-cyan-950/40 border border-cyan-500/40 text-slate-200 space-y-1">
+                    <p class="text-cyan-400 font-bold uppercase">${this.escapeHTML(phaseDef.title)}</p>
+                    <p class="font-sans text-[11px] leading-relaxed">
+                        Fecha de corte oficial: <strong>${this.escapeHTML(phaseDef.deadlineLabel)}</strong>. Completa la nota de prensa corporativa obligatoria sintetizando los avances de todas las áreas antes de su publicación en el Tablón de Noticias.
+                    </p>
+                </div>
+                <div class="p-3 bg-black/60 border border-slate-800 text-slate-300 space-y-1">
+                    <span class="text-mars-yellow font-bold uppercase text-[11px] block">Estructura Obligatoria:</span>
+                    <p class="font-sans text-[11px]">${this.escapeHTML(phaseDef.requiredContent)}</p>
+                </div>
+                <div class="mb-2">
+                    ${this.renderDocTemplateBtn('DOC_15_NOTA_PRENSA', '📄 Ver Plantilla Nota de Prensa (DOC_15)')}
+                </div>
+                <div>
+                    <label for="press-release-drive-url" class="text-mars-cyan uppercase font-bold block mb-1">
+                        Enlace a la Nota de Prensa en Google Drive o Docs (URL)
+                    </label>
+                    <input type="url" id="press-release-drive-url" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                    <p class="text-[10px] text-slate-400 mt-1 font-sans">El documento debe estar en modo <em>"Cualquiera con el enlace puede ver"</em> para que toda la comunidad pueda leerlo.</p>
+                </div>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.submitPressRelease('${this.escapeHTML(phaseDef.phase)}')" class="min-h-[44px] bg-mars-cyan text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)]">[ 📰 Publicar en Tablón de Noticias ]</button>`;
+        this.showModal(`Publicar Nota de Prensa (${phaseDef.title})`, html, actions);
+    },
+
+    submitPressRelease(phaseKey) {
+        if (!state.user || state.user.role !== 'CEO') return;
+        const elUrl = document.getElementById('press-release-drive-url');
+        if (!elUrl) return;
+
+        const driveUrl = this.cleanInput(elUrl.value).trim();
+        if (!driveUrl) return this.notify("Debes indicar el enlace Drive de la nota de prensa.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+        }
+
+        const coId = state.user.coId;
+        const co = state.data.companies[coId];
+        if (!co) return;
+
+        co.pressReleases = co.pressReleases || {};
+        co.pressReleases[phaseKey] = {
+            id: 'PR-' + coId + '-' + phaseKey,
+            phase: phaseKey,
+            title: `Nota de Prensa Oficial Fase ${phaseKey} — ${co.name}`,
+            driveUrl: driveUrl,
+            publishedAt: Date.now(),
+            publishedDate: new Date().toLocaleDateString(),
+            author: state.user.name || 'CEO'
+        };
+        co.updatedAt = Date.now();
+
+        // Registro en listado global para el Tablón de Noticias
+        state.data.pressReleases = Array.isArray(state.data.pressReleases) ? state.data.pressReleases : [];
+        const existingIdx = state.data.pressReleases.findIndex(p => p.coId === coId && p.phase === phaseKey);
+        const item = {
+            id: 'PR-' + coId + '-' + phaseKey,
+            coId: coId,
+            companyName: co.name,
+            classGroup: co.classGroup || 'A',
+            phase: phaseKey,
+            title: `Nota de Prensa Oficial — Cierre Fase ${phaseKey} (${co.name})`,
+            driveUrl: driveUrl,
+            publishedAt: Date.now(),
+            publishedDate: new Date().toLocaleDateString()
+        };
+        if (existingIdx >= 0) {
+            state.data.pressReleases[existingIdx] = item;
+        } else {
+            state.data.pressReleases.unshift(item);
+        }
+
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
+        ui.pushNotification(coId, 'ALL', `📰 El CEO ha publicado la Nota de Prensa Oficial de Fase ${phaseKey} en el Tablón de Noticias.`, 'success', { view: 'news' });
+        ui.pushNotification('ADMIN', 'ALL', `📰 [${co.name}] Nota de Prensa Oficial de Fase ${phaseKey} publicada en el Tablón.`, 'info', { view: 'news' });
+
+        this.closeModal();
+        this.notify("✅ Nota de Prensa Oficial publicada en el Tablón de Noticias.", "success");
+        this.render();
+    },
+
+    setNewsClassFilter(cls) {
+        this.newsClassFilter = cls || 'ALL';
+        this.render();
+    },
+
+    setNewsPhaseFilter(ph) {
+        this.newsPhaseFilter = ph || 'ALL';
+        this.render();
+    },
+
+    viewNewsBoard(el) {
+        if (!el || !state.user) return;
+        const classFilter = this.newsClassFilter || 'ALL';
+        const phaseFilter = this.newsPhaseFilter || 'ALL';
+
+        // Recopilación de todas las notas de prensa publicadas
+        const allReleases = [];
+        const companies = state.data?.companies || {};
+        Object.keys(companies).forEach(cid => {
+            const co = companies[cid];
+            if (co && co.pressReleases) {
+                Object.keys(co.pressReleases).forEach(pk => {
+                    const pr = co.pressReleases[pk];
+                    if (pr && pr.driveUrl) {
+                        allReleases.push({
+                            id: pr.id || `${cid}-${pk}`,
+                            coId: cid,
+                            companyName: co.name,
+                            classGroup: co.classGroup || 'A',
+                            phase: pk,
+                            title: pr.title || `Nota de Prensa Fase ${pk} (${co.name})`,
+                            driveUrl: pr.driveUrl,
+                            publishedAt: pr.publishedAt || 0,
+                            publishedDate: pr.publishedDate || '--'
+                        });
+                    }
+                });
+            }
+        });
+
+        if (Array.isArray(state.data?.pressReleases)) {
+            state.data.pressReleases.forEach(pr => {
+                if (!allReleases.some(r => r.id === pr.id)) {
+                    allReleases.push(pr);
+                }
+            });
+        }
+
+        allReleases.sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
+
+        let filtered = allReleases;
+        if (classFilter !== 'ALL') {
+            filtered = filtered.filter(r => (r.classGroup || 'A').toUpperCase() === classFilter.toUpperCase());
+        }
+        if (phaseFilter !== 'ALL') {
+            filtered = filtered.filter(r => r.phase === phaseFilter);
+        }
+
+        const availableClasses = ['A', 'B', 'C', 'D'];
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'space-y-6';
+        wrapper.innerHTML = `
+            <!-- Cabecera del Tablón de Noticias -->
+            <div class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-cyan">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-mars-border pb-4 mb-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="px-2.5 py-0.5 text-xs font-black uppercase bg-mars-cyan/20 border border-mars-cyan text-mars-cyan">PRENSA & COMUNICACIÓN OFICIAL</span>
+                            <span class="text-xs text-slate-400 font-mono">${allReleases.length} Comunicados Publicados</span>
+                        </div>
+                        <h2 class="text-xl sm:text-2xl font-orbitron font-black text-white uppercase tracking-tight">
+                            📰 Tablón Oficial de Noticias de la Misión
+                        </h2>
+                        <p class="text-xs text-slate-300 uppercase mt-0.5">
+                            Seguimiento público del progreso de todas las startups aeroespaciales en cada corte de fase (DOC_15).
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Barra de Filtros Rápidos (Ergonomía Docente y Alumnos) -->
+                <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+                    <!-- Filtro por Clase -->
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="text-xs text-slate-400 font-mono font-bold mr-1 uppercase">Clase:</span>
+                        <button type="button" onclick="ui.setNewsClassFilter('ALL')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${classFilter === 'ALL' ? 'bg-mars-cyan text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
+                            Todas
+                        </button>
+                        ${availableClasses.map(c => `
+                            <button type="button" onclick="ui.setNewsClassFilter('${c}')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${classFilter === c ? 'bg-mars-cyan text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
+                                Clase ${c}
+                            </button>
+                        `).join('')}
+                    </div>
+
+                    <!-- Filtro por Fase -->
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="text-xs text-slate-400 font-mono font-bold mr-1 uppercase">Fase:</span>
+                        <button type="button" onclick="ui.setNewsPhaseFilter('ALL')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${phaseFilter === 'ALL' ? 'bg-amber-400 text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
+                            Todas
+                        </button>
+                        <button type="button" onclick="ui.setNewsPhaseFilter('I')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${phaseFilter === 'I' ? 'bg-amber-400 text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
+                            Fase I
+                        </button>
+                        <button type="button" onclick="ui.setNewsPhaseFilter('II')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${phaseFilter === 'II' ? 'bg-amber-400 text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
+                            Fase II
+                        </button>
+                        <button type="button" onclick="ui.setNewsPhaseFilter('III')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${phaseFilter === 'III' ? 'bg-amber-400 text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
+                            Fase III
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Listado de Noticias -->
+            <div class="space-y-4">
+                ${filtered.length === 0 ? `
+                    <div class="terminal-border bg-mars-card p-10 text-center border-dashed border-slate-700">
+                        <span class="text-3xl block mb-2">📰</span>
+                        <h3 class="text-base font-orbitron font-bold text-white uppercase mb-1">Sin Comunicados Publicados en este Filtro</h3>
+                        <p class="text-xs text-slate-400 max-w-lg mx-auto font-sans">
+                            Las notas de prensa oficiales se habilitan y sincronizan en este tablón al cierre de cada fase (15/12 para Fase I, 15/02 para Fase II y 31/03 para Fase III).
+                        </p>
+                    </div>
+                ` : `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        ${filtered.map(r => `
+                            <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-cyan flex flex-col justify-between hover:border-mars-cyan transition-all">
+                                <div>
+                                    <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="px-2 py-0.5 text-xs font-black uppercase bg-black border border-mars-cyan text-mars-cyan">FASE ${this.escapeHTML(r.phase)}</span>
+                                            <span class="px-2 py-0.5 text-xs font-mono text-slate-300 bg-slate-900 border border-slate-700">[CLASE ${this.escapeHTML(r.classGroup || 'A')}]</span>
+                                        </div>
+                                        <span class="text-[11px] text-slate-400 font-mono">${this.escapeHTML(r.publishedDate || '--')}</span>
+                                    </div>
+                                    <h3 class="text-base font-orbitron font-black text-white uppercase mb-1.5">${this.escapeHTML(r.companyName)}</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed font-sans mb-3">${this.escapeHTML(r.title)}</p>
+                                </div>
+                                <div class="pt-3 border-t border-slate-800 flex justify-between items-center">
+                                    <span class="text-[10px] text-slate-500 font-mono">DOC_15 Oficial</span>
+                                    <a href="${encodeURI(r.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-2 bg-cyan-950/60 border border-cyan-400 text-cyan-200 hover:bg-cyan-400 hover:text-black px-4 py-2 text-xs font-bold uppercase transition-all shadow-sm">
+                                        <span>📄 Leer Nota de Prensa Oficial</span>
+                                        <span class="text-xs font-mono">↗</span>
+                                    </a>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `}
+            </div>
+        `;
+        el.appendChild(wrapper);
     }
 });

@@ -108,39 +108,38 @@ Object.assign(ui, {
 
         let nameChangeHtml = '';
         if (isCEO) {
-            const req = co.nameChangeRequest;
-            if (req && req.status === 'PENDIENTE') {
-                nameChangeHtml = `
-                <div class="bg-mars-yellow/10 border border-mars-yellow p-4 flex flex-wrap justify-between items-center gap-3 mb-6">
-                    <div class="min-w-0">
-                        <span class="text-xs text-mars-yellow font-bold uppercase tracking-wider block mb-1">Registro Mercantil // Solicitud en Revisión</span>
-                        <p class="text-xs sm:text-sm text-white break-words">Motivo: <span class="font-bold text-mars-yellow">${this.escapeHTML(req.reason || req.proposedName || '')}</span></p>
-                        ${req.driveUrl ? `<a href="${encodeURI(req.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50"><span>📄 Abrir Solicitud Oficial en Google Drive ↗</span></a>` : ''}
+            nameChangeHtml = `
+            <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-amber-400 mb-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="px-2 py-0.5 text-xs font-black uppercase bg-amber-950/40 border border-amber-500 text-amber-400">REGISTRO MERCANTIL</span>
+                            <span class="text-xs text-slate-400 font-mono">Tasa Mercantil: 50 €v</span>
+                        </div>
+                        <h3 class="font-orbitron text-amber-400 text-sm sm:text-base uppercase tracking-tight font-black">
+                            🏛️ Modificación Estatutaria // Cambio de Razón Social
+                        </h3>
+                        <p class="text-xs text-slate-300 mt-0.5">
+                            Razón Social Actual: <strong class="text-white">${this.escapeHTML(co.name)}</strong>. Cambiar el nombre devenga una tasa de 50 €v en el Libro Mayor y actualiza toda la plataforma.
+                        </p>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs bg-mars-yellow text-black font-black px-2.5 py-1 uppercase animate-pulse">En Revisión</span>
-                        <button type="button" onclick="ui.cancelNameChangeRequest()" class="min-h-[44px] bg-slate-800 border border-mars-magenta/60 text-mars-magenta hover:bg-mars-magenta hover:text-white px-3 py-1.5 text-xs font-bold uppercase transition-all">Cancelar Solicitud</button>
+                    <button type="button" onclick="ui.modalStatutoryNameChange()" class="min-h-[44px] bg-amber-400 text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all whitespace-nowrap shadow-[0_0_10px_rgba(255,204,0,0.3)]">
+                        [ 🏛️ Modificación Estatutaria (-50 €v) ]
+                    </button>
+                </div>
+                ${Array.isArray(co.previousNames) && co.previousNames.length > 0 ? `
+                    <div class="mt-3 pt-2.5 border-t border-slate-800 text-[11px] text-slate-400">
+                        <span class="font-mono text-amber-300 font-bold uppercase">Histórico de Nombres:</span>
+                        ${co.previousNames.map(p => `<span class="inline-block ml-2 px-1.5 py-0.5 bg-black/50 border border-slate-700 font-mono">${this.escapeHTML(p.oldName)} ➔ ${this.escapeHTML(p.newName)} (${this.escapeHTML(p.date)})</span>`).join('')}
                     </div>
-                </div>`;
-            } else if (req && req.status === 'RECHAZADO') {
-                nameChangeHtml = `
-                <div class="bg-mars-magenta/10 border border-mars-magenta p-4 flex flex-wrap justify-between items-center gap-3 mb-6">
-                    <div class="min-w-0 flex-1">
-                        <span class="text-xs text-mars-magenta font-bold uppercase tracking-wider block mb-1">🏛️ Registro Mercantil // Solicitud Denegada</span>
-                        <p class="text-xs sm:text-sm text-white break-words">La solicitud de cambio de denominación social ha sido denegada por Coordinación.</p>
-                    </div>
-                    <div class="flex gap-2 shrink-0">
-                        <button type="button" onclick="ui.promptRequestNameChange()" class="min-h-[44px] bg-mars-yellow text-black font-black px-3 py-2 text-xs uppercase hover:bg-white transition-all">Nueva Solicitud</button>
-                        <button type="button" onclick="ui.dismissNameChangeRejection()" class="min-h-[44px] bg-slate-800 border border-slate-700 text-slate-300 hover:text-white px-3 py-2 text-xs uppercase font-bold transition-all">Entendido</button>
-                    </div>
-                </div>`;
-            } else {
-                nameChangeHtml = `
-                <button type="button" onclick="ui.promptRequestNameChange()" class="w-full min-h-[48px] bg-slate-900 border border-slate-700 hover:border-mars-yellow text-slate-200 hover:text-white p-3.5 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between mb-6 group">
-                    <span>🏛️ Solicitar Cambio de Denominación Social</span>
-                    <span class="text-mars-yellow transition-transform group-hover:translate-x-1">➔</span>
-                </button>`;
-            }
+                ` : ''}
+            </div>`;
+        } else {
+            nameChangeHtml = `
+            <div class="bg-black/50 border border-slate-800 p-3 mb-6 text-xs text-slate-400 flex flex-wrap justify-between items-center gap-2">
+                <span>🏛️ Razón Social Oficial: <strong class="text-white">${this.escapeHTML(co.name)}</strong></span>
+                <span class="text-[11px] text-slate-500 font-mono">Modificación Estatutaria reservada exclusivamente al CEO (50 €v)</span>
+            </div>`;
         }
 
         let ceoSloganApprovalHtml = '';
@@ -287,6 +286,44 @@ Object.assign(ui, {
                         }).join('') || '<div class="terminal-border border-dashed p-6 text-center text-slate-300 italic text-xs">No hay mociones asamblearias registradas en la startup.</div>'}
                     </div>
                 </div>
+
+                <!-- DIARIO DE REUNIONES DE DEPARTAMENTO (ACTAS DE COMITÉ DE DIRECCIÓN DOC_16) -->
+                <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-cyan">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 border-b border-mars-border pb-3">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="px-2 py-0.5 text-xs font-black uppercase bg-mars-cyan/20 border border-mars-cyan text-mars-cyan">GOBERNANZA INTERNA</span>
+                                <span class="text-xs text-slate-400 font-mono">${(co.meetingMinutes || []).length} Actas Registradas</span>
+                            </div>
+                            <h2 class="font-orbitron text-mars-cyan text-base sm:text-lg uppercase tracking-tighter">Diario de Reuniones de Dirección (DOC_16)</h2>
+                            <p class="text-xs text-slate-300 mt-0.5">Actas de comités de dirección y reuniones interdepartamentales para seguimiento de acuerdos.</p>
+                        </div>
+                        <button type="button" onclick="ui.modalRegisterMeetingMinute()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all whitespace-nowrap shadow-[0_0_10px_rgba(0,255,204,0.3)]">
+                            + Registrar Nueva Acta
+                        </button>
+                    </div>
+                    <div class="space-y-3">
+                        ${(co.meetingMinutes && co.meetingMinutes.length > 0) ? co.meetingMinutes.map(m => `
+                            <div class="bg-black/80 border border-slate-800 p-3.5 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                        <span class="text-xs font-bold text-mars-cyan uppercase">[${this.escapeHTML(m.topic || 'Comité de Dirección')}]</span>
+                                        <span class="text-[10px] text-slate-400 font-mono">${this.escapeHTML(m.date || '')}</span>
+                                        <span class="text-[10px] text-amber-400 font-mono">Por: ${this.escapeHTML(m.authorRole || 'CEO')}</span>
+                                    </div>
+                                    <h4 class="text-white font-bold text-xs sm:text-sm uppercase leading-snug">${this.escapeHTML(m.session || 'Acta de Comité')}</h4>
+                                </div>
+                                <div class="shrink-0">
+                                    ${m.driveUrl ? `
+                                        <a href="${encodeURI(m.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors">
+                                            <span>📄 Abrir Acta en Google Docs ↗</span>
+                                        </a>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `).join('') : '<div class="terminal-border border-dashed p-5 text-center text-slate-400 italic text-xs uppercase">No hay actas de comités registradas. Utiliza la plantilla oficial DOC_16 para documentar las sesiones de dirección.</div>'}
+                    </div>
+                </div>
             </div>
             <div class="lg:col-span-4 space-y-6">
                 <div class="terminal-border bg-mars-card p-5 border-t-4 border-t-mars-magenta">
@@ -299,64 +336,202 @@ Object.assign(ui, {
         el.appendChild(wrapper);
     },
 
-    promptRequestNameChange() {
+    modalStatutoryNameChange() {
         if (!state.user || state.user.role !== 'CEO') return;
+        const co = state.data.companies[state.user.coId];
+        if (!co) return;
+
         const reasons = typeof NAME_CHANGE_REASONS_DEF !== 'undefined' ? NAME_CHANGE_REASONS_DEF : [
-            { id: "PIVOTAJE_MERCADO", label: "Pivotaje Estratégico de Mercado / Reorientación de Misión" },
-            { id: "REORGANIZACION_INTERNA", label: "Reorganización de Junta Directiva y Estructura Interna" },
-            { id: "RESOLUCION_ASAMBLEA", label: "Resolución de la Asamblea General de Socios" },
-            { id: "DIFERENCIACION_MARCA", label: "Diferenciación Competitiva frente a otras Empresas del Sector" },
-            { id: "REQUERIMIENTO_DOCENTE", label: "Adecuación por Requerimiento de Coordinación Docente" }
+            { id: "REORIENTACION_ESTRATEGICA", label: "Reorientación estratégica y pivotaje del modelo de negocio" },
+            { id: "FUSION_DEPARTAMENTAL", label: "Fusión o reestructuración de departamentos internos" },
+            { id: "ALINEACION_AEE", label: "Alineación con nuevos objetivos de la misión aeroespacial AEE" },
+            { id: "MARCA_INTERNACIONAL", label: "Homogeneización de identidad de marca y denominación internacional" },
+            { id: "ASAMBLEA_SOCIOS", label: "Resolución aprobada por mayoría en Asamblea General de Socios" }
         ];
         const reasonsOptions = reasons.map(r => `<option value="${this.escapeHTML(r.label)}">${this.escapeHTML(r.label)}</option>`).join('');
-        const templateBtn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_1_DENOMINACION', '📄 Modelo Oficial Solicitud Denominación Social (Hacer copia)') : '';
 
         const html = `
-            <p class="text-xs text-slate-300 mb-4 leading-relaxed uppercase">La modificación de la denominación social debe ser evaluada por Coordinación Docente. Cumplimenta la solicitud formal en Google Docs y adjunta el enlace oficial.</p>
-            <div class="mb-4">
-                ${templateBtn}
+            <div class="space-y-4 font-mono text-xs">
+                <div class="p-3 bg-amber-950/40 border border-amber-500/50 text-slate-200 space-y-1">
+                    <p class="text-amber-400 font-bold uppercase">⚖️ Efecto Jurídico y Económico Inmediato:</p>
+                    <p class="font-sans text-[11px]">El cambio de razón social formaliza una modificación estatutaria ante el Registro Mercantil. Se cargarán <strong>50 €v</strong> en el Libro Mayor como gasto extraordinario y se actualizará el nombre en el HUD, dossier y rankings de la app.</p>
+                </div>
+                <div>
+                    <label class="text-slate-400 uppercase font-bold block mb-1">Razón Social Actual</label>
+                    <input type="text" value="${this.escapeAttr(co.name)}" disabled class="w-full min-h-[44px] bg-black/60 border border-slate-700 p-2.5 text-white font-bold opacity-75">
+                </div>
+                <div>
+                    <label for="statutory-new-name" class="text-mars-yellow uppercase font-bold block mb-1">Nueva Denominación Social Propuesta</label>
+                    <input type="text" id="statutory-new-name" placeholder="Ej: AERO-SPARK DYNAMICS" maxlength="40" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white font-bold outline-none focus:border-white uppercase" required>
+                    <p class="text-[10px] text-slate-400 mt-1 font-sans">Entre 3 y 40 caracteres. Sin nombres reales de personas (Zero-PII).</p>
+                </div>
+                <div>
+                    <label for="statutory-name-reason" class="text-mars-yellow uppercase font-bold block mb-1">Motivo Estratégico del Rebranding</label>
+                    <select id="statutory-name-reason" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white uppercase outline-none focus:border-mars-yellow">
+                        ${reasonsOptions}
+                    </select>
+                </div>
+                <div class="p-2.5 bg-black/60 border border-slate-800 flex justify-between items-center text-xs">
+                    <span class="text-slate-300">Tasa Registro Mercantil:</span>
+                    <span class="text-amber-400 font-bold font-orbitron">-50.00 €v</span>
+                </div>
             </div>
-            <label for="req-name-reason" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Motivo Tipificado del Renombramiento</label>
-            <select id="req-name-reason" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-xs text-white uppercase outline-none focus:border-mars-yellow mb-3">
-                ${reasonsOptions}
-            </select>
-            <label for="req-name-drive-url" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Enlace a Solicitud Formal Oficial (Google Drive / Docs)</label>
-            <input type="url" id="req-name-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-3 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow mb-2" required>
-            <p class="text-[10px] text-slate-400">Coordinación revisará el documento formal y fijará la nueva denominación oficial en el sistema.</p>
         `;
-        const actions = `<button type="button" onclick="ui.submitNameChangeRequest()" class="min-h-[44px] bg-mars-yellow text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all">Transmitir a Coordinación</button>`;
-        this.showModal("Solicitud Oficial de Renombramiento", html, actions);
+        const actions = `<button type="button" onclick="ui.executeStatutoryNameChange()" class="min-h-[44px] bg-amber-400 text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">[ Confirmar Modificación y Pagar 50 €v ]</button>`;
+        this.showModal("Modificación Estatutaria de Denominación Social", html, actions);
     },
 
-    submitNameChangeRequest() {
-        const elReason = document.getElementById('req-name-reason');
-        const elUrl = document.getElementById('req-name-drive-url');
-        if (!elReason || !elUrl) return;
+    executeStatutoryNameChange() {
+        if (!state.user || state.user.role !== 'CEO') return;
+        const elName = document.getElementById('statutory-new-name');
+        const elReason = document.getElementById('statutory-name-reason');
+        if (!elName || !elReason) return;
 
-        const reason = this.cleanInput(elReason.value);
-        const driveUrl = this.cleanInput(elUrl.value);
+        const newName = this.cleanInput(elName.value).trim();
+        const reason = this.cleanInput(elReason.value).trim();
 
-        if (!reason) return this.notify("Debes seleccionar el motivo del cambio.", "warning");
-        if (!driveUrl) return this.notify("Debes indicar el enlace Drive de la solicitud formal.", "warning");
+        if (!newName || newName.length < 3) {
+            return this.notify("La nueva denominación social debe tener al menos 3 caracteres.", "warning");
+        }
+        if (newName.length > 50) {
+            return this.notify("La nueva denominación no puede exceder los 50 caracteres.", "warning");
+        }
+        if (this.hasForbiddenWords(newName, 'Denominación Social', elName)) return;
+
+        const coId = state.user.coId;
+        const co = state.data.companies[coId];
+        if (!co) return;
+
+        if (Number(co.balance || 0) < 50) {
+            return this.notify("Saldo insuficiente: se requieren 50 €v de tesorería para abonar la tasa mercantil de modificación estatutaria.", "error");
+        }
+
+        const oldName = co.name;
+        if (oldName.toUpperCase() === newName.toUpperCase()) {
+            return this.notify("La nueva denominación debe ser diferente a la actual.", "warning");
+        }
+
+        // Deducción de 50 €v y registro en Libro Mayor
+        co.balance -= 50;
+        state.addToLedger(coId, 'Tasa Registro Mercantil — Modificación Estatutaria (' + oldName + ' ➔ ' + newName + ')', 'REGISTRO_MERCANTIL', -50);
+
+        co.previousNames = co.previousNames || [];
+        co.previousNames.push({
+            oldName: oldName,
+            newName: newName,
+            reason: reason,
+            date: new Date().toLocaleDateString(),
+            timestamp: Date.now(),
+            feePaid: 50
+        });
+
+        co.name = newName;
+        co.updatedAt = Date.now();
+
+        if (co.nameChangeRequest) {
+            co.nameChangeRequest.status = 'COMPLETADO';
+            co.nameChangeRequest.resolvedAt = Date.now();
+        }
+
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
+        ui.pushNotification(coId, 'ALL', `🏛️ Modificación Estatutaria: La startup pasa a denominarse "${newName}". Tasa de 50 €v cargada en tesorería.`, 'info');
+        ui.pushNotification('ADMIN', 'ALL', `🏛️ [Modificación Estatutaria] "${oldName}" ha cambiado su razón social a "${newName}".`, 'info');
+
+        this.closeModal();
+        this.notify(`✅ Modificación Estatutaria ejecutada con éxito. Razón social actualizada a "${newName}". Se han cargado 50 €v de tasa mercantil.`, "success");
+        this.updateHUD();
+        this.render();
+    },
+
+    modalRegisterMeetingMinute() {
+        if (!state.user) return;
+        const html = `
+            <div class="space-y-4 font-mono text-xs">
+                <div class="p-3 bg-cyan-950/40 border border-cyan-500/40 text-slate-200 space-y-1">
+                    <p class="text-cyan-400 font-bold uppercase">📓 Diario de Reuniones de Dirección (DOC_16):</p>
+                    <p class="font-sans text-[11px]">
+                        Registra los acuerdos, órdenes del día y compromisos alcanzados en el Comité de Dirección o reuniones interdepartamentales.
+                    </p>
+                </div>
+                <div class="mb-2">
+                    ${this.renderDocTemplateBtn('DOC_16_ACTA_COMITE', '📄 Ver Plantilla Acta de Comité (DOC_16)')}
+                </div>
+                <div>
+                    <label for="meeting-minute-session" class="text-mars-yellow uppercase font-bold block mb-1">Título / Número de Sesión</label>
+                    <input type="text" id="meeting-minute-session" placeholder="Ej: Sesión Ordinaria nº 2 — Planificación Fase II" maxlength="60" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white font-bold outline-none focus:border-mars-yellow" required>
+                </div>
+                <div>
+                    <label for="meeting-minute-topic" class="text-mars-yellow uppercase font-bold block mb-1">Eje Temático Principal</label>
+                    <select id="meeting-minute-topic" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white uppercase outline-none focus:border-mars-yellow">
+                        <option value="ESTRATEGIA_HITOS">Estrategia Global y Reparto de Hitos</option>
+                        <option value="DISENO_ID">Diseño Aeroespacial, Propelentes y Taller</option>
+                        <option value="PRESUPUESTO_B2B">Presupuesto, Compras y Mercado B2B</option>
+                        <option value="COMUNICACION_MKT">Identidad de Marca, Eslogan y Campañas</option>
+                        <option value="PREPARACION_PITCH">Ensayos de Vuelo y Preparación del Pitch</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="meeting-minute-drive-url" class="text-mars-cyan uppercase font-bold block mb-1">Enlace al Acta Oficial en Google Drive o Docs</label>
+                    <input type="url" id="meeting-minute-drive-url" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                    <p class="text-[10px] text-slate-400 mt-1 font-sans">El documento debe compartirse con permisos de lectura abiertos.</p>
+                </div>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.submitMeetingMinute()" class="min-h-[44px] bg-mars-cyan text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)]">[ 📓 Registrar Acta Oficial ]</button>`;
+        this.showModal("Registrar Acta de Comité de Dirección (DOC_16)", html, actions);
+    },
+
+    submitMeetingMinute() {
+        if (!state.user) return;
+        const elSession = document.getElementById('meeting-minute-session');
+        const elTopic = document.getElementById('meeting-minute-topic');
+        const elUrl = document.getElementById('meeting-minute-drive-url');
+        if (!elSession || !elTopic || !elUrl) return;
+
+        const session = this.cleanInput(elSession.value).trim();
+        const topic = this.cleanInput(elTopic.value).trim();
+        const driveUrl = this.cleanInput(elUrl.value).trim();
+
+        if (!session) return this.notify("Debes indicar el número o título de la sesión.", "warning");
+        if (!driveUrl) return this.notify("Debes indicar el enlace Drive del acta oficial.", "warning");
         if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
             return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
         }
+        if (this.hasForbiddenWords(session, 'Acta de Reunión', elSession)) return;
 
-        const co = state.data.companies[state.user.coId];
-        co.nameChangeRequest = {
-            status: 'PENDIENTE',
-            reason: reason,
+        const coId = state.user.coId;
+        const co = state.data.companies[coId];
+        if (!co) return;
+
+        co.meetingMinutes = co.meetingMinutes || [];
+        co.meetingMinutes.unshift({
+            id: 'ACTA-' + Date.now(),
+            session: session,
+            topic: topic,
             driveUrl: driveUrl,
-            proposedName: 'Propuesta en Documento Drive',
-            date: new Date().toLocaleString(),
-            updatedAt: Date.now()
-        };
+            authorRole: state.user.role,
+            date: new Date().toLocaleDateString(),
+            timestamp: Date.now()
+        });
         co.updatedAt = Date.now();
 
-        state.save();
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
+        ui.pushNotification(coId, 'ALL', `📓 Nueva Acta de Comité de Dirección registrada por ${state.user.role}: "${session}".`, 'info');
         this.closeModal();
+        this.notify("✅ Acta de Comité de Dirección registrada en el Diario Oficial.", "success");
         this.render();
-        this.notify("✅ Solicitud enviada exitosamente al Registro Mercantil (Coordinación).", "success");
+    },
+
+    promptRequestNameChange() {
+        return this.modalStatutoryNameChange();
+    },
+
+    submitNameChangeRequest() {
+        return this.executeStatutoryNameChange();
     },
 
     cancelNameChangeRequest() {
