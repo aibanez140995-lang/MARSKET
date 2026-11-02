@@ -248,6 +248,13 @@ const ui = {
     },
 
     navigate(view) {
+        if (!state.user?.admin && view === 'dossier') {
+            this.current = 'role_deliverables';
+            this.currentSubView = null;
+            this.roleDeliverablesSection = 'grades';
+            this.render();
+            return;
+        }
         this.current = view;
         this.currentSubView = null;
         this.render();

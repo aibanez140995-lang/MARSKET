@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.56) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.57) ---
 
-const APP_VERSION = "1.1.56";
+const APP_VERSION = "1.1.57";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1036,8 +1036,25 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.56
+// Changelog Oficial de Producción v1.1.57
 const APP_CHANGELOG = [
+    {
+      version: "1.1.57",
+      date: new Date().toISOString().split('T')[0],
+      title: "Protección Anti-Spoilers en Contratos y Unificación Táctica de Entregables & Dossier",
+      items: [
+        "Ocultación Anti-Spoilers en Contratos Comerciales: Las licitaciones corporativas y las subpestañas por fase permanecen clasificadas e invisibles hasta la fecha oficial de activación de cada fase (11/11/2026 para Fase I y apertura respectiva para Fases II, III y IV).",
+        "Banner Clasificado Informativo: Antes de la apertura oficial de Fase I (11/11/2026), los alumnos ven un panel táctico de seguridad indicando la fecha exacta de apertura sin revelar detalles previos.",
+        "Soporte Permanente para Sandbox y Claustro: La empresa de pruebas TEST-0000 y el perfil Docente mantienen acceso completo e inmediato a las 4 fases y a los 24 contratos para auditoría y ensayos.",
+        "Unificación Ergonómica de 'Entregables & Dossier': Integración del Dossier académico en la pestaña '📤 Entregables & Dossier' estructurada en 3 subpestañas tácticas ('Gestión de Entregables', 'Calificaciones & Rúbricas 100%' y 'Cronograma Oficial'), descongestionando la barra superior.",
+        "Preservación de Vistas Docentes: El Claustro Docente conserva su pestaña directa 'Inspeccionar Dossiers' para auditar y calificar con comodidad las 6 clases del centro."
+      ],
+      highlights: [
+        { type: "ANTI-SPOILER", text: "Licitaciones ocultas hasta el inicio oficial de cada fase (11/11/2026 para Fase I)." },
+        { type: "SANDBOX", text: "Acceso total desbloqueado para empresa de pruebas TEST-0000 y claustro docente." },
+        { type: "ERGONOMÍA", text: "Unificación de Dossier dentro de 'Entregables & Dossier' con 3 subpestañas tácticas." }
+      ]
+    },
     {
       version: "1.1.56",
       date: new Date().toISOString().split('T')[0],

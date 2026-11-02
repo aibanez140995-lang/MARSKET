@@ -2538,6 +2538,17 @@ const state = {
         return pushSuccess;
     },
 
+    isContractPhaseUnlocked(phase, co) {
+        if (!co) return false;
+        // La empresa sandbox de pruebas y el profesorado tienen todas las fases desbloqueadas
+        if (co.unlockAllContracts === true || co.isTestCompany === true || (this.user && this.user.admin)) {
+            return true;
+        }
+        const win = typeof CONTRACTS_PHASE_WINDOWS !== 'undefined' ? CONTRACTS_PHASE_WINDOWS[phase] : null;
+        if (!win) return false;
+        return Date.now() >= new Date(win.selectionStart).getTime();
+    },
+
     isContractSelectionWindowOpen(phase, co) {
         if (!co) return false;
         // La empresa sandbox de pruebas tiene las 4 ventanas abiertas siempre

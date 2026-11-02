@@ -244,8 +244,91 @@ Object.assign(ui, {
     },
 
     showDossierTab(tab) {
+        if (!state.user?.admin) {
+            this.roleDeliverablesSection = tab === 'cronograma' ? 'cronograma' : (tab === 'eval' ? 'grades' : 'deliverables');
+            this.current = 'role_deliverables';
+            this.render();
+            return;
+        }
         this.dossierTab = tab;
         this.render();
+    },
+
+    renderDossierEvalHtml(targetCoId) {
+        const co = state.data.companies[targetCoId];
+        if (!co) return '';
+
+        const weights = typeof GLOBAL_WEIGHTS !== 'undefined' ? GLOBAL_WEIGHTS : { FYQ: 0.25, LYE: 0.40, LEN: 0.15, ECO: 0.10, MAT: 0.05, ING: 0.05 };
+        const subjects = ['FYQ', 'LYE', 'LEN', 'ECO', 'MAT', 'ING'];
+        
+        let weightedSum = 0;
+        let evaluatedWeightSum = 0;
+        
+        subjects.forEach(sub => {
+            const g = (co.grades && co.grades[sub]) ? co.grades[sub] : null;
+            const w = weights[sub] || 0;
+            if (g && g.final !== null && g.final !== undefined) {
+                weightedSum += Number(g.final) * w;
+                evaluatedWeightSum += w;
+            }
+        });
+
+        const hasAnyGrade = evaluatedWeightSum > 0;
+        const globalNoteDisplay = hasAnyGrade ? weightedSum.toFixed(2) : '--';
+        const progressPct = Math.round(evaluatedWeightSum * 100);
+
+        let html = `
+        <div class="terminal-border bg-mars-card p-5 mb-6 border-l-4 border-l-mars-yellow flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <h3 class="font-orbitron text-mars-yellow text-sm uppercase tracking-widest font-black">Calificación Global Ponderada del Proyecto</h3>
+                <p class="text-xs text-slate-300 uppercase mt-1">Fórmula Oficial: FYQ (25%) + LYE (40%) + LEN (15%) + ECO (10%) + MAT (5%) + ING (5%)</p>
+            </div>
+            <div class="flex items-center gap-4 bg-black px-4 py-2.5 border border-mars-border self-end sm:self-center">
+                <div class="text-right">
+                    <span class="block text-xs text-slate-300 uppercase font-bold">Peso Evaluado: ${progressPct}%</span>
+                    <span class="text-xs text-mars-cyan font-bold uppercase">Nota Acumulada</span>
+                </div>
+                <span class="text-2xl sm:text-3xl font-orbitron font-black ${hasAnyGrade ? 'text-mars-green' : 'text-slate-400'}">${globalNoteDisplay}</span>
+            </div>
+        </div>
+        ${evaluatedWeightSum === 0 ? `<div class="bg-slate-900 border border-mars-cyan/30 p-3 text-xs text-slate-300 font-mono mb-6">ℹ️ Las calificaciones del proyecto comenzarán a reflejarse tras la entrega y evaluación de los primeros hitos de Diciembre.</div>` : ''}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">`;
+        
+        subjects.forEach(sub => {
+            const config = RUBRIC_CONFIG[sub];
+            if (!config) return;
+            const grade = (co.grades && co.grades[sub]) ? co.grades[sub] : { scores: {}, feedback: '', final: null };
+            const subWeightPct = Math.round((weights[sub] || 0) * 100);
+            const criteriaRows = config.criteria.map(c => `
+                <div class="flex justify-between text-xs uppercase w-full border-b border-slate-800/60 pb-1.5 gap-2">
+                    <span class="text-slate-300 pr-2">${this.escapeHTML(c.name)} (${Math.round(c.weight*100)}%)</span>
+                    <span class="font-mono font-bold shrink-0 ${grade.scores && grade.scores[c.id] !== undefined ? 'text-white' : 'text-slate-400'}">${grade.scores && grade.scores[c.id] !== undefined ? this.escapeHTML(grade.scores[c.id]) : '-'}</span>
+                </div>`).join('');
+            
+            html += `
+            <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-cyan w-full flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-3 border-b border-mars-border/50 pb-2 gap-2">
+                        <div>
+                            <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase">${this.escapeHTML(config.name)}</h3>
+                            <span class="text-xs bg-mars-cyan/10 text-mars-cyan border border-mars-cyan/40 px-2 py-0.5 font-bold uppercase inline-block mt-1">Representación en Proyecto: ${subWeightPct}%</span>
+                        </div>
+                        <span class="text-xl font-mono font-black ${grade.final !== null && grade.final !== undefined ? 'text-mars-green' : 'text-slate-400'}">${grade.final !== null && grade.final !== undefined ? Number(grade.final).toFixed(2) : '--'}</span>
+                    </div>
+                    <div class="hidden sm:block space-y-2 mb-3 w-full">
+                        ${criteriaRows}
+                    </div>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <button type="button" onclick="ui.inspectRubricDrawer('${this.escapeHTML(targetCoId)}', '${sub}')" class="sm:hidden min-h-[44px] w-full bg-slate-900 border border-mars-cyan/60 text-mars-cyan font-black uppercase text-xs py-2 px-3 hover:bg-mars-cyan hover:text-black transition-all">
+                        [ 🔍 INSPECCIONAR DESGLOSE RÚBRICA ]
+                    </button>
+                    ${grade.feedback ? `<div class="bg-black p-3 border border-slate-700 text-xs text-slate-200 italic w-full mt-1 break-words"><span class="text-mars-yellow font-bold not-italic block mb-1 uppercase text-xs">Feedback Docente:</span>"${this.escapeHTML(grade.feedback)}"</div>` : '<div class="text-xs text-slate-400 italic uppercase mt-1">Sin observaciones registradas todavía.</div>'}
+                </div>
+            </div>`;
+        });
+        html += `</div>`;
+        return html;
     },
 
     renderDossierContent(tab, coId) {
@@ -263,79 +346,8 @@ Object.assign(ui, {
             return;
         }
 
-        const weights = typeof GLOBAL_WEIGHTS !== 'undefined' ? GLOBAL_WEIGHTS : { FYQ: 0.25, LYE: 0.40, LEN: 0.15, ECO: 0.10, MAT: 0.05, ING: 0.05 };
-
         if(tab === 'eval') {
-            const subjects = ['FYQ', 'LYE', 'LEN', 'ECO', 'MAT', 'ING'];
-            
-            let weightedSum = 0;
-            let evaluatedWeightSum = 0;
-            
-            subjects.forEach(sub => {
-                const g = (co.grades && co.grades[sub]) ? co.grades[sub] : null;
-                const w = weights[sub] || 0;
-                if (g && g.final !== null && g.final !== undefined) {
-                    weightedSum += Number(g.final) * w;
-                    evaluatedWeightSum += w;
-                }
-            });
-
-            const hasAnyGrade = evaluatedWeightSum > 0;
-            const globalNoteDisplay = hasAnyGrade ? weightedSum.toFixed(2) : '--';
-            const progressPct = Math.round(evaluatedWeightSum * 100);
-
-            let html = `
-            <div class="terminal-border bg-mars-card p-5 mb-6 border-l-4 border-l-mars-yellow flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h3 class="font-orbitron text-mars-yellow text-sm uppercase tracking-widest font-black">Calificación Global Ponderada del Proyecto</h3>
-                    <p class="text-xs text-slate-300 uppercase mt-1">Fórmula Oficial: FYQ (25%) + LYE (40%) + LEN (15%) + ECO (10%) + MAT (5%) + ING (5%)</p>
-                </div>
-                <div class="flex items-center gap-4 bg-black px-4 py-2.5 border border-mars-border self-end sm:self-center">
-                    <div class="text-right">
-                        <span class="block text-xs text-slate-300 uppercase font-bold">Peso Evaluado: ${progressPct}%</span>
-                        <span class="text-xs text-mars-cyan font-bold uppercase">Nota Acumulada</span>
-                    </div>
-                    <span class="text-2xl sm:text-3xl font-orbitron font-black ${hasAnyGrade ? 'text-mars-green' : 'text-slate-400'}">${globalNoteDisplay}</span>
-                </div>
-            </div>
-            ${evaluatedWeightSum === 0 ? `<div class="bg-slate-900 border border-mars-cyan/30 p-3 text-xs text-slate-300 font-mono mb-6">ℹ️ Las calificaciones del proyecto comenzarán a reflejarse tras la entrega y evaluación de los primeros hitos de Diciembre.</div>` : ''}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">`;
-            
-            subjects.forEach(sub => {
-                const config = RUBRIC_CONFIG[sub];
-                if (!config) return;
-                const grade = (co.grades && co.grades[sub]) ? co.grades[sub] : { scores: {}, feedback: '', final: null };
-                const subWeightPct = Math.round((weights[sub] || 0) * 100);
-                const criteriaRows = config.criteria.map(c => `
-                    <div class="flex justify-between text-xs uppercase w-full border-b border-slate-800/60 pb-1.5 gap-2">
-                        <span class="text-slate-300 pr-2">${this.escapeHTML(c.name)} (${Math.round(c.weight*100)}%)</span>
-                        <span class="font-mono font-bold shrink-0 ${grade.scores && grade.scores[c.id] !== undefined ? 'text-white' : 'text-slate-400'}">${grade.scores && grade.scores[c.id] !== undefined ? this.escapeHTML(grade.scores[c.id]) : '-'}</span>
-                    </div>`).join('');
-                
-                html += `
-                <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-cyan w-full flex flex-col justify-between">
-                    <div>
-                        <div class="flex justify-between items-center mb-3 border-b border-mars-border/50 pb-2 gap-2">
-                            <div>
-                                <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase">${this.escapeHTML(config.name)}</h3>
-                                <span class="text-xs bg-mars-cyan/10 text-mars-cyan border border-mars-cyan/40 px-2 py-0.5 font-bold uppercase inline-block mt-1">Representación en Proyecto: ${subWeightPct}%</span>
-                            </div>
-                            <span class="text-xl font-mono font-black ${grade.final !== null && grade.final !== undefined ? 'text-mars-green' : 'text-slate-400'}">${grade.final !== null && grade.final !== undefined ? Number(grade.final).toFixed(2) : '--'}</span>
-                        </div>
-                        <div class="hidden sm:block space-y-2 mb-3 w-full">
-                            ${criteriaRows}
-                        </div>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <button type="button" onclick="ui.inspectRubricDrawer('${this.escapeHTML(targetCoId)}', '${sub}')" class="sm:hidden min-h-[44px] w-full bg-slate-900 border border-mars-cyan/60 text-mars-cyan font-black uppercase text-xs py-2 px-3 hover:bg-mars-cyan hover:text-black transition-all">
-                            [ 🔍 INSPECCIONAR DESGLOSE RÚBRICA ]
-                        </button>
-                        ${grade.feedback ? `<div class="bg-black p-3 border border-slate-700 text-xs text-slate-200 italic w-full mt-1 break-words"><span class="text-mars-yellow font-bold not-italic block mb-1 uppercase text-xs">Feedback Docente:</span>"${this.escapeHTML(grade.feedback)}"</div>` : '<div class="text-xs text-slate-400 italic uppercase mt-1">Sin observaciones registradas todavía.</div>'}
-                    </div>
-                </div>`;
-            });
-            html += `</div>`;
-            container.innerHTML = html;
+            container.innerHTML = this.renderDossierEvalHtml(targetCoId);
         } else {
             // MÓDULO B (v1.0.19): Bóveda de Entregables con Acordeones por Fase (Milestone Collapsible) y Detalle Bajo Demanda (Bottom-Sheet Drawer)
             const docs = co.deliverables || {};
@@ -925,6 +937,11 @@ Object.assign(ui, {
         this.render();
     },
 
+    setRoleDeliverablesSection(section) {
+        this.roleDeliverablesSection = section || 'deliverables';
+        this.render();
+    },
+
     setRoleDeliverablesScopeFilter(scope) {
         this.roleDeliverablesScope = scope || 'MY_ROLE';
         this.render();
@@ -934,6 +951,8 @@ Object.assign(ui, {
         if (!el || !state.user) return;
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
+
+        const activeSection = this.roleDeliverablesSection || 'deliverables';
 
         const role = state.user.role;
         const isCEO = role === 'CEO';
@@ -1222,38 +1241,64 @@ Object.assign(ui, {
                     <div>
                         <div class="flex items-center gap-2 mb-1">
                             <span class="px-2 py-0.5 text-xs font-black uppercase bg-mars-cyan/20 border border-mars-cyan text-mars-cyan">MISIÓN AEROESPACIAL</span>
-                            <span class="text-xs text-slate-400 font-mono">18 HITOS CURRICULARES</span>
+                            <span class="text-xs text-slate-400 font-mono">18 HITOS CURRICULARES • 6 MATERIAS</span>
                         </div>
                         <h2 class="text-lg sm:text-xl font-orbitron font-black text-white uppercase tracking-tight">
-                            📤 Mis Entregables & Control de Calidad
+                            📤 Mis Entregables & Dossier Académico
                         </h2>
-                        <p class="text-xs text-slate-300 uppercase mt-0.5">Gestión visual guiada paso a paso: Plantilla ➔ Drive ➔ Visado CEO ➔ Claustro.</p>
+                        <p class="text-xs text-slate-300 uppercase mt-0.5">Gestión integral: Plantillas Drive ➔ Visado CEO ➔ Calificaciones LOMLOE (100%) ➔ Cronograma.</p>
                     </div>
-                    ${scopeSwitchHtml}
+                    ${activeSection === 'deliverables' ? scopeSwitchHtml : ''}
                 </div>
 
-                <!-- CONTADORES RESUMEN -->
-                <div class="mt-4">
-                    ${summaryHtml}
+                <!-- SUBPESTAÑAS DE NAVEGACIÓN INTERNA -->
+                <div role="tablist" aria-label="Secciones de Entregables y Dossier" class="flex flex-wrap gap-2 pt-3 border-t border-slate-800">
+                    <button type="button" role="tab" aria-selected="${activeSection === 'deliverables'}" onclick="ui.setRoleDeliverablesSection('deliverables')" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase transition-all flex items-center gap-1.5 ${activeSection === 'deliverables' ? 'bg-mars-cyan text-black font-black shadow-sm' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-700'}">
+                        <span>📤 Gestión de Entregables</span>
+                        ${(actionRequiredCount > 0) ? `<span class="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse">${actionRequiredCount}</span>` : ''}
+                    </button>
+                    <button type="button" role="tab" aria-selected="${activeSection === 'grades'}" onclick="ui.setRoleDeliverablesSection('grades')" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase transition-all flex items-center gap-1.5 ${activeSection === 'grades' ? 'bg-mars-cyan text-black font-black shadow-sm' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-700'}">
+                        <span>📊 Calificaciones & Rúbricas (100%)</span>
+                    </button>
+                    <button type="button" role="tab" aria-selected="${activeSection === 'cronograma'}" onclick="ui.setRoleDeliverablesSection('cronograma')" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase transition-all flex items-center gap-1.5 ${activeSection === 'cronograma' ? 'bg-mars-cyan text-black font-black shadow-sm' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-700'}">
+                        <span>📅 Cronograma Oficial</span>
+                    </button>
                 </div>
 
-                <!-- BARRA DE FILTROS -->
-                <div class="space-y-2.5 pt-3 border-t border-slate-800">
-                    <div class="flex items-center gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Filtrar por Fase">
-                        <span class="text-xs font-mono text-slate-400 uppercase font-bold shrink-0">Fase:</span>
-                        ${phaseTabsHtml}
+                ${activeSection === 'deliverables' ? `
+                    <!-- CONTADORES RESUMEN -->
+                    <div class="mt-4">
+                        ${summaryHtml}
                     </div>
-                    <div class="flex items-center gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Filtrar por Estado">
-                        <span class="text-xs font-mono text-slate-400 uppercase font-bold shrink-0">Estado:</span>
-                        ${statusTabsHtml}
+
+                    <!-- BARRA DE FILTROS -->
+                    <div class="space-y-2.5 pt-3 border-t border-slate-800">
+                        <div class="flex items-center gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Filtrar por Fase">
+                            <span class="text-xs font-mono text-slate-400 uppercase font-bold shrink-0">Fase:</span>
+                            ${phaseTabsHtml}
+                        </div>
+                        <div class="flex items-center gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Filtrar por Estado">
+                            <span class="text-xs font-mono text-slate-400 uppercase font-bold shrink-0">Estado:</span>
+                            ${statusTabsHtml}
+                        </div>
                     </div>
-                </div>
+                ` : ''}
             </div>
 
-            <!-- LISTADO DE ENTREGABLES -->
-            <div class="space-y-4">
-                ${cardsHtml}
-            </div>
+            <!-- CUERPO SEGÚN SUBPESTAÑA ACTIVA -->
+            ${activeSection === 'deliverables' ? `
+                <div class="space-y-4">
+                    ${cardsHtml}
+                </div>
+            ` : (activeSection === 'grades' ? `
+                <div class="space-y-4">
+                    ${this.renderDossierEvalHtml(state.user.coId)}
+                </div>
+            ` : `
+                <div class="space-y-4">
+                    ${this.renderCronogramaSection ? this.renderCronogramaSection(state.user.coId) : ''}
+                </div>
+            `)}
         `;
 
         el.appendChild(wrapper);
@@ -1832,6 +1877,13 @@ Object.assign(ui, {
         const curPhase = this.getCurrentPhaseKey();
         const signed = co.contracts?.[curPhase];
         const isCEO = state.user && (state.user.role === 'CEO' || state.user.admin);
+        const isMasterOrAdmin = Boolean(state.user && state.user.admin || co.unlockAllContracts === true || co.isTestCompany === true);
+        const win = typeof CONTRACTS_PHASE_WINDOWS !== 'undefined' ? CONTRACTS_PHASE_WINDOWS[curPhase] : null;
+        const isUnlocked = isMasterOrAdmin || (win && Date.now() >= new Date(win.selectionStart).getTime());
+
+        if (!signed && !isUnlocked) {
+            return '';
+        }
 
         if (signed && signed.contractId) {
             const isCompleted = signed.status === 'CUMPLIDO';
@@ -1887,7 +1939,25 @@ Object.assign(ui, {
         }
     },
 
+    isContractPhaseUnlocked(phase, co) {
+        if (typeof state !== 'undefined' && typeof state.isContractPhaseUnlocked === 'function') {
+            return state.isContractPhaseUnlocked(phase, co);
+        }
+        if (!co) return false;
+        if (co.unlockAllContracts === true || co.isTestCompany === true || (state.user && state.user.admin)) {
+            return true;
+        }
+        const win = typeof CONTRACTS_PHASE_WINDOWS !== 'undefined' ? CONTRACTS_PHASE_WINDOWS[phase] : null;
+        if (!win) return false;
+        return Date.now() >= new Date(win.selectionStart).getTime();
+    },
+
     setContractsPhaseTab(phase) {
+        if (!state.user) return;
+        const co = state.data.companies[state.user.coId];
+        if (!this.isContractPhaseUnlocked(phase, co)) {
+            return this.notify(`🔒 Las licitaciones de la Fase ${phase} estarán clasificadas hasta el inicio de su fase oficial.`, 'info');
+        }
         this.contractsPhaseTab = phase;
         this.render();
     },
@@ -1898,14 +1968,20 @@ Object.assign(ui, {
         if (!co) return auth.logout();
 
         const isCEO = state.user.role === 'CEO' || state.user.admin;
-        const currentPhaseTab = this.contractsPhaseTab || this.getCurrentPhaseKey();
+        const allPhases = ['I', 'II', 'III', 'IV'];
+        const unlockedPhases = allPhases.filter(ph => this.isContractPhaseUnlocked(ph, co));
+        const hasAnyUnlocked = unlockedPhases.length > 0;
+
+        let currentPhaseTab = this.contractsPhaseTab;
+        if (!currentPhaseTab || !unlockedPhases.includes(currentPhaseTab)) {
+            currentPhaseTab = hasAnyUnlocked ? unlockedPhases[unlockedPhases.length - 1] : 'I';
+        }
         this.contractsPhaseTab = currentPhaseTab;
 
-        const phases = ['I', 'II', 'III', 'IV'];
         const win = typeof CONTRACTS_PHASE_WINDOWS !== 'undefined' ? CONTRACTS_PHASE_WINDOWS[currentPhaseTab] : null;
-        const isOpen = state.isContractSelectionWindowOpen(currentPhaseTab, co);
+        const isOpen = hasAnyUnlocked ? state.isContractSelectionWindowOpen(currentPhaseTab, co) : false;
         const signedForTab = co.contracts?.[currentPhaseTab];
-        const catalogForPhase = (typeof CONTRACTS_CATALOG_DEF !== 'undefined' ? CONTRACTS_CATALOG_DEF : []).filter(c => c.phase === currentPhaseTab);
+        const catalogForPhase = hasAnyUnlocked ? (typeof CONTRACTS_CATALOG_DEF !== 'undefined' ? CONTRACTS_CATALOG_DEF : []).filter(c => c.phase === currentPhaseTab) : [];
 
         // Bloque de Patrocinio Oficial tras Fase I
         const sponsorAwarded = co.sponsorAwarded;
@@ -1985,154 +2061,179 @@ Object.assign(ui, {
             <!-- Patrocinio Oficial tras Fase I -->
             ${sponsorHtml}
 
-            <!-- Navegación por Fases (Fases I a IV) -->
-            <div class="flex flex-wrap gap-2 border-b border-mars-border pb-2">
-                ${phases.map(ph => {
-                    const isTab = ph === currentPhaseTab;
-                    const cSigned = co.contracts?.[ph];
-                    const badge = cSigned ? `<span class="ml-1.5 text-[10px] px-1.5 py-0.2 bg-emerald-950 border border-emerald-400 text-emerald-300 font-mono">✓ ${this.escapeHTML(cSigned.company)}</span>` : '';
-                    return `
-                    <button type="button" onclick="ui.setContractsPhaseTab('${ph}')" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase transition-all flex items-center ${isTab ? 'bg-mars-cyan text-black' : 'bg-slate-900 text-slate-200 hover:text-white border border-slate-800'}">
-                        <span>Fase ${ph}</span>
-                        ${badge}
-                    </button>`;
-                }).join('')}
-            </div>
-
-            <!-- Estado de la Ventana Temporal de Selección -->
-            <div class="terminal-border p-4 bg-slate-950 border ${isOpen ? 'border-emerald-500/50 bg-emerald-950/10' : 'border-amber-500/40 bg-amber-950/10'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                <div>
-                    <div class="flex items-center gap-2">
-                        <span class="inline-block w-2.5 h-2.5 rounded-full ${isOpen ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}"></span>
-                        <h4 class="font-orbitron font-bold text-xs sm:text-sm uppercase ${isOpen ? 'text-emerald-300' : 'text-amber-300'}">
-                            ${isOpen ? 'Ventana Oficial de Suscripción Abierta' : 'Ventana Oficial de Suscripción Cerrada / Bloqueada'}
-                        </h4>
+            ${!hasAnyUnlocked ? `
+                <!-- Catálogo Clasificado / Anti-spoilers -->
+                <div class="terminal-border p-6 sm:p-8 bg-slate-950 border-2 border-amber-500/50 text-center space-y-4">
+                    <div class="inline-flex p-3 bg-amber-500/10 border border-amber-500/40 rounded-full text-3xl">
+                        🔒
                     </div>
-                    <p class="text-xs text-slate-300 mt-0.5">
-                        ${win?.windowLabel || 'Primeros 3 días lectivos'}. Cada startup puede suscribir un único contrato por fase. Tras la ventana, el compromiso queda congelado.
-                    </p>
-                </div>
-                ${co.unlockAllContracts ? `
-                    <span class="px-2.5 py-1 text-[10px] font-mono font-bold uppercase bg-amber-400 text-black border border-amber-300 rounded shrink-0">
-                        🧪 Sandbox Pruebas: Ventanas Desbloqueadas
-                    </span>
-                ` : ''}
-            </div>
-
-            <!-- Contrato Actualmente Suscrito en esta Fase (si existe) -->
-            ${signedForTab ? `
-                <div class="terminal-border p-5 bg-indigo-950/30 border-2 border-indigo-500/80 shadow-[0_0_20px_rgba(99,102,241,0.2)]">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 border-b border-indigo-500/40 pb-2">
-                        <div>
-                            <span class="text-[10px] font-orbitron font-bold uppercase tracking-widest text-indigo-300">Contrato Oficial Vinculante Suscrito</span>
-                            <h3 class="text-base sm:text-lg font-orbitron font-black text-white uppercase">${this.escapeHTML(signedForTab.company)} — ${this.escapeHTML(signedForTab.title)}</h3>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            ${signedForTab.status === 'CUMPLIDO' ? `
-                                <span class="px-3 py-1 bg-emerald-500 text-black font-black text-xs uppercase font-orbitron">✅ Cumplido (+${signedForTab.reward} €v Asignados)</span>
-                            ` : (signedForTab.status === 'NO_CUMPLIDO' ? `
-                                <span class="px-3 py-1 bg-rose-600 text-white font-black text-xs uppercase font-orbitron">❌ No Cumplido (-${signedForTab.penalty} €v Penalizados)</span>
-                            ` : `
-                                <span class="px-3 py-1 bg-indigo-500/30 border border-indigo-400 text-indigo-200 font-bold text-xs uppercase font-mono animate-pulse">⏳ En Curso • Pendiente de Auditoría Docente</span>
-                            `)}
-                        </div>
+                    <div>
+                        <h3 class="text-base sm:text-lg font-orbitron font-black text-amber-300 uppercase">
+                            Licitaciones Comerciales Clasificadas
+                        </h3>
+                        <p class="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto mt-2 leading-relaxed">
+                            El catálogo oficial de licitaciones corporativas y contratos estratégicos de la Fase I estará disponible para el CEO a partir del <strong>11 de Noviembre de 2026</strong>.
+                        </p>
+                        <p class="text-[11px] text-slate-500 font-mono mt-1">
+                            Las licitaciones de fases posteriores (Fases II, III y IV) se publicarán de forma escalonada al inicio oficial de cada fase.
+                        </p>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                        <div class="md:col-span-2">
-                            <span class="text-slate-400 font-bold uppercase block mb-0.5">Requisitos Operativos Exigidos:</span>
-                            <p class="text-white leading-relaxed font-sans">${this.escapeHTML(signedForTab.requirements)}</p>
-                            <span class="text-slate-400 font-bold uppercase block mt-2 mb-0.5">Método de Verificación Docente:</span>
-                            <p class="text-indigo-300 font-sans">${this.escapeHTML(signedForTab.verification)}</p>
-                        </div>
-                        <div class="bg-black/60 p-3 border border-indigo-500/30 flex flex-col justify-between">
-                            <div>
-                                <span class="text-slate-400 font-bold uppercase block text-[10px]">Impacto en Tesorería:</span>
-                                <div class="flex justify-between items-center mt-1">
-                                    <span class="text-emerald-400 font-mono font-bold">+${signedForTab.reward} €v (Éxito)</span>
-                                    <span class="text-rose-400 font-mono font-bold">-${signedForTab.penalty} €v (Fallo)</span>
-                                </div>
-                            </div>
-                            <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] font-mono text-slate-400">
-                                <span>Firmado: ${this.escapeHTML(signedForTab.signedDate || '--')}</span><br>
-                                <span>Por: Dirección General (${this.escapeHTML(signedForTab.signedBy || 'CEO')})</span>
-                            </div>
-                        </div>
+                    <div class="pt-2">
+                        <span class="inline-block px-3.5 py-1.5 bg-amber-950/60 border border-amber-400 text-amber-300 font-mono text-xs font-bold uppercase tracking-wider">
+                            📅 Apertura Oficial Fase I: 11/11/2026
+                        </span>
                     </div>
                 </div>
-            ` : ''}
-
-            <!-- Catálogo de Licitaciones de la Fase (6 Contratos) -->
-            <div>
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="font-orbitron font-bold text-white text-sm uppercase tracking-wider">
-                        📑 Licitaciones Corporativas Disponibles • Fase ${currentPhaseTab} (${catalogForPhase.length} Opciones)
-                    </h3>
-                    <span class="text-xs text-slate-400 font-mono">Selección vinculante exclusiva: 1 por startup</span>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    ${catalogForPhase.map(c => {
-                        const isThisSigned = signedForTab && signedForTab.contractId === c.id;
-                        const hasOtherSigned = signedForTab && signedForTab.contractId !== c.id;
-
-                        let cardBorder = 'border-slate-800';
-                        if (isThisSigned) cardBorder = 'border-2 border-indigo-400 bg-indigo-950/20';
-                        else if (hasOtherSigned) cardBorder = 'border-slate-800/60 opacity-60 bg-black/40';
-
+            ` : `
+                <!-- Navegación por Fases Desbloqueadas -->
+                <div class="flex flex-wrap gap-2 border-b border-mars-border pb-2">
+                    ${unlockedPhases.map(ph => {
+                        const isTab = ph === currentPhaseTab;
+                        const cSigned = co.contracts?.[ph];
+                        const badge = cSigned ? `<span class="ml-1.5 text-[10px] px-1.5 py-0.2 bg-emerald-950 border border-emerald-400 text-emerald-300 font-mono">✓ ${this.escapeHTML(cSigned.company)}</span>` : '';
                         return `
-                        <div class="terminal-border p-4 bg-mars-card ${cardBorder} flex flex-col justify-between transition-all hover:border-slate-700">
-                            <div>
-                                <div class="flex justify-between items-start gap-2 mb-2">
-                                    <div class="min-w-0">
-                                        <span class="text-[10px] font-mono font-bold text-mars-cyan uppercase tracking-wider block">[${this.escapeHTML(c.id)}] ${this.escapeHTML(c.dept)}</span>
-                                        <h4 class="font-orbitron font-bold text-white text-sm uppercase mt-0.5 break-words">${this.escapeHTML(c.company)}</h4>
-                                    </div>
-                                    ${isThisSigned ? `
-                                        <span class="px-2 py-0.5 text-[9px] bg-indigo-500 text-black font-black uppercase font-orbitron shrink-0">Suscrito</span>
-                                    ` : ''}
-                                </div>
-                                <h5 class="text-xs font-bold text-slate-200 uppercase mb-2 leading-snug">${this.escapeHTML(c.title)}</h5>
-                                <p class="text-xs text-slate-300 leading-relaxed font-sans mb-3 line-clamp-4" title="${this.escapeHTML(c.requirements)}">
-                                    ${this.escapeHTML(c.requirements)}
-                                </p>
-                                <div class="bg-black/50 p-2.5 border border-slate-800/80 mb-3 text-[11px]">
-                                    <span class="text-slate-400 font-mono uppercase block text-[10px] font-bold">Verificación:</span>
-                                    <p class="text-slate-300 italic mt-0.5 leading-tight">${this.escapeHTML(c.verification)}</p>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="flex justify-between items-center py-2 px-3 bg-black border border-slate-800 mb-3 text-xs font-mono font-bold">
-                                    <span class="text-emerald-400">+${c.reward} €v</span>
-                                    <span class="text-slate-500">|</span>
-                                    <span class="text-rose-400">-${c.penalty} €v</span>
-                                </div>
-                                <div>
-                                    ${isThisSigned ? `
-                                        <button type="button" disabled class="w-full min-h-[44px] bg-indigo-950/60 border border-indigo-400 text-indigo-300 text-xs font-bold uppercase font-mono cursor-default">
-                                            ✓ Contrato en Vigor
-                                        </button>
-                                    ` : (hasOtherSigned ? `
-                                        <button type="button" disabled class="w-full min-h-[44px] bg-slate-900 text-slate-600 border border-slate-800 text-xs font-bold uppercase font-mono cursor-not-allowed">
-                                            🔒 No Disponible
-                                        </button>
-                                    ` : (isCEO ? (isOpen ? `
-                                        <button type="button" onclick="ui.modalConfirmSignContract('${this.escapeHTML(c.id)}')" class="w-full min-h-[44px] bg-mars-cyan hover:bg-white text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(0,240,255,0.25)]">
-                                            ✍️ Suscribir Contrato
-                                        </button>
-                                    ` : `
-                                        <button type="button" disabled class="w-full min-h-[44px] bg-slate-900 border border-slate-800 text-amber-400/70 text-xs font-bold uppercase font-mono cursor-not-allowed">
-                                            🔒 Ventana Cerrada
-                                        </button>
-                                    `) : `
-                                        <div class="min-h-[44px] bg-slate-900 border border-slate-800 text-slate-400 text-[11px] font-mono flex items-center justify-center text-center p-1">
-                                            🔒 Solo CEO puede firmar
-                                        </div>
-                                    `))}
-                                </div>
-                            </div>
-                        </div>`;
+                        <button type="button" onclick="ui.setContractsPhaseTab('${ph}')" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase transition-all flex items-center ${isTab ? 'bg-mars-cyan text-black' : 'bg-slate-900 text-slate-200 hover:text-white border border-slate-800'}">
+                            <span>Fase ${ph}</span>
+                            ${badge}
+                        </button>`;
                     }).join('')}
                 </div>
-            </div>
+
+                <!-- Estado de la Ventana Temporal de Selección -->
+                <div class="terminal-border p-4 bg-slate-950 border ${isOpen ? 'border-emerald-500/50 bg-emerald-950/10' : 'border-amber-500/40 bg-amber-950/10'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="inline-block w-2.5 h-2.5 rounded-full ${isOpen ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}"></span>
+                            <h4 class="font-orbitron font-bold text-xs sm:text-sm uppercase ${isOpen ? 'text-emerald-300' : 'text-amber-300'}">
+                                ${isOpen ? 'Ventana Oficial de Suscripción Abierta' : 'Ventana Oficial de Suscripción Cerrada / Bloqueada'}
+                            </h4>
+                        </div>
+                        <p class="text-xs text-slate-300 mt-0.5">
+                            ${win?.windowLabel || 'Primeros 3 días lectivos'}. Cada startup puede suscribir un único contrato por fase. Tras la ventana, el compromiso queda congelado.
+                        </p>
+                    </div>
+                    ${co.unlockAllContracts ? `
+                        <span class="px-2.5 py-1 text-[10px] font-mono font-bold uppercase bg-amber-400 text-black border border-amber-300 rounded shrink-0">
+                            🧪 Sandbox Pruebas: Ventanas Desbloqueadas
+                        </span>
+                    ` : ''}
+                </div>
+
+                <!-- Contrato Actualmente Suscrito en esta Fase (si existe) -->
+                ${signedForTab ? `
+                    <div class="terminal-border p-5 bg-indigo-950/30 border-2 border-indigo-500/80 shadow-[0_0_20px_rgba(99,102,241,0.2)]">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 border-b border-indigo-500/40 pb-2">
+                            <div>
+                                <span class="text-[10px] font-orbitron font-bold uppercase tracking-widest text-indigo-300">Contrato Oficial Vinculante Suscrito</span>
+                                <h3 class="text-base sm:text-lg font-orbitron font-black text-white uppercase">${this.escapeHTML(signedForTab.company)} — ${this.escapeHTML(signedForTab.title)}</h3>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                ${signedForTab.status === 'CUMPLIDO' ? `
+                                    <span class="px-3 py-1 bg-emerald-500 text-black font-black text-xs uppercase font-orbitron">✅ Cumplido (+${signedForTab.reward} €v Asignados)</span>
+                                ` : (signedForTab.status === 'NO_CUMPLIDO' ? `
+                                    <span class="px-3 py-1 bg-rose-600 text-white font-black text-xs uppercase font-orbitron">❌ No Cumplido (-${signedForTab.penalty} €v Penalizados)</span>
+                                ` : `
+                                    <span class="px-3 py-1 bg-indigo-500/30 border border-indigo-400 text-indigo-200 font-bold text-xs uppercase font-mono animate-pulse">⏳ En Curso • Pendiente de Auditoría Docente</span>
+                                `)}
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                            <div class="md:col-span-2">
+                                <span class="text-slate-400 font-bold uppercase block mb-0.5">Requisitos Operativos Exigidos:</span>
+                                <p class="text-white leading-relaxed font-sans">${this.escapeHTML(signedForTab.requirements)}</p>
+                                <span class="text-slate-400 font-bold uppercase block mt-2 mb-0.5">Método de Verificación Docente:</span>
+                                <p class="text-indigo-300 font-sans">${this.escapeHTML(signedForTab.verification)}</p>
+                            </div>
+                            <div class="bg-black/60 p-3 border border-indigo-500/30 flex flex-col justify-between">
+                                <div>
+                                    <span class="text-slate-400 font-bold uppercase block text-[10px]">Impacto en Tesorería:</span>
+                                    <div class="flex justify-between items-center mt-1">
+                                        <span class="text-emerald-400 font-mono font-bold">+${signedForTab.reward} €v (Éxito)</span>
+                                        <span class="text-rose-400 font-mono font-bold">-${signedForTab.penalty} €v (Fallo)</span>
+                                    </div>
+                                </div>
+                                <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] font-mono text-slate-400">
+                                    <span>Firmado: ${this.escapeHTML(signedForTab.signedDate || '--')}</span><br>
+                                    <span>Por: Dirección General (${this.escapeHTML(signedForTab.signedBy || 'CEO')})</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <!-- Catálogo de Licitaciones de la Fase (6 Contratos) -->
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-orbitron font-bold text-white text-sm uppercase tracking-wider">
+                            📑 Licitaciones Corporativas Disponibles • Fase ${currentPhaseTab} (${catalogForPhase.length} Opciones)
+                        </h3>
+                        <span class="text-xs text-slate-400 font-mono">Selección vinculante exclusiva: 1 por startup</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${catalogForPhase.map(c => {
+                            const isThisSigned = signedForTab && signedForTab.contractId === c.id;
+                            const hasOtherSigned = signedForTab && signedForTab.contractId !== c.id;
+
+                            let cardBorder = 'border-slate-800';
+                            if (isThisSigned) cardBorder = 'border-2 border-indigo-400 bg-indigo-950/20';
+                            else if (hasOtherSigned) cardBorder = 'border-slate-800/60 opacity-60 bg-black/40';
+
+                            return `
+                            <div class="terminal-border p-4 bg-mars-card ${cardBorder} flex flex-col justify-between transition-all hover:border-slate-700">
+                                <div>
+                                    <div class="flex justify-between items-start gap-2 mb-2">
+                                        <div class="min-w-0">
+                                            <span class="text-[10px] font-mono font-bold text-mars-cyan uppercase tracking-wider block">[${this.escapeHTML(c.id)}] ${this.escapeHTML(c.dept)}</span>
+                                            <h4 class="font-orbitron font-bold text-white text-sm uppercase mt-0.5 break-words">${this.escapeHTML(c.company)}</h4>
+                                        </div>
+                                        ${isThisSigned ? `
+                                            <span class="px-2 py-0.5 text-[9px] bg-indigo-500 text-black font-black uppercase font-orbitron shrink-0">Suscrito</span>
+                                        ` : ''}
+                                    </div>
+                                    <h5 class="text-xs font-bold text-slate-200 uppercase mb-2 leading-snug">${this.escapeHTML(c.title)}</h5>
+                                    <p class="text-xs text-slate-300 leading-relaxed font-sans mb-3 line-clamp-4" title="${this.escapeHTML(c.requirements)}">
+                                        ${this.escapeHTML(c.requirements)}
+                                    </p>
+                                    <div class="bg-black/50 p-2.5 border border-slate-800/80 mb-3 text-[11px]">
+                                        <span class="text-slate-400 font-mono uppercase block text-[10px] font-bold">Verificación:</span>
+                                        <p class="text-slate-300 italic mt-0.5 leading-tight">${this.escapeHTML(c.verification)}</p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between items-center py-2 px-3 bg-black border border-slate-800 mb-3 text-xs font-mono font-bold">
+                                        <span class="text-emerald-400">+${c.reward} €v</span>
+                                        <span class="text-slate-500">|</span>
+                                        <span class="text-rose-400">-${c.penalty} €v</span>
+                                    </div>
+                                    <div>
+                                        ${isThisSigned ? `
+                                            <button type="button" disabled class="w-full min-h-[44px] bg-indigo-950/60 border border-indigo-400 text-indigo-300 text-xs font-bold uppercase font-mono cursor-default">
+                                                ✓ Contrato en Vigor
+                                            </button>
+                                        ` : (hasOtherSigned ? `
+                                            <button type="button" disabled class="w-full min-h-[44px] bg-slate-900 text-slate-600 border border-slate-800 text-xs font-bold uppercase font-mono cursor-not-allowed">
+                                                🔒 No Disponible
+                                            </button>
+                                        ` : (isCEO ? (isOpen ? `
+                                            <button type="button" onclick="ui.modalConfirmSignContract('${this.escapeHTML(c.id)}')" class="w-full min-h-[44px] bg-mars-cyan hover:bg-white text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(0,240,255,0.25)]">
+                                                ✍️ Suscribir Contrato
+                                            </button>
+                                        ` : `
+                                            <button type="button" disabled class="w-full min-h-[44px] bg-slate-900 border border-slate-800 text-amber-400/70 text-xs font-bold uppercase font-mono cursor-not-allowed">
+                                                🔒 Ventana Cerrada
+                                            </button>
+                                        `) : `
+                                            <div class="min-h-[44px] bg-slate-900 border border-slate-800 text-slate-400 text-[11px] font-mono flex items-center justify-center text-center p-1">
+                                                🔒 Solo CEO puede firmar
+                                            </div>
+                                        `))}
+                                    </div>
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>
+            `}
         </div>`;
 
         el.appendChild(wrapper);
