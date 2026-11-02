@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.53) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.54) ---
 
-const APP_VERSION = "1.1.53";
+const APP_VERSION = "1.1.54";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -115,6 +115,12 @@ const OFFICIAL_DOC_TEMPLATES = Object.freeze({
         title: 'ACTA DE COMITÉ DE DIRECCIÓN // DIARIO DE REUNIONES',
         flow: 'Todos los Dptos. ➔ Gobernanza y Claustro',
         copyUrl: 'https://docs.google.com/document/d/1lvpFHohpJPN-AlhU1jCLWYdx6tDYzljbTyKXcGBxmR0/copy'
+    },
+    DOC_17_BALANCE_FASE: {
+        id: 'DOC_17_BALANCE_FASE',
+        title: 'BALANCE CONTABLE Y ESTADO FINANCIERO DE CIERRE DE FASE',
+        flow: 'Finanzas ➔ CEO / Coordinación de Economía',
+        copyUrl: 'https://docs.google.com/document/d/1HigoiUvPfZQhMu67MR7cGyiW8XecIQlAW_29kp3LfDc/copy'
     }
 });
 
@@ -125,8 +131,10 @@ const PRESS_RELEASE_PHASES = Object.freeze([
     {
         phase: 'I',
         phaseName: 'Fase I: Fundación y Viabilidad',
-        deadline: '2026-12-15T23:59',
-        deadlineLabel: '15/12/2026',
+        phaseCutoff: '2026-12-15T23:59',
+        phaseCutoffLabel: '15/12/2026',
+        deadline: '2026-12-22T23:59',
+        deadlineLabel: '22/12/2026 (Corte: 15/12 + 7 días)',
         title: 'Nota de Prensa Oficial — Cierre Fase I',
         requiredContent: 'Presentación del concepto de cohete, capital obtenido por patrocinio y objetivos corporativos.',
         docKey: 'DOC_15_NOTA_PRENSA'
@@ -134,8 +142,10 @@ const PRESS_RELEASE_PHASES = Object.freeze([
     {
         phase: 'II',
         phaseName: 'Fase II: I+D y Prototipado Aeroespacial',
-        deadline: '2027-02-15T23:59',
-        deadlineLabel: '15/02/2027',
+        phaseCutoff: '2027-02-15T23:59',
+        phaseCutoffLabel: '15/02/2027',
+        deadline: '2027-02-22T23:59',
+        deadlineLabel: '22/02/2027 (Corte: 15/02 + 7 días)',
         title: 'Nota de Prensa Oficial — Cierre Fase II',
         requiredContent: 'Resultados preliminares de las pruebas de vuelo, mediciones angulares y estado financiero a mitad del proyecto.',
         docKey: 'DOC_15_NOTA_PRENSA'
@@ -143,12 +153,76 @@ const PRESS_RELEASE_PHASES = Object.freeze([
     {
         phase: 'III',
         phaseName: 'Fase III: Producción y Finanzas B2B',
-        deadline: '2027-03-31T23:59',
-        deadlineLabel: '31/03/2027',
+        phaseCutoff: '2027-03-31T23:59',
+        phaseCutoffLabel: '31/03/2027',
+        deadline: '2027-04-07T23:59',
+        deadlineLabel: '07/04/2027 (Corte: 31/03 + 7 días)',
         title: 'Nota de Prensa Oficial — Cierre Fase III',
         requiredContent: 'Conclusiones de taller, dificultades de montaje superadas y preparación para el Pitch final.',
         docKey: 'DOC_15_NOTA_PRENSA'
     }
+]);
+
+const FINANCIAL_PHASE_BALANCES_DEF = Object.freeze([
+    {
+        phase: 'I',
+        phaseName: 'Fase I: Fundación y Viabilidad',
+        cutoffDate: '2026-12-15T23:59',
+        cutoffLabel: '15/12/2026',
+        title: 'Balance Contable de Cierre — Fase I',
+        desc: 'Cierre de tesorería, registro de patrocinios captados y gastos iniciales de constitución.',
+        docKey: 'DOC_17_BALANCE_FASE'
+    },
+    {
+        phase: 'II',
+        phaseName: 'Fase II: I+D y Prototipado Aeroespacial',
+        cutoffDate: '2027-02-15T23:59',
+        cutoffLabel: '15/02/2027',
+        title: 'Balance Contable de Cierre — Fase II',
+        desc: 'Inversión en prototipado, materiales I+D, tasa de licencia AESA y telemetría de costes.',
+        docKey: 'DOC_17_BALANCE_FASE'
+    },
+    {
+        phase: 'III',
+        phaseName: 'Fase III: Producción y Finanzas B2B',
+        cutoffDate: '2027-03-31T23:59',
+        cutoffLabel: '31/03/2027',
+        title: 'Balance Contable de Cierre — Fase III',
+        desc: 'Costes de taller, transacciones del mercado B2B, campañas publicitarias y balance de situación.',
+        docKey: 'DOC_17_BALANCE_FASE'
+    },
+    {
+        phase: 'IV',
+        phaseName: 'Fase IV: Validación Científica y Comercialización',
+        cutoffDate: '2027-04-23T23:59',
+        cutoffLabel: '23/04/2027',
+        title: 'Balance Contable de Cierre — Fase IV',
+        desc: 'Liquidación final, cuenta de pérdidas y ganancias provisional, solvencia y preparación del Pitch.',
+        docKey: 'DOC_17_BALANCE_FASE'
+    }
+]);
+
+const FINANCIAL_AUDIT_VERDICTS_DEF = Object.freeze([
+    { id: 'SUPERAVIT_ESTABLE', label: 'Superávit Financiero y Tesorería Estable' },
+    { id: 'EQUILIBRIO_PRESUPUESTARIO', label: 'Equilibrio Presupuestario según Previsiones' },
+    { id: 'DEFICIT_CONTROLADO', label: 'Déficit Controlado por Inversión en I+D/Materiales' },
+    { id: 'REAJUSTE_GASTOS', label: 'Reajuste Operativo Necesario para Próxima Fase' },
+    { id: 'AUDITORIA_CONFORME', label: 'Auditoría Interna Conforme sin Desviaciones Significativas' }
+]);
+
+const MEETING_MINUTE_SESSIONS_DEF = Object.freeze([
+    { id: 'ORD_1_FASE_I', label: 'Sesión Ordinaria nº 1 — Planificación y Constitución (Fase I)' },
+    { id: 'ORD_2_FASE_I', label: 'Sesión Ordinaria nº 2 — Asignación de Roles y Presupuesto (Fase I)' },
+    { id: 'CIERRE_FASE_I', label: 'Sesión de Cierre de Fase I — Evaluación de Hitos y Patrocinios' },
+    { id: 'ORD_3_FASE_II', label: 'Sesión Ordinaria nº 3 — Planificación de Ensayos I+D (Fase II)' },
+    { id: 'ORD_4_FASE_II', label: 'Sesión Ordinaria nº 4 — Análisis Matemático y Licencia AESA (Fase II)' },
+    { id: 'CIERRE_FASE_II', label: 'Sesión de Cierre de Fase II — Estado Financiero y Pruebas de Vuelo' },
+    { id: 'ORD_5_FASE_III', label: 'Sesión Ordinaria nº 5 — Coordinación de Taller y Montaje (Fase III)' },
+    { id: 'ORD_6_FASE_III', label: 'Sesión Ordinaria nº 6 — Negociación y Mercado B2B (Fase III)' },
+    { id: 'CIERRE_FASE_III', label: 'Sesión de Cierre de Fase III — Balance de Taller y Cuentas' },
+    { id: 'ORD_7_FASE_IV', label: 'Sesión Ordinaria nº 7 — Ensayo General del Pitch Final (Fase IV)' },
+    { id: 'EXTRA_INTERDEPT', label: 'Sesión Extraordinaria de Coordinación Interdepartamental' },
+    { id: 'EXTRA_GOBERNANZA', label: 'Sesión Extraordinaria de Mediación y Acuerdos de Gobernanza' }
 ]);
 
 const NAME_CHANGE_REASONS_DEF = Object.freeze([
@@ -636,8 +710,26 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.53
+// Changelog Oficial de Producción v1.1.54
 const APP_CHANGELOG = [
+    {
+      version: "1.1.54",
+      date: new Date().toISOString().split('T')[0],
+      title: "Actas de Dirección Zero-Text, Balances Contables por Fase, Cortesía de 7 Días en Prensa y Fix Visual en Modificación Estatutaria",
+      items: [
+        "Blindaje Zero-Text en Actas de Comité de Dirección (DOC_16): erradicación total de cajas de texto libre en Gobernanza, reemplazándolas por catálogo cerrado de sesiones ordinarias y extraordinarias por fase.",
+        "Blindaje Zero-Text y corrección de diseño en Modificación Estatutaria: eliminación de desbordamientos de botón en pantallas medianas y móviles, canalizando la propuesta exclusivamente por plantilla oficial DOC_1 en Google Drive.",
+        "Extensión del plazo para Notas de Prensa Corporativas (DOC_15): margen adicional de 7 días naturales tras el corte de cada fase (Fase I hasta 22/12/2026, Fase II hasta 22/02/2027 y Fase III hasta 07/04/2027) para sincronizar datos reales.",
+        "Módulo de Balances Contables de Cierre de Fase en Finanzas: panel de supervisión y registro del balance para Fases I a IV con dictamen contable tipificado y enlace oficial DOC_17 en Google Drive.",
+        "Integración de telemetría financiera en la Sala de Mando del CEO: visibilidad inmediata del balance emitido por Finanzas al preparar la nota de prensa de cada fase."
+      ],
+      highlights: [
+        { type: "ZERO-TEXT", text: "Actas de Comité con selector tipificado de sesiones cerradas y enlace oficial Drive." },
+        { type: "UI/UX", text: "Diseño responsive corregido en Modificación Estatutaria sin desbordamiento de botón." },
+        { type: "PRENSA", text: "Ventana de 7 días de cortesía tras cada cierre de fase para redacción corporativa." },
+        { type: "FINANZAS", text: "Balances Contables de Cierre (DOC_17) para Fases I a IV con dictámenes tipificados." }
+      ]
+    },
     {
       version: "1.1.53",
       date: new Date().toISOString().split('T')[0],

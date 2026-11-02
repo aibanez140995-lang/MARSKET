@@ -713,6 +713,73 @@ Object.assign(ui, {
 
         const wrapper = document.createElement('div');
 
+        const phaseDefs = typeof FINANCIAL_PHASE_BALANCES_DEF !== 'undefined' ? FINANCIAL_PHASE_BALANCES_DEF : [
+            { phase: 'I', title: 'Balance de Cierre — Fase I', cutoffLabel: '15/12/2026', docKey: 'DOC_17_BALANCE_FASE' },
+            { phase: 'II', title: 'Balance de Cierre — Fase II', cutoffLabel: '15/02/2027', docKey: 'DOC_17_BALANCE_FASE' },
+            { phase: 'III', title: 'Balance de Cierre — Fase III', cutoffLabel: '31/03/2027', docKey: 'DOC_17_BALANCE_FASE' },
+            { phase: 'IV', title: 'Balance de Cierre — Fase IV', cutoffLabel: '23/04/2027', docKey: 'DOC_17_BALANCE_FASE' }
+        ];
+        co.phaseBalances = co.phaseBalances || {};
+
+        const phaseBalancesCardsHtml = phaseDefs.map(p => {
+            const b = co.phaseBalances[p.phase];
+            return `
+            <div class="p-3 bg-black/70 border border-slate-800 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-xs font-black uppercase text-amber-400 font-orbitron">${this.escapeHTML(p.title)}</span>
+                        <span class="text-[10px] text-slate-400 font-mono">Corte: ${this.escapeHTML(p.cutoffLabel)}</span>
+                    </div>
+                    ${b ? `
+                        <div class="mt-1 space-y-0.5">
+                            <span class="inline-block text-[11px] text-emerald-300 font-semibold">✓ Dictamen: ${this.escapeHTML(b.verdict || 'Auditado')}</span>
+                            <div class="text-[10px] text-slate-400 font-mono">
+                                Saldo congelado: <span class="text-white font-bold">${Number(b.snapshot?.balance || 0).toFixed(2)} €v</span> | Gasto: <span class="text-mars-yellow font-bold">${Number(b.snapshot?.virtualSpend || 0).toFixed(2)} €v</span> (${this.escapeHTML(b.date || '')})
+                            </div>
+                        </div>
+                    ` : `
+                        <p class="text-[11px] text-slate-400 italic mt-0.5">Pendiente de cierre y entrega formal por el Dpto. Financiero.</p>
+                    `}
+                </div>
+                <div class="shrink-0 flex items-center gap-2 w-full sm:w-auto justify-end">
+                    ${b ? `
+                        <a href="${encodeURI(b.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[36px] inline-flex items-center px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-300 border border-cyan-500/40 rounded font-mono hover:bg-cyan-900/60 transition-colors">
+                            <span>DOC_17 ↗</span>
+                        </a>
+                        ${(isFinanzas || isCEO) ? `
+                            <button type="button" onclick="ui.modalRegisterPhaseBalance('${this.escapeHTML(p.phase)}')" class="min-h-[36px] bg-slate-800 border border-slate-700 text-slate-200 hover:text-white px-2 py-1 text-[11px] uppercase font-bold transition-all">
+                                ✏️
+                            </button>
+                        ` : ''}
+                    ` : `
+                        ${(isFinanzas || isCEO) ? `
+                            <button type="button" onclick="ui.modalRegisterPhaseBalance('${this.escapeHTML(p.phase)}')" class="min-h-[36px] bg-amber-400 text-black font-black uppercase text-[11px] px-3 py-1 hover:bg-white transition-all shadow-sm w-full sm:w-auto">
+                                [ + Registrar Balance Fase ${this.escapeHTML(p.phase)} ]
+                            </button>
+                        ` : `
+                            <span class="text-[10px] text-slate-500 font-mono uppercase">En espera</span>
+                        `}
+                    `}
+                </div>
+            </div>`;
+        }).join('');
+
+        const phaseBalancesBlockHtml = `
+        <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-amber-400">
+            <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2 flex-wrap gap-2">
+                <div>
+                    <h3 class="font-orbitron text-amber-400 text-sm uppercase tracking-tighter font-black">📊 Balances de Cierre de Fase (DOC_17)</h3>
+                    <p class="text-xs text-slate-300 uppercase mt-0.5">Control de tesorería y dictamen contable al final de cada fase.</p>
+                </div>
+                <span class="text-xs bg-amber-950/40 text-amber-300 font-mono px-2 py-0.5 border border-amber-500/40">
+                    ${Object.keys(co.phaseBalances || {}).length}/4 Fases
+                </span>
+            </div>
+            <div class="space-y-2.5">
+                ${phaseBalancesCardsHtml}
+            </div>
+        </div>`;
+
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <!-- Columna Izquierda: Balance, KPIs y Ledger Inmutable -->
@@ -770,9 +837,10 @@ Object.assign(ui, {
                 </div>
             </div>
 
-            <!-- Columna Derecha: Entregables Oficiales y Supervisión -->
-            ${isCEO ? `
+            <!-- Columna Derecha: Balances de Cierre de Fase & Entregables Oficiales -->
             <div class="lg:col-span-5 space-y-6">
+                ${phaseBalancesBlockHtml}
+                ${isCEO ? `
                 <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-cyan">
                     <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
                         <div>
@@ -785,9 +853,7 @@ Object.assign(ui, {
                         <span>📋 ACCEDER A SUPERVISIÓN EN DOSSIER</span> ➔
                     </button>
                 </div>
-            </div>
-            ` : `
-            <div class="lg:col-span-5 space-y-6">
+                ` : `
                 <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-green">
                     <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
                         <div>
@@ -800,10 +866,140 @@ Object.assign(ui, {
                         <span>📤 GESTIONAR ENTREGABLES EN "MIS ENTREGABLES"</span> ➔
                     </button>
                 </div>
+                `}
             </div>
-            `}
         </div>`;
 
         el.appendChild(wrapper);
+    },
+
+    modalRegisterPhaseBalance(phaseKey) {
+        if (!state.user) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co) return;
+
+        const phaseDefs = typeof FINANCIAL_PHASE_BALANCES_DEF !== 'undefined' ? FINANCIAL_PHASE_BALANCES_DEF : [
+            { phase: 'I', title: 'Balance de Cierre — Fase I', cutoffLabel: '15/12/2026', docKey: 'DOC_17_BALANCE_FASE' },
+            { phase: 'II', title: 'Balance de Cierre — Fase II', cutoffLabel: '15/02/2027', docKey: 'DOC_17_BALANCE_FASE' },
+            { phase: 'III', title: 'Balance de Cierre — Fase III', cutoffLabel: '31/03/2027', docKey: 'DOC_17_BALANCE_FASE' },
+            { phase: 'IV', title: 'Balance de Cierre — Fase IV', cutoffLabel: '23/04/2027', docKey: 'DOC_17_BALANCE_FASE' }
+        ];
+        const phaseDef = phaseDefs.find(p => p.phase === phaseKey) || phaseDefs[0];
+
+        const verdicts = typeof FINANCIAL_AUDIT_VERDICTS_DEF !== 'undefined' ? FINANCIAL_AUDIT_VERDICTS_DEF : [
+            { id: 'SUPERAVIT_ESTABLE', label: 'Superávit Financiero y Tesorería Estable' },
+            { id: 'EQUILIBRIO_PRESUPUESTARIO', label: 'Equilibrio Presupuestario según Previsiones' },
+            { id: 'DEFICIT_CONTROLADO', label: 'Déficit Controlado por Inversión en I+D/Materiales' },
+            { id: 'REAJUSTE_GASTOS', label: 'Reajuste Operativo Necesario para Próxima Fase' },
+            { id: 'AUDITORIA_CONFORME', label: 'Auditoría Interna Conforme sin Desviaciones Significativas' }
+        ];
+        const verdictOptions = verdicts.map(v => `<option value="${this.escapeHTML(v.label)}">${this.escapeHTML(v.label)}</option>`).join('');
+
+        const grossCosts = state.getCompanyGrossOperatingCosts ? state.getCompanyGrossOperatingCosts(co) : 0;
+        const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
+        const opCosts = state.getCompanyOperatingCosts ? state.getCompanyOperatingCosts(co) : { gross: grossCosts, sponsorReduction: sponsorAmt, net: grossCosts };
+        const netOpCosts = (opCosts && typeof opCosts.net === 'number') ? opCosts.net : ((typeof opCosts === 'number') ? opCosts : grossCosts);
+        const virtualSpend = (co.ledger || []).filter(l => l.delta < 0).reduce((acc, l) => acc + Math.abs(Number(l.delta) || 0), 0);
+
+        const currentBalanceObj = co.phaseBalances && co.phaseBalances[phaseDef.phase] ? co.phaseBalances[phaseDef.phase] : null;
+
+        const html = `
+            <div class="space-y-4 font-mono text-xs">
+                <div class="p-3 bg-cyan-950/40 border border-cyan-500/40 text-slate-200 space-y-1">
+                    <p class="text-cyan-400 font-bold uppercase">📊 ${this.escapeHTML(phaseDef.title)}</p>
+                    <p class="font-sans text-[11px] leading-relaxed">
+                        Cierre contable oficial para la <strong>${this.escapeHTML(phaseDef.phaseName || `Fase ${phaseDef.phase}`)}</strong> (Fecha de corte: <strong>${this.escapeHTML(phaseDef.cutoffLabel)}</strong>). Congela la situación financiera de la startup y adjunta el balance oficial en Google Drive.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-black/60 border border-slate-800 text-center">
+                    <div>
+                        <span class="text-[10px] text-slate-400 uppercase block">Saldo Disponible</span>
+                        <span class="text-xs sm:text-sm font-bold text-mars-green font-mono">${Number(co.balance).toFixed(2)} €v</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 uppercase block">Coste Neto</span>
+                        <span class="text-xs sm:text-sm font-bold text-mars-cyan font-mono">${netOpCosts.toFixed(2)} €v</span>
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                        <span class="text-[10px] text-slate-400 uppercase block">Gasto Acumulado</span>
+                        <span class="text-xs sm:text-sm font-bold text-mars-yellow font-mono">-${virtualSpend.toFixed(2)} €v</span>
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label for="phase-balance-verdict" class="text-mars-yellow uppercase font-bold block mb-1">Dictamen Contable y Diagnóstico de Tesorería</label>
+                    <select id="phase-balance-verdict" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white uppercase outline-none focus:border-mars-yellow">
+                        ${verdictOptions}
+                    </select>
+                </div>
+
+                <div class="space-y-1.5">
+                    <span class="text-mars-yellow uppercase font-bold block mb-1">Plantilla Oficial de Balance de Cierre (DOC_17)</span>
+                    <div class="mb-2">
+                        ${this.renderDocTemplateBtn('DOC_17_BALANCE_FASE', '📄 Ver Plantilla Balance de Fase (DOC_17)')}
+                    </div>
+                    <label for="phase-balance-drive-url" class="text-mars-cyan uppercase font-bold block mb-1">Enlace al Balance Oficial en Google Drive o Docs</label>
+                    <input type="url" id="phase-balance-drive-url" value="${this.escapeAttr(currentBalanceObj?.driveUrl || '')}" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                    <p class="text-[10px] text-slate-400 mt-1 font-sans">El documento debe compartirse con permisos de lectura abiertos ("Cualquiera con el enlace puede ver").</p>
+                </div>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.submitPhaseBalance('${this.escapeHTML(phaseDef.phase)}')" class="min-h-[44px] w-full sm:w-auto bg-amber-400 text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">[ 📊 Registrar Balance Oficial Fase ${this.escapeHTML(phaseDef.phase)} ]</button>`;
+        this.showModal(`Cierre Contable — ${phaseDef.title}`, html, actions);
+    },
+
+    submitPhaseBalance(phaseKey) {
+        if (!state.user) return;
+        const elVerdict = document.getElementById('phase-balance-verdict');
+        const elUrl = document.getElementById('phase-balance-drive-url');
+        if (!elVerdict || !elUrl) return;
+
+        const verdict = this.cleanInput(elVerdict.value).trim();
+        const driveUrl = this.cleanInput(elUrl.value).trim();
+
+        if (!verdict) return this.notify("Debes seleccionar el dictamen contable.", "warning");
+        if (!driveUrl) return this.notify("Debes indicar el enlace Drive del balance oficial.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+        }
+
+        const coId = state.user.coId;
+        const co = state.data.companies[coId];
+        if (!co) return;
+
+        const grossCosts = state.getCompanyGrossOperatingCosts ? state.getCompanyGrossOperatingCosts(co) : 0;
+        const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
+        const virtualSpend = (co.ledger || []).filter(l => l.delta < 0).reduce((acc, l) => acc + Math.abs(Number(l.delta) || 0), 0);
+
+        co.phaseBalances = co.phaseBalances || {};
+        co.phaseBalances[phaseKey] = {
+            id: 'BAL-' + coId + '-' + phaseKey,
+            phase: phaseKey,
+            verdict: verdict,
+            driveUrl: driveUrl,
+            snapshot: {
+                balance: Number(co.balance) || 0,
+                grossCosts: Number(grossCosts) || 0,
+                sponsorReduction: Number(sponsorAmt) || 0,
+                virtualSpend: Number(virtualSpend) || 0
+            },
+            authorRole: state.user.role,
+            authorName: state.user.name || 'Finanzas',
+            date: new Date().toLocaleDateString(),
+            timestamp: Date.now()
+        };
+        co.updatedAt = Date.now();
+
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
+        ui.pushNotification(coId, 'CEO', `📊 Finanzas ha registrado el Balance de Cierre de la Fase ${phaseKey} ("${verdict}"). Listo para la Nota de Prensa.`, 'info');
+        ui.pushNotification(coId, 'ALL', `📊 Balance Contable de Cierre de la Fase ${phaseKey} formalizado en tesorería.`, 'info');
+        ui.pushNotification('ADMIN', 'ALL', `📊 [${co.name}] Balance Contable Fase ${phaseKey} registrado por Finanzas.`, 'info');
+
+        this.closeModal();
+        this.notify(`✅ Balance Contable de Cierre de Fase ${phaseKey} registrado con éxito.`, "success");
+        this.render();
     }
 });

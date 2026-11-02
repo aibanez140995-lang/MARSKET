@@ -699,9 +699,9 @@ Object.assign(ui, {
             }
 
             const prPhases = typeof PRESS_RELEASE_PHASES !== 'undefined' ? PRESS_RELEASE_PHASES : [
-                { phase: 'I', title: 'Cierre Fase I', deadlineLabel: '15/12/2026' },
-                { phase: 'II', title: 'Cierre Fase II', deadlineLabel: '15/02/2027' },
-                { phase: 'III', title: 'Cierre Fase III', deadlineLabel: '31/03/2027' }
+                { phase: 'I', title: 'Cierre Fase I', deadlineLabel: '22/12/2026 (Corte: 15/12 + 7 días)' },
+                { phase: 'II', title: 'Cierre Fase II', deadlineLabel: '22/02/2027 (Corte: 15/02 + 7 días)' },
+                { phase: 'III', title: 'Cierre Fase III', deadlineLabel: '07/04/2027 (Corte: 31/03 + 7 días)' }
             ];
             const coReleases = co.pressReleases || {};
             const publishedPrCount = prPhases.filter(p => coReleases[p.phase]).length;
@@ -715,18 +715,30 @@ Object.assign(ui, {
                     </div>
                     <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">📰 Notas de Prensa Corporativas (CEO)</h3>
                     <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
-                        Publica los comunicados oficiales de balance al corte de cada fase en el Tablón de Noticias mediante la plantilla DOC_15.
+                        Publica los comunicados oficiales de balance con 7 días de margen tras el corte de cada fase en el Tablón de Noticias mediante la plantilla DOC_15.
                     </p>
                     <div class="mt-3 space-y-2">
                         ${prPhases.map(p => {
                             const published = coReleases[p.phase];
+                            const phaseBalance = co.phaseBalances ? co.phaseBalances[p.phase] : null;
                             return `
-                            <div class="p-2 bg-black/60 border border-slate-800 rounded text-xs flex justify-between items-center flex-wrap gap-2">
-                                <div>
+                            <div class="p-2.5 bg-black/60 border border-slate-800 rounded text-xs flex justify-between items-center flex-wrap gap-2">
+                                <div class="min-w-0 flex-1">
                                     <span class="text-white font-bold block uppercase">${this.escapeHTML(p.title)}</span>
-                                    <span class="text-[10px] text-slate-400 font-mono">Corte: ${this.escapeHTML(p.deadlineLabel)}</span>
+                                    <span class="text-[10px] text-slate-400 font-mono">Plazo Máximo: ${this.escapeHTML(p.deadlineLabel)}</span>
+                                    ${phaseBalance ? `
+                                        <div class="mt-1">
+                                            <span class="inline-flex items-center gap-1 text-[10px] text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono">
+                                                📊 Balance Finanzas Listo (${Number(phaseBalance.snapshot?.balance || 0).toFixed(2)} €v)
+                                            </span>
+                                        </div>
+                                    ` : `
+                                        <div class="mt-0.5">
+                                            <span class="text-[10px] text-amber-400/80 font-mono">Balance de Finanzas pendiente</span>
+                                        </div>
+                                    `}
                                 </div>
-                                <div>
+                                <div class="shrink-0">
                                     ${published ? `
                                         <div class="flex items-center gap-2">
                                             <span class="text-[10px] text-emerald-400 font-bold uppercase bg-emerald-950/40 border border-emerald-500/40 px-1.5 py-0.5">✓ Publicada</span>
@@ -1539,20 +1551,38 @@ Object.assign(ui, {
     modalPublishPressRelease(phaseKey) {
         if (!state.user || state.user.role !== 'CEO') return;
         const prPhases = typeof PRESS_RELEASE_PHASES !== 'undefined' ? PRESS_RELEASE_PHASES : [
-            { phase: 'I', title: 'Nota de Prensa Oficial — Cierre Fase I', deadlineLabel: '15/12/2026', requiredContent: 'Presentación del concepto de cohete, capital obtenido por patrocinio y objetivos corporativos.' },
-            { phase: 'II', title: 'Nota de Prensa Oficial — Cierre Fase II', deadlineLabel: '15/02/2027', requiredContent: 'Resultados preliminares de las pruebas de vuelo, mediciones angulares y estado financiero a mitad del proyecto.' },
-            { phase: 'III', title: 'Nota de Prensa Oficial — Cierre Fase III', deadlineLabel: '31/03/2027', requiredContent: 'Conclusiones de taller, dificultades de montaje superadas y preparación para el Pitch final.' }
+            { phase: 'I', title: 'Nota de Prensa Oficial — Cierre Fase I', deadlineLabel: '22/12/2026 (Corte: 15/12 + 7 días)', requiredContent: 'Presentación del concepto de cohete, capital obtenido por patrocinio y objetivos corporativos.' },
+            { phase: 'II', title: 'Nota de Prensa Oficial — Cierre Fase II', deadlineLabel: '22/02/2027 (Corte: 15/02 + 7 días)', requiredContent: 'Resultados preliminares de las pruebas de vuelo, mediciones angulares y estado financiero a mitad del proyecto.' },
+            { phase: 'III', title: 'Nota de Prensa Oficial — Cierre Fase III', deadlineLabel: '07/04/2027 (Corte: 31/03 + 7 días)', requiredContent: 'Conclusiones de taller, dificultades de montaje superadas y preparación para el Pitch final.' }
         ];
         const phaseDef = prPhases.find(p => p.phase === phaseKey) || prPhases[0];
+        const co = state.data.companies[state.user.coId];
+        const phaseBalance = co && co.phaseBalances ? co.phaseBalances[phaseDef.phase] : null;
+
+        const balanceIntegrationHtml = phaseBalance ? `
+            <div class="p-3 bg-emerald-950/40 border border-emerald-500/40 text-slate-200 space-y-1">
+                <div class="flex justify-between items-center flex-wrap gap-1">
+                    <span class="text-emerald-400 font-bold uppercase text-[11px]">📊 Balance Financiero de Fase Registrado por Finanzas:</span>
+                    <span class="text-[10px] text-slate-400 font-mono">${this.escapeHTML(phaseBalance.date || '')}</span>
+                </div>
+                <p class="font-sans text-[11px]">Dictamen: <strong class="text-white">${this.escapeHTML(phaseBalance.verdict || 'Auditado')}</strong> | Saldo: <span class="font-mono text-emerald-300 font-bold">${Number(phaseBalance.snapshot?.balance || 0).toFixed(2)} €v</span></p>
+                ${phaseBalance.driveUrl ? `<a href="${encodeURI(phaseBalance.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-cyan-300 underline font-mono text-[11px] block mt-0.5">📄 Consultar Balance DOC_17 en Drive para citar en la nota ↗</a>` : ''}
+            </div>
+        ` : `
+            <div class="p-2.5 bg-black/60 border border-amber-500/30 text-amber-300/80 text-[11px] font-sans">
+                ⚠️ Finanzas aún no ha registrado el Balance de Cierre de esta fase (DOC_17). Puedes publicar igualmente o coordinarte con Finanzas.
+            </div>
+        `;
 
         const html = `
             <div class="space-y-4 font-mono text-xs">
                 <div class="p-3 bg-cyan-950/40 border border-cyan-500/40 text-slate-200 space-y-1">
                     <p class="text-cyan-400 font-bold uppercase">${this.escapeHTML(phaseDef.title)}</p>
                     <p class="font-sans text-[11px] leading-relaxed">
-                        Fecha de corte oficial: <strong>${this.escapeHTML(phaseDef.deadlineLabel)}</strong>. Completa la nota de prensa corporativa obligatoria sintetizando los avances de todas las áreas antes de su publicación en el Tablón de Noticias.
+                        Fecha límite de emisión: <strong>${this.escapeHTML(phaseDef.deadlineLabel)}</strong> (7 días de cortesía tras corte de fase). Sintetiza los avances de todas las áreas antes de su publicación en el Tablón de Noticias.
                     </p>
                 </div>
+                ${balanceIntegrationHtml}
                 <div class="p-3 bg-black/60 border border-slate-800 text-slate-300 space-y-1">
                     <span class="text-mars-yellow font-bold uppercase text-[11px] block">Estructura Obligatoria:</span>
                     <p class="font-sans text-[11px]">${this.escapeHTML(phaseDef.requiredContent)}</p>
