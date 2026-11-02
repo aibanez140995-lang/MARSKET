@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v1.1.54
+// Versión: v1.1.55
 
 declare(strict_types=1);
 
@@ -366,6 +366,17 @@ try {
                     exit;
                 }
 
+                if ($code === 'TEST-0000') {
+                    echo json_encode([
+                        'matchedCoId' => 'sandbox_master',
+                        'companyMeta' => [
+                            'hasAux' => true,
+                            'name' => 'MARS-X SANDBOX (PRUEBAS)'
+                        ]
+                    ], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
+
                 http_response_code(404);
                 echo json_encode(['error' => 'Company code not found']);
                 exit;
@@ -387,6 +398,15 @@ try {
                 ");
                 $stmt->execute([':coId' => $coId, ':role' => $role]);
                 $row = $stmt->fetch();
+
+                if ($coId === 'sandbox_master' && (!$row || $row['name'] === null)) {
+                    $row = [
+                        'name' => 'MARS-X SANDBOX (PRUEBAS)',
+                        'vault_pin' => '',
+                        'role_pin' => '1234',
+                        'auth_stamp' => 0
+                    ];
+                }
 
                 if ($row && $row['name'] !== null) {
                     $expectedPin = '';
@@ -1288,6 +1308,7 @@ try {
             $companies = [];
             $allRoles = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'];
             $defaultCodes = [
+                'sandbox_master' => 'TEST-0000',
                 'astromars' => 'AST-1010',
                 'redares' => 'RED-2020',
                 'olympus' => 'OLY-3030',

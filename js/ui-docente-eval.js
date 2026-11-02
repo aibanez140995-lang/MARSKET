@@ -32,7 +32,7 @@ Object.assign(ui, {
         adminHtml += `
             <select aria-label="Filtrar por clase" onchange="ui.evalClassFilter=this.value; ui.evalSelectedCo=''; ui.render()" class="min-h-[44px] w-full sm:w-auto bg-black border border-mars-yellow text-mars-yellow text-xs p-2.5 uppercase font-bold outline-none cursor-pointer sm:ml-auto">
                 <option value="ALL" ${this.evalClassFilter==='ALL'?'selected':''}>Todas las Clases</option>
-                ${['A','B','C','D','E','F'].map(c => `<option value="${c}" ${this.evalClassFilter===c?'selected':''}>Clase ${c}</option>`).join('')}
+                ${['A','B','C','D','E','F','TEST'].map(c => `<option value="${c}" ${this.evalClassFilter===c?'selected':''}>Clase ${c}</option>`).join('')}
             </select>
         </div>`;
 
@@ -407,5 +407,274 @@ Object.assign(ui, {
             csv += `"${(co.name || '').replace(/"/g, '""')}","${co.classGroup || 'A'}",${vals.join(',')},${pctEval}%,${finalNote}\n`;
         });
         this.downloadFile(csv, 'csv', 'marsket_acta_ponderada_oficial.csv');
+    },
+
+    renderAdminContracts() {
+        const classFilter = this.adminContractsClassFilter || 'ALL';
+        const phaseFilter = this.adminContractsPhaseFilter || 'I';
+        const companies = state.data.companies || {};
+
+        const allClasses = ['ALL', 'A', 'B', 'C', 'D', 'E', 'F', 'TEST'];
+        const allPhases = ['ALL', 'I', 'II', 'III', 'IV'];
+
+        // Filtrar empresas
+        const filteredCoIds = Object.keys(companies).filter(cid => {
+            const co = companies[cid];
+            if (!co) return false;
+            if (classFilter !== 'ALL' && (co.classGroup || 'A') !== classFilter) return false;
+            return true;
+        });
+
+        // Contabilidad de métricas
+        let totalSigned = 0;
+        let totalCompleted = 0;
+        let totalFailed = 0;
+        let totalPending = 0;
+
+        filteredCoIds.forEach(cid => {
+            const co = companies[cid];
+            const contracts = co.contracts || {};
+            const phasesToCheck = phaseFilter === 'ALL' ? ['I', 'II', 'III', 'IV'] : [phaseFilter];
+            phasesToCheck.forEach(ph => {
+                const c = contracts[ph];
+                if (c && c.contractId) {
+                    totalSigned++;
+                    if (c.status === 'CUMPLIDO') totalCompleted++;
+                    else if (c.status === 'NO_CUMPLIDO') totalFailed++;
+                    else totalPending++;
+                }
+            });
+        });
+
+        return `
+        <div class="space-y-6">
+            <!-- Barra Superior de Filtros Rápidos (Clase y Fase) -->
+            <div class="terminal-border bg-mars-card p-4 border-t-4 border-t-amber-400 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h3 class="font-orbitron font-bold text-white text-sm uppercase tracking-wider">
+                        🤝 Auditoría Docente de Contratos Comerciales
+                    </h3>
+                    <p class="text-xs text-slate-300 mt-0.5">
+                        Supervisión de compromisos corporativos suscritos por los CEOs y liquidación automática en Ledger.
+                    </p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                    <!-- Selector de Clase -->
+                    <div class="flex items-center gap-1.5 bg-black border border-slate-700 p-1">
+                        <span class="text-[10px] text-slate-400 font-mono uppercase px-1">Clase:</span>
+                        <select onchange="ui.adminContractsClassFilter=this.value; ui.render();" class="bg-black text-amber-400 font-bold text-xs p-1 outline-none uppercase min-h-[36px]">
+                            ${allClasses.map(cls => `<option value="${cls}" ${classFilter === cls ? 'selected' : ''}>${cls === 'ALL' ? 'Todas (A-F, TEST)' : `Clase ${cls}`}</option>`).join('')}
+                        </select>
+                    </div>
+
+                    <!-- Selector de Fase -->
+                    <div class="flex items-center gap-1.5 bg-black border border-slate-700 p-1">
+                        <span class="text-[10px] text-slate-400 font-mono uppercase px-1">Fase:</span>
+                        <select onchange="ui.adminContractsPhaseFilter=this.value; ui.render();" class="bg-black text-mars-cyan font-bold text-xs p-1 outline-none uppercase min-h-[36px]">
+                            ${allPhases.map(ph => `<option value="${ph}" ${phaseFilter === ph ? 'selected' : ''}>${ph === 'ALL' ? 'Todas las Fases' : `Fase ${ph}`}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fila de KPIs de Misiones -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="terminal-border bg-mars-card p-3 border-t-2 border-t-mars-cyan text-center">
+                    <span class="text-[10px] text-slate-400 uppercase font-mono block">Suscritos</span>
+                    <strong class="text-xl font-orbitron text-white">${totalSigned}</strong>
+                </div>
+                <div class="terminal-border bg-mars-card p-3 border-t-2 border-t-amber-400 text-center">
+                    <span class="text-[10px] text-slate-400 uppercase font-mono block">En Curso</span>
+                    <strong class="text-xl font-orbitron text-amber-400">${totalPending}</strong>
+                </div>
+                <div class="terminal-border bg-mars-card p-3 border-t-2 border-t-emerald-500 text-center">
+                    <span class="text-[10px] text-slate-400 uppercase font-mono block">Cumplidos</span>
+                    <strong class="text-xl font-orbitron text-emerald-400">${totalCompleted}</strong>
+                </div>
+                <div class="terminal-border bg-mars-card p-3 border-t-2 border-t-rose-500 text-center">
+                    <span class="text-[10px] text-slate-400 uppercase font-mono block">Penalizados</span>
+                    <strong class="text-xl font-orbitron text-rose-400">${totalFailed}</strong>
+                </div>
+            </div>
+
+            <!-- Tabla de Contratos con Cabecera Fija -->
+            <div class="terminal-border bg-mars-card border-t-2 border-t-slate-700 overflow-hidden">
+                <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
+                    <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
+                        <thead class="bg-slate-950 text-slate-300 uppercase font-mono sticky top-0 z-10 border-b border-mars-border">
+                            <tr>
+                                <th class="p-3">Startup</th>
+                                <th class="p-3">Clase</th>
+                                <th class="p-3">Fase</th>
+                                <th class="p-3">Licitación Corporativa</th>
+                                <th class="p-3">Requisitos Clave</th>
+                                <th class="p-3">Recomp./Penaliz.</th>
+                                <th class="p-3">Estado</th>
+                                <th class="p-3 text-right">Dictamen Docente (1 Clic)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800">
+                            ${filteredCoIds.map(cid => {
+                                const co = companies[cid];
+                                const contracts = co.contracts || {};
+                                const phasesToList = phaseFilter === 'ALL' ? ['I', 'II', 'III', 'IV'] : [phaseFilter];
+
+                                return phasesToList.map(ph => {
+                                    const c = contracts[ph];
+                                    const isSigned = c && c.contractId;
+
+                                    return `
+                                    <tr class="hover:bg-slate-900/60 transition-colors">
+                                        <td class="p-3 font-orbitron text-white font-bold">
+                                            <button type="button" onclick="ui.showCompanyLogins('${this.escapeHTML(cid)}')" class="min-h-[44px] text-mars-cyan hover:underline inline-flex items-center">
+                                                ${this.escapeHTML(co.name)}
+                                            </button>
+                                        </td>
+                                        <td class="p-3 font-mono">
+                                            <span class="px-2 py-0.5 bg-black border border-slate-700 text-slate-300">
+                                                ${this.escapeHTML(co.classGroup || 'A')}
+                                            </span>
+                                        </td>
+                                        <td class="p-3 font-mono font-bold text-amber-400">
+                                            Fase ${ph}
+                                        </td>
+                                        <td class="p-3 max-w-[200px] truncate" title="${isSigned ? `${c.company} — ${c.title}` : 'Sin contrato'}">
+                                            ${isSigned ? `
+                                                <div class="flex flex-col">
+                                                    <span class="font-bold text-white uppercase text-xs">${this.escapeHTML(c.company)}</span>
+                                                    <span class="text-[10px] text-slate-400 truncate">${this.escapeHTML(c.title)}</span>
+                                                </div>
+                                            ` : `<span class="text-slate-500 italic">-- Ninguno --</span>`}
+                                        </td>
+                                        <td class="p-3 max-w-[280px] truncate" title="${isSigned ? c.requirements : ''}">
+                                            ${isSigned ? `
+                                                <span class="text-slate-300 font-sans text-xs truncate block">${this.escapeHTML(c.requirements)}</span>
+                                                <span class="text-[10px] text-indigo-300 italic block mt-0.5 truncate">${this.escapeHTML(c.verification || '')}</span>
+                                            ` : `<span class="text-slate-600">--</span>`}
+                                        </td>
+                                        <td class="p-3 font-mono">
+                                            ${isSigned ? `
+                                                <div class="flex items-center gap-1.5 font-bold">
+                                                    <span class="text-emerald-400">+${c.reward} €v</span>
+                                                    <span class="text-slate-600">/</span>
+                                                    <span class="text-rose-400">-${c.penalty} €v</span>
+                                                </div>
+                                            ` : `<span class="text-slate-600">--</span>`}
+                                        </td>
+                                        <td class="p-3">
+                                            ${isSigned ? (
+                                                c.status === 'CUMPLIDO'
+                                                    ? `<span class="px-2 py-1 bg-emerald-950/80 border border-emerald-500 text-emerald-300 font-mono text-xs font-bold rounded-sm">✅ CUMPLIDO</span>`
+                                                    : (c.status === 'NO_CUMPLIDO'
+                                                        ? `<span class="px-2 py-1 bg-rose-950/80 border border-rose-500 text-rose-300 font-mono text-xs font-bold rounded-sm">❌ NO CUMPLIDO</span>`
+                                                        : `<span class="px-2 py-1 bg-cyan-950/60 border border-cyan-400 text-cyan-300 font-mono text-xs animate-pulse rounded-sm">⏳ EN CURSO</span>`)
+                                            ) : `<span class="text-slate-600 text-xs font-mono">SIN CONTRATO</span>`}
+                                        </td>
+                                        <td class="p-3 text-right">
+                                            ${isSigned ? (
+                                                c.status === 'EN_CURSO' ? `
+                                                    <div class="flex items-center justify-end gap-2">
+                                                        <button type="button" onclick="ui.modalSettleContract('${this.escapeHTML(cid)}', '${ph}', true)" class="min-h-[44px] px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-black font-black uppercase text-xs transition-all shadow-sm">
+                                                            ✅ Cumplido (+${c.reward} €v)
+                                                        </button>
+                                                        <button type="button" onclick="ui.modalSettleContract('${this.escapeHTML(cid)}', '${ph}', false)" class="min-h-[44px] px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-black uppercase text-xs transition-all shadow-sm">
+                                                            ❌ No Cumplido (-${c.penalty} €v)
+                                                        </button>
+                                                    </div>
+                                                ` : `
+                                                    <div class="flex items-center justify-end gap-2 text-xs">
+                                                        <span class="text-[10px] text-slate-400 font-mono">Liquidado (${this.escapeHTML(c.settledDate || '')})</span>
+                                                        <button type="button" onclick="ui.modalSettleContract('${this.escapeHTML(cid)}', '${ph}', ${c.status !== 'CUMPLIDO'})" class="min-h-[44px] px-2.5 py-1 bg-slate-800 text-slate-200 hover:text-white border border-slate-700 text-xs uppercase" title="Modificar dictamen">
+                                                            ✏️ Rectificar
+                                                        </button>
+                                                    </div>
+                                                `
+                                            ) : `<span class="text-slate-600 text-xs">--</span>`}
+                                        </td>
+                                    </tr>`;
+                                }).join('');
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>`;
+    },
+
+    modalSettleContract(coId, phase, isCompleted) {
+        const co = state.data.companies?.[coId];
+        if (!co) return;
+        const c = co.contracts?.[phase];
+        if (!c) return;
+
+        const options = isCompleted ? [
+            "Validación de evidencias curriculares satisfactoria",
+            "Objetivo técnico y telemetría superados con éxito",
+            "Top 3 Notas de Prensa alcanzado en edición oficial",
+            "Auditoría contable y de costes sin descuadres",
+            "Cumplimiento estricto de tolerancias de taller y calidad"
+        ] : [
+            "No alcanza la cota mínima o requisitos exigidos",
+            "Descuadre presupuestario o desviación de costes > 5%",
+            "Falta de metraje fotogramétrico o telemetría continua",
+            "Incumplimiento de marcas temporales y plazos oficiales",
+            "Devolución no subsanada en entregables curriculares"
+        ];
+
+        const delta = isCompleted ? `+${c.reward} €v` : `-${c.penalty} €v`;
+
+        const body = `
+        <div class="space-y-4 text-xs">
+            <div class="p-3 bg-slate-900 border ${isCompleted ? 'border-emerald-500/50' : 'border-rose-500/50'}">
+                <span class="text-[10px] font-mono uppercase text-slate-400">Startup Objetivo:</span>
+                <h4 class="font-orbitron font-bold text-white text-sm uppercase">${this.escapeHTML(co.name)} [Clase ${this.escapeHTML(co.classGroup || 'A')}]</h4>
+                <p class="text-xs text-amber-300 font-bold mt-1">Fase ${this.escapeHTML(phase)}: ${this.escapeHTML(c.company)} — ${this.escapeHTML(c.title)}</p>
+            </div>
+
+            <div class="bg-black/70 p-3 border border-slate-800 space-y-1">
+                <span class="text-[10px] font-mono text-slate-400 uppercase font-bold">Requisitos Auditados:</span>
+                <p class="text-slate-200 font-sans">${this.escapeHTML(c.requirements)}</p>
+                <span class="text-[10px] font-mono text-slate-400 uppercase font-bold block pt-1">Criterio Oficial de Verificación:</span>
+                <p class="text-indigo-300 italic">${this.escapeHTML(c.verification)}</p>
+            </div>
+
+            <div class="p-3 text-center ${isCompleted ? 'bg-emerald-950/40 border border-emerald-500/50 text-emerald-300' : 'bg-rose-950/40 border border-rose-500/50 text-rose-300'} font-mono text-sm font-bold">
+                Impacto en Libro Mayor (Ledger): <span class="text-base ${isCompleted ? 'text-emerald-400' : 'text-rose-400'}">${delta}</span>
+            </div>
+
+            <div>
+                <label for="settle-contract-reason" class="text-slate-300 font-bold uppercase block mb-1">
+                    Motivo Tipificado del Dictamen Docente:
+                </label>
+                <select id="settle-contract-reason" class="w-full min-h-[44px] bg-black border border-slate-700 text-white text-xs p-2.5 outline-none font-sans">
+                    ${options.map(opt => `<option value="${this.escapeHTML(opt)}">${this.escapeHTML(opt)}</option>`).join('')}
+                </select>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="ui.closeModal()" class="flex-1 min-h-[44px] bg-slate-800 text-slate-300 hover:text-white font-bold text-xs uppercase transition-colors">
+                    Cancelar
+                </button>
+                <button type="button" onclick="ui.confirmSettleContract('${this.escapeHTML(coId)}', '${this.escapeHTML(phase)}', ${isCompleted})" class="flex-1 min-h-[44px] ${isCompleted ? 'bg-emerald-500 text-black hover:bg-white' : 'bg-rose-600 text-white hover:bg-white hover:text-rose-600'} font-black text-xs uppercase font-orbitron transition-all shadow-md">
+                    ${isCompleted ? 'Aprobar y Abonar (+€v)' : 'Registrar Penalización (-€v)'}
+                </button>
+            </div>
+        </div>`;
+
+        this.showModal(`AUDITORÍA DOCENTE • CONTRATOS COMERCIALES FASE ${phase}`, body, "");
+    },
+
+    confirmSettleContract(coId, phase, isCompleted) {
+        const selectEl = document.getElementById('settle-contract-reason');
+        const reason = selectEl ? selectEl.value : '';
+
+        const res = state.settleCommercialContract(coId, phase, isCompleted, reason);
+        if (res && res.ok) {
+            this.closeModal();
+            this.notify("✅ Dictamen docente ejecutado y liquidado en el Libro Mayor con éxito.", "success");
+            this.render();
+        } else {
+            this.notify("❌ " + (res?.error || "Error al liquidar contrato"), "error");
+        }
     }
 });

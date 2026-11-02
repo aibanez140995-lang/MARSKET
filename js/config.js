@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.54) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.55) ---
 
-const APP_VERSION = "1.1.54";
+const APP_VERSION = "1.1.55";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -160,6 +160,332 @@ const PRESS_RELEASE_PHASES = Object.freeze([
         title: 'Nota de Prensa Oficial — Cierre Fase III',
         requiredContent: 'Conclusiones de taller, dificultades de montaje superadas y preparación para el Pitch final.',
         docKey: 'DOC_15_NOTA_PRENSA'
+    },
+    {
+        phase: 'IV',
+        phaseName: 'Fase IV: Validación Científica y Comercialización',
+        phaseCutoff: '2027-04-23T23:59',
+        phaseCutoffLabel: '23/04/2027',
+        deadline: '2027-04-30T23:59',
+        deadlineLabel: '30/04/2027 (Corte: 23/04 + 7 días)',
+        title: 'Nota de Prensa Oficial — Cierre Fase IV',
+        requiredContent: 'Validación científica final, rendimiento de propelentes y propuesta de valor para el Gran Concurso Aeroespacial.',
+        docKey: 'DOC_15_NOTA_PRENSA'
+    }
+]);
+
+// Ventanas temporales oficiales de selección de contratos (3 días lectivos por fase)
+const CONTRACTS_PHASE_WINDOWS = Object.freeze({
+    'I': {
+        phase: 'I',
+        phaseName: 'Fase I: Fundación y Viabilidad',
+        selectionStart: '2026-11-11T00:00',
+        selectionEnd: '2026-11-13T23:59',
+        windowLabel: '11/11/2026 – 13/11/2026 (Primeros 3 días lectivos desde apertura)',
+        evalCutoff: '2026-12-15T23:59',
+        evalCutoffLabel: '15/12/2026'
+    },
+    'II': {
+        phase: 'II',
+        phaseName: 'Fase II: I+D y Prototipado Aeroespacial',
+        selectionStart: '2026-12-15T00:00',
+        selectionEnd: '2026-12-17T23:59',
+        windowLabel: '15/12/2026 – 17/12/2026 (Primeros 3 días lectivos de Fase II)',
+        evalCutoff: '2027-02-15T23:59',
+        evalCutoffLabel: '15/02/2027'
+    },
+    'III': {
+        phase: 'III',
+        phaseName: 'Fase III: Producción y Finanzas B2B',
+        selectionStart: '2027-02-15T00:00',
+        selectionEnd: '2027-02-17T23:59',
+        windowLabel: '15/02/2027 – 17/02/2027 (Primeros 3 días lectivos de Fase III)',
+        evalCutoff: '2027-03-31T23:59',
+        evalCutoffLabel: '31/03/2027'
+    },
+    'IV': {
+        phase: 'IV',
+        phaseName: 'Fase IV: Validación Científica y Comercialización',
+        selectionStart: '2027-03-31T00:00',
+        selectionEnd: '2027-04-02T23:59',
+        windowLabel: '31/03/2027 – 02/04/2027 (Primeros 3 días lectivos de Fase IV)',
+        evalCutoff: '2027-04-23T23:59',
+        evalCutoffLabel: '23/04/2027'
+    }
+});
+
+// Catálogo Oficial de los 24 Contratos Comerciales y Misiones del CEO (6 por fase)
+const CONTRACTS_CATALOG_DEF = Object.freeze([
+    // --- FASE 1: Concepto de Negocio, Presupuesto y Captación (02/11/2026 – 15/12/2026) ---
+    {
+        id: 'F1-C01',
+        phase: 'I',
+        company: 'Siemens Energy',
+        title: 'Iniciativa Aero-Eco Sostenible',
+        requirements: 'Diseñar un prototipo con coste de catálogo menor o igual a 280 €v.',
+        reward: 150,
+        penalty: 50,
+        verification: 'Validación de Hoja de Registro y Presupuesto por FyQ y Economía.',
+        dept: 'TECNICO'
+    },
+    {
+        id: 'F1-C02',
+        phase: 'I',
+        company: 'PLD Space',
+        title: 'Fondo Semilla NewSpace DeepTech',
+        requirements: 'Obtener el nivel Oro (+500 €v) o Plata (+400 €v) en el micro-pitch de patrocinio en lengua inglesa.',
+        reward: 200,
+        penalty: 75,
+        verification: 'Rúbrica oficial de expresión oral en Inglés y LyE.',
+        dept: 'CEO'
+    },
+    {
+        id: 'F1-C03',
+        phase: 'I',
+        company: 'Airbus Defence and Space',
+        title: 'Licitación Industrial Speed-to-Market',
+        requirements: 'Registrar la Identidad Corporativa inicial completa (Logo, Misión, Visión, Valores) al menos 48 horas antes de la fecha límite oficial (antes del 13/12/2026).',
+        reward: 120,
+        penalty: 40,
+        verification: 'Marca temporal de registro de Marketing en la app MARS-KET.',
+        dept: 'MARKETING'
+    },
+    {
+        id: 'F1-C04',
+        phase: 'I',
+        company: 'Microsoft Azure AI',
+        title: 'Certificación de Transparencia Algorítmica',
+        requirements: 'Registrar un mínimo de 4 consultas a IA completas en la Bitácora de Diciembre, con prompt, output y método explícito de contrastación teórica y empírica.',
+        reward: 100,
+        penalty: 50,
+        verification: 'Auditoría docente de la Bitácora Central de IA (Operaciones).',
+        dept: 'OPERACIONES'
+    },
+    {
+        id: 'F1-C05',
+        phase: 'I',
+        company: 'Deimos Space',
+        title: 'Reto de Precisión Presupuestaria Previa',
+        requirements: 'Desviación inferior al 5% entre el presupuesto inicial del 09/11/2026 y los costes reales computados en el prototipo del 15/12/2026.',
+        reward: 140,
+        penalty: 60,
+        verification: 'Comparativa de hojas de cálculo de costes en Economía.',
+        dept: 'FINANZAS'
+    },
+    {
+        id: 'F1-C06',
+        phase: 'I',
+        company: 'Financial Times',
+        title: 'Difusión Global: Top 3 Notas de Prensa F1',
+        requirements: 'La nota de prensa emitida por el CEO al cierre de la Fase 1 es seleccionada por el jurado entre las 3 mejores del curso y publicada en la edición internacional.',
+        reward: 180,
+        penalty: 60,
+        verification: 'Selección del comité docente y publicación en el tablón oficial de MARS-KET.',
+        dept: 'CEO'
+    },
+
+    // --- FASE 2: Medición Trigonométrica, Ajuste y Banco de Pruebas (15/12/2026 – 15/02/2027) ---
+    {
+        id: 'F2-C01',
+        phase: 'II',
+        company: 'Hispasat',
+        title: 'Misión Telecom Apogeo 8 Metros',
+        requirements: 'Alcanzar o superar los 8 metros de altura real en al menos un lanzamiento registrado en vídeo continuo y medido con goniómetro.',
+        reward: 250,
+        penalty: 100,
+        verification: 'Altura calculada en informe de Matemáticas respaldada por metraje audiovisual.',
+        dept: 'TECNICO'
+    },
+    {
+        id: 'F2-C02',
+        phase: 'II',
+        company: 'GMV Aerospace',
+        title: 'Triangulación Geodésica y Telemetría',
+        requirements: 'Registrar un mínimo de 3 lanzamientos de prueba completos, tabulando los ángulos medidos desde dos estaciones terrestres independientes con distancia conocida.',
+        reward: 200,
+        penalty: 80,
+        verification: 'Datos brutos y cálculos trigonométricos en informe técnico de Matemáticas.',
+        dept: 'TECNICO'
+    },
+    {
+        id: 'F2-C03',
+        phase: 'II',
+        company: 'DJI Technologies',
+        title: 'Registro Audiovisual y Análisis Fotogramétrico',
+        requirements: 'Adjuntar al informe técnico grabaciones completas en plano continuo (despegue, apogeo y aterrizaje) de al menos 2 vuelos, con análisis segundo a segundo.',
+        reward: 160,
+        penalty: 70,
+        verification: 'Validación de enlaces de vídeo y marcas de tiempo por docente de FyQ.',
+        dept: 'OPERACIONES'
+    },
+    {
+        id: 'F2-C04',
+        phase: 'II',
+        company: 'SAP Enterprise',
+        title: 'Rebalanceo Presupuestario Post-Prototipo',
+        requirements: 'Entregar a tiempo el Presupuesto post-prototipo (09/01/2027) reflejando de forma exacta la inyección del patrocinio obtenido y compras sin descuadres.',
+        reward: 100,
+        penalty: 20,
+        verification: 'Auditoría de la entrega de Economía por el profesorado.',
+        dept: 'FINANZAS'
+    },
+    {
+        id: 'F2-C05',
+        phase: 'II',
+        company: 'Dassault Systèmes',
+        title: 'Modelado Cinemático de Vuelo',
+        requirements: 'Incluir en el informe comparativo final el cálculo analítico de velocidad media de ascenso y aceleración inicial a partir del análisis del metraje de vídeo.',
+        reward: 170,
+        penalty: 60,
+        verification: 'Parámetros complementarios evaluados en informe de Matemáticas y FyQ.',
+        dept: 'TECNICO'
+    },
+    {
+        id: 'F2-C06',
+        phase: 'II',
+        company: 'MIT Technology Review',
+        title: 'Crónica Científica: Top 3 Notas de Prensa F2',
+        requirements: 'La nota de prensa de la Fase 2 (análisis de pruebas de vuelo y avances técnicos) es elegida entre las 3 mejores de la promoción para portada internacional.',
+        reward: 200,
+        penalty: 70,
+        verification: 'Rúbrica de comunicación y selección en el Top 3 por el profesorado.',
+        dept: 'CEO'
+    },
+
+    // --- FASE 3: Taller de Montaje, Balance y Modelo de Negocio (15/02/2027 – 31/03/2027) ---
+    {
+        id: 'F3-C01',
+        phase: 'III',
+        company: 'Aernnova Aerospace',
+        title: 'Certificación Aeronáutica Taller Cero Defectos',
+        requirements: 'Completar la Hoja de Taller conjunta justificando tolerancias mecánicas, centro de gravedad y seguridad estructural sin devoluciones del docente.',
+        reward: 80,
+        penalty: 20,
+        verification: 'Calificación mayor o igual a 8/10 en el entregable de Taller para FyQ.',
+        dept: 'TECNICO'
+    },
+    {
+        id: 'F3-C02',
+        phase: 'III',
+        company: 'BBVA Spark',
+        title: 'Línea de Liquidez y Solvencia Corporativa',
+        requirements: 'Presentar el Balance de Situación al 31/03/2027 con Fondo de Maniobra positivo y tesorería disponible superior a 650 €v libres en caja.',
+        reward: 150,
+        penalty: 45,
+        verification: 'Cuadre contable y ratios auditados por el profesor de Economía.',
+        dept: 'FINANZAS'
+    },
+    {
+        id: 'F3-C03',
+        phase: 'III',
+        company: 'Wallapop PRO',
+        title: 'Licitación de Logística y Economía Circular',
+        requirements: 'Ingresar un mínimo de 90 €v vendiendo componentes o excedentes de stock a otras empresas de la clase mediante transferencias de la app.',
+        reward: 150,
+        penalty: 50,
+        verification: 'Registro oficial de transferencias B2B auditadas en Aduana.',
+        dept: 'OPERACIONES'
+    },
+    {
+        id: 'F3-C04',
+        phase: 'III',
+        company: 'Wayra Telefónica',
+        title: 'Programa de Escalamiento Corporativo',
+        requirements: 'Entregar el Business Model Doc integrando un modelo de negocio con escalabilidad y un organigrama ejecutivo donde cada miembro haya cumplido sus misiones.',
+        reward: 180,
+        penalty: 60,
+        verification: 'Evaluación docente de la memoria de emprendimiento en LyE.',
+        dept: 'CEO'
+    },
+    {
+        id: 'F3-C05',
+        phase: 'III',
+        company: 'Meta / Google Marketing',
+        title: 'Campaña de Alto Impacto Auditada',
+        requirements: 'Contratar el Pack \'Prensa Tradicional\' (300 €v) o \'Despegue Híbrido\' (450 €v / 400 €v) y justificar en un documento de Drive la ejecución del 100% de las acciones antes del 31/03/2027.',
+        reward: 90,
+        penalty: 30,
+        verification: 'Aprobación de la Ficha Técnica de Campaña por el docente de Marketing.',
+        dept: 'MARKETING'
+    },
+    {
+        id: 'F3-C06',
+        phase: 'III',
+        company: 'The Wall Street Journal',
+        title: 'Reporte Corporativo: Top 3 Notas de Prensa F3',
+        requirements: 'La nota de prensa de la Fase 3 (economía circular y preparación comercial) es elegida entre las 3 mejores para la sección global de mercados.',
+        reward: 220,
+        penalty: 80,
+        verification: 'Selección del jurado docente evaluador de comunicación (LEN/ING).',
+        dept: 'CEO'
+    },
+
+    // --- FASE 4: Validación Científica y Comercialización (31/03/2027 – 23/04/2027) ---
+    {
+        id: 'F4-C01',
+        phase: 'IV',
+        company: 'BASF Chemical',
+        title: 'Optimización Estequiométrica Avanzada',
+        requirements: 'Obtener una calificación superior a 8,5 en el informe técnico final de FyQ, justificando la relación molar y rendimiento de propelentes.',
+        reward: 300,
+        penalty: 120,
+        verification: 'Nota asignada por el profesor de Física y Química en el entregable.',
+        dept: 'TECNICO'
+    },
+    {
+        id: 'F4-C02',
+        phase: 'IV',
+        company: 'KPMG / PwC',
+        title: 'Auditoría y Cierre Fiscal Pulcro',
+        requirements: 'Obtener una calificación superior a 8,5 en la Cuenta de Resultados y Balance final presentado al profesor de Economía, con cero descuadres.',
+        reward: 250,
+        penalty: 100,
+        verification: 'Auditoría contable y calificación oficial en Economía.',
+        dept: 'FINANZAS'
+    },
+    {
+        id: 'F4-C03',
+        phase: 'IV',
+        company: 'Kibo Ventures',
+        title: 'Inversión Serie A para Startups Tecnológicas',
+        requirements: 'Obtener al menos un 85% de la puntuación máxima en el Dossier de Inversores evaluado por Lengua Castellana y Literatura (mínimo 8,5/10).',
+        reward: 280,
+        penalty: 110,
+        verification: 'Acta de evaluación de Lengua del documento final.',
+        dept: 'CEO'
+    },
+    {
+        id: 'F4-C04',
+        phase: 'IV',
+        company: 'Amazon Web Services (AWS)',
+        title: 'Despliegue de Business Model Canvas Cuantitativo',
+        requirements: 'Presentar el Canvas de Modelo de Negocio el 23/04/2027 con métricas clave cuantitativas y calificación igual o superior a 8,5/10.',
+        reward: 220,
+        penalty: 80,
+        verification: 'Rúbrica de modelo de negocio evaluada por LyE/Economía.',
+        dept: 'OPERACIONES'
+    },
+    {
+        id: 'F4-C05',
+        phase: 'IV',
+        company: 'Apple Enterprise',
+        title: 'Campaña Publicitaria de Calidad Máxima',
+        requirements: 'Alcanzar una media ponderada superior a 8,5 en todas las campañas de Marketing y contenido audiovisual entregado.',
+        reward: 240,
+        penalty: 80,
+        verification: 'Puntuación de Marketing auditada por el Coordinador.',
+        dept: 'MARKETING'
+    },
+    {
+        id: 'F4-C06',
+        phase: 'IV',
+        company: 'The New York Times (Science & Tech)',
+        title: 'Exclusiva Aeroespacial: Top 3 Notas de Prensa F4',
+        requirements: 'La nota de prensa final de la Fase 4 es clasificada entre las 3 mejores de la promoción por el jurado del Pitch y publicada en primera plana.',
+        reward: 250,
+        penalty: 90,
+        verification: 'Votación del jurado del Concurso Final.',
+        dept: 'CEO'
     }
 ]);
 
@@ -710,8 +1036,28 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.54
+// Changelog Oficial de Producción v1.1.55
 const APP_CHANGELOG = [
+    {
+      version: "1.1.55",
+      date: new Date().toISOString().split('T')[0],
+      title: "Módulo Oficial de Contratos Comerciales y Misiones del CEO, Empresa Maestra Sandbox y Liquidación Docente en Ledger",
+      items: [
+        "Catálogo Oficial de 24 Contratos Comerciales (Fases I a IV): 6 licitaciones estratégicas por fase emitidas por corporaciones aeroespaciales y medios internacionales (Siemens Energy, PLD Space, Airbus, Microsoft Azure, Financial Times, Hispasat, GMV, DJI, SAP, Dassault, MIT Tech Review, Aernnova, BBVA Spark, Wallapop PRO, Wayra, Meta/Google, WSJ, BASF, KPMG/PwC, Kibo Ventures, AWS, Apple y NYT).",
+        "Ventana Oficial de Selección y Bloqueo Inmutable: ventana de 3 días lectivos por fase (Fase I abierta del 11/11 al 13/11/2026; Fases II, III y IV en los primeros 3 días de cada fase). Compromiso vinculante y congelado tras la firma del CEO.",
+        "Empresa Maestra Ficticia Sandbox (TEST-0000): startup de pruebas 'MARS-X SANDBOX (PRUEBAS)' asignada a Clase TEST con contratos desbloqueados permanentemente en las 4 fases para ensayos y auditoría de tesorería sin alterar clasificaciones.",
+        "Doble Visibilidad Alumnos: nueva pestaña '🤝 Contratos & Patrocinios' con visualización del Patrocinador Oficial y licitaciones (con firma exclusiva para CEO y modo consulta para resto de departamentos), además de Banner Táctico activo en Dossier y Finanzas.",
+        "Panel Docente de Auditoría de Contratos: gestión integral con filtros rápidos para las 6 clases del centro (A, B, C, D, E, F y TEST) y selector de fase con dictamen tipificado 100% Zero-Text.",
+        "Liquidación Automática en el Libro Mayor ([CONTRATO_COMERCIAL]): inyección inmediata de abono (+€v) por cumplimiento o cargo extraordinario (-€v) por incumplimiento, con soporte oficial de Números Rojos / Deuda Corporativa en el Balance de Situación.",
+        "Soporte de Prensa Fase IV: habilitación de la Nota de Prensa oficial para el cierre de Fase IV (23/04/2027 + 7 días extra de cortesía hasta el 30/04/2027)."
+      ],
+      highlights: [
+        { type: "CONTRATOS", text: "24 contratos corporativos oficiales con recompensas y penalizaciones automáticas." },
+        { type: "SANDBOX", text: "Empresa de pruebas TEST-0000 con contratos abiertos desde el primer día." },
+        { type: "DOCENTE", text: "Auditoría en 1 clic para 6 clases (A-F y TEST) con liquidación en Ledger." },
+        { type: "FINANZAS", text: "Contabilidad de Deuda Corporativa y números rojos ante penalizaciones." }
+      ]
+    },
     {
       version: "1.1.54",
       date: new Date().toISOString().split('T')[0],

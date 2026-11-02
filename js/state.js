@@ -71,7 +71,17 @@ const DEFAULT_STATE = {
             name: "Astra Dynamics", balance: 2400, classGroup: 'A', logo: null, slogan: "", valueProposition: "",
             brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "" }, sponsorAwarded: null, sponsorData: { name: null, logo: null },
             aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
-            deliverables: {}
+            deliverables: {}, contracts: {}
+        },
+        sandbox_master: {
+            name: "MARS-X SANDBOX (PRUEBAS)", balance: 1000, classGroup: 'TEST', isTestCompany: true, unlockAllContracts: true, logo: null, slogan: "BANCO MAESTRO DE PRUEBAS", valueProposition: "Entorno de evaluación y pruebas",
+            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "" }, sponsorAwarded: null, sponsorData: { name: null, logo: null },
+            aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [],
+            ledger: [
+                { id: 'LEDGER_INIT_TEST', desc: 'Dotación inicial Sandbox de Pruebas', amount: 1000, date: '02/11/2026', delta: 1000, dept: 'GENERAL', final: 1000 }
+            ],
+            realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
+            deliverables: {}, contracts: {}
         }
     }
 };
@@ -444,6 +454,7 @@ const state = {
         };
 
         const defaultCodes = {
+            sandbox_master: 'TEST-0000',
             astromars: 'AST-1010',
             redares: 'RED-2020',
             olympus: 'OLY-3030',
@@ -458,6 +469,47 @@ const state = {
             stellar: 'STL-3030'
         };
 
+        if (!d.companies['sandbox_master']) {
+            d.companies['sandbox_master'] = {
+                name: "MARS-X SANDBOX (PRUEBAS)",
+                classGroup: "TEST",
+                balance: 1000,
+                isTestCompany: true,
+                unlockAllContracts: true,
+                roles: {
+                    CEO: '1234',
+                    TECNICO: '1234',
+                    FINANZAS: '1234',
+                    MARKETING: '1234',
+                    OPERACIONES_IA: '1234',
+                    AUXILIAR: '1234'
+                },
+                authVault: {
+                    code: 'TEST-0000',
+                    roles: {
+                        CEO: '1234',
+                        TECNICO: '1234',
+                        FINANZAS: '1234',
+                        MARKETING: '1234',
+                        OPERACIONES_IA: '1234',
+                        AUXILIAR: '1234'
+                    }
+                },
+                contracts: {},
+                ledger: [
+                    { id: 'LEDGER_INIT_TEST', desc: 'Dotación inicial Sandbox de Pruebas', amount: 1000, date: '02/11/2026', delta: 1000, dept: 'GENERAL', final: 1000 }
+                ]
+            };
+        } else {
+            d.companies['sandbox_master'].unlockAllContracts = true;
+            d.companies['sandbox_master'].classGroup = 'TEST';
+            d.companies['sandbox_master'].isTestCompany = true;
+            d.companies['sandbox_master'].contracts = d.companies['sandbox_master'].contracts || {};
+            if (!this.getCompanyCode(d.companies['sandbox_master'])) {
+                this.setCompanyCode(d.companies['sandbox_master'], 'TEST-0000', false);
+            }
+        }
+
         for(let k in d.companies) {
             let co = d.companies[k];
             if (!co) continue;
@@ -468,6 +520,7 @@ const state = {
             co.updatedAt = co.updatedAt || Date.now();
             co.authUpdatedAt = Number(co.authUpdatedAt) || 0;
             co.roles = co.roles || {};
+            co.contracts = (co.contracts && typeof co.contracts === 'object' && !Array.isArray(co.contracts)) ? co.contracts : {};
             
             if(co.roles.QUIMICA || co.roles.AERODINAMICA || co.roles.IA) {
                 const defaultPin = co.roles.CEO || '1234';
@@ -965,6 +1018,21 @@ const state = {
                         sCo[arrName] = mergeArrays(sCo[arrName], lCo[arrName], arrName);
                     });
                     sCo.balance = this.calculateBalance(sCo);
+                }
+
+                // Conciliación de contratos comerciales por fase
+                const targetCo = merged.companies[k] || sCo;
+                if (targetCo) {
+                    const sCont = (sCo?.contracts && typeof sCo.contracts === 'object') ? sCo.contracts : {};
+                    const lCont = (lCo?.contracts && typeof lCo.contracts === 'object') ? lCo.contracts : {};
+                    targetCo.contracts = { ...sCont, ...lCont };
+                    ['I', 'II', 'III', 'IV'].forEach(ph => {
+                        if (sCont[ph]?.status === 'CUMPLIDO' || sCont[ph]?.status === 'NO_CUMPLIDO') {
+                            targetCo.contracts[ph] = sCont[ph];
+                        } else if (lCont[ph]?.status === 'CUMPLIDO' || lCont[ph]?.status === 'NO_CUMPLIDO') {
+                            targetCo.contracts[ph] = lCont[ph];
+                        }
+                    });
                 }
             } else if (lCo && !sCo && !localData._deletedCompanies?.[k]) {
                 merged.companies[k] = lCo;
@@ -2468,6 +2536,102 @@ const state = {
             try { ui.render(); } catch(uiErr) { console.error("Excepción visual aislada tras reconciliación:", uiErr); }
         }
         return pushSuccess;
+    },
+
+    isContractSelectionWindowOpen(phase, co) {
+        if (!co) return false;
+        // La empresa sandbox de pruebas tiene las 4 ventanas abiertas siempre
+        if (co.unlockAllContracts === true || co.isTestCompany === true) {
+            return true;
+        }
+        const win = typeof CONTRACTS_PHASE_WINDOWS !== 'undefined' ? CONTRACTS_PHASE_WINDOWS[phase] : null;
+        if (!win) return false;
+        const now = Date.now();
+        const start = new Date(win.selectionStart).getTime();
+        const end = new Date(win.selectionEnd).getTime();
+        return now >= start && now <= end;
+    },
+
+    signCommercialContract(coId, contractId) {
+        const co = this.data.companies?.[coId];
+        if (!co) {
+            return { ok: false, error: 'Empresa no encontrada' };
+        }
+        // Validar rol CEO o Claustro
+        const isCEO = this.user && (this.user.role === 'CEO' || this.user.admin);
+        if (!isCEO) {
+            return { ok: false, error: 'Solo la Dirección General (CEO) tiene potestad legal para firmar contratos comerciales.' };
+        }
+        const contract = (typeof CONTRACTS_CATALOG_DEF !== 'undefined' ? CONTRACTS_CATALOG_DEF : []).find(c => c.id === contractId);
+        if (!contract) {
+            return { ok: false, error: 'Contrato comercial no registrado en el catálogo oficial.' };
+        }
+        const phase = contract.phase;
+        // Validar ventana temporal
+        if (!this.isContractSelectionWindowOpen(phase, co)) {
+            const win = typeof CONTRACTS_PHASE_WINDOWS !== 'undefined' ? CONTRACTS_PHASE_WINDOWS[phase] : null;
+            return { ok: false, error: `La ventana de suscripción para la Fase ${phase} no está activa. Plazo oficial: ${win?.windowLabel || 'Primeros 3 días lectivos'}.` };
+        }
+        co.contracts = co.contracts || {};
+        if (co.contracts[phase] && co.contracts[phase].contractId) {
+            return { ok: false, error: `La empresa ya ha suscrito el contrato "${co.contracts[phase].title}" en la Fase ${phase}. Cada startup puede firmar únicamente un (1) contrato por fase.` };
+        }
+
+        const now = Date.now();
+        co.contracts[phase] = {
+            contractId: contract.id,
+            phase: contract.phase,
+            company: contract.company,
+            title: contract.title,
+            requirements: contract.requirements,
+            reward: contract.reward,
+            penalty: contract.penalty,
+            verification: contract.verification,
+            dept: contract.dept,
+            signedAt: now,
+            signedDate: new Date().toLocaleString(),
+            signedBy: this.user?.role || 'CEO',
+            status: 'EN_CURSO',
+            settledAt: null,
+            settledBy: null,
+            settlementNote: null,
+            ledgerTxId: null
+        };
+        co.updatedAt = now;
+        this.save();
+        return { ok: true, contract: co.contracts[phase] };
+    },
+
+    settleCommercialContract(coId, phase, isCompleted, reasonNote = '') {
+        const co = this.data.companies?.[coId];
+        if (!co) {
+            return { ok: false, error: 'Empresa no encontrada' };
+        }
+        if (!this.user || !this.user.admin) {
+            return { ok: false, error: 'La auditoría y liquidación de contratos es exclusiva del profesorado evaluador.' };
+        }
+        co.contracts = co.contracts || {};
+        const cRecord = co.contracts[phase];
+        if (!cRecord || !cRecord.contractId) {
+            return { ok: false, error: `La empresa no cuenta con un contrato comercial suscrito en la Fase ${phase}.` };
+        }
+
+        const now = Date.now();
+        const delta = isCompleted ? Number(cRecord.reward) : -Number(cRecord.penalty);
+        const concept = isCompleted
+            ? `[CONTRATO_COMERCIAL] Cumplimiento de misión: ${cRecord.company} — ${cRecord.title}`
+            : `[CONTRATO_COMERCIAL] Penalización por incumplimiento de misión: ${cRecord.company} — ${cRecord.title}`;
+
+        cRecord.status = isCompleted ? 'CUMPLIDO' : 'NO_CUMPLIDO';
+        cRecord.settledAt = now;
+        cRecord.settledDate = new Date().toLocaleString();
+        cRecord.settledBy = this.user.role || 'DOCENTE';
+        cRecord.settlementNote = reasonNote || (isCompleted ? 'Validado con éxito por comité docente' : 'Incumplimiento de requisitos técnicos/financieros');
+
+        // Generar asiento contable en Ledger
+        this.addToLedger(coId, concept, 'CONTRATO_COMERCIAL', delta);
+
+        return { ok: true, contract: cRecord, delta };
     },
 
     addToLedger(coId, concept, dept, delta) {

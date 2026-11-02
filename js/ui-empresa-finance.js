@@ -780,14 +780,27 @@ Object.assign(ui, {
             </div>
         </div>`;
 
+        const debtAlertHtml = co.balance < 0 ? `
+        <div class="terminal-border bg-red-950/40 border-2 border-red-500/80 p-4 mb-6 text-red-200 shadow-[0_0_15px_rgba(255,0,0,0.2)] animate-pulse">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">🚨</span>
+                <div>
+                    <h4 class="font-orbitron font-bold text-red-400 text-xs sm:text-sm uppercase tracking-wide">DESCUBIERTO EN TESORERÍA // DEUDA CORPORATIVA VIRTUAL</h4>
+                    <p class="text-xs text-red-200 mt-0.5">La startup presenta un saldo contable negativo de <strong class="text-white font-mono">${Number(co.balance).toFixed(2)} €v</strong> debido a penalizaciones de contratos comerciales o compromisos financieros no cubiertos. Computa como pasivo exigible en el Balance de Situación.</p>
+                </div>
+            </div>
+        </div>` : '';
+
         wrapper.innerHTML = `
+        ${debtAlertHtml}
+        ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <!-- Columna Izquierda: Balance, KPIs y Ledger Inmutable -->
             <div class="lg:col-span-7 space-y-6">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-green text-center">
-                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Saldo Virtual</span>
-                        <p class="text-lg sm:text-xl font-orbitron font-black text-mars-green">${Number(co.balance).toFixed(2)} €v</p>
+                    <div class="terminal-border bg-mars-card p-4 border-t-2 ${co.balance < 0 ? 'border-t-rose-500' : 'border-t-mars-green'} text-center">
+                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">${co.balance < 0 ? 'Deuda Virtual' : 'Saldo Virtual'}</span>
+                        <p class="text-lg sm:text-xl font-orbitron font-black ${co.balance < 0 ? 'text-rose-400 animate-pulse' : 'text-mars-green'}">${Number(co.balance).toFixed(2)} €v</p>
                     </div>
                     <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-cyan text-center">
                         <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Coste Neto</span>

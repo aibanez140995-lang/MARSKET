@@ -307,7 +307,7 @@ Object.assign(ui, {
             });
         }
         const rawClasses = Object.values(state.data.companies || {}).map(c => c.classGroup).filter(Boolean);
-        const uniqueClasses = [...new Set(['A', 'B', ...rawClasses])].sort();
+        const uniqueClasses = [...new Set(['A', 'B', 'C', 'D', 'E', 'F', 'TEST', ...rawClasses])].sort();
         const currentKeychainClass = this.selectedKeychainClass || (uniqueClasses[0] || 'A');
         
         const pendingAuxCoIds = Object.keys(state.data.companies).filter(cid => {
@@ -1212,7 +1212,7 @@ Object.assign(ui, {
 
         const currentFilter = this.telemetryClassFilter || 'ALL';
         const rawClasses = Object.values(state.data.companies || {}).map(c => c.classGroup).filter(Boolean);
-        const uniqueClasses = [...new Set(['A', 'B', ...rawClasses])].sort();
+        const uniqueClasses = [...new Set(['A', 'B', 'C', 'D', 'E', 'F', 'TEST', ...rawClasses])].sort();
 
         const classOptions = `
             <option value="ALL" ${currentFilter === 'ALL' ? 'selected' : ''}>Todas las Clases</option>

@@ -231,6 +231,7 @@ Object.assign(ui, {
         
         wrapper.innerHTML = `
         ${adminSelector}
+        ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
         <div role="tablist" aria-label="Secciones del Dossier Académico" class="flex flex-wrap gap-2 mb-6 border-b border-mars-border pb-2">
             <button type="button" role="tab" aria-selected="${tab==='eval'}" onclick="ui.showDossierTab('eval')" class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase ${tab==='eval'?'bg-mars-cyan text-black':'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'} transition-colors">📊 Evaluación Continua (100%)</button>
             <button type="button" role="tab" aria-selected="${tab==='docs'}" onclick="ui.showDossierTab('docs')" class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase ${tab==='docs'?'bg-mars-cyan text-black':'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'} transition-colors">📁 Bóveda de Entregables</button>
@@ -1814,5 +1815,379 @@ Object.assign(ui, {
             </div>
         `;
         el.appendChild(wrapper);
+    },
+
+    getCurrentPhaseKey() {
+        const now = Date.now();
+        if (now <= new Date('2026-12-15T23:59:59').getTime()) return 'I';
+        if (now <= new Date('2027-02-15T23:59:59').getTime()) return 'II';
+        if (now <= new Date('2027-03-31T23:59:59').getTime()) return 'III';
+        return 'IV';
+    },
+
+    renderActiveContractTacticalBanner(co) {
+        if (!co) return '';
+        const curPhase = this.getCurrentPhaseKey();
+        const signed = co.contracts?.[curPhase];
+        const isCEO = state.user && (state.user.role === 'CEO' || state.user.admin);
+
+        if (signed && signed.contractId) {
+            const isCompleted = signed.status === 'CUMPLIDO';
+            const isFailed = signed.status === 'NO_CUMPLIDO';
+            const statusBadge = isCompleted
+                ? '<span class="text-xs font-mono font-bold px-2 py-0.5 bg-emerald-950/60 border border-emerald-500 text-emerald-300">✅ CUMPLIDO (+' + signed.reward + ' €v)</span>'
+                : (isFailed
+                    ? '<span class="text-xs font-mono font-bold px-2 py-0.5 bg-rose-950/60 border border-rose-500 text-rose-300">❌ NO CUMPLIDO (-' + signed.penalty + ' €v)</span>'
+                    : '<span class="text-xs font-mono font-bold px-2 py-0.5 bg-cyan-950/60 border border-cyan-400 text-cyan-300 animate-pulse">⏳ EN CURSO</span>');
+
+            return `
+            <div class="terminal-border bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border-indigo-500/50 p-4 mb-6 shadow-[0_0_15px_rgba(99,102,241,0.15)]">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 flex-wrap mb-1">
+                            <span class="text-[10px] font-orbitron font-bold uppercase tracking-wider px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">🤝 Misión CEO Activa • Fase ${this.escapeHTML(curPhase)}</span>
+                            ${statusBadge}
+                        </div>
+                        <h4 class="font-orbitron font-bold text-white text-xs sm:text-sm uppercase tracking-wide break-words">${this.escapeHTML(signed.company)} — ${this.escapeHTML(signed.title)}</h4>
+                        <p class="text-xs text-slate-300 mt-1 leading-relaxed"><strong class="text-indigo-300 uppercase">Requisitos:</strong> ${this.escapeHTML(signed.requirements)}</p>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-800 pt-2 md:pt-0">
+                        <div class="flex items-center gap-1.5 font-mono text-xs">
+                            <span class="px-2 py-1 bg-emerald-950/50 border border-emerald-500/40 text-emerald-400 font-bold">+${signed.reward} €v</span>
+                            <span class="px-2 py-1 bg-rose-950/50 border border-rose-500/40 text-rose-400 font-bold">-${signed.penalty} €v</span>
+                        </div>
+                        <button type="button" onclick="ui.navigate('contracts')" class="min-h-[44px] px-3 py-1.5 bg-indigo-900/40 hover:bg-indigo-600 text-indigo-200 hover:text-white border border-indigo-500/40 font-bold text-xs uppercase tracking-wider transition-all">
+                            Ver Misión ➔
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        } else {
+            return `
+            <div class="terminal-border bg-slate-900/60 border-slate-800 p-3 sm:p-4 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-lg">🤝</span>
+                    <div>
+                        <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Contratos Comerciales • Fase ${this.escapeHTML(curPhase)}</span>
+                        <p class="text-xs text-slate-300">Startup sin contrato comercial suscrito en esta fase.</p>
+                    </div>
+                </div>
+                <div>
+                    ${isCEO ? `
+                        <button type="button" onclick="ui.navigate('contracts')" class="min-h-[44px] px-4 py-2 bg-mars-cyan text-black hover:bg-white font-bold text-xs uppercase tracking-wider transition-all">
+                            ✍️ Elegir Contrato de Fase ${this.escapeHTML(curPhase)} ➔
+                        </button>
+                    ` : `
+                        <span class="text-xs font-mono text-slate-500 italic">Pendiente de selección por Dirección General (CEO)</span>
+                    `}
+                </div>
+            </div>`;
+        }
+    },
+
+    setContractsPhaseTab(phase) {
+        this.contractsPhaseTab = phase;
+        this.render();
+    },
+
+    viewContracts(el) {
+        if (!el || !state.user) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co) return auth.logout();
+
+        const isCEO = state.user.role === 'CEO' || state.user.admin;
+        const currentPhaseTab = this.contractsPhaseTab || this.getCurrentPhaseKey();
+        this.contractsPhaseTab = currentPhaseTab;
+
+        const phases = ['I', 'II', 'III', 'IV'];
+        const win = typeof CONTRACTS_PHASE_WINDOWS !== 'undefined' ? CONTRACTS_PHASE_WINDOWS[currentPhaseTab] : null;
+        const isOpen = state.isContractSelectionWindowOpen(currentPhaseTab, co);
+        const signedForTab = co.contracts?.[currentPhaseTab];
+        const catalogForPhase = (typeof CONTRACTS_CATALOG_DEF !== 'undefined' ? CONTRACTS_CATALOG_DEF : []).filter(c => c.phase === currentPhaseTab);
+
+        // Bloque de Patrocinio Oficial tras Fase I
+        const sponsorAwarded = co.sponsorAwarded;
+        const sponsorData = co.sponsorData || {};
+        const sponsorAmount = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : (sponsorData.amount || 0);
+
+        const tierStyles = {
+            'ORO': 'text-[#ffd700] border-[#ffd700] bg-[#ffd700]/10',
+            'PLATA': 'text-[#c0c0c0] border-[#c0c0c0] bg-[#c0c0c0]/10',
+            'BRONCE': 'text-[#cd7f32] border-[#cd7f32] bg-[#cd7f32]/10',
+            'COBRE': 'text-[#b87333] border-[#b87333] bg-[#b87333]/10',
+            'COLABORADOR': 'text-mars-cyan border-mars-cyan bg-mars-cyan/10'
+        };
+        const sponsorStyle = sponsorAwarded ? (tierStyles[sponsorAwarded] || 'text-slate-300 border-slate-700 bg-slate-900') : '';
+
+        const sponsorHtml = sponsorAwarded ? `
+            <div class="terminal-border p-4 sm:p-5 mb-6 border-t-4 border-t-amber-400 bg-mars-card">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div class="flex items-center gap-3.5">
+                        ${sponsorData.logo ? `<img src="${this.escapeHTML(sponsorData.logo)}" alt="Logo Patrocinador" class="w-12 h-12 object-contain bg-black border border-slate-700 p-1 rounded-sm">` : `<span class="text-3xl">🥇</span>`}
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">Patrocinador Oficial Confirmado (Fase I)</span>
+                                <span class="text-xs font-black uppercase border px-2 py-0.5 rounded-sm ${sponsorStyle}">[NIVEL ${this.escapeHTML(sponsorAwarded)}]</span>
+                            </div>
+                            <h3 class="text-base sm:text-lg font-orbitron font-black text-white uppercase mt-0.5">${this.escapeHTML(sponsorData.name || 'Fondo Semilla Aeroespacial')}</h3>
+                            <p class="text-xs text-slate-300">Capital concedido tras el micro-pitch en lengua inglesa para dotación de constitución.</p>
+                        </div>
+                    </div>
+                    <div class="text-right sm:text-right w-full sm:w-auto border-t sm:border-t-0 border-slate-800 pt-2 sm:pt-0">
+                        <span class="text-[10px] text-slate-400 font-mono uppercase block">Abono Registrado en Caja</span>
+                        <span class="text-xl sm:text-2xl font-orbitron font-black text-mars-green">+${Number(sponsorAmount).toFixed(0)} €v</span>
+                    </div>
+                </div>
+            </div>
+        ` : `
+            <div class="terminal-border p-4 mb-6 bg-slate-900/50 border border-slate-800">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">🤝</span>
+                        <div>
+                            <span class="text-[10px] font-mono uppercase text-slate-400 font-bold">Patrocinio Oficial Fase I (Pitch en Lengua Inglesa)</span>
+                            <p class="text-xs text-slate-300">En proceso de asignación docente. Inyección estimada de +100 €v a +500 €v según rúbrica.</p>
+                        </div>
+                    </div>
+                    <span class="text-xs font-mono text-amber-400 bg-amber-950/40 border border-amber-500/30 px-2 py-1">En Evaluación</span>
+                </div>
+            </div>
+        `;
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `
+        <div class="space-y-6">
+            <!-- Cabecera del Módulo -->
+            <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-cyan">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="px-2 py-0.5 text-[10px] font-orbitron font-bold uppercase bg-cyan-950/60 border border-cyan-400 text-cyan-300">Módulo Ejecutivo</span>
+                            <span class="text-xs text-slate-400 font-mono">[STARTUP: ${this.escapeHTML(co.name)}]</span>
+                        </div>
+                        <h2 class="text-xl sm:text-2xl font-orbitron font-black text-white uppercase tracking-tight">
+                            🤝 Contratos Comerciales y Misiones del CEO
+                        </h2>
+                        <p class="text-xs text-slate-300 uppercase mt-0.5">
+                            Licitaciones estratégicas y contratos por fase emitidos por corporaciones aeroespaciales y medios internacionales.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+                        <span class="text-xs font-mono text-slate-400 bg-black/60 border border-slate-700 px-3 py-2">
+                            ${isCEO ? '👑 Rol con Potestad de Firma: CEO' : '👁️ Modo Consulta Departamento'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Patrocinio Oficial tras Fase I -->
+            ${sponsorHtml}
+
+            <!-- Navegación por Fases (Fases I a IV) -->
+            <div class="flex flex-wrap gap-2 border-b border-mars-border pb-2">
+                ${phases.map(ph => {
+                    const isTab = ph === currentPhaseTab;
+                    const cSigned = co.contracts?.[ph];
+                    const badge = cSigned ? `<span class="ml-1.5 text-[10px] px-1.5 py-0.2 bg-emerald-950 border border-emerald-400 text-emerald-300 font-mono">✓ ${this.escapeHTML(cSigned.company)}</span>` : '';
+                    return `
+                    <button type="button" onclick="ui.setContractsPhaseTab('${ph}')" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase transition-all flex items-center ${isTab ? 'bg-mars-cyan text-black' : 'bg-slate-900 text-slate-200 hover:text-white border border-slate-800'}">
+                        <span>Fase ${ph}</span>
+                        ${badge}
+                    </button>`;
+                }).join('')}
+            </div>
+
+            <!-- Estado de la Ventana Temporal de Selección -->
+            <div class="terminal-border p-4 bg-slate-950 border ${isOpen ? 'border-emerald-500/50 bg-emerald-950/10' : 'border-amber-500/40 bg-amber-950/10'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full ${isOpen ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}"></span>
+                        <h4 class="font-orbitron font-bold text-xs sm:text-sm uppercase ${isOpen ? 'text-emerald-300' : 'text-amber-300'}">
+                            ${isOpen ? 'Ventana Oficial de Suscripción Abierta' : 'Ventana Oficial de Suscripción Cerrada / Bloqueada'}
+                        </h4>
+                    </div>
+                    <p class="text-xs text-slate-300 mt-0.5">
+                        ${win?.windowLabel || 'Primeros 3 días lectivos'}. Cada startup puede suscribir un único contrato por fase. Tras la ventana, el compromiso queda congelado.
+                    </p>
+                </div>
+                ${co.unlockAllContracts ? `
+                    <span class="px-2.5 py-1 text-[10px] font-mono font-bold uppercase bg-amber-400 text-black border border-amber-300 rounded shrink-0">
+                        🧪 Sandbox Pruebas: Ventanas Desbloqueadas
+                    </span>
+                ` : ''}
+            </div>
+
+            <!-- Contrato Actualmente Suscrito en esta Fase (si existe) -->
+            ${signedForTab ? `
+                <div class="terminal-border p-5 bg-indigo-950/30 border-2 border-indigo-500/80 shadow-[0_0_20px_rgba(99,102,241,0.2)]">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 border-b border-indigo-500/40 pb-2">
+                        <div>
+                            <span class="text-[10px] font-orbitron font-bold uppercase tracking-widest text-indigo-300">Contrato Oficial Vinculante Suscrito</span>
+                            <h3 class="text-base sm:text-lg font-orbitron font-black text-white uppercase">${this.escapeHTML(signedForTab.company)} — ${this.escapeHTML(signedForTab.title)}</h3>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${signedForTab.status === 'CUMPLIDO' ? `
+                                <span class="px-3 py-1 bg-emerald-500 text-black font-black text-xs uppercase font-orbitron">✅ Cumplido (+${signedForTab.reward} €v Asignados)</span>
+                            ` : (signedForTab.status === 'NO_CUMPLIDO' ? `
+                                <span class="px-3 py-1 bg-rose-600 text-white font-black text-xs uppercase font-orbitron">❌ No Cumplido (-${signedForTab.penalty} €v Penalizados)</span>
+                            ` : `
+                                <span class="px-3 py-1 bg-indigo-500/30 border border-indigo-400 text-indigo-200 font-bold text-xs uppercase font-mono animate-pulse">⏳ En Curso • Pendiente de Auditoría Docente</span>
+                            `)}
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                        <div class="md:col-span-2">
+                            <span class="text-slate-400 font-bold uppercase block mb-0.5">Requisitos Operativos Exigidos:</span>
+                            <p class="text-white leading-relaxed font-sans">${this.escapeHTML(signedForTab.requirements)}</p>
+                            <span class="text-slate-400 font-bold uppercase block mt-2 mb-0.5">Método de Verificación Docente:</span>
+                            <p class="text-indigo-300 font-sans">${this.escapeHTML(signedForTab.verification)}</p>
+                        </div>
+                        <div class="bg-black/60 p-3 border border-indigo-500/30 flex flex-col justify-between">
+                            <div>
+                                <span class="text-slate-400 font-bold uppercase block text-[10px]">Impacto en Tesorería:</span>
+                                <div class="flex justify-between items-center mt-1">
+                                    <span class="text-emerald-400 font-mono font-bold">+${signedForTab.reward} €v (Éxito)</span>
+                                    <span class="text-rose-400 font-mono font-bold">-${signedForTab.penalty} €v (Fallo)</span>
+                                </div>
+                            </div>
+                            <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] font-mono text-slate-400">
+                                <span>Firmado: ${this.escapeHTML(signedForTab.signedDate || '--')}</span><br>
+                                <span>Por: Dirección General (${this.escapeHTML(signedForTab.signedBy || 'CEO')})</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- Catálogo de Licitaciones de la Fase (6 Contratos) -->
+            <div>
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-orbitron font-bold text-white text-sm uppercase tracking-wider">
+                        📑 Licitaciones Corporativas Disponibles • Fase ${currentPhaseTab} (${catalogForPhase.length} Opciones)
+                    </h3>
+                    <span class="text-xs text-slate-400 font-mono">Selección vinculante exclusiva: 1 por startup</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${catalogForPhase.map(c => {
+                        const isThisSigned = signedForTab && signedForTab.contractId === c.id;
+                        const hasOtherSigned = signedForTab && signedForTab.contractId !== c.id;
+
+                        let cardBorder = 'border-slate-800';
+                        if (isThisSigned) cardBorder = 'border-2 border-indigo-400 bg-indigo-950/20';
+                        else if (hasOtherSigned) cardBorder = 'border-slate-800/60 opacity-60 bg-black/40';
+
+                        return `
+                        <div class="terminal-border p-4 bg-mars-card ${cardBorder} flex flex-col justify-between transition-all hover:border-slate-700">
+                            <div>
+                                <div class="flex justify-between items-start gap-2 mb-2">
+                                    <div class="min-w-0">
+                                        <span class="text-[10px] font-mono font-bold text-mars-cyan uppercase tracking-wider block">[${this.escapeHTML(c.id)}] ${this.escapeHTML(c.dept)}</span>
+                                        <h4 class="font-orbitron font-bold text-white text-sm uppercase mt-0.5 break-words">${this.escapeHTML(c.company)}</h4>
+                                    </div>
+                                    ${isThisSigned ? `
+                                        <span class="px-2 py-0.5 text-[9px] bg-indigo-500 text-black font-black uppercase font-orbitron shrink-0">Suscrito</span>
+                                    ` : ''}
+                                </div>
+                                <h5 class="text-xs font-bold text-slate-200 uppercase mb-2 leading-snug">${this.escapeHTML(c.title)}</h5>
+                                <p class="text-xs text-slate-300 leading-relaxed font-sans mb-3 line-clamp-4" title="${this.escapeHTML(c.requirements)}">
+                                    ${this.escapeHTML(c.requirements)}
+                                </p>
+                                <div class="bg-black/50 p-2.5 border border-slate-800/80 mb-3 text-[11px]">
+                                    <span class="text-slate-400 font-mono uppercase block text-[10px] font-bold">Verificación:</span>
+                                    <p class="text-slate-300 italic mt-0.5 leading-tight">${this.escapeHTML(c.verification)}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center py-2 px-3 bg-black border border-slate-800 mb-3 text-xs font-mono font-bold">
+                                    <span class="text-emerald-400">+${c.reward} €v</span>
+                                    <span class="text-slate-500">|</span>
+                                    <span class="text-rose-400">-${c.penalty} €v</span>
+                                </div>
+                                <div>
+                                    ${isThisSigned ? `
+                                        <button type="button" disabled class="w-full min-h-[44px] bg-indigo-950/60 border border-indigo-400 text-indigo-300 text-xs font-bold uppercase font-mono cursor-default">
+                                            ✓ Contrato en Vigor
+                                        </button>
+                                    ` : (hasOtherSigned ? `
+                                        <button type="button" disabled class="w-full min-h-[44px] bg-slate-900 text-slate-600 border border-slate-800 text-xs font-bold uppercase font-mono cursor-not-allowed">
+                                            🔒 No Disponible
+                                        </button>
+                                    ` : (isCEO ? (isOpen ? `
+                                        <button type="button" onclick="ui.modalConfirmSignContract('${this.escapeHTML(c.id)}')" class="w-full min-h-[44px] bg-mars-cyan hover:bg-white text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(0,240,255,0.25)]">
+                                            ✍️ Suscribir Contrato
+                                        </button>
+                                    ` : `
+                                        <button type="button" disabled class="w-full min-h-[44px] bg-slate-900 border border-slate-800 text-amber-400/70 text-xs font-bold uppercase font-mono cursor-not-allowed">
+                                            🔒 Ventana Cerrada
+                                        </button>
+                                    `) : `
+                                        <div class="min-h-[44px] bg-slate-900 border border-slate-800 text-slate-400 text-[11px] font-mono flex items-center justify-center text-center p-1">
+                                            🔒 Solo CEO puede firmar
+                                        </div>
+                                    `))}
+                                </div>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+        </div>`;
+
+        el.appendChild(wrapper);
+    },
+
+    modalConfirmSignContract(contractId) {
+        const contract = (typeof CONTRACTS_CATALOG_DEF !== 'undefined' ? CONTRACTS_CATALOG_DEF : []).find(c => c.id === contractId);
+        if (!contract) return;
+
+        const body = `
+        <div class="space-y-4">
+            <div class="p-3 bg-cyan-950/30 border border-cyan-500/40 text-xs">
+                <span class="text-[10px] font-mono text-cyan-300 uppercase font-bold">[${this.escapeHTML(contract.id)}] Fase ${this.escapeHTML(contract.phase)}</span>
+                <h4 class="font-orbitron font-bold text-white text-sm uppercase mt-0.5">${this.escapeHTML(contract.company)} — ${this.escapeHTML(contract.title)}</h4>
+            </div>
+
+            <div class="text-xs text-slate-300 space-y-2">
+                <p><strong>Cláusula de Compromiso:</strong> Al firmar esta licitación, la startup asume formalmente el cumplimiento de los siguientes requisitos en la Fase ${this.escapeHTML(contract.phase)}:</p>
+                <div class="p-3 bg-black border border-slate-800 font-sans text-white text-xs leading-relaxed">
+                    "${this.escapeHTML(contract.requirements)}"
+                </div>
+                <p class="text-slate-400 italic">Verificación por Claustro: ${this.escapeHTML(contract.verification)}</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 text-center font-mono text-xs">
+                <div class="p-2.5 bg-emerald-950/40 border border-emerald-500/40 text-emerald-300">
+                    <span class="block text-[10px] text-slate-400 uppercase font-sans">Recompensa al Cumplir</span>
+                    <strong class="text-base text-emerald-400">+${contract.reward} €v</strong>
+                </div>
+                <div class="p-2.5 bg-rose-950/40 border border-rose-500/40 text-rose-300">
+                    <span class="block text-[10px] text-slate-400 uppercase font-sans">Penalización al Incumplir</span>
+                    <strong class="text-base text-rose-400">-${contract.penalty} €v</strong>
+                </div>
+            </div>
+
+            <div class="p-3 bg-amber-950/30 border border-amber-500/50 text-xs text-amber-200">
+                ⚠️ <strong>Aviso Legal Inmutable:</strong> La firma de este contrato comercial es <strong>exclusiva e irreversible</strong>. No se admiten modificaciones estatutarias ni cancelaciones posteriores durante la fase.
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="ui.closeModal()" class="flex-1 min-h-[44px] bg-slate-800 text-slate-300 hover:text-white font-bold text-xs uppercase transition-colors">Cancelar</button>
+                <button type="button" onclick="ui.executeSignContract('${this.escapeHTML(contract.id)}')" class="flex-1 min-h-[44px] bg-mars-cyan text-black hover:bg-white font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(0,240,255,0.3)]">✍️ Confirmar y Firmar</button>
+            </div>
+        </div>`;
+
+        this.showModal(`FIRMA VINCULANTE DE CONTRATO COMERCIAL`, body, "");
+    },
+
+    executeSignContract(contractId) {
+        if (!state.user || !state.user.coId) return;
+        const res = state.signCommercialContract(state.user.coId, contractId);
+        if (res && res.ok) {
+            this.closeModal();
+            this.notify("✅ Contrato comercial firmado y registrado en la cadena de bloques corporativa.", "success");
+            this.render();
+        } else {
+            this.notify("❌ " + (res?.error || "Error al suscribir contrato"), "error");
+        }
     }
 });

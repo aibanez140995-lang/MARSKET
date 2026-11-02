@@ -74,6 +74,15 @@ Object.assign(ui, {
                     }">
                     <span>🛃 Validaciones y Aduana</span>
                 </button>
+                <button type="button" role="tab" aria-selected="${currentTab === 'contracts'}"
+                    onclick="ui.adminTab = 'contracts'; ui.render();"
+                    class="min-h-[44px] px-5 py-2.5 text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-2 ${
+                        currentTab === 'contracts'
+                            ? 'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]'
+                            : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
+                    }">
+                    <span>🤝 Contratos & Misiones</span>
+                </button>
             </div>
             `;
         } else {
@@ -135,6 +144,15 @@ Object.assign(ui, {
                     }">
                     🛒 Gestión Catálogo
                 </button>
+                <button type="button" role="tab" aria-selected="${currentTab === 'contracts'}"
+                    onclick="ui.adminTab = 'contracts'; ui.render();"
+                    class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-all ${
+                        currentTab === 'contracts'
+                            ? 'bg-amber-400 text-black border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.3)]'
+                            : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
+                    }">
+                    🤝 Auditoría de Contratos
+                </button>
             </div>
             `;
         }
@@ -154,6 +172,7 @@ Object.assign(ui, {
                     subContainer.innerHTML = launchLicensePanel + brandPanel + fyqPanel + mktActionPanel + this.renderAdminDash();
                     break;
                 }
+                case 'contracts': subContainer.innerHTML = this.renderAdminContracts(); break;
                 case 'eval': subContainer.innerHTML = this.renderAdminEval(); break;
                 case 'startups': subContainer.innerHTML = this.renderAdminStartups(); break;
                 case 'telemetry': subContainer.innerHTML = this.renderAdminTelemetry(); break;

@@ -477,6 +477,7 @@ const auth = (function() {
 
             const tabDefs = {
                 'dashboard': { id: 'dashboard', label: '🎖️ Sala de Mando' },
+                'contracts': { id: 'contracts', label: '🤝 Contratos & Patrocinios' },
                 'orders': { id: 'orders', label: '📡 Seguimiento de Órdenes', badge: 'badge-orders' },
                 'role_deliverables': { id: 'role_deliverables', label: '📤 Mis Entregables', badge: 'badge-deliverables' },
                 'finance': { id: 'finance', label: '💰 Finanzas & ECO' },
@@ -493,13 +494,13 @@ const auth = (function() {
             };
 
             const roleTabOrders = {
-                'CEO': ['dashboard', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier'],
-                'TECNICO': ['market', 'tech_workshop', 'orders', 'tech', 'resolutions', 'role_deliverables', 'news', 'dossier'],
-                'FINANZAS': ['finance', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier'],
-                'MARKETING': ['brand', 'campaigns', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier'],
-                'OPERACIONES_IA': ['cart', 'ailog', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier'],
-                'OPERACIONES': ['cart', 'ailog', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier'],
-                'AUXILIAR': ['dashboard', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier']
+                'CEO': ['dashboard', 'contracts', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier'],
+                'TECNICO': ['market', 'tech_workshop', 'contracts', 'orders', 'tech', 'resolutions', 'role_deliverables', 'news', 'dossier'],
+                'FINANZAS': ['finance', 'contracts', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier'],
+                'MARKETING': ['brand', 'campaigns', 'contracts', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier'],
+                'OPERACIONES_IA': ['cart', 'ailog', 'contracts', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier'],
+                'OPERACIONES': ['cart', 'ailog', 'contracts', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier'],
+                'AUXILIAR': ['dashboard', 'contracts', 'orders', 'resolutions', 'role_deliverables', 'news', 'dossier']
             };
 
             let activeTabIds = [];

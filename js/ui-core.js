@@ -2172,7 +2172,15 @@ const ui = {
         } else {
             const co = state.data.companies[state.user.coId];
             if(tacticalRow) tacticalRow.classList.remove('hidden');
-            if(co && balEl) balEl.innerText = `${co.balance.toFixed(2)} €v`;
+            if(co && balEl) {
+                if (co.balance < 0) {
+                    balEl.className = 'text-red-400 font-mono font-bold text-xs sm:text-sm md:text-base tracking-wider whitespace-nowrap bg-red-950/60 border border-red-500/50 px-2 sm:px-3 py-1 rounded-sm shadow-[0_0_10px_rgba(255,0,0,0.3)] shrink-0 animate-pulse';
+                    balEl.innerText = `${co.balance.toFixed(2)} €v (DEUDA)`;
+                } else {
+                    balEl.className = 'text-mars-green font-mono font-bold text-xs sm:text-sm md:text-base tracking-wider whitespace-nowrap bg-mars-green/10 border border-mars-green/30 px-2 sm:px-3 py-1 rounded-sm shadow-[0_0_10px_rgba(0,255,150,0.2)] shrink-0';
+                    balEl.innerText = `${co.balance.toFixed(2)} €v`;
+                }
+            }
             if(co && infoEl) {
                 const entityInfo = `ENTITY: ${co.name.toUpperCase()} | ROLE: ${state.user.role.replace('_',' ')}`;
                 infoEl.innerText = entityInfo;
@@ -2357,6 +2365,7 @@ const ui = {
         
         switch(this.current) {
             case 'dashboard': vp.innerHTML = hero + notifs; this.viewDashboard(vp); break;
+            case 'contracts': vp.innerHTML = hero + notifs; this.viewContracts(vp); break;
             case 'role_deliverables': vp.innerHTML = hero + notifs; this.viewRoleDeliverables(vp); break;
             case 'news': vp.innerHTML = hero + notifs; this.viewNewsBoard(vp); break;
             case 'market': vp.innerHTML = hero + notifs; this.viewMarket(vp); break;
