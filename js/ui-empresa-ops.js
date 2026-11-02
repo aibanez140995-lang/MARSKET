@@ -84,14 +84,14 @@ Object.assign(ui, {
         const ordersPanelHtml = `
         <div id="ops-orders-tracking-panel" class="mt-6 terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-green">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-3">
-                <div>
+                <div class="min-w-0 flex-1">
                     <h2 class="font-orbitron text-mars-green text-sm sm:text-base uppercase tracking-tighter flex items-center gap-2">
                         <span>📦 Compras Físicas y Ensamble en Taller</span>
                         <span class="text-[10px] font-mono text-mars-green bg-mars-green/10 px-2 py-0.5 border border-mars-green/30 font-bold">${approvedOrders.length} LISTAS</span>
                     </h2>
                     <p class="text-xs text-slate-300 uppercase mt-0.5">Control de componentes autorizados por Finanzas para adquisición real y montaje.</p>
                 </div>
-                <button type="button" onclick="ui.navigate('orders')" class="min-h-[44px] px-3.5 py-2 bg-black border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold uppercase text-xs transition-colors flex items-center gap-2">
+                <button type="button" onclick="ui.navigate('orders')" class="shrink-0 w-full sm:w-auto justify-center min-h-[44px] px-3.5 py-2 bg-black border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold uppercase text-xs transition-colors flex items-center gap-2 whitespace-nowrap text-center">
                     <span>📡 Seguimiento Completo de Órdenes ↗</span>
                 </button>
             </div>
@@ -342,7 +342,7 @@ Object.assign(ui, {
 
         const diaryDocsHtml = `
         <div class="terminal-border bg-mars-card p-4 sm:p-5 border-l-4 border-l-mars-cyan mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
+            <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2 mb-1.5 flex-wrap">
                     <span class="text-xs bg-mars-cyan/20 text-mars-cyan border border-mars-cyan/40 px-2 py-0.5 font-bold uppercase font-mono">Entregables Curriculares</span>
                     <span class="text-xs text-mars-yellow font-bold uppercase font-mono">Matemáticas (4 Hitos) & Lengua (LyE)</span>
@@ -352,7 +352,7 @@ Object.assign(ui, {
                     Operaciones gestiona los 4 hitos de <strong>Matemáticas</strong> (Goniómetro, mediciones angulares, informe de distancia y comparativo final) junto al <strong>Diario de Bitácora e IA</strong>.
                 </p>
             </div>
-            <button type="button" onclick="ui.navigate('role_deliverables')" class="min-h-[44px] whitespace-nowrap px-4 py-2.5 bg-black border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold uppercase text-xs transition-colors flex items-center gap-2 shadow-[0_0_10px_rgba(0,240,255,0.2)]">
+            <button type="button" onclick="ui.navigate('role_deliverables')" class="shrink-0 w-full md:w-auto justify-center min-h-[44px] whitespace-nowrap px-4 py-2.5 bg-black border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold uppercase text-xs transition-colors flex items-center gap-2 shadow-[0_0_10px_rgba(0,240,255,0.2)] text-center">
                 <span>📤 Gestionar en "Mis Entregables" ➔</span>
             </button>
         </div>`;

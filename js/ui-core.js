@@ -2086,9 +2086,10 @@ const ui = {
             let pendingDeliverables = 0;
             const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
             const role = state.user.role;
-            const myDefs = (role === 'CEO' || role === 'AUXILIAR') 
+            const effectiveRole = (role === 'OPERACIONES') ? 'OPERACIONES_IA' : ((role === 'AUXILIAR' && co?.auxRoleDept) ? co.auxRoleDept : role);
+            const myDefs = (effectiveRole === 'CEO' || (role === 'AUXILIAR' && !co?.auxRoleDept)) 
                 ? defs.map(d => d.key)
-                : defs.filter(d => d.role === role).map(d => d.key);
+                : defs.filter(d => d.role === effectiveRole).map(d => d.key);
 
             if (role === 'CEO') {
                 pendingDeliverables = Object.values(co.deliverables || {}).filter(d => d && d.status === 'SUBMITTED_TO_CEO').length;
@@ -2329,12 +2330,13 @@ const ui = {
         const co = !state.user.admin ? state.data.companies[state.user.coId] : null;
 
         const roleAllowedMap = {
-            'CEO': ['dashboard', 'orders', 'resolutions', 'finance', 'dossier', 'role_deliverables', 'news', 'market'],
-            'TECNICO': ['tech', 'tech_workshop', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'market', 'cart'],
-            'FINANZAS': ['finance', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'market'],
-            'MARKETING': ['brand', 'campaigns', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news'],
-            'OPERACIONES_IA': ['cart', 'ailog', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'market'],
-            'AUXILIAR': ['dashboard', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'finance', 'tech', 'tech_workshop', 'brand', 'campaigns', 'cart', 'ailog', 'market']
+            'CEO': ['dashboard', 'contracts', 'orders', 'resolutions', 'finance', 'dossier', 'role_deliverables', 'news', 'market'],
+            'TECNICO': ['tech', 'tech_workshop', 'contracts', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'market', 'cart'],
+            'FINANZAS': ['finance', 'contracts', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'market'],
+            'MARKETING': ['brand', 'campaigns', 'contracts', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news'],
+            'OPERACIONES_IA': ['cart', 'ailog', 'contracts', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'market'],
+            'OPERACIONES': ['cart', 'ailog', 'contracts', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'market'],
+            'AUXILIAR': ['dashboard', 'contracts', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'finance', 'tech', 'tech_workshop', 'brand', 'campaigns', 'cart', 'ailog', 'market']
         };
 
         let currentAllowed = [];
@@ -2344,7 +2346,7 @@ const ui = {
         } else {
             const auxDept = (role === 'AUXILIAR') ? co?.auxRoleDept : null;
             const effectiveRole = (role === 'AUXILIAR' && auxDept) ? auxDept : role;
-            const allowed = (roleAllowedMap[effectiveRole] || ['dashboard', 'orders', 'finance', 'dossier', 'resolutions', 'role_deliverables', 'news']).concat(['company']);
+            const allowed = (roleAllowedMap[effectiveRole] || ['dashboard', 'contracts', 'orders', 'finance', 'dossier', 'resolutions', 'role_deliverables', 'news']).concat(['company']);
             if (!allowed.includes(this.current)) {
                 const landingByRole = {
                     'TECNICO': 'tech',

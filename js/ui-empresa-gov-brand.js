@@ -302,7 +302,7 @@ Object.assign(ui, {
                 <!-- DIARIO DE REUNIONES DE DEPARTAMENTO (ACTAS DE COMITÉ DE DIRECCIÓN DOC_16) -->
                 <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-cyan">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 border-b border-mars-border pb-3">
-                        <div>
+                        <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2 mb-1">
                                 <span class="px-2 py-0.5 text-xs font-black uppercase bg-mars-cyan/20 border border-mars-cyan text-mars-cyan">GOBERNANZA INTERNA</span>
                                 <span class="text-xs text-slate-400 font-mono">${(co.meetingMinutes || []).length} Actas Registradas</span>
@@ -310,7 +310,7 @@ Object.assign(ui, {
                             <h2 class="font-orbitron text-mars-cyan text-base sm:text-lg uppercase tracking-tighter">Diario de Reuniones de Dirección (DOC_16)</h2>
                             <p class="text-xs text-slate-300 mt-0.5">Actas de comités de dirección y reuniones interdepartamentales para seguimiento de acuerdos.</p>
                         </div>
-                        <button type="button" onclick="ui.modalRegisterMeetingMinute()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all whitespace-nowrap shadow-[0_0_10px_rgba(0,255,204,0.3)]">
+                        <button type="button" onclick="ui.modalRegisterMeetingMinute()" class="shrink-0 w-full sm:w-auto justify-center min-h-[44px] bg-mars-cyan text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all whitespace-nowrap shadow-[0_0_10px_rgba(0,255,204,0.3)] text-center">
                             + Registrar Nueva Acta
                         </button>
                     </div>

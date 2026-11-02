@@ -696,6 +696,7 @@ Object.assign(ui, {
         if (!co) return auth.logout();
 
         const isCEO = state.user.role === 'CEO';
+        const isFinanzas = state.user.role === 'FINANZAS';
         co.ledger = co.ledger || [];
         co.realCosts = co.realCosts || [];
         const docs = co.deliverables || {};

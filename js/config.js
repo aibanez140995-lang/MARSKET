@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.55) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.56) ---
 
-const APP_VERSION = "1.1.55";
+const APP_VERSION = "1.1.56";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1036,8 +1036,25 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.55
+// Changelog Oficial de Producción v1.1.56
 const APP_CHANGELOG = [
+    {
+      version: "1.1.56",
+      date: new Date().toISOString().split('T')[0],
+      title: "Desbloqueo de Navegación en Contratos & Patrocinios, Restauración de Finanzas & ECO y Blindaje Ergonómico de Botones",
+      items: [
+        "Desbloqueo de Pestaña '🤝 Contratos & Patrocinios': Incorporación de 'contracts' a la lista blanca (roleAllowedMap) de todos los perfiles de alumno (CEO, Técnico, Finanzas, Marketing, Operaciones e IA, y Auxiliar), permitiendo la navegación fluida sin rebote.",
+        "Restauración del Panel '💰 Finanzas & ECO': Subsanación de la variable isFinanzas en viewFinance(), permitiendo al departamento financiero acceder a su terminal contable y registrar los Balances de Cierre por Fase sin interrupciones.",
+        "Blindaje Universal de Botones (Regla CSS Flexbox): Ajuste en las reglas globales de contención tipográfica de index.html excluyendo los botones y tabs de min-width: 0 y asignando flex-shrink: 0 por defecto, impidiendo que textos con nowrap se salgan de sus contenedores.",
+        "Ergonomía Táctil en Cabeceras de Acción: Alineación con min-w-0 flex-1 y shrink-0 w-full sm:w-auto en los botones '🔧 Ir a Taller y BOM ➔', '📤 Gestionar en Mis Entregables ➔', '📡 Seguimiento Completo de Órdenes ↗', '+ Solicitar Material I+D', '+ Registrar Nueva Acta' y 'Ver Mis Entregables ➔'.",
+        "Ampliación del Tablón de Noticias a 6 Clases (A-F y TEST): Inclusión de todas las cohortes del centro y armonización del contador de notas de prensa oficiales publicadas."
+      ],
+      highlights: [
+        { type: "CONTRATOS", text: "Navegación directa y fluida a la pestaña de Contratos & Patrocinios para todos los roles." },
+        { type: "FINANZAS", text: "Acceso inmediato al panel Finanzas & ECO y balances por fase restaurado." },
+        { type: "UI/UX", text: "Eliminado el desbordamiento de texto en botones con blindaje flexbox universal." }
+      ]
+    },
     {
       version: "1.1.55",
       date: new Date().toISOString().split('T')[0],

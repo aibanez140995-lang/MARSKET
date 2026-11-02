@@ -238,12 +238,12 @@ Object.assign(ui, {
                 <!-- Columna Izquierda: Banco de Pruebas de Vuelo -->
                 <div class="lg:col-span-7 space-y-6">
                     <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow">
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2">
-                            <div>
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-3">
+                            <div class="min-w-0 flex-1">
                                 <h2 class="font-orbitron text-mars-yellow text-base sm:text-lg uppercase tracking-tighter">Banco de Pruebas de Vuelo (Fase II)</h2>
                                 <p class="text-[11px] text-mars-cyan font-mono">ℹ️ La Eficiencia (E = Altura / Coste) es calculada de forma matemática automática por la terminal al registrar el ensayo.</p>
                             </div>
-                            <button type="button" onclick="ui.navigate('tech_workshop')" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-3 py-1.5 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors whitespace-nowrap">
+                            <button type="button" onclick="ui.navigate('tech_workshop')" class="shrink-0 w-full sm:w-auto justify-center min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-3.5 py-1.5 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors whitespace-nowrap text-center">
                                 🔧 Ir a Taller y BOM ➔
                             </button>
                         </div>
@@ -391,7 +391,7 @@ Object.assign(ui, {
             <!-- Panel de Solicitudes de Material I+D a Coordinación -->
             <div class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-magenta shadow-sm">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-mars-border pb-3 mb-4">
-                    <div>
+                    <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2 mb-1">
                             <span class="px-2 py-0.5 text-xs font-black uppercase bg-mars-magenta/20 border border-mars-magenta text-mars-magenta">I+D ESPECIAL // FUERA DE CATÁLOGO</span>
                             <span class="text-xs text-slate-400 font-mono">TÉCNICO ➔ COORDINACIÓN</span>
@@ -403,7 +403,7 @@ Object.assign(ui, {
                             Solicita al claustro la autorización de piezas o reactivos especiales no listados en el catálogo mediante memoria técnica oficial en Google Drive.
                         </p>
                     </div>
-                    <button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] bg-mars-magenta text-white font-black px-4 py-2 text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all whitespace-nowrap shadow-[0_0_10px_rgba(255,0,85,0.3)]">
+                    <button type="button" onclick="ui.modalSpecialItem()" class="shrink-0 w-full sm:w-auto justify-center min-h-[44px] bg-mars-magenta text-white font-black px-4 py-2 text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all whitespace-nowrap shadow-[0_0_10px_rgba(255,0,85,0.3)] text-center">
                         + Solicitar Material I+D
                     </button>
                 </div>

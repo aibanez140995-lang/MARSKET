@@ -545,7 +545,7 @@ Object.assign(ui, {
             ceoTrayHtml = `
             <div class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-yellow shadow-[0_0_15px_rgba(255,204,0,0.15)]">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-mars-border pb-3 mb-4">
-                    <div>
+                    <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2 mb-1">
                             <span class="px-2.5 py-0.5 text-xs font-black uppercase bg-mars-yellow/20 border border-mars-yellow text-mars-yellow ${submittedCeoDefs.length > 0 ? 'animate-pulse' : ''}">SUPERVISIÓN DIRECTIVA</span>
                             <span class="text-xs text-slate-400 font-mono">${submittedCeoDefs.length} PENDIENTES DE VISADO</span>
@@ -555,7 +555,7 @@ Object.assign(ui, {
                         </h3>
                         <p class="text-xs text-slate-300 uppercase mt-0.5">Revisa, visa y eleva al claustro o devuelve con justificación técnica los entregables del equipo.</p>
                     </div>
-                    <button type="button" onclick="ui.navigate('role_deliverables')" class="min-h-[44px] bg-slate-900 border border-mars-yellow text-mars-yellow hover:bg-mars-yellow hover:text-black font-black uppercase text-xs px-4 py-2 transition-all whitespace-nowrap">
+                    <button type="button" onclick="ui.navigate('role_deliverables')" class="shrink-0 w-full sm:w-auto justify-center min-h-[44px] bg-slate-900 border border-mars-yellow text-mars-yellow hover:bg-mars-yellow hover:text-black font-black uppercase text-xs px-4 py-2 transition-all whitespace-nowrap text-center">
                         Ver Mis Entregables ➔
                     </button>
                 </div>
@@ -702,7 +702,8 @@ Object.assign(ui, {
             const prPhases = typeof PRESS_RELEASE_PHASES !== 'undefined' ? PRESS_RELEASE_PHASES : [
                 { phase: 'I', title: 'Cierre Fase I', deadlineLabel: '22/12/2026 (Corte: 15/12 + 7 días)' },
                 { phase: 'II', title: 'Cierre Fase II', deadlineLabel: '22/02/2027 (Corte: 15/02 + 7 días)' },
-                { phase: 'III', title: 'Cierre Fase III', deadlineLabel: '07/04/2027 (Corte: 31/03 + 7 días)' }
+                { phase: 'III', title: 'Cierre Fase III', deadlineLabel: '07/04/2027 (Corte: 31/03 + 7 días)' },
+                { phase: 'IV', title: 'Cierre Fase IV', deadlineLabel: '30/04/2027 (Corte: 23/04 + 7 días)' }
             ];
             const coReleases = co.pressReleases || {};
             const publishedPrCount = prPhases.filter(p => coReleases[p.phase]).length;
@@ -712,7 +713,7 @@ Object.assign(ui, {
                 <div>
                     <div class="flex justify-between items-center mb-2">
                         <span class="text-xs font-black uppercase text-mars-cyan bg-mars-cyan/10 border border-mars-cyan/40 px-2 py-0.5">COMUNICACIÓN OFICIAL</span>
-                        <span class="text-xs font-mono text-slate-400">${publishedPrCount}/3 Notas Publicadas</span>
+                        <span class="text-xs font-mono text-slate-400">${publishedPrCount}/${prPhases.length} Notas Publicadas</span>
                     </div>
                     <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">📰 Notas de Prensa Corporativas (CEO)</h3>
                     <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
@@ -1554,7 +1555,8 @@ Object.assign(ui, {
         const prPhases = typeof PRESS_RELEASE_PHASES !== 'undefined' ? PRESS_RELEASE_PHASES : [
             { phase: 'I', title: 'Nota de Prensa Oficial — Cierre Fase I', deadlineLabel: '22/12/2026 (Corte: 15/12 + 7 días)', requiredContent: 'Presentación del concepto de cohete, capital obtenido por patrocinio y objetivos corporativos.' },
             { phase: 'II', title: 'Nota de Prensa Oficial — Cierre Fase II', deadlineLabel: '22/02/2027 (Corte: 15/02 + 7 días)', requiredContent: 'Resultados preliminares de las pruebas de vuelo, mediciones angulares y estado financiero a mitad del proyecto.' },
-            { phase: 'III', title: 'Nota de Prensa Oficial — Cierre Fase III', deadlineLabel: '07/04/2027 (Corte: 31/03 + 7 días)', requiredContent: 'Conclusiones de taller, dificultades de montaje superadas y preparación para el Pitch final.' }
+            { phase: 'III', title: 'Nota de Prensa Oficial — Cierre Fase III', deadlineLabel: '07/04/2027 (Corte: 31/03 + 7 días)', requiredContent: 'Conclusiones de taller, dificultades de montaje superadas y preparación para el Pitch final.' },
+            { phase: 'IV', title: 'Nota de Prensa Oficial — Cierre Fase IV', deadlineLabel: '30/04/2027 (Corte: 23/04 + 7 días)', requiredContent: 'Validación científica final, rendimiento de propelentes y propuesta de valor para el Gran Concurso Aeroespacial.' }
         ];
         const phaseDef = prPhases.find(p => p.phase === phaseKey) || prPhases[0];
         const co = state.data.companies[state.user.coId];
@@ -1720,7 +1722,7 @@ Object.assign(ui, {
             filtered = filtered.filter(r => r.phase === phaseFilter);
         }
 
-        const availableClasses = ['A', 'B', 'C', 'D'];
+        const availableClasses = ['A', 'B', 'C', 'D', 'E', 'F', 'TEST'];
 
         const wrapper = document.createElement('div');
         wrapper.className = 'space-y-6';
@@ -1865,16 +1867,16 @@ Object.assign(ui, {
         } else {
             return `
             <div class="terminal-border bg-slate-900/60 border-slate-800 p-3 sm:p-4 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div class="flex items-center gap-2.5">
-                    <span class="text-lg">🤝</span>
-                    <div>
+                <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                    <span class="text-lg shrink-0">🤝</span>
+                    <div class="min-w-0 flex-1">
                         <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Contratos Comerciales • Fase ${this.escapeHTML(curPhase)}</span>
                         <p class="text-xs text-slate-300">Startup sin contrato comercial suscrito en esta fase.</p>
                     </div>
                 </div>
-                <div>
+                <div class="shrink-0 w-full sm:w-auto">
                     ${isCEO ? `
-                        <button type="button" onclick="ui.navigate('contracts')" class="min-h-[44px] px-4 py-2 bg-mars-cyan text-black hover:bg-white font-bold text-xs uppercase tracking-wider transition-all">
+                        <button type="button" onclick="ui.navigate('contracts')" class="shrink-0 w-full sm:w-auto justify-center min-h-[44px] px-4 py-2 bg-mars-cyan text-black hover:bg-white font-bold text-xs uppercase tracking-wider transition-all whitespace-nowrap text-center">
                             ✍️ Elegir Contrato de Fase ${this.escapeHTML(curPhase)} ➔
                         </button>
                     ` : `
