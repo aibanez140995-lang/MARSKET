@@ -1806,12 +1806,403 @@ Object.assign(ui, {
         this.render();
     },
 
+    processNanoBananaImageFile(inputEl, targetHiddenId, previewContainerId) {
+        if (!inputEl || !inputEl.files || !inputEl.files[0]) return;
+        const file = inputEl.files[0];
+        if (!file.type.startsWith('image/')) {
+            return this.notify("Por favor, selecciona un archivo de imagen válido (PNG, JPG, WEBP).", "warning");
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const maxDim = 1200;
+                let w = img.width;
+                let h = img.height;
+                if (w > maxDim || h > maxDim) {
+                    if (w > h) {
+                        h = Math.round((h * maxDim) / w);
+                        w = maxDim;
+                    } else {
+                        w = Math.round((w * maxDim) / h);
+                        h = maxDim;
+                    }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                const compressedDataUrl = canvas.toDataURL('image/webp', 0.82) || canvas.toDataURL('image/jpeg', 0.82);
+                
+                const hiddenInput = document.getElementById(targetHiddenId);
+                if (hiddenInput) hiddenInput.value = compressedDataUrl;
+
+                const previewEl = document.getElementById(previewContainerId);
+                if (previewEl) {
+                    previewEl.innerHTML = `
+                        <div class="relative group mt-2 border border-amber-400/50 rounded overflow-hidden max-h-48 bg-black flex items-center justify-center">
+                            <img src="${compressedDataUrl}" alt="Vista previa Nano Banana 3" class="max-h-48 w-full object-contain">
+                            <span class="absolute bottom-1 right-1 bg-black/80 text-[10px] text-amber-300 font-mono px-1.5 py-0.5 rounded border border-amber-500/40">✓ Imagen Nano Banana 3 Optimizada</span>
+                        </div>
+                    `;
+                    previewEl.classList.remove('hidden');
+                }
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    },
+
+    previewNanoBananaUrl(url, previewContainerId) {
+        const previewEl = document.getElementById(previewContainerId);
+        if (!previewEl) return;
+        const cleanUrl = String(url || '').trim();
+        if (!cleanUrl) {
+            previewEl.innerHTML = '';
+            previewEl.classList.add('hidden');
+            return;
+        }
+        previewEl.innerHTML = `
+            <div class="relative group mt-2 border border-cyan-400/50 rounded overflow-hidden max-h-48 bg-black flex items-center justify-center">
+                <img src="${this.escapeAttr(cleanUrl)}" alt="Vista previa" class="max-h-48 w-full object-contain" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-xs text-red-400 p-2 font-mono\\'>No se pudo cargar la imagen desde la URL. Comprueba el enlace.</span>'">
+                <span class="absolute bottom-1 right-1 bg-black/80 text-[10px] text-cyan-300 font-mono px-1.5 py-0.5 rounded border border-cyan-500/40">Enlace URL Externo</span>
+            </div>
+        `;
+        previewEl.classList.remove('hidden');
+    },
+
+    modalViewNewsImage(imageUrl, caption) {
+        if (!imageUrl) return;
+        const html = `
+            <div class="flex flex-col items-center">
+                <div class="relative max-h-[75vh] w-full flex items-center justify-center bg-black/90 p-2 rounded border border-slate-700 overflow-hidden">
+                    <img src="${this.escapeAttr(imageUrl)}" alt="${this.escapeAttr(caption || 'Imagen de Noticia')}" class="max-h-[70vh] max-w-full object-contain rounded shadow-2xl">
+                </div>
+                ${caption ? `<p class="mt-3 text-xs sm:text-sm font-sans text-slate-200 text-center uppercase tracking-wide font-bold">${this.escapeHTML(caption)}</p>` : ''}
+                <div class="mt-2 flex items-center gap-1.5 text-[11px] text-amber-300 font-mono">
+                    <span>🎨</span>
+                    <span>Generado con IA // Nano Banana 3</span>
+                </div>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.closeModal()" class="min-h-[44px] bg-slate-900 border border-slate-700 text-white hover:bg-white hover:text-black px-6 py-2 text-xs font-bold uppercase transition-all">Cerrar Visor</button>`;
+        this.showModal("Visor de Imagen Oficial // Nano Banana 3", html, actions);
+    },
+
+    modalPublishOfficialNews() {
+        const isDocente = Boolean(state.user?.admin || (state.user?.role && (state.user.role === 'DOCENTE' || state.user.role.startsWith('COORD'))));
+        if (!isDocente) return this.notify("Acceso restringido a Coordinación Docente.", "error");
+
+        const companies = state.data?.companies || {};
+        const coList = Object.keys(companies).map(cid => ({
+            id: cid,
+            name: companies[cid].name,
+            classGroup: companies[cid].classGroup || 'A'
+        })).sort((a, b) => a.name.localeCompare(b.name));
+
+        const html = `
+            <div class="space-y-4 text-xs font-sans">
+                <div class="p-3 bg-amber-950/40 border border-amber-500/50 rounded flex items-start gap-2 text-amber-200">
+                    <span class="text-lg">🍌</span>
+                    <div>
+                        <strong class="font-bold text-amber-300 block uppercase font-orbitron text-xs">Agencia Espacial AEE // Crónicas & Nano Banana 3</strong>
+                        <span>Publica una crónica oficial para toda la misión. Puedes acompañarla de una imagen generada con Nano Banana 3 (subiendo el archivo o pegando el enlace).</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="offnews-title" class="text-xs text-amber-400 uppercase font-bold block mb-1 font-mono">Titular de la Noticia / Crónica *</label>
+                    <input type="text" id="offnews-title" placeholder="Ej: Éxito en la primera fase de ensayos de propulsión marciana..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white uppercase outline-none font-sans" required>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label for="offnews-phase" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Fase Asociada</label>
+                        <select id="offnews-phase" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none">
+                            <option value="ALL" selected>Todas / Misión Global</option>
+                            <option value="I">Fase I: Fundación & Viabilidad</option>
+                            <option value="II">Fase II: I+D y Prototipado Aeroespacial</option>
+                            <option value="III">Fase III: Producción y Finanzas B2B</option>
+                            <option value="IV">Fase IV: Validación Científica</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="offnews-class" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Clase Destino</label>
+                        <select id="offnews-class" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none">
+                            <option value="ALL" selected>Todas las Clases (A-F y TEST)</option>
+                            <option value="A">Clase A</option>
+                            <option value="B">Clase B</option>
+                            <option value="C">Clase C</option>
+                            <option value="D">Clase D</option>
+                            <option value="E">Clase E</option>
+                            <option value="F">Clase F</option>
+                            <option value="TEST">Clase TEST</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="offnews-company" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Vincular a una Startup (Opcional)</label>
+                    <select id="offnews-company" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none">
+                        <option value="">-- Sin startup específica (Comunicado General) --</option>
+                        ${coList.map(c => `
+                            <option value="${this.escapeAttr(c.id)}">${this.escapeHTML(c.name)} [Clase ${this.escapeHTML(c.classGroup)}]</option>
+                        `).join('')}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="offnews-body" class="text-xs text-amber-400 uppercase font-bold block mb-1 font-mono">Cuerpo de la Crónica Oficial *</label>
+                    <textarea id="offnews-body" rows="4" placeholder="Redacta la crónica oficial de la Agencia Espacial AEE, valoraciones de las notas de prensa, hitos alcanzados..." class="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white font-sans outline-none"></textarea>
+                </div>
+
+                <div class="p-3 bg-black/60 border border-slate-800 rounded space-y-3">
+                    <label class="text-xs text-amber-300 uppercase font-bold block font-mono">🎨 Imagen de Portada // Nano Banana 3 (Opcional)</label>
+                    <div>
+                        <span class="text-[11px] text-slate-400 block mb-1">Opción 1: Subir imagen generada (se optimiza y comprime automáticamente en tu navegador)</span>
+                        <input type="file" id="offnews-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'offnews-img-data', 'offnews-preview')" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-none file:border-0 file:text-xs file:font-black file:uppercase file:bg-amber-400 file:text-black hover:file:bg-white cursor-pointer">
+                    </div>
+                    <div>
+                        <span class="text-[11px] text-slate-400 block mb-1">Opción 2: O pegar enlace directo de imagen (Google Drive o URL pública)</span>
+                        <input type="url" id="offnews-url" oninput="ui.previewNanoBananaUrl(this.value, 'offnews-preview')" placeholder="https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none font-mono">
+                    </div>
+                    <input type="hidden" id="offnews-img-data" value="">
+                    <div id="offnews-preview" class="hidden"></div>
+                </div>
+            </div>
+        `;
+
+        const actions = `
+            <button type="button" onclick="ui.submitOfficialNews()" class="min-h-[44px] bg-amber-400 text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_15px_rgba(251,191,36,0.4)] w-full sm:w-auto">
+                🚀 Publicar Noticia Oficial
+            </button>
+        `;
+
+        this.showModal("🍌 Nueva Noticia Oficial // Nano Banana 3", html, actions);
+    },
+
+    submitOfficialNews() {
+        const isDocente = Boolean(state.user?.admin || (state.user?.role && (state.user.role === 'DOCENTE' || state.user.role.startsWith('COORD'))));
+        if (!isDocente) return this.notify("Acceso restringido a Coordinación Docente.", "error");
+
+        const elTitle = document.getElementById('offnews-title');
+        const elBody = document.getElementById('offnews-body');
+        const elPhase = document.getElementById('offnews-phase');
+        const elClass = document.getElementById('offnews-class');
+        const elCompany = document.getElementById('offnews-company');
+        const elImgData = document.getElementById('offnews-img-data');
+        const elUrl = document.getElementById('offnews-url');
+
+        const title = elTitle ? elTitle.value.trim() : '';
+        const body = elBody ? elBody.value.trim() : '';
+        if (!title) return this.notify("Debes indicar un titular para la noticia.", "warning");
+        if (!body) return this.notify("Debes redactar el cuerpo de la crónica.", "warning");
+
+        const phase = elPhase ? elPhase.value : 'ALL';
+        const classGroup = elClass ? elClass.value : 'ALL';
+        const coId = elCompany ? elCompany.value : '';
+        const coName = coId && state.data?.companies?.[coId] ? state.data.companies[coId].name : '';
+
+        let imageUrl = '';
+        if (elImgData && elImgData.value) {
+            imageUrl = elImgData.value;
+        } else if (elUrl && elUrl.value.trim()) {
+            imageUrl = elUrl.value.trim();
+        }
+
+        const now = Date.now();
+        const newsItem = {
+            id: 'OFFNEWS-' + now + '-' + Math.floor(Math.random() * 1000).toString().padStart(3, '0'),
+            title: title,
+            body: body,
+            phase: phase,
+            classGroup: classGroup,
+            coId: coId || null,
+            companyName: coName || null,
+            imageUrl: imageUrl || null,
+            author: state.user?.name || (state.user?.role ? `Coordinación (${state.user.role})` : 'Coordinación AEE'),
+            publishedAt: now,
+            publishedDate: new Date().toLocaleDateString()
+        };
+
+        state.data.officialNews = Array.isArray(state.data.officialNews) ? state.data.officialNews : [];
+        state.data.officialNews.unshift(newsItem);
+
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
+        ui.pushNotification('ALL', 'ALL', `🪐 [AEE Prensa] Nueva crónica oficial publicada: "${title}".`, 'info', { view: 'news' });
+
+        this.closeModal();
+        this.render();
+        this.notify("✅ Crónica Oficial publicada con éxito en el Tablón de Noticias.", "success");
+    },
+
+    deleteOfficialNews(newsId) {
+        const isDocente = Boolean(state.user?.admin || (state.user?.role && (state.user.role === 'DOCENTE' || state.user.role.startsWith('COORD'))));
+        if (!isDocente) return this.notify("Solo Coordinación puede retirar noticias.", "error");
+
+        this.confirmModal(
+            "¿Retirar Noticia Oficial?",
+            "Esta noticia se eliminará definitivamente del Tablón de Noticias para todos los alumnos.",
+            () => {
+                state.data.deletedOfficialNewsIds = Array.isArray(state.data.deletedOfficialNewsIds) ? state.data.deletedOfficialNewsIds : [];
+                state.data.deletedOfficialNewsIds.push(String(newsId));
+
+                state.data.officialNews = (state.data.officialNews || []).filter(n => String(n.id) !== String(newsId));
+
+                state.save();
+                if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+                this.render();
+                this.notify("🗑️ Noticia oficial retirada del tablón.", "info");
+            }
+        );
+    },
+
+    modalAttachNanoBananaToPR(prId) {
+        const isDocente = Boolean(state.user?.admin || (state.user?.role && (state.user.role === 'DOCENTE' || state.user.role.startsWith('COORD'))));
+        if (!isDocente) return this.notify("Acceso restringido a Coordinación Docente.", "error");
+
+        let pr = null;
+        let foundCo = null;
+        const companies = state.data?.companies || {};
+        Object.keys(companies).forEach(cid => {
+            const co = companies[cid];
+            if (co && co.pressReleases) {
+                Object.keys(co.pressReleases).forEach(pk => {
+                    const item = co.pressReleases[pk];
+                    if (item.id === prId || `${cid}-${pk}` === prId) {
+                        pr = item;
+                        foundCo = co;
+                    }
+                });
+            }
+        });
+
+        if (!pr && Array.isArray(state.data?.pressReleases)) {
+            pr = state.data.pressReleases.find(p => p.id === prId);
+        }
+
+        if (!pr) return this.notify("Nota de prensa no localizada.", "error");
+
+        const currentImg = pr.nanoBananaImage || '';
+        const currentNote = pr.editorialNote || '';
+
+        const html = `
+            <div class="space-y-4 text-xs font-sans">
+                <div class="p-3 bg-cyan-950/40 border border-cyan-500/50 rounded flex items-start gap-2 text-cyan-200">
+                    <span class="text-lg">🎨</span>
+                    <div>
+                        <strong class="font-bold text-cyan-300 block uppercase font-orbitron text-xs">Ilustrar Nota de Prensa // Nano Banana 3</strong>
+                        <span>Adjunta una portada generada con IA y un comentario editorial a la Nota de Prensa Oficial de <strong>${this.escapeHTML(foundCo?.name || pr.companyName || 'Startup')}</strong>.</span>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-black/60 border border-slate-800 rounded space-y-3">
+                    <label class="text-xs text-amber-300 uppercase font-bold block font-mono">Imagen Generada con Nano Banana 3</label>
+                    <div>
+                        <span class="text-[11px] text-slate-400 block mb-1">Opción 1: Subir imagen (optimizada al vuelo en tu navegador)</span>
+                        <input type="file" id="pr-nano-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'pr-nano-img-data', 'pr-nano-preview')" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-none file:border-0 file:text-xs file:font-black file:uppercase file:bg-amber-400 file:text-black hover:file:bg-white cursor-pointer">
+                    </div>
+                    <div>
+                        <span class="text-[11px] text-slate-400 block mb-1">Opción 2: O pegar enlace de imagen de Google Drive / Web</span>
+                        <input type="url" id="pr-nano-url" value="${this.escapeAttr(currentImg.startsWith('data:') ? '' : currentImg)}" oninput="ui.previewNanoBananaUrl(this.value, 'pr-nano-preview')" placeholder="https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none font-mono">
+                    </div>
+                    <input type="hidden" id="pr-nano-img-data" value="${this.escapeAttr(currentImg)}">
+                    <div id="pr-nano-preview" class="${currentImg ? '' : 'hidden'}">
+                        ${currentImg ? `
+                            <div class="relative group mt-2 border border-amber-400/50 rounded overflow-hidden max-h-48 bg-black flex items-center justify-center">
+                                <img src="${this.escapeAttr(currentImg)}" alt="Imagen actual" class="max-h-48 w-full object-contain">
+                                <span class="absolute bottom-1 right-1 bg-black/80 text-[10px] text-amber-300 font-mono px-1.5 py-0.5 rounded border border-amber-500/40">Imagen Vinculada</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <div>
+                    <label for="pr-nano-note" class="text-xs text-amber-400 uppercase font-bold block mb-1 font-mono">Apunte Editorial de Coordinación AEE (Opcional)</label>
+                    <textarea id="pr-nano-note" rows="3" placeholder="Ej: La Dirección Técnica de la AEE destaca la sólida argumentación en el balance de patrocinio..." class="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white font-sans outline-none">${this.escapeHTML(currentNote)}</textarea>
+                </div>
+            </div>
+        `;
+
+        const actions = `
+            <button type="button" onclick="ui.submitAttachNanoBananaToPR('${this.escapeHTML(prId)}')" class="min-h-[44px] bg-amber-400 text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_15px_rgba(251,191,36,0.4)] w-full sm:w-auto">
+                💾 Guardar Ilustración & Portada
+            </button>
+        `;
+
+        this.showModal("🖼️ Ilustrar Nota de Prensa con Nano Banana 3", html, actions);
+    },
+
+    submitAttachNanoBananaToPR(prId) {
+        const isDocente = Boolean(state.user?.admin || (state.user?.role && (state.user.role === 'DOCENTE' || state.user.role.startsWith('COORD'))));
+        if (!isDocente) return this.notify("Acceso restringido a Coordinación Docente.", "error");
+
+        const elImgData = document.getElementById('pr-nano-img-data');
+        const elUrl = document.getElementById('pr-nano-url');
+        const elNote = document.getElementById('pr-nano-note');
+
+        let imgUrl = elImgData ? elImgData.value : '';
+        if (!imgUrl && elUrl && elUrl.value.trim()) {
+            imgUrl = elUrl.value.trim();
+        }
+        const note = elNote ? elNote.value.trim() : '';
+
+        let updated = false;
+        const companies = state.data?.companies || {};
+        Object.keys(companies).forEach(cid => {
+            const co = companies[cid];
+            if (co && co.pressReleases) {
+                Object.keys(co.pressReleases).forEach(pk => {
+                    const item = co.pressReleases[pk];
+                    if (item.id === prId || `${cid}-${pk}` === prId) {
+                        item.nanoBananaImage = imgUrl || null;
+                        item.editorialNote = note || null;
+                        co.updatedAt = Date.now();
+                        updated = true;
+                    }
+                });
+            }
+        });
+
+        if (Array.isArray(state.data?.pressReleases)) {
+            const pr = state.data.pressReleases.find(p => p.id === prId);
+            if (pr) {
+                pr.nanoBananaImage = imgUrl || null;
+                pr.editorialNote = note || null;
+                updated = true;
+            }
+        }
+
+        if (!updated) return this.notify("No se pudo actualizar la nota de prensa.", "error");
+
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.closeModal();
+        this.render();
+        this.notify("✅ Portada e ilustración de Nano Banana 3 vinculada con éxito.", "success");
+    },
+
     viewNewsBoard(el) {
         if (!el || !state.user) return;
+        const isDocente = Boolean(state.user?.admin || (state.user?.role && (state.user.role === 'DOCENTE' || state.user.role.startsWith('COORD'))));
         const classFilter = this.newsClassFilter || 'ALL';
         const phaseFilter = this.newsPhaseFilter || 'ALL';
 
-        // Recopilación de todas las notas de prensa publicadas
+        // 1. Recopilación de Crónicas Oficiales de Coordinación AEE
+        const deletedNewsIds = new Set((state.data?.deletedOfficialNewsIds || []).map(String));
+        const officialNews = (state.data?.officialNews || [])
+            .filter(n => n && n.id && !deletedNewsIds.has(String(n.id)))
+            .map(n => ({
+                ...n,
+                isOfficial: true,
+                publishedAt: n.publishedAt || (n.timestamp || 0),
+                publishedDate: n.publishedDate || (n.date || '--')
+            }));
+
+        // 2. Recopilación de Notas de Prensa de las Startups (DOC_15)
         const allReleases = [];
         const companies = state.data?.companies || {};
         Object.keys(companies).forEach(cid => {
@@ -1828,8 +2219,11 @@ Object.assign(ui, {
                             phase: pk,
                             title: pr.title || `Nota de Prensa Fase ${pk} (${co.name})`,
                             driveUrl: pr.driveUrl,
+                            nanoBananaImage: pr.nanoBananaImage || null,
+                            editorialNote: pr.editorialNote || null,
                             publishedAt: pr.publishedAt || 0,
-                            publishedDate: pr.publishedDate || '--'
+                            publishedDate: pr.publishedDate || '--',
+                            isOfficial: false
                         });
                     }
                 });
@@ -1838,20 +2232,28 @@ Object.assign(ui, {
 
         if (Array.isArray(state.data?.pressReleases)) {
             state.data.pressReleases.forEach(pr => {
-                if (!allReleases.some(r => r.id === pr.id)) {
-                    allReleases.push(pr);
+                const exist = allReleases.find(r => r.id === pr.id);
+                if (!exist) {
+                    allReleases.push({
+                        ...pr,
+                        isOfficial: false
+                    });
+                } else {
+                    if (pr.nanoBananaImage && !exist.nanoBananaImage) exist.nanoBananaImage = pr.nanoBananaImage;
+                    if (pr.editorialNote && !exist.editorialNote) exist.editorialNote = pr.editorialNote;
                 }
             });
         }
 
-        allReleases.sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
+        const allItems = [...officialNews, ...allReleases];
+        allItems.sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
 
-        let filtered = allReleases;
+        let filtered = allItems;
         if (classFilter !== 'ALL') {
-            filtered = filtered.filter(r => (r.classGroup || 'A').toUpperCase() === classFilter.toUpperCase());
+            filtered = filtered.filter(r => !r.classGroup || r.classGroup === 'ALL' || (r.classGroup || 'A').toUpperCase() === classFilter.toUpperCase());
         }
         if (phaseFilter !== 'ALL') {
-            filtered = filtered.filter(r => r.phase === phaseFilter);
+            filtered = filtered.filter(r => !r.phase || r.phase === 'ALL' || r.phase === phaseFilter);
         }
 
         const availableClasses = ['A', 'B', 'C', 'D', 'E', 'F', 'TEST'];
@@ -1861,19 +2263,24 @@ Object.assign(ui, {
         wrapper.innerHTML = `
             <!-- Cabecera del Tablón de Noticias -->
             <div class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-cyan">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-mars-border pb-4 mb-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-mars-border pb-4 mb-4">
                     <div>
-                        <div class="flex items-center gap-2 mb-1">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
                             <span class="px-2.5 py-0.5 text-xs font-black uppercase bg-mars-cyan/20 border border-mars-cyan text-mars-cyan">PRENSA & COMUNICACIÓN OFICIAL</span>
-                            <span class="text-xs text-slate-400 font-mono">${allReleases.length} Comunicados Publicados</span>
+                            <span class="text-xs text-slate-400 font-mono">${allItems.length} Comunicados (${officialNews.length} AEE / ${allReleases.length} Startups)</span>
                         </div>
                         <h2 class="text-xl sm:text-2xl font-orbitron font-black text-white uppercase tracking-tight">
                             📰 Tablón Oficial de Noticias de la Misión
                         </h2>
-                        <p class="text-xs text-slate-300 uppercase mt-0.5">
-                            Seguimiento público del progreso de todas las startups aeroespaciales en cada corte de fase (DOC_15).
+                        <p class="text-xs text-slate-300 uppercase mt-0.5 font-sans">
+                            Seguimiento público del progreso de las startups y crónicas oficiales ilustradas con IA (Nano Banana 3).
                         </p>
                     </div>
+                    ${isDocente ? `
+                        <button type="button" onclick="ui.modalPublishOfficialNews()" class="min-h-[44px] bg-amber-400 text-black px-4 py-2.5 font-black uppercase text-xs hover:bg-white transition-all shadow-[0_0_15px_rgba(251,191,36,0.4)] flex items-center gap-2 shrink-0">
+                            <span>🍌 + Publicar Crónica / Imagen Nano Banana 3</span>
+                        </button>
+                    ` : ''}
                 </div>
 
                 <!-- Barra de Filtros Rápidos (Ergonomía Docente y Alumnos) -->
@@ -1920,33 +2327,91 @@ Object.assign(ui, {
                         <span class="text-3xl block mb-2">📰</span>
                         <h3 class="text-base font-orbitron font-bold text-white uppercase mb-1">Sin Comunicados Publicados en este Filtro</h3>
                         <p class="text-xs text-slate-400 max-w-lg mx-auto font-sans">
-                            Las notas de prensa oficiales se habilitan y sincronizan en este tablón al cierre de cada fase (15/12 para Fase I, 15/02 para Fase II, 31/03 para Fase III y 23/04 para Fase IV).
+                            Las notas de prensa oficiales de startups se habilitan al cierre de cada fase, y las crónicas oficiales son emitidas por la Agencia Espacial AEE.
                         </p>
                     </div>
                 ` : `
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        ${filtered.map(r => `
-                            <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-cyan flex flex-col justify-between hover:border-mars-cyan transition-all">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                        ${filtered.map(r => {
+                            const hasImage = Boolean(r.imageUrl || r.nanoBananaImage);
+                            const imgSource = r.imageUrl || r.nanoBananaImage;
+                            const isOfficial = Boolean(r.isOfficial);
+
+                            return `
+                            <div class="terminal-border bg-mars-card flex flex-col justify-between hover:border-mars-cyan transition-all overflow-hidden ${isOfficial ? 'border-t-4 border-t-amber-400' : 'border-t-2 border-t-mars-cyan'}">
                                 <div>
-                                    <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                                        <div class="flex items-center gap-1.5">
-                                            <span class="px-2 py-0.5 text-xs font-black uppercase bg-black border border-mars-cyan text-mars-cyan">FASE ${this.escapeHTML(r.phase)}</span>
-                                            <span class="px-2 py-0.5 text-xs font-mono text-slate-300 bg-slate-900 border border-slate-700">[CLASE ${this.escapeHTML(r.classGroup || 'A')}]</span>
+                                    ${hasImage ? `
+                                        <div class="relative w-full h-48 sm:h-56 bg-black overflow-hidden border-b border-slate-800 group">
+                                            <img src="${this.escapeAttr(imgSource)}" alt="${this.escapeAttr(r.title)}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 cursor-pointer" onclick="ui.modalViewNewsImage('${this.escapeAttr(imgSource)}', '${this.escapeAttr(r.title)}')">
+                                            <div class="absolute bottom-2 left-2 bg-black/85 backdrop-blur-sm border border-amber-400/60 px-2 py-0.5 rounded text-[10px] font-mono text-amber-300 uppercase flex items-center gap-1 shadow">
+                                                <span>🎨</span>
+                                                <span>Nano Banana 3</span>
+                                            </div>
+                                            <button type="button" onclick="ui.modalViewNewsImage('${this.escapeAttr(imgSource)}', '${this.escapeAttr(r.title)}')" class="absolute top-2 right-2 bg-black/70 hover:bg-black text-white p-1.5 rounded text-xs opacity-90 hover:opacity-100 transition-opacity" title="Ampliar imagen">
+                                                🔍
+                                            </button>
                                         </div>
-                                        <span class="text-[11px] text-slate-400 font-mono">${this.escapeHTML(r.publishedDate || '--')}</span>
+                                    ` : ''}
+
+                                    <div class="p-5">
+                                        <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                                            <div class="flex items-center gap-1.5 flex-wrap">
+                                                ${isOfficial ? `
+                                                    <span class="px-2 py-0.5 text-xs font-black uppercase bg-amber-950/60 border border-amber-400 text-amber-300">🪐 AGENCIA ESPACIAL AEE // CRÓNICA</span>
+                                                ` : `
+                                                    <span class="px-2 py-0.5 text-xs font-black uppercase bg-black border border-mars-cyan text-mars-cyan">FASE ${this.escapeHTML(r.phase)}</span>
+                                                `}
+                                                ${r.classGroup && r.classGroup !== 'ALL' ? `
+                                                    <span class="px-2 py-0.5 text-xs font-mono text-slate-300 bg-slate-900 border border-slate-700">[CLASE ${this.escapeHTML(r.classGroup)}]</span>
+                                                ` : (isOfficial ? `<span class="px-2 py-0.5 text-xs font-mono text-amber-300 bg-amber-950/40 border border-amber-500/30">[TODA LA MISIÓN]</span>` : '')}
+                                            </div>
+                                            <span class="text-[11px] text-slate-400 font-mono">${this.escapeHTML(r.publishedDate || '--')}</span>
+                                        </div>
+
+                                        ${r.companyName ? `
+                                            <span class="text-xs text-mars-cyan font-bold block mb-1 uppercase tracking-wider">${this.escapeHTML(r.companyName)}</span>
+                                        ` : ''}
+
+                                        <h3 class="text-base font-orbitron font-black text-white uppercase mb-2 leading-snug">${this.escapeHTML(r.title)}</h3>
+
+                                        ${r.body ? `
+                                            <p class="text-xs text-slate-300 leading-relaxed font-sans mb-3 whitespace-pre-line">${this.escapeHTML(r.body)}</p>
+                                        ` : ''}
+
+                                        ${r.editorialNote ? `
+                                            <div class="mt-2 mb-3 p-2.5 bg-amber-950/30 border-l-2 border-amber-400 text-xs text-amber-200 font-sans italic">
+                                                <strong class="text-amber-400 not-italic uppercase font-mono text-[10px] block mb-0.5">Apunte Editorial Coordinación AEE:</strong>
+                                                ${this.escapeHTML(r.editorialNote)}
+                                            </div>
+                                        ` : ''}
                                     </div>
-                                    <h3 class="text-base font-orbitron font-black text-white uppercase mb-1.5">${this.escapeHTML(r.companyName)}</h3>
-                                    <p class="text-xs text-slate-300 leading-relaxed font-sans mb-3">${this.escapeHTML(r.title)}</p>
                                 </div>
-                                <div class="pt-3 border-t border-slate-800 flex justify-between items-center">
-                                    <span class="text-[10px] text-slate-500 font-mono">DOC_15 Oficial</span>
-                                    <a href="${encodeURI(r.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-2 bg-cyan-950/60 border border-cyan-400 text-cyan-200 hover:bg-cyan-400 hover:text-black px-4 py-2 text-xs font-bold uppercase transition-all shadow-sm">
-                                        <span>📄 Leer Nota de Prensa Oficial</span>
-                                        <span class="text-xs font-mono">↗</span>
-                                    </a>
+
+                                <div class="p-5 pt-0">
+                                    <div class="pt-3 border-t border-slate-800 flex justify-between items-center flex-wrap gap-2">
+                                        ${isOfficial ? `
+                                            <span class="text-[11px] text-slate-400 font-mono">Por ${this.escapeHTML(r.author || 'Coordinación AEE')}</span>
+                                            ${isDocente ? `
+                                                <button type="button" onclick="ui.deleteOfficialNews('${this.escapeHTML(r.id)}')" class="min-h-[44px] text-red-400 hover:text-red-300 text-xs font-bold uppercase underline">🗑️ Retirar Noticia</button>
+                                            ` : ''}
+                                        ` : `
+                                            <span class="text-[10px] text-slate-500 font-mono">DOC_15 Oficial</span>
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                ${isDocente ? `
+                                                    <button type="button" onclick="ui.modalAttachNanoBananaToPR('${this.escapeHTML(r.id)}')" class="min-h-[44px] bg-amber-950/50 border border-amber-500/60 text-amber-300 hover:bg-amber-400 hover:text-black px-3 py-1.5 text-xs font-bold uppercase transition-all whitespace-nowrap">
+                                                        🖼️ ${hasImage ? 'Editar Portada IA' : 'Ilustrar (Nano Banana)'}
+                                                    </button>
+                                                ` : ''}
+                                                <a href="${encodeURI(r.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-2 bg-cyan-950/60 border border-cyan-400 text-cyan-200 hover:bg-cyan-400 hover:text-black px-4 py-2 text-xs font-bold uppercase transition-all shadow-sm">
+                                                    <span>📄 Leer Nota de Prensa Oficial</span>
+                                                    <span class="text-xs font-mono">↗</span>
+                                                </a>
+                                            </div>
+                                        `}
+                                    </div>
                                 </div>
-                            </div>
-                        `).join('')}
+                            </div>`;
+                        }).join('')}
                     </div>
                 `}
             </div>

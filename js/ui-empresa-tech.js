@@ -791,7 +791,9 @@ Object.assign(ui, {
             notes: 'Informe técnico de excedentes: ' + driveUrl,
             status: 'EN_VENTA',
             sourceOrderKey: itemKey,
-            date: new Date().toLocaleDateString()
+            date: new Date().toLocaleDateString(),
+            timestamp: Date.now(),
+            updatedAt: Date.now()
         });
 
         telemetry.log("OFERTA B2B", `Publicado en B2B: ${item.name} por ${price}€v`);

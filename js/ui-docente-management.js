@@ -2022,9 +2022,19 @@ Object.assign(ui, {
         const sellerCo = state.data.companies[c.sellerCoId];
         const buyerCo = state.data.companies[c.buyerCoId];
         const price = parseFloat(c.price) || 0;
+        const now = Date.now();
 
         if (isApproved) {
             c.status = 'APROBADO';
+            c.updatedAt = now;
+
+            const off = (state.data.b2bMarket || []).find(o => (c.offerId && o.id === c.offerId) || (o.sourceOrderKey && c.sourceOrderKey && o.sourceOrderKey === c.sourceOrderKey));
+            if (off) {
+                off.status = 'VENDIDO';
+                off.updatedAt = now;
+                off.buyerCoId = c.buyerCoId;
+                off.buyerName = c.buyerName;
+            }
 
             if (sellerCo) {
                 state.addToLedger(c.sellerCoId, `[VENTA B2B APROBADA] Traspaso de ${c.itemName} a ${c.buyerName}`, 'ADUANA_B2B', price);
@@ -2042,7 +2052,7 @@ Object.assign(ui, {
             if (buyerCo) {
                 buyerCo.orders = buyerCo.orders || [];
                 buyerCo.orders.unshift({
-                    id: 'B2B-' + Date.now().toString().slice(-4),
+                    id: 'B2B-' + now.toString().slice(-4),
                     items: [{
                         id: 'B2B-ITEM',
                         name: `[B2B] ${c.itemName}`,
@@ -2060,26 +2070,62 @@ Object.assign(ui, {
                 ui.pushNotification(c.buyerCoId, 'TECNICO', `¡Aduana B2B autorizó tu compra! "${c.itemName}" está en tu Inventario.`, 'success');
             }
 
+            // Blindaje anti-duplicados: Si otra empresa o solicitud intentó comprar el mismo lote, cancelar y reembolsar íntegramente
+            const duplicateContracts = (state.data.b2bContracts || []).filter(dup => 
+                dup.id !== c.id && 
+                dup.status === 'PENDIENTE_ADUANA' && 
+                ((c.offerId && dup.offerId && dup.offerId === c.offerId) || (c.sourceOrderKey && dup.sourceOrderKey && dup.sourceOrderKey === c.sourceOrderKey))
+            );
+            duplicateContracts.forEach(dup => {
+                dup.status = 'RECHAZADO_DUPLICADO';
+                dup.updatedAt = now;
+                const dupPrice = parseFloat(dup.price) || 0;
+                const dupBuyerCo = state.data.companies[dup.buyerCoId];
+                if (dupBuyerCo && dupPrice > 0) {
+                    state.addToLedger(dup.buyerCoId, `[REEMBOLSO ADUANA B2B] Oferta adjudicada a otra startup: ${dup.itemName}`, 'ADUANA_B2B', dupPrice);
+                    ui.pushNotification(dup.buyerCoId, 'FINANZAS', `Aduana B2B: El lote único de "${dup.itemName}" ya fue adjudicado a ${c.buyerName}. Importe de ${dupPrice.toFixed(2)} €v reembolsado íntegramente.`, 'warning');
+                }
+            });
+
             state.save();
-            this.notify(`Traspaso B2B #${c.id} aprobado.`, "success");
+            if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+            const extraMsg = duplicateContracts.length > 0 ? ` (${duplicateContracts.length} solicitud(es) duplicada(s) cancelada(s) y reembolsada(s))` : '';
+            this.notify(`Traspaso B2B #${c.id} aprobado con éxito.${extraMsg}`, "success");
         } else {
             c.status = 'RECHAZADO';
+            c.updatedAt = now;
 
             if (buyerCo) {
                 state.addToLedger(c.buyerCoId, `[REEMBOLSO ADUANA B2B] Contrato rechazado: ${c.itemName}`, 'ADUANA_B2B', price);
                 ui.pushNotification(c.buyerCoId, 'FINANZAS', `Aduana B2B rechazó el contrato #${c.id}. Reembolso: +${price.toFixed(2)} €v.`, 'warning');
             }
 
-            if (sellerCo && c.sourceOrderKey && sellerCo.orders) {
-                const [ordId, itemIdx] = c.sourceOrderKey.split('-');
-                const ord = sellerCo.orders.find(o => String(o.id) === String(ordId));
-                if (ord && ord.items && ord.items[Number(itemIdx)]) {
-                    delete ord.items[Number(itemIdx)].b2bStatus;
+            const hasOtherPending = (state.data.b2bContracts || []).some(other => 
+                other.id !== c.id && 
+                other.status === 'PENDIENTE_ADUANA' && 
+                ((c.offerId && other.offerId && other.offerId === c.offerId) || (c.sourceOrderKey && other.sourceOrderKey && other.sourceOrderKey === c.sourceOrderKey))
+            );
+
+            if (!hasOtherPending) {
+                if (sellerCo && c.sourceOrderKey && sellerCo.orders) {
+                    const [ordId, itemIdx] = c.sourceOrderKey.split('-');
+                    const ord = sellerCo.orders.find(o => String(o.id) === String(ordId));
+                    if (ord && ord.items && ord.items[Number(itemIdx)]) {
+                        delete ord.items[Number(itemIdx)].b2bStatus;
+                    }
                 }
-                ui.pushNotification(c.sellerCoId, 'TECNICO', `Aduana B2B denegó la venta de "${c.itemName}". Vuelve a tu inventario.`, 'warning');
+                const off = (state.data.b2bMarket || []).find(o => (c.offerId && o.id === c.offerId) || (o.sourceOrderKey && c.sourceOrderKey && o.sourceOrderKey === c.sourceOrderKey));
+                if (off) {
+                    off.status = 'CANCELADO';
+                    off.updatedAt = now;
+                }
+                if (sellerCo) {
+                    ui.pushNotification(c.sellerCoId, 'TECNICO', `Aduana B2B denegó la venta de "${c.itemName}". El componente ha vuelto a tu inventario.`, 'warning');
+                }
             }
 
             state.save();
+            if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
             this.notify(`Contrato B2B #${c.id} rechazado. Fondos reembolsados.`, "warning");
         }
         this.render();

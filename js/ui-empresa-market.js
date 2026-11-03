@@ -349,7 +349,9 @@ Object.assign(ui, {
             price: price,
             driveUrl: driveUrl || null,
             status: 'EN_VENTA',
-            date: new Date().toLocaleString()
+            date: new Date().toLocaleString(),
+            timestamp: Date.now(),
+            updatedAt: Date.now()
         });
 
         ui.pushNotification(state.user.coId, 'FINANZAS', `I+D ha puesto en venta B2B: ${item.name} por ${price.toFixed(2)} €v.`, 'info');
@@ -389,37 +391,71 @@ Object.assign(ui, {
     },
 
     confirmBuyB2B(offerId) {
+        if (!state.user || state.user.role !== 'TECNICO') return;
         const offer = state.data.b2bMarket.find(o => o.id === offerId);
-        if(!offer || (offer.status && offer.status !== 'EN_VENTA')) return;
+        if(!offer || (offer.status && offer.status !== 'EN_VENTA')) {
+            this.closeModal();
+            this.render();
+            return this.notify("Esta oferta ya no está disponible en el mercado secundario.", "warning");
+        }
+
+        if (offer.sellerCoId === state.user.coId) {
+            this.closeModal();
+            return this.notify("No puedes adquirir un artículo puesto en venta por tu propia empresa.", "warning");
+        }
 
         const co = state.data.companies[state.user.coId];
+        if (!co) return;
         if (co.balance < offer.price) return this.notify("Fondos insuficientes.", "error");
 
-        offer.status = 'VENDIDO'; // Oculta del mercado abierto
-
         state.data.b2bContracts = state.data.b2bContracts || [];
+        const existingActive = state.data.b2bContracts.find(c => 
+            (c.offerId === offerId || (c.sourceOrderKey && offer.sourceOrderKey && c.sourceOrderKey === offer.sourceOrderKey)) && 
+            (c.status === 'PENDIENTE_ADUANA' || c.status === 'APROBADO')
+        );
+        if (existingActive) {
+            offer.status = existingActive.status === 'APROBADO' ? 'VENDIDO' : 'EN_ADUANA';
+            offer.updatedAt = Date.now();
+            state.save();
+            this.closeModal();
+            this.render();
+            return this.notify("⚠️ Esta oferta ya ha sido solicitada o adquirida y está en trámite en la Aduana Docente.", "warning");
+        }
+
+        const now = Date.now();
+        offer.status = 'EN_ADUANA';
+        offer.updatedAt = now;
+        offer.buyerCoId = state.user.coId;
+        offer.buyerName = co.name;
+
+        const contractId = 'B2BC-' + now.toString().slice(-4) + '-' + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
         state.data.b2bContracts.unshift({
-            id: 'B2BC-' + Date.now().toString().slice(-4),
+            id: contractId,
+            offerId: offer.id,
             sellerCoId: offer.sellerCoId,
             sellerName: offer.sellerName,
             buyerCoId: state.user.coId,
             buyerName: co.name,
             itemName: offer.itemName,
             qty: offer.qty || 1,
-            category: offer.category,
+            category: offer.category || 'Componente',
             price: offer.price,
-            sourceOrderKey: offer.sourceOrderKey,
+            sourceOrderKey: offer.sourceOrderKey || '',
             driveUrl: offer.driveUrl || '',
             status: 'PENDIENTE_ADUANA',
-            date: new Date().toLocaleString()
+            date: new Date().toLocaleString(),
+            timestamp: now,
+            updatedAt: now
         });
 
         state.addToLedger(state.user.coId, `[RETENCIÓN B2B] Compra pendiente de aduana: ${offer.itemName}`, 'ADUANA_B2B', -offer.price);
 
         ui.pushNotification(state.user.coId, 'FINANZAS', `Cargo en Ledger: -${offer.price.toFixed(2)} €v por compra B2B (${offer.itemName}). En Aduana.`, 'warning');
+        ui.pushNotification(offer.sellerCoId, 'TECNICO', `🤝 ${co.name} ha solicitado adquirir tu lote B2B (${offer.itemName}). El contrato está en la Aduana Docente.`, 'info');
         
         telemetry.log("COMPRA B2B", `Contrato generado por ${offer.itemName}`);
         state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
         this.render();
         this.notify("✅ Contrato B2B firmado. Fondos retenidos. A la espera de autorización aduanera docente.", "success");

@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.59) ---
 
-const APP_VERSION = "1.1.59";
+const APP_VERSION = "1.1.60";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1038,6 +1038,23 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.59
 const APP_CHANGELOG = [
+    {
+      version: "1.1.60",
+      date: new Date().toISOString().split('T')[0],
+      title: "Blindaje Antiduplicados en Mercado B2B, Resolución en Aduana Docente y Crónicas Oficiales con Nano Banana 3",
+      items: [
+        "Blindaje Transaccional B2B: Escudo anti-doble compra que retiene la oferta al primer clic e impide adquisiciones concurrentes o duplicadas de piezas únicas en el Mercado Secundario.",
+        "Resolución y Reembolso Automático en Aduana: Al aprobar una compraventa en la Aduana Docente, cualquier solicitud competidora o duplicada se cancela de inmediato reembolsando el 100% de los fondos en el Ledger contable del comprador.",
+        "Persistencia Anti-Resurrección en Nube: Refuerzo del algoritmo de fusión de datos en state.js para respetar ofertas vendidas o en trámite aduanero, garantizando que no reaparezcan en venta tras sincronización.",
+        "Crónicas Oficiales de la Misión AEE con Nano Banana 3: Módulo editorial exclusivo para Coordinación Docente en el Tablón de Noticias con soporte para subir imágenes generadas con IA, optimización y compresión ligera en el navegador (WebP/JPEG), y visor ampliado.",
+        "Ilustración de Notas de Prensa (CEO): Capacidad del Claustro para adjuntar portadas generadas con Nano Banana 3 y apuntes editoriales a los comunicados oficiales (DOC_15) de las startups."
+      ],
+      highlights: [
+        { type: "MERCADO B2B", text: "Blindaje de stock único y cancelación con reembolso automático de duplicados en Aduana." },
+        { type: "IA // NANO BANANA 3", text: "Publicación de crónicas oficiales y portadas generadas con IA en el Tablón de Noticias." },
+        { type: "DOCENTE", text: "Herramienta editorial para enriquecer la narrativa y visibilizar los hitos del proyecto." }
+      ]
+    },
     {
       version: "1.1.59",
       date: new Date().toISOString().split('T')[0],

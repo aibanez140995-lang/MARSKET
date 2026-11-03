@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v1.1.59
+// Versión: v1.1.60
 
 declare(strict_types=1);
 
@@ -1573,6 +1573,8 @@ try {
             $currentState['securityIncidents'] = [];
             $currentState['suggestionsToAlex'] = [];
             $currentState['pendingCustom'] = [];
+            $currentState['officialNews'] = [];
+            $currentState['deletedOfficialNewsIds'] = [];
             $currentState['resetEpoch'] = $newEpoch;
             $currentState['version'] = $newVersion;
             $currentState['lastUpdated'] = $now;

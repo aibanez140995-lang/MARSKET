@@ -4,6 +4,9 @@
 const DEFAULT_STATE = {
     version: 1,
     resetEpoch: 0,
+    officialNews: [],
+    deletedOfficialNewsIds: [],
+    pressReleases: [],
     b2bMarket: [],
     b2bContracts: [],
     securityIncidents: [],
@@ -358,6 +361,9 @@ const state = {
             }
         });
         d.pendingCustom = Array.isArray(d.pendingCustom) ? d.pendingCustom : [];
+        d.officialNews = Array.isArray(d.officialNews) ? d.officialNews : [];
+        d.deletedOfficialNewsIds = Array.isArray(d.deletedOfficialNewsIds) ? d.deletedOfficialNewsIds : [];
+        d.pressReleases = Array.isArray(d.pressReleases) ? d.pressReleases : [];
         d.b2bMarket = Array.isArray(d.b2bMarket) ? d.b2bMarket : [];
         d.b2bContracts = Array.isArray(d.b2bContracts) ? d.b2bContracts : [];
         d.securityIncidents = Array.isArray(d.securityIncidents) ? d.securityIncidents : [];
@@ -1057,6 +1063,12 @@ const state = {
                 let status = sItem.status;
                 if (sItem.status && sItem.status.includes('PENDIENTE') && lItem.status && !lItem.status.includes('PENDIENTE')) {
                     status = lItem.status;
+                } else if (sItem.status === 'EN_VENTA' && (lItem.status === 'EN_ADUANA' || lItem.status === 'VENDIDO')) {
+                    status = lItem.status;
+                } else if (sItem.status === 'EN_ADUANA' && lItem.status === 'VENDIDO') {
+                    status = lItem.status;
+                } else if (lItem.updatedAt && sItem.updatedAt && lItem.updatedAt > sItem.updatedAt && lItem.status) {
+                    status = lItem.status;
                 }
                 return { ...sItem, ...lItem, resolved: isResolved, status: status || sItem.status };
             });
@@ -1083,6 +1095,15 @@ const state = {
         ]);
         merged.dismissedNotificationIds = Array.from(allDismissedNotificationIds);
 
+        const allDeletedOfficialNewsIds = new Set([
+            ...(Array.isArray(serverData.deletedOfficialNewsIds) ? serverData.deletedOfficialNewsIds.map(String) : []),
+            ...(Array.isArray(localData.deletedOfficialNewsIds) ? localData.deletedOfficialNewsIds.map(String) : [])
+        ]);
+        merged.deletedOfficialNewsIds = Array.from(allDeletedOfficialNewsIds);
+
+        merged.officialNews = mergeArraysGlobal(merged.officialNews, localData.officialNews)
+            .filter(n => n && n.id && !allDeletedOfficialNewsIds.has(String(n.id)));
+        merged.pressReleases = mergeArraysGlobal(merged.pressReleases, localData.pressReleases);
         merged.suggestionsToAlex = mergeArraysGlobal(merged.suggestionsToAlex, localData.suggestionsToAlex)
             .filter(s => s && s.id && !allDeletedSuggestionIds.has(String(s.id)));
         merged.pendingCustom = mergeArraysGlobal(merged.pendingCustom, localData.pendingCustom);
