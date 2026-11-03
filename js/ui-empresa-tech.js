@@ -289,7 +289,7 @@ Object.assign(ui, {
                                         <span>🔒 BANCO DE PRUEBAS BLOQUEADO // LICENCIA AESA REQUERIDA (FASE II)</span>
                                     </div>
                                     <p class="text-slate-200">
-                                        Para registrar vuelos, el <strong>CEO</strong> debe rellenar, firmar y tramitar la <strong>Solicitud de Permiso Oficial AESA (DOC_14)</strong> con tasa de 50 €v en la Sala de Mando para validación del Claustro Docente.
+                                        Para registrar vuelos, el <strong>CEO</strong> debe tramitar la <strong>Solicitud de Permiso Oficial AESA (DOC_14)</strong> con tasa de 50 €v en la Sala de Mando (habilitada tras la entrega del Informe Técnico Preliminar al Claustro Docente).
                                     </p>
                                 </div>`;
                         })()}

@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.57) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.58) ---
 
-const APP_VERSION = "1.1.57";
+const APP_VERSION = "1.1.58";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -131,7 +131,7 @@ const PRESS_RELEASE_PHASES = Object.freeze([
     {
         phase: 'I',
         phaseName: 'Fase I: Fundación y Viabilidad',
-        phaseCutoff: '2026-12-15T23:59',
+        phaseCutoff: '2026-12-15T00:00',
         phaseCutoffLabel: '15/12/2026',
         deadline: '2026-12-22T23:59',
         deadlineLabel: '22/12/2026 (Corte: 15/12 + 7 días)',
@@ -142,7 +142,7 @@ const PRESS_RELEASE_PHASES = Object.freeze([
     {
         phase: 'II',
         phaseName: 'Fase II: I+D y Prototipado Aeroespacial',
-        phaseCutoff: '2027-02-15T23:59',
+        phaseCutoff: '2027-02-15T00:00',
         phaseCutoffLabel: '15/02/2027',
         deadline: '2027-02-22T23:59',
         deadlineLabel: '22/02/2027 (Corte: 15/02 + 7 días)',
@@ -153,7 +153,7 @@ const PRESS_RELEASE_PHASES = Object.freeze([
     {
         phase: 'III',
         phaseName: 'Fase III: Producción y Finanzas B2B',
-        phaseCutoff: '2027-03-31T23:59',
+        phaseCutoff: '2027-03-31T00:00',
         phaseCutoffLabel: '31/03/2027',
         deadline: '2027-04-07T23:59',
         deadlineLabel: '07/04/2027 (Corte: 31/03 + 7 días)',
@@ -164,7 +164,7 @@ const PRESS_RELEASE_PHASES = Object.freeze([
     {
         phase: 'IV',
         phaseName: 'Fase IV: Validación Científica y Comercialización',
-        phaseCutoff: '2027-04-23T23:59',
+        phaseCutoff: '2027-04-23T00:00',
         phaseCutoffLabel: '23/04/2027',
         deadline: '2027-04-30T23:59',
         deadlineLabel: '30/04/2027 (Corte: 23/04 + 7 días)',
@@ -1036,8 +1036,25 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.57
+// Changelog Oficial de Producción v1.1.58
 const APP_CHANGELOG = [
+    {
+      version: "1.1.58",
+      date: new Date().toISOString().split('T')[0],
+      title: "Bloqueo Temporal de Notas de Prensa hasta Cierre de Fase y Habilitación de Licencia AESA por Informe Preliminar",
+      items: [
+        "Bloqueo Temporal de Notas de Prensa (DOC_15): Las notas de prensa corporativas del CEO permanecen bloqueadas e inaccesibles hasta la fecha oficial de cierre de cada fase (15/12 para Fase I, 15/02 para Fase II, 31/03 para Fase III y 23/04 para Fase IV), disponiendo de 7 días de cortesía para su redacción y publicación.",
+        "Habilitación Condicionada de Licencia de Vuelo AESA (DOC_14): El trámite y pago de la tasa administrativa de 50 €v queda estrictamente condicionado a la entrega formal previa del 'Informe Técnico Preliminar, Boceto y Foto' (preliminaryReport) al Claustro Docente.",
+        "Guía Visual en Sala de Mando del CEO: Indicador dinámico que alerta al CEO si el Informe Preliminar está pendiente de entrega por el Técnico o si se encuentra en su bandeja de visado pendiente de aprobación.",
+        "Modo Sandbox Completo (TEST-0000): La empresa de pruebas y el perfil docente mantienen desbloqueadas tanto las Notas de Prensa como la Licencia AESA con distintivo visual para auditoría inmediata.",
+        "Filtro de Fase IV en Tablón de Noticias: Incorporación del botón de filtro para Fase IV en el Tablón de Noticias de la Misión."
+      ],
+      highlights: [
+        { type: "PRENSA", text: "Notas de prensa bloqueadas hasta el día de cierre oficial de cada fase." },
+        { type: "AESA", text: "Licencia de vuelo vinculada a la entrega del Informe Técnico Preliminar." },
+        { type: "SANDBOX", text: "Acceso total de pruebas garantizado para TEST-0000 y docentes." }
+      ]
+    },
     {
       version: "1.1.57",
       date: new Date().toISOString().split('T')[0],

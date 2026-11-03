@@ -2563,6 +2563,32 @@ const state = {
         return now >= start && now <= end;
     },
 
+    isPressReleaseUnlocked(phaseKey, co) {
+        if (!co && this.user) {
+            co = this.data.companies?.[this.user.coId];
+        }
+        if (!co) return false;
+        if (co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000' || (this.user && this.user.admin)) {
+            return true;
+        }
+        const prPhases = typeof PRESS_RELEASE_PHASES !== 'undefined' ? PRESS_RELEASE_PHASES : [];
+        const p = prPhases.find(item => item.phase === phaseKey);
+        if (!p || !p.phaseCutoff) return false;
+        return Date.now() >= new Date(p.phaseCutoff).getTime();
+    },
+
+    isLaunchLicenseUnlocked(co) {
+        if (!co && this.user) {
+            co = this.data.companies?.[this.user.coId];
+        }
+        if (!co) return false;
+        if (co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000' || (this.user && this.user.admin)) {
+            return true;
+        }
+        const pItem = co.deliverables?.['preliminaryReport'];
+        return Boolean(pItem && (pItem.status === 'DELIVERED_TO_TEACHER' || (typeof pItem === 'string' && pItem.length > 0)));
+    },
+
     signCommercialContract(coId, contractId) {
         const co = this.data.companies?.[coId];
         if (!co) {

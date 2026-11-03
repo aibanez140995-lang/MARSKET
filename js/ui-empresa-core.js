@@ -654,25 +654,81 @@ Object.assign(ui, {
         let ceoGovernanceModulesHtml = '';
         if (isCEO) {
             const license = co.launchLicense;
+            const isMasterOrAdmin = Boolean(state.user?.admin || co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000');
+            const prelimItem = co.deliverables?.['preliminaryReport'];
+            const isPrelimDelivered = isMasterOrAdmin || Boolean(prelimItem && (prelimItem.status === 'DELIVERED_TO_TEACHER' || (typeof prelimItem === 'string' && prelimItem.length > 0)));
+            const isPrelimPendingCeo = !isPrelimDelivered && Boolean(prelimItem && prelimItem.status === 'SUBMITTED_TO_CEO');
+
             let licenseCardHtml = '';
             if (!license || license.status === 'SIN_SOLICITAR' || license.status === 'DENEGADA') {
-                licenseCardHtml = `
-                <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-yellow flex flex-col justify-between hover:border-mars-yellow transition-all">
-                    <div>
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs font-black uppercase text-mars-yellow bg-mars-yellow/10 border border-mars-yellow/40 px-2 py-0.5">SEGURIDAD AEROESPACIAL</span>
-                            <span class="text-xs font-mono text-amber-400">Tasa: 50 €v</span>
+                if (!isPrelimDelivered) {
+                    if (isPrelimPendingCeo) {
+                        licenseCardHtml = `
+                        <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-amber-400 flex flex-col justify-between hover:border-amber-400 transition-all">
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-xs font-black uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2 py-0.5">SEGURIDAD AEROESPACIAL // VISADO REQUERIDO</span>
+                                    <span class="text-xs font-mono text-amber-400">Tasa: 50 €v</span>
+                                </div>
+                                <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">🚀 Licencia de Lanzamiento AESA (Fase II)</h3>
+                                <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
+                                    Los lanzamientos en el banco de pruebas están bloqueados para Técnico y Operaciones. Requiere validar el Informe Técnico Preliminar antes de tramitar la licencia.
+                                </p>
+                                <div class="mt-2.5 p-2.5 bg-amber-950/40 border border-amber-500/40 text-[11px] text-amber-300 font-sans flex items-start gap-2">
+                                    <span class="text-sm">⚠️</span>
+                                    <span>Tienes el <strong>Informe Técnico Preliminar</strong> en tu Bandeja de Visado de Sala de Mando. Apruébalo y elévalo al Claustro para habilitar la Licencia AESA.</span>
+                                </div>
+                            </div>
+                            <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
+                                <span class="text-[11px] text-slate-400 font-mono">DOC_14 AESA</span>
+                                <button type="button" disabled class="min-h-[44px] bg-slate-900 border border-slate-700 text-slate-500 font-bold uppercase text-xs px-4 py-2 cursor-not-allowed">[ 🔒 Requiere Visar Informe Preliminar ]</button>
+                            </div>
+                        </div>`;
+                    } else {
+                        licenseCardHtml = `
+                        <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-slate-700 flex flex-col justify-between hover:border-slate-600 transition-all">
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-xs font-black uppercase text-slate-400 bg-slate-900 border border-slate-700 px-2 py-0.5">SEGURIDAD AEROESPACIAL // BLOQUEADA</span>
+                                    <span class="text-xs font-mono text-slate-400">Tasa: 50 €v</span>
+                                </div>
+                                <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">🚀 Licencia de Lanzamiento AESA (Fase II)</h3>
+                                <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
+                                    Los lanzamientos en el banco de pruebas están bloqueados para Técnico y Operaciones. Tramita y firma la Solicitud AESA (DOC_14) con tasa de 50 €v para validación del Claustro.
+                                </p>
+                                <div class="mt-2.5 p-2.5 bg-slate-900/80 border border-slate-800 text-[11px] text-slate-400 font-sans flex items-start gap-2">
+                                    <span class="text-sm">🔒</span>
+                                    <span>El Departamento Técnico debe elaborar y subir previamente el <strong>Informe Técnico Preliminar (DOC FYQ)</strong> para habilitar el trámite de la licencia.</span>
+                                </div>
+                            </div>
+                            <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
+                                <span class="text-[11px] text-slate-400 font-mono">DOC_14 AESA</span>
+                                <button type="button" disabled class="min-h-[44px] bg-slate-900 border border-slate-700 text-slate-500 font-bold uppercase text-xs px-4 py-2 cursor-not-allowed">[ 🔒 Requiere Informe Preliminar ]</button>
+                            </div>
+                        </div>`;
+                    }
+                } else {
+                    licenseCardHtml = `
+                    <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-yellow flex flex-col justify-between hover:border-mars-yellow transition-all">
+                        <div>
+                            <div class="flex justify-between items-center mb-2 flex-wrap gap-1">
+                                <span class="text-xs font-black uppercase text-mars-yellow bg-mars-yellow/10 border border-mars-yellow/40 px-2 py-0.5">SEGURIDAD AEROESPACIAL</span>
+                                <div class="flex items-center gap-1.5">
+                                    ${(co.id === 'TEST-0000' || co.isTestCompany) ? `<span class="px-1.5 py-0.2 bg-amber-400 text-black text-[9px] font-mono font-bold uppercase rounded">🧪 Sandbox Desbloqueado</span>` : `<span class="text-[10px] text-emerald-400 font-mono">✓ Informe Preliminar Entregado</span>`}
+                                    <span class="text-xs font-mono text-amber-400">Tasa: 50 €v</span>
+                                </div>
+                            </div>
+                            <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">🚀 Licencia de Lanzamiento AESA (Fase II)</h3>
+                            <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
+                                Los lanzamientos en el banco de pruebas están bloqueados para Técnico y Operaciones. Tramita y firma la Solicitud AESA (DOC_14) con tasa de 50 €v para validación del Claustro.
+                            </p>
                         </div>
-                        <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">🚀 Licencia de Lanzamiento AESA (Fase II)</h3>
-                        <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
-                            Los lanzamientos en el banco de pruebas están bloqueados para Técnico y Operaciones. Tramita y firma la Solicitud AESA (DOC_14) con tasa de 50 €v para validación del Claustro.
-                        </p>
-                    </div>
-                    <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
-                        <span class="text-[11px] text-slate-400 font-mono">DOC_14 AESA</span>
-                        <button type="button" onclick="ui.modalLaunchLicense()" class="min-h-[44px] bg-mars-yellow text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">[ 🚀 Tramitar Licencia AESA (50 €v) ]</button>
-                    </div>
-                </div>`;
+                        <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
+                            <span class="text-[11px] text-slate-400 font-mono">DOC_14 AESA</span>
+                            <button type="button" onclick="ui.modalLaunchLicense()" class="min-h-[44px] bg-mars-yellow text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">[ 🚀 Tramitar Licencia AESA (50 €v) ]</button>
+                        </div>
+                    </div>`;
+                }
             } else if (license.status === 'PENDIENTE_DOCENTE') {
                 licenseCardHtml = `
                 <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-amber-400 flex flex-col justify-between hover:border-amber-400 transition-all">
@@ -712,10 +768,10 @@ Object.assign(ui, {
             }
 
             const prPhases = typeof PRESS_RELEASE_PHASES !== 'undefined' ? PRESS_RELEASE_PHASES : [
-                { phase: 'I', title: 'Cierre Fase I', deadlineLabel: '22/12/2026 (Corte: 15/12 + 7 días)' },
-                { phase: 'II', title: 'Cierre Fase II', deadlineLabel: '22/02/2027 (Corte: 15/02 + 7 días)' },
-                { phase: 'III', title: 'Cierre Fase III', deadlineLabel: '07/04/2027 (Corte: 31/03 + 7 días)' },
-                { phase: 'IV', title: 'Cierre Fase IV', deadlineLabel: '30/04/2027 (Corte: 23/04 + 7 días)' }
+                { phase: 'I', title: 'Cierre Fase I', phaseCutoffLabel: '15/12/2026', deadlineLabel: '22/12/2026 (Corte: 15/12 + 7 días)' },
+                { phase: 'II', title: 'Cierre Fase II', phaseCutoffLabel: '15/02/2027', deadlineLabel: '22/02/2027 (Corte: 15/02 + 7 días)' },
+                { phase: 'III', title: 'Cierre Fase III', phaseCutoffLabel: '31/03/2027', deadlineLabel: '07/04/2027 (Corte: 31/03 + 7 días)' },
+                { phase: 'IV', title: 'Cierre Fase IV', phaseCutoffLabel: '23/04/2027', deadlineLabel: '30/04/2027 (Corte: 23/04 + 7 días)' }
             ];
             const coReleases = co.pressReleases || {};
             const publishedPrCount = prPhases.filter(p => coReleases[p.phase]).length;
@@ -735,10 +791,14 @@ Object.assign(ui, {
                         ${prPhases.map(p => {
                             const published = coReleases[p.phase];
                             const phaseBalance = co.phaseBalances ? co.phaseBalances[p.phase] : null;
+                            const isPrUnlocked = this.isPressReleaseUnlocked(p.phase, co);
                             return `
                             <div class="p-2.5 bg-black/60 border border-slate-800 rounded text-xs flex justify-between items-center flex-wrap gap-2">
                                 <div class="min-w-0 flex-1">
-                                    <span class="text-white font-bold block uppercase">${this.escapeHTML(p.title)}</span>
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <span class="text-white font-bold block uppercase">${this.escapeHTML(p.title)}</span>
+                                        ${!isPrUnlocked ? `<span class="px-1.5 py-0.2 bg-slate-900 border border-slate-700 text-slate-400 text-[9px] font-mono uppercase font-bold">🔒 Bloqueada hasta Cierre</span>` : ''}
+                                    </div>
                                     <span class="text-[10px] text-slate-400 font-mono">Plazo Máximo: ${this.escapeHTML(p.deadlineLabel)}</span>
                                     ${phaseBalance ? `
                                         <div class="mt-1">
@@ -758,11 +818,18 @@ Object.assign(ui, {
                                             <span class="text-[10px] text-emerald-400 font-bold uppercase bg-emerald-950/40 border border-emerald-500/40 px-1.5 py-0.5">✓ Publicada</span>
                                             <a href="${encodeURI(published.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-[11px] text-cyan-300 underline font-mono">Ver DOC_15 ↗</a>
                                         </div>
-                                    ` : `
-                                        <button type="button" onclick="ui.modalPublishPressRelease('${this.escapeHTML(p.phase)}')" class="min-h-[36px] bg-cyan-950/60 border border-cyan-400 text-cyan-300 hover:bg-cyan-400 hover:text-black font-bold uppercase text-[11px] px-2.5 py-1 transition-all">
-                                            + Redactar y Publicar
+                                    ` : (!isPrUnlocked ? `
+                                        <button type="button" disabled class="min-h-[36px] bg-slate-900 border border-slate-800 text-slate-500 font-bold uppercase text-[11px] px-2.5 py-1 cursor-not-allowed" title="Disponible a partir del ${this.escapeHTML(p.phaseCutoffLabel || '')}">
+                                            🔒 Bloqueada hasta ${this.escapeHTML(p.phaseCutoffLabel || '')}
                                         </button>
-                                    `}
+                                    ` : `
+                                        <div class="flex items-center gap-1">
+                                            ${isMasterOrAdmin && p.phaseCutoff && Date.now() < new Date(p.phaseCutoff).getTime() ? `<span class="px-1.5 py-0.5 bg-amber-400 text-black text-[9px] font-mono font-bold uppercase rounded">🧪 Sandbox</span>` : ''}
+                                            <button type="button" onclick="ui.modalPublishPressRelease('${this.escapeHTML(p.phase)}')" class="min-h-[36px] bg-cyan-950/60 border border-cyan-400 text-cyan-300 hover:bg-cyan-400 hover:text-black font-bold uppercase text-[11px] px-2.5 py-1 transition-all">
+                                                + Redactar y Publicar
+                                            </button>
+                                        </div>
+                                    `)}
                                 </div>
                             </div>`;
                         }).join('')}
@@ -1509,6 +1576,10 @@ Object.assign(ui, {
         const co = state.data.companies[state.user.coId];
         if (!co) return;
 
+        if (!this.isLaunchLicenseUnlocked(co)) {
+            return this.notify("⛔ Trámite bloqueado: Se requiere haber entregado formalmente el Informe Técnico Preliminar (DOC FYQ) al Claustro Docente antes de tramitar la Licencia AESA.", "error");
+        }
+
         const html = `
             <div class="space-y-4 font-mono text-xs">
                 <div class="p-3 bg-mars-yellow/10 border border-mars-yellow text-slate-200 space-y-1">
@@ -1564,6 +1635,10 @@ Object.assign(ui, {
         const co = state.data.companies[coId];
         if (!co) return;
 
+        if (!this.isLaunchLicenseUnlocked(co)) {
+            return this.notify("⛔ Trámite bloqueado: Se requiere haber entregado formalmente el Informe Técnico Preliminar (DOC FYQ) al Claustro Docente antes de tramitar la Licencia AESA.", "error");
+        }
+
         if (Number(co.balance || 0) < 50) {
             return this.notify("Saldo insuficiente: se requieren 50 €v de tesorería para la tasa administrativa de la licencia AESA.", "error");
         }
@@ -1597,6 +1672,15 @@ Object.assign(ui, {
 
     modalPublishPressRelease(phaseKey) {
         if (!state.user || state.user.role !== 'CEO') return;
+        const co = state.data.companies[state.user.coId];
+        if (!co) return;
+
+        if (!this.isPressReleaseUnlocked(phaseKey, co)) {
+            const prPhases = typeof PRESS_RELEASE_PHASES !== 'undefined' ? PRESS_RELEASE_PHASES : [];
+            const phaseDef = prPhases.find(p => p.phase === phaseKey);
+            return this.notify(`🔒 La Nota de Prensa de Fase ${phaseKey} permanece bloqueada hasta el cierre oficial de la fase (${phaseDef?.phaseCutoffLabel || ''}).`, "warning");
+        }
+
         const prPhases = typeof PRESS_RELEASE_PHASES !== 'undefined' ? PRESS_RELEASE_PHASES : [
             { phase: 'I', title: 'Nota de Prensa Oficial — Cierre Fase I', deadlineLabel: '22/12/2026 (Corte: 15/12 + 7 días)', requiredContent: 'Presentación del concepto de cohete, capital obtenido por patrocinio y objetivos corporativos.' },
             { phase: 'II', title: 'Nota de Prensa Oficial — Cierre Fase II', deadlineLabel: '22/02/2027 (Corte: 15/02 + 7 días)', requiredContent: 'Resultados preliminares de las pruebas de vuelo, mediciones angulares y estado financiero a mitad del proyecto.' },
@@ -1604,7 +1688,6 @@ Object.assign(ui, {
             { phase: 'IV', title: 'Nota de Prensa Oficial — Cierre Fase IV', deadlineLabel: '30/04/2027 (Corte: 23/04 + 7 días)', requiredContent: 'Validación científica final, rendimiento de propelentes y propuesta de valor para el Gran Concurso Aeroespacial.' }
         ];
         const phaseDef = prPhases.find(p => p.phase === phaseKey) || prPhases[0];
-        const co = state.data.companies[state.user.coId];
         const phaseBalance = co && co.phaseBalances ? co.phaseBalances[phaseDef.phase] : null;
 
         const balanceIntegrationHtml = phaseBalance ? `
@@ -1665,6 +1748,10 @@ Object.assign(ui, {
         const coId = state.user.coId;
         const co = state.data.companies[coId];
         if (!co) return;
+
+        if (!this.isPressReleaseUnlocked(phaseKey, co)) {
+            return this.notify(`🔒 La Nota de Prensa de Fase ${phaseKey} permanece bloqueada hasta el cierre oficial de la fase.`, "warning");
+        }
 
         co.pressReleases = co.pressReleases || {};
         co.pressReleases[phaseKey] = {
@@ -1819,6 +1906,9 @@ Object.assign(ui, {
                         <button type="button" onclick="ui.setNewsPhaseFilter('III')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${phaseFilter === 'III' ? 'bg-amber-400 text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
                             Fase III
                         </button>
+                        <button type="button" onclick="ui.setNewsPhaseFilter('IV')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${phaseFilter === 'IV' ? 'bg-amber-400 text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
+                            Fase IV
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1830,7 +1920,7 @@ Object.assign(ui, {
                         <span class="text-3xl block mb-2">📰</span>
                         <h3 class="text-base font-orbitron font-bold text-white uppercase mb-1">Sin Comunicados Publicados en este Filtro</h3>
                         <p class="text-xs text-slate-400 max-w-lg mx-auto font-sans">
-                            Las notas de prensa oficiales se habilitan y sincronizan en este tablón al cierre de cada fase (15/12 para Fase I, 15/02 para Fase II y 31/03 para Fase III).
+                            Las notas de prensa oficiales se habilitan y sincronizan en este tablón al cierre de cada fase (15/12 para Fase I, 15/02 para Fase II, 31/03 para Fase III y 23/04 para Fase IV).
                         </p>
                     </div>
                 ` : `
@@ -1950,6 +2040,34 @@ Object.assign(ui, {
         const win = typeof CONTRACTS_PHASE_WINDOWS !== 'undefined' ? CONTRACTS_PHASE_WINDOWS[phase] : null;
         if (!win) return false;
         return Date.now() >= new Date(win.selectionStart).getTime();
+    },
+
+    isPressReleaseUnlocked(phaseKey, co) {
+        if (typeof state !== 'undefined' && typeof state.isPressReleaseUnlocked === 'function') {
+            return state.isPressReleaseUnlocked(phaseKey, co);
+        }
+        if (!co && state.user) co = state.data?.companies?.[state.user.coId];
+        if (!co) return false;
+        if (co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000' || (state.user && state.user.admin)) {
+            return true;
+        }
+        const prPhases = typeof PRESS_RELEASE_PHASES !== 'undefined' ? PRESS_RELEASE_PHASES : [];
+        const p = prPhases.find(item => item.phase === phaseKey);
+        if (!p || !p.phaseCutoff) return false;
+        return Date.now() >= new Date(p.phaseCutoff).getTime();
+    },
+
+    isLaunchLicenseUnlocked(co) {
+        if (typeof state !== 'undefined' && typeof state.isLaunchLicenseUnlocked === 'function') {
+            return state.isLaunchLicenseUnlocked(co);
+        }
+        if (!co && state.user) co = state.data?.companies?.[state.user.coId];
+        if (!co) return false;
+        if (co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000' || (state.user && state.user.admin)) {
+            return true;
+        }
+        const pItem = co.deliverables?.['preliminaryReport'];
+        return Boolean(pItem && (pItem.status === 'DELIVERED_TO_TEACHER' || (typeof pItem === 'string' && pItem.length > 0)));
     },
 
     setContractsPhaseTab(phase) {
