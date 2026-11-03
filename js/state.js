@@ -2586,7 +2586,7 @@ const state = {
             return true;
         }
         const pItem = co.deliverables?.['preliminaryReport'];
-        return Boolean(pItem && (pItem.status === 'DELIVERED_TO_TEACHER' || (typeof pItem === 'string' && pItem.length > 0)));
+        return Boolean(pItem && ((pItem.status === 'DELIVERED_TO_TEACHER' && pItem.driveUrl) || (typeof pItem === 'string' && pItem.length > 0)));
     },
 
     signCommercialContract(coId, contractId) {

@@ -656,8 +656,8 @@ Object.assign(ui, {
             const license = co.launchLicense;
             const isMasterOrAdmin = Boolean(state.user?.admin || co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000');
             const prelimItem = co.deliverables?.['preliminaryReport'];
-            const isPrelimDelivered = isMasterOrAdmin || Boolean(prelimItem && (prelimItem.status === 'DELIVERED_TO_TEACHER' || (typeof prelimItem === 'string' && prelimItem.length > 0)));
-            const isPrelimPendingCeo = !isPrelimDelivered && Boolean(prelimItem && prelimItem.status === 'SUBMITTED_TO_CEO');
+            const isPrelimDelivered = isMasterOrAdmin || Boolean(prelimItem && ((prelimItem.status === 'DELIVERED_TO_TEACHER' && prelimItem.driveUrl) || (typeof prelimItem === 'string' && prelimItem.length > 0)));
+            const isPrelimPendingCeo = !isPrelimDelivered && Boolean(prelimItem && prelimItem.status === 'SUBMITTED_TO_CEO' && prelimItem.driveUrl);
 
             let licenseCardHtml = '';
             if (!license || license.status === 'SIN_SOLICITAR' || license.status === 'DENEGADA') {
@@ -2067,7 +2067,7 @@ Object.assign(ui, {
             return true;
         }
         const pItem = co.deliverables?.['preliminaryReport'];
-        return Boolean(pItem && (pItem.status === 'DELIVERED_TO_TEACHER' || (typeof pItem === 'string' && pItem.length > 0)));
+        return Boolean(pItem && ((pItem.status === 'DELIVERED_TO_TEACHER' && pItem.driveUrl) || (typeof pItem === 'string' && pItem.length > 0)));
     },
 
     setContractsPhaseTab(phase) {

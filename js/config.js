@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.58) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.59) ---
 
-const APP_VERSION = "1.1.58";
+const APP_VERSION = "1.1.59";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1036,8 +1036,24 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.58
+// Changelog Oficial de Producción v1.1.59
 const APP_CHANGELOG = [
+    {
+      version: "1.1.59",
+      date: new Date().toISOString().split('T')[0],
+      title: "Optimización de Despliegue Secuencial, Estrategia Network-First en Service Worker y Validación Robusta de Entregables",
+      items: [
+        "Despliegue Secuencial CDMON: Reordenación de tools/deploy-cdmon.mjs asegurando que todo el código JS, CSS y PHP se transfiera antes de actualizar index.html y sw.js, erradicando desincronizaciones en actualizaciones en caliente.",
+        "Service Worker Network-First: Actualización de sw.js a estrategia de Red Primero con respaldo en caché, garantizando que el navegador siempre cargue la última versión sin requerir limpiezas manuales de datos.",
+        "Validación Estricta de Informe Técnico Preliminar: Exigencia combinada de estado DELIVERED_TO_TEACHER y enlace Drive válido (driveUrl) para el desbloqueo de la Licencia de Vuelo AESA (DOC_14), evitando inconsistencias en empresas preexistentes.",
+        "Purga de Caché v1.1.59: Registro de nuevo scope de caché para asegurar que todos los clientes reciban de inmediato los bloqueos temporales de notas de prensa y licencias de vuelo."
+      ],
+      highlights: [
+        { type: "DEPLOY", text: "Despliegue atómico con subida de index.html y sw.js al final del pipeline." },
+        { type: "SERVICE WORKER", text: "Estrategia Network-First con sincronización en tiempo real." },
+        { type: "ROBUSTEZ", text: "Verificación de enlace Drive en entregables para desbloqueo de Licencia AESA." }
+      ]
+    },
     {
       version: "1.1.58",
       date: new Date().toISOString().split('T')[0],

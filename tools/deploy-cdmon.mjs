@@ -16,21 +16,15 @@ if (!FTP_HOST || !FTP_USER || !FTP_PASS) {
 }
 
 const filesToUpload = [
-    // Root files
-    '.htaccess',
-    'index.html',
-    'manifest.json',
-    'sw.js',
+    // Assets & Static
     'logo.png',
     'logo.jpg',
     'loaderio-e04fe1e017d5e583689533102b7d015a.txt',
     'loaderio-e04fe1e017d5e583689533102b7d015a.html',
 
-    // API
+    // API & Data
     'api/db.php',
     'api/index.php',
-
-    // Data
     'data/.htaccess',
 
     // CSS
@@ -38,7 +32,7 @@ const filesToUpload = [
     'css/input.css',
     'css/fonts/orbitron.woff2',
 
-    // JS
+    // JS (subidos ANTES que index.html y sw.js para evitar condiciones de carrera en caché)
     'js/lexicon-data.js',
     'js/auth.js',
     'js/config.js',
@@ -52,7 +46,13 @@ const filesToUpload = [
     'js/ui-empresa-gov-brand.js',
     'js/ui-empresa-market.js',
     'js/ui-empresa-ops.js',
-    'js/ui-empresa-tech.js'
+    'js/ui-empresa-tech.js',
+
+    // Entrypoints y Service Worker SIEMPRE AL FINAL
+    'manifest.json',
+    'sw.js',
+    'index.html',
+    '.htaccess'
 ];
 
 console.log(`[DEPLOY] Iniciando despliegue hacia CDMON (${FTP_HOST})...`);
