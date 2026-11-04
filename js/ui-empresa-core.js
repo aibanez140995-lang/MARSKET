@@ -1806,6 +1806,52 @@ Object.assign(ui, {
         this.render();
     },
 
+    insertFormatTag(textareaId, tagStart, tagEnd = '') {
+        const textarea = document.getElementById(textareaId);
+        if (!textarea) return;
+        const start = textarea.selectionStart || 0;
+        const end = textarea.selectionEnd || 0;
+        const text = textarea.value;
+        const selected = text.substring(start, end);
+        const replacement = selected ? `${tagStart}${selected}${tagEnd}` : `${tagStart}${tagEnd}`;
+        textarea.value = text.substring(0, start) + replacement + text.substring(end);
+        textarea.focus();
+        const cursor = selected ? start + replacement.length : start + tagStart.length;
+        textarea.setSelectionRange(cursor, cursor);
+    },
+
+    renderFormattedNewsText(raw) {
+        if (!raw) return '';
+        const safe = this.escapeHTML(String(raw));
+        const paragraphs = safe.split(/\n{2,}/);
+
+        return paragraphs.map(p => {
+            let line = p.trim();
+            if (!line) return '';
+
+            // Negrita: **texto**
+            line = line.replace(/\*\*(.+?)\*\*/g, '<strong class="text-white font-bold">$1</strong>');
+            // Cursiva: *texto* o _texto_
+            line = line.replace(/\*([^\*]+?)\*/g, '<em class="text-amber-200/95 italic font-sans">$1</em>');
+            line = line.replace(/_([^_]+?)_/g, '<em class="text-amber-200/95 italic font-sans">$1</em>');
+
+            // Detectar si son viñetas
+            const lines = line.split('\n');
+            const isBulletList = lines.every(l => l.trim().startsWith('- ') || l.trim().startsWith('• '));
+            if (isBulletList) {
+                const listItems = lines.map(l => {
+                    const itemContent = l.trim().replace(/^[-•]\s*/, '');
+                    return `<li class="leading-relaxed">${itemContent}</li>`;
+                }).join('');
+                return `<ul class="list-disc pl-5 space-y-1 mb-3 text-slate-200 font-sans">${listItems}</ul>`;
+            }
+
+            // Saltos de línea simples dentro del párrafo
+            line = line.replace(/\n/g, '<br>');
+            return `<p class="mb-3 leading-relaxed text-slate-200 font-sans">${line}</p>`;
+        }).filter(Boolean).join('');
+    },
+
     processNanoBananaImageFile(inputEl, targetHiddenId, previewContainerId) {
         if (!inputEl || !inputEl.files || !inputEl.files[0]) return;
         const file = inputEl.files[0];
@@ -1953,8 +1999,25 @@ Object.assign(ui, {
                 </div>
 
                 <div>
-                    <label for="offnews-body" class="text-xs text-amber-400 uppercase font-bold block mb-1 font-mono">Cuerpo de la Crónica Oficial *</label>
-                    <textarea id="offnews-body" rows="4" placeholder="Redacta la crónica oficial de la Agencia Espacial AEE, valoraciones de las notas de prensa, hitos alcanzados..." class="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white font-sans outline-none"></textarea>
+                    <div class="flex justify-between items-center mb-1 flex-wrap gap-1">
+                        <label for="offnews-body" class="text-xs text-amber-400 uppercase font-bold font-mono">Cuerpo de la Crónica Oficial *</label>
+                        <div class="flex items-center gap-1">
+                            <button type="button" onclick="ui.insertFormatTag('offnews-body', '**', '**')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white font-bold text-xs rounded transition-colors" title="Negrita (**texto**)">
+                                <strong>B</strong>
+                            </button>
+                            <button type="button" onclick="ui.insertFormatTag('offnews-body', '*', '*')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white italic text-xs rounded transition-colors" title="Cursiva (*texto*)">
+                                <em>I</em>
+                            </button>
+                            <button type="button" onclick="ui.insertFormatTag('offnews-body', '\n\n', '')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-amber-300 font-mono text-[11px] rounded transition-colors" title="Nuevo Párrafo">
+                                ¶ Párrafo
+                            </button>
+                            <button type="button" onclick="ui.insertFormatTag('offnews-body', '\n- ', '')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-cyan-300 font-mono text-[11px] rounded transition-colors" title="Lista con viñetas">
+                                • Lista
+                            </button>
+                        </div>
+                    </div>
+                    <textarea id="offnews-body" rows="6" placeholder="Redacta la crónica oficial de la Agencia Espacial AEE. Puedes separar párrafos y usar **negrita**, *cursiva* o listas con viñetas..." class="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white font-sans outline-none"></textarea>
+                    <span class="text-[10px] text-slate-400 font-mono block mt-1">Formato admitido: **negrita**, *cursiva*, saltos de párrafo y viñetas (- elemento).</span>
                 </div>
 
                 <div class="p-3 bg-black/60 border border-slate-800 rounded space-y-3">
@@ -2121,8 +2184,22 @@ Object.assign(ui, {
                 </div>
 
                 <div>
-                    <label for="pr-nano-note" class="text-xs text-amber-400 uppercase font-bold block mb-1 font-mono">Apunte Editorial de Coordinación AEE (Opcional)</label>
-                    <textarea id="pr-nano-note" rows="3" placeholder="Ej: La Dirección Técnica de la AEE destaca la sólida argumentación en el balance de patrocinio..." class="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white font-sans outline-none">${this.escapeHTML(currentNote)}</textarea>
+                    <div class="flex justify-between items-center mb-1 flex-wrap gap-1">
+                        <label for="pr-nano-note" class="text-xs text-amber-400 uppercase font-bold font-mono">Apunte Editorial de Coordinación AEE (Opcional)</label>
+                        <div class="flex items-center gap-1">
+                            <button type="button" onclick="ui.insertFormatTag('pr-nano-note', '**', '**')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white font-bold text-xs rounded transition-colors" title="Negrita">
+                                <strong>B</strong>
+                            </button>
+                            <button type="button" onclick="ui.insertFormatTag('pr-nano-note', '*', '*')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white italic text-xs rounded transition-colors" title="Cursiva">
+                                <em>I</em>
+                            </button>
+                            <button type="button" onclick="ui.insertFormatTag('pr-nano-note', '\n\n', '')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-amber-300 font-mono text-[11px] rounded transition-colors" title="Nuevo Párrafo">
+                                ¶ Párrafo
+                            </button>
+                        </div>
+                    </div>
+                    <textarea id="pr-nano-note" rows="4" placeholder="Ej: La Dirección Técnica de la AEE destaca la sólida argumentación en el balance de patrocinio..." class="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white font-sans outline-none">${this.escapeHTML(currentNote)}</textarea>
+                    <span class="text-[10px] text-slate-400 font-mono block mt-1">Formato admitido: **negrita**, *cursiva* y saltos de párrafo.</span>
                 </div>
             </div>
         `;
@@ -2375,13 +2452,13 @@ Object.assign(ui, {
                                         <h3 class="text-base font-orbitron font-black text-white uppercase mb-2 leading-snug">${this.escapeHTML(r.title)}</h3>
 
                                         ${r.body ? `
-                                            <p class="text-xs text-slate-300 leading-relaxed font-sans mb-3 whitespace-pre-line">${this.escapeHTML(r.body)}</p>
+                                            <div class="text-xs text-slate-300 font-sans mb-3">${this.renderFormattedNewsText(r.body)}</div>
                                         ` : ''}
 
                                         ${r.editorialNote ? `
-                                            <div class="mt-2 mb-3 p-2.5 bg-amber-950/30 border-l-2 border-amber-400 text-xs text-amber-200 font-sans italic">
-                                                <strong class="text-amber-400 not-italic uppercase font-mono text-[10px] block mb-0.5">Apunte Editorial Coordinación AEE:</strong>
-                                                ${this.escapeHTML(r.editorialNote)}
+                                            <div class="mt-2 mb-3 p-2.5 bg-amber-950/30 border-l-2 border-amber-400 text-xs text-amber-200 font-sans">
+                                                <strong class="text-amber-400 uppercase font-mono text-[10px] block mb-1">Apunte Editorial Coordinación AEE:</strong>
+                                                <div>${this.renderFormattedNewsText(r.editorialNote)}</div>
                                             </div>
                                         ` : ''}
                                     </div>

@@ -2,6 +2,184 @@
 // --- MÓDULO DOCENTE CORE: ENRUTADOR, AJUSTES DE PLAZOS Y BACKUPS D1 (v1.1.28) ---
 
 Object.assign(ui, {
+    currentClassFilter: 'ALL',
+
+    getTeacherDashboardStats() {
+        const companies = state.data.companies || {};
+        const classes = ['ALL', 'A', 'B', 'C', 'D', 'E', 'F', 'TEST'];
+        const stats = {};
+
+        classes.forEach(cls => {
+            stats[cls] = {
+                companyCount: 0,
+                pendingAesa: 0,
+                pendingBrands: 0,
+                pendingNameChanges: 0,
+                pendingB2B: 0,
+                pendingAux: 0,
+                pendingIncidents: 0,
+                totalPending: 0,
+                deliveredDeliverables: 0,
+                criticalBalanceCount: 0
+            };
+        });
+
+        for (const cid in companies) {
+            const co = companies[cid];
+            if (!co) continue;
+            const cls = co.classGroup || 'A';
+            const targetClasses = ['ALL'];
+            if (classes.includes(cls)) targetClasses.push(cls);
+
+            targetClasses.forEach(cKey => {
+                const s = stats[cKey];
+                s.companyCount++;
+                if (Number(co.balance) < 300) {
+                    s.criticalBalanceCount++;
+                }
+                if (co.launchLicense && co.launchLicense.status === 'PENDIENTE_DOCENTE') {
+                    s.pendingAesa++;
+                    s.totalPending++;
+                }
+                if ((co.brandApproval && co.brandApproval.status === 'PENDIENTE') || co.brandStatus === 'PENDING_APPROVAL') {
+                    s.pendingBrands++;
+                    s.totalPending++;
+                }
+                if (co.nameChangeRequest && co.nameChangeRequest.status === 'PENDIENTE') {
+                    s.pendingNameChanges++;
+                    s.totalPending++;
+                }
+                if (co.auxRoleRequest && co.auxRoleRequest.status === 'PENDIENTE') {
+                    s.pendingAux++;
+                    s.totalPending++;
+                }
+
+                const delivs = co.deliverables || {};
+                for (const dKey in delivs) {
+                    const item = delivs[dKey];
+                    if (item && (item.status === 'DELIVERED_TO_TEACHER' || (typeof item === 'string' && item.length > 0))) {
+                        s.deliveredDeliverables++;
+                    }
+                }
+            });
+        }
+
+        const b2bList = state.data.b2bContracts || [];
+        b2bList.forEach(contract => {
+            if (contract && contract.status === 'PENDIENTE_ADUANA') {
+                stats['ALL'].pendingB2B++;
+                stats['ALL'].totalPending++;
+
+                const buyer = companies[contract.buyerId];
+                const seller = companies[contract.sellerId];
+                const buyerCls = buyer ? (buyer.classGroup || 'A') : null;
+                const sellerCls = seller ? (seller.classGroup || 'A') : null;
+
+                const touched = new Set();
+                if (buyerCls && stats[buyerCls]) touched.add(buyerCls);
+                if (sellerCls && stats[sellerCls]) touched.add(sellerCls);
+
+                touched.forEach(cls => {
+                    stats[cls].pendingB2B++;
+                    stats[cls].totalPending++;
+                });
+            }
+        });
+
+        const incidents = (state.data.securityIncidents || []).filter(i => !i.resolved);
+        incidents.forEach(inc => {
+            stats['ALL'].pendingIncidents++;
+            const co = companies[inc.coId];
+            const cls = co ? (co.classGroup || 'A') : null;
+            if (cls && stats[cls]) {
+                stats[cls].pendingIncidents++;
+                stats[cls].totalPending++;
+            }
+        });
+
+        return stats;
+    },
+
+    renderClassRadarBar(stats) {
+        const currentCls = this.currentClassFilter || 'ALL';
+        const classes = [
+            { key: 'ALL', label: 'TODAS', icon: '🌐' },
+            { key: 'A', label: 'CLASE A', icon: '🅰️' },
+            { key: 'B', label: 'CLASE B', icon: '🅱️' },
+            { key: 'C', label: 'CLASE C', icon: '🅲' },
+            { key: 'D', label: 'CLASE D', icon: '🅳' },
+            { key: 'E', label: 'CLASE E', icon: '🅴' },
+            { key: 'F', label: 'CLASE F', icon: '🅵' },
+            { key: 'TEST', label: 'TEST', icon: '🧪' }
+        ];
+
+        const global = stats['ALL'] || { companyCount: 0, totalPending: 0, deliveredDeliverables: 0, criticalBalanceCount: 0 };
+
+        const pillsHtml = classes.map(c => {
+            const s = stats[c.key] || { companyCount: 0, totalPending: 0, deliveredDeliverables: 0, criticalBalanceCount: 0 };
+            const isSelected = (currentCls === c.key);
+            
+            const borderBg = isSelected
+                ? (c.key === 'TEST' ? 'bg-amber-950/70 border-amber-400 text-white shadow-[0_0_12px_rgba(251,191,36,0.35)]' : 'bg-cyan-950/70 border-mars-cyan text-white shadow-[0_0_12px_rgba(0,240,255,0.35)]')
+                : 'bg-slate-900/80 border-slate-800 hover:border-slate-600 text-slate-300 hover:text-white';
+
+            return `
+            <button type="button" onclick="ui.setClassFilter('${c.key}')" class="min-h-[48px] p-2 border rounded transition-all text-left flex flex-col justify-between ${borderBg}">
+                <div class="flex items-center justify-between gap-1 w-full">
+                    <span class="font-orbitron font-bold text-xs uppercase tracking-tight flex items-center gap-1">
+                        <span class="text-xs">${c.icon}</span>
+                        <span>${c.label}</span>
+                    </span>
+                    <span class="font-mono text-[10px] text-slate-400 font-bold">${s.companyCount} emp</span>
+                </div>
+                <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                    ${s.totalPending > 0 ? `<span class="bg-amber-500 text-black px-1.5 py-0.2 rounded text-[10px] font-black font-mono animate-pulse" title="${s.totalPending} trámite(s) pendiente(s) de aduana/validación">⚠️ ${s.totalPending}</span>` : ''}
+                    <span class="text-[10px] text-cyan-300 font-mono" title="${s.deliveredDeliverables} entregas realizadas">📄 ${s.deliveredDeliverables}</span>
+                    ${s.criticalBalanceCount > 0 ? `<span class="bg-red-950/80 text-red-400 border border-red-500/50 px-1 py-0.2 rounded text-[10px] font-mono font-bold" title="${s.criticalBalanceCount} empresa(s) con saldo crítico <300€v">💸 ${s.criticalBalanceCount}</span>` : ''}
+                </div>
+            </button>`;
+        }).join('');
+
+        return `
+        <div class="mb-5 bg-slate-950 border border-slate-800/90 rounded p-3.5 shadow-md">
+            <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-3 border-b border-slate-800/80 pb-2.5">
+                <div class="flex items-center gap-2">
+                    <span class="text-base">📡</span>
+                    <div>
+                        <h3 class="font-orbitron font-black text-xs sm:text-sm text-mars-cyan uppercase tracking-wider">Radar de Misión por Clases</h3>
+                        <p class="text-[10px] text-slate-400 font-mono">Filtra instantáneamente todas las vistas, aduanas, rúbricas y startups</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 text-xs font-mono shrink-0">
+                    <span class="text-slate-400">Filtro Activo: <strong class="text-mars-yellow uppercase font-bold">${currentCls === 'ALL' ? 'Todas las Clases' : 'Clase ' + currentCls}</strong></span>
+                    ${global.totalPending > 0 ? `<span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase animate-pulse">Aduana: ${global.totalPending} pendiente(s)</span>` : '<span class="text-emerald-400 text-[10px] font-mono">✅ Aduana al día</span>'}
+                </div>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+                ${pillsHtml}
+            </div>
+        </div>`;
+    },
+
+    setClassFilter(cls) {
+        this.currentClassFilter = cls;
+        this.evalClassFilter = cls;
+        this.adminContractsClassFilter = cls;
+        this.selectedKeychainClass = cls;
+        this.render();
+    },
+
+    goToCompanyEval(cid) {
+        const co = state.data.companies && state.data.companies[cid];
+        const coClass = (co && co.classGroup) || 'ALL';
+        this.adminMode = 'aula';
+        this.adminTab = 'eval';
+        this.currentClassFilter = coClass;
+        this.evalClassFilter = coClass;
+        this.evalSelectedCo = cid;
+        this.render();
+    },
+
     viewAdmin(el) {
         if (!el || !state.user || !state.user.admin) return auth.logout();
         
@@ -11,16 +189,11 @@ Object.assign(ui, {
         const currentTab = this.adminTab || (this.adminMode === 'coord' ? 'startups' : 'eval');
         const activeSuggsCount = (state.data.suggestionsToAlex || []).filter(s => s.status !== 'IMPLEMENTADO' && s.status !== 'RESUELTO' && !s.resolved).length;
         
-        let deliveredCount = 0;
-        for (const cid in (state.data.companies || {})) {
-            const coDelivs = state.data.companies[cid]?.deliverables || {};
-            for (const dKey in coDelivs) {
-                const item = coDelivs[dKey];
-                if (item && (item.status === 'DELIVERED_TO_TEACHER' || (typeof item === 'string' && item.length > 0))) {
-                    deliveredCount++;
-                }
-            }
-        }
+        this.currentClassFilter = this.currentClassFilter || 'ALL';
+        const stats = this.getTeacherDashboardStats();
+        const radarBarHtml = this.renderClassRadarBar(stats);
+
+        let deliveredCount = stats[this.currentClassFilter]?.deliveredDeliverables ?? stats.ALL.deliveredDeliverables;
 
         let modeSwitchHtml = '';
         if (isCoord) {
@@ -73,6 +246,7 @@ Object.assign(ui, {
                             : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
                     }">
                     <span>🛃 Validaciones y Aduana</span>
+                    ${stats.ALL.totalPending > 0 ? `<span class="bg-amber-400 text-black px-1.5 py-0.5 rounded text-[10px] font-mono font-black animate-pulse">${stats.ALL.totalPending}</span>` : ''}
                 </button>
                 <button type="button" role="tab" aria-selected="${currentTab === 'contracts'}"
                     onclick="ui.adminTab = 'contracts'; ui.render();"
@@ -157,7 +331,7 @@ Object.assign(ui, {
             `;
         }
 
-        wrapper.innerHTML = modeSwitchHtml + tabsHtml + '<div id="admin-subtab-container" role="tabpanel"></div>';
+        wrapper.innerHTML = modeSwitchHtml + radarBarHtml + tabsHtml + '<div id="admin-subtab-container" role="tabpanel"></div>';
         const subContainer = wrapper.querySelector('#admin-subtab-container');
 
         try {
@@ -190,10 +364,13 @@ Object.assign(ui, {
     },
 
     renderAdminBrandReview() {
+        const activeFilter = this.currentClassFilter || 'ALL';
         const companies = state.data.companies || {};
         const pendingCos = Object.keys(companies).filter(cid => {
             const co = companies[cid];
-            return co && ((co.brandApproval && co.brandApproval.status === 'PENDIENTE') || co.brandStatus === 'PENDING_APPROVAL');
+            if (!co) return false;
+            if (activeFilter !== 'ALL' && (co.classGroup || 'A') !== activeFilter) return false;
+            return ((co.brandApproval && co.brandApproval.status === 'PENDIENTE') || co.brandStatus === 'PENDING_APPROVAL');
         });
 
         if (pendingCos.length === 0) return '';
@@ -345,12 +522,15 @@ Object.assign(ui, {
     },
 
     renderFyqReceptionPanel() {
+        const activeFilter = this.currentClassFilter || 'ALL';
         const companies = state.data.companies || {};
         const defs = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).filter(d => d.subject === 'FYQ');
 
         let rows = '';
         for (const cid in companies) {
             const co = companies[cid];
+            if (!co) continue;
+            if (activeFilter !== 'ALL' && (co.classGroup || 'A') !== activeFilter) continue;
             const coName = co.name || cid.toUpperCase();
             const coDeliverables = co.deliverables || {};
 
@@ -413,11 +593,14 @@ Object.assign(ui, {
     },
 
     renderMktActionReceptionPanel() {
+        const activeFilter = this.currentClassFilter || 'ALL';
         const companies = state.data.companies || {};
         let rows = '';
 
         for (const cid in companies) {
             const co = companies[cid];
+            if (!co) continue;
+            if (activeFilter !== 'ALL' && (co.classGroup || 'A') !== activeFilter) continue;
             const coName = co.name || cid.toUpperCase();
             const campaigns = Array.isArray(co.marketingCampaigns) ? co.marketingCampaigns : [];
 
@@ -944,10 +1127,13 @@ Object.assign(ui, {
     },
 
     renderAdminLaunchLicensePanel() {
+        const activeFilter = this.currentClassFilter || 'ALL';
         const companies = state.data.companies || {};
         const pendingCos = Object.keys(companies).filter(cid => {
             const co = companies[cid];
-            return co && co.launchLicense && co.launchLicense.status === 'PENDIENTE_DOCENTE';
+            if (!co || !co.launchLicense || co.launchLicense.status !== 'PENDIENTE_DOCENTE') return false;
+            if (activeFilter !== 'ALL' && (co.classGroup || 'A') !== activeFilter) return false;
+            return true;
         });
 
         if (pendingCos.length === 0) return '';

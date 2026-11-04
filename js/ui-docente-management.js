@@ -4,30 +4,51 @@
 Object.assign(ui, {
     pinsVisible: false,
     renderAdminDash() {
+        const activeFilter = this.currentClassFilter || 'ALL';
+
         let globalReal = 0;
+        let filteredReal = 0;
         for (let c in state.data.companies) {
             const co = state.data.companies[c];
             co.realCosts = co.realCosts || [];
-            globalReal += co.realCosts.reduce((s, i) => s + (Number(i.eur) || 0), 0);
+            const r = co.realCosts.reduce((s, i) => s + (Number(i.eur) || 0), 0);
+            globalReal += r;
+            if (activeFilter === 'ALL' || (co.classGroup || 'A') === activeFilter) {
+                filteredReal += r;
+            }
         }
         
         const isCoord = state.user.role.startsWith('COORD');
         const canSponsor = state.data.config.teachers[state.user.role]?.canSponsor === true;
 
         state.data.b2bContracts = state.data.b2bContracts || [];
-        const pendingB2B = state.data.b2bContracts.filter(c => c.status === 'PENDIENTE_ADUANA');
+        const pendingB2B = state.data.b2bContracts.filter(c => {
+            if (c.status !== 'PENDIENTE_ADUANA') return false;
+            if (activeFilter === 'ALL') return true;
+            const buyer = state.data.companies[c.buyerId];
+            const seller = state.data.companies[c.sellerId];
+            return (buyer && (buyer.classGroup || 'A') === activeFilter) || 
+                   (seller && (seller.classGroup || 'A') === activeFilter);
+        });
         
         const pendingBrands = Object.keys(state.data.companies).filter(cid => {
             const co = state.data.companies[cid];
+            if (activeFilter !== 'ALL' && (co.classGroup || 'A') !== activeFilter) return false;
             return co.brandApproval && co.brandApproval.status === 'PENDIENTE';
         });
 
         const pendingNameChanges = Object.keys(state.data.companies).filter(cid => {
             const co = state.data.companies[cid];
+            if (activeFilter !== 'ALL' && (co.classGroup || 'A') !== activeFilter) return false;
             return co && co.nameChangeRequest && co.nameChangeRequest.status === 'PENDIENTE';
         });
 
-        const incidents = (state.data.securityIncidents || []).filter(i => !i.resolved);
+        const incidents = (state.data.securityIncidents || []).filter(i => {
+            if (i.resolved) return false;
+            if (activeFilter === 'ALL') return true;
+            const co = state.data.companies[i.coId];
+            return co && (co.classGroup || 'A') === activeFilter;
+        });
 
         let incidentsHtml = '';
         if (incidents.length > 0 && isCoord) {
@@ -207,9 +228,9 @@ Object.assign(ui, {
         ${topAduanasHtml}
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
             <div class="lg:col-span-1 terminal-border bg-mars-card p-6 text-center border-t-4 border-t-mars-magenta flex flex-col justify-center">
-                <h3 class="font-orbitron text-mars-magenta text-xs mb-4 uppercase tracking-widest">Inversión FÍSICA CLASE</h3>
-                <p class="text-5xl font-orbitron text-white mb-2 tracking-tighter">${globalReal.toFixed(2)} €</p>
-                <p class="text-xs text-slate-300 uppercase font-bold">Impacto económico real total</p>
+                <h3 class="font-orbitron text-mars-magenta text-xs mb-4 uppercase tracking-widest">Inversión FÍSICA ${activeFilter === 'ALL' ? 'GLOBAL' : 'CLASE ' + activeFilter}</h3>
+                <p class="text-5xl font-orbitron text-white mb-2 tracking-tighter">${(activeFilter === 'ALL' ? globalReal : filteredReal).toFixed(2)} €</p>
+                <p class="text-xs text-slate-300 uppercase font-bold">${activeFilter === 'ALL' ? 'Impacto económico real total (todas las clases)' : 'Impacto real en Clase ' + activeFilter}</p>
             </div>
             <div class="lg:col-span-3 terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden border-t-4 border-t-mars-cyan">
                 <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
@@ -218,72 +239,114 @@ Object.assign(ui, {
                 </div>
                 <div class="overflow-x-auto w-full pb-1">
                     <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
-                        <thead class="text-slate-300 uppercase border-b border-mars-border">
+                        <thead class="text-slate-300 uppercase border-b border-mars-border sticky top-0 bg-slate-950 z-10 shadow-sm">
                             <tr>
                                 <th class="py-3 pr-2.5 sm:pr-4">Empresa</th>
                                 <th class="pr-2.5 sm:pr-4">Bal(€v)</th>
                                 <th class="pr-2.5 sm:pr-4">Gasto(€v)</th>
                                 <th class="pr-2.5 sm:pr-4">Físico(€)</th>
                                 <th class="pr-2.5 sm:pr-4">Patrocinio Fase I</th>
+                                <th class="pr-2.5 sm:pr-4">Radar Misión</th>
+                                <th class="pr-2.5 sm:pr-4">Acción</th>
                                 <th>Sanciones AEE</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${Object.keys(state.data.companies).map(cid => {
-                                const c = state.data.companies[cid];
-                                c.realCosts = c.realCosts || []; 
-                                c.ledger = c.ledger || []; 
+                            ${(() => {
+                                const companyIds = Object.keys(state.data.companies)
+                                    .filter(cid => activeFilter === 'ALL' || (state.data.companies[cid] && (state.data.companies[cid].classGroup || 'A') === activeFilter));
                                 
-                                const r = c.realCosts.reduce((s,i)=>s+(Number(i.eur)||0),0);
-                                const opCosts = state.getCompanyOperatingCosts ? state.getCompanyOperatingCosts(c) : { gross: c.ledger.filter(l => l.delta < 0).reduce((s, l) => s + Math.abs(Number(l.delta)||0), 0), sponsorReduction: 0, net: c.ledger.filter(l => l.delta < 0).reduce((s, l) => s + Math.abs(Number(l.delta)||0), 0) };
-                                
-                                const tierStyles = {
-                                    'ORO': 'text-[#ffd700] border-[#ffd700]',
-                                    'PLATA': 'text-[#c0c0c0] border-[#c0c0c0]',
-                                    'BRONCE': 'text-[#cd7f32] border-[#cd7f32]',
-                                    'COBRE': 'text-[#b87333] border-[#b87333]',
-                                    'COLABORADOR': 'text-mars-cyan border-mars-cyan'
-                                };
-                                const cl = tierStyles[c.sponsorAwarded] || 'text-slate-300 border-slate-700';
-
-                                let sponsorHtml = '';
-                                if(canSponsor) {
-                                    sponsorHtml = `<button onclick="ui.modalAssignSponsor('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-slate-900 border ${cl} ${cl.split(' ')[0]} px-3 py-1.5 font-bold text-xs uppercase hover:bg-white hover:text-black transition-all whitespace-nowrap">${c.sponsorAwarded ? `[${this.escapeHTML(c.sponsorAwarded)}] Editar` : 'Asignar Patrocinio'}</button>`;
-                                } else {
-                                    if(c.sponsorAwarded) {
-                                        let spName = c.sponsorData?.name ? ` - ${this.escapeHTML(c.sponsorData.name)}` : '';
-                                        let spLogo = c.sponsorData?.logo ? `<img src="${this.escapeHTML(c.sponsorData.logo)}" alt="Logo patrocinador" width="16" height="16" class="h-4 inline-block ml-2 rounded-sm object-contain bg-black/50 p-0.5">` : '';
-                                        sponsorHtml = `<span class="${cl} font-bold text-xs uppercase border px-2 py-1 bg-black/50 flex items-center w-max gap-1">[PATROCINIO: ${this.escapeHTML(c.sponsorAwarded)}${spName}]${spLogo}</span>`;
-                                    } else {
-                                        sponsorHtml = `<span class="text-slate-300 font-bold text-xs uppercase border border-slate-700 px-2 py-1 bg-slate-900 block w-max">[SIN PATROCINIO]</span>`;
-                                    }
+                                if (companyIds.length === 0) {
+                                    return `<tr><td colspan="8" class="text-center py-6 text-slate-400 text-xs font-mono">No hay empresas registradas en esta clase o filtro</td></tr>`;
                                 }
 
-                                return `
-                                <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
-                                    <td class="py-3 font-orbitron text-white font-bold pr-2.5 sm:pr-4 flex items-center gap-1.5 sm:gap-2">
-                                        <button onclick="ui.showCompanyLogins('${this.escapeHTML(cid)}')" class="min-h-[44px] text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 max-w-[130px] sm:max-w-[240px] truncate inline-flex items-center" title="${this.escapeHTML(c.name)}">${this.escapeHTML(c.name)} [${this.escapeHTML(c.classGroup||'A')}]</button>
-                                        ${isCoord ? `<button onclick="ui.promptRenameStartup('${this.escapeHTML(cid)}')" aria-label="Renombrar Denominación Social" title="Renombrar Denominación Social" class="min-h-[44px] min-w-[44px] bg-slate-800 text-slate-200 px-2 py-1 text-xs hover:bg-mars-yellow hover:text-black transition-colors rounded-sm flex items-center justify-center shrink-0">✏️</button>` : ''}
-                                    </td>
-                                    <td class="py-3 font-mono pr-2.5 sm:pr-4"><span class="text-mars-green font-bold">${c.balance.toFixed(0)} €v</span></td>
-                                    <td class="py-3 font-mono pr-2.5 sm:pr-4">
-                                        <button onclick="ui.modalVirtualSpend('${this.escapeHTML(cid)}')" class="min-h-[44px] text-left text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 inline-flex flex-col justify-center" title="Ver desglose detallado">
-                                            <span class="font-bold">${opCosts.net.toFixed(2)} €v</span>
-                                            ${opCosts.sponsorReduction > 0 ? `<span class="text-[10px] text-mars-yellow">(Bruto: ${opCosts.gross.toFixed(0)} | -${opCosts.sponsorReduction.toFixed(0)} €v)</span>` : ''}
-                                        </button>
-                                    </td>
-                                    <td class="py-3 font-mono pr-2.5 sm:pr-4">
-                                        <button onclick="ui.modalRealSpend('${this.escapeHTML(cid)}')" class="min-h-[44px] text-left text-mars-magenta hover:text-white transition-colors underline decoration-mars-magenta/50 decoration-dashed underline-offset-4 inline-flex items-center gap-1 font-bold" title="Auditar compras físicas y tickets">
-                                            <span>${r.toFixed(2)} €</span>
-                                            <span class="text-[10px] text-slate-400">🔍</span>
-                                        </button>
-                                    </td>
-                                    <td class="py-3 pr-2.5 sm:pr-4">${sponsorHtml}</td>
-                                    <td class="py-3">
-                                        <button onclick="ui.modalAEEFine('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-red-900/30 border border-red-500 text-red-400 px-3 py-1.5 font-bold text-xs uppercase hover:bg-red-500 hover:text-white transition-all shadow-[0_0_5px_red] whitespace-nowrap">Expediente Sancionador</button>
-                                    </td>
-                                </tr>`;
-                            }).join('')}
+                                return companyIds.map(cid => {
+                                    const c = state.data.companies[cid];
+                                    c.realCosts = c.realCosts || []; 
+                                    c.ledger = c.ledger || []; 
+                                    
+                                    const r = c.realCosts.reduce((s,i)=>s+(Number(i.eur)||0),0);
+                                    const opCosts = state.getCompanyOperatingCosts ? state.getCompanyOperatingCosts(c) : { gross: c.ledger.filter(l => l.delta < 0).reduce((s, l) => s + Math.abs(Number(l.delta)||0), 0), sponsorReduction: 0, net: c.ledger.filter(l => l.delta < 0).reduce((s, l) => s + Math.abs(Number(l.delta)||0), 0) };
+                                    
+                                    const tierStyles = {
+                                        'ORO': 'text-[#ffd700] border-[#ffd700]',
+                                        'PLATA': 'text-[#c0c0c0] border-[#c0c0c0]',
+                                        'BRONCE': 'text-[#cd7f32] border-[#cd7f32]',
+                                        'COBRE': 'text-[#b87333] border-[#b87333]',
+                                        'COLABORADOR': 'text-mars-cyan border-mars-cyan'
+                                    };
+                                    const cl = tierStyles[c.sponsorAwarded] || 'text-slate-300 border-slate-700';
+
+                                    let sponsorHtml = '';
+                                    if(canSponsor) {
+                                        sponsorHtml = `<button onclick="ui.modalAssignSponsor('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-slate-900 border ${cl} ${cl.split(' ')[0]} px-3 py-1.5 font-bold text-xs uppercase hover:bg-white hover:text-black transition-all whitespace-nowrap">${c.sponsorAwarded ? `[${this.escapeHTML(c.sponsorAwarded)}] Editar` : 'Asignar Patrocinio'}</button>`;
+                                    } else {
+                                        if(c.sponsorAwarded) {
+                                            let spName = c.sponsorData?.name ? ` - ${this.escapeHTML(c.sponsorData.name)}` : '';
+                                            let spLogo = c.sponsorData?.logo ? `<img src="${this.escapeHTML(c.sponsorData.logo)}" alt="Logo patrocinador" width="16" height="16" class="h-4 inline-block ml-2 rounded-sm object-contain bg-black/50 p-0.5">` : '';
+                                            sponsorHtml = `<span class="${cl} font-bold text-xs uppercase border px-2 py-1 bg-black/50 flex items-center w-max gap-1">[PATROCINIO: ${this.escapeHTML(c.sponsorAwarded)}${spName}]${spLogo}</span>`;
+                                        } else {
+                                            sponsorHtml = `<span class="text-slate-300 font-bold text-xs uppercase border border-slate-700 px-2 py-1 bg-slate-900 block w-max">[SIN PATROCINIO]</span>`;
+                                        }
+                                    }
+
+                                    const aesaBadge = (c.launchLicense && c.launchLicense.status === 'APROBADA_DOCENTE')
+                                        ? `<span class="bg-emerald-950 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded text-[10px] font-mono whitespace-nowrap">🚀 AESA OK</span>`
+                                        : ((c.launchLicense && c.launchLicense.status === 'PENDIENTE_DOCENTE')
+                                            ? `<span class="bg-amber-950 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded text-[10px] font-mono animate-pulse whitespace-nowrap">⏳ AESA Pend.</span>`
+                                            : `<span class="text-slate-400 text-[10px] font-mono whitespace-nowrap">🔒 Sin AESA</span>`);
+
+                                    const hasB2B = (state.data.b2bContracts || []).some(ctr => (ctr.buyerId === cid || ctr.sellerId === cid) && ctr.status === 'CONTRATO_VALIDADO');
+                                    const b2bBadge = hasB2B
+                                        ? `<span class="bg-cyan-950 text-cyan-300 border border-cyan-500/40 px-1.5 py-0.5 rounded text-[10px] font-mono whitespace-nowrap">🤝 B2B</span>`
+                                        : '';
+
+                                    const delivsCount = Object.values(c.deliverables || {}).filter(item => item && (item.status === 'DELIVERED_TO_TEACHER' || (typeof item === 'string' && item.length > 0))).length;
+                                    const delivsBadge = `<span class="bg-slate-800 text-slate-200 border border-slate-700 px-1.5 py-0.5 rounded text-[10px] font-mono whitespace-nowrap">📄 ${delivsCount}/18</span>`;
+
+                                    const critBadge = Number(c.balance) < 300
+                                        ? `<span class="bg-red-950 text-red-400 border border-red-500/50 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold animate-pulse whitespace-nowrap">⚠️ &lt;300€v</span>`
+                                        : '';
+
+                                    return `
+                                    <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
+                                        <td class="py-3 font-orbitron text-white font-bold pr-2.5 sm:pr-4 flex items-center gap-1.5 sm:gap-2">
+                                            <button onclick="ui.showCompanyLogins('${this.escapeHTML(cid)}')" class="min-h-[44px] text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 max-w-[130px] sm:max-w-[240px] truncate inline-flex items-center" title="${this.escapeHTML(c.name)}">${this.escapeHTML(c.name)} [${this.escapeHTML(c.classGroup||'A')}]</button>
+                                            ${isCoord ? `<button onclick="ui.promptRenameStartup('${this.escapeHTML(cid)}')" aria-label="Renombrar Denominación Social" title="Renombrar Denominación Social" class="min-h-[44px] min-w-[44px] bg-slate-800 text-slate-200 px-2 py-1 text-xs hover:bg-mars-yellow hover:text-black transition-colors rounded-sm flex items-center justify-center shrink-0">✏️</button>` : ''}
+                                        </td>
+                                        <td class="py-3 font-mono pr-2.5 sm:pr-4"><span class="text-mars-green font-bold">${c.balance.toFixed(0)} €v</span></td>
+                                        <td class="py-3 font-mono pr-2.5 sm:pr-4">
+                                            <button onclick="ui.modalVirtualSpend('${this.escapeHTML(cid)}')" class="min-h-[44px] text-left text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 inline-flex flex-col justify-center" title="Ver desglose detallado">
+                                                <span class="font-bold">${opCosts.net.toFixed(2)} €v</span>
+                                                ${opCosts.sponsorReduction > 0 ? `<span class="text-[10px] text-mars-yellow">(Bruto: ${opCosts.gross.toFixed(0)} | -${opCosts.sponsorReduction.toFixed(0)} €v)</span>` : ''}
+                                            </button>
+                                        </td>
+                                        <td class="py-3 font-mono pr-2.5 sm:pr-4">
+                                            <button onclick="ui.modalRealSpend('${this.escapeHTML(cid)}')" class="min-h-[44px] text-left text-mars-magenta hover:text-white transition-colors underline decoration-mars-magenta/50 decoration-dashed underline-offset-4 inline-flex items-center gap-1 font-bold" title="Auditar compras físicas y tickets">
+                                                <span>${r.toFixed(2)} €</span>
+                                                <span class="text-[10px] text-slate-400">🔍</span>
+                                            </button>
+                                        </td>
+                                        <td class="py-3 pr-2.5 sm:pr-4">${sponsorHtml}</td>
+                                        <td class="py-3 pr-2.5 sm:pr-4">
+                                            <div class="flex items-center gap-1.5 flex-wrap">
+                                                ${aesaBadge}
+                                                ${b2bBadge}
+                                                ${delivsBadge}
+                                                ${critBadge}
+                                            </div>
+                                        </td>
+                                        <td class="py-3 pr-2.5 sm:pr-4">
+                                            <button onclick="ui.goToCompanyEval('${this.escapeHTML(cid)}')" class="min-h-[38px] px-2.5 py-1 bg-mars-cyan text-black font-bold uppercase text-[11px] hover:bg-white transition-colors flex items-center gap-1 shadow-sm whitespace-nowrap" title="Ir a calificar y revisar entregables de ${this.escapeHTML(c.name)}">
+                                                <span>📝</span> Evaluar
+                                            </button>
+                                        </td>
+                                        <td class="py-3">
+                                            <button onclick="ui.modalAEEFine('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-red-900/30 border border-red-500 text-red-400 px-3 py-1.5 font-bold text-xs uppercase hover:bg-red-500 hover:text-white transition-all shadow-[0_0_5px_red] whitespace-nowrap">Expediente Sancionador</button>
+                                        </td>
+                                    </tr>`;
+                                }).join('');
+                            })()}
                         </tbody>
                     </table>
                 </div>
@@ -308,7 +371,7 @@ Object.assign(ui, {
         }
         const rawClasses = Object.values(state.data.companies || {}).map(c => c.classGroup).filter(Boolean);
         const uniqueClasses = [...new Set(['A', 'B', 'C', 'D', 'E', 'F', 'TEST', ...rawClasses])].sort();
-        const currentKeychainClass = this.selectedKeychainClass || (uniqueClasses[0] || 'A');
+        const currentKeychainClass = this.selectedKeychainClass || this.currentClassFilter || (uniqueClasses[0] || 'A');
         
         const pendingAuxCoIds = Object.keys(state.data.companies).filter(cid => {
             const co = state.data.companies[cid];
@@ -498,12 +561,9 @@ Object.assign(ui, {
 
     filterKeychainClass(cls) {
         this.selectedKeychainClass = cls;
-        const subContainer = document.getElementById('admin-subtab-container');
-        if (subContainer) {
-            subContainer.innerHTML = this.renderAdminStartups();
-        } else {
-            this.renderAdminDash();
-        }
+        this.currentClassFilter = cls;
+        this.evalClassFilter = cls;
+        this.render();
     },
 
     togglePinsVisibility() {

@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.59) ---
 
-const APP_VERSION = "1.1.60";
+const APP_VERSION = "1.1.61";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1038,6 +1038,23 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.59
 const APP_CHANGELOG = [
+    {
+      version: "1.1.61",
+      date: new Date().toISOString().split('T')[0],
+      title: "Radar de Misión por Clases para Docentes y Formato Enriquecido en Noticias Oficiales",
+      items: [
+        "Radar de Misión por Clases: Nuevo monitor global superior en el panel docente (A-F y TEST) con indicadores en tiempo real de trámites aduaneros pendientes, volumen de entregas y empresas con saldo crítico (<300 €v).",
+        "Sincronización Total de Filtros: Selección instantánea de clase a 1 clic que filtra coordinadamente Rúbricas y Actas (100%), Aduana, Contratos Comerciales y Llavero Maestro.",
+        "Acción Rápida de Evaluación: Acceso directo desde la tabla de control financiero a la calificación y rúbricas de cada empresa.",
+        "Formato Enriquecido en Noticias Oficiales: Barra de herramientas tipográfica con soporte para negrita (**texto**), cursiva (*texto*), saltos de párrafo y listas con viñetas en crónicas y notas de coordinación.",
+        "Blindaje y Sanitización XSS: Renderizado seguro bajo directrices Zero-Text que preserva la seguridad del alumnado y la ergonomía de lectura."
+      ],
+      highlights: [
+        { type: "DOCENTE", text: "Radar de Misión por Clases para supervisión instantánea de aduanas, finanzas y entregas de 30 empresas." },
+        { type: "NOTICIAS", text: "Editor con formato enriquecido (negrita, cursiva, párrafos y viñetas) para crónicas oficiales." },
+        { type: "ERGONOMÍA", text: "Filtrado unificado en 1 clic y botón directo de evaluación por empresa." }
+      ]
+    },
     {
       version: "1.1.60",
       date: new Date().toISOString().split('T')[0],

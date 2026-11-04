@@ -10,6 +10,7 @@ Object.assign(ui, {
     },
 
     renderAdminEval() {
+        this.evalClassFilter = this.evalClassFilter || this.currentClassFilter || 'ALL';
         const isCoord = state.user.role.startsWith('COORD');
         const activeSubject = isCoord ? (this.coordEvalView === 'ACTA' || this.coordEvalView === 'ARCHIVE' ? null : this.coordEvalView) : state.user.role;
         const weights = typeof GLOBAL_WEIGHTS !== 'undefined' ? GLOBAL_WEIGHTS : { FYQ: 0.25, LYE: 0.40, LEN: 0.15, ECO: 0.10, MAT: 0.05, ING: 0.05 };
@@ -30,7 +31,7 @@ Object.assign(ui, {
         }
         
         adminHtml += `
-            <select aria-label="Filtrar por clase" onchange="ui.evalClassFilter=this.value; ui.evalSelectedCo=''; ui.render()" class="min-h-[44px] w-full sm:w-auto bg-black border border-mars-yellow text-mars-yellow text-xs p-2.5 uppercase font-bold outline-none cursor-pointer sm:ml-auto">
+            <select aria-label="Filtrar por clase" onchange="ui.setClassFilter(this.value); ui.evalSelectedCo='';" class="min-h-[44px] w-full sm:w-auto bg-black border border-mars-yellow text-mars-yellow text-xs p-2.5 uppercase font-bold outline-none cursor-pointer sm:ml-auto">
                 <option value="ALL" ${this.evalClassFilter==='ALL'?'selected':''}>Todas las Clases</option>
                 ${['A','B','C','D','E','F','TEST'].map(c => `<option value="${c}" ${this.evalClassFilter===c?'selected':''}>Clase ${c}</option>`).join('')}
             </select>
@@ -410,7 +411,7 @@ Object.assign(ui, {
     },
 
     renderAdminContracts() {
-        const classFilter = this.adminContractsClassFilter || 'ALL';
+        const classFilter = this.adminContractsClassFilter || this.currentClassFilter || 'ALL';
         const phaseFilter = this.adminContractsPhaseFilter || 'I';
         const companies = state.data.companies || {};
 
@@ -462,7 +463,7 @@ Object.assign(ui, {
                     <!-- Selector de Clase -->
                     <div class="flex items-center gap-1.5 bg-black border border-slate-700 p-1">
                         <span class="text-[10px] text-slate-400 font-mono uppercase px-1">Clase:</span>
-                        <select onchange="ui.adminContractsClassFilter=this.value; ui.render();" class="bg-black text-amber-400 font-bold text-xs p-1 outline-none uppercase min-h-[36px]">
+                        <select onchange="ui.setClassFilter(this.value);" class="bg-black text-amber-400 font-bold text-xs p-1 outline-none uppercase min-h-[36px]">
                             ${allClasses.map(cls => `<option value="${cls}" ${classFilter === cls ? 'selected' : ''}>${cls === 'ALL' ? 'Todas (A-F, TEST)' : `Clase ${cls}`}</option>`).join('')}
                         </select>
                     </div>
