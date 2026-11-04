@@ -2474,11 +2474,11 @@ Object.assign(ui, {
                 <div>
                     <label for="aee-article" class="text-xs text-mars-magenta uppercase font-bold block mb-1">Infracción Tipificada</label>
                     <select id="aee-article" class="min-h-[44px] w-full bg-slate-900 border border-mars-magenta/50 p-2.5 text-xs text-white uppercase outline-none focus:border-mars-magenta">
-                        <option value="Art. 09: Uso de lenguaje prohibido o vulneración del filtro léxico">Art. 09: Infracción Filtro Léxico</option>
-                        <option value="Art. 12: Incumplimiento de cronograma y plazos oficiales">Art. 12: Incumplimiento Plazos</option>
-                        <option value="Art. 18: Inconsistencia o defecto en justificación técnica/química">Art. 18: Defecto Técnico</option>
+                        <option value="Art. 09: Uso de lenguaje no profesional o vulneración del filtro léxico">Art. 09: Filtro Léxico y Tono Formal</option>
+                        <option value="Art. 12: Incumplimiento de cronograma y plazos oficiales de entrega">Art. 12: Incumplimiento de Plazos (&lt;24h, 24-72h, &gt;72h)</option>
+                        <option value="Art. 18: Inconsistencia o falta de justificación en la memoria técnica">Art. 18: Defecto en Memoria Técnica</option>
                         <option value="Art. 24: Anomalía en balance o trazabilidad contable">Art. 24: Anomalía Contable</option>
-                        <option value="Art. 31: Falta de rigor en protocolo de seguridad de vuelo">Art. 31: Brecha Seguridad Vuelo</option>
+                        <option value="Art. 31: Falta de rigor en protocolos de seguridad técnica y de vuelo">Art. 31: Seguridad Técnica y de Vuelo</option>
                     </select>
                 </div>
                 <div>
@@ -2488,9 +2488,9 @@ Object.assign(ui, {
                 <div>
                     <label for="aee-amount" class="text-xs text-mars-magenta uppercase font-bold block mb-1">Cuantía de la Multa</label>
                     <select id="aee-amount" class="min-h-[44px] w-full bg-slate-900 border border-mars-magenta/50 p-2.5 text-xs text-white uppercase outline-none focus:border-mars-magenta">
-                        <option value="-10">-10 €v (Leve)</option>
-                        <option value="-100">-100 €v (Moderada)</option>
-                        <option value="-200">-200 €v (Grave)</option>
+                        <option value="-10">-10 €v (Leve // Retraso &lt; 24h / Advertencia)</option>
+                        <option value="-100">-100 €v (Moderada // Retraso 24-72h / Falta de rigor)</option>
+                        <option value="-200">-200 €v (Grave // Retraso &gt; 72h / Falta crítica)</option>
                     </select>
                 </div>
             </div>

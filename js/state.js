@@ -1070,6 +1070,10 @@ const state = {
                 } else if (lItem.updatedAt && sItem.updatedAt && lItem.updatedAt > sItem.updatedAt && lItem.status) {
                     status = lItem.status;
                 }
+                // Si sItem tiene un updatedAt más reciente que lItem, el servidor manda (LWW)
+                if ((sItem.updatedAt || 0) > (lItem.updatedAt || 0)) {
+                    return { ...lItem, ...sItem, resolved: isResolved, status: status || sItem.status };
+                }
                 return { ...sItem, ...lItem, resolved: isResolved, status: status || sItem.status };
             });
             const ids = new Set(arrS.map(i => String(i?.id || i?.sessionId)));

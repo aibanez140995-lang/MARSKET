@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.59) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.63) ---
 
-const APP_VERSION = "1.1.62";
+const APP_VERSION = "1.1.63";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -10,6 +10,58 @@ const SPONSOR_TIERS_DEF = Object.freeze({
     COBRE: { id: 'COBRE', name: 'Nivel COBRE', amount: 150, badgeClass: 'text-[#b87333] border-[#b87333]', emoji: '🔶' },
     COLABORADOR: { id: 'COLABORADOR', name: 'Nivel COLABORADOR', amount: 100, badgeClass: 'text-mars-cyan border-mars-cyan', emoji: '🤝' }
 });
+
+const AEE_SANCTION_ARTICLES_DEF = Object.freeze([
+    {
+        id: 'ART_09',
+        code: 'Art. 09',
+        title: 'Uso de lenguaje no profesional o vulneración del filtro léxico',
+        shortTitle: 'Filtro Léxico y Tono Formal',
+        desc: 'Expresiones inapropiadas o comunicaciones que no respeten el tono formal corporativo de la misión.',
+        criteria: 'Falta Leve (-10 €v) o Moderada (-100 €v) según reiteración o gravedad del término empleado.',
+        amounts: [-10, -100]
+    },
+    {
+        id: 'ART_12',
+        code: 'Art. 12',
+        title: 'Incumplimiento de cronograma y plazos oficiales de entrega',
+        shortTitle: 'Incumplimiento de Plazos',
+        desc: 'Retraso en la entrega oficial de entregables curriculares (Google Drive) o en la presentación del micro-pitch.',
+        scheduleBreakdown: [
+            { tier: 'Leve (-10 €v)', condition: 'Retraso inferior a 24 horas respecto al límite oficial de entrega.' },
+            { tier: 'Moderada (-100 €v)', condition: 'Retraso de entre 24 y 72 horas sin justificación previa validada.' },
+            { tier: 'Grave (-200 €v)', condition: 'Retraso superior a 72 horas (bloquea certificaciones de fase hasta subsanación).' }
+        ],
+        amounts: [-10, -100, -200]
+    },
+    {
+        id: 'ART_18',
+        code: 'Art. 18',
+        title: 'Inconsistencia o falta de justificación en la memoria técnica',
+        shortTitle: 'Defecto en Memoria Técnica',
+        desc: 'Presentar datos técnicos o cálculos sin justificar, omisión de unidades de medida o falta de rigor en la documentación técnica entregada.',
+        criteria: 'Leve (-10 €v), Moderada (-100 €v) o Grave (-200 €v) según el impacto en la viabilidad del subsistema.',
+        amounts: [-10, -100, -200]
+    },
+    {
+        id: 'ART_24',
+        code: 'Art. 24',
+        title: 'Anomalía en balance o trazabilidad contable',
+        shortTitle: 'Anomalía Contable',
+        desc: 'Descuadre en el libro contable de Finanzas, transferencias no registradas o incurrir en saldo negativo sin autorización previa.',
+        criteria: 'Moderada (-100 €v) o Grave (-200 €v) con obligación de subsanación de balance.',
+        amounts: [-100, -200]
+    },
+    {
+        id: 'ART_31',
+        code: 'Art. 31',
+        title: 'Falta de rigor en protocolos de seguridad técnica y de vuelo',
+        shortTitle: 'Seguridad Técnica y de Vuelo',
+        desc: 'Incumplimiento de las especificaciones y normativas de seguridad establecidas en la guía del proyecto aeroespacial.',
+        criteria: 'Moderada (-100 €v) o Grave (-200 €v) por vulneración de parámetros de lanzamiento o carga útil.',
+        amounts: [-100, -200]
+    }
+]);
 
 const COMMERCIAL_SHOPS_DEF = [
   { id: 'mercadona', name: 'Mercadona' },
@@ -1036,8 +1088,25 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.59
+// Changelog Oficial de Producción v1.1.63
 const APP_CHANGELOG = [
+    {
+      version: "1.1.63",
+      date: new Date().toISOString().split('T')[0],
+      title: "Transparencia Disciplinaria para Alumnado, Escala de Patrocinadores Fase I y Edición de Crónicas Oficiales",
+      items: [
+        "Ventanilla de Sanciones AEE para Alumnos: En Gobernanza, cualquier miembro de la empresa puede consultar el historial completo de expedientes disciplinarios de su startup con organismo sancionador, artículo infringido, dictamen exacto del docente y multa en €v.",
+        "Cuadro Consultivo de Régimen Disciplinario: Desplegable oficial para alumnos con los 5 artículos normativos, incluyendo el desglose exacto de entregas tardías (Art. 12: <24h Leve -10 €v, 24-72h Moderada -100 €v, >72h Grave -200 €v) y definición constructiva de la memoria técnica (Art. 18).",
+        "Escala Oficial de Premios de Patrocinio (Fase I): Exposición visual en Contratos de los 5 niveles posibles de inversor (Oro +500 €v, Plata +400 €v, Bronce +250 €v, Cobre +150 €v, Colaborador +100 €v), resaltando las ventajas en caja, reducción de costes operativos y desbloqueo del contrato preferente PLD Space.",
+        "Edición de Crónicas Oficiales para Coordinación: Nuevo botón y modal para que el docente pueda editar el titular, cuerpo enriquecido, fase, clase y portada Nano Banana 3 de noticias oficiales ya publicadas sin tener que eliminarlas.",
+        "Sincronización Cloud LWW con updatedAt: Conciliación optimista en tiempo real que asegura que las ediciones de noticias se propaguen al instante en todos los dispositivos de la misión."
+      ],
+      highlights: [
+        { type: "ALUMNADO", text: "Visibilidad total del historial de sanciones y normativa disciplinaria AEE en Gobernanza." },
+        { type: "PATROCINIOS", text: "Escaparate de premios de la Fase I con desglose de beneficios y licitaciones asociadas." },
+        { type: "DOCENTE", text: "Edición y actualización de Crónicas Oficiales y portadas Nano Banana 3 en el Tablón." }
+      ]
+    },
     {
       version: "1.1.62",
       date: new Date().toISOString().split('T')[0],

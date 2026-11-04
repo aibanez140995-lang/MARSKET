@@ -2123,6 +2123,188 @@ Object.assign(ui, {
         );
     },
 
+    modalEditOfficialNews(newsId) {
+        const isDocente = Boolean(state.user?.admin || (state.user?.role && (state.user.role === 'DOCENTE' || state.user.role.startsWith('COORD'))));
+        if (!isDocente) return this.notify("Acceso restringido a Coordinación Docente.", "error");
+
+        const news = (state.data?.officialNews || []).find(n => String(n.id) === String(newsId));
+        if (!news) return this.notify("Crónica oficial no localizada.", "error");
+
+        const companies = state.data?.companies || {};
+        const coList = Object.keys(companies).map(cid => ({
+            id: cid,
+            name: companies[cid].name,
+            classGroup: companies[cid].classGroup || 'A'
+        })).sort((a, b) => a.name.localeCompare(b.name));
+
+        const existingImg = news.imageUrl || '';
+        const hasExistingImg = Boolean(existingImg);
+
+        const html = `
+            <div class="space-y-4 text-xs font-sans">
+                <div class="p-3 bg-amber-950/40 border border-amber-500/50 rounded flex items-start gap-2 text-amber-200">
+                    <span class="text-lg">✏️</span>
+                    <div>
+                        <strong class="font-bold text-amber-300 block uppercase font-orbitron text-xs">Editar Crónica Oficial AEE</strong>
+                        <span>Modifica el titular, cuerpo de texto o actualiza la portada de Nano Banana 3. Los cambios se sincronizarán en los paneles de todos los alumnos.</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="offnews-edit-title" class="text-xs text-amber-400 uppercase font-bold block mb-1 font-mono">Titular de la Noticia / Crónica *</label>
+                    <input type="text" id="offnews-edit-title" value="${this.escapeAttr(news.title || '')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white uppercase outline-none font-sans" required>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label for="offnews-edit-phase" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Fase Asociada</label>
+                        <select id="offnews-edit-phase" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none">
+                            <option value="ALL" ${news.phase === 'ALL' ? 'selected' : ''}>Todas / Misión Global</option>
+                            <option value="I" ${news.phase === 'I' ? 'selected' : ''}>Fase I: Fundación & Viabilidad</option>
+                            <option value="II" ${news.phase === 'II' ? 'selected' : ''}>Fase II: I+D y Prototipado Aeroespacial</option>
+                            <option value="III" ${news.phase === 'III' ? 'selected' : ''}>Fase III: Producción y Finanzas B2B</option>
+                            <option value="IV" ${news.phase === 'IV' ? 'selected' : ''}>Fase IV: Validación Científica</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="offnews-edit-class" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Clase Destino</label>
+                        <select id="offnews-edit-class" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none">
+                            <option value="ALL" ${news.classGroup === 'ALL' ? 'selected' : ''}>Todas las Clases (A-F y TEST)</option>
+                            <option value="A" ${news.classGroup === 'A' ? 'selected' : ''}>Clase A</option>
+                            <option value="B" ${news.classGroup === 'B' ? 'selected' : ''}>Clase B</option>
+                            <option value="C" ${news.classGroup === 'C' ? 'selected' : ''}>Clase C</option>
+                            <option value="D" ${news.classGroup === 'D' ? 'selected' : ''}>Clase D</option>
+                            <option value="E" ${news.classGroup === 'E' ? 'selected' : ''}>Clase E</option>
+                            <option value="F" ${news.classGroup === 'F' ? 'selected' : ''}>Clase F</option>
+                            <option value="TEST" ${news.classGroup === 'TEST' ? 'selected' : ''}>Clase TEST</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="offnews-edit-company" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Vincular a una Startup (Opcional)</label>
+                    <select id="offnews-edit-company" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none">
+                        <option value="">-- Sin startup específica (Comunicado General) --</option>
+                        ${coList.map(c => `
+                            <option value="${this.escapeAttr(c.id)}" ${news.coId === c.id ? 'selected' : ''}>${this.escapeHTML(c.name)} [Clase ${this.escapeHTML(c.classGroup)}]</option>
+                        `).join('')}
+                    </select>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1 flex-wrap gap-1">
+                        <label for="offnews-edit-body" class="text-xs text-amber-400 uppercase font-bold font-mono">Cuerpo de la Crónica Oficial *</label>
+                        <div class="flex items-center gap-1">
+                            <button type="button" onclick="ui.insertFormatTag('offnews-edit-body', '**', '**')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white font-bold text-xs rounded transition-colors" title="Negrita (**texto**)">
+                                <strong>B</strong>
+                            </button>
+                            <button type="button" onclick="ui.insertFormatTag('offnews-edit-body', '*', '*')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white italic text-xs rounded transition-colors" title="Cursiva (*texto*)">
+                                <em>I</em>
+                            </button>
+                            <button type="button" onclick="ui.insertFormatTag('offnews-edit-body', '\\n\\n', '')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-amber-300 font-mono text-[11px] rounded transition-colors" title="Nuevo Párrafo">
+                                ¶ Párrafo
+                            </button>
+                            <button type="button" onclick="ui.insertFormatTag('offnews-edit-body', '\\n- ', '')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-cyan-300 font-mono text-[11px] rounded transition-colors" title="Lista con viñetas">
+                                • Lista
+                            </button>
+                        </div>
+                    </div>
+                    <textarea id="offnews-edit-body" rows="6" class="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white font-sans outline-none">${this.escapeHTML(news.body || '')}</textarea>
+                    <span class="text-[10px] text-slate-400 font-mono block mt-1">Formato admitido: **negrita**, *cursiva*, saltos de párrafo y viñetas (- elemento).</span>
+                </div>
+
+                <div class="p-3 bg-black/60 border border-slate-800 rounded space-y-3">
+                    <label class="text-xs text-amber-300 uppercase font-bold block font-mono">🎨 Portada // Nano Banana 3</label>
+                    ${hasExistingImg ? `
+                        <div id="offnews-edit-current-img" class="p-2.5 bg-slate-950 border border-amber-500/40 rounded flex items-center justify-between gap-3 flex-wrap">
+                            <div class="flex items-center gap-3">
+                                <img src="${this.escapeHTML(existingImg)}" class="w-14 h-14 object-cover rounded border border-slate-700" alt="Portada actual">
+                                <div>
+                                    <span class="text-[11px] text-amber-300 font-bold block font-mono">Portada cargada actualmente</span>
+                                    <span class="text-[10px] text-slate-400">Puedes conservarla o sustituirla a continuación.</span>
+                                </div>
+                            </div>
+                            <button type="button" onclick="document.getElementById('offnews-edit-img-data').value = ''; document.getElementById('offnews-edit-url').value = ''; document.getElementById('offnews-edit-current-img').classList.add('hidden'); ui.notify('Portada marcada para eliminar al guardar.', 'info');" class="min-h-[36px] px-3 py-1 bg-red-950/60 border border-red-500 text-red-300 hover:bg-red-800 hover:text-white text-xs font-bold uppercase transition-colors">
+                                🗑️ Quitar Portada
+                            </button>
+                        </div>
+                    ` : ''}
+
+                    <div>
+                        <span class="text-[11px] text-slate-400 block mb-1">Subir nueva imagen optimizada</span>
+                        <input type="file" id="offnews-edit-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'offnews-edit-img-data', 'offnews-edit-preview')" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-none file:border-0 file:text-xs file:font-black file:uppercase file:bg-amber-400 file:text-black hover:file:bg-white cursor-pointer">
+                    </div>
+                    <div>
+                        <span class="text-[11px] text-slate-400 block mb-1">O pegar enlace directo de imagen (Drive o URL)</span>
+                        <input type="url" id="offnews-edit-url" value="${hasExistingImg && existingImg.startsWith('http') ? this.escapeAttr(existingImg) : ''}" oninput="ui.previewNanoBananaUrl(this.value, 'offnews-edit-preview')" placeholder="https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none font-mono">
+                    </div>
+                    <input type="hidden" id="offnews-edit-img-data" value="${hasExistingImg ? this.escapeAttr(existingImg) : ''}">
+                    <div id="offnews-edit-preview" class="hidden"></div>
+                </div>
+            </div>
+        `;
+
+        const actions = `
+            <div class="flex gap-2 flex-wrap justify-end w-full">
+                <button type="button" onclick="ui.closeModal()" class="min-h-[44px] bg-slate-800 text-white px-4 py-2 text-xs font-bold uppercase hover:bg-slate-700 transition-all">Cancelar</button>
+                <button type="button" onclick="ui.submitEditOfficialNews('${this.escapeHTML(newsId)}')" class="min-h-[44px] bg-amber-400 text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_15px_rgba(251,191,36,0.4)]">
+                    💾 Guardar Cambios
+                </button>
+            </div>
+        `;
+
+        this.showModal(`✏️ Editar Crónica Oficial // ${this.escapeHTML(news.title || '')}`, html, actions);
+    },
+
+    submitEditOfficialNews(newsId) {
+        const isDocente = Boolean(state.user?.admin || (state.user?.role && (state.user.role === 'DOCENTE' || state.user.role.startsWith('COORD'))));
+        if (!isDocente) return this.notify("Acceso restringido a Coordinación Docente.", "error");
+
+        const news = (state.data?.officialNews || []).find(n => String(n.id) === String(newsId));
+        if (!news) return this.notify("Crónica oficial no localizada.", "error");
+
+        const elTitle = document.getElementById('offnews-edit-title');
+        const elBody = document.getElementById('offnews-edit-body');
+        const elPhase = document.getElementById('offnews-edit-phase');
+        const elClass = document.getElementById('offnews-edit-class');
+        const elCompany = document.getElementById('offnews-edit-company');
+        const elImgData = document.getElementById('offnews-edit-img-data');
+        const elUrl = document.getElementById('offnews-edit-url');
+
+        const title = elTitle ? elTitle.value.trim() : '';
+        const body = elBody ? elBody.value.trim() : '';
+        if (!title) return this.notify("Debes indicar un titular para la noticia.", "warning");
+        if (!body) return this.notify("Debes redactar el cuerpo de la crónica.", "warning");
+
+        const phase = elPhase ? elPhase.value : 'ALL';
+        const classGroup = elClass ? elClass.value : 'ALL';
+        const coId = elCompany ? elCompany.value : '';
+        const coName = coId && state.data?.companies?.[coId] ? state.data.companies[coId].name : '';
+
+        let imageUrl = '';
+        if (elImgData && elImgData.value) {
+            imageUrl = elImgData.value;
+        } else if (elUrl && elUrl.value.trim()) {
+            imageUrl = elUrl.value.trim();
+        }
+
+        news.title = title;
+        news.body = body;
+        news.phase = phase;
+        news.classGroup = classGroup;
+        news.coId = coId || null;
+        news.companyName = coName || null;
+        news.imageUrl = imageUrl || null;
+        news.updatedAt = Date.now();
+
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
+        this.closeModal();
+        this.render();
+        this.notify("✅ Crónica Oficial actualizada con éxito.", "success");
+    },
+
     modalAttachNanoBananaToPR(prId) {
         const isDocente = Boolean(state.user?.admin || (state.user?.role && (state.user.role === 'DOCENTE' || state.user.role.startsWith('COORD'))));
         if (!isDocente) return this.notify("Acceso restringido a Coordinación Docente.", "error");
@@ -2469,7 +2651,10 @@ Object.assign(ui, {
                                         ${isOfficial ? `
                                             <span class="text-[11px] text-slate-400 font-mono">Por ${this.escapeHTML(r.author || 'Coordinación AEE')}</span>
                                             ${isDocente ? `
-                                                <button type="button" onclick="ui.deleteOfficialNews('${this.escapeHTML(r.id)}')" class="min-h-[44px] text-red-400 hover:text-red-300 text-xs font-bold uppercase underline">🗑️ Retirar Noticia</button>
+                                                <div class="flex items-center gap-2 flex-wrap">
+                                                    <button type="button" onclick="ui.modalEditOfficialNews('${this.escapeHTML(r.id)}')" class="min-h-[44px] bg-amber-950/50 border border-amber-500/60 text-amber-300 hover:bg-amber-400 hover:text-black px-3 py-1.5 text-xs font-bold uppercase transition-all whitespace-nowrap">✏️ Editar Crónica</button>
+                                                    <button type="button" onclick="ui.deleteOfficialNews('${this.escapeHTML(r.id)}')" class="min-h-[44px] text-red-400 hover:text-red-300 text-xs font-bold uppercase underline">🗑️ Retirar</button>
+                                                </div>
                                             ` : ''}
                                         ` : `
                                             <span class="text-[10px] text-slate-500 font-mono">DOC_15 Oficial</span>
@@ -2657,8 +2842,8 @@ Object.assign(ui, {
         };
         const sponsorStyle = sponsorAwarded ? (tierStyles[sponsorAwarded] || 'text-slate-300 border-slate-700 bg-slate-900') : '';
 
-        const sponsorHtml = sponsorAwarded ? `
-            <div class="terminal-border p-4 sm:p-5 mb-6 border-t-4 border-t-amber-400 bg-mars-card">
+        const sponsorStatusBanner = sponsorAwarded ? `
+            <div class="terminal-border p-4 sm:p-5 mb-4 border-t-4 border-t-amber-400 bg-mars-card">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div class="flex items-center gap-3.5">
                         ${sponsorData.logo ? `<img src="${this.escapeHTML(sponsorData.logo)}" alt="Logo Patrocinador" class="w-12 h-12 object-contain bg-black border border-slate-700 p-1 rounded-sm">` : `<span class="text-3xl">🥇</span>`}
@@ -2678,16 +2863,70 @@ Object.assign(ui, {
                 </div>
             </div>
         ` : `
-            <div class="terminal-border p-4 mb-6 bg-slate-900/50 border border-slate-800">
+            <div class="terminal-border p-4 mb-4 bg-slate-900/50 border border-slate-800">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <div class="flex items-center gap-3">
                         <span class="text-2xl">🤝</span>
                         <div>
                             <span class="text-[10px] font-mono uppercase text-slate-400 font-bold">Patrocinio Oficial Fase I (Pitch en Lengua Inglesa)</span>
-                            <p class="text-xs text-slate-300">En proceso de asignación docente. Inyección estimada de +100 €v a +500 €v según rúbrica.</p>
+                            <p class="text-xs text-slate-300">En proceso de asignación docente tras el micro-pitch en inglés. Concede entre <strong>+100 €v y +500 €v</strong> según la rúbrica oficial.</p>
                         </div>
                     </div>
-                    <span class="text-xs font-mono text-amber-400 bg-amber-950/40 border border-amber-500/30 px-2 py-1">En Evaluación</span>
+                    <span class="text-xs font-mono text-amber-400 bg-amber-950/40 border border-amber-500/30 px-3 py-1 font-bold animate-pulse">En Evaluación</span>
+                </div>
+            </div>
+        `;
+
+        const sponsorTiersDef = [
+            { id: 'ORO', name: 'Nivel ORO', amount: 500, emoji: '🥇', border: 'border-yellow-400', glow: 'shadow-[0_0_12px_rgba(250,204,21,0.25)]', text: 'text-yellow-300', perk: 'Abono máximo + Llave Contrato PLD Space (F1-C02)' },
+            { id: 'PLATA', name: 'Nivel PLATA', amount: 400, emoji: '🥈', border: 'border-slate-300', glow: 'shadow-[0_0_10px_rgba(203,213,225,0.2)]', text: 'text-slate-200', perk: 'Abono preferente + Llave Contrato PLD Space (F1-C02)' },
+            { id: 'BRONCE', name: 'Nivel BRONCE', amount: 250, emoji: '🥉', border: 'border-amber-600', glow: '', text: 'text-amber-400', perk: 'Dotación estándar de capital semilla para I+D' },
+            { id: 'COBRE', name: 'Nivel COBRE', amount: 150, emoji: '🔶', border: 'border-amber-700', glow: '', text: 'text-amber-500', perk: 'Subvención inicial de apoyo operativo de constitución' },
+            { id: 'COLABORADOR', name: 'Nivel COLABORADOR', amount: 100, emoji: '🤝', border: 'border-cyan-500', glow: '', text: 'text-cyan-300', perk: 'Fondo base de colaboración institucional de la misión' }
+        ];
+
+        const sponsorHtml = `
+            <div class="mb-6 space-y-3">
+                ${sponsorStatusBanner}
+                <div class="terminal-border p-4 bg-black/60 border border-slate-800">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 border-b border-slate-800/80 pb-2">
+                        <div>
+                            <span class="text-[10px] font-mono uppercase text-amber-400 font-bold">Inversores y Capital Semilla // Fase I</span>
+                            <h3 class="text-xs sm:text-sm font-orbitron font-bold text-white uppercase mt-0.5">Escala Oficial de Premios de Patrocinio</h3>
+                        </div>
+                        <span class="text-[11px] font-mono text-slate-400">Rúbrica de Micro-Pitch en Lengua Inglesa</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 mb-3">
+                        ${sponsorTiersDef.map(t => {
+                            const isMyTier = sponsorAwarded === t.id;
+                            return `
+                            <div class="p-3 rounded border ${t.border} ${isMyTier ? 'bg-amber-950/40 ring-2 ring-amber-400 ' + t.glow : 'bg-slate-900/60'} flex flex-col justify-between transition-all">
+                                <div>
+                                    <div class="flex items-center justify-between gap-1 mb-1.5">
+                                        <span class="text-xl">${t.emoji}</span>
+                                        ${isMyTier ? `
+                                            <span class="text-[9px] font-black uppercase px-1.5 py-0.5 bg-amber-400 text-black font-mono">CONCEDIDO</span>
+                                        ` : `
+                                            <span class="text-[9px] font-mono uppercase text-slate-500">${sponsorAwarded ? 'Disponible' : 'En Juego'}</span>
+                                        `}
+                                    </div>
+                                    <h4 class="font-orbitron font-bold text-xs uppercase ${t.text}">${this.escapeHTML(t.name)}</h4>
+                                    <p class="text-[10px] text-slate-300 mt-1 leading-snug">${this.escapeHTML(t.perk)}</p>
+                                </div>
+                                <div class="mt-3 pt-2 border-t border-slate-800/80 text-right">
+                                    <span class="text-sm sm:text-base font-orbitron font-black ${isMyTier ? 'text-mars-green' : t.text}">+${t.amount} €v</span>
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+
+                    <div class="p-2.5 bg-cyan-950/20 border-l-2 border-cyan-400 text-[11px] text-slate-300 space-y-1">
+                        <strong class="text-cyan-300 uppercase font-mono block text-[10px]">Beneficios Estratégicos del Patrocinador:</strong>
+                        <p>1. <strong>Inyección inmediata de tesorería:</strong> Los fondos (€v) se abonan al instante en la cuenta de la empresa.</p>
+                        <p>2. <strong>Reducción de Costes Operativos:</strong> El patrocinio reduce de forma permanente la factura operativa mensual.</p>
+                        <p>3. <strong>Desbloqueo Exclusivo de Licitación PLD Space (F1-C02, +250 €v):</strong> Obtener nivel 🥇 ORO o 🥈 PLATA desbloquea el derecho preferente a firmar el contrato comercial de Fase I con PLD Space.</p>
+                    </div>
                 </div>
             </div>
         `;

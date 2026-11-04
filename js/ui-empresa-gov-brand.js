@@ -174,61 +174,163 @@ Object.assign(ui, {
             </div>`;
         }
 
-        let crisisResolutionsHtml = '';
+        // --- 1. HISTORIAL DE SANCIONES DE LA STARTUP Y CUADRO DISCIPLINARIO AEE ---
+        co.sanctions = Array.isArray(co.sanctions) ? co.sanctions : [];
+        const hasSanctions = co.sanctions.length > 0;
+        const totalSanctionsAmount = co.sanctions.reduce((acc, s) => acc + Math.abs(Number(s.amount || 0)), 0);
+
         const unreadCrisis = (co.crisisAlerts || []).filter(a => !a.read);
         const hasResolutions = co.executiveResolutions && co.executiveResolutions.length > 0;
 
-        if (isCEO || hasResolutions || unreadCrisis.length > 0) {
-            let ceoCrisisBlock = '';
-            if (isCEO) {
-                let unreadBanner = '';
-                if (unreadCrisis.length > 0) {
-                    const firstCrisis = unreadCrisis[0];
-                    unreadBanner = `
-                    <div class="bg-red-950/80 border-2 border-red-500 p-3.5 mb-3 flex flex-wrap justify-between items-center gap-3 animate-pulse">
-                        <div>
-                            <span class="text-xs bg-red-600 text-white font-black px-2 py-0.5 uppercase tracking-wider block mb-1">⚠️ Sanción Regulatoria AEE Pendiente de Comunicar</span>
-                            <p class="text-xs text-white font-semibold">${this.escapeHTML(firstCrisis.article || 'Infracción Disciplinaria')} (${Number(firstCrisis.amount || 0).toFixed(2)} €v)</p>
-                        </div>
-                        <button type="button" onclick="ui.modalCrisisAction('${this.escapeHTML(firstCrisis.id || '')}')" class="min-h-[44px] bg-red-600 text-white font-black px-4 py-2 text-xs uppercase tracking-wider hover:bg-white hover:text-black transition-all border border-red-400">
-                            [ 📢 Redactar Comunicado de Crisis ]
-                        </button>
-                    </div>`;
-                }
-
-                const doc3Btn = this.renderDocTemplateBtn ? this.renderDocTemplateBtn('DOC_3_COMUNICADO_SANCION', '📄 Modelo DOC_3 (Hacer copia)') : '';
-
-                ceoCrisisBlock = `
-                <div class="bg-black/60 border border-red-500/40 p-3 mb-3">
-                    ${unreadBanner}
-                    <div class="flex flex-wrap justify-between items-center gap-2">
-                        <div>
-                            <span class="text-xs text-red-400 font-bold uppercase tracking-wider block">Gabinete de Crisis // Modelo Oficial</span>
-                            <span class="text-[11px] text-slate-400">Difusión oficial obligatoria para expedientes sancionadores AEE.</span>
-                        </div>
-                        ${doc3Btn}
+        let ceoCrisisBanner = '';
+        if (isCEO) {
+            let unreadBanner = '';
+            if (unreadCrisis.length > 0) {
+                const firstCrisis = unreadCrisis[0];
+                unreadBanner = `
+                <div class="bg-red-950/80 border-2 border-red-500 p-3.5 mb-3 flex flex-wrap justify-between items-center gap-3 animate-pulse">
+                    <div>
+                        <span class="text-xs bg-red-600 text-white font-black px-2 py-0.5 uppercase tracking-wider block mb-1">⚠️ Sanción Regulatoria AEE Pendiente de Comunicar</span>
+                        <p class="text-xs text-white font-semibold">${this.escapeHTML(firstCrisis.article || 'Infracción Disciplinaria')} (${Number(firstCrisis.amount || 0).toFixed(2)} €v)</p>
                     </div>
+                    <button type="button" onclick="ui.modalCrisisAction('${this.escapeHTML(firstCrisis.id || '')}')" class="min-h-[44px] bg-red-600 text-white font-black px-4 py-2 text-xs uppercase tracking-wider hover:bg-white hover:text-black transition-all border border-red-400">
+                        [ 📢 Redactar Comunicado de Crisis ]
+                    </button>
                 </div>`;
             }
 
-            crisisResolutionsHtml = `
-            <div id="crisis-resolutions-panel" class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-yellow mb-6">
-                <h3 class="font-orbitron text-mars-yellow text-sm sm:text-base uppercase tracking-tighter mb-3">Resoluciones Ejecutivas y Sanciones de Crisis</h3>
-                ${ceoCrisisBlock}
-                <div class="space-y-3">
-                    ${hasResolutions ? co.executiveResolutions.map(r => `
-                        <div class="bg-black/80 border border-slate-800 p-3 flex flex-wrap justify-between items-center gap-2">
-                            <div class="min-w-0 flex-1">
-                                <span class="text-xs font-bold text-white uppercase block">${this.escapeHTML(r.crisisTitle || r.title || 'Resolución de Crisis')}</span>
-                                <span class="text-xs text-slate-300 block break-words">${this.escapeHTML(r.action || r.decision || r.desc || '')}</span>
-                                <span class="text-[10px] text-slate-400 font-mono block mt-0.5">${this.escapeHTML(r.date || '')}</span>
-                            </div>
-                            ${r.driveUrl ? `<a href="${encodeURI(r.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50 shrink-0"><span>📄 Abrir Comunicado Oficial en Google Drive ↗</span></a>` : ''}
-                        </div>
-                    `).join('') : '<p class="text-slate-400 italic text-xs">No hay resoluciones ejecutivas de crisis registradas.</p>'}
+            const doc3Btn = this.renderDocTemplateBtn ? this.renderDocTemplateBtn('DOC_3_COMUNICADO_SANCION', '📄 Modelo DOC_3 (Hacer copia)') : '';
+
+            ceoCrisisBanner = `
+            <div class="bg-black/60 border border-red-500/40 p-3 mb-4">
+                ${unreadBanner}
+                <div class="flex flex-wrap justify-between items-center gap-2">
+                    <div>
+                        <span class="text-xs text-red-400 font-bold uppercase tracking-wider block">Gabinete de Crisis // Modelo Oficial DOC_3</span>
+                        <span class="text-[11px] text-slate-400">Difusión oficial obligatoria para expedientes sancionadores AEE.</span>
+                    </div>
+                    ${doc3Btn}
                 </div>
             </div>`;
         }
+
+        const sanctionsListHtml = hasSanctions ? `
+            <div class="space-y-3">
+                ${co.sanctions.map(s => `
+                    <div class="p-3.5 bg-red-950/20 border border-red-500/40 rounded-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 flex-wrap mb-1">
+                                <span class="px-2 py-0.5 text-[10px] font-mono font-bold uppercase bg-red-950 border border-red-500 text-red-300">${this.escapeHTML(s.agency || 'Agencia Reguladora')}</span>
+                                <span class="text-[11px] font-mono text-slate-400">${this.escapeHTML(s.date || '--')}</span>
+                                ${s.id ? `<span class="text-[10px] font-mono text-slate-500">[${this.escapeHTML(s.id)}]</span>` : ''}
+                            </div>
+                            <h4 class="text-xs font-bold text-white uppercase">${this.escapeHTML(s.article || 'Infracción Disciplinaria')}</h4>
+                            <p class="text-xs text-slate-300 mt-1 italic bg-black/40 p-2 border-l-2 border-red-500/70">"${this.escapeHTML(s.reason || 'Sin observaciones adicionales del inspector.')}"</p>
+                        </div>
+                        <div class="shrink-0 text-right sm:text-right w-full sm:w-auto border-t sm:border-t-0 border-slate-800 pt-2 sm:pt-0">
+                            <span class="text-[10px] font-mono uppercase text-red-400 block font-bold">Multa Aplicada</span>
+                            <span class="text-base sm:text-lg font-orbitron font-black text-red-400">${Number(s.amount || 0).toFixed(2)} €v</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        ` : `
+            <div class="p-3.5 bg-emerald-950/20 border border-emerald-500/30 rounded-sm flex items-center gap-3">
+                <span class="text-2xl">🛡️</span>
+                <div>
+                    <h4 class="text-xs font-bold text-emerald-400 uppercase font-orbitron">Expediente Disciplinario Inmaculado</h4>
+                    <p class="text-[11px] text-slate-300">Tu empresa no cuenta con sanciones ni multas registradas por los organismos reguladores.</p>
+                </div>
+            </div>
+        `;
+
+        const regulatoryArticlesList = (typeof AEE_SANCTION_ARTICLES_DEF !== 'undefined') ? AEE_SANCTION_ARTICLES_DEF : [];
+        const regulatoryFrameworkHtml = `
+            <div class="mt-4 pt-3 border-t border-slate-800">
+                <details class="group cursor-pointer">
+                    <summary class="min-h-[44px] flex items-center justify-between text-xs font-mono font-bold uppercase text-mars-cyan hover:text-white transition-colors py-2 outline-none select-none">
+                        <span class="flex items-center gap-2">
+                            <span>📖</span>
+                            <span>Código Disciplinario Oficial AEE & Baremos de Sanción</span>
+                        </span>
+                        <span class="text-xs transition-transform group-open:rotate-180">▼</span>
+                    </summary>
+                    <div class="mt-3 space-y-3 text-xs bg-black/60 border border-slate-800 p-3.5 rounded-sm">
+                        <p class="text-[11px] text-slate-300 leading-relaxed mb-2">
+                            Marco sancionador oficial de la <strong>Agencia Espacial Escolar (AEE)</strong>. Las sanciones se aplican directamente sobre la tesorería de la empresa y se notifican al CEO para su descargo o comunicado oficial (DOC_3).
+                        </p>
+                        <div class="grid grid-cols-1 gap-2.5">
+                            ${regulatoryArticlesList.map(art => `
+                                <div class="p-2.5 bg-slate-900/80 border border-slate-800 rounded">
+                                    <div class="flex items-center justify-between gap-2 flex-wrap mb-1">
+                                        <span class="font-orbitron font-bold text-amber-300 text-xs">${this.escapeHTML(art.code)}: ${this.escapeHTML(art.shortTitle || art.title)}</span>
+                                        <span class="text-[10px] font-mono px-2 py-0.5 bg-red-950/50 border border-red-500/40 text-red-300">${this.escapeHTML(art.criteria || (art.amounts ? art.amounts.map(a => a + ' €v').join(' / ') : 'Multa €v'))}</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-300">${this.escapeHTML(art.desc)}</p>
+                                    ${art.scheduleBreakdown ? `
+                                        <div class="mt-2 pt-2 border-t border-slate-800/80 space-y-1 bg-black/40 p-2 rounded">
+                                            <span class="text-[10px] font-mono text-amber-400 font-bold uppercase block">Baremo Oficial para Entregas Tardías (Google Drive):</span>
+                                            ${art.scheduleBreakdown.map(sb => `
+                                                <div class="flex items-start gap-2 text-[11px]">
+                                                    <span class="font-mono font-bold text-red-400 shrink-0">• ${this.escapeHTML(sb.tier)}:</span>
+                                                    <span class="text-slate-300">${this.escapeHTML(sb.condition)}</span>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </details>
+            </div>
+        `;
+
+        const crisisResolutionsHtml = `
+        <div id="crisis-resolutions-panel" class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-magenta mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 border-b border-mars-border pb-2.5">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 text-[10px] font-mono uppercase bg-magenta-950/60 border border-mars-magenta text-magenta-300">Marco Legal & Compliance</span>
+                        <span class="text-xs text-slate-400 font-mono">[EXPEDIENTES ACTIVOS: ${co.sanctions.length}]</span>
+                    </div>
+                    <h3 class="font-orbitron text-mars-magenta text-sm sm:text-base uppercase tracking-tighter mt-1">⚖️ Régimen Disciplinario y Sanciones AEE</h3>
+                </div>
+                ${hasSanctions ? `
+                    <span class="text-xs font-mono text-red-400 bg-red-950/60 border border-red-500/50 px-2.5 py-1">Total Multas: -${totalSanctionsAmount.toFixed(2)} €v</span>
+                ` : ''}
+            </div>
+
+            ${ceoCrisisBanner}
+
+            <!-- Historial de Expedientes -->
+            <div class="mb-4">
+                <span class="text-xs font-mono font-bold text-slate-300 uppercase block mb-2">Historial de Sanciones de la Startup</span>
+                ${sanctionsListHtml}
+            </div>
+
+            <!-- Resoluciones Ejecutivas del CEO -->
+            ${(hasResolutions || isCEO) ? `
+                <div class="mt-4 pt-3 border-t border-slate-800">
+                    <span class="text-xs font-mono font-bold text-slate-300 uppercase block mb-2">Actas y Resoluciones Ejecutivas Registradas</span>
+                    <div class="space-y-2">
+                        ${hasResolutions ? co.executiveResolutions.map(r => `
+                            <div class="bg-black/80 border border-slate-800 p-3 flex flex-wrap justify-between items-center gap-2">
+                                <div class="min-w-0 flex-1">
+                                    <span class="text-xs font-bold text-white uppercase block">${this.escapeHTML(r.crisisTitle || r.title || 'Resolución de Crisis')}</span>
+                                    <span class="text-xs text-slate-300 block break-words">${this.escapeHTML(r.action || r.decision || r.desc || '')}</span>
+                                    <span class="text-[10px] text-slate-400 font-mono block mt-0.5">${this.escapeHTML(r.date || '')}</span>
+                                </div>
+                                ${r.driveUrl ? `<a href="${encodeURI(r.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50 shrink-0"><span>📄 Abrir Comunicado Oficial en Google Drive ↗</span></a>` : ''}
+                            </div>
+                        `).join('') : '<p class="text-slate-400 italic text-xs">No hay resoluciones ejecutivas de crisis emitidas por el CEO.</p>'}
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- Cuadro Consultivo AEE -->
+            ${regulatoryFrameworkHtml}
+        </div>`;
 
         wrapper.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
