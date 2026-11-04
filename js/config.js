@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.59) ---
 
-const APP_VERSION = "1.1.61";
+const APP_VERSION = "1.1.62";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1038,6 +1038,23 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.59
 const APP_CHANGELOG = [
+    {
+      version: "1.1.62",
+      date: new Date().toISOString().split('T')[0],
+      title: "Generación y Descarga de Catálogo Oficial en PDF y CSV para Alumnado (Sin I+D)",
+      items: [
+        "Exportación Oficial a PDF Imprimible: Nueva herramienta institucional para Coordinación en la pestaña de Gestión Catálogo que genera un documento oficial A4 maquetado de alta legibilidad listo para imprimir o guardar en PDF.",
+        "Filtrado Automático Sin I+D: Depuración inteligente que extrae exclusivamente componentes y precios oficiales de la misión, excluyendo solicitudes especiales, piezas exclusivas o materiales fuera de catálogo.",
+        "Agrupación por Subsistemas Aeroespaciales: Organización estructurada por categorías canónicas (Estructura Principal, Propulsión, Aerodinámica, Sellado, etc.) con códigos de producto, procedencia y precios oficiales en €v.",
+        "Exportación Complementaria en CSV: Descarga directa en formato de hoja de cálculo UTF-8 para presupuestos y balances en Google Sheets o Excel.",
+        "Visor Seguro y Ahorro de Tinta: Diseño optimizado para consumo escolar con cabecera de la Agencia Espacial Escolar (AEE), cláusula normativa de compras y cajas de firma."
+      ],
+      highlights: [
+        { type: "DOCENTE / TIC", text: "Generación de documento PDF oficial del catálogo para compartir con los alumnos en Drive/Classroom." },
+        { type: "FILTRADO I+D", text: "Exclusión limpia de componentes a medida, mostrando solo referencias comerciales homologadas." },
+        { type: "FORMATO", text: "Descarga dual en PDF imprimible A4 y en hoja de cálculo CSV con precios en €v actualizados." }
+      ]
+    },
     {
       version: "1.1.61",
       date: new Date().toISOString().split('T')[0],

@@ -1427,8 +1427,18 @@ Object.assign(ui, {
             </div>
             <div class="lg:col-span-2 terminal-border bg-mars-card p-6 w-full overflow-hidden border-t-4 border-t-mars-yellow">
                 <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-                    <h3 class="font-orbitron text-mars-yellow text-xs uppercase tracking-widest">Gestión de Precios y Catálogo Global</h3>
-                    <span class="text-xs text-slate-300 font-mono">${cat.length} Artículos Registrados</span>
+                    <div>
+                        <h3 class="font-orbitron text-mars-yellow text-xs uppercase tracking-widest">Gestión de Precios y Catálogo Global</h3>
+                        <span class="text-xs text-slate-300 font-mono">${cat.length} Artículos Registrados</span>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button type="button" onclick="ui.exportOfficialCatalogPDF()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_#00f0ff] flex items-center gap-2">
+                            <span>📄</span> <span>Descargar Catálogo PDF (Sin I+D)</span>
+                        </button>
+                        <button type="button" onclick="ui.exportOfficialCatalogCSV()" class="min-h-[44px] bg-slate-800 text-slate-200 border border-slate-700 hover:border-mars-yellow hover:text-mars-yellow px-3 py-2 text-xs font-bold uppercase transition-colors flex items-center gap-1.5" title="Exportar catálogo oficial a hoja de cálculo CSV">
+                            <span>📊</span> <span>CSV</span>
+                        </button>
+                    </div>
                 </div>
                 <div class="overflow-x-auto w-full">
                     <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
@@ -3119,8 +3129,400 @@ Object.assign(ui, {
         `;
 
         this.showCredentialsModal(`CREDENCIALES OFICIALES // CLAUSTRO DOCENTE (${teacherKeys.length})`, previewHtml, cardsGrid);
+    },
+
+    isCustomOrIdCatalogItem(item) {
+        if (!item) return false;
+        const id = String(item.id || '').toUpperCase();
+        const cat = String(item.category || '').toUpperCase();
+        const orig = String(item.origin || '').toUpperCase();
+        const name = String(item.name || '').toUpperCase();
+        
+        return id.startsWith('CUST-') || 
+               cat === 'EXTERNO' || 
+               cat === 'I+D' || 
+               cat === 'I+D LOCAL' ||
+               orig.includes('I+D') || 
+               name.startsWith('[ESP]') || 
+               Boolean(item.exclusiveFor) ||
+               Boolean(item.isCustom) ||
+               Boolean(item.isSpecial);
+    },
+
+    openPrintCatalogWindow() {
+        if (!this._lastCatalogDocHtml) return;
+        const printWin = window.open('', '_blank');
+        if (printWin) {
+            printWin.document.open();
+            printWin.document.write(this._lastCatalogDocHtml);
+            printWin.document.close();
+        }
+    },
+
+    exportOfficialCatalogCSV() {
+        if (!this.checkCoordinatorAccess()) return;
+        const catalog = Array.isArray(state.data.catalog) && state.data.catalog.length > 0 
+            ? state.data.catalog 
+            : (typeof DEFAULT_STATE !== 'undefined' ? DEFAULT_STATE.catalog : []);
+        
+        const officialItems = catalog.filter(item => !this.isCustomOrIdCatalogItem(item));
+        if (officialItems.length === 0) return this.notify("No hay artículos oficiales para exportar.", "warning");
+
+        let csv = '\uFEFF';
+        csv += '"ID","Componente","Categoría","Unidad","Origen","Precio (€v)"\n';
+        officialItems.forEach(it => {
+            const id = (it.id || '').replace(/"/g, '""');
+            const name = (it.name || '').replace(/"/g, '""');
+            const cat = (it.category || '').replace(/"/g, '""');
+            const unit = (it.unit || 'Unidad').replace(/"/g, '""');
+            const origin = (it.origin || 'España').replace(/"/g, '""');
+            const price = Number(it.price || 0).toFixed(2);
+            csv += `"${id}","${name}","${cat}","${unit}","${origin}",${price}\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `MARSKET_Catalogo_Oficial_Sin_ID_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        this.notify("Catálogo Oficial exportado en formato CSV.", "success");
+    },
+
+    exportOfficialCatalogPDF() {
+        if (!this.checkCoordinatorAccess()) return;
+
+        const catalog = Array.isArray(state.data.catalog) && state.data.catalog.length > 0 
+            ? state.data.catalog 
+            : (typeof DEFAULT_STATE !== 'undefined' ? DEFAULT_STATE.catalog : []);
+
+        const officialItems = catalog.filter(item => !this.isCustomOrIdCatalogItem(item));
+
+        if (officialItems.length === 0) {
+            return this.notify("No hay artículos oficiales en el catálogo.", "warning");
+        }
+
+        const categoriesMap = {};
+        officialItems.forEach(item => {
+            const cat = (item.category && item.category.trim()) || 'General / Varios';
+            if (!categoriesMap[cat]) categoriesMap[cat] = [];
+            categoriesMap[cat].push(item);
+        });
+
+        const canonicalOrder = [
+            'Cuerpo del Cohete (Estructura Principal)',
+            'Fuselaje',
+            'Propulsión y Reactivos',
+            'Propulsión',
+            'Aerodinámica',
+            'Sistema de Reacción',
+            'Sellado y Unión (Estanquidad y Montaje)',
+            'Sellado',
+            'Elementos Extra',
+            'Otros'
+        ];
+
+        const sortedCategoryNames = Object.keys(categoriesMap).sort((a, b) => {
+            const idxA = canonicalOrder.indexOf(a);
+            const idxB = canonicalOrder.indexOf(b);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return a.localeCompare(b);
+        });
+
+        const dateStr = new Date().toLocaleDateString('es-ES', { 
+            day: '2-digit', 
+            month: 'long', 
+            year: 'numeric' 
+        });
+
+        let tablesHtml = '';
+        sortedCategoryNames.forEach((catName, catIdx) => {
+            const items = categoriesMap[catName];
+            items.sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
+
+            tablesHtml += `
+            <div class="cat-section" style="margin-bottom: 24px; page-break-inside: avoid;">
+                <div style="background: #0f172a; color: #ffffff; padding: 8px 12px; border-left: 4px solid #00f0ff; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <h3 style="margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800;">
+                        ${catIdx + 1}. ${this.escapeHTML(catName)}
+                    </h3>
+                    <span style="font-size: 11px; color: #94a3b8; font-family: monospace;">${items.length} artículo(s)</span>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 6px;">
+                    <thead>
+                        <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1; text-transform: uppercase; color: #475569; font-size: 10px;">
+                            <th style="padding: 6px 8px; text-align: left; width: 65px;">Código</th>
+                            <th style="padding: 6px 8px; text-align: left;">Artículo / Descripción</th>
+                            <th style="padding: 6px 8px; text-align: center; width: 110px;">Unidad de Venta</th>
+                            <th style="padding: 6px 8px; text-align: center; width: 110px;">Origen / Fabricante</th>
+                            <th style="padding: 6px 8px; text-align: right; width: 95px;">Precio Oficial</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${items.map((it, i) => `
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                            <td style="padding: 6px 8px; font-family: monospace; font-weight: bold; color: #0284c7;">${this.escapeHTML(it.id || '--')}</td>
+                            <td style="padding: 6px 8px; font-weight: 600; color: #0f172a;">${this.escapeHTML(it.name || '--')}</td>
+                            <td style="padding: 6px 8px; text-align: center; color: #64748b;">${this.escapeHTML(it.unit || 'Unidad')}</td>
+                            <td style="padding: 6px 8px; text-align: center; color: #64748b;">${this.escapeHTML(it.origin || 'España')}</td>
+                            <td style="padding: 6px 8px; text-align: right; font-family: monospace; font-weight: bold; color: #059669; font-size: 12px;">
+                                ${Number(it.price || 0).toFixed(2)} €v
+                            </td>
+                        </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+            `;
+        });
+
+        const docHtml = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo Oficial de Suministros y Materiales - MARS-KET OS</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 14mm 12mm 14mm 12mm;
+        }
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #ffffff;
+            color: #0f172a;
+            margin: 0;
+            padding: 0;
+            line-height: 1.4;
+        }
+        .no-print {
+            position: sticky;
+            top: 0;
+            z-index: 999;
+            background: #0b0f19;
+            color: #ffffff;
+            padding: 12px 20px;
+            border-bottom: 2px solid #00f0ff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            font-family: monospace;
+        }
+        .btn-print {
+            background: #00f0ff;
+            color: #000000;
+            font-weight: 800;
+            padding: 8px 18px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+        }
+        .btn-print:hover {
+            background: #ffffff;
+        }
+        .btn-close {
+            background: #334155;
+            color: #ffffff;
+            font-weight: 600;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .doc-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 24px 20px;
+            background: #ffffff;
+        }
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            .doc-container {
+                max-width: 100% !important;
+                padding: 0 !important;
+            }
+            .cat-section {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+        }
+        .header-box {
+            border: 2px solid #0f172a;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            background: #f8fafc;
+        }
+        .footer-box {
+            margin-top: 28px;
+            padding: 14px 18px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            font-size: 10px;
+            color: #475569;
+            page-break-inside: avoid;
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <div>
+            <strong style="color: #00f0ff; font-size: 13px;">🚀 MARS-KET OS // AGENCIA ESPACIAL ESCOLAR (AEE)</strong>
+            <span style="color: #94a3b8; font-size: 12px; margin-left: 12px;">Catálogo Oficial Imprimible (${officialItems.length} artículos)</span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn-print" onclick="window.print()">🖨️ Guardar como PDF / Imprimir</button>
+            <button class="btn-close" onclick="window.close()">✕ Cerrar</button>
+        </div>
+    </div>
+
+    <div class="doc-container">
+        <!-- Membrete Oficial -->
+        <div class="header-box">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <span style="font-family: monospace; font-size: 10px; font-weight: bold; color: #0284c7; text-transform: uppercase; letter-spacing: 0.1em; display: block;">
+                        PROGRAMA MARS-KET OS 2026/2027 // EDUCACIÓN SECUNDARIA & BACHILLERATO
+                    </span>
+                    <h1 style="margin: 4px 0 0 0; font-size: 18px; font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: -0.02em;">
+                        AGENCIA ESPACIAL ESCOLAR (AEE)
+                    </h1>
+                    <h2 style="margin: 2px 0 0 0; font-size: 13px; font-weight: 700; color: #475569; text-transform: uppercase;">
+                        Catálogo Oficial de Suministros, Materiales y Componentes (Fase I & II)
+                    </h2>
+                </div>
+                <div style="text-align: right;">
+                    <span style="display: inline-block; background: #0f172a; color: #00f0ff; font-family: monospace; font-weight: 800; font-size: 11px; padding: 4px 10px; border-radius: 2px; text-transform: uppercase;">
+                        DOCUMENTO OFICIAL
+                    </span>
+                    <span style="display: block; font-family: monospace; font-size: 10px; color: #64748b; margin-top: 4px;">
+                        REF: AEE-CAT-${Date.now().toString(36).toUpperCase()}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Fila de Metadatos -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; font-size: 10.5px; font-family: monospace;">
+                <div>
+                    <span style="color: #64748b; display: block; text-transform: uppercase;">Fecha de Emisión:</span>
+                    <strong style="color: #0f172a;">${dateStr}</strong>
+                </div>
+                <div>
+                    <span style="color: #64748b; display: block; text-transform: uppercase;">Moneda de Operación:</span>
+                    <strong style="color: #059669;">€v (Eurovirtuales)</strong>
+                </div>
+                <div>
+                    <span style="color: #64748b; display: block; text-transform: uppercase;">Artículos Homologados:</span>
+                    <strong style="color: #0284c7;">${officialItems.length} componentes</strong>
+                </div>
+                <div>
+                    <span style="color: #64748b; display: block; text-transform: uppercase;">Ámbito de Fabricación:</span>
+                    <strong style="color: #0f172a;">Prototipos Agua & Aire</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tablas por Categorías -->
+        ${tablesHtml}
+
+        <!-- Nota Normativa y Firmas -->
+        <div class="footer-box">
+            <h4 style="margin: 0 0 6px 0; font-size: 11px; font-weight: bold; text-transform: uppercase; color: #0f172a;">
+                ⚖️ Normativa de Compras B2B y Registro de Materiales (Fase I y II)
+            </h4>
+            <p style="margin: 0 0 8px 0; line-height: 1.45;">
+                1. <strong>Precios Oficiales Tasados:</strong> Todos los pedidos realizados por los Departamentos de Operaciones y Finanzas se liquidan exclusivamente en Eurovirtuales (€v) a través de la plataforma MARS-KET OS según las tarifas vigentes detalladas en este documento.
+            </p>
+            <p style="margin: 0 0 8px 0; line-height: 1.45;">
+                2. <strong>Componentes Fuera de Catálogo (I+D):</strong> Queda terminantemente prohibido incorporar materiales no contemplados en este catálogo oficial sin tramitar previamente la <em>Solicitud Especial de Material I+D (Plantilla Oficial DOC_13)</em> debidamente avalada por el CEO y visada por la Dirección Técnica y el Claustro Docente de Física y Química.
+            </p>
+            <p style="margin: 0 0 14px 0; line-height: 1.45;">
+                3. <strong>Sostenibilidad y Hoja de Taller (BOM):</strong> Cada unidad adquirida debe justificarse técnicamente en la Hoja de Montaje (BOM) y balancearse en el Libro Diario contable de la empresa.
+            </p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; border-top: 1px dashed #cbd5e1; padding-top: 14px; margin-top: 10px;">
+                <div style="text-align: center;">
+                    <div style="height: 38px;"></div>
+                    <span style="border-top: 1px solid #475569; display: block; width: 80%; margin: 0 auto; padding-top: 4px; font-size: 10px; text-transform: uppercase; font-weight: bold; color: #334155;">
+                        Dirección Técnica y Logística AEE
+                    </span>
+                </div>
+                <div style="text-align: center;">
+                    <div style="height: 38px;"></div>
+                    <span style="border-top: 1px solid #475569; display: block; width: 80%; margin: 0 auto; padding-top: 4px; font-size: 10px; text-transform: uppercase; font-weight: bold; color: #334155;">
+                        Coordinación General del Proyecto
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.focus();
+                window.print();
+            }, 350);
+        };
+    </script>
+</body>
+</html>`;
+
+        this._lastCatalogDocHtml = docHtml;
+
+        const printWin = window.open('', '_blank');
+        if (printWin) {
+            printWin.document.open();
+            printWin.document.write(docHtml);
+            printWin.document.close();
+            this.notify("Generando Catálogo Oficial PDF en ventana de impresión...", "success");
+        } else {
+            const modalBody = `
+                <div class="space-y-4">
+                    <p class="text-xs text-amber-300">El navegador bloqueó la apertura automática de la ventana emergente. Pulsa el botón inferior para abrir el visor e imprimir el catálogo:</p>
+                    <div class="max-h-96 overflow-y-auto bg-white text-black p-4 rounded text-xs">
+                        ${tablesHtml}
+                    </div>
+                </div>
+            `;
+            const actionButtons = `
+                <button type="button" onclick="ui.openPrintCatalogWindow()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2 font-black uppercase text-xs hover:bg-white transition-all shadow-[0_0_10px_#00f0ff]">
+                    🖨️ Abrir Ventana de Impresión / Guardar PDF
+                </button>
+            `;
+            this.showModal("CATÁLOGO OFICIAL DE SUMINISTROS (SIN I+D)", modalBody, actionButtons);
+        }
     }
 });
+
+window.exportOfficialCatalogPDF = function() {
+    if (typeof ui !== 'undefined' && ui.exportOfficialCatalogPDF) {
+        return ui.exportOfficialCatalogPDF();
+    }
+};
+
+window.exportOfficialCatalogCSV = function() {
+    if (typeof ui !== 'undefined' && ui.exportOfficialCatalogCSV) {
+        return ui.exportOfficialCatalogCSV();
+    }
+};
 
 window.exportBadgePDF = function() {
   if (!state.user || (!state.user.role.startsWith('COORD') && state.user.role !== 'coordinador' && state.user.role !== 'DOCENTE')) {
