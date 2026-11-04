@@ -1097,13 +1097,13 @@ const APP_CHANGELOG = [
       items: [
         "Ventanilla de Sanciones AEE para Alumnos: En Gobernanza, cualquier miembro de la empresa puede consultar el historial completo de expedientes disciplinarios de su startup con organismo sancionador, artículo infringido, dictamen exacto del docente y multa en €v.",
         "Cuadro Consultivo de Régimen Disciplinario: Desplegable oficial para alumnos con los 5 artículos normativos, incluyendo el desglose exacto de entregas tardías (Art. 12: <24h Leve -10 €v, 24-72h Moderada -100 €v, >72h Grave -200 €v) y definición constructiva de la memoria técnica (Art. 18).",
-        "Escala Oficial de Premios de Patrocinio (Fase I): Exposición visual en Contratos de los 5 niveles posibles de inversor (Oro +500 €v, Plata +400 €v, Bronce +250 €v, Cobre +150 €v, Colaborador +100 €v), resaltando las ventajas en caja, reducción de costes operativos y desbloqueo del contrato preferente PLD Space.",
+        "Escala Oficial de Premios de Patrocinio (Fase I): Exposición visual en Contratos de los 5 niveles posibles de inversor (Oro +500 €v, Plata +400 €v, Bronce +250 €v, Cobre +150 €v, Colaborador +100 €v), resaltando las ventajas en caja y la reducción de la factura de costes operativos.",
         "Edición de Crónicas Oficiales para Coordinación: Nuevo botón y modal para que el docente pueda editar el titular, cuerpo enriquecido, fase, clase y portada Nano Banana 3 de noticias oficiales ya publicadas sin tener que eliminarlas.",
         "Sincronización Cloud LWW con updatedAt: Conciliación optimista en tiempo real que asegura que las ediciones de noticias se propaguen al instante en todos los dispositivos de la misión."
       ],
       highlights: [
         { type: "ALUMNADO", text: "Visibilidad total del historial de sanciones y normativa disciplinaria AEE en Gobernanza." },
-        { type: "PATROCINIOS", text: "Escaparate de premios de la Fase I con desglose de beneficios y licitaciones asociadas." },
+        { type: "PATROCINIOS", text: "Escaparate de premios de la Fase I con inyección en caja y reducción de la factura operativa." },
         { type: "DOCENTE", text: "Edición y actualización de Crónicas Oficiales y portadas Nano Banana 3 en el Tablón." }
       ]
     },

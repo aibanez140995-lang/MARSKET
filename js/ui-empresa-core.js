@@ -2878,11 +2878,11 @@ Object.assign(ui, {
         `;
 
         const sponsorTiersDef = [
-            { id: 'ORO', name: 'Nivel ORO', amount: 500, emoji: '🥇', border: 'border-yellow-400', glow: 'shadow-[0_0_12px_rgba(250,204,21,0.25)]', text: 'text-yellow-300', perk: 'Abono máximo + Llave Contrato PLD Space (F1-C02)' },
-            { id: 'PLATA', name: 'Nivel PLATA', amount: 400, emoji: '🥈', border: 'border-slate-300', glow: 'shadow-[0_0_10px_rgba(203,213,225,0.2)]', text: 'text-slate-200', perk: 'Abono preferente + Llave Contrato PLD Space (F1-C02)' },
-            { id: 'BRONCE', name: 'Nivel BRONCE', amount: 250, emoji: '🥉', border: 'border-amber-600', glow: '', text: 'text-amber-400', perk: 'Dotación estándar de capital semilla para I+D' },
-            { id: 'COBRE', name: 'Nivel COBRE', amount: 150, emoji: '🔶', border: 'border-amber-700', glow: '', text: 'text-amber-500', perk: 'Subvención inicial de apoyo operativo de constitución' },
-            { id: 'COLABORADOR', name: 'Nivel COLABORADOR', amount: 100, emoji: '🤝', border: 'border-cyan-500', glow: '', text: 'text-cyan-300', perk: 'Fondo base de colaboración institucional de la misión' }
+            { id: 'ORO', name: 'Nivel ORO', amount: 500, emoji: '🥇', border: 'border-yellow-400', glow: 'shadow-[0_0_12px_rgba(250,204,21,0.25)]', text: 'text-yellow-300', perk: 'Dotación de patrocinio Nivel Oro' },
+            { id: 'PLATA', name: 'Nivel PLATA', amount: 400, emoji: '🥈', border: 'border-slate-300', glow: 'shadow-[0_0_10px_rgba(203,213,225,0.2)]', text: 'text-slate-200', perk: 'Dotación de patrocinio Nivel Plata' },
+            { id: 'BRONCE', name: 'Nivel BRONCE', amount: 250, emoji: '🥉', border: 'border-amber-600', glow: '', text: 'text-amber-400', perk: 'Dotación de patrocinio Nivel Bronce' },
+            { id: 'COBRE', name: 'Nivel COBRE', amount: 150, emoji: '🔶', border: 'border-amber-700', glow: '', text: 'text-amber-500', perk: 'Dotación de patrocinio Nivel Cobre' },
+            { id: 'COLABORADOR', name: 'Nivel COLABORADOR', amount: 100, emoji: '🤝', border: 'border-cyan-500', glow: '', text: 'text-cyan-300', perk: 'Dotación de patrocinio Nivel Colaborador' }
         ];
 
         const sponsorHtml = `
@@ -2922,10 +2922,9 @@ Object.assign(ui, {
                     </div>
 
                     <div class="p-2.5 bg-cyan-950/20 border-l-2 border-cyan-400 text-[11px] text-slate-300 space-y-1">
-                        <strong class="text-cyan-300 uppercase font-mono block text-[10px]">Beneficios Estratégicos del Patrocinador:</strong>
-                        <p>1. <strong>Inyección inmediata de tesorería:</strong> Los fondos (€v) se abonan al instante en la cuenta de la empresa.</p>
-                        <p>2. <strong>Reducción de Costes Operativos:</strong> El patrocinio reduce de forma permanente la factura operativa mensual.</p>
-                        <p>3. <strong>Desbloqueo Exclusivo de Licitación PLD Space (F1-C02, +250 €v):</strong> Obtener nivel 🥇 ORO o 🥈 PLATA desbloquea el derecho preferente a firmar el contrato comercial de Fase I con PLD Space.</p>
+                        <strong class="text-cyan-300 uppercase font-mono block text-[10px]">Beneficios del Patrocinador:</strong>
+                        <p>1. <strong>Inyección en tesorería:</strong> Los fondos (€v) se abonan en la cuenta bancaria de la empresa.</p>
+                        <p>2. <strong>Reducción de Costes:</strong> El patrocinio reduce la factura de costes operativos de la empresa.</p>
                     </div>
                 </div>
             </div>
