@@ -79,7 +79,7 @@ Object.assign(ui, {
             docSectionContent = `
                 <div class="mb-3 flex flex-wrap justify-between items-center gap-2">
                     <span class="bg-mars-yellow/10 border border-mars-yellow text-mars-yellow text-xs font-black px-2.5 py-1 uppercase">Peso en Proyecto: 5% Global (25% cada criterio)</span>
-                    <span class="text-xs text-slate-300 uppercase font-bold">Resp: Dpto. Técnico</span>
+                    <span class="text-xs text-slate-300 uppercase font-bold">Resp: Dpto. Operaciones e IA</span>
                 </div>
                 <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Entregables trigonométricos y constructivos para Matemáticas (Solo Enlaces Drive/Cloud).</p>
                 

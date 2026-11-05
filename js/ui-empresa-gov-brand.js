@@ -1353,7 +1353,7 @@ Object.assign(ui, {
                         <span class="text-xs bg-black text-mars-cyan border border-mars-cyan px-2.5 py-1 font-bold font-mono">5 Hitos Oficiales</span>
                     </div>
                     <p class="text-xs text-slate-300 mb-4 leading-relaxed">
-                        Los documentos oficiales de <strong class="text-white">Identidad de Marca (10%+10%)</strong>, <strong class="text-white">Business Model (25%)</strong>, <strong class="text-white">Canvas (15%)</strong> y <strong class="text-white">Dossier de Inversores (15%)</strong> se gestionan y supervisan de forma centralizada con trazabilidad completa de versiones y correcciones docentes.
+                        Los documentos oficiales de <strong class="text-white">Identidad de Marca (10%+10%)</strong>, <strong class="text-white">Business Model (25%)</strong>, <strong class="text-white">Canvas (15%)</strong> y <strong class="text-white">Dossier de Inversores (40% LEN)</strong> se gestionan y supervisan de forma centralizada con trazabilidad completa de versiones y correcciones docentes.
                     </p>
                     <div class="space-y-2 mb-6">
                         <div class="bg-black/60 border border-slate-800 p-3 rounded flex justify-between items-center text-xs">
@@ -1374,7 +1374,7 @@ Object.assign(ui, {
                         </div>
                         <div class="bg-black/60 border border-slate-800 p-3 rounded flex justify-between items-center text-xs">
                             <span class="text-slate-300">Dossier para Inversores • Lengua Castellana</span>
-                            <span class="text-mars-magenta font-mono font-bold">15%</span>
+                            <span class="text-mars-magenta font-mono font-bold">40% LEN</span>
                         </div>
                     </div>
                     <button type="button" onclick="ui.navigate('role_deliverables')" class="w-full min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_12px_rgba(0,255,204,0.3)] flex items-center justify-center gap-2">

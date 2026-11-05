@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.63) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.64) ---
 
-const APP_VERSION = "1.1.63";
+const APP_VERSION = "1.1.64";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -117,7 +117,7 @@ const OFFICIAL_DOC_TEMPLATES = Object.freeze({
     DOC_7_B2B_DESINVERSION: {
         id: 'DOC_7_B2B_DESINVERSION',
         title: 'ADUANA DOCENTE & MERCADO B2B — MEMORIA TÉCNICA DE DESINVERSIÓN Y DECLARACIÓN DE EXCEDENTES',
-        flow: 'Técnico/Financiero ➔ Mercado B2B & Aduana Docente',
+        flow: 'Técnico ➔ Mercado B2B & Aduana Docente',
         copyUrl: 'https://docs.google.com/document/d/1V1amJQa0GkogTC2r8HPAJRUCVj3UlG0HIvjgHx4Csas/copy'
     },
     DOC_9_ORDEN_ADQUISICION: {
@@ -159,7 +159,7 @@ const OFFICIAL_DOC_TEMPLATES = Object.freeze({
     DOC_15_NOTA_PRENSA: {
         id: 'DOC_15_NOTA_PRENSA',
         title: 'NOTA DE PRENSA CORPORATIVA // COMUNICADO OFICIAL',
-        flow: 'CEO ➔ Tablón de Noticias / Prensa de la Misión',
+        flow: 'CEO ➔ Profesor de Lengua y Coordinación Docente',
         copyUrl: 'https://docs.google.com/document/d/1BQVeds2j0lCe4AG6N2ciYDv5XqrSxb5i3wlsyAMUm2Y/copy'
     },
     DOC_16_ACTA_COMITE: {
@@ -436,7 +436,7 @@ const CONTRACTS_CATALOG_DEF = Object.freeze([
         reward: 150,
         penalty: 50,
         verification: 'Registro oficial de transferencias B2B auditadas en Aduana.',
-        dept: 'OPERACIONES'
+        dept: 'TECNICO'
     },
     {
         id: 'F3-C04',
@@ -703,11 +703,11 @@ const GLOBAL_WEIGHTS = {
 
 const RUBRIC_CONFIG = {
     FYQ: { name: "Física y Química", criteria: [
-        {id: 'c1', name: '1. Informe Preliminar, Boceto y Foto (10%)', weight: 0.10}, 
-        {id: 'c_ws', name: '2. Hoja Oficial de Taller, BOM y Control de Calidad (10%)', weight: 0.10},
-        {id: 'c2', name: '3. Informe Técnico Final Exhaustivo (30%)', weight: 0.30}, 
-        {id: 'c3', name: '4. Prototipo Físico y Lanzamiento (30%)', weight: 0.30}, 
-        {id: 'c4', name: '5. Media de Test Rol y Defensa Q&A (20%)', weight: 0.20}
+        {id: 'c1', name: '1. Informe Preliminar, Boceto y Foto', weight: 0.10}, 
+        {id: 'c_ws', name: '2. Hoja Oficial de Taller, BOM y Control de Calidad', weight: 0.10},
+        {id: 'c2', name: '3. Informe Técnico Final Exhaustivo', weight: 0.30}, 
+        {id: 'c3', name: '4. Prototipo Físico y Lanzamiento', weight: 0.30}, 
+        {id: 'c4', name: '5. Media de Test Rol y Defensa Q&A', weight: 0.20}
     ] },
     ECO: { name: "Economía", criteria: [
         {id: 'c1', name: 'Test Evaluación', weight: 0.20}, 
@@ -726,8 +726,9 @@ const RUBRIC_CONFIG = {
         {id: 'c7', name: 'Defensas Orales', weight: 0.20}
     ] },
     LEN: { name: "Lengua Castellana", criteria: [
-        {id: 'c1', name: 'Producción Oral', weight: 0.50}, 
-        {id: 'c2', name: 'Producción Escrita (Dossier Inversores)', weight: 0.50}
+        {id: 'c1', name: '1. Producción Oral', weight: 0.50}, 
+        {id: 'c2', name: '2. Producción Escrita (Dossier Inversores)', weight: 0.40},
+        {id: 'c3', name: '3. Conjunto de Notas de Prensa', weight: 0.10}
     ] },
     MAT: { name: "Matemáticas", criteria: [
         {id: 'c1', name: 'Elaboración Goniómetro', weight: 0.25}, 
@@ -910,7 +911,7 @@ const DELIVERABLES_DEF = [
       role: "MARKETING",
       defaultOpenDate: "2027-03-31T00:00",
       defaultDate: "2027-04-23T23:59",
-      weight: "50% LEN",
+      weight: "40% LEN",
       defaultGuideDocUrl: ""
     },
 
@@ -1088,8 +1089,26 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.63
+// Changelog Oficial de Producción v1.1.64
 const APP_CHANGELOG = [
+    {
+      version: "1.1.64",
+      date: new Date().toISOString().split('T')[0],
+      title: "Asistente Contextual Docente, Selector Visual por Clases, Cronograma de Fases y Rúbrica Ponderada Oficial",
+      items: [
+        "Asistente Contextual Docente ('¿Qué me toca hacer hoy?'): Monitor inteligente que identifica la asignatura del profesor y la fase activa de la misión, guiándole paso a paso sobre qué entregables evaluar y ofreciendo un botón de acción en 1 clic hacia la siguiente empresa pendiente.",
+        "Guía Visual y Cronograma de las 5 Fases: Panel interactivo desplegable con el calendario de las Fases I a V (fechas y nombre oficial) y el desglose de criterios y pesos específicos evaluables para cada asignatura.",
+        "Nuevo Selector Visual de Startups en Cascada: Sustitución del desplegable ciego por una cuadrícula interactiva con selector rápido por clase (A-F y TEST) y tarjetas de empresa con semáforos de estado (calificada, lista con entregas o sin entregas).",
+        "Rúbrica Oficial de Lengua Castellana (LEN) y Notas de Prensa: Rebalanceo curricular con Producción Oral (50%), Dossier para Inversores (40% LEN) y Conjunto de Notas de Prensa DOC_15 (10% LEN), con visualizador directo de los 4 comunicados de prensa del CEO.",
+        "Corrección de Porcentajes en Física y Química (FyQ): Eliminación de la duplicación de texto en los criterios de FyQ en el Dossier y modales, garantizando una visualización tipográfica limpia.",
+        "Homogeneización de Flujos Oficiales B2B y Dpto. Técnico: Actualización del contrato F3-C03 (Wallapop PRO) a responsabilidad exclusiva del Técnico y alineación de las plantillas DOC_7 (Desinversión B2B) y DOC_15 (Notas de Prensa)."
+      ],
+      highlights: [
+        { type: "DOCENTE", text: "Asistente '¿Qué me toca hacer hoy?' con guía paso a paso y salto directo en 1 clic a la empresa pendiente." },
+        { type: "SELECTOR", text: "Cuadrícula visual de startups por clase con semáforos de estado de entrega y calificación." },
+        { type: "CURRICULAR", text: "Pesos oficiales de Lengua (50/40/10), visualizador de Notas de Prensa DOC_15 y corrección del porcentaje en FyQ." }
+      ]
+    },
     {
       version: "1.1.63",
       date: new Date().toISOString().split('T')[0],

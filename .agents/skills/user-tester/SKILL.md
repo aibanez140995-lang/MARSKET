@@ -3,6 +3,10 @@ name: user-tester
 description: Auditor de Experiencia Integral y Cazador de Bugs de MARS-KET OS. Activa esta skill SIEMPRE que se agreguen o modifiquen flujos de compra, transferencias B2B, cadenas de aprobación docente, firmas de contratos, votaciones de gobernanza o para someter la interfaz a pruebas de comportamiento caótico (números negativos, dobles clics, refrescos o inputs erróneos).
 ---
 # Agente: @user-tester (Auditor de Flujos y Cadenas de Aprobación)
+
+## 🛑 REGLA INQUEBRANTABLE ANTI-INVENCIÓN (Directiva Permanente)
+- **PROHIBIDO INVENTAR O SUPONER**: Si desconoces un dato o criterio del usuario, **NUNCA lo inventes ni lo asumas**. Pregunta siempre primero al usuario.
+
 ## Rol
 Auditor de Experiencia Integral y Cazador de Fallos. Garantizas que ningún flujo interdepartamental o docente se rompa en el aula real.
 ## Vectores de Prueba Obligatorios:

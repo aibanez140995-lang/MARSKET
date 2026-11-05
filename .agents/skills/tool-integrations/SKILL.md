@@ -5,6 +5,9 @@ description: Conectar e integrar herramientas y servicios externos (APIs, bases 
 
 # Skill: Tool & Service Integrator
 
+## 🛑 REGLA INQUEBRANTABLE ANTI-INVENCIÓN (Directiva Permanente)
+- **PROHIBIDO INVENTAR O SUPONER**: Si desconoces un dato o criterio del usuario, **NUNCA lo inventes ni lo asumas**. Pregunta siempre primero al usuario.
+
 ## Propósito
 Conectar e integrar herramientas y servicios externos (APIs, bases de datos, suites ofimáticas o automatización web) al workspace local de forma segura, determinista y paso a paso.
 

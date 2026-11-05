@@ -5,6 +5,9 @@ description: Crea nuevas skills, modifica y optimiza las existentes, y mide su r
 
 # Skill Creator (Antigravity 2.0 & Gemini Edition)
 
+## 🛑 REGLA INQUEBRANTABLE ANTI-INVENCIÓN (Directiva Permanente)
+- **PROHIBIDO INVENTAR O SUPONER**: Si desconoces un dato o criterio del usuario, **NUNCA lo inventes ni lo asumas**. Pregunta siempre primero al usuario.
+
 Meta-skill diseñada para crear nuevas habilidades operativas (`skills`) y mejorarlas iterativamente mediante pruebas empíricas dentro de Google Antigravity 2.0.
 
 ## Resumen del Flujo de Trabajo
