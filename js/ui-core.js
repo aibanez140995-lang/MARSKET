@@ -1115,47 +1115,178 @@ const ui = {
             const isCoord = Boolean(state.user && state.user.role && state.user.role.startsWith('COORD_'));
             return `
             <div class="space-y-4 font-mono text-xs leading-relaxed text-slate-200">
-                <!-- 1. Tarjeta de Responsabilidad y Tareas Operativas -->
+                <!-- 1. Encabezado Operativo y Ficha de Puesto -->
                 <div class="bg-mars-cyan/10 border-l-4 border-mars-cyan p-3.5 bg-slate-950">
                     <div class="flex items-center justify-between gap-2 flex-wrap mb-1.5">
-                        <span class="text-xs font-black uppercase text-mars-cyan tracking-wider">🎓 PUESTO: CLAUSTRO DOCENTE / EVALUADOR</span>
-                        <span class="text-[10px] bg-black text-mars-green border border-mars-green/40 px-2 py-0.5 font-bold uppercase">FICHA OPERATIVA</span>
+                        <span class="text-xs font-black uppercase text-mars-cyan tracking-wider">🎓 PUESTO: CLAUSTRO DOCENTE // EVALUADOR INTERDISCIPLINAR</span>
+                        <span class="text-[10px] bg-black text-mars-green border border-mars-green/40 px-2 py-0.5 font-bold uppercase">v1.1.66 OFICIAL</span>
                     </div>
                     <p class="text-white text-xs font-semibold leading-relaxed mb-3">
-                        Supervisar el aprendizaje competencial de las 6 materias LOMLOE, calificar evidencias en Google Drive con rúbricas oficiales, auditar aduanas y velar por la gobernanza de las startups.
+                        Supervisar el aprendizaje competencial de las 6 materias LOMLOE, evaluar los <strong>18 entregables oficiales</strong> en Google Drive mediante rúbricas ponderadas (0-10), arbitrar trámites aduaneros y coordinar las startups del consorcio.
                     </p>
-                    <div class="border-t border-slate-800 pt-2.5 space-y-1.5 text-xs text-slate-300">
-                        <p class="text-mars-green font-bold uppercase text-[11px] mb-1">Tareas Operativas Clave:</p>
-                        <ul class="space-y-1.5 pl-1">
-                            <li>[ ] <strong>Llavero y PINs:</strong> Entra en <strong>Startups</strong> para consultar o imprimir las credenciales de acceso de los equipos.</li>
-                            <li>[ ] <strong>Aduana y B2B:</strong> Revisa y aprueba contratos entre startups o solicitudes de I+D tras verificar su enlace en Google Drive.</li>
-                            <li>[ ] <strong>Acciones Publicitarias [LYE & Coord]:</strong> Supervisa en recepción docente las acciones publicitarias validadas por el CEO con su enlace a Drive.</li>
-                            <li>[ ] <strong>Evaluación Curricular:</strong> Abre el documento del alumno en Drive y califica con la rúbrica oficial (FYQ, LYE, ECO, MAT, LEN).</li>
-                            ${isCoord ? `<li>[ ] <strong>Coordinación de Misión:</strong> Ajusta cronograma, candados de apertura de entregables y copias de seguridad de la base de datos.</li>` : ''}
+
+                    <!-- Bloque Checklist de Aula en 3 Minutos -->
+                    <div class="bg-slate-900/90 border border-mars-cyan/30 p-2.5 rounded mb-3">
+                        <p class="text-mars-cyan font-black uppercase text-[11px] mb-1.5 flex items-center gap-1.5">
+                            <span>⚡ TU RUTINA DE AULA EN 3 MINUTOS (CHECKLIST DE ENTRADA):</span>
+                        </p>
+                        <ul class="space-y-2 text-xs text-slate-300 pl-1">
+                            <li>[ ] <strong>1. Filtra por clases con entregas pendientes (🟡 N):</strong> En la barra superior de <strong>Rúbricas</strong>, pulsa sobre las clases que muestren un badge amarillo pulsante (ej. <span class="text-amber-300 font-bold bg-amber-950/80 px-1 py-0.2 rounded border border-amber-500/40">🟡 2</span>). Esas clases tienen startups con entregas esperando tu calificación.</li>
+                            <li>[ ] <strong>2. Consulta el Asistente Contextual:</strong> El monitor <em>"¿Qué me toca hacer hoy?"</em> identifica tu materia y fase activa. Pulsa <strong class="text-mars-cyan">[⚡ Evaluar siguiente pendiente ➔]</strong> para saltar en 1 clic a la empresa que te toca revisar.</li>
+                            <li>[ ] <strong>3. Califica o Devuelve en 1 Clic:</strong> Abre el Google Doc del alumno en la columna derecha de evidencias. Califica con notas de <strong>0 a 10</strong> (la ponderación oficial se calcula sola al 100%). Si el enlace está privado o incompleto, pulsa <strong class="text-red-400">[↩ Subsanar]</strong> seleccionando el motivo tipificado.</li>
+                            <li>[ ] <strong>4. Resuelve la Aduana:</strong> En <strong>🛃 Validaciones y Aduana</strong> autoriza licencias de vuelo AESA (FYQ), creatividades publicitarias (LYE) o compraventas de piezas B2B entre startups.</li>
                         </ul>
                     </div>
-                    <div class="pt-3 flex flex-wrap gap-2">
-                        <button type="button" onclick="ui.adminTab='startups'; ui.navigate('admin'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Startups y PINs</button>
-                        <button type="button" onclick="ui.adminTab='customs'; ui.navigate('admin'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Aduana & Solicitudes</button>
-                        <button type="button" onclick="ui.adminTab='eval'; ui.navigate('admin'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Evaluación</button>
+
+                    <!-- Botones de Navegación Rápida Docente -->
+                    <div class="pt-1 flex flex-wrap gap-2">
+                        <button type="button" onclick="ui.adminTab='eval'; ui.navigate('admin'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px] hover:bg-white transition-all shadow-sm">Ir a Rúbricas y Entregas</button>
+                        <button type="button" onclick="ui.adminTab='dash'; ui.navigate('admin'); ui.closeModal();" class="text-xs bg-mars-yellow text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px] hover:bg-white transition-all shadow-sm">Ir a Validaciones y Aduana</button>
+                        <button type="button" onclick="ui.adminTab='contracts'; ui.navigate('admin'); ui.closeModal();" class="text-xs bg-slate-800 border border-slate-600 text-white px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px] hover:bg-slate-700 transition-all">Ir a Contratos &amp; Misiones</button>
+                        ${isCoord ? `<button type="button" onclick="ui.adminMode='coord'; ui.adminTab='startups'; ui.navigate('admin'); ui.closeModal();" class="text-xs bg-amber-400 text-black px-3.5 py-2 font-black font-mono uppercase rounded min-h-[44px] hover:bg-white transition-all">🔑 Llavero de Startups (TIC)</button>` : ''}
                     </div>
                 </div>
 
-                <!-- 2. Entregables Asignados a tu Puesto -->
+                <!-- 2. Matriz Oficial de Evaluación por Asignaturas (18 Entregables y 100% Ponderado) -->
                 <div class="bg-slate-950 border border-slate-800 p-3.5">
-                    <p class="text-mars-cyan font-bold uppercase text-xs mb-2 flex items-center gap-1.5">
-                        <span>📁 Entregables Asignados a tu Puesto:</span>
-                    </p>
-                    <div class="bg-black/60 border border-slate-800 p-3 text-xs text-slate-300 space-y-1.5">
-                        <p><strong>Supervisión Global del Consorcio:</strong> Evaluación y calificación de los <strong>19 entregables curriculares</strong> del proyecto en Google Drive con rúbrica oficial LOMLOE.</p>
-                        <p class="text-[11px] text-slate-400">Las calificaciones se vuelcan en tiempo real al Acta General Ponderada (100%) y los trámites visados desaparecen de la bandeja de pendientes.</p>
+                    <div class="flex justify-between items-center mb-2 flex-wrap gap-1">
+                        <p class="text-mars-cyan font-bold uppercase text-xs flex items-center gap-1.5">
+                            <span>📁 Matriz Oficial de Evaluación por Asignatura (18 Entregables):</span>
+                        </p>
+                        <span class="text-[10px] text-slate-400 font-mono">100% ACTA GENERAL LOMLOE</span>
+                    </div>
+
+                    <div class="space-y-3">
+                        <!-- FYQ -->
+                        <div class="bg-black/60 border border-cyan-500/40 p-2.5 rounded">
+                            <div class="flex justify-between items-center border-b border-slate-800 pb-1 mb-1.5">
+                                <span class="text-cyan-400 font-bold uppercase text-xs">🧪 Física y Química (25% del Proyecto)</span>
+                                <span class="text-[10px] font-mono text-cyan-300">5 Criterios</span>
+                            </div>
+                            <ul class="text-[11px] text-slate-300 space-y-1 pl-1">
+                                <li>• <strong>1. Informe Preliminar, Boceto y Foto (10%):</strong> Fase I (Dpto. Técnico). Enlace a Docs.</li>
+                                <li>• <strong>2. Hoja Oficial de Taller DOC_10 y BOM (10%):</strong> Fase III (Técnico + Operaciones).</li>
+                                <li>• <strong>3. Informe Técnico Final Exhaustivo (30%):</strong> Fase IV (Dpto. Técnico).</li>
+                                <li>• <strong>4. Prototipo Físico y Prueba de Lanzamiento (30%):</strong> Fases II a V (Evaluación directa en aula).</li>
+                                <li>• <strong>5. Media de Test de Rol y Defensa Q&amp;A (20%):</strong> Fases I a IV (Evaluación directa en aula).</li>
+                                <li class="text-amber-400 pt-0.5">• <em>Trámite en Aduana:</em> Autorización de Licencia de Vuelo AESA (DOC_14, 50 €v).</li>
+                            </ul>
+                        </div>
+
+                        <!-- LYE -->
+                        <div class="bg-black/60 border border-purple-500/40 p-2.5 rounded">
+                            <div class="flex justify-between items-center border-b border-slate-800 pb-1 mb-1.5">
+                                <span class="text-purple-400 font-bold uppercase text-xs">💼 Liderazgo y Emprendimiento (40% del Proyecto)</span>
+                                <span class="text-[10px] font-mono text-purple-300">7 Criterios</span>
+                            </div>
+                            <ul class="text-[11px] text-slate-300 space-y-1 pl-1">
+                                <li>• <strong>1A. Nombre, Logo y Tagline (10%):</strong> Fase I (Marketing).</li>
+                                <li>• <strong>1B. Identidad de Marca y Manual (10%):</strong> Fase III (Marketing).</li>
+                                <li>• <strong>2. Business Model — Documento Escrito (25%):</strong> Fase III (Marketing).</li>
+                                <li>• <strong>3. Business Model Canvas (15%):</strong> Fase IV (Marketing).</li>
+                                <li>• <strong>4A. Diario de Decisiones e IA Dic (10%, DOC_4):</strong> Fase I (Operaciones e IA).</li>
+                                <li>• <strong>4B. Diario de Decisiones e IA Abr (10%, DOC_4):</strong> Fase IV (Operaciones e IA).</li>
+                                <li>• <strong>Defensas Orales de Emprendimiento (20%):</strong> Fases I a V (Evaluación directa en aula).</li>
+                                <li class="text-amber-400 pt-0.5">• <em>Trámite en Aduana:</em> Validación de Fichas de Campaña Publicitaria (DOC_12).</li>
+                            </ul>
+                        </div>
+
+                        <!-- LEN -->
+                        <div class="bg-black/60 border border-blue-500/40 p-2.5 rounded">
+                            <div class="flex justify-between items-center border-b border-slate-800 pb-1 mb-1.5">
+                                <span class="text-blue-400 font-bold uppercase text-xs">📚 Lengua Castellana (15% del Proyecto)</span>
+                                <span class="text-[10px] font-mono text-blue-300">3 Criterios</span>
+                            </div>
+                            <ul class="text-[11px] text-slate-300 space-y-1 pl-1">
+                                <li>• <strong>1. Producción Oral / Pitch (50%):</strong> Fases I a V (Evaluación directa en aula).</li>
+                                <li>• <strong>2. Producción Escrita / Dossier para Inversores (40%):</strong> Fase IV (Marketing). Texto argumentativo en Docs.</li>
+                                <li>• <strong>3. Conjunto de Notas de Prensa DOC_15 (10%):</strong> Fases I a IV (CEO a Lengua y Coordinación). Visualizador directo de los 4 comunicados de prensa en panel.</li>
+                            </ul>
+                        </div>
+
+                        <!-- ECO -->
+                        <div class="bg-black/60 border border-emerald-500/40 p-2.5 rounded">
+                            <div class="flex justify-between items-center border-b border-slate-800 pb-1 mb-1.5">
+                                <span class="text-emerald-400 font-bold uppercase text-xs">📈 Economía (10% del Proyecto)</span>
+                                <span class="text-[10px] font-mono text-emerald-300">5 Criterios</span>
+                            </div>
+                            <ul class="text-[11px] text-slate-300 space-y-1 pl-1">
+                                <li>• <strong>1. Presupuesto Inicial (20%):</strong> Fase I (Dpto. Financiero).</li>
+                                <li>• <strong>2. Presupuesto Post-Prototipo (20%):</strong> Fase II (Dpto. Financiero).</li>
+                                <li>• <strong>3. Balance de Situación (20%):</strong> Fase III (Dpto. Financiero).</li>
+                                <li>• <strong>4. Cuenta de Resultados (20%):</strong> Fase IV (Dpto. Financiero).</li>
+                                <li>• <strong>Test Evaluativo de Economía (20%):</strong> Fases I a IV (Evaluación directa en aula).</li>
+                            </ul>
+                        </div>
+
+                        <!-- MAT & ING -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div class="bg-black/60 border border-amber-500/40 p-2.5 rounded">
+                                <div class="flex justify-between items-center border-b border-slate-800 pb-1 mb-1">
+                                    <span class="text-amber-400 font-bold uppercase text-[11px]">📐 Matemáticas (5%)</span>
+                                    <span class="text-[10px] font-mono text-amber-300">4 Criterios (Fase II)</span>
+                                </div>
+                                <ul class="text-[10px] text-slate-300 space-y-0.5 pl-1">
+                                    <li>• Goniómetro (25%)</li>
+                                    <li>• Distancia Fija Conocida (25%)</li>
+                                    <li>• Dos Mediciones Angulares (25%)</li>
+                                    <li>• Informe Comparativo Final (25%)</li>
+                                    <li class="text-slate-400 italic">Entregados por Operaciones e IA.</li>
+                                </ul>
+                            </div>
+                            <div class="bg-black/60 border border-pink-500/40 p-2.5 rounded">
+                                <div class="flex justify-between items-center border-b border-slate-800 pb-1 mb-1">
+                                    <span class="text-pink-400 font-bold uppercase text-[11px]">🇬🇧 Inglés (5%)</span>
+                                    <span class="text-[10px] font-mono text-pink-300">2 Criterios</span>
+                                </div>
+                                <ul class="text-[10px] text-slate-300 space-y-0.5 pl-1">
+                                    <li>• 1. Expresión Oral / Micro-Pitch (70%) — Fases I a V</li>
+                                    <li>• 2. Expresión Escrita / Fichas (30%) — Fases I a IV</li>
+                                    <li class="text-slate-400 italic">Evaluación directa en aula.</li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- 3. Aviso Clave -->
+                <!-- 3. Manual Exhaustivo y Procedimientos de Gestión (Desplegable) -->
+                <details class="bg-black/60 border border-slate-800 p-2.5 rounded text-xs">
+                    <summary class="cursor-pointer text-mars-cyan font-bold uppercase select-none flex items-center justify-between">
+                        <span>⚙️ Manual Exhaustivo de Gestión Docente (Modo Aula &amp; Modo TIC)</span>
+                        <span class="text-slate-400 text-[10px] font-mono">Ver detalle ▼</span>
+                    </summary>
+                    <div class="mt-2.5 space-y-3 text-slate-300 border-t border-slate-800 pt-2.5 leading-relaxed text-xs">
+                        <div>
+                            <strong class="text-white uppercase block mb-1">1. Subsanación de Entregas con Motivo Tipificado:</strong>
+                            <p>Si un documento está en modo privado, no abre o está incompleto, no pongas un 0 provisional. Pulsa <strong class="text-red-400">[↩ Subsanar]</strong> junto al documento en evidencias adjuntas, selecciona el motivo tipificado (o redacta la corrección docente) y la app notificará a la startup abriendo la reentrega.</p>
+                        </div>
+                        <div>
+                            <strong class="text-white uppercase block mb-1">2. Arbitraje de Aduana B2B (Anti-Doble Venta):</strong>
+                            <p>En compras de 2ª mano entre startups, el material sigue el circuito <em>Técnico propone ➔ Finanzas autoriza ➔ Aduana valida</em>. Al aprobar el traspaso en Aduana, el sistema transfiere los fondos y, si hubiera solicitudes duplicadas de otras empresas por esa misma pieza única, las cancela y reembolsa de inmediato el 100% en sus respectivos balances.</p>
+                        </div>
+                        <div>
+                            <strong class="text-white uppercase block mb-1">3. Liquidación de Contratos Comerciales (Fases I a IV):</strong>
+                            <p>El CEO firma 1 contrato comercial durante los 3 primeros días lectivos de cada fase. Al cierre de fase, el docente comprueba en la pestaña <strong>Contratos &amp; Misiones</strong> si cumplieron el hito y pulsa <strong class="text-mars-green">[Aprobar Recompensa]</strong> o <strong class="text-mars-magenta">[Penalizar]</strong>.</p>
+                        </div>
+                        ${isCoord ? `
+                        <div class="border-t border-slate-800 pt-2">
+                            <strong class="text-amber-400 uppercase block mb-1">4. Funciones de Coordinación y TIC (Modo TIC):</strong>
+                            <ul class="space-y-1 text-slate-300 pl-2">
+                                <li>• <strong>Llavero Maestro:</strong> Genera PINs de acceso para los alumnos e imprime tarjetas en PDF A4.</li>
+                                <li>• <strong>Cronograma Maestro:</strong> Abre o bloquea fechas límite para los 18 hitos y responde sugerencias del alumnado.</li>
+                                <li>• <strong>Catálogo Oficial Imprimible:</strong> Descarga el catálogo limpio en PDF A4 o CSV sin piezas especiales de I+D.</li>
+                                <li>• <strong>Crónicas Nano Banana 3:</strong> Publica noticias con texto enriquecido y portadas de IA.</li>
+                                <li>• <strong>Copias Cloud D1:</strong> Descarga snapshots JSON de seguridad o fuerza sincronización en la nube.</li>
+                            </ul>
+                        </div>` : ''}
+                    </div>
+                </details>
+
+                <!-- 4. Aviso Clave -->
                 <div class="bg-slate-900/80 border border-amber-400/40 p-3.5 text-xs text-slate-300 space-y-1">
-                    <p class="text-amber-400 font-bold uppercase text-xs mb-1">⚠️ Aviso Clave:</p>
-                    <p>Los enlaces de Drive deben estar en modo <em>"Cualquiera con el enlace puede ver"</em>. Exige el cumplimiento estricto de la política Zero-PII (sin nombres ni datos personales de alumnos).</p>
+                    <p class="text-amber-400 font-bold uppercase text-xs mb-1">⚠️ Aviso Clave y Protección del Menor:</p>
+                    <p>Los enlaces de Google Drive deben estar en modo <em>"Cualquiera con el enlace puede ver"</em>. Exige el cumplimiento estricto de la política <strong>Zero-PII</strong> (sin nombres ni datos personales de alumnos en los documentos).</p>
+                    <p class="text-[11px] text-slate-400 pt-1 border-t border-slate-800">Cualquier consulta o reporte disciplinario debe gestionarse mediante motivos tipificados en la plataforma.</p>
                 </div>
             </div>`;
         }
@@ -1440,20 +1571,25 @@ const ui = {
                 </div>
 
                 <div class="bg-slate-900 border border-slate-800 p-3 space-y-2">
-                    <p class="text-mars-yellow font-bold uppercase text-xs">⚡ Directivas Rápidas de Aula:</p>
+                    <p class="text-mars-yellow font-bold uppercase text-xs flex items-center gap-1.5">
+                        <span>⚡ Rutina de Aula en 3 Clics para Profesores:</span>
+                    </p>
                     <ol class="space-y-1.5 text-xs text-slate-300 pl-4 list-decimal">
-                        <li><strong>Credenciales:</strong> Accede a <strong>Startups</strong> para consultar o imprimir códigos y PINs de los alumnos.</li>
-                        <li><strong>Aduana y B2B:</strong> Valida traspasos de piezas y solicitudes de I+D abriendo la memoria en Drive.</li>
-                        <li><strong>Evaluación:</strong> Califica los entregables de tu materia aplicando la rúbrica oficial.</li>
+                        <li><strong>1. Asistente Contextual:</strong> En <strong class="text-mars-cyan">📝 Rúbricas y Entregas</strong>, el monitor <em>"¿Qué me toca hacer hoy?"</em> detecta tu materia y fase activa, y te lleva con el botón <strong class="text-mars-cyan">[⚡ Evaluar siguiente pendiente ➔]</strong>.</li>
+                        <li><strong>2. Filtra por Avisos 🟡 N:</strong> Pulsa sobre las clases que muestren un aviso amarillo pulsante (<code>🟡 N</code>) con entregas listas, abre el Google Doc y califica (0 a 10) o pulsa <strong class="text-red-400">[↩ Subsanar]</strong> si faltan apartados.</li>
+                        <li><strong>3. Aduanas y Misiones:</strong> En <strong class="text-mars-cyan">🛃 Validaciones y Aduana</strong> autoriza licencias AESA (FYQ), campañas (LYE) o mercado B2B, y en <strong class="text-mars-cyan">🤝 Contratos</strong> liquida misiones comerciales.</li>
                     </ol>
                 </div>
 
                 <div class="pt-1 flex flex-col sm:flex-row gap-2">
-                    <button type="button" onclick="ui.closeOnboarding(); ui.adminTab='startups'; ui.navigate('admin');" class="min-h-[44px] flex-1 bg-mars-cyan text-black font-black uppercase text-xs py-2 px-3 tracking-wider hover:bg-white transition-all text-center">
-                        [ 🔑 LLAVERO DE STARTUPS &amp; PINs ]
+                    <button type="button" onclick="ui.closeOnboarding(); ui.adminTab='eval'; ui.navigate('admin');" class="min-h-[44px] flex-1 bg-mars-cyan text-black font-black uppercase text-xs py-2 px-3 tracking-wider hover:bg-white transition-all text-center">
+                        [ 📝 EVALUAR Y RÚBRICAS ]
+                    </button>
+                    <button type="button" onclick="ui.closeOnboarding(); ui.adminTab='dash'; ui.navigate('admin');" class="min-h-[44px] flex-1 bg-mars-yellow text-black font-black uppercase text-xs py-2 px-3 tracking-wider hover:bg-white transition-all text-center">
+                        [ 🛃 ADUANA &amp; TRÁMITES ]
                     </button>
                     <button type="button" onclick="ui.closeOnboarding(); ui.showGuide('DOCENTE');" class="min-h-[44px] flex-1 bg-slate-800 border border-slate-600 text-white font-bold uppercase text-xs py-2 px-3 tracking-wider hover:bg-slate-700 transition-all text-center">
-                        [ ❓ VER MANUAL DOCENTE ]
+                        [ ❓ MANUAL DOCENTE ]
                     </button>
                 </div>
             </div>`;

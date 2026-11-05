@@ -425,7 +425,7 @@ function addCoverPage(body) {
     ["Centro Educativo:", "Colegio Miravalles-El Redín (Simulación Interdisciplinar)"],
     ["Nivel y Materias:", "4º ESO / Bachillerato (FYQ, LYE, LEN, ECO, MAT, ING)"],
     ["Marco Legal:", "Protocolo Zero-Text y Privacidad de Menores (RGPD / AEPD)"],
-    ["Versión de App:", "MARS-KET OS v1.1.63 / v1.1.64"],
+    ["Versión de App:", "MARS-KET OS v1.1.66 Oficial (Noviembre 2026)"],
     ["Edición:", "Oficial para Alumnado y Claustro Docente (Noviembre 2026)"]
   ]);
   metaTable.setBorderWidth(1);

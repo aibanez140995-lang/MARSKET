@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.65) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.66) ---
 
-const APP_VERSION = "1.1.65";
+const APP_VERSION = "1.1.66";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1089,8 +1089,25 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.65
+// Changelog Oficial de Producción v1.1.66
 const APP_CHANGELOG = [
+    {
+      version: "1.1.66",
+      date: new Date().toISOString().split('T')[0],
+      title: "Guía Rápida y Manual Exhaustivo del Claustro Docente, Matriz de 18 Entregables y Procedimientos de Aula",
+      items: [
+        "Manual Oficial del Claustro Docente: Rediseño completo de la guía de usuario docente ([❓ GUÍA]), estructurada en 3 niveles (Guía rápida de 3 minutos, fichas de calificación por materia y manual de procedimientos exhaustivo).",
+        "Rutina de Aula en 3 Clics: Bienvenida docente actualizada con el protocolo ágil de evaluación (Asistente '¿Qué me toca hacer hoy?', radar de alertas 🟡 N y resolución de trámites).",
+        "Fichas Específicas por Asignatura: Guía detallada con qué califica cada profesor (FYQ 25%, LYE 40%, LEN 15%, ECO 10%, MAT 5%, ING 5%), las fases y los pesos exactos de los 18 entregables oficiales.",
+        "Guía de Subsanaciones [↩ Subsanar] y Aduanas B2B: Protocolo paso a paso para requerir correcciones en Google Docs y arbitraje del nuevo circuito B2B con blindaje anti-doble venta.",
+        "Generador Maestro de Google Docs para Docentes: Nuevo script en tools/generate-teacher-manual-google-doc.gs para maquetar el manual del claustro en Google Docs listo para compartir o imprimir."
+      ],
+      highlights: [
+        { type: "DOCENTE", text: "Nueva guía rápida de aula y manual exhaustivo específico para profesores en la app y Google Docs." },
+        { type: "CURRICULAR", text: "Fichas paso a paso por materia con pesos oficiales (100% Acta General LOMLOE)." },
+        { type: "ERGONOMÍA", text: "Acceso directo en 1 clic desde el manual a Rúbricas, Aduana, Contratos y Llavero Maestro." }
+      ]
+    },
     {
       version: "1.1.65",
       date: new Date().toISOString().split('T')[0],
