@@ -91,6 +91,9 @@ async function handleReset(context) {
         } catch (tableErr) {
             // En caso de operar sobre tabla única 'state'
         }
+        try {
+            await env.MARSKET_DB.prepare("DELETE FROM company_state;").run();
+        } catch (csErr) {}
 
         // 3. Resetear documento de estado en 'state' (id = 'current')
         const { results } = await env.MARSKET_DB.prepare("SELECT data FROM state WHERE id = 'current'").all();

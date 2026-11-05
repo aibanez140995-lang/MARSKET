@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v1.1.66
+// Versión: v1.1.67
 
 declare(strict_types=1);
 
@@ -569,12 +569,23 @@ try {
             }
 
             // Fusión de Secretos en Servidor (Evitar que el payload sanitizado borre PINs)
+            $defaultTeacherPins = [
+                'COORD_MARIO' => '0001',
+                'COORD_ALEX' => '0002',
+                'FYQ' => '0101',
+                'ECO' => '0202',
+                'LYE' => '0303',
+                'LEN' => '0404',
+                'MAT' => '0505',
+                'ING' => '0606',
+                'BIO' => '0707'
+            ];
             if (isset($payload['config']['teachers']) && is_array($payload['config']['teachers'])) {
                 foreach ($payload['config']['teachers'] as $tk => &$t) {
                     if (!empty($currentState['config']['teachers'][$tk]['pin'])) {
                         $t['pin'] = $currentState['config']['teachers'][$tk]['pin'];
                     } elseif (empty($t['pin'])) {
-                        $t['pin'] = '1234';
+                        $t['pin'] = $defaultTeacherPins[$tk] ?? '1234';
                     }
                 }
             } elseif (isset($currentState['config'])) {
@@ -620,6 +631,33 @@ try {
 
             $saveStmt = $pdo->prepare("INSERT OR REPLACE INTO state (id, data, updated_at) VALUES ('current', :data, CURRENT_TIMESTAMP)");
             $saveStmt->execute([':data' => $jsonString]);
+
+            // Sincronizar también la tabla company_state para que las acciones individuales de empresa tengan datos frescos y no pisen calificaciones docentes
+            if (!empty($payload['companies']) && is_array($payload['companies'])) {
+                try {
+                    $pdo->exec("
+                        CREATE TABLE IF NOT EXISTS company_state (
+                            company_id VARCHAR(100) PRIMARY KEY,
+                            data LONGTEXT NOT NULL,
+                            version INT NOT NULL DEFAULT 1,
+                            updated_at BIGINT NOT NULL
+                        )
+                    ");
+                    $coStmt = $pdo->prepare("
+                        INSERT OR REPLACE INTO company_state (company_id, data, version, updated_at)
+                        VALUES (:cid, :data, :version, :updated_at)
+                    ");
+                    $syncVer = (int)$payload['version'];
+                    foreach ($payload['companies'] as $compCid => $compData) {
+                        $coStmt->execute([
+                            ':cid' => $compCid,
+                            ':data' => json_encode($compData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                            ':version' => $syncVer,
+                            ':updated_at' => (int)($compData['updatedAt'] ?? $payload['lastUpdated'] ?? round(microtime(true) * 1000))
+                        ]);
+                    }
+                } catch (\Exception $e) {}
+            }
 
             echo json_encode(['success' => true, 'version' => $payload['version']]);
             exit;
@@ -759,10 +797,11 @@ try {
             exit;
         }
 
-        // Blindaje de credenciales: extraer la bóveda autorizada de state para no degradarla
+        // Blindaje de credenciales y campos docentes: extraer bóveda, calificaciones y licencias de state para no degradarlas
         try {
             $stmtAuth = $pdo->prepare("
                 SELECT 
+                    json_extract(data, '$.companies.' || :cid) AS state_co,
                     json_extract(data, '$.companies.' || :cid || '.authVault') AS vlt,
                     json_extract(data, '$.companies.' || :cid || '.authUpdatedAt') AS au,
                     json_extract(data, '$.companies.' || :cid || '.accessCode') AS ac
@@ -771,6 +810,40 @@ try {
             $stmtAuth->execute([':cid' => $cid]);
             $aRow = $stmtAuth->fetch();
             if ($aRow) {
+                if (!empty($aRow['state_co'])) {
+                    $sCo = json_decode($aRow['state_co'], true);
+                    if (is_array($sCo)) {
+                        // Preservar siempre calificaciones docentes sCo.grades
+                        if (!empty($sCo['grades']) && is_array($sCo['grades'])) {
+                            $co['grades'] = is_array($co['grades'] ?? null) ? $co['grades'] : [];
+                            foreach ($sCo['grades'] as $gSubj => $gVal) {
+                                $lG = $co['grades'][$gSubj] ?? null;
+                                $sGTime = (int)($gVal['updatedAt'] ?? 0);
+                                $lGTime = (int)($lG['updatedAt'] ?? 0);
+                                if (!$lG || $sGTime >= $lGTime) {
+                                    $co['grades'][$gSubj] = $gVal;
+                                }
+                            }
+                        }
+                        // Preservar patrocinio docente
+                        if (!empty($sCo['sponsorAwarded'])) {
+                            $co['sponsorAwarded'] = $sCo['sponsorAwarded'];
+                            if (isset($sCo['sponsorData'])) $co['sponsorData'] = $sCo['sponsorData'];
+                        }
+                        // Preservar licencia de vuelo AESA
+                        if (!empty($sCo['launchLicense'])) {
+                            $co['launchLicense'] = $sCo['launchLicense'];
+                        }
+                        // Preservar contratos comerciales
+                        if (!empty($sCo['contracts']) && is_array($sCo['contracts'])) {
+                            $co['contracts'] = $sCo['contracts'];
+                        }
+                        // Preservar sanciones docentes
+                        if (!empty($sCo['sanctions']) && is_array($sCo['sanctions'])) {
+                            $co['sanctions'] = $sCo['sanctions'];
+                        }
+                    }
+                }
                 if (!empty($aRow['vlt'])) {
                     $parsedVlt = is_string($aRow['vlt']) ? json_decode($aRow['vlt'], true) : $aRow['vlt'];
                     if (!empty($parsedVlt['code'])) {
@@ -1000,6 +1073,29 @@ try {
                 }
                 break;
 
+            case 'DOCENTE_REVIEW_DELIVERABLE':
+                if (empty($auth['isAdmin']) && empty($auth['isCoordinator'])) {
+                    http_response_code(403);
+                    echo json_encode(['error' => 'UNAUTHORIZED_ROLE', 'message' => 'Solo el profesorado o Coordinación puede devolver entregables.']);
+                    exit;
+                }
+                $rawKey = trim((string)($payload['key'] ?? $payload['docKey'] ?? $payload['docType'] ?? ''));
+                $co['deliverables'] = is_array($co['deliverables'] ?? null) ? $co['deliverables'] : [];
+                $currentDoc = $co['deliverables'][$rawKey] ?? null;
+                $reasonId = trim((string)($payload['reasonId'] ?? ''));
+                $reasonText = trim((string)($payload['reasonText'] ?? $payload['reason'] ?? $reasonId));
+                $driveUrl = is_array($currentDoc) ? ($currentDoc['driveUrl'] ?? '') : (string)$currentDoc;
+                
+                $co['deliverables'][$rawKey] = [
+                    'driveUrl' => $driveUrl,
+                    'status' => 'PENDING',
+                    'returnReasonId' => $reasonId,
+                    'returnReason' => $reasonText,
+                    'returnByTeacher' => true,
+                    'updatedAt' => date('c')
+                ];
+                break;
+
             case 'COORDINATOR_DECIDE_BRAND':
                 if (empty($auth['isCoordinator']) && empty($auth['isAdmin'])) {
                     http_response_code(403);
@@ -1082,13 +1178,16 @@ try {
         try {
             $syncStmt = $pdo->prepare("
                 UPDATE state
-                SET data = json_set(data, '$.companies.' || :cid, json(:co_json), '$.version', :ver)
+                SET data = json_set(
+                    data,
+                    '$.companies.' || :cid, json(:co_json),
+                    '$.version', COALESCE(json_extract(data, '$.version'), 0) + 1
+                )
                 WHERE id = 'current'
             ");
             $syncStmt->execute([
                 ':cid' => $cid,
-                ':co_json' => json_encode($co, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                ':ver' => $newVersion
+                ':co_json' => json_encode($co, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
             ]);
         } catch(\Exception $e) {}
 
@@ -1581,6 +1680,10 @@ try {
 
             $saveStmt = $pdo->prepare("UPDATE state SET data = :data, updated_at = CURRENT_TIMESTAMP WHERE id = 'current'");
             $saveStmt->execute([':data' => json_encode($currentState, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
+
+            try {
+                $pdo->exec("DELETE FROM company_state");
+            } catch (\Exception $e) {}
 
             echo json_encode([
                 'success' => true,

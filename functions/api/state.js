@@ -460,12 +460,23 @@ export async function onRequest(context) {
             // El cliente envía 'payload'. Reinyectamos las credenciales reales de D1.
             
             // A. Restaurar PINs docentes
+            const defaultTeacherPins = {
+                'COORD_MARIO': '0001',
+                'COORD_ALEX': '0002',
+                'FYQ': '0101',
+                'ECO': '0202',
+                'LYE': '0303',
+                'LEN': '0404',
+                'MAT': '0505',
+                'ING': '0606',
+                'BIO': '0707'
+            };
             if (payload.config && payload.config.teachers) {
                 for (const key in payload.config.teachers) {
                     if (currentState.config?.teachers?.[key] && currentState.config.teachers[key].pin) {
                         payload.config.teachers[key].pin = currentState.config.teachers[key].pin;
                     } else if (!payload.config.teachers[key].pin) {
-                        payload.config.teachers[key].pin = "1234";
+                        payload.config.teachers[key].pin = defaultTeacherPins[key] || "1234";
                     }
                 }
                 if (currentState.config?.teachers) {
@@ -539,6 +550,30 @@ export async function onRequest(context) {
             
             // Escritura atómica directa en D1 (Supresión de backup_previous para eliminar Write Amplification)
             await env.MARSKET_DB.prepare("INSERT OR REPLACE INTO state (id, data) VALUES ('current', ?)").bind(dataString).run();
+
+            // Sincronizar también company_state para que las acciones de empresa tengan datos frescos y no pisen calificaciones docentes
+            if (payload.companies && typeof payload.companies === 'object') {
+                try {
+                    await env.MARSKET_DB.prepare(`
+                        CREATE TABLE IF NOT EXISTS company_state (
+                            company_id TEXT PRIMARY KEY,
+                            data TEXT NOT NULL,
+                            version INTEGER NOT NULL DEFAULT 1,
+                            updated_at INTEGER NOT NULL
+                        )
+                    `).run();
+                    const syncVer = payload.version;
+                    const compStmts = Object.entries(payload.companies).map(([compCid, compData]) => {
+                        const upTime = Number(compData?.updatedAt) || Number(payload.lastUpdated) || Date.now();
+                        return env.MARSKET_DB.prepare(
+                            "INSERT OR REPLACE INTO company_state (company_id, data, version, updated_at) VALUES (?, ?, ?, ?)"
+                        ).bind(compCid, JSON.stringify(compData), syncVer, upTime);
+                    });
+                    if (compStmts.length > 0) {
+                        await env.MARSKET_DB.batch(compStmts);
+                    }
+                } catch(e) {}
+            }
             
             return new Response(JSON.stringify({ success: true, version: payload.version }), { headers });
         }

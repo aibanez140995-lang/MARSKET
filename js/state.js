@@ -821,12 +821,18 @@ const state = {
                         }
                         merged.companies[k].authUpdatedAt = sAuthTime;
                     }
-                    // Preservar siempre calificaciones docentes sCo.grades de la nube
+                    // Preservar siempre calificaciones docentes usando Last-Write-Wins (LWW) por asignatura
                     if (sCo.grades) {
                         merged.companies[k].grades = merged.companies[k].grades || {};
                         for (const subj in sCo.grades) {
-                            if (sCo.grades[subj] && sCo.grades[subj].final !== undefined && sCo.grades[subj].final !== null) {
-                                merged.companies[k].grades[subj] = JSON.parse(JSON.stringify(sCo.grades[subj]));
+                            const sG = sCo.grades[subj];
+                            const lG = merged.companies[k].grades[subj];
+                            if (sG && sG.final !== undefined && sG.final !== null) {
+                                const sGTime = Number(sG.updatedAt) || sTime;
+                                const lGTime = Number(lG?.updatedAt) || lTime;
+                                if (!lG || sGTime >= lGTime) {
+                                    merged.companies[k].grades[subj] = JSON.parse(JSON.stringify(sG));
+                                }
                             }
                         }
                     }
@@ -959,12 +965,18 @@ const state = {
                             sCo.auxRoleRequest = JSON.parse(JSON.stringify(lCo.auxRoleRequest));
                         }
                     }
-                    // Preservar calificaciones locales si el servidor no las tiene
+                    // Preservar calificaciones locales si son más recientes o el servidor no las tiene (LWW)
                     if (lCo.grades) {
                         sCo.grades = sCo.grades || {};
                         for (const subj in lCo.grades) {
-                            if (!sCo.grades[subj] && lCo.grades[subj]) {
-                                sCo.grades[subj] = JSON.parse(JSON.stringify(lCo.grades[subj]));
+                            const lG = lCo.grades[subj];
+                            const sG = sCo.grades[subj];
+                            if (lG && lG.final !== undefined && lG.final !== null) {
+                                const lGTime = Number(lG.updatedAt) || lTime;
+                                const sGTime = Number(sG?.updatedAt) || sTime;
+                                if (!sG || lGTime >= sGTime) {
+                                    sCo.grades[subj] = JSON.parse(JSON.stringify(lG));
+                                }
                             }
                         }
                     }
@@ -1179,6 +1191,9 @@ const state = {
         this.user = null;
         this.currentUser = null;
         this.pin = '';
+        this.lastETag = null;
+        this.lastCompanyETag = null;
+        this._adminCredentialsFetched = false;
         if (typeof auth !== 'undefined') auth.verifiedCoId = null;
         try { localStorage.removeItem(this.sessionKey); } catch(e) {}
         try { sessionStorage.removeItem(this.sessionKey); } catch(e) {}
@@ -1459,12 +1474,7 @@ const state = {
             }
             this._adminCredentialsFetched = true;
             this.saveLocalOnly();
-            const etag = res.headers.get('ETag');
-            if (etag) {
-                this.lastETag = etag;
-            } else if (creds.version) {
-                this.lastETag = 'W/"v-' + creds.version + '"';
-            }
+            // No sobreescribir this.lastETag: reservado exclusivamente para la reconciliación global /api/state
             if (typeof ui !== 'undefined' && ui.adminTab === 'startups' && typeof ui.renderAdminStartups === 'function') {
                 const subContainer = document.getElementById('admin-subtab-container');
                 if (subContainer) subContainer.innerHTML = ui.renderAdminStartups();
@@ -1677,9 +1687,9 @@ const state = {
     },
 
     async executeAction(actionName, payload = {}) {
-        const coId = this.user?.coId;
+        const coId = this.user?.coId || payload?.coId;
         if (!coId) {
-            console.warn("[ACTION] executeAction requiere una sesión activa con startup asociada.");
+            console.warn("[ACTION] executeAction requiere una sesión activa con startup asociada o coId explícito.");
             return { success: false, error: 'NO_ACTIVE_COMPANY' };
         }
 
@@ -2218,6 +2228,9 @@ const state = {
 
     async fetchFromCloud(force = false) {
         if (!force && this.pausePolling) return false;
+        if (force) {
+            this.lastETag = null;
+        }
         this.isSyncing = true;
         try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
         let shouldRender = false;
@@ -2228,7 +2241,7 @@ const state = {
                 'Cache-Control': 'no-cache',
                 'X-Marsket-Auth': this.user?.authToken || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('marsket_token') : '') || ''
             };
-            if (this.lastETag) {
+            if (this.lastETag && !force) {
                 reqHeaders['If-None-Match'] = this.lastETag;
             }
             const res = await fetch('/api/state', { cache: 'no-store', headers: reqHeaders });
@@ -2330,7 +2343,9 @@ const state = {
             try {
                 const activeEl = typeof document !== 'undefined' ? document.activeElement : null;
                 const isEditingInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
-                if (!isEditingInput) {
+                const modalEl = typeof document !== 'undefined' ? document.getElementById('modal-overlay') : null;
+                const isModalOpen = modalEl && !modalEl.classList.contains('hidden');
+                if (!isEditingInput && !isModalOpen) {
                     const savedScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
                     ui.render();
                     if (typeof window !== 'undefined') {
@@ -2478,10 +2493,14 @@ const state = {
             const delay = Math.min(1500, 75 * Math.pow(2, attempt)) + Math.floor(Math.random() * 150);
             await new Promise(r => setTimeout(r, delay));
             
-            // Refrescar versión del servidor antes de reintentar
-            await this.fetchFromCloud();
-            payload.version = (Number(this.data.version) || 0) + 1;
-            return this.pushWithBackoff(payload, attempt + 1);
+            // Forzar descarga real sin ETag para reconciliar versión y datos más recientes antes de reintentar
+            await this.fetchFromCloud(true);
+            const newPayload = JSON.parse(JSON.stringify(this.data));
+            if (this.user?.coId) {
+                newPayload.coId = this.user.coId;
+            }
+            newPayload.version = (Number(this.data.version) || 0) + 1;
+            return this.pushWithBackoff(newPayload, attempt + 1);
         }
         return res;
     },
@@ -2513,6 +2532,12 @@ const state = {
                 if (json && json.version) {
                     this.data.version = json.version; 
                     this.saveLocalOnly();
+                }
+                const etag = res.headers.get('ETag');
+                if (etag) {
+                    this.lastETag = etag;
+                } else if (json && json.version) {
+                    this.lastETag = 'W/"v-' + json.version + '"';
                 }
                 this.isCloudOnline = true;
                 this.consecutiveNetworkFailures = 0;

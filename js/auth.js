@@ -532,6 +532,11 @@ const auth = (function() {
             state.currentUser = null;
             state.pin = '';
             _verifiedCoId = null;
+            if (typeof state !== 'undefined') {
+                state.lastETag = null;
+                state.lastCompanyETag = null;
+                state._adminCredentialsFetched = false;
+            }
             // WP1: Purga total inmediata de sesiones y almacenamiento en cliente
             try { sessionStorage.clear(); } catch(e) {}
             try { localStorage.clear(); } catch(e) {}

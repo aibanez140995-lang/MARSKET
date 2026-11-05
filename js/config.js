@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.66) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.67) ---
 
-const APP_VERSION = "1.1.66";
+const APP_VERSION = "1.1.67";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1089,8 +1089,25 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.66
+// Changelog Oficial de Producción v1.1.67
 const APP_CHANGELOG = [
+    {
+      version: "1.1.67",
+      date: new Date().toISOString().split('T')[0],
+      title: "Blindaje Integral de Calificaciones Docentes, Sincronización en la Nube y Resolución de Conflictos 409",
+      items: [
+        "Persistencia Fiable de Calificaciones: Corrección en la función de registro de notas para capturar dictámenes y evidencias antes del diálogo de confirmación parcial y escribir directamente sobre la entidad viva en memoria con guardado y sincronización inmediata a la nube.",
+        "Resolución Definitiva de Conflictos HTTP 409: Eliminación de la contaminación de etiquetas de versión (ETag) durante la obtención de credenciales de coordinación, permitiendo a los docentes y coordinadores guardar notas y cambios sin bucles de rechazo.",
+        "Fusión Inteligente Last-Write-Wins (LWW) en Notas: Sello de fecha y hora individual (updatedAt) en cada calificación por asignatura para que la sincronización en segundo plano respete siempre la nota más reciente y nunca sobreescriba una nueva nota con una versión anterior.",
+        "Coherencia Bipartita Servidor-Partición: Sincronización bidireccional automática entre la tabla central de estado y las particiones individuales de empresa al registrar calificaciones, licencias o contratos, impidiendo que acciones de alumnos degraden los registros evaluativos del profesorado.",
+        "Soporte Transaccional para Subsanación [↩ Subsanar]: Incorporación de la acción DOCENTE_REVIEW_DELIVERABLE en el servidor y preservación de los códigos PIN predeterminados del claustro docente."
+      ],
+      highlights: [
+        { type: "DOCENTE", text: "Garantía total de guardado y persistencia en rúbricas y calificaciones parciales." },
+        { type: "SINCRONIZACIÓN", text: "Erradicación de bucles de conflicto 409 y sobreescrituras en segundo plano." },
+        { type: "SERVIDOR", text: "Blindaje de notas docentes frente a acciones concurrentes de startups." }
+      ]
+    },
     {
       version: "1.1.66",
       date: new Date().toISOString().split('T')[0],

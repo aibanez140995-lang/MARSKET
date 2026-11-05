@@ -123,12 +123,42 @@ export async function onRequestPost(context) {
             return new Response(JSON.stringify({ error: 'COMPANY_NOT_FOUND', companyId: cid }), { status: 404, headers: CORS_HEADERS });
         }
 
-        // Blindaje de credenciales: extraer la bóveda autorizada de state para no degradarla
+        // Blindaje de credenciales y campos docentes: extraer bóveda, calificaciones y licencias de state para no degradarlas
         const authRow = await env.MARSKET_DB.prepare(
-            "SELECT json_extract(data, '$.companies.' || ? || '.authVault') as vlt, json_extract(data, '$.companies.' || ? || '.authUpdatedAt') as au, json_extract(data, '$.companies.' || ? || '.accessCode') as ac FROM state WHERE id = 'current'"
-        ).bind(cid, cid, cid).first().catch(() => null);
+            "SELECT json_extract(data, '$.companies.' || ?) as state_co, json_extract(data, '$.companies.' || ? || '.authVault') as vlt, json_extract(data, '$.companies.' || ? || '.authUpdatedAt') as au, json_extract(data, '$.companies.' || ? || '.accessCode') as ac FROM state WHERE id = 'current'"
+        ).bind(cid, cid, cid, cid).first().catch(() => null);
 
         if (authRow) {
+            if (authRow.state_co) {
+                try {
+                    const sCo = typeof authRow.state_co === 'string' ? JSON.parse(authRow.state_co) : authRow.state_co;
+                    if (sCo && typeof sCo === 'object') {
+                        // Preservar calificaciones docentes
+                        if (sCo.grades && typeof sCo.grades === 'object') {
+                            co.grades = co.grades || {};
+                            for (const subj in sCo.grades) {
+                                const sG = sCo.grades[subj];
+                                const lG = co.grades[subj];
+                                const sGTime = Number(sG?.updatedAt) || 0;
+                                const lGTime = Number(lG?.updatedAt) || 0;
+                                if (!lG || sGTime >= lGTime) {
+                                    co.grades[subj] = sG;
+                                }
+                            }
+                        }
+                        // Preservar asignación docente de patrocinio
+                        if (sCo.sponsorAwarded) {
+                            co.sponsorAwarded = sCo.sponsorAwarded;
+                            if (sCo.sponsorData) co.sponsorData = sCo.sponsorData;
+                        }
+                        // Preservar licencia AESA
+                        if (sCo.launchLicense) co.launchLicense = sCo.launchLicense;
+                        // Preservar contratos y sanciones
+                        if (Array.isArray(sCo.contracts)) co.contracts = sCo.contracts;
+                        if (Array.isArray(sCo.sanctions)) co.sanctions = sCo.sanctions;
+                    }
+                } catch(e) {}
+            }
             if (authRow.vlt) {
                 try {
                     const parsedVlt = typeof authRow.vlt === 'string' ? JSON.parse(authRow.vlt) : authRow.vlt;
@@ -409,6 +439,28 @@ export async function onRequestPost(context) {
                 break;
             }
 
+            case 'DOCENTE_REVIEW_DELIVERABLE': {
+                if (!auth.admin && !auth.isCoordinator) {
+                    return new Response(JSON.stringify({ error: 'UNAUTHORIZED_ROLE', message: 'Solo el profesorado o Coordinación puede devolver entregables.' }), { status: 403, headers: CORS_HEADERS });
+                }
+                const rawKey = String(payload.key || payload.docKey || payload.docType || '').trim();
+                co.deliverables = co.deliverables || {};
+                const currentDoc = co.deliverables[rawKey];
+                const reasonId = String(p.reasonId || '').trim();
+                const reasonText = String(p.reasonText || p.reason || reasonId).trim();
+                const driveUrl = typeof currentDoc === 'string' ? currentDoc : (currentDoc?.driveUrl || '');
+
+                co.deliverables[rawKey] = {
+                    driveUrl,
+                    status: 'PENDING',
+                    returnReasonId: reasonId,
+                    returnReason: reasonText,
+                    returnByTeacher: true,
+                    updatedAt: new Date().toISOString()
+                };
+                break;
+            }
+
             case 'COORDINATOR_DECIDE_BRAND': {
                 if (!auth.isCoordinator && !auth.admin) {
                     return new Response(JSON.stringify({ error: 'UNAUTHORIZED_ROLE', message: 'Solo Coordinación puede validar marcas.' }), { status: 403, headers: CORS_HEADERS });
@@ -539,10 +591,10 @@ export async function onRequestPost(context) {
                 SET data = json_set(
                     data,
                     '$.companies.' || ?, json(?),
-                    '$.version', ?
+                    '$.version', COALESCE(json_extract(data, '$.version'), 0) + 1
                 )
                 WHERE id = 'current'
-            `).bind(cid, JSON.stringify(co), newVersion).run();
+            `).bind(cid, JSON.stringify(co)).run();
         } catch(syncErr) {
             console.warn("[ACTION_SYNC] Fallback en sincronización legacy de state:", syncErr);
         }

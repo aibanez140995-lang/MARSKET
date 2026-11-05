@@ -821,8 +821,6 @@ Object.assign(ui, {
         const co = state.data.companies[this.evalSelectedCo];
         if (!co) return;
         
-        co.grades = co.grades || {};
-        
         let scores = {};
         let total = 0;
         let allFilled = true;
@@ -843,26 +841,43 @@ Object.assign(ui, {
                 allFilled = false;
             }
         });
+
+        // Capturar dictamen antes de cualquier apertura modal o redibujado de interfaz
+        const elFeedback = document.getElementById('eval-feedback');
+        const feedback = elFeedback ? this.cleanInput(elFeedback.value) : '';
+        const targetCid = this.evalSelectedCo;
         
         const commitGrade = () => {
-            const elFeedback = document.getElementById('eval-feedback');
-            const feedback = elFeedback ? this.cleanInput(elFeedback.value) : '';
-            co.grades[subject] = { scores, feedback, final: total };
-            co.updatedAt = Date.now();
+            const liveCo = state.data?.companies?.[targetCid];
+            if (!liveCo) return;
+
+            liveCo.grades = liveCo.grades || {};
+            liveCo.grades[subject] = { 
+                scores, 
+                feedback, 
+                final: total,
+                updatedAt: Date.now(),
+                gradedBy: state.user?.role || 'DOCENTE'
+            };
+            liveCo.updatedAt = Date.now();
             
-            telemetry.log("EVALUACIÓN", `Nota ${subject} registrada a ${co.name}: ${total.toFixed(2)}`);
-            state.save(this.evalSelectedCo);
+            telemetry.log("EVALUACIÓN", `Nota ${subject} registrada a ${liveCo.name}: ${total.toFixed(2)}`);
 
             const subjectRoleMap = { FYQ: 'TECNICO', LYE: 'MARKETING', ECO: 'FINANZAS', MAT: 'TECNICO', LEN: 'MARKETING', ING: 'MARKETING' };
             const targetRole = subjectRoleMap[subject] || 'CEO';
             const notifMsg = `Calificación de ${subject} registrada por el docente: ${total.toFixed(2)} / 10`;
             const targetMeta = { view: 'dossier', subTab: 'eval' };
-            ui.pushNotification(this.evalSelectedCo, 'CEO', notifMsg, 'success', targetMeta);
+            ui.pushNotification(targetCid, 'CEO', notifMsg, 'success', targetMeta);
             if (targetRole !== 'CEO') {
-                ui.pushNotification(this.evalSelectedCo, targetRole, notifMsg, 'success', targetMeta);
+                ui.pushNotification(targetCid, targetRole, notifMsg, 'success', targetMeta);
             }
 
-            this.notify(`Calificación de ${subject} registrada para ${co.name}: ${total.toFixed(2)}`, "success");
+            state.save(targetCid);
+            if (typeof state.pushToCloud === 'function') {
+                state.pushToCloud(false);
+            }
+
+            this.notify(`Calificación de ${subject} registrada para ${liveCo.name}: ${total.toFixed(2)}`, "success");
             this.render();
         };
 
