@@ -167,7 +167,7 @@ Object.assign(ui, {
     renderB2BMarket() {
         const canSell = state.user.role === 'TECNICO' && !state.user.admin;
         const canBuy = canSell;
-        const b2b = (state.data.b2bMarket || []).filter(i => !i.status || i.status === 'EN_VENTA');
+        const b2b = (state.data.b2bMarket || []).filter(i => i && (!i.status || i.status === 'EN_VENTA'));
 
         let offersHtml = '';
         if (b2b.length === 0) {
@@ -175,10 +175,25 @@ Object.assign(ui, {
         } else {
             offersHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">` + b2b.map(item => {
                 const isMine = !state.user.admin && item.sellerCoId === state.user.coId;
+                const isFinanzas = state.user.role === 'FINANZAS' || state.user.admin;
                 let btn = '';
-                if(isMine) btn = `<span class="block w-full text-center bg-slate-800 text-slate-200 font-bold py-2.5 text-xs uppercase border border-slate-700 min-h-[44px] flex items-center justify-center">Tu Oferta Activa</span>`;
-                else if(canBuy) btn = `<button type="button" onclick="ui.modalBuyB2B('${this.escapeHTML(item.id)}')" class="w-full min-h-[44px] bg-mars-yellow/20 text-mars-yellow border border-mars-yellow hover:bg-mars-yellow hover:text-black font-black py-2.5 px-3 text-xs uppercase tracking-wider transition-all">Adquirir B2B</button>`;
-                else btn = `<span class="block text-center text-slate-300 text-xs uppercase font-bold border border-slate-700 p-2.5 bg-black/40">Solo Dpto. Técnico</span>`;
+                if (isMine) {
+                    if (isFinanzas) {
+                        btn = `
+                        <div class="flex flex-col gap-1.5 w-full mt-2">
+                            <span class="block w-full text-center bg-slate-800 text-slate-200 font-bold py-1.5 text-xs uppercase border border-slate-700">Tu Oferta Activa</span>
+                            <button type="button" onclick="ui.withdrawB2BOffer('${this.escapeHTML(item.id)}')" class="w-full min-h-[44px] bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white text-xs font-bold uppercase transition-all" title="Retirar del mercado y devolver al taller">
+                                🗑️ Retirar Oferta
+                            </button>
+                        </div>`;
+                    } else {
+                        btn = `<span class="block w-full text-center bg-slate-800 text-slate-200 font-bold py-2.5 text-xs uppercase border border-slate-700 min-h-[44px] flex items-center justify-center">Tu Oferta Activa</span>`;
+                    }
+                } else if (canBuy) {
+                    btn = `<button type="button" onclick="ui.modalBuyB2B('${this.escapeHTML(item.id)}')" class="w-full min-h-[44px] bg-mars-yellow/20 text-mars-yellow border border-mars-yellow hover:bg-mars-yellow hover:text-black font-black py-2.5 px-3 text-xs uppercase tracking-wider transition-all">Adquirir B2B</button>`;
+                } else {
+                    btn = `<span class="block text-center text-slate-300 text-xs uppercase font-bold border border-slate-700 p-2.5 bg-black/40">Solo Dpto. Técnico</span>`;
+                }
 
                 const itemObs = item.obs || item.notes || 'Sin observaciones';
 
@@ -335,7 +350,9 @@ Object.assign(ui, {
         const ord = co.orders.find(o => String(o.id) === String(orderId));
         const item = ord.items[itemIndex];
 
-        item.b2bStatus = 'EN_VENTA';
+        item.b2bStatus = 'PENDIENTE_FINANZAS';
+        item.b2bProposedPrice = price;
+        item.b2bDriveUrl = driveUrl || null;
         
         state.data.b2bMarket = state.data.b2bMarket || [];
         state.data.b2bMarket.unshift({
@@ -348,17 +365,17 @@ Object.assign(ui, {
             category: item.category,
             price: price,
             driveUrl: driveUrl || null,
-            status: 'EN_VENTA',
+            status: 'PENDIENTE_FINANZAS',
             date: new Date().toLocaleString(),
             timestamp: Date.now(),
             updatedAt: Date.now()
         });
 
-        ui.pushNotification(state.user.coId, 'FINANZAS', `I+D ha puesto en venta B2B: ${item.name} por ${price.toFixed(2)} €v.`, 'info');
+        ui.pushNotification(state.user.coId, 'FINANZAS', `I+D propone venta B2B de "${item.name}" por ${price.toFixed(2)} €v. Revisa la propuesta en Órdenes.`, 'info');
         state.save();
         this.closeModal();
         this.render();
-        this.notify(`✅ Artículo publicado en el Mercado Secundario (B2B) por ${price.toFixed(2)} €v.`, "success");
+        this.notify(`✅ Propuesta B2B enviada a Finanzas por ${price.toFixed(2)} €v.`, "success");
     },
 
     modalBuyB2B(offerId) {

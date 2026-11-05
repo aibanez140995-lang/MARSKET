@@ -2603,7 +2603,7 @@ const ui = {
               : item.driveUrl.includes('/folders/') ? 'Carpeta'
               : 'Archivo Drive';
             const safeHref = encodeURI(item.driveUrl).replace(/"/g, '&quot;');
-            actionHtml = `<div class="flex items-center gap-2 shrink-0 flex-wrap">
+            actionHtml = `<div class="flex items-center gap-2 flex-wrap w-full">
   ${statusBadgeHtml}
   <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors min-h-[44px]">
     <span>Abrir ${tipoDoc} ↗</span>
@@ -2611,7 +2611,7 @@ const ui = {
   ${teacherSubsanarBtn}
 </div>`;
         } else {
-            actionHtml = `<div class="flex items-center gap-2 shrink-0 flex-wrap">${statusBadgeHtml}<span class="text-xs text-amber-500/80 font-mono italic">[Contenido legacy no accesible por directiva RGPD]</span>${teacherSubsanarBtn}</div>`;
+            actionHtml = `<div class="flex items-center gap-2 flex-wrap w-full">${statusBadgeHtml}<span class="text-xs text-amber-500/80 font-mono italic">[Contenido legacy no accesible por directiva RGPD]</span>${teacherSubsanarBtn}</div>`;
         }
 
         const dateStr = item.updatedAt || item.date || '';
@@ -2620,14 +2620,12 @@ const ui = {
             ? `<div class="mt-2 bg-red-950/50 border border-red-500/40 p-2 text-[11px] text-red-300 rounded"><strong class="text-red-400 uppercase">Motivo de Subsanación (${isTeacherOrigin ? 'Claustro Docente' : 'CEO'}):</strong> ${this.escapeHTML(item.returnReason || item.returnReasonId)}</div>`
             : '';
 
-        return `<div class="bg-mars-cyan/10 border border-mars-cyan/60 p-3 mb-2 text-xs">
-                    <div class="flex justify-between items-center gap-2">
-                        <div class="overflow-hidden pr-2">
-                            <span class="text-mars-cyan font-bold uppercase block truncate">${this.escapeHTML(title)}</span>
-                            <span class="text-xs text-slate-300 block truncate">GOOGLE DRIVE | ${this.escapeHTML(String(dateStr).slice(0,10))}</span>
-                        </div>
-                        ${actionHtml}
+        return `<div class="bg-mars-cyan/10 border border-mars-cyan/60 p-3 mb-2 text-xs rounded">
+                    <div class="mb-2">
+                        <span class="text-mars-cyan font-bold uppercase block break-words leading-snug">${this.escapeHTML(title)}</span>
+                        <span class="text-[10px] text-slate-300 font-mono block mt-0.5">GOOGLE DRIVE | ${this.escapeHTML(String(dateStr).slice(0,10))}</span>
                     </div>
+                    ${actionHtml}
                     ${reasonBanner}
                 </div>`;
     },

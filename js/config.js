@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.64) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.65) ---
 
-const APP_VERSION = "1.1.64";
+const APP_VERSION = "1.1.65";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1089,8 +1089,25 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.64
+// Changelog Oficial de Producción v1.1.65
 const APP_CHANGELOG = [
+    {
+      version: "1.1.65",
+      date: new Date().toISOString().split('T')[0],
+      title: "Circuito B2B Técnico-Finanzas, Blindaje Visual de Evidencias e Indicadores de Entregas por Clase",
+      items: [
+        "Circuito B2B Técnico-Finanzas: El Dpto. Técnico propone la desinversión de piezas al Responsable Financiero indicando precio de venta sugerido y memoria técnica de excedente (DOC_7).",
+        "Resolución Financiera de Ventas B2B: Finanzas puede aprobar y publicar la oferta en el mercado secundario o devolverla a Técnico mediante motivo tipificado y contraoferta de precio.",
+        "Retirada de Oferta B2B por Finanzas: Botón para retirar ofertas activas de segunda mano si deciden conservar el material, reintegrándolo automáticamente al inventario del taller si no ha sido adquirido en Aduana.",
+        "Indicadores Visuales de Entrega por Clase (🟡 N): Los botones de filtrado de clase en el panel de Rúbricas muestran badges pulsantes en tiempo real con el recuento de startups que tienen documentos listos pendientes de calificar.",
+        "Blindaje Visual de Evidencias Adjuntas: Resuelto el estrechamiento a 0px de los títulos de documentos y el desbordamiento del botón [↩ Subsanar] en columnas compactas mediante un diseño en dos niveles envolventes."
+      ],
+      highlights: [
+        { type: "B2B", text: "Circuito completo de gobernanza interna Técnico ➔ Finanzas para la venta y desinversión de piezas." },
+        { type: "RETIRADA", text: "Retirada segura de ofertas B2B en 1 clic para Finanzas con reintegro al taller." },
+        { type: "ERGONOMÍA", text: "Badges pulsantes 🟡 N en filtros de clase y corrección de maquetación en evidencias docentes." }
+      ]
+    },
     {
       version: "1.1.64",
       date: new Date().toISOString().split('T')[0],

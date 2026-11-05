@@ -194,6 +194,97 @@ Object.assign(ui, {
             });
         }
 
+        // 1b. Propuestas y Ventas en Mercado B2B (I+D ➔ Finanzas ➔ Mercado)
+        if (deptFilter === 'ALL' || deptFilter === 'TECNICO') {
+            const b2bOffers = (state.data.b2bMarket || []).filter(o => o && o.sellerCoId === state.user.coId);
+            b2bOffers.forEach(offer => {
+                const ost = offer.status;
+                let matchesB2BTab = false;
+                if (ordersTab === 'EN_PROCESO') matchesB2BTab = (ost === 'PENDIENTE_FINANZAS' || ost === 'EN_VENTA');
+                else if (ordersTab === 'COMPLETADAS') matchesB2BTab = (ost === 'VENDIDO');
+                else if (ordersTab === 'DENEGADAS') matchesB2BTab = (ost === 'RECHAZADO_FINANZAS' || ost === 'RETIRADO');
+
+                if (matchesB2BTab) {
+                    const isPending = ost === 'PENDIENTE_FINANZAS';
+                    const isEnVenta = ost === 'EN_VENTA';
+                    const isSold = ost === 'VENDIDO';
+                    const isRejected = ost === 'RECHAZADO_FINANZAS';
+                    const isRetirado = ost === 'RETIRADO';
+
+                    let trackerIdx = 0;
+                    if (isPending) trackerIdx = 1;
+                    else if (isEnVenta || isSold) trackerIdx = 2;
+
+                    let b2bBadge = 'bg-mars-yellow/20 text-mars-yellow border-mars-yellow animate-pulse';
+                    let b2bStatusLabel = 'PROPUESTA DE VENTA B2B';
+                    if (isEnVenta) {
+                        b2bBadge = 'bg-cyan-500/20 text-cyan-300 border-cyan-500';
+                        b2bStatusLabel = 'PUBLICADO EN MERCADO B2B';
+                    } else if (isSold) {
+                        b2bBadge = 'bg-mars-green/20 text-mars-green border-mars-green';
+                        b2bStatusLabel = 'VENDIDO Y TRANSFERIDO';
+                    } else if (isRejected) {
+                        b2bBadge = 'bg-mars-magenta/20 text-mars-magenta border-mars-magenta';
+                        b2bStatusLabel = 'DEVUELTO A I+D POR FINANZAS';
+                    } else if (isRetirado) {
+                        b2bBadge = 'bg-slate-800 text-slate-400 border-slate-700';
+                        b2bStatusLabel = 'RETIRADO DEL MERCADO';
+                    }
+
+                    let finB2BActions = '';
+                    if (isFinanzas && isPending) {
+                        finB2BActions = `
+                        <div class="flex flex-col sm:flex-row gap-2 mt-4 pt-3 border-t border-slate-800">
+                            <button type="button" onclick="ui.approveB2BSell('${this.escapeHTML(offer.id)}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1">Aprobar y Publicar B2B</button>
+                            <button type="button" onclick="ui.modalRejectB2BSell('${this.escapeHTML(offer.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Rechazar / Proponer Precio</button>
+                        </div>`;
+                    } else if (isFinanzas && isEnVenta) {
+                        finB2BActions = `
+                        <div class="flex flex-col sm:flex-row gap-2 mt-4 pt-3 border-t border-slate-800">
+                            <button type="button" onclick="ui.withdrawB2BOffer('${this.escapeHTML(offer.id)}')" class="min-h-[44px] bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white px-4 py-2.5 text-xs font-bold uppercase transition-all flex-1">🗑️ Retirar Oferta del Mercado</button>
+                        </div>`;
+                    }
+
+                    let reasonBlock = '';
+                    if (isRejected && (offer.rejectReason || offer.suggestedPrice)) {
+                        reasonBlock = `
+                        <div class="bg-red-950/40 border border-red-500/40 p-2.5 text-xs text-red-300 mt-2 mb-2 rounded space-y-1">
+                            <div><strong class="uppercase">Motivo Devolución Finanzas:</strong> ${this.escapeHTML(offer.rejectReason || 'Revisión de precio requerida')}</div>
+                            ${offer.suggestedPrice ? `<div><strong class="uppercase">Precio Sugerido por Finanzas:</strong> ${Number(offer.suggestedPrice).toFixed(2)} €v</div>` : ''}
+                        </div>`;
+                    }
+
+                    allUnifiedItems.push({
+                        date: offer.date || '',
+                        timestamp: offer.timestamp || 0,
+                        html: `
+                        <div class="bg-slate-900 border ${isPending ? 'border-mars-yellow/60' : 'border-mars-border'} p-4 text-xs mb-3">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-[10px] font-black uppercase px-2 py-0.5 bg-yellow-950 text-mars-yellow border border-mars-yellow/40">MERCADO B2B: DESINVERSIÓN I+D</span>
+                            </div>
+                            ${ui.renderWorkflowTracker(['1. Propuesta I+D', '2. Finanzas (Audita)', '3. Mercado B2B'], trackerIdx)}
+                            <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
+                                <div>
+                                    <span class="text-xs font-black uppercase px-2 py-0.5 border ${b2bBadge}">${b2bStatusLabel}</span>
+                                    <h4 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">Venta: ${this.escapeHTML(offer.itemName)} (x${Number(offer.qty) || 1})</h4>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-mars-green font-mono font-bold text-sm sm:text-base">${Number(offer.price).toFixed(2)} €v</span>
+                                    <span class="block text-xs text-slate-300 font-mono">${this.escapeHTML(offer.date || '--')}</span>
+                                </div>
+                            </div>
+                            ${(offer.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(offer.driveUrl))
+                                ? `<div class="mb-2"><a href="${encodeURI(offer.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Informe Técnico de Excedentes en Docs ↗</span></a></div>`
+                                : ''
+                            }
+                            ${reasonBlock}
+                            ${finB2BActions}
+                        </div>`
+                    });
+                }
+            });
+        }
+
         // 2. Paquetes de Campañas de Marketing (MARKETING)
         if (deptFilter === 'ALL' || deptFilter === 'MARKETING') {
             (co.marketingCampaigns || []).forEach(camp => {
@@ -575,6 +666,154 @@ Object.assign(ui, {
         co.updatedAt = Date.now();
         state.save(state.user.coId);
         this.notify(`❌ Solicitud de paquete de marketing rechazada.`, "info");
+        this.render();
+    },
+
+    approveB2BSell(offerId) {
+        if (!state.user || (state.user.role !== 'FINANZAS' && !state.user.admin)) {
+            return this.notify("Solo el Departamento de Finanzas puede aprobar ventas B2B.", "warning");
+        }
+        const co = state.data.companies[state.user.coId];
+        if (!co) return;
+
+        state.data.b2bMarket = state.data.b2bMarket || [];
+        const offer = state.data.b2bMarket.find(o => o.id === offerId && o.sellerCoId === state.user.coId);
+        if (!offer) return this.notify("Oferta B2B no localizada.", "error");
+
+        offer.status = 'EN_VENTA';
+        offer.updatedAt = Date.now();
+
+        if (co.orders && offer.sourceOrderKey) {
+            const [ordId, itemIdx] = offer.sourceOrderKey.split('-');
+            const ord = co.orders.find(o => String(o.id) === String(ordId));
+            if (ord && ord.items && ord.items[Number(itemIdx)]) {
+                ord.items[Number(itemIdx)].b2bStatus = 'EN_VENTA';
+            }
+        }
+
+        ui.pushNotification(state.user.coId, 'TECNICO', `Finanzas ha aprobado y publicado en B2B: ${offer.itemName} por ${Number(offer.price).toFixed(2)} €v.`, 'success');
+        telemetry.log("OFERTA B2B APROBADA", `Finanzas aprobó venta B2B: ${offer.itemName} por ${offer.price}€v`);
+        co.updatedAt = Date.now();
+        state.save(state.user.coId);
+        this.notify(`✅ Oferta B2B de "${offer.itemName}" aprobada y publicada en el mercado.`, "success");
+        this.render();
+    },
+
+    modalRejectB2BSell(offerId) {
+        if (!state.user || (state.user.role !== 'FINANZAS' && !state.user.admin)) {
+            return this.notify("Solo el Departamento de Finanzas puede gestionar ofertas B2B.", "warning");
+        }
+        const offer = (state.data.b2bMarket || []).find(o => o.id === offerId && o.sellerCoId === state.user.coId);
+        if (!offer) return this.notify("Oferta B2B no localizada.", "error");
+
+        const reasons = [
+            "Precio propuesto no competitivo o alejado del mercado",
+            "Margen de amortización insuficiente para la tesorería",
+            "Estrategia de tesorería: conviene conservar la pieza en inventario",
+            "Informe técnico o memoria de excedentes incompleta"
+        ];
+
+        const html = `
+            <p class="text-xs text-slate-200 mb-4 leading-relaxed">Devolver la propuesta de venta de <strong>${this.escapeHTML(offer.itemName)}</strong> a I+D (Técnico) para su revisión.</p>
+            <div class="space-y-3">
+                <div>
+                    <label for="b2b-reject-reason" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Motivo Tipificado de Devolución</label>
+                    <select id="b2b-reject-reason" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow text-xs text-white p-2.5 font-bold outline-none cursor-pointer">
+                        ${reasons.map(r => `<option value="${this.escapeHTML(r)}">${this.escapeHTML(r)}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label for="b2b-counter-price" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Contraoferta / Precio Sugerido por Finanzas (€v)</label>
+                    <input type="number" id="b2b-counter-price" value="${Number(offer.price).toFixed(0)}" min="1" step="1" class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold outline-none">
+                    <p class="text-[10px] text-slate-400 mt-1">El Dpto. Técnico recibirá esta recomendación de precio para ajustar la propuesta.</p>
+                </div>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.confirmRejectB2BSell('${this.escapeHTML(offerId)}')" class="min-h-[44px] bg-mars-magenta text-white px-5 py-2.5 text-xs font-black uppercase hover:bg-white hover:text-black transition-all">Devolver Propuesta a Técnico</button>`;
+        this.showModal("Devolver Propuesta B2B", html, actions);
+    },
+
+    confirmRejectB2BSell(offerId) {
+        if (!state.user || (state.user.role !== 'FINANZAS' && !state.user.admin)) return;
+        const elReason = document.getElementById('b2b-reject-reason');
+        const elPrice = document.getElementById('b2b-counter-price');
+        if (!elReason || !elPrice) return;
+
+        const reason = this.cleanInput(elReason.value);
+        const counterPrice = parseFloat(elPrice.value);
+        if (isNaN(counterPrice) || counterPrice <= 0) return this.notify("Introduce un precio sugerido válido.", "warning");
+
+        const co = state.data.companies[state.user.coId];
+        if (!co) return;
+
+        state.data.b2bMarket = state.data.b2bMarket || [];
+        const offer = state.data.b2bMarket.find(o => o.id === offerId && o.sellerCoId === state.user.coId);
+        if (!offer) return this.notify("Oferta B2B no localizada.", "error");
+
+        offer.status = 'RECHAZADO_FINANZAS';
+        offer.rejectReason = reason;
+        offer.suggestedPrice = counterPrice;
+        offer.updatedAt = Date.now();
+
+        if (co.orders && offer.sourceOrderKey) {
+            const [ordId, itemIdx] = offer.sourceOrderKey.split('-');
+            const ord = co.orders.find(o => String(o.id) === String(ordId));
+            if (ord && ord.items && ord.items[Number(itemIdx)]) {
+                const it = ord.items[Number(itemIdx)];
+                it.b2bStatus = 'RECHAZADO_FINANZAS';
+                it.b2bRejectReason = reason;
+                it.b2bSuggestedPrice = counterPrice;
+            }
+        }
+
+        ui.pushNotification(state.user.coId, 'TECNICO', `Finanzas ha devuelto la propuesta B2B de "${offer.itemName}". Precio sugerido: ${counterPrice.toFixed(2)} €v.`, 'warning');
+        telemetry.log("PROPUESTA B2B RECHAZADA", `Finanzas devolvió venta B2B: ${offer.itemName}. Motivo: ${reason}. Sugerido: ${counterPrice}€v`);
+        co.updatedAt = Date.now();
+        state.save(state.user.coId);
+        this.closeModal();
+        this.notify(`↩ Propuesta devuelta a Técnico con precio sugerido de ${counterPrice.toFixed(2)} €v.`, "info");
+        this.render();
+    },
+
+    withdrawB2BOffer(offerId) {
+        if (!state.user || (state.user.role !== 'FINANZAS' && !state.user.admin)) {
+            return this.notify("Solo el Departamento de Finanzas puede retirar ofertas del mercado B2B.", "warning");
+        }
+        const co = state.data.companies[state.user.coId];
+        if (!co) return;
+
+        state.data.b2bMarket = state.data.b2bMarket || [];
+        const offer = state.data.b2bMarket.find(o => o.id === offerId && o.sellerCoId === state.user.coId);
+        if (!offer) return this.notify("Oferta no localizada.", "error");
+
+        const b2bContracts = state.data.b2bContracts || [];
+        const inCustoms = b2bContracts.find(c => 
+            (c.offerId === offerId || (c.sourceOrderKey && offer.sourceOrderKey && c.sourceOrderKey === offer.sourceOrderKey)) && 
+            (c.status === 'PENDIENTE_ADUANA' || c.status === 'APROBADO')
+        );
+        if (inCustoms) {
+            return this.notify("No se puede retirar del mercado porque una startup ya ha adquirido este lote y está en trámite aduanero.", "error");
+        }
+
+        offer.status = 'RETIRADO';
+        offer.updatedAt = Date.now();
+
+        if (co.orders && offer.sourceOrderKey) {
+            const [ordId, itemIdx] = offer.sourceOrderKey.split('-');
+            const ord = co.orders.find(o => String(o.id) === String(ordId));
+            if (ord && ord.items && ord.items[Number(itemIdx)]) {
+                delete ord.items[Number(itemIdx)].b2bStatus;
+                delete ord.items[Number(itemIdx)].b2bProposedPrice;
+                delete ord.items[Number(itemIdx)].b2bSuggestedPrice;
+                delete ord.items[Number(itemIdx)].b2bRejectReason;
+            }
+        }
+
+        ui.pushNotification(state.user.coId, 'TECNICO', `Finanzas ha retirado del mercado B2B: ${offer.itemName}. Devuelto al inventario de taller.`, 'info');
+        telemetry.log("OFERTA B2B RETIRADA", `Finanzas retiró del mercado B2B: ${offer.itemName}`);
+        co.updatedAt = Date.now();
+        state.save(state.user.coId);
+        this.notify(`🗑️ Oferta de "${offer.itemName}" retirada del mercado. Pieza devuelta al taller.`, "success");
         this.render();
     },
 

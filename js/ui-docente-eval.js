@@ -678,18 +678,51 @@ Object.assign(ui, {
             ING: []
         }[activeSubject] || [];
 
+        // Conteo de startups con entregas pendientes de evaluar por clase
+        const pendingCounts = {};
+        classes.forEach(c => { pendingCounts[c] = 0; });
+        Object.keys(companies).forEach(cid => {
+            const co = companies[cid];
+            if (!co) return;
+            const coCls = (co.classGroup || 'A').toUpperCase();
+            const g = co?.grades?.[activeSubject];
+            const hasGrade = g && g.final !== null && g.final !== undefined;
+            if (hasGrade) return;
+
+            const docs = co?.deliverables || {};
+            let deliveredCount = subjectDocKeys.filter(k => !!docs[k]).length;
+            if (activeSubject === 'LEN' && co?.pressReleases) {
+                const prCount = Object.values(co.pressReleases).filter(p => !!p?.driveUrl).length;
+                if (prCount > 0) deliveredCount += prCount;
+            }
+
+            if (deliveredCount > 0) {
+                pendingCounts['ALL'] = (pendingCounts['ALL'] || 0) + 1;
+                if (classes.includes(coCls)) {
+                    pendingCounts[coCls] = (pendingCounts[coCls] || 0) + 1;
+                }
+            }
+        });
+
         const classTabsHtml = `
         <div class="flex flex-wrap gap-1.5 mb-3 items-center">
             <span class="text-[10px] font-mono text-slate-400 uppercase mr-1">Filtrar Clase:</span>
-            ${classes.map(cls => `
-                <button type="button" onclick="ui.setClassFilter('${cls}'); ui.evalSelectedCo='';" class="min-h-[36px] px-2.5 py-1 text-xs font-mono font-bold uppercase transition-all rounded ${
-                    currentCls === cls 
+            ${classes.map(cls => {
+                const isCur = (currentCls === cls);
+                const count = pendingCounts[cls] || 0;
+                const badge = count > 0 
+                    ? `<span class="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${isCur ? 'bg-black text-amber-300' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'} animate-pulse">🟡 ${count}</span>` 
+                    : '';
+                return `
+                <button type="button" onclick="ui.setClassFilter('${cls}'); ui.evalSelectedCo='';" class="min-h-[36px] inline-flex items-center px-2.5 py-1 text-xs font-mono font-bold uppercase transition-all rounded ${
+                    isCur 
                         ? 'bg-mars-yellow text-black shadow-sm font-black' 
                         : 'bg-black text-slate-300 border border-slate-800 hover:text-white hover:border-slate-700'
                 }">
-                    ${cls === 'ALL' ? 'Todas' : `Clase ${cls}`}
-                </button>
-            `).join('')}
+                    <span>${cls === 'ALL' ? 'Todas' : `Clase ${cls}`}</span>
+                    ${badge}
+                </button>`;
+            }).join('')}
         </div>`;
 
         if (filteredCids.length === 0) {
@@ -735,7 +768,7 @@ Object.assign(ui, {
                         ${this.escapeHTML(co.name)}
                     </span>
                     <span class="text-[10px] font-mono px-1.5 py-0.2 bg-slate-800 text-slate-300 rounded shrink-0">
-                        ${this.escapeHTML(co.classGroup || 'A')}
+                        ${this.escapeHTML((co.classGroup || 'A').toUpperCase())}
                     </span>
                 </div>
                 <div class="w-full flex justify-between items-center">

@@ -436,10 +436,12 @@ Object.assign(ui, {
         executedItems.forEach(item => {
             const isSold = item.b2bStatus === 'VENDIDO';
             const isListed = item.b2bStatus === 'EN_VENTA';
-            const isChecked = !isSold && !isListed && co.bom.includes(item.itemKey);
-            if (!isSold && !isListed && !isChecked) stockCount++;
+            const isPendingFin = item.b2bStatus === 'PENDIENTE_FINANZAS';
+            const isRejectedFin = item.b2bStatus === 'RECHAZADO_FINANZAS';
+            const isChecked = !isSold && !isListed && !isPendingFin && !isRejectedFin && co.bom.includes(item.itemKey);
+            if (!isSold && !isListed && !isPendingFin && !isChecked) stockCount++;
             if (isChecked) bomCount++;
-            if (isListed) b2bCount++;
+            if (isListed || isPendingFin) b2bCount++;
         });
 
         let bomTotal = 0;
@@ -451,7 +453,11 @@ Object.assign(ui, {
             bomHtml = executedItems.map(item => {
                 const isSold = item.b2bStatus === 'VENDIDO';
                 const isListed = item.b2bStatus === 'EN_VENTA';
-                const isChecked = !isSold && !isListed && co.bom.includes(item.itemKey);
+                const isPendingFin = item.b2bStatus === 'PENDIENTE_FINANZAS';
+                const isRejectedFin = item.b2bStatus === 'RECHAZADO_FINANZAS';
+                const isLocked = isSold || isListed || isPendingFin;
+
+                const isChecked = !isLocked && !isRejectedFin && co.bom.includes(item.itemKey);
                 const itemQty = Number(item.qty) || 1;
                 const unitPrice = Number(item.price) || 0;
                 const totalItemPrice = unitPrice * itemQty;
@@ -463,14 +469,22 @@ Object.assign(ui, {
                     statusAction = `<span class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 font-bold uppercase border border-slate-700">TRASPASADO B2B</span>`;
                 } else if (isListed) {
                     statusAction = `<span class="text-xs bg-mars-yellow/20 text-mars-yellow px-2.5 py-1 font-bold uppercase border border-mars-yellow animate-pulse">EN OFERTA B2B</span>`;
+                } else if (isPendingFin) {
+                    statusAction = `<span class="text-xs bg-cyan-950 text-mars-cyan px-2.5 py-1 font-bold uppercase border border-mars-cyan/40 animate-pulse">⏳ EN REVISIÓN FINANZAS</span>`;
+                } else if (isRejectedFin) {
+                    statusAction = `
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="text-[10px] bg-red-950/60 text-red-300 border border-red-500/40 px-2 py-0.5 font-bold uppercase">REVISAR PRECIO</span>
+                        <button type="button" onclick="ui.modalSellB2B('${this.escapeHTML(item.orderId)}', ${Number(item.itemIdx)})" class="min-h-[44px] bg-amber-500/20 border border-amber-500 text-amber-300 px-2.5 py-1 text-xs font-bold uppercase hover:bg-amber-500 hover:text-black transition-colors" title="Ajustar precio y reproponer a Finanzas">[REEDITAR B2B]</button>
+                    </div>`;
                 } else {
-                    statusAction = `<button type="button" onclick="ui.modalSellB2B('${this.escapeHTML(item.orderId)}', ${Number(item.itemIdx)})" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-3 py-1.5 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors whitespace-nowrap" title="Poner en venta en el mercado secundario">[VENDER B2B]</button>`;
+                    statusAction = `<button type="button" onclick="ui.modalSellB2B('${this.escapeHTML(item.orderId)}', ${Number(item.itemIdx)})" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-3 py-1.5 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors whitespace-nowrap" title="Proponer venta B2B a Finanzas">[VENDER B2B]</button>`;
                 }
 
                 return `
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-900 p-2.5 border ${isSold ? 'border-slate-800 opacity-60' : (isListed ? 'border-mars-yellow/50' : 'border-mars-border')} text-xs mb-2 gap-2.5">
-                    <label class="mars-checkbox-label flex items-center gap-2.5 text-white ${isSold || isListed ? 'cursor-not-allowed line-through text-slate-400' : 'cursor-pointer'} min-w-0 flex-1 min-h-[44px]">
-                        <input type="checkbox" class="mars-touch-input" ${isChecked ? 'checked' : ''} ${isSold || isListed ? 'disabled' : ''} onchange="ui.toggleBomItem('${this.escapeHTML(item.itemKey)}', this.checked)">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-900 p-2.5 border ${isSold ? 'border-slate-800 opacity-60' : (isListed ? 'border-mars-yellow/50' : (isPendingFin ? 'border-cyan-500/50' : 'border-mars-border'))} text-xs mb-2 gap-2.5">
+                    <label class="mars-checkbox-label flex items-center gap-2.5 text-white ${isLocked ? 'cursor-not-allowed line-through text-slate-400' : 'cursor-pointer'} min-w-0 flex-1 min-h-[44px]">
+                        <input type="checkbox" class="mars-touch-input" ${isChecked ? 'checked' : ''} ${isLocked ? 'disabled' : ''} onchange="ui.toggleBomItem('${this.escapeHTML(item.itemKey)}', this.checked)">
                         <span class="mars-checkbox-visual"></span>
                         <span class="break-words min-w-0 flex-1">${this.escapeHTML(item.name)} (x${itemQty})</span>
                     </label>
@@ -725,29 +739,48 @@ Object.assign(ui, {
         if (!ord || !ord.items || !ord.items[itemIdx]) return this.notify("Componente no localizado en el inventario.", "error");
 
         const item = ord.items[itemIdx];
-        if (item.b2bStatus) return this.notify("Este componente ya está en proceso de venta o ha sido vendido.", "warning");
+        if (item.b2bStatus === 'EN_VENTA' || item.b2bStatus === 'VENDIDO') {
+            return this.notify("Este componente ya está en venta en el mercado o ha sido transferido.", "warning");
+        }
+        if (item.b2bStatus === 'PENDIENTE_FINANZAS') {
+            return this.notify("Esta propuesta ya está en revisión por el Dpto. de Finanzas.", "info");
+        }
         const qty = Number(item.qty) || 1;
         const totalOrigCost = (Number(item.price) || 0) * qty;
+        const defaultPrice = (item.b2bSuggestedPrice && Number(item.b2bSuggestedPrice) > 0)
+            ? Number(item.b2bSuggestedPrice)
+            : totalOrigCost;
+
+        let rejectionNotice = '';
+        if (item.b2bStatus === 'RECHAZADO_FINANZAS') {
+            rejectionNotice = `
+            <div class="mb-4 bg-amber-950/60 border border-amber-500/50 p-3 rounded text-xs space-y-1">
+                <span class="text-amber-400 font-bold uppercase block">⚠️ Propuesta Devuelta por Finanzas:</span>
+                <p class="text-slate-200">Motivo: <em>${this.escapeHTML(item.b2bRejectReason || 'Ajuste de precio solicitado')}</em></p>
+                <p class="text-mars-yellow font-mono font-bold">Precio contraofertado por Finanzas: ${Number(item.b2bSuggestedPrice || defaultPrice).toFixed(2)} €v</p>
+            </div>`;
+        }
 
         const html = `
-            <p class="text-xs text-slate-200 mb-4 leading-relaxed">Vas a publicar <strong>${this.escapeHTML(item.name)} (x${qty})</strong> en el Mercado Secundario B2B. El coste original de adquisición del lote fue de <span class="text-mars-cyan font-bold">${totalOrigCost.toFixed(2)} €v</span>${qty > 1 ? ` (${Number(item.price).toFixed(2)} €v c/u)` : ''}.</p>
+            ${rejectionNotice}
+            <p class="text-xs text-slate-200 mb-4 leading-relaxed">Vas a proponer internamente a Finanzas la venta de <strong>${this.escapeHTML(item.name)} (x${qty})</strong> en el Mercado Secundario B2B. El coste original de adquisición del lote fue de <span class="text-mars-cyan font-bold">${totalOrigCost.toFixed(2)} €v</span>${qty > 1 ? ` (${Number(item.price).toFixed(2)} €v c/u)` : ''}.</p>
             <div class="space-y-3">
                 <div>
-                    <label for="b2b-sell-price" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Precio de Venta Solicitado Lote Completo (€v)</label>
-                    <input type="number" id="b2b-sell-price" value="${totalOrigCost.toFixed(0)}" min="1" step="1" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold outline-none">
+                    <label for="b2b-sell-price" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Precio de Venta Sugerido para el Lote (€v)</label>
+                    <input type="number" id="b2b-sell-price" value="${defaultPrice.toFixed(0)}" min="1" step="1" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold outline-none">
                 </div>
                 <div>
                     <label for="b2b-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Informe Técnico de Excedentes (Google Drive / Docs)</label>
                     <div class="mb-2">
                         ${this.renderDocTemplateBtn('DOC_7_B2B_DESINVERSION')}
                     </div>
-                    <input type="url" id="b2b-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono" required>
+                    <input type="url" id="b2b-drive-url" value="${this.escapeHTML(item.b2bDriveUrl || '')}" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono" required>
                     <p class="text-[10px] text-slate-400 mt-1">Adjunta la memoria técnica en Google Drive justificando el excedente para autorización en Aduana Docente.</p>
                 </div>
             </div>
         `;
-        const actions = `<button type="button" onclick="ui.confirmSellB2B('${this.escapeHTML(orderId)}', ${Number(itemIdx)})" class="min-h-[44px] bg-mars-yellow text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-all">Publicar en Mercado B2B</button>`;
-        this.showModal("Poner Pieza en Venta (B2B)", html, actions);
+        const actions = `<button type="button" onclick="ui.confirmSellB2B('${this.escapeHTML(orderId)}', ${Number(itemIdx)})" class="min-h-[44px] bg-mars-yellow text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-all">Proponer Venta a Finanzas</button>`;
+        this.showModal(item.b2bStatus === 'RECHAZADO_FINANZAS' ? "Reajustar Propuesta B2B" : "Proponer Venta B2B a Finanzas", html, actions);
     },
 
     confirmSellB2B(orderId, itemIdx) {
@@ -775,32 +808,48 @@ Object.assign(ui, {
         const itemKey = `${orderId}-${itemIdx}`;
 
         co.bom = (co.bom || []).filter(k => k !== itemKey);
-        item.b2bStatus = 'EN_VENTA';
+        item.b2bStatus = 'PENDIENTE_FINANZAS';
+        item.b2bProposedPrice = price;
+        item.b2bDriveUrl = driveUrl;
+        delete item.b2bRejectReason;
 
         state.data.b2bMarket = state.data.b2bMarket || [];
-        state.data.b2bMarket.unshift({
-            id: 'LST-' + Date.now(),
-            sellerCoId: state.user.coId,
-            sellerName: co.name,
-            itemName: item.name,
-            category: item.category || 'Componente',
-            qty: item.qty || 1,
-            price: price,
-            driveUrl: driveUrl,
-            obs: 'Informe técnico de excedentes: ' + driveUrl,
-            notes: 'Informe técnico de excedentes: ' + driveUrl,
-            status: 'EN_VENTA',
-            sourceOrderKey: itemKey,
-            date: new Date().toLocaleDateString(),
-            timestamp: Date.now(),
-            updatedAt: Date.now()
-        });
+        let offer = state.data.b2bMarket.find(o => o.sourceOrderKey === itemKey && o.sellerCoId === state.user.coId);
+        if (!offer) {
+            offer = {
+                id: 'LST-' + Date.now(),
+                sellerCoId: state.user.coId,
+                sellerName: co.name,
+                itemName: item.name,
+                category: item.category || 'Componente',
+                qty: item.qty || 1,
+                price: price,
+                driveUrl: driveUrl,
+                obs: 'Propuesta de excedente I+D: ' + driveUrl,
+                notes: 'Propuesta de excedente I+D: ' + driveUrl,
+                status: 'PENDIENTE_FINANZAS',
+                sourceOrderKey: itemKey,
+                date: new Date().toLocaleDateString(),
+                timestamp: Date.now(),
+                updatedAt: Date.now()
+            };
+            state.data.b2bMarket.unshift(offer);
+        } else {
+            offer.price = price;
+            offer.driveUrl = driveUrl;
+            offer.obs = 'Propuesta de excedente I+D: ' + driveUrl;
+            offer.notes = 'Propuesta de excedente I+D: ' + driveUrl;
+            offer.status = 'PENDIENTE_FINANZAS';
+            delete offer.rejectReason;
+            offer.updatedAt = Date.now();
+        }
 
-        telemetry.log("OFERTA B2B", `Publicado en B2B: ${item.name} por ${price}€v`);
+        ui.pushNotification(state.user.coId, 'FINANZAS', `I+D propone venta B2B de "${item.name}" por ${price.toFixed(2)} €v. Revisa la propuesta en Órdenes.`, 'info');
+        telemetry.log("PROPUESTA B2B", `I+D propone venta B2B: ${item.name} por ${price}€v`);
         co.updatedAt = Date.now();
         state.save(state.user.coId);
         this.closeModal();
-        this.notify(`✅ Componente "${item.name}" publicado en el Mercado B2B por ${price.toFixed(2)} €v.`, "success");
+        this.notify(`✅ Propuesta de venta de "${item.name}" enviada a Finanzas por ${price.toFixed(2)} €v.`, "success");
         this.render();
     },
 
