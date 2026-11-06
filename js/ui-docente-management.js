@@ -25,8 +25,8 @@ Object.assign(ui, {
         const pendingB2B = state.data.b2bContracts.filter(c => {
             if (c.status !== 'PENDIENTE_ADUANA') return false;
             if (activeFilter === 'ALL') return true;
-            const buyer = state.data.companies[c.buyerId];
-            const seller = state.data.companies[c.sellerId];
+            const buyer = state.data.companies[c.buyerCoId || c.buyerId];
+            const seller = state.data.companies[c.sellerCoId || c.sellerId];
             return (buyer && (buyer.classGroup || 'A') === activeFilter) || 
                    (seller && (seller.classGroup || 'A') === activeFilter);
         });
@@ -296,7 +296,7 @@ Object.assign(ui, {
                                             ? `<span class="bg-amber-950 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded text-[10px] font-mono animate-pulse whitespace-nowrap">⏳ AESA Pend.</span>`
                                             : `<span class="text-slate-400 text-[10px] font-mono whitespace-nowrap">🔒 Sin AESA</span>`);
 
-                                    const hasB2B = (state.data.b2bContracts || []).some(ctr => (ctr.buyerId === cid || ctr.sellerId === cid) && ctr.status === 'CONTRATO_VALIDADO');
+                                    const hasB2B = (state.data.b2bContracts || []).some(ctr => (ctr.buyerId === cid || ctr.sellerId === cid || ctr.buyerCoId === cid || ctr.sellerCoId === cid) && ctr.status === 'CONTRATO_VALIDADO');
                                     const b2bBadge = hasB2B
                                         ? `<span class="bg-cyan-950 text-cyan-300 border border-cyan-500/40 px-1.5 py-0.5 rounded text-[10px] font-mono whitespace-nowrap">🤝 B2B</span>`
                                         : '';

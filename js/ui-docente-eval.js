@@ -287,10 +287,10 @@ Object.assign(ui, {
                     }
                 } else if (activeSubject === 'ECO') {
                     evidenceHtml += `<p class="text-xs text-mars-yellow uppercase font-bold mb-2">Nota: El criterio 1 corresponde al Test Evaluativo (20%).</p>`;
-                    evidenceHtml += this.renderDocBadge('1. Presupuesto Inicial (20%)', docs.budgetInitial, false, this.evalSelectedCo, 'budgetInitial');
-                    evidenceHtml += this.renderDocBadge('2. Cuenta de Resultados (20%)', docs.incomeStatement, false, this.evalSelectedCo, 'incomeStatement');
-                    evidenceHtml += this.renderDocBadge('3. Presupuesto Post-Prototipo (20%)', docs.budgetPostProto, false, this.evalSelectedCo, 'budgetPostProto');
-                    evidenceHtml += this.renderDocBadge('4. Balance de Situación (20%)', docs.balanceSheet, false, this.evalSelectedCo, 'balanceSheet');
+                    evidenceHtml += this.renderDocBadge('1. Presupuesto Inicial (20% - Fase I)', docs.budgetInitial, false, this.evalSelectedCo, 'budgetInitial');
+                    evidenceHtml += this.renderDocBadge('2. Presupuesto Post-Prototipo (20% - Fase II)', docs.budgetPostProto, false, this.evalSelectedCo, 'budgetPostProto');
+                    evidenceHtml += this.renderDocBadge('3. Balance de Situación (20% - Fase III)', docs.balanceSheet, false, this.evalSelectedCo, 'balanceSheet');
+                    evidenceHtml += this.renderDocBadge('4. Cuenta de Resultados (20% - Fase IV)', docs.incomeStatement, false, this.evalSelectedCo, 'incomeStatement');
                 } else if (activeSubject === 'LYE') {
                     evidenceHtml += this.renderDocBadge('1A. Identidad y Misión (Diciembre)', docs.brandIdentity_dec, false, this.evalSelectedCo, 'brandIdentity_dec');
                     evidenceHtml += this.renderDocBadge('1B. Identidad y Misión (Abril)', docs.brandIdentity_apr, false, this.evalSelectedCo, 'brandIdentity_apr');
@@ -379,10 +379,10 @@ Object.assign(ui, {
     getCriterionPhase(subject, criterionId) {
         const map = {
             FYQ: { c1: 'I', c_ws: 'III', c2: 'IV', c3: 'II', c4: 'V' },
-            ECO: { c1: 'I', c2: 'I', c3: 'III', c4: 'IV', c5: 'IV' },
-            LYE: { c1: 'I', c2: 'IV', c3: 'III', c4: 'IV', c5: 'I', c6: 'IV', c7: 'V' },
+            ECO: { c1: 'I-IV', c2: 'I', c3: 'IV', c4: 'II', c5: 'III' },
+            LYE: { c1: 'I', c2: 'III', c3: 'III', c4: 'I', c5: 'I', c6: 'IV', c7: 'V' },
             LEN: { c1: 'V', c2: 'IV', c3: 'I-IV' },
-            MAT: { c1: 'II', c2: 'II', c3: 'II', c4: 'IV' },
+            MAT: { c1: 'II', c2: 'II', c3: 'II', c4: 'II' },
             ING: { c1: 'I-IV', c2: 'V' }
         };
         return map[subject]?.[criterionId] || 'I-IV';
@@ -501,10 +501,10 @@ Object.assign(ui, {
             },
             ECO: {
                 I: "En la Fase I te corresponde calificar el <strong>Presupuesto Inicial</strong> (20%) y el <strong>Test Evaluativo</strong> (20%).",
-                II: "En la Fase II las empresas ajustan costes en base a los prototipos de taller.",
-                III: "En la Fase III evalúa la <strong>Cuenta de Resultados</strong> (20% de tu materia).",
-                IV: "En la Fase IV evalúa el <strong>Presupuesto Post-Prototipo</strong> (20%) y el <strong>Balance de Situación</strong> (20%).",
-                V: "En la Fase V se realiza la auditoría de balance definitivo."
+                II: "En la Fase II evalúa el <strong>Presupuesto Post-Prototipo</strong> (20% de tu materia) tras los ensayos de apogeo y taller.",
+                III: "En la Fase III evalúa el <strong>Balance de Situación</strong> (20% de tu materia) cerrado con activo, pasivo y patrimonio neto.",
+                IV: "En la Fase IV evalúa la <strong>Cuenta de Resultados</strong> (20% de tu materia) con pérdidas, ganancias y control de márgenes.",
+                V: "En la Fase V se audita el balance definitivo y la solvencia contable para la liquidación final."
             },
             LYE: {
                 I: "En la Fase I te corresponde calificar la <strong>Identidad y Misión Dic</strong> (10%) y el <strong>Diario de Decisiones e IA Dic</strong> (10%).",

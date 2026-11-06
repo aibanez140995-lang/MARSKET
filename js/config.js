@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.67) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.68) ---
 
-const APP_VERSION = "1.1.67";
+const APP_VERSION = "1.1.68";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -226,14 +226,14 @@ const PRESS_RELEASE_PHASES = Object.freeze([
     }
 ]);
 
-// Ventanas temporales oficiales de selección de contratos (3 días lectivos por fase)
+// Ventanas temporales oficiales de selección de contratos (Fase I: 5 días lectivos)
 const CONTRACTS_PHASE_WINDOWS = Object.freeze({
     'I': {
         phase: 'I',
         phaseName: 'Fase I: Fundación y Viabilidad',
-        selectionStart: '2026-11-11T00:00',
-        selectionEnd: '2026-11-13T23:59',
-        windowLabel: '11/11/2026 – 13/11/2026 (Primeros 3 días lectivos desde apertura)',
+        selectionStart: '2026-11-21T00:00',
+        selectionEnd: '2026-11-27T23:59',
+        windowLabel: '21/11/2026 – 27/11/2026 (5 días lectivos con Presupuesto Inicial entregado)',
         evalCutoff: '2026-12-15T23:59',
         evalCutoffLabel: '15/12/2026'
     },
@@ -318,7 +318,7 @@ const CONTRACTS_CATALOG_DEF = Object.freeze([
         phase: 'I',
         company: 'Deimos Space',
         title: 'Reto de Precisión Presupuestaria Previa',
-        requirements: 'Desviación inferior al 5% entre el presupuesto inicial del 09/11/2026 y los costes reales computados en el prototipo del 15/12/2026.',
+        requirements: 'Desviación inferior al 5% entre el presupuesto inicial del 20/11/2026 y los costes reales computados en el prototipo del 15/12/2026.',
         reward: 140,
         penalty: 60,
         verification: 'Comparativa de hojas de cálculo de costes en Economía.',
@@ -979,7 +979,7 @@ const DELIVERABLES_DEF = [
       desc: "Presupuesto inicial de aprovisionamiento y proyección financiera de la startup.",
       role: "FINANZAS",
       defaultOpenDate: "2026-11-02T00:00",
-      defaultDate: "2026-11-09T23:59",
+      defaultDate: "2026-11-20T23:59",
       weight: "20% ECO",
       defaultGuideDocUrl: ""
     },
@@ -1089,8 +1089,26 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.67
+// Changelog Oficial de Producción v1.1.68
 const APP_CHANGELOG = [
+    {
+      version: "1.1.68",
+      date: new Date().toISOString().split('T')[0],
+      title: "Actualización de Plazo de Contratos Fase I (5 Días Lectivos), Requisito de Presupuesto Inicial y Sincronización B2B",
+      items: [
+        "Ventana de Contratos Fase I y Plazos Oficiales: La fecha límite de entrega del Presupuesto Inicial de Economía se fija oficialmente para el 20/11/2026 a las 23:59. La suscripción de Contratos Comerciales de la Fase I se habilita el 21/11/2026 y permanece abierta durante 5 días lectivos (hasta el viernes 27/11/2026 a las 23:59).",
+        "Requisito Previo Condicional: Es obligatorio haber entregado previamente el Presupuesto Inicial de Economía (DOC_4) para suscribir contratos comerciales en la Fase I. El plazo general finaliza de forma improrrogable el 27/11/2026 sin ampliación por fecha de entrega individual.",
+        "Navegación Asistida para Startups: En el panel de Contratos Comerciales, si la ventana está abierta pero la empresa aún no ha presentado su presupuesto, un aviso contextual destacado guía directamente al CEO con un botón de acceso rápido hacia Mis Entregables.",
+        "Auditoría y Rectificación Segura en Contratos Comerciales: La liquidación docente de contratos vincula el identificador de asiento en el Libro Mayor (Ledger) y anula de manera limpia transacciones previas en caso de rectificación docente, evitando cobros duplicados.",
+        "Filtrado B2B y Radar de Aduana por Clases: Corrección en las comprobaciones de identificadores de comprador/vendedor en compras de segunda mano para reflejar con exactitud las alertas pendientes y las insignias de clase (A-F y TEST).",
+        "Cronología Oficial de Rúbricas (Economía, Liderazgo y Matemáticas): Alineación exacta de las fases en la rúbrica docente de Economía (Fase I: Presupuesto Inicial, Fase II: Presupuesto Post-Prototipo, Fase III: Balance, Fase IV: Cuenta de Resultados), asignando las evidencias en orden cronológico, y corrección en la acción de devolución de entregables para subsanación."
+      ],
+      highlights: [
+        { type: "CONTRATOS", text: "Ventana de 5 días lectivos (21/11 al 27/11 a las 23:59) supeditada a entrega del Presupuesto Inicial." },
+        { type: "DOCENTE", text: "Cronología de rúbrica en Economía ajustada al ciclo de fases y rectificación limpia en Ledger." },
+        { type: "ADUANA B2B", text: "Filtrado estricto por clase y detección infalible de contratos B2B." }
+      ]
+    },
     {
       version: "1.1.67",
       date: new Date().toISOString().split('T')[0],

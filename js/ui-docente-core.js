@@ -70,8 +70,8 @@ Object.assign(ui, {
                 stats['ALL'].pendingB2B++;
                 stats['ALL'].totalPending++;
 
-                const buyer = companies[contract.buyerId];
-                const seller = companies[contract.sellerId];
+                const buyer = companies[contract.buyerCoId || contract.buyerId];
+                const seller = companies[contract.sellerCoId || contract.sellerId];
                 const buyerCls = buyer ? (buyer.classGroup || 'A') : null;
                 const sellerCls = seller ? (seller.classGroup || 'A') : null;
 

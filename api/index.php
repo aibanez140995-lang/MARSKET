@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v1.1.67
+// Versión: v1.1.68
 
 declare(strict_types=1);
 
@@ -1086,11 +1086,13 @@ try {
                 $reasonText = trim((string)($payload['reasonText'] ?? $payload['reason'] ?? $reasonId));
                 $driveUrl = is_array($currentDoc) ? ($currentDoc['driveUrl'] ?? '') : (string)$currentDoc;
                 
+                $returnDriveUrl = trim((string)($payload['returnDriveUrl'] ?? $p['returnDriveUrl'] ?? ''));
                 $co['deliverables'][$rawKey] = [
                     'driveUrl' => $driveUrl,
-                    'status' => 'PENDING',
+                    'status' => 'CEO_REVISION',
                     'returnReasonId' => $reasonId,
                     'returnReason' => $reasonText,
+                    'returnDriveUrl' => !empty($returnDriveUrl) ? $returnDriveUrl : null,
                     'returnByTeacher' => true,
                     'updatedAt' => date('c')
                 ];

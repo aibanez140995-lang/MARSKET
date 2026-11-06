@@ -371,8 +371,8 @@ const state = {
                 d.deletedSuggestionIds = Array.isArray(d.deletedSuggestionIds) ? d.deletedSuggestionIds : [];
         d.dismissedNotificationIds = Array.isArray(d.dismissedNotificationIds) ? d.dismissedNotificationIds : [];
         d.config.deadlines = d.config.deadlines || {};
-        if (!d.config.scheduleBaselineVersion || d.config.scheduleBaselineVersion < 1151) {
-            d.config.scheduleBaselineVersion = 1151;
+        if (!d.config.scheduleBaselineVersion || d.config.scheduleBaselineVersion < 1168) {
+            d.config.scheduleBaselineVersion = 1168;
             d.config.deliverableSchedule = d.config.deliverableSchedule || {};
             if (typeof DELIVERABLES_DEF !== 'undefined') {
                 DELIVERABLES_DEF.forEach(def => {
@@ -1038,17 +1038,23 @@ const state = {
                     sCo.balance = this.calculateBalance(sCo);
                 }
 
-                // Conciliación de contratos comerciales por fase
+                // Conciliación de contratos comerciales por fase con Last-Write-Wins (LWW)
                 const targetCo = merged.companies[k] || sCo;
                 if (targetCo) {
                     const sCont = (sCo?.contracts && typeof sCo.contracts === 'object') ? sCo.contracts : {};
                     const lCont = (lCo?.contracts && typeof lCo.contracts === 'object') ? lCo.contracts : {};
                     targetCo.contracts = { ...sCont, ...lCont };
                     ['I', 'II', 'III', 'IV'].forEach(ph => {
-                        if (sCont[ph]?.status === 'CUMPLIDO' || sCont[ph]?.status === 'NO_CUMPLIDO') {
-                            targetCo.contracts[ph] = sCont[ph];
-                        } else if (lCont[ph]?.status === 'CUMPLIDO' || lCont[ph]?.status === 'NO_CUMPLIDO') {
-                            targetCo.contracts[ph] = lCont[ph];
+                        const sC = sCont[ph];
+                        const lC = lCont[ph];
+                        if (sC && lC) {
+                            const sTime = Number(sC.settledAt || sC.signedAt) || 0;
+                            const lTime = Number(lC.settledAt || lC.signedAt) || 0;
+                            targetCo.contracts[ph] = (lTime >= sTime) ? JSON.parse(JSON.stringify(lC)) : JSON.parse(JSON.stringify(sC));
+                        } else if (lC) {
+                            targetCo.contracts[ph] = JSON.parse(JSON.stringify(lC));
+                        } else if (sC) {
+                            targetCo.contracts[ph] = JSON.parse(JSON.stringify(sC));
                         }
                     });
                 }
@@ -2610,7 +2616,11 @@ const state = {
         const now = Date.now();
         const start = new Date(win.selectionStart).getTime();
         const end = new Date(win.selectionEnd).getTime();
-        return now >= start && now <= end;
+        if (now < start || now > end) return false;
+        if (phase === 'I' && !this.isBudgetInitialDelivered(co)) {
+            return false;
+        }
+        return true;
     },
 
     isPressReleaseUnlocked(phaseKey, co) {
@@ -2639,6 +2649,24 @@ const state = {
         return Boolean(pItem && ((pItem.status === 'DELIVERED_TO_TEACHER' && pItem.driveUrl) || (typeof pItem === 'string' && pItem.length > 0)));
     },
 
+    isBudgetInitialDelivered(co) {
+        if (!co && this.user) {
+            co = this.data.companies?.[this.user.coId];
+        }
+        if (!co) return false;
+        if (co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000' || (this.user && this.user.admin)) {
+            return true;
+        }
+        const p = co.deliverables?.['budgetInitial'];
+        if (!p) return false;
+        if (typeof p === 'string' && p.trim().length > 0) return true;
+        if (typeof p === 'object' && p !== null) {
+            if (p.driveUrl && String(p.driveUrl).trim().length > 0) return true;
+            if (p.status === 'DELIVERED_TO_TEACHER' || p.status === 'ACCEPTED' || p.status === 'REVIEWED') return true;
+        }
+        return false;
+    },
+
     signCommercialContract(coId, contractId) {
         const co = this.data.companies?.[coId];
         if (!co) {
@@ -2654,10 +2682,16 @@ const state = {
             return { ok: false, error: 'Contrato comercial no registrado en el catálogo oficial.' };
         }
         const phase = contract.phase;
+
+        // Validar entrega de Presupuesto Inicial en Fase I
+        if (phase === 'I' && !this.isBudgetInitialDelivered(co)) {
+            return { ok: false, error: 'Para suscribir un contrato comercial de la Fase I es imprescindible haber entregado previamente el Presupuesto Inicial de Economía (DOC_4).' };
+        }
+
         // Validar ventana temporal
         if (!this.isContractSelectionWindowOpen(phase, co)) {
             const win = typeof CONTRACTS_PHASE_WINDOWS !== 'undefined' ? CONTRACTS_PHASE_WINDOWS[phase] : null;
-            return { ok: false, error: `La ventana de suscripción para la Fase ${phase} no está activa. Plazo oficial: ${win?.windowLabel || 'Primeros 3 días lectivos'}.` };
+            return { ok: false, error: `La ventana de suscripción para la Fase ${phase} no está activa. Plazo oficial: ${win?.windowLabel || 'Primeros 5 días lectivos'}.` };
         }
         co.contracts = co.contracts || {};
         if (co.contracts[phase] && co.contracts[phase].contractId) {
@@ -2709,27 +2743,40 @@ const state = {
             ? `[CONTRATO_COMERCIAL] Cumplimiento de misión: ${cRecord.company} — ${cRecord.title}`
             : `[CONTRATO_COMERCIAL] Penalización por incumplimiento de misión: ${cRecord.company} — ${cRecord.title}`;
 
+        // Rectificación si ya estaba liquidado previamente:
+        // Eliminar asiento previo en el Ledger para evitar dobles cobros o penalizaciones duplicadas
+        if (cRecord.settledAt && Array.isArray(co.ledger)) {
+            if (cRecord.ledgerTxId) {
+                co.ledger = co.ledger.filter(tx => tx.id !== cRecord.ledgerTxId && tx.tx_id !== cRecord.ledgerTxId);
+            } else {
+                co.ledger = co.ledger.filter(tx => !(tx.dept === 'CONTRATO_COMERCIAL' && tx.concept && tx.concept.includes(cRecord.title)));
+            }
+        }
+
         cRecord.status = isCompleted ? 'CUMPLIDO' : 'NO_CUMPLIDO';
         cRecord.settledAt = now;
         cRecord.settledDate = new Date().toLocaleString();
         cRecord.settledBy = this.user.role || 'DOCENTE';
         cRecord.settlementNote = reasonNote || (isCompleted ? 'Validado con éxito por comité docente' : 'Incumplimiento de requisitos técnicos/financieros');
 
-        // Generar asiento contable en Ledger
-        this.addToLedger(coId, concept, 'CONTRATO_COMERCIAL', delta);
+        // Generar asiento contable en Ledger y vincular su ID inmutable
+        const newTx = this.addToLedger(coId, concept, 'CONTRATO_COMERCIAL', delta);
+        if (newTx && newTx.id) {
+            cRecord.ledgerTxId = newTx.id;
+        }
 
         return { ok: true, contract: cRecord, delta };
     },
 
     addToLedger(coId, concept, dept, delta) {
         const co = this.data.companies[coId];
-        if (!co) return; 
+        if (!co) return null; 
         const deltaNum = Math.round((Number(delta || 0) + Number.EPSILON) * 100) / 100;
         co.ledger = Array.isArray(co.ledger) ? co.ledger : [];
         const now = Date.now();
         const txId = 'TX-' + now.toString(36).toUpperCase() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
         
-        co.ledger.unshift({
+        const tx = {
             id: txId,
             tx_id: txId,
             date: new Date().toLocaleString(),
@@ -2738,7 +2785,8 @@ const state = {
             delta: deltaNum,
             timestamp: now,
             final: 0
-        });
+        };
+        co.ledger.unshift(tx);
 
         this.recalculateBalance(co);
         if (co.ledger[0]) {
@@ -2746,6 +2794,7 @@ const state = {
         }
         co.updatedAt = now;
         this.save();
+        return tx;
     }
 };
 

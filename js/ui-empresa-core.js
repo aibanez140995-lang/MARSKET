@@ -2797,6 +2797,25 @@ Object.assign(ui, {
         return Boolean(pItem && ((pItem.status === 'DELIVERED_TO_TEACHER' && pItem.driveUrl) || (typeof pItem === 'string' && pItem.length > 0)));
     },
 
+    isBudgetInitialDelivered(co) {
+        if (typeof state !== 'undefined' && typeof state.isBudgetInitialDelivered === 'function') {
+            return state.isBudgetInitialDelivered(co);
+        }
+        if (!co && state.user) co = state.data?.companies?.[state.user.coId];
+        if (!co) return false;
+        if (co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000' || (state.user && state.user.admin)) {
+            return true;
+        }
+        const p = co.deliverables?.['budgetInitial'];
+        if (!p) return false;
+        if (typeof p === 'string' && p.trim().length > 0) return true;
+        if (typeof p === 'object' && p !== null) {
+            if (p.driveUrl && String(p.driveUrl).trim().length > 0) return true;
+            if (p.status === 'DELIVERED_TO_TEACHER' || p.status === 'ACCEPTED' || p.status === 'REVIEWED') return true;
+        }
+        return false;
+    },
+
     setContractsPhaseTab(phase) {
         if (!state.user) return;
         const co = state.data.companies[state.user.coId];
@@ -2970,7 +2989,7 @@ Object.assign(ui, {
                             Licitaciones Comerciales Clasificadas
                         </h3>
                         <p class="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto mt-2 leading-relaxed">
-                            El catálogo oficial de licitaciones corporativas y contratos estratégicos de la Fase I estará disponible para el CEO a partir del <strong>11 de Noviembre de 2026</strong>.
+                            El catálogo oficial de licitaciones corporativas y contratos estratégicos de la Fase I estará disponible para el CEO a partir del <strong>21 de Noviembre de 2026</strong>.
                         </p>
                         <p class="text-[11px] text-slate-500 font-mono mt-1">
                             Las licitaciones de fases posteriores (Fases II, III y IV) se publicarán de forma escalonada al inicio oficial de cada fase.
@@ -2978,7 +2997,7 @@ Object.assign(ui, {
                     </div>
                     <div class="pt-2">
                         <span class="inline-block px-3.5 py-1.5 bg-amber-950/60 border border-amber-400 text-amber-300 font-mono text-xs font-bold uppercase tracking-wider">
-                            📅 Apertura Oficial Fase I: 11/11/2026
+                            📅 Apertura Oficial Fase I: 21/11/2026
                         </span>
                     </div>
                 </div>
@@ -2998,24 +3017,53 @@ Object.assign(ui, {
                 </div>
 
                 <!-- Estado de la Ventana Temporal de Selección -->
-                <div class="terminal-border p-4 bg-slate-950 border ${isOpen ? 'border-emerald-500/50 bg-emerald-950/10' : 'border-amber-500/40 bg-amber-950/10'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="inline-block w-2.5 h-2.5 rounded-full ${isOpen ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}"></span>
-                            <h4 class="font-orbitron font-bold text-xs sm:text-sm uppercase ${isOpen ? 'text-emerald-300' : 'text-amber-300'}">
-                                ${isOpen ? 'Ventana Oficial de Suscripción Abierta' : 'Ventana Oficial de Suscripción Cerrada / Bloqueada'}
-                            </h4>
+                ${(() => {
+                    const nowTs = Date.now();
+                    const winStart = win ? new Date(win.selectionStart).getTime() : 0;
+                    const winEnd = win ? new Date(win.selectionEnd).getTime() : 0;
+                    const isWithinDates = (nowTs >= winStart && nowTs <= winEnd);
+                    const isBudgetDelivered = this.isBudgetInitialDelivered(co);
+
+                    if (currentPhaseTab === 'I' && isWithinDates && !isBudgetDelivered && !co.unlockAllContracts && !co.isTestCompany) {
+                        return `
+                        <div class="terminal-border p-4 bg-amber-950/20 border border-amber-500/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+                                    <h4 class="font-orbitron font-bold text-xs sm:text-sm uppercase text-amber-300">
+                                        Requisito Previo Obligatorio: Presupuesto Inicial Pendiente
+                                    </h4>
+                                </div>
+                                <p class="text-xs text-slate-300 mt-0.5">
+                                    Para poder suscribir un contrato comercial en esta Fase I, el departamento de Finanzas debe entregar previamente el <strong>Presupuesto Inicial de Economía (DOC_4)</strong>. Plazo oficial improrrogable: hasta el <strong>27/11/2026 a las 23:59</strong>.
+                                </p>
+                            </div>
+                            <button type="button" onclick="ui.current = 'role_deliverables'; ui.render();" class="min-h-[44px] px-4 py-2 bg-amber-400 hover:bg-amber-300 text-black font-bold uppercase text-xs rounded font-orbitron shrink-0 transition-all flex items-center gap-1.5 shadow-lg shadow-amber-400/20">
+                                <span>📑 Ir a Entregables ➔</span>
+                            </button>
+                        </div>`;
+                    }
+
+                    return `
+                    <div class="terminal-border p-4 bg-slate-950 border ${isOpen ? 'border-emerald-500/50 bg-emerald-950/10' : 'border-amber-500/40 bg-amber-950/10'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="inline-block w-2.5 h-2.5 rounded-full ${isOpen ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}"></span>
+                                <h4 class="font-orbitron font-bold text-xs sm:text-sm uppercase ${isOpen ? 'text-emerald-300' : 'text-amber-300'}">
+                                    ${isOpen ? 'Ventana Oficial de Suscripción Abierta' : 'Ventana Oficial de Suscripción Cerrada / Bloqueada'}
+                                </h4>
+                            </div>
+                            <p class="text-xs text-slate-300 mt-0.5">
+                                ${win?.windowLabel || 'Primeros 5 días lectivos'}. Cada startup puede suscribir un único contrato por fase. Tras la ventana, el compromiso queda congelado.
+                            </p>
                         </div>
-                        <p class="text-xs text-slate-300 mt-0.5">
-                            ${win?.windowLabel || 'Primeros 3 días lectivos'}. Cada startup puede suscribir un único contrato por fase. Tras la ventana, el compromiso queda congelado.
-                        </p>
-                    </div>
-                    ${co.unlockAllContracts ? `
-                        <span class="px-2.5 py-1 text-[10px] font-mono font-bold uppercase bg-amber-400 text-black border border-amber-300 rounded shrink-0">
-                            🧪 Sandbox Pruebas: Ventanas Desbloqueadas
-                        </span>
-                    ` : ''}
-                </div>
+                        ${co.unlockAllContracts ? `
+                            <span class="px-2.5 py-1 text-[10px] font-mono font-bold uppercase bg-amber-400 text-black border border-amber-300 rounded shrink-0">
+                                🧪 Sandbox Pruebas: Ventanas Desbloqueadas
+                            </span>
+                        ` : ''}
+                    </div>`;
+                })()}
 
                 <!-- Contrato Actualmente Suscrito en esta Fase (si existe) -->
                 ${signedForTab ? `

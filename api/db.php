@@ -192,7 +192,7 @@ function seedInitialState(PDO $pdo): void {
                 'businessModelCanvas' => '2026-11-25T23:59',
                 'decisionDiary_dec' => '2026-12-15T23:59',
                 'decisionDiary_apr' => '2027-04-20T23:59',
-                'budgetInitial' => '2026-11-10T23:59',
+                'budgetInitial' => '2026-11-20T23:59',
                 'incomeStatement' => '2026-12-18T23:59',
                 'budgetPostProto' => '2027-02-15T23:59',
                 'balanceSheet' => '2027-04-15T23:59',

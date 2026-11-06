@@ -450,11 +450,13 @@ export async function onRequestPost(context) {
                 const reasonText = String(p.reasonText || p.reason || reasonId).trim();
                 const driveUrl = typeof currentDoc === 'string' ? currentDoc : (currentDoc?.driveUrl || '');
 
+                const returnDriveUrl = String(p.returnDriveUrl || payload.returnDriveUrl || '').trim();
                 co.deliverables[rawKey] = {
                     driveUrl,
-                    status: 'PENDING',
+                    status: 'CEO_REVISION',
                     returnReasonId: reasonId,
                     returnReason: reasonText,
+                    returnDriveUrl: returnDriveUrl || null,
                     returnByTeacher: true,
                     updatedAt: new Date().toISOString()
                 };
