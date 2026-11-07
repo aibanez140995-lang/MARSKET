@@ -781,12 +781,19 @@ Object.assign(ui, {
         }
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
         const sched = state.data.config?.deliverableSchedule || {};
-        const phases = [
-            { id: 'I', title: 'Fase I: Constitución, Misión y Especificaciones Preliminares', color: 'border-mars-cyan' },
-            { id: 'II', title: 'Fase II: Modelo de Negocio, Matemáticas y Prototipado', color: 'border-mars-yellow' },
-            { id: 'III', title: 'Fase III: Dossier de Inversores y Modelo Matemático Final', color: 'border-purple-500' },
-            { id: 'IV', title: 'Fase IV: Reporte Técnico, Taller, Marca Final y Cierre Contable', color: 'border-mars-green' }
-        ];
+        const colorMap = {
+            'I': 'border-mars-cyan',
+            'II': 'border-mars-yellow',
+            'III': 'border-purple-500',
+            'IV': 'border-mars-green',
+            'V': 'border-amber-400'
+        };
+        const pDefsSource = typeof PROJECT_PHASES_DEF !== 'undefined' ? PROJECT_PHASES_DEF : {};
+        const phases = ['I', 'II', 'III', 'IV'].map(pid => ({
+            id: pid,
+            title: pDefsSource[pid]?.name || `Fase ${pid}`,
+            color: colorMap[pid] || 'border-mars-cyan'
+        }));
 
         const nowIso = new Date().toISOString().slice(0, 16);
 

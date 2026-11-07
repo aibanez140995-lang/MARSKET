@@ -510,7 +510,7 @@ Object.assign(ui, {
             container.innerHTML = `
             <div class="terminal-border bg-mars-card p-4 mb-6 border-l-4 border-l-mars-cyan flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
-                    <h3 class="font-orbitron text-mars-cyan text-sm uppercase">Bóveda Oficial de Entregables por Hitos (Milestone Collapsible)</h3>
+                    <h3 class="font-orbitron text-mars-cyan text-sm uppercase">Bóveda Oficial de Entregables por Fases</h3>
                     <p class="text-xs text-slate-300 uppercase mt-1">Supervisión en 4 estados: Pendiente ➔ En Revisión CEO ➔ Devuelto / Subsanar ➔ Entregado a Docente.</p>
                 </div>
                 <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-3 py-1.5 text-xs font-mono font-black uppercase">Entregados a Docente: ${deliveredCount} / ${activeDefs.length}</span>
@@ -869,10 +869,57 @@ Object.assign(ui, {
             </div>`;
         }
 
+        // Brújula de Misión y Fase Activa (4º ESO)
+        const phaseInfo = (typeof ui.getCurrentPhaseInfo === 'function') ? ui.getCurrentPhaseInfo() : { key: 'I', name: 'Fase I: Preparación, Identidad y Presupuesto Inicial', deadline: '15/12/2026 23:59' };
+        const phaseDefs = defs.filter(d => (ui.getDeliverablePhase ? ui.getDeliverablePhase(d.key) : (d.phase || 'I')) === phaseInfo.key);
+        const phaseTotalCount = phaseDefs.length;
+        const phaseDeliveredCount = phaseDefs.filter(d => docs[d.key] && docs[d.key].status === 'DELIVERED_TO_TEACHER').length;
+        const phaseCeoCount = phaseDefs.filter(d => docs[d.key] && docs[d.key].status === 'SUBMITTED_TO_CEO').length;
+        const phaseReturnedCount = phaseDefs.filter(d => docs[d.key] && (docs[d.key].status === 'CEO_REVISION' || docs[d.key].status === 'DEVUELTO_A_TECNICO')).length;
+        const phasePct = phaseTotalCount > 0 ? Math.round((phaseDeliveredCount / phaseTotalCount) * 100) : 0;
+
+        const compassCardHtml = `
+        <div class="terminal-border bg-gradient-to-r from-slate-950 via-[#071322] to-slate-950 p-4 sm:p-5 border-l-4 border-l-mars-cyan shadow-[0_4px_25px_rgba(0,240,255,0.12)] mb-5">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-3 mb-3">
+                <div class="flex items-center gap-2.5 flex-wrap">
+                    <span class="text-xs font-black uppercase px-2.5 py-1 bg-mars-cyan text-black rounded font-mono shadow-[0_0_10px_rgba(0,240,255,0.4)]">📍 FASE ACTUAL // ${this.escapeHTML(phaseInfo.key)}</span>
+                    <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase tracking-wider">${this.escapeHTML(phaseInfo.name)}</h3>
+                </div>
+                <div class="flex items-center gap-2 font-mono text-xs">
+                    <span class="text-slate-400 uppercase">Cierre Estimado:</span>
+                    <span class="text-mars-yellow font-bold bg-black/60 px-2 py-0.5 border border-slate-800 rounded">${this.escapeHTML(phaseInfo.deadline)}</span>
+                </div>
+            </div>
+            
+            <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 text-xs font-mono">
+                <div class="flex-1">
+                    <div class="flex justify-between items-center mb-1.5 text-slate-300">
+                        <span class="uppercase">Progreso de Entregables Fase ${this.escapeHTML(phaseInfo.key)}</span>
+                        <span class="text-mars-green font-bold text-xs sm:text-sm">${phaseDeliveredCount} de ${phaseTotalCount} completados (${phasePct}%)</span>
+                    </div>
+                    <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-700 p-0.5">
+                        <div class="bg-gradient-to-r from-mars-cyan via-teal-400 to-mars-green h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(0,255,102,0.4)]" style="width: ${phasePct}%"></div>
+                    </div>
+                    <div class="flex items-center gap-3 mt-2 text-[11px] text-slate-400 flex-wrap">
+                        <span class="text-mars-green font-bold">✓ ${phaseDeliveredCount} Entregados al Docente</span>
+                        ${phaseCeoCount > 0 ? `<span class="text-mars-yellow font-bold animate-pulse">🟡 ${phaseCeoCount} En Visado CEO</span>` : ''}
+                        ${phaseReturnedCount > 0 ? `<span class="text-red-400 font-bold animate-pulse">🔴 ${phaseReturnedCount} Requiere Subsanación</span>` : ''}
+                        <span>⏳ ${Math.max(0, phaseTotalCount - phaseDeliveredCount - phaseCeoCount)} Pendientes</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button type="button" onclick="ui.navigate('role_deliverables')" class="min-h-[44px] w-full md:w-auto px-4 py-2 bg-mars-cyan/20 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-black uppercase text-xs transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(0,240,255,0.25)]">
+                        <span>📤 Ver Mis Entregables</span> ➔
+                    </button>
+                </div>
+            </div>
+        </div>`;
+
         const wrapper = document.createElement('div');
         wrapper.className = 'space-y-6';
         wrapper.innerHTML = `
             ${crisisHtml}
+            ${compassCardHtml}
 
             <!-- CABECERA DE SALA DE MANDO -->
             <div class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-cyan">
@@ -1154,12 +1201,22 @@ Object.assign(ui, {
                 const openDate = sched.openDate || def.defaultOpenDate;
                 const isLocked = Boolean(openDate && !isNaN(new Date(openDate).getTime()) && (new Date() < new Date(openDate)));
                 const dlDate = sched.deadline || (state.data.config?.deadlines && state.data.config.deadlines[def.key]) ? (sched.deadline || state.data.config.deadlines[def.key]) : def.defaultDate;
-                const dlStatus = this.getDeadlineStatus(dlDate);
 
                 const isReturned = (st === 'CEO_REVISION' || st === 'DEVUELTO_A_TECNICO');
                 const isDelivered = (st === 'DELIVERED_TO_TEACHER');
                 const isSubmittedCeo = (st === 'SUBMITTED_TO_CEO');
                 const isWorkshopWork = (st === 'EN_TALLER_OPERARIO');
+
+                let dlStatus;
+                if (isDelivered) {
+                    dlStatus = { text: "✓ EN REGLA", class: "bg-mars-green/20 text-mars-green border border-mars-green/50 font-bold", status: 'DELIVERED' };
+                } else if (isSubmittedCeo) {
+                    dlStatus = { text: "🟡 EN REVISIÓN CEO", class: "bg-mars-yellow/20 text-mars-yellow border border-mars-yellow/50 font-bold", status: 'PENDING_CEO' };
+                } else if (isReturned) {
+                    dlStatus = { text: "🔴 SUBSANACIÓN REQUERIDA", class: "bg-red-950/60 text-red-400 border border-red-500 font-bold animate-pulse", status: 'RETURNED' };
+                } else {
+                    dlStatus = this.getDeadlineStatus(dlDate, false);
+                }
 
                 // Determinación del índice activo del Stepper (0 a 3)
                 let stepIdx = 0;
@@ -1228,6 +1285,9 @@ Object.assign(ui, {
                 }
 
                 // Acciones por rol
+                const isOwnDepartment = (effectiveRole === def.role) || (def.key === 'hoja_taller_fyq' && (effectiveRole === 'OPERACIONES_IA' || effectiveRole === 'OPERACIONES' || effectiveRole === 'TECNICO'));
+                const canRoleEdit = isCEO || isOwnDepartment;
+
                 let actionControlsHtml = '';
                 if (isLocked) {
                     actionControlsHtml = `<div class="p-3 bg-black/60 border border-slate-800 text-center"><span class="text-xs font-mono text-slate-400 uppercase">🔒 Este entregable se abrirá el ${new Date(openDate).toLocaleString()} según el cronograma oficial.</span></div>`;
@@ -1242,6 +1302,16 @@ Object.assign(ui, {
                     <div class="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-800">
                         <button type="button" onclick="ui.opsValidateHojaTaller()" class="min-h-[44px] flex-1 bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">[ ✓ VALIDAR ENSAMBLE EN TALLER Y ENVIAR AL CEO ]</button>
                         <button type="button" onclick="ui.modalTallerReturnReason()" class="min-h-[44px] flex-1 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-4 py-2 hover:bg-mars-magenta hover:text-white transition-all">[ ↩ REPORTAR INCIDENCIA A I+D ]</button>
+                    </div>`;
+                } else if (isDelivered && !isReturned) {
+                    actionControlsHtml = `
+                    <div class="p-2.5 bg-mars-green/10 border border-mars-green/40 text-center flex items-center justify-center gap-2">
+                        <span class="text-mars-green font-mono font-bold text-xs uppercase">✓ ENTREGADO OFICIALMENTE EN CLOUD AL DOCENTE (EN PROCESO DE EVALUACIÓN)</span>
+                    </div>`;
+                } else if (!canRoleEdit) {
+                    actionControlsHtml = `
+                    <div class="p-2.5 bg-black/40 border border-slate-800 text-center">
+                        <span class="text-xs font-mono text-slate-400 uppercase">🔒 Subida reservada al departamento de <strong>${this.escapeHTML(def.role.replace('_',' '))}</strong> o Dirección (CEO).</span>
                     </div>`;
                 } else {
                     actionControlsHtml = `
@@ -1434,13 +1504,28 @@ Object.assign(ui, {
         if (docKey === 'hoja_taller_fyq') {
             co.deliverables = co.deliverables || {};
             const prev = co.deliverables.hoja_taller_fyq || {};
-            co.deliverables.hoja_taller_fyq = {
+            const newDoc = {
                 ...prev,
                 driveUrl: url,
+                url: url,
                 status: 'EN_TALLER_OPERARIO',
                 updatedAt: new Date().toISOString()
             };
+            delete newDoc.returnReasonId;
+            delete newDoc.returnReason;
+            delete newDoc.returnDriveUrl;
+            delete newDoc.returnByTeacher;
+            co.deliverables.hoja_taller_fyq = newDoc;
             state.save(state.user.coId);
+            try {
+                if (typeof state.executeAction === 'function') {
+                    await state.executeAction('SUBMIT_DELIVERABLE', {
+                        key: 'hoja_taller_fyq',
+                        driveUrl: url,
+                        status: 'EN_TALLER_OPERARIO'
+                    });
+                }
+            } catch(e) {}
             if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
             ui.pushNotification(state.user.coId, 'OPERACIONES_IA', '⚙️ Hoja de Taller enviada al operario para comprobación de ensamble.', 'info', { view: 'cart' });
             ui.closeModal();
@@ -1449,25 +1534,42 @@ Object.assign(ui, {
             return;
         }
 
-        // Entregable general: remite al CEO
+        // Entregable general: remite al CEO o al Docente si quien lo envía es el CEO
         co.deliverables = co.deliverables || {};
-        const prevDoc = co.deliverables[docKey] || {};
-        co.deliverables[docKey] = {
-            ...prevDoc,
+        const isCEO = state.user.role === 'CEO';
+        const targetStatus = isCEO ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
+        const newDoc = {
             driveUrl: url,
-            status: state.user.role === 'CEO' ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO',
+            url: url,
+            status: targetStatus,
+            submittedBy: state.user.role,
             updatedAt: new Date().toISOString()
         };
+        // Limpieza de banderas de devolución anteriores
+        delete newDoc.returnReasonId;
+        delete newDoc.returnReason;
+        delete newDoc.returnDriveUrl;
+        delete newDoc.returnByTeacher;
+        co.deliverables[docKey] = newDoc;
 
         state.save(state.user.coId);
+        try {
+            if (typeof state.executeAction === 'function') {
+                await state.executeAction('SUBMIT_DELIVERABLE', {
+                    key: docKey,
+                    driveUrl: url,
+                    status: targetStatus
+                });
+            }
+        } catch(e) {}
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
-        if (state.user.role !== 'CEO') {
+        if (!isCEO) {
             ui.pushNotification(state.user.coId, 'CEO', `📤 Entregable [${docKey}] remitido por ${state.user.role} para visado.`, 'info', { view: 'role_deliverables' });
         }
 
         ui.closeModal();
-        this.notify(state.user.role === 'CEO' ? "✅ Entregable visado y remitido al Claustro Docente." : "✅ Entregable transmitido al CEO para su visado formal.", "success");
+        this.notify(isCEO ? "✅ Entregable visado y remitido al Claustro Docente." : "✅ Entregable transmitido al CEO para su visado formal.", "success");
         this.render();
     },
 
@@ -2682,11 +2784,15 @@ Object.assign(ui, {
     },
 
     getCurrentPhaseKey() {
+        if (typeof ui.getCurrentPhaseInfo === 'function') {
+            return ui.getCurrentPhaseInfo().key;
+        }
         const now = Date.now();
-        if (now <= new Date('2026-12-15T23:59:59').getTime()) return 'I';
-        if (now <= new Date('2027-02-15T23:59:59').getTime()) return 'II';
-        if (now <= new Date('2027-03-31T23:59:59').getTime()) return 'III';
-        return 'IV';
+        if (now >= new Date('2027-05-19T00:00:00').getTime()) return 'V';
+        if (now >= new Date('2027-03-31T00:00:00').getTime()) return 'IV';
+        if (now >= new Date('2027-02-15T00:00:00').getTime()) return 'III';
+        if (now >= new Date('2026-12-15T00:00:00').getTime()) return 'II';
+        return 'I';
     },
 
     renderActiveContractTacticalBanner(co) {

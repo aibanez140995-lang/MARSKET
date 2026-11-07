@@ -72,7 +72,7 @@ Object.assign(ui, {
                     </div>
                 ` : `
                     ${this.renderDriveLinkBox('1. Hoja de Registro Preliminar (Fase I)', 'Enlace Drive al presupuesto teórico, materiales del catálogo, altura estimada, boceto y foto del prototipo montado sin combustible.', 'preliminaryReport', docs.preliminaryReport)}
-                    ${this.renderDriveLinkBox('2. Informe Técnico Exhaustivo (Fase II)', 'Enlace Drive al documento formal con marco químico estequiométrico, análisis físico-aerodinámico, balance definitivo y análisis V2.0.', 'technicalReport', docs.technicalReport)}
+                    ${this.renderDriveLinkBox('2. Informe Técnico Exhaustivo (Fase IV)', 'Enlace Drive al documento formal con marco químico estequiométrico, análisis físico-aerodinámico, balance definitivo y análisis V2.0.', 'technicalReport', docs.technicalReport)}
                 `}
             `;
         } else {

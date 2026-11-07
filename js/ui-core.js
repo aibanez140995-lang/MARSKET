@@ -764,15 +764,88 @@ const ui = {
         return false;
     },
 
-    getDeadlineStatus(dateString) {
-        if(!dateString) return { text: "NO DEFINIDO", class: "bg-slate-800 text-slate-300" };
+    getCurrentPhaseInfo() {
+        const phasesDef = (typeof PROJECT_PHASES_DEF !== 'undefined') ? PROJECT_PHASES_DEF : {};
+        const now = Date.now();
+        let currentKey = 'I';
+        if (now >= new Date('2027-05-19T00:00:00').getTime()) currentKey = 'V';
+        else if (now >= new Date('2027-03-31T00:00:00').getTime()) currentKey = 'IV';
+        else if (now >= new Date('2027-02-15T00:00:00').getTime()) currentKey = 'III';
+        else if (now >= new Date('2026-12-15T00:00:00').getTime()) currentKey = 'II';
+        else currentKey = 'I';
+
+        const def = phasesDef[currentKey] || {
+            id: currentKey,
+            name: `Fase ${currentKey}`,
+            startDate: '2026-11-02'
+        };
+
+        const phaseDeadlines = {
+            'I': '15/12/2026 23:59',
+            'II': '15/02/2027 23:59',
+            'III': '31/03/2027 23:59',
+            'IV': '18/05/2027 23:59',
+            'V': '19/05/2027 23:59'
+        };
+
+        return {
+            key: currentKey,
+            name: def.name || `Fase ${currentKey}`,
+            desc: def.desc || '',
+            deadline: phaseDeadlines[currentKey] || '15/12/2026 23:59'
+        };
+    },
+
+    getDeadlineStatus(dateString, isDelivered = false) {
+        if (isDelivered) {
+            return {
+                text: "✅ ENTREGADO EN PLAZO",
+                class: "bg-mars-green/20 text-mars-green border border-mars-green/60 font-black shadow-[0_0_8px_rgba(0,255,102,0.2)]",
+                status: 'DELIVERED'
+            };
+        }
+        if(!dateString) return { text: "NO DEFINIDO", class: "bg-slate-800 text-slate-300", status: 'UNDEFINED' };
         const now = new Date();
         const dl = new Date(dateString);
         const diffHours = (dl - now) / (1000 * 60 * 60);
-        if (diffHours < 0) return { text: "VENCIDO: RIESGO AEE", class: "bg-red-900 text-white animate-pulse shadow-[0_0_10px_red]" };
-        if (diffHours < 24) return { text: "CRÍTICO: < 24H", class: "bg-red-600 text-white animate-pulse" };
-        if (diffHours < 72) return { text: "ATENCIÓN: PRÓXIMO CIERRE", class: "bg-mars-yellow text-black" };
-        return { text: `EN PLAZO (${Math.floor(diffHours/24)}d)`, class: "bg-mars-cyan text-black" };
+        if (diffHours < 0) {
+            return {
+                text: "⚠️ PLAZO EXPIRADO",
+                class: "bg-red-950/90 text-red-300 border border-red-500 animate-pulse shadow-[0_0_10px_rgba(255,0,0,0.5)] font-bold",
+                status: 'EXPIRED'
+            };
+        }
+        if (diffHours < 24) {
+            const h = Math.max(1, Math.floor(diffHours));
+            return {
+                text: `🔥 ¡ÚLTIMAS ${h}H!`,
+                class: "bg-red-600 text-white font-black animate-pulse shadow-[0_0_12px_rgba(255,0,0,0.6)]",
+                status: 'CRITICAL'
+            };
+        }
+        if (diffHours < 72) {
+            const d = Math.floor(diffHours / 24);
+            const h = Math.floor(diffHours % 24);
+            return {
+                text: `⚠️ CIERRE INMINENTE (${d > 0 ? d + 'd ' : ''}${h}h)`,
+                class: "bg-orange-500 text-black font-black shadow-[0_0_8px_rgba(255,140,0,0.4)]",
+                status: 'URGENT'
+            };
+        }
+        if (diffHours < 168) {
+            const d = Math.max(1, Math.floor(diffHours / 24));
+            return {
+                text: `📅 ESTA SEMANA (${d}d)`,
+                class: "bg-mars-yellow text-black font-bold shadow-[0_0_6px_rgba(255,230,0,0.3)]",
+                status: 'WARNING'
+            };
+        }
+        const d = Math.floor(diffHours / 24);
+        return {
+            text: `⏳ EN PLAZO (${d}d)`,
+            class: "bg-mars-cyan text-black font-bold",
+            status: 'OK'
+        };
     },
 
     setupNavigationHistory() {
@@ -2294,6 +2367,16 @@ const ui = {
         if(!state.user) return;
         const verEl = document.getElementById('hud-version');
         if (verEl && typeof APP_VERSION !== 'undefined') verEl.innerText = `v${APP_VERSION}`;
+        const footVerEl = document.getElementById('footer-version');
+        if (footVerEl && typeof APP_VERSION !== 'undefined') footVerEl.innerText = `v${APP_VERSION}`;
+
+        const phaseBadge = document.getElementById('hud-phase-badge');
+        if (phaseBadge) {
+            const pInfo = this.getCurrentPhaseInfo ? this.getCurrentPhaseInfo() : { key: 'I', name: 'Fase I', deadline: '15/12/2026' };
+            phaseBadge.innerText = `FASE ${pInfo.key}`;
+            phaseBadge.title = `${pInfo.name} — Cierre estimado: ${pInfo.deadline}`;
+            phaseBadge.classList.remove('hidden');
+        }
 
         const balEl = document.getElementById('hud-balance');
         const infoEl = document.getElementById('hud-info');
@@ -2626,8 +2709,23 @@ const ui = {
             ? `<div class="col-span-full p-6 bg-slate-900/40 border border-slate-800 text-center rounded"><p class="text-xs font-mono text-slate-400 uppercase">🔒 No hay entregables activos en esta fase. Se habilitarán según el cronograma oficial.</p></div>`
             : filteredDefs.map(d => {
             const dateStr = deadlinesData[d.key] || d.defaultDate;
-            const st = this.getDeadlineStatus(dateStr);
-            const isDelivered = !!(co && co.deliverables && co.deliverables[d.key]);
+            const item = co?.deliverables?.[d.key];
+            const isDeliveredToTeacher = item && (item.status === 'DELIVERED_TO_TEACHER' || item.status === 'DOCENTE_REVIEW_DELIVERABLE');
+            const isPendingCeo = item && item.status === 'SUBMITTED_TO_CEO';
+            const isReturned = item && (item.status === 'CEO_REVISION' || item.status === 'DEVUELTO_A_TECNICO');
+            const isDelivered = isDeliveredToTeacher || (!!item && !!item.driveUrl);
+
+            let st;
+            if (isDeliveredToTeacher) {
+                st = { text: "✅ ENTREGADO AL DOCENTE", class: "bg-mars-green/20 text-mars-green border border-mars-green/60 font-black shadow-[0_0_8px_rgba(0,255,102,0.2)]" };
+            } else if (isPendingCeo) {
+                st = { text: "🟡 EN REVISIÓN DEL CEO", class: "bg-mars-yellow/20 text-mars-yellow border border-mars-yellow/60 font-black" };
+            } else if (isReturned) {
+                st = { text: "🔴 SUBSANACIÓN REQUERIDA", class: "bg-red-950/60 text-red-400 border border-red-500 font-black animate-pulse" };
+            } else {
+                st = this.getDeadlineStatus(dateStr, isDelivered);
+            }
+
             const sBadge = subjectColors[d.subject] || 'text-white border-white bg-white/10';
             const displayDate = String(dateStr).replace('T', ' ');
             const currPhase = this.getDeliverablePhase ? this.getDeliverablePhase(d.key) : (d.phase || 'I');
@@ -2659,6 +2757,26 @@ const ui = {
             </div>`;
         }).join('');
 
+        const contextualBanner = showAll ? `
+        <div class="mb-4 p-3 bg-mars-yellow/10 border-l-4 border-mars-yellow text-slate-200 text-xs font-mono flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div>
+                <span class="text-mars-yellow font-bold uppercase tracking-wider">🌐 CATÁLOGO GLOBAL (5 FASES):</span>
+                <span class="text-slate-300"> Mostrando el histórico curricular íntegro del curso (${filteredDefs.length} entregables).</span>
+            </div>
+            <button type="button" onclick="ui.toggleDossierShowAll()" class="min-h-[44px] px-3 py-1.5 bg-mars-cyan text-black hover:bg-white text-xs font-black uppercase tracking-wider transition-colors shrink-0">
+                🎯 ENFOCAR PRÓXIMOS 15 DÍAS
+            </button>
+        </div>` : `
+        <div class="mb-4 p-3 bg-mars-cyan/10 border-l-4 border-mars-cyan text-slate-200 text-xs font-mono flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div>
+                <span class="text-mars-cyan font-bold uppercase tracking-wider">🎯 MODO ENFOQUE ACTIVO (PRÓXIMOS 15 DÍAS / PENDIENTES):</span>
+                <span class="text-slate-300"> Mostrando ${filteredDefs.length} entregables con fecha límite próxima o pendientes de completar.</span>
+            </div>
+            <button type="button" onclick="ui.toggleDossierShowAll()" class="min-h-[44px] px-3 py-1.5 bg-mars-yellow text-black hover:bg-white text-xs font-black uppercase tracking-wider transition-colors shrink-0">
+                🌐 VER LAS 5 FASES (${visibleDefs.length})
+            </button>
+        </div>`;
+
         return `
         <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow mb-8">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 border-b border-mars-border pb-3">
@@ -2668,11 +2786,14 @@ const ui = {
                 </div>
                 <div class="flex flex-wrap gap-2 w-full sm:w-auto">
                     <button type="button" onclick="ui.toggleDossierShowAll()" class="min-h-[44px] px-3.5 py-2 text-xs font-black uppercase tracking-wider border transition-all ${showAll ? 'bg-mars-yellow text-black border-mars-yellow' : 'bg-slate-900 text-mars-cyan border-mars-cyan hover:bg-mars-cyan hover:text-black'}">
-                        ${showAll ? '🎯 Filtrar Próximos 15 Días / Fase Activa' : `🔍 Expandir Histórico Completo (${visibleDefs.length})`}
+                        ${showAll ? '🎯 ENFOCAR PRÓXIMOS 15 DÍAS' : `🌐 VER LAS 5 FASES (${visibleDefs.length})`}
                     </button>
                     ${(state.user && state.user.role === 'CEO') ? `<button type="button" onclick="ui.modalCreateAuxRole()" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase tracking-wider hover:bg-mars-cyan hover:text-black transition-all shrink-0 w-full sm:w-auto">Gestionar Rol Observador</button>` : ''}
                 </div>
             </div>
+
+            <!-- Contexto explicativo de visualización -->
+            ${contextualBanner}
 
             <!-- Filtros por Materia -->
             <div role="tablist" aria-label="Filtrar entregables por asignatura" class="flex flex-wrap gap-2 pb-2 mb-4">
@@ -3002,7 +3123,16 @@ const ui = {
         const openDate = sched.openDate || def.defaultOpenDate;
         const isLocked = Boolean(openDate && !isNaN(new Date(openDate).getTime()) && (new Date() < new Date(openDate)));
         const dlDate = sched.deadline || ((state.data.config?.deadlines && state.data.config.deadlines[def.key]) ? state.data.config.deadlines[def.key] : def.defaultDate);
-        const dlBadge = this.getDeadlineStatus(dlDate);
+        const isDeliveredToTeacher = doc && (doc.status === 'DELIVERED_TO_TEACHER' || doc.status === 'DOCENTE_REVIEW_DELIVERABLE');
+        const isPendingCeo = doc && doc.status === 'SUBMITTED_TO_CEO';
+        const isReturned = doc && (doc.status === 'CEO_REVISION' || doc.status === 'DEVUELTO_A_TECNICO');
+        const dlBadge = isDeliveredToTeacher
+            ? { text: "✅ ENTREGADO AL DOCENTE", class: "bg-mars-green/20 text-mars-green border border-mars-green/60 font-black shadow-[0_0_8px_rgba(0,255,102,0.2)]" }
+            : (isPendingCeo
+                ? { text: "🟡 EN REVISIÓN CEO", class: "bg-mars-yellow/20 text-mars-yellow border border-mars-yellow/60 font-black" }
+                : (isReturned
+                    ? { text: "🔴 SUBSANACIÓN REQUERIDA", class: "bg-red-950/60 text-red-400 border border-red-500 font-black animate-pulse" }
+                    : this.getDeadlineStatus(dlDate, !!(doc && doc.driveUrl))));
         const lockBadge = isLocked
             ? `<span class="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded">🔒 BLOQUEADO HASTA ${new Date(openDate).toLocaleString()}</span>`
             : `<span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">🟢 ACTIVO / EN PLAZO</span>`;

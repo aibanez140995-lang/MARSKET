@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.68) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.69) ---
 
-const APP_VERSION = "1.1.68";
+const APP_VERSION = "1.1.69";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1091,6 +1091,25 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.68
 const APP_CHANGELOG = [
+    {
+      version: "1.1.69",
+      date: new Date().toISOString().split('T')[0],
+      title: "Brújula de Misión y Fase Activa, Semáforo de Plazos 4º ESO, Enfoque de Cronograma y Blindaje Departamental",
+      items: [
+        "Brújula de Misión y Fase Activa: Indicador permanente de la fase actual en la barra superior (HUD) y tarjeta ejecutiva en el panel principal con barra de progreso visual de entregables completados, fecha límite de fase y acceso rápido a entregas.",
+        "Claridad Contextual en Cronograma Oficial: Carteles explicativos dinámicos al alternar entre el 'Modo Enfoque Próximos 15 Días' y el 'Catálogo Completo (5 Fases)', indicando el número exacto de documentos visibles y el propósito de cada vista.",
+        "Semáforo de Plazos Graduado para 4º ESO: Escalado visual progresivo en fechas límite (En Plazo > 7d, Esta Semana <= 7d, Cierre Inminente <= 72h, ¡Últimas Horas! <= 24h) y eliminación del falso cartel 'Vencido' en tareas ya entregadas.",
+        "Blindaje de Permisos Departamentales: En la vista de Toda la Startup, se restringe la subida de entregables al rol responsable de cada materia o al CEO, impidiendo sobrescrituras entre departamentos y protegiendo entregables ya enviados al docente.",
+        "Limpieza y Sincronización en Subsanaciones: Al reenviar un documento corregido se depuran de forma limpia los motivos y banderas de devolución previa, preservando notas de Drive del CEO y sincronizando mediante endpoints particionados atómicos.",
+        "Reconciliación de Contratos Comerciales en Servidor: Fusión LWW fase por fase de contratos comerciales en Cloudflare Functions y PHP, protegiendo las liquidaciones docentes frente a sobreescrituras.",
+        "Ergonomía Docente y Gestión de Fases: Actualización dinámica de títulos oficiales en el Gestor de Fases del Coordinador y ordenación cronológica por fases de las píldoras rápidas de Economía en evaluación docente."
+      ],
+      highlights: [
+        { type: "ALUMNOS UX", text: "Brújula de Fase Activa en HUD/Dashboard y semáforo de urgencia de plazos." },
+        { type: "CRONOGRAMA", text: "Modo Enfoque 15 días con cartel explicativo y erradicación de falsos 'Vencido'." },
+        { type: "SEGURIDAD", text: "Blindaje de roles en entregas y reconciliación LWW de contratos comerciales." }
+      ]
+    },
     {
       version: "1.1.68",
       date: new Date().toISOString().split('T')[0],

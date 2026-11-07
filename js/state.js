@@ -1983,6 +1983,8 @@ const state = {
         co.deliverables[docType].status = 'DELIVERED_TO_TEACHER';
         delete co.deliverables[docType].returnReasonId;
         delete co.deliverables[docType].returnReason;
+        delete co.deliverables[docType].returnDriveUrl;
+        delete co.deliverables[docType].returnByTeacher;
         co.deliverables[docType].updatedAt = new Date().toISOString();
 
         if (typeof telemetry !== 'undefined' && telemetry.log) {
@@ -2031,6 +2033,7 @@ const state = {
         co.deliverables[docType].returnReasonId = reasonId;
         co.deliverables[docType].returnReason = reasonText;
         co.deliverables[docType].returnDriveUrl = returnDriveUrl || null;
+        delete co.deliverables[docType].returnByTeacher;
         co.deliverables[docType].updatedAt = new Date().toISOString();
 
         if (typeof telemetry !== 'undefined' && telemetry.log) {

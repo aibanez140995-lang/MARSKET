@@ -153,8 +153,19 @@ export async function onRequestPost(context) {
                         }
                         // Preservar licencia AESA
                         if (sCo.launchLicense) co.launchLicense = sCo.launchLicense;
-                        // Preservar contratos y sanciones
-                        if (Array.isArray(sCo.contracts)) co.contracts = sCo.contracts;
+                        // Preservar contratos comerciales por fase (LWW) y sanciones
+                        if (sCo.contracts && typeof sCo.contracts === 'object') {
+                            co.contracts = co.contracts || {};
+                            for (const ph in sCo.contracts) {
+                                const sC = sCo.contracts[ph];
+                                const lC = co.contracts[ph];
+                                const sCTime = Number(sC?.settledAt || sC?.signedAt) || 0;
+                                const lCTime = Number(lC?.settledAt || lC?.signedAt) || 0;
+                                if (!lC || sCTime >= lCTime) {
+                                    co.contracts[ph] = sC;
+                                }
+                            }
+                        }
                         if (Array.isArray(sCo.sanctions)) co.sanctions = sCo.sanctions;
                     }
                 } catch(e) {}
@@ -416,6 +427,8 @@ export async function onRequestPost(context) {
                         currentDoc.status = 'DELIVERED_TO_TEACHER';
                         delete currentDoc.returnReasonId;
                         delete currentDoc.returnReason;
+                        delete currentDoc.returnDriveUrl;
+                        delete currentDoc.returnByTeacher;
                         currentDoc.updatedAt = new Date().toISOString();
                     }
                 } else if (subAction === 'RETURN') {
@@ -425,12 +438,24 @@ export async function onRequestPost(context) {
                     }
                     const reasonObj = CEO_RETURN_REASONS.find(r => r.id === reasonId);
                     const reasonText = reasonObj ? reasonObj.label : reasonId;
+                    const retDrive = String(p.returnDriveUrl || '').trim();
                     if (typeof currentDoc === 'string') {
-                        co.deliverables[rawKey] = { driveUrl: currentDoc, status: 'CEO_REVISION', returnReasonId: reasonId, returnReason: reasonText, updatedAt: new Date().toISOString() };
+                        co.deliverables[rawKey] = {
+                            driveUrl: currentDoc,
+                            status: 'CEO_REVISION',
+                            returnReasonId: reasonId,
+                            returnReason: reasonText,
+                            returnDriveUrl: (retDrive && GOOGLE_DRIVE_REGEX.test(retDrive)) ? retDrive : null,
+                            updatedAt: new Date().toISOString()
+                        };
                     } else {
                         currentDoc.status = 'CEO_REVISION';
                         currentDoc.returnReasonId = reasonId;
                         currentDoc.returnReason = reasonText;
+                        if (retDrive && GOOGLE_DRIVE_REGEX.test(retDrive)) {
+                            currentDoc.returnDriveUrl = retDrive;
+                        }
+                        delete currentDoc.returnByTeacher;
                         currentDoc.updatedAt = new Date().toISOString();
                     }
                 } else {

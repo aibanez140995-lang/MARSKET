@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v1.1.68
+// Versión: v1.1.69
 
 declare(strict_types=1);
 
@@ -834,9 +834,17 @@ try {
                         if (!empty($sCo['launchLicense'])) {
                             $co['launchLicense'] = $sCo['launchLicense'];
                         }
-                        // Preservar contratos comerciales
+                        // Preservar contratos comerciales por fase (LWW)
                         if (!empty($sCo['contracts']) && is_array($sCo['contracts'])) {
-                            $co['contracts'] = $sCo['contracts'];
+                            $co['contracts'] = is_array($co['contracts'] ?? null) ? $co['contracts'] : [];
+                            foreach ($sCo['contracts'] as $ph => $sC) {
+                                $lC = $co['contracts'][$ph] ?? null;
+                                $sCTime = (int)($sC['settledAt'] ?? $sC['signedAt'] ?? 0);
+                                $lCTime = (int)($lC['settledAt'] ?? $lC['signedAt'] ?? 0);
+                                if (!$lC || $sCTime >= $lCTime) {
+                                    $co['contracts'][$ph] = $sC;
+                                }
+                            }
                         }
                         // Preservar sanciones docentes
                         if (!empty($sCo['sanctions']) && is_array($sCo['sanctions'])) {
@@ -1004,17 +1012,13 @@ try {
                         $returnReason = $payload['returnReason'] ?? null;
                     }
 
-                    $prevDoc = $co['deliverables'][$rawKey] ?? null;
-                    $retDrive = $payload['returnDriveUrl'] ?? ($prevDoc['returnDriveUrl'] ?? null);
-                    $retTeacher = !empty($payload['returnByTeacher']) || !empty($prevDoc['returnByTeacher']);
-
                     $co['deliverables'][$rawKey] = [
                         'driveUrl' => $driveUrl,
                         'status' => $status,
                         'returnReasonId' => $returnReasonId,
                         'returnReason' => $returnReason,
-                        'returnDriveUrl' => $retDrive,
-                        'returnByTeacher' => $retTeacher,
+                        'returnDriveUrl' => $payload['returnDriveUrl'] ?? null,
+                        'returnByTeacher' => !empty($payload['returnByTeacher']),
                         'updatedAt' => date('c')
                     ];
                 }
@@ -1040,7 +1044,7 @@ try {
                         $currentDoc = ['driveUrl' => $currentDoc, 'status' => 'DELIVERED_TO_TEACHER', 'updatedAt' => date('c')];
                     } else {
                         $currentDoc['status'] = 'DELIVERED_TO_TEACHER';
-                        unset($currentDoc['returnReasonId'], $currentDoc['returnReason'], $currentDoc['returnDriveUrl']);
+                        unset($currentDoc['returnReasonId'], $currentDoc['returnReason'], $currentDoc['returnDriveUrl'], $currentDoc['returnByTeacher']);
                         $currentDoc['updatedAt'] = date('c');
                     }
                 } elseif ($subAction === 'RETURN') {
@@ -1064,6 +1068,7 @@ try {
                         if ($retDriveUrl) {
                             $currentDoc['returnDriveUrl'] = $retDriveUrl;
                         }
+                        unset($currentDoc['returnByTeacher']);
                         $currentDoc['updatedAt'] = date('c');
                     }
                 } else {
