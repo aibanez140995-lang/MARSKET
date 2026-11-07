@@ -890,8 +890,41 @@ Object.assign(ui, {
             </div>`;
         }
 
-        // Brújula de Misión y Fase Activa (4º ESO)
+        // Brújula de Misión y Radar Ejecutivo de Fase (4º ESO)
         const phaseInfo = (typeof ui.getCurrentPhaseInfo === 'function') ? ui.getCurrentPhaseInfo() : { key: 'I', name: 'Fase I: Preparación, Identidad y Presupuesto Inicial', deadline: '15/12/2026 23:59' };
+        const pDefsSource = typeof PROJECT_PHASES_DEF !== 'undefined' ? PROJECT_PHASES_DEF : {};
+        const phaseConfig = pDefsSource[phaseInfo.key] || {};
+        const phaseStartDate = phaseConfig.startDate ? new Date(phaseConfig.startDate + 'T00:00:00').getTime() : new Date('2026-11-02T00:00:00').getTime();
+
+        let phaseEndDate = 0;
+        if (phaseInfo.deadline) {
+            const parts = String(phaseInfo.deadline).split(' ');
+            const dParts = parts[0]?.split('/');
+            if (dParts && dParts.length === 3) {
+                phaseEndDate = new Date(`${dParts[2]}-${dParts[1]}-${dParts[0]}T${parts[1] || '23:59'}:00`).getTime();
+            }
+        }
+        if (!phaseEndDate || isNaN(phaseEndDate)) {
+            phaseEndDate = new Date('2026-12-15T23:59:59').getTime();
+        }
+
+        const nowTs = Date.now();
+        const totalPhaseDuration = Math.max(1, phaseEndDate - phaseStartDate);
+        const elapsedPhaseTime = Math.max(0, Math.min(totalPhaseDuration, nowTs - phaseStartDate));
+        const timeProgressPct = Math.min(100, Math.max(0, Math.round((elapsedPhaseTime / totalPhaseDuration) * 100)));
+        const msRemaining = Math.max(0, phaseEndDate - nowTs);
+        const daysRemaining = Math.ceil(msRemaining / (1000 * 60 * 60 * 24));
+
+        let timeBarColor = 'from-cyan-500 via-sky-400 to-blue-500';
+        let timeAlertText = `Quedan ${daysRemaining} días (${timeProgressPct}% consumido)`;
+        if (daysRemaining <= 5) {
+            timeBarColor = 'from-red-500 via-rose-500 to-red-600 animate-pulse';
+            timeAlertText = `¡ÚLTIMOS ${daysRemaining} DÍAS! (${timeProgressPct}% consumido)`;
+        } else if (daysRemaining <= 14) {
+            timeBarColor = 'from-amber-400 via-yellow-400 to-orange-500';
+            timeAlertText = `Cierre próximo: ${daysRemaining} días (${timeProgressPct}% consumido)`;
+        }
+
         const phaseDefs = defs.filter(d => (ui.getDeliverablePhase ? ui.getDeliverablePhase(d.key) : (d.phase || 'I')) === phaseInfo.key);
         const phaseTotalCount = phaseDefs.length;
         const phaseDeliveredCount = phaseDefs.filter(d => docs[d.key] && docs[d.key].status === 'DELIVERED_TO_TEACHER').length;
@@ -899,9 +932,33 @@ Object.assign(ui, {
         const phaseReturnedCount = phaseDefs.filter(d => docs[d.key] && (docs[d.key].status === 'CEO_REVISION' || docs[d.key].status === 'DEVUELTO_A_TECNICO')).length;
         const phasePct = phaseTotalCount > 0 ? Math.round((phaseDeliveredCount / phaseTotalCount) * 100) : 0;
 
+        // Ordenación por urgencia y prioridad en las mini-fichas del Radar
+        const getDefDeadlineTs = (d) => {
+            const sched = (state.data?.config?.deliverableSchedule && state.data.config.deliverableSchedule[d.key]) || {};
+            const dlStr = sched.deadline || (state.data?.config?.deadlines && state.data.config.deadlines[d.key]) || d.defaultDate || '2099-12-31';
+            const ts = new Date(dlStr).getTime();
+            return isNaN(ts) ? 9999999999999 : ts;
+        };
+        const getDefUrgencyPrio = (dKey) => {
+            const doc = docs[dKey];
+            const st = doc ? doc.status : null;
+            if (st === 'CEO_REVISION' || st === 'DEVUELTO_A_TECNICO') return 1;
+            if (st === 'SUBMITTED_TO_CEO') return 2;
+            if (st === 'EN_TALLER_OPERARIO') return 3;
+            if (!doc || !doc.driveUrl || st !== 'DELIVERED_TO_TEACHER') return 4;
+            return 5;
+        };
+
+        const sortedRadarDefs = [...phaseDefs].sort((a, b) => {
+            const tsA = getDefDeadlineTs(a);
+            const tsB = getDefDeadlineTs(b);
+            if (tsA !== tsB) return tsA - tsB;
+            return getDefUrgencyPrio(a.key) - getDefUrgencyPrio(b.key);
+        });
+
         const compassCardHtml = `
         <div class="terminal-border bg-gradient-to-r from-slate-950 via-[#071322] to-slate-950 p-4 sm:p-5 border-l-4 border-l-mars-cyan shadow-[0_4px_25px_rgba(0,240,255,0.12)] mb-5">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-3 mb-3">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-3 mb-4">
                 <div class="flex items-center gap-2.5 flex-wrap">
                     <span class="text-xs font-black uppercase px-2.5 py-1 bg-mars-cyan text-black rounded font-mono shadow-[0_0_10px_rgba(0,240,255,0.4)]">📍 FASE ACTUAL // ${this.escapeHTML(phaseInfo.key)}</span>
                     <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase tracking-wider">${this.escapeHTML(phaseInfo.name)}</h3>
@@ -912,26 +969,104 @@ Object.assign(ui, {
                 </div>
             </div>
             
-            <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 text-xs font-mono">
-                <div class="flex-1">
-                    <div class="flex justify-between items-center mb-1.5 text-slate-300">
-                        <span class="uppercase">Progreso de Entregables Fase ${this.escapeHTML(phaseInfo.key)}</span>
-                        <span class="text-mars-green font-bold text-xs sm:text-sm">${phaseDeliveredCount} de ${phaseTotalCount} completados (${phasePct}%)</span>
+            <!-- DOBLE BARRA COMPARATIVA: TIEMPO vs ENTREGABLES -->
+            <div class="space-y-3 mb-4 font-mono text-xs">
+                <!-- Barra 1: Cronómetro de Fase -->
+                <div>
+                    <div class="flex justify-between items-center mb-1 text-slate-300 text-[11px]">
+                        <span class="uppercase flex items-center gap-1.5 font-bold">
+                            <span>⏱️</span> Cronómetro de Fase (Tiempo Consumido)
+                        </span>
+                        <span class="text-mars-cyan font-bold">${timeAlertText}</span>
                     </div>
-                    <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-700 p-0.5">
-                        <div class="bg-gradient-to-r from-mars-cyan via-teal-400 to-mars-green h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(0,255,102,0.4)]" style="width: ${phasePct}%"></div>
-                    </div>
-                    <div class="flex items-center gap-3 mt-2 text-[11px] text-slate-400 flex-wrap">
-                        <span class="text-mars-green font-bold">✓ ${phaseDeliveredCount} Entregados al Docente</span>
-                        ${phaseCeoCount > 0 ? `<span class="text-mars-yellow font-bold animate-pulse">🟡 ${phaseCeoCount} En Visado CEO</span>` : ''}
-                        ${phaseReturnedCount > 0 ? `<span class="text-red-400 font-bold animate-pulse">🔴 ${phaseReturnedCount} Requiere Subsanación</span>` : ''}
-                        <span>⏳ ${Math.max(0, phaseTotalCount - phaseDeliveredCount - phaseCeoCount)} Pendientes</span>
+                    <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-800 p-0.5">
+                        <div class="bg-gradient-to-r ${timeBarColor} h-full rounded-full transition-all duration-500" style="width: ${timeProgressPct}%"></div>
                     </div>
                 </div>
-                <div class="flex items-center gap-2 shrink-0">
-                    <button type="button" onclick="ui.navigate('role_deliverables')" class="min-h-[44px] w-full md:w-auto px-4 py-2 bg-mars-cyan/20 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-black uppercase text-xs transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(0,240,255,0.25)]">
-                        <span>📤 Ver Mis Entregables</span> ➔
+
+                <!-- Barra 2: Entregables Completados -->
+                <div>
+                    <div class="flex justify-between items-center mb-1 text-slate-300 text-[11px]">
+                        <span class="uppercase flex items-center gap-1.5 font-bold">
+                            <span>📊</span> Hitos Completados Fase ${this.escapeHTML(phaseInfo.key)}
+                        </span>
+                        <span class="text-mars-green font-bold">${phaseDeliveredCount} de ${phaseTotalCount} entregados (${phasePct}%)</span>
+                    </div>
+                    <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-800 p-0.5">
+                        <div class="bg-gradient-to-r from-mars-cyan via-teal-400 to-mars-green h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(0,255,102,0.4)]" style="width: ${phasePct}%"></div>
+                    </div>
+                </div>
+
+                <!-- Semáforos rápidos de estado -->
+                <div class="flex items-center gap-3 pt-1 text-[11px] text-slate-400 flex-wrap">
+                    <span class="text-mars-green font-bold">✓ ${phaseDeliveredCount} Entregados al Docente</span>
+                    ${phaseCeoCount > 0 ? `<span class="text-mars-yellow font-bold animate-pulse">🟡 ${phaseCeoCount} En Visado CEO</span>` : ''}
+                    ${phaseReturnedCount > 0 ? `<span class="text-red-400 font-bold animate-pulse">🔴 ${phaseReturnedCount} Requiere Subsanación</span>` : ''}
+                    <span>⏳ ${Math.max(0, phaseTotalCount - phaseDeliveredCount - phaseCeoCount)} Pendientes</span>
+                </div>
+            </div>
+
+            <!-- CUADRÍCULA DE MINI-FICHAS DE ENTREGABLES DE FASE (ORDENADOS POR URGENCIA) -->
+            <div class="pt-3 border-t border-slate-800/80">
+                <div class="flex justify-between items-center mb-2.5">
+                    <span class="text-[10px] font-mono text-slate-400 uppercase font-bold tracking-wider">
+                        Radar de Entregables Fase ${this.escapeHTML(phaseInfo.key)} (Por Urgencia de Entrega)
+                    </span>
+                    <button type="button" onclick="ui.navigate('role_deliverables')" class="text-[11px] font-mono text-mars-cyan hover:underline flex items-center gap-1">
+                        <span>Gestionar en Mis Entregables ➔</span>
                     </button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                    ${sortedRadarDefs.map(def => {
+                        const doc = docs[def.key];
+                        const st = doc ? doc.status : null;
+                        const isDelivered = st === 'DELIVERED_TO_TEACHER';
+                        const isSubmittedCeo = st === 'SUBMITTED_TO_CEO';
+                        const isReturned = (st === 'CEO_REVISION' || st === 'DEVUELTO_A_TECNICO');
+
+                        const sched = (state.data?.config?.deliverableSchedule && state.data.config.deliverableSchedule[def.key]) || {};
+                        const dlDateStr = sched.deadline || (state.data?.config?.deadlines && state.data.config.deadlines[def.key]) || def.defaultDate || '';
+                        let shortDl = '--';
+                        if (dlDateStr) {
+                            try {
+                                const dObj = new Date(dlDateStr);
+                                shortDl = dObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+                            } catch (_) { shortDl = dlDateStr.slice(0, 10); }
+                        }
+
+                        let cardBorder = 'border-slate-800 bg-black/40 hover:border-slate-700';
+                        let badgeHtml = '<span class="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-black/60 text-slate-400 border border-slate-800">⏳ Pendiente</span>';
+
+                        if (isSubmittedCeo) {
+                            cardBorder = 'border-amber-400/80 bg-amber-950/30 ring-1 ring-amber-400/50 shadow-[0_0_12px_rgba(255,204,0,0.2)] animate-pulse';
+                            badgeHtml = '<span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-400 text-black font-orbitron">🟡 En tu Visado</span>';
+                        } else if (isReturned) {
+                            cardBorder = 'border-red-500/80 bg-red-950/30 shadow-[0_0_10px_rgba(255,0,0,0.2)]';
+                            badgeHtml = '<span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-600 text-white font-mono">🔴 Subsanar</span>';
+                        } else if (isDelivered) {
+                            cardBorder = 'border-emerald-500/50 bg-emerald-950/20';
+                            badgeHtml = '<span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-mono">🟢 Entregado</span>';
+                        }
+
+                        const deptRole = def.role === 'FINANZAS' ? 'FINANZAS (ECO)' : def.role === 'TECNICO' ? 'TÉCNICO (FYQ)' : def.role === 'MARKETING' ? 'MARKETING (LYE)' : (def.role === 'OPERACIONES_IA' || def.role === 'OPERACIONES') ? 'OPERACIONES IA (LYE)' : def.role;
+
+                        return `
+                        <div onclick="ui.navigate('role_deliverables')" class="terminal-border p-3 border rounded ${cardBorder} cursor-pointer transition-all hover:scale-[1.01] flex flex-col justify-between">
+                            <div>
+                                <div class="flex justify-between items-start gap-1 mb-1">
+                                    <span class="text-[9px] font-mono font-bold text-mars-cyan uppercase tracking-wider truncate">${this.escapeHTML(deptRole)}</span>
+                                    <span class="text-[9px] font-mono text-slate-400 shrink-0">Lím: ${this.escapeHTML(shortDl)}</span>
+                                </div>
+                                <h4 class="text-xs font-bold text-white uppercase line-clamp-2 leading-snug mb-2" title="${this.escapeHTML(def.name)}">
+                                    ${this.escapeHTML(def.shortName || def.name)}
+                                </h4>
+                            </div>
+                            <div class="flex justify-between items-center pt-2 border-t border-slate-800/60 mt-1">
+                                ${badgeHtml}
+                                <span class="text-[10px] text-mars-cyan font-mono hover:text-white">Ver ➔</span>
+                            </div>
+                        </div>`;
+                    }).join('')}
                 </div>
             </div>
         </div>`;
@@ -976,9 +1111,9 @@ Object.assign(ui, {
                         <span class="text-[10px] text-slate-500 font-mono">${sponsorAmt > 0 ? `Patrocinio: -${sponsorAmt.toFixed(2)} €v` : 'Sin patrocinios'}</span>
                     </div>
                     <div class="bg-black/50 p-3 sm:p-4 border border-slate-800">
-                        <span class="text-[10px] sm:text-xs text-slate-400 font-bold uppercase block mb-1">Progreso Hitos</span>
-                        <p class="text-base sm:text-xl font-orbitron font-black text-amber-400">${deliveredCount} / ${defs.length}</p>
-                        <span class="text-[10px] text-slate-500 font-mono">Entregados al claustro</span>
+                        <span class="text-[10px] sm:text-xs text-slate-400 font-bold uppercase block mb-1">Progreso Hitos (Fase ${this.escapeHTML(phaseInfo.key)})</span>
+                        <p class="text-base sm:text-xl font-orbitron font-black text-amber-400">${phaseDeliveredCount} / ${phaseTotalCount}</p>
+                        <span class="text-[10px] text-slate-500 font-mono">Entregados en Fase ${this.escapeHTML(phaseInfo.key)}</span>
                     </div>
                     <div class="bg-black/50 p-3 sm:p-4 border border-slate-800">
                         <span class="text-[10px] sm:text-xs text-slate-400 font-bold uppercase block mb-1">Visados CEO Pendientes</span>
@@ -999,7 +1134,7 @@ Object.assign(ui, {
                     <div>
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-xs font-black uppercase text-mars-cyan bg-mars-cyan/10 border border-mars-cyan/40 px-2 py-0.5">ACADÉMICO</span>
-                            <span class="text-xs font-mono text-slate-400">${deliveredCount}/${defs.length} Hitos</span>
+                            <span class="text-xs font-mono text-slate-400">${phaseDeliveredCount}/${phaseTotalCount} Hitos (Fase ${this.escapeHTML(phaseInfo.key)})</span>
                         </div>
                         <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">📋 Dossier Académico Oficial</h3>
                         <p class="text-xs text-slate-300 mt-1 leading-relaxed">Supervisa la Bóveda de Entregables dividida en 4 Fases y las calificaciones ponderadas de los 6 docentes.</p>
@@ -1167,12 +1302,36 @@ Object.assign(ui, {
             });
         }
 
-        // Agrupación y ordenación dinámica por Fase asignada (I a IV)
+        // Agrupación por Fase asignada y ordenación por Urgencia de Entrega (primero el más próximo)
         const phaseOrder = { 'I': 1, 'II': 2, 'III': 3, 'IV': 4 };
+        const getDeliverableDeadlineTs = (d) => {
+            const sched = (state.data?.config?.deliverableSchedule && state.data.config.deliverableSchedule[d.key]) || {};
+            const dlStr = sched.deadline || (state.data?.config?.deadlines && state.data.config.deadlines[d.key]) || d.defaultDate || '2099-12-31';
+            const ts = new Date(dlStr).getTime();
+            return isNaN(ts) ? 9999999999999 : ts;
+        };
+        const getDeliverableUrgencyPrio = (dKey) => {
+            const doc = docs[dKey];
+            const st = doc ? doc.status : null;
+            if (st === 'CEO_REVISION' || st === 'DEVUELTO_A_TECNICO') return 1;
+            if (st === 'SUBMITTED_TO_CEO') return 2;
+            if (st === 'EN_TALLER_OPERARIO') return 3;
+            if (!doc || !doc.driveUrl || st !== 'DELIVERED_TO_TEACHER') return 4;
+            return 5;
+        };
+
         filteredDefs.sort((a, b) => {
             const pA = phaseOrder[ui.getDeliverablePhase ? ui.getDeliverablePhase(a.key) : (a.phase || 'I')] || 99;
             const pB = phaseOrder[ui.getDeliverablePhase ? ui.getDeliverablePhase(b.key) : (b.phase || 'I')] || 99;
-            return pA - pB;
+            if (pA !== pB) return pA - pB;
+
+            // Mapeo por fecha límite (el más inminente primero)
+            const tsA = getDeliverableDeadlineTs(a);
+            const tsB = getDeliverableDeadlineTs(b);
+            if (tsA !== tsB) return tsA - tsB;
+
+            // Prioridad inteligente: pendientes y devueltos antes que entregados
+            return getDeliverableUrgencyPrio(a.key) - getDeliverableUrgencyPrio(b.key);
         });
 
         // Detección de entregables pendientes de fases anteriores abiertas (Mejora D)
@@ -1487,7 +1646,7 @@ Object.assign(ui, {
                     <div>
                         <div class="flex items-center gap-2 mb-1">
                             <span class="px-2 py-0.5 text-xs font-black uppercase bg-mars-cyan/20 border border-mars-cyan text-mars-cyan">MISIÓN AEROESPACIAL</span>
-                            <span class="text-xs text-slate-400 font-mono">18 HITOS CURRICULARES • 6 MATERIAS</span>
+                            <span class="text-xs text-slate-400 font-mono">${phaseFilter === 'ALL' ? `${defs.length} HITOS CURRICULARES • 6 MATERIAS` : `${baseDefs.length} HITOS (FASE ${phaseFilter}) • 6 MATERIAS`}</span>
                         </div>
                         <h2 class="text-lg sm:text-xl font-orbitron font-black text-white uppercase tracking-tight">
                             📤 Mis Entregables & Dossier Académico
@@ -3282,20 +3441,51 @@ Object.assign(ui, {
                 })()}
 
                 <!-- Contrato Actualmente Suscrito en esta Fase (si existe) -->
-                ${signedForTab ? `
-                    <div class="terminal-border p-5 bg-indigo-950/30 border-2 border-indigo-500/80 shadow-[0_0_20px_rgba(99,102,241,0.2)]">
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 border-b border-indigo-500/40 pb-2">
+                ${signedForTab ? (() => {
+                    const isSuccess = signedForTab.status === 'CUMPLIDO';
+                    const isFailed = signedForTab.status === 'NO_CUMPLIDO';
+
+                    let boxClass = 'bg-indigo-950/30 border-2 border-indigo-500/80 shadow-[0_0_20px_rgba(99,102,241,0.2)]';
+                    let headerBorder = 'border-indigo-500/40';
+                    let labelColor = 'text-indigo-300';
+                    let innerBoxClass = 'bg-black/60 border border-indigo-500/30';
+
+                    if (isSuccess) {
+                        boxClass = 'bg-emerald-950/40 border-2 border-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.35)]';
+                        headerBorder = 'border-emerald-500/50';
+                        labelColor = 'text-emerald-300';
+                        innerBoxClass = 'bg-black/70 border border-emerald-500/40';
+                    } else if (isFailed) {
+                        boxClass = 'bg-rose-950/40 border-2 border-rose-500 shadow-[0_0_25px_rgba(244,63,94,0.35)]';
+                        headerBorder = 'border-rose-500/50';
+                        labelColor = 'text-rose-300';
+                        innerBoxClass = 'bg-black/70 border border-rose-500/40';
+                    }
+
+                    return `
+                    <div class="terminal-border p-5 ${boxClass}">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 border-b ${headerBorder} pb-2">
                             <div>
-                                <span class="text-[10px] font-orbitron font-bold uppercase tracking-widest text-indigo-300">Contrato Oficial Vinculante Suscrito</span>
-                                <h3 class="text-base sm:text-lg font-orbitron font-black text-white uppercase">${this.escapeHTML(signedForTab.company)} — ${this.escapeHTML(signedForTab.title)}</h3>
+                                <span class="text-[10px] font-orbitron font-bold uppercase tracking-widest ${labelColor}">
+                                    ${isSuccess ? '🏆 CONTRATO OFICIAL COMPLETADO CON ÉXITO' : (isFailed ? '⚠️ CONTRATO OFICIAL RESUELTO CON PENALIZACIÓN' : 'Contrato Oficial Vinculante Suscrito')}
+                                </span>
+                                <h3 class="text-base sm:text-lg font-orbitron font-black text-white uppercase mt-0.5">
+                                    ${this.escapeHTML(signedForTab.company)} — ${this.escapeHTML(signedForTab.title)}
+                                </h3>
                             </div>
                             <div class="flex items-center gap-2">
-                                ${signedForTab.status === 'CUMPLIDO' ? `
-                                    <span class="px-3 py-1 bg-emerald-500 text-black font-black text-xs uppercase font-orbitron">✅ Cumplido (+${signedForTab.reward} €v Asignados)</span>
-                                ` : (signedForTab.status === 'NO_CUMPLIDO' ? `
-                                    <span class="px-3 py-1 bg-rose-600 text-white font-black text-xs uppercase font-orbitron">❌ No Cumplido (-${signedForTab.penalty} €v Penalizados)</span>
+                                ${isSuccess ? `
+                                    <span class="px-3.5 py-1.5 bg-emerald-400 text-black font-black text-xs uppercase font-orbitron shadow-[0_0_12px_rgba(16,185,129,0.5)]">
+                                        ✅ Cumplido (+${signedForTab.reward} €v Asignados)
+                                    </span>
+                                ` : (isFailed ? `
+                                    <span class="px-3.5 py-1.5 bg-rose-600 text-white font-black text-xs uppercase font-orbitron shadow-[0_0_12px_rgba(244,63,94,0.5)]">
+                                        ❌ No Cumplido (-${signedForTab.penalty} €v Penalizados)
+                                    </span>
                                 ` : `
-                                    <span class="px-3 py-1 bg-indigo-500/30 border border-indigo-400 text-indigo-200 font-bold text-xs uppercase font-mono animate-pulse">⏳ En Curso • Pendiente de Auditoría Docente</span>
+                                    <span class="px-3 py-1 bg-indigo-500/30 border border-indigo-400 text-indigo-200 font-bold text-xs uppercase font-mono animate-pulse">
+                                        ⏳ En Curso • Pendiente de Auditoría Docente
+                                    </span>
                                 `)}
                             </div>
                         </div>
@@ -3304,9 +3494,9 @@ Object.assign(ui, {
                                 <span class="text-slate-400 font-bold uppercase block mb-0.5">Requisitos Operativos Exigidos:</span>
                                 <p class="text-white leading-relaxed font-sans">${this.escapeHTML(signedForTab.requirements)}</p>
                                 <span class="text-slate-400 font-bold uppercase block mt-2 mb-0.5">Método de Verificación Docente:</span>
-                                <p class="text-indigo-300 font-sans">${this.escapeHTML(signedForTab.verification)}</p>
+                                <p class="${isSuccess ? 'text-emerald-300' : 'text-indigo-300'} font-sans">${this.escapeHTML(signedForTab.verification)}</p>
                             </div>
-                            <div class="bg-black/60 p-3 border border-indigo-500/30 flex flex-col justify-between">
+                            <div class="${innerBoxClass} p-3 flex flex-col justify-between">
                                 <div>
                                     <span class="text-slate-400 font-bold uppercase block text-[10px]">Impacto en Tesorería:</span>
                                     <div class="flex justify-between items-center mt-1">
@@ -3320,10 +3510,11 @@ Object.assign(ui, {
                                 </div>
                             </div>
                         </div>
-                    </div>
-                ` : ''}
+                    </div>`;
+                })() : ''}
 
-                <!-- Catálogo de Licitaciones de la Fase (6 Contratos) -->
+                <!-- Catálogo de Licitaciones de la Fase (Oculto automáticamente si ya hay contrato suscrito) -->
+                ${!signedForTab ? `
                 <div>
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="font-orbitron font-bold text-white text-sm uppercase tracking-wider">
@@ -3395,6 +3586,13 @@ Object.assign(ui, {
                         }).join('')}
                     </div>
                 </div>
+                ` : `
+                <div class="terminal-border p-4 bg-slate-900/40 border border-slate-800 text-center rounded flex flex-col sm:flex-row items-center justify-center gap-2">
+                    <span class="text-xs font-mono text-slate-400 uppercase">
+                        🔒 Licitación única formalizada para la Fase ${currentPhaseTab}. El catálogo de ofertas queda cerrado para mantener el compromiso corporativo.
+                    </span>
+                </div>
+                `}
             `}
         </div>`;
 

@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.70) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.72) ---
 
-const APP_VERSION = "1.1.71";
+const APP_VERSION = "1.1.72";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1089,8 +1089,26 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.71
+// Changelog Oficial de Producción v1.1.72
 const APP_CHANGELOG = [
+    {
+      version: "1.1.72",
+      date: new Date().toISOString().split('T')[0],
+      title: "Radar Ejecutivo de Fase en CEO, Hitos Dinámicos, Ordenación por Urgencia y Blindaje B2B",
+      items: [
+        "Progreso de Hitos Adaptado a la Fase Activa (0/4): Ajuste en Sala de Mando del CEO y accesos al Dossier, sustituyendo el denominador anual de 18 hitos por los 4 entregables específicos de la Fase I en curso.",
+        "Radar Ejecutivo de Fase y Doble Cronómetro (CEO): La Sala de Mando del CEO incorpora doble telemetría con barra de consumo temporal de fase (días restantes y porcentaje transcurrido con alerta dinámica de color) y barra de entregables completados.",
+        "Cuadrícula Táctica de Entregables del CEO: Mini-fichas departamentales con fecha límite, departamento responsable (Finanzas, Técnico, Marketing, Operaciones) y estado en tiempo real con botón directo de visado en 1 clic.",
+        "Ordenación Cronológica por Urgencia: En Mis Entregables y Dossier, los hitos se ordenan por proximidad de fecha límite (1º Presupuesto Inicial del 20 Noviembre, seguido de los del 15 Diciembre), situando además tareas pendientes y devueltas antes de las completadas.",
+        "Contratos Comerciales Limpios (Anti-Sobrecarga): Al suscribir un contrato vinculante por fase, el catálogo inferior de las otras 5 opciones desaparece por completo para evitar dispersión cognitiva.",
+        "Celebración Visual de Contrato Cumplido: Cuando el docente califica un contrato como CUMPLIDO, toda la tarjeta se ilumina en verde esmeralda brillante con resplandor cósmico (+150 €v) y en rojo si fuera penalizado."
+      ],
+      highlights: [
+        { type: "RADAR CEO", text: "Doble barra de tiempo y entregables con mini-fichas tácticas de fase en Sala de Mando." },
+        { type: "URGENCIA", text: "Ordenación de entregables por plazo inminente (20 Nov antes que 15 Dic)." },
+        { type: "CONTRATOS", text: "Catálogo cerrado al suscribir y tarjeta en verde esmeralda al completarse." }
+      ]
+    },
     {
       version: "1.1.71",
       date: new Date().toISOString().split('T')[0],
