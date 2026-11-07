@@ -735,7 +735,7 @@ Object.assign(ui, {
                             <div class="flex justify-between items-center mb-2 flex-wrap gap-1">
                                 <span class="text-xs font-black uppercase text-mars-yellow bg-mars-yellow/10 border border-mars-yellow/40 px-2 py-0.5">SEGURIDAD AEROESPACIAL</span>
                                 <div class="flex items-center gap-1.5">
-                                    ${(co.id === 'TEST-0000' || co.isTestCompany) ? `<span class="px-1.5 py-0.2 bg-amber-400 text-black text-[9px] font-mono font-bold uppercase rounded">🧪 Sandbox Desbloqueado</span>` : `<span class="text-[10px] text-emerald-400 font-mono">✓ Informe Preliminar Entregado</span>`}
+                                    ${(co.id === 'TEST-0000' || co.isTestCompany) ? `<span class="px-1.5 py-0.2 bg-amber-400 text-black text-[9px] font-mono font-bold uppercase rounded">🧪 Sandbox Desbloqueado</span>` : `<span style="color: #00ff66 !important;" class="text-[10px] font-mono">✓ Informe Preliminar Entregado</span>`}
                                     <span class="text-xs font-mono text-amber-400">Tasa: 50 €v</span>
                                 </div>
                             </div>
@@ -756,7 +756,7 @@ Object.assign(ui, {
                     <div>
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-xs font-black uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2 py-0.5">EN EVALUACIÓN DOCENTE</span>
-                            <span class="text-xs font-mono text-emerald-400 font-bold">50 €v Abonados</span>
+                            <span style="color: #00ff66 !important;" class="text-xs font-mono font-bold">50 €v Abonados</span>
                         </div>
                         <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">🚀 Licencia AESA Tramitada</h3>
                         <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
@@ -770,11 +770,11 @@ Object.assign(ui, {
                 </div>`;
             } else {
                 licenseCardHtml = `
-                <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-emerald-400 flex flex-col justify-between hover:border-emerald-400 transition-all">
+                <div style="border-top: 2px solid #00ff66 !important;" class="terminal-border bg-mars-card p-5 flex flex-col justify-between transition-all">
                     <div>
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs font-black uppercase text-emerald-400 bg-emerald-950/40 border border-emerald-500/40 px-2 py-0.5">AUTORIZADA</span>
-                            <span class="text-xs font-mono text-emerald-400 font-bold">Vuelos Activos</span>
+                            <span style="background-color: rgba(0, 255, 102, 0.15) !important; border: 1px solid #00ff66 !important; color: #00ff66 !important;" class="text-xs font-black uppercase px-2 py-0.5">AUTORIZADA</span>
+                            <span style="color: #00ff66 !important;" class="text-xs font-mono font-bold">Vuelos Activos</span>
                         </div>
                         <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">🚀 Licencia AESA Autorizada</h3>
                         <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
@@ -782,8 +782,94 @@ Object.assign(ui, {
                         </p>
                     </div>
                     <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
-                        <a href="${encodeURI(license.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-xs text-emerald-300 underline font-mono">Ver DOC_14 Concedido ↗</a>
-                        <span class="text-xs text-emerald-400 font-mono font-bold">✓ Operativo</span>
+                        <a href="${encodeURI(license.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" style="color: #5eead4 !important;" class="text-xs underline font-mono">Ver DOC_14 Concedido ↗</a>
+                        <span style="color: #00ff66 !important;" class="text-xs font-mono font-bold">✓ Operativo</span>
+                    </div>
+                </div>`;
+            }
+
+            // Módulo de Contrato en Vigor y Contador para el CEO (Mitad inferior izquierda)
+            const curPhaseKey = (typeof this.getCurrentPhaseKey === 'function') ? this.getCurrentPhaseKey() : 'I';
+            const signedActiveContract = co.contracts?.[curPhaseKey];
+            const allSignedContracts = Object.values(co.contracts || {}).filter(c => c && c.contractId);
+            const signedContractsCount = allSignedContracts.length;
+            const completedContractsCount = allSignedContracts.filter(c => c.status === 'CUMPLIDO').length;
+
+            let ceoActiveContractCardHtml = '';
+            if (signedActiveContract && signedActiveContract.contractId) {
+                const isContractCompleted = signedActiveContract.status === 'CUMPLIDO';
+                const isContractFailed = signedActiveContract.status === 'NO_CUMPLIDO';
+
+                let cardStyle = 'background-color: rgba(99, 102, 241, 0.08) !important; border: 2px solid #6366f1 !important; box-shadow: 0 0 15px rgba(99, 102, 241, 0.2) !important;';
+                let headerBorder = 'border-bottom: 1px solid rgba(99, 102, 241, 0.4) !important;';
+                let titleColor = 'color: #a5b4fc !important;';
+                let statusBadge = '<span style="background-color: rgba(99, 102, 241, 0.25) !important; border: 1px solid #818cf8 !important; color: #c7d2fe !important; font-weight: bold !important;" class="text-[10px] uppercase font-mono px-2 py-0.5 rounded animate-pulse">⏳ EN CURSO</span>';
+
+                if (isContractCompleted) {
+                    cardStyle = 'background-color: rgba(0, 255, 102, 0.08) !important; border: 2px solid #00ff66 !important; box-shadow: 0 0 20px rgba(0, 255, 102, 0.3) !important;';
+                    headerBorder = 'border-bottom: 1px solid rgba(0, 255, 102, 0.4) !important;';
+                    titleColor = 'color: #00ff66 !important; text-shadow: 0 0 8px rgba(0, 255, 102, 0.4);';
+                    statusBadge = `<span style="background-color: #00ff66 !important; color: #000000 !important; font-weight: 900 !important; box-shadow: 0 0 10px rgba(0, 255, 102, 0.6) !important;" class="text-[10px] uppercase font-orbitron px-2 py-0.5 rounded">✅ CUMPLIDO (+${signedActiveContract.reward} €v)</span>`;
+                } else if (isContractFailed) {
+                    cardStyle = 'background-color: rgba(255, 0, 85, 0.08) !important; border: 2px solid #ff0055 !important; box-shadow: 0 0 20px rgba(255, 0, 85, 0.3) !important;';
+                    headerBorder = 'border-bottom: 1px solid rgba(255, 0, 85, 0.4) !important;';
+                    titleColor = 'color: #ff0055 !important; text-shadow: 0 0 8px rgba(255, 0, 85, 0.4);';
+                    statusBadge = `<span style="background-color: #ff0055 !important; color: #ffffff !important; font-weight: 900 !important; box-shadow: 0 0 10px rgba(255, 0, 85, 0.6) !important;" class="text-[10px] uppercase font-orbitron px-2 py-0.5 rounded">❌ NO CUMPLIDO (-${signedActiveContract.penalty} €v)</span>`;
+                }
+
+                ceoActiveContractCardHtml = `
+                <div style="${cardStyle}" class="p-4 sm:p-5 rounded flex flex-col justify-between">
+                    <div>
+                        <div style="${headerBorder}" class="flex justify-between items-center mb-2 pb-2 flex-wrap gap-1">
+                            <span style="${titleColor}" class="text-[10px] font-orbitron font-bold uppercase tracking-wider">
+                                🤝 CONTRATO EN VIGOR (FASE ${this.escapeHTML(curPhaseKey)})
+                            </span>
+                            <span class="text-[10px] font-mono font-bold text-slate-300">
+                                🏆 ${completedContractsCount}/${signedContractsCount} Cumplidos
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                            <h4 class="font-orbitron font-bold text-white text-xs sm:text-sm uppercase tracking-wide break-words">
+                                ${this.escapeHTML(signedActiveContract.company)} — ${this.escapeHTML(signedActiveContract.title)}
+                            </h4>
+                            ${statusBadge}
+                        </div>
+                        <p class="text-xs text-slate-300 mt-1 line-clamp-2 leading-relaxed">
+                            <strong class="text-slate-400 uppercase">Requisitos:</strong> ${this.escapeHTML(signedActiveContract.requirements)}
+                        </p>
+                    </div>
+                    <div class="mt-3 pt-2.5 border-t border-slate-800 flex justify-between items-center gap-2">
+                        <div class="flex items-center gap-2 font-mono text-xs">
+                            <span style="color: #00ff66 !important;" class="font-bold">+${signedActiveContract.reward} €v</span>
+                            <span class="text-slate-600">|</span>
+                            <span style="color: #ff0055 !important;" class="font-bold">-${signedActiveContract.penalty} €v</span>
+                        </div>
+                        <button type="button" onclick="ui.navigate('contracts')" class="min-h-[38px] px-3 py-1 bg-slate-900 hover:bg-white text-slate-300 hover:text-black border border-slate-700 font-bold uppercase text-[11px] rounded transition-all">
+                            Ver Contratos ➔
+                        </button>
+                    </div>
+                </div>`;
+            } else {
+                ceoActiveContractCardHtml = `
+                <div class="terminal-border bg-slate-900/60 border border-slate-800 p-4 sm:p-5 rounded flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-2 border-b border-slate-800 pb-2">
+                            <span class="text-[10px] font-orbitron font-bold uppercase tracking-wider text-slate-400">
+                                🤝 CONTRATO DE FASE ${this.escapeHTML(curPhaseKey)}
+                            </span>
+                            <span class="text-[10px] font-mono text-slate-400">
+                                ${signedContractsCount > 0 ? `🏆 ${completedContractsCount}/${signedContractsCount} Cumplidos` : 'Sin Contratos'}
+                            </span>
+                        </div>
+                        <h4 class="font-orbitron font-bold text-white text-xs sm:text-sm uppercase">Sin Licitación Suscrita</h4>
+                        <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+                            Elige y formaliza un contrato comercial vinculado para la Fase ${this.escapeHTML(curPhaseKey)} para obtener hasta +150 €v para la tesorería.
+                        </p>
+                    </div>
+                    <div class="mt-3 pt-2.5 border-t border-slate-800 flex justify-end">
+                        <button type="button" onclick="ui.navigate('contracts')" class="min-h-[38px] px-3.5 py-1.5 bg-mars-cyan text-black hover:bg-white font-black uppercase text-xs rounded transition-all shadow-sm">
+                            ✍️ Elegir Contrato ➔
+                        </button>
                     </div>
                 </div>`;
             }
@@ -823,7 +909,7 @@ Object.assign(ui, {
                                     <span class="text-[10px] text-slate-400 font-mono">Plazo Máximo: ${this.escapeHTML(p.deadlineLabel)}</span>
                                     ${phaseBalance ? `
                                         <div class="mt-1">
-                                            <span class="inline-flex items-center gap-1 text-[10px] text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono">
+                                            <span style="background-color: rgba(0, 255, 102, 0.15); border: 1px solid #00ff66; color: #00ff66;" class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded font-mono">
                                                 📊 Balance Finanzas Listo (${Number(phaseBalance.snapshot?.balance || 0).toFixed(2)} €v)
                                             </span>
                                         </div>
@@ -836,7 +922,7 @@ Object.assign(ui, {
                                 <div class="shrink-0">
                                     ${published ? `
                                         <div class="flex items-center gap-2">
-                                            <span class="text-[10px] text-emerald-400 font-bold uppercase bg-emerald-950/40 border border-emerald-500/40 px-1.5 py-0.5">✓ Publicada</span>
+                                            <span style="background-color: rgba(0, 255, 102, 0.15); border: 1px solid #00ff66; color: #00ff66;" class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded">✓ Publicada</span>
                                             <a href="${encodeURI(published.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-[11px] text-cyan-300 underline font-mono">Ver DOC_15 ↗</a>
                                         </div>
                                     ` : (!isPrUnlocked ? `
@@ -864,7 +950,10 @@ Object.assign(ui, {
 
             ceoGovernanceModulesHtml = `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                ${licenseCardHtml}
+                <div class="space-y-4 flex flex-col justify-between">
+                    ${licenseCardHtml}
+                    ${ceoActiveContractCardHtml}
+                </div>
                 ${pressReleaseCardHtml}
             </div>`;
         }
@@ -1039,13 +1128,13 @@ Object.assign(ui, {
 
                         if (isSubmittedCeo) {
                             cardBorder = 'border-amber-400/80 bg-amber-950/30 ring-1 ring-amber-400/50 shadow-[0_0_12px_rgba(255,204,0,0.2)] animate-pulse';
-                            badgeHtml = '<span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-400 text-black font-orbitron">🟡 En tu Visado</span>';
+                            badgeHtml = '<span style="background-color: #f59e0b !important; color: #000000 !important; font-weight: 900 !important;" class="text-[9px] uppercase px-1.5 py-0.5 rounded font-orbitron">🟡 En tu Visado</span>';
                         } else if (isReturned) {
                             cardBorder = 'border-red-500/80 bg-red-950/30 shadow-[0_0_10px_rgba(255,0,0,0.2)]';
-                            badgeHtml = '<span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-600 text-white font-mono">🔴 Subsanar</span>';
+                            badgeHtml = '<span style="background-color: #ef4444 !important; color: #ffffff !important; font-weight: 900 !important;" class="text-[9px] uppercase px-1.5 py-0.5 rounded font-mono">🔴 Subsanar</span>';
                         } else if (isDelivered) {
-                            cardBorder = 'border-emerald-500/50 bg-emerald-950/20';
-                            badgeHtml = '<span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-mono">🟢 Entregado</span>';
+                            cardBorder = 'border-slate-700 bg-black/50';
+                            badgeHtml = '<span style="background-color: rgba(0, 255, 102, 0.15) !important; border: 1px solid #00ff66 !important; color: #00ff66 !important; font-weight: bold !important;" class="text-[9px] uppercase px-1.5 py-0.5 rounded font-mono">🟢 Entregado</span>';
                         }
 
                         const deptRole = def.role === 'FINANZAS' ? 'FINANZAS (ECO)' : def.role === 'TECNICO' ? 'TÉCNICO (FYQ)' : def.role === 'MARKETING' ? 'MARKETING (LYE)' : (def.role === 'OPERACIONES_IA' || def.role === 'OPERACIONES') ? 'OPERACIONES IA (LYE)' : def.role;
@@ -3081,13 +3170,20 @@ Object.assign(ui, {
             const isCompleted = signed.status === 'CUMPLIDO';
             const isFailed = signed.status === 'NO_CUMPLIDO';
             const statusBadge = isCompleted
-                ? '<span class="text-xs font-mono font-bold px-2 py-0.5 bg-emerald-950/60 border border-emerald-500 text-emerald-300">✅ CUMPLIDO (+' + signed.reward + ' €v)</span>'
+                ? '<span style="background-color: #00ff66 !important; color: #000000 !important; font-weight: 900 !important; box-shadow: 0 0 10px rgba(0,255,102,0.5) !important;" class="text-xs font-mono px-2.5 py-0.5 rounded">✅ CUMPLIDO (+' + signed.reward + ' €v)</span>'
                 : (isFailed
-                    ? '<span class="text-xs font-mono font-bold px-2 py-0.5 bg-rose-950/60 border border-rose-500 text-rose-300">❌ NO CUMPLIDO (-' + signed.penalty + ' €v)</span>'
-                    : '<span class="text-xs font-mono font-bold px-2 py-0.5 bg-cyan-950/60 border border-cyan-400 text-cyan-300 animate-pulse">⏳ EN CURSO</span>');
+                    ? '<span style="background-color: #ff0055 !important; color: #ffffff !important; font-weight: 900 !important; box-shadow: 0 0 10px rgba(255,0,85,0.5) !important;" class="text-xs font-mono px-2.5 py-0.5 rounded">❌ NO CUMPLIDO (-' + signed.penalty + ' €v)</span>'
+                    : '<span style="background-color: rgba(99, 102, 241, 0.25) !important; border: 1px solid #818cf8 !important; color: #c7d2fe !important; font-weight: bold !important;" class="text-xs font-mono px-2.5 py-0.5 rounded animate-pulse">⏳ EN CURSO</span>');
+
+            let bannerStyle = 'background-color: rgba(99, 102, 241, 0.08) !important; border: 2px solid #6366f1 !important; box-shadow: 0 0 15px rgba(99, 102, 241, 0.2) !important;';
+            if (isCompleted) {
+                bannerStyle = 'background-color: rgba(0, 255, 102, 0.08) !important; border: 2px solid #00ff66 !important; box-shadow: 0 0 20px rgba(0, 255, 102, 0.3) !important;';
+            } else if (isFailed) {
+                bannerStyle = 'background-color: rgba(255, 0, 85, 0.08) !important; border: 2px solid #ff0055 !important; box-shadow: 0 0 20px rgba(255, 0, 85, 0.3) !important;';
+            }
 
             return `
-            <div class="terminal-border bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border-indigo-500/50 p-4 mb-6 shadow-[0_0_15px_rgba(99,102,241,0.15)]">
+            <div style="${bannerStyle}" class="p-4 mb-6 rounded">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2 flex-wrap mb-1">
@@ -3095,12 +3191,12 @@ Object.assign(ui, {
                             ${statusBadge}
                         </div>
                         <h4 class="font-orbitron font-bold text-white text-xs sm:text-sm uppercase tracking-wide break-words">${this.escapeHTML(signed.company)} — ${this.escapeHTML(signed.title)}</h4>
-                        <p class="text-xs text-slate-300 mt-1 leading-relaxed"><strong class="text-indigo-300 uppercase">Requisitos:</strong> ${this.escapeHTML(signed.requirements)}</p>
+                        <p class="text-xs text-slate-200 mt-1 leading-relaxed"><strong class="text-mars-cyan uppercase">Requisitos:</strong> ${this.escapeHTML(signed.requirements)}</p>
                     </div>
                     <div class="flex items-center gap-2 shrink-0 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-800 pt-2 md:pt-0">
                         <div class="flex items-center gap-1.5 font-mono text-xs">
-                            <span class="px-2 py-1 bg-emerald-950/50 border border-emerald-500/40 text-emerald-400 font-bold">+${signed.reward} €v</span>
-                            <span class="px-2 py-1 bg-rose-950/50 border border-rose-500/40 text-rose-400 font-bold">-${signed.penalty} €v</span>
+                            <span style="background-color: rgba(0, 255, 102, 0.15) !important; border: 1px solid #00ff66 !important; color: #00ff66 !important;" class="px-2 py-1 font-bold rounded">+${signed.reward} €v</span>
+                            <span style="background-color: rgba(255, 0, 85, 0.15) !important; border: 1px solid #ff0055 !important; color: #ff0055 !important;" class="px-2 py-1 font-bold rounded">-${signed.penalty} €v</span>
                         </div>
                         <button type="button" onclick="ui.navigate('contracts')" class="min-h-[44px] px-3 py-1.5 bg-indigo-900/40 hover:bg-indigo-600 text-indigo-200 hover:text-white border border-indigo-500/40 font-bold text-xs uppercase tracking-wider transition-all">
                             Ver Misión ➔
@@ -3221,6 +3317,43 @@ Object.assign(ui, {
         const isOpen = hasAnyUnlocked ? state.isContractSelectionWindowOpen(currentPhaseTab, co) : false;
         const signedForTab = co.contracts?.[currentPhaseTab];
         const catalogForPhase = hasAnyUnlocked ? (typeof CONTRACTS_CATALOG_DEF !== 'undefined' ? CONTRACTS_CATALOG_DEF : []).filter(c => c.phase === currentPhaseTab) : [];
+
+        // Estadísticas globales de contratos
+        const allSignedContracts = Object.values(co.contracts || {}).filter(c => c && c.contractId);
+        const signedContractsCount = allSignedContracts.length;
+        const completedContractsCount = allSignedContracts.filter(c => c.status === 'CUMPLIDO').length;
+        const failedContractsCount = allSignedContracts.filter(c => c.status === 'NO_CUMPLIDO').length;
+        const inProgressContractsCount = allSignedContracts.filter(c => !c.status || (c.status !== 'CUMPLIDO' && c.status !== 'NO_CUMPLIDO')).length;
+
+        let netImpact = 0;
+        allSignedContracts.forEach(c => {
+            if (c.status === 'CUMPLIDO') netImpact += (Number(c.reward) || 0);
+            else if (c.status === 'NO_CUMPLIDO') netImpact -= (Number(c.penalty) || 0);
+        });
+
+        const contractsPerformanceBarHtml = `
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div class="terminal-border p-3 bg-black/60 border border-slate-800 rounded">
+                <span class="text-[10px] font-mono uppercase text-slate-400 block font-bold">Contratos Suscritos</span>
+                <span class="text-base sm:text-lg font-orbitron font-bold text-white mt-0.5 block">${signedContractsCount} / 4</span>
+                <span class="text-[10px] text-slate-400 font-mono">1 licitación máx. por fase</span>
+            </div>
+            <div class="terminal-border p-3 bg-black/60 border border-slate-800 rounded">
+                <span class="text-[10px] font-mono uppercase text-slate-400 block font-bold">Contratos Cumplidos</span>
+                <span style="color: #00ff66 !important;" class="text-base sm:text-lg font-orbitron font-bold mt-0.5 block">🏆 ${completedContractsCount} / ${signedContractsCount || 1}</span>
+                <span class="text-[10px] text-slate-400 font-mono">${signedContractsCount > 0 ? Math.round((completedContractsCount / signedContractsCount) * 100) : 0}% de éxito docente</span>
+            </div>
+            <div class="terminal-border p-3 bg-black/60 border border-slate-800 rounded">
+                <span class="text-[10px] font-mono uppercase text-slate-400 block font-bold">En Auditoría / Curso</span>
+                <span class="text-base sm:text-lg font-orbitron font-bold text-indigo-400 mt-0.5 block">⏳ ${inProgressContractsCount}</span>
+                <span class="text-[10px] text-slate-400 font-mono">Pendientes de resolución</span>
+            </div>
+            <div class="terminal-border p-3 bg-black/60 border border-slate-800 rounded">
+                <span class="text-[10px] font-mono uppercase text-slate-400 block font-bold">Impacto Neto Caja</span>
+                <span style="color: ${netImpact >= 0 ? '#00ff66' : '#ff0055'} !important;" class="text-base sm:text-lg font-orbitron font-bold mt-0.5 block">${netImpact >= 0 ? '+' : ''}${netImpact.toFixed(0)} €v</span>
+                <span class="text-[10px] text-slate-400 font-mono">Saldo neto en Ledger</span>
+            </div>
+        </div>`;
 
         // Bloque de Patrocinio Oficial tras Fase I
         const sponsorAwarded = co.sponsorAwarded;
@@ -3350,6 +3483,9 @@ Object.assign(ui, {
                 </div>
             </div>
 
+            <!-- Rendimiento y Estadísticas de Contratos -->
+            ${contractsPerformanceBarHtml}
+
             <!-- Patrocinio Oficial tras Fase I -->
             ${sponsorHtml}
 
@@ -3382,7 +3518,18 @@ Object.assign(ui, {
                     ${unlockedPhases.map(ph => {
                         const isTab = ph === currentPhaseTab;
                         const cSigned = co.contracts?.[ph];
-                        const badge = cSigned ? `<span class="ml-1.5 text-[10px] px-1.5 py-0.2 bg-emerald-950 border border-emerald-400 text-emerald-300 font-mono">✓ ${this.escapeHTML(cSigned.company)}</span>` : '';
+                        let badge = '';
+                        if (cSigned) {
+                            const isTabCompleted = cSigned.status === 'CUMPLIDO';
+                            const isTabFailed = cSigned.status === 'NO_CUMPLIDO';
+                            const badgeStyle = isTabCompleted
+                                ? 'background-color: rgba(0, 255, 102, 0.2) !important; border: 1px solid #00ff66 !important; color: #00ff66 !important;'
+                                : (isTabFailed
+                                    ? 'background-color: rgba(255, 0, 85, 0.2) !important; border: 1px solid #ff0055 !important; color: #ff0055 !important;'
+                                    : 'background-color: rgba(99, 102, 241, 0.2) !important; border: 1px solid #818cf8 !important; color: #c7d2fe !important;');
+                            const icon = isTabCompleted ? '✓' : (isTabFailed ? '✗' : '⏳');
+                            badge = `<span style="${badgeStyle}" class="ml-1.5 text-[10px] px-1.5 py-0.5 rounded font-mono font-bold">${icon} ${this.escapeHTML(cSigned.company)}</span>`;
+                        }
                         return `
                         <button type="button" onclick="ui.setContractsPhaseTab('${ph}')" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase transition-all flex items-center ${isTab ? 'bg-mars-cyan text-black' : 'bg-slate-900 text-slate-200 hover:text-white border border-slate-800'}">
                             <span>Fase ${ph}</span>
@@ -3445,28 +3592,28 @@ Object.assign(ui, {
                     const isSuccess = signedForTab.status === 'CUMPLIDO';
                     const isFailed = signedForTab.status === 'NO_CUMPLIDO';
 
-                    let boxClass = 'bg-indigo-950/30 border-2 border-indigo-500/80 shadow-[0_0_20px_rgba(99,102,241,0.2)]';
-                    let headerBorder = 'border-indigo-500/40';
-                    let labelColor = 'text-indigo-300';
-                    let innerBoxClass = 'bg-black/60 border border-indigo-500/30';
+                    let boxStyle = 'background-color: rgba(99, 102, 241, 0.08) !important; border: 2px solid #6366f1 !important; box-shadow: 0 0 20px rgba(99, 102, 241, 0.25) !important;';
+                    let headerBorderStyle = 'border-bottom: 1px solid rgba(99, 102, 241, 0.4) !important;';
+                    let labelColorStyle = 'color: #818cf8 !important;';
+                    let innerBoxStyle = 'background-color: rgba(0, 0, 0, 0.7) !important; border: 1px solid rgba(99, 102, 241, 0.3) !important;';
 
                     if (isSuccess) {
-                        boxClass = 'bg-emerald-950/40 border-2 border-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.35)]';
-                        headerBorder = 'border-emerald-500/50';
-                        labelColor = 'text-emerald-300';
-                        innerBoxClass = 'bg-black/70 border border-emerald-500/40';
+                        boxStyle = 'background-color: rgba(0, 255, 102, 0.08) !important; border: 2px solid #00ff66 !important; box-shadow: 0 0 25px rgba(0, 255, 102, 0.35) !important;';
+                        headerBorderStyle = 'border-bottom: 1px solid rgba(0, 255, 102, 0.4) !important;';
+                        labelColorStyle = 'color: #00ff66 !important; text-shadow: 0 0 8px rgba(0, 255, 102, 0.4);';
+                        innerBoxStyle = 'background-color: rgba(0, 0, 0, 0.7) !important; border: 1px solid rgba(0, 255, 102, 0.3) !important;';
                     } else if (isFailed) {
-                        boxClass = 'bg-rose-950/40 border-2 border-rose-500 shadow-[0_0_25px_rgba(244,63,94,0.35)]';
-                        headerBorder = 'border-rose-500/50';
-                        labelColor = 'text-rose-300';
-                        innerBoxClass = 'bg-black/70 border border-rose-500/40';
+                        boxStyle = 'background-color: rgba(255, 0, 85, 0.08) !important; border: 2px solid #ff0055 !important; box-shadow: 0 0 25px rgba(255, 0, 85, 0.35) !important;';
+                        headerBorderStyle = 'border-bottom: 1px solid rgba(255, 0, 85, 0.4) !important;';
+                        labelColorStyle = 'color: #ff0055 !important; text-shadow: 0 0 8px rgba(255, 0, 85, 0.4);';
+                        innerBoxStyle = 'background-color: rgba(0, 0, 0, 0.7) !important; border: 1px solid rgba(255, 0, 85, 0.3) !important;';
                     }
 
                     return `
-                    <div class="terminal-border p-5 ${boxClass}">
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 border-b ${headerBorder} pb-2">
+                    <div style="${boxStyle}" class="terminal-border p-5 rounded">
+                        <div style="${headerBorderStyle}" class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 pb-2">
                             <div>
-                                <span class="text-[10px] font-orbitron font-bold uppercase tracking-widest ${labelColor}">
+                                <span style="${labelColorStyle}" class="text-[10px] font-orbitron font-bold uppercase tracking-widest">
                                     ${isSuccess ? '🏆 CONTRATO OFICIAL COMPLETADO CON ÉXITO' : (isFailed ? '⚠️ CONTRATO OFICIAL RESUELTO CON PENALIZACIÓN' : 'Contrato Oficial Vinculante Suscrito')}
                                 </span>
                                 <h3 class="text-base sm:text-lg font-orbitron font-black text-white uppercase mt-0.5">
@@ -3475,15 +3622,15 @@ Object.assign(ui, {
                             </div>
                             <div class="flex items-center gap-2">
                                 ${isSuccess ? `
-                                    <span class="px-3.5 py-1.5 bg-emerald-400 text-black font-black text-xs uppercase font-orbitron shadow-[0_0_12px_rgba(16,185,129,0.5)]">
+                                    <span style="background-color: #00ff66 !important; color: #000000 !important; font-weight: 900 !important; box-shadow: 0 0 15px rgba(0,255,102,0.6) !important;" class="px-3.5 py-1.5 text-xs uppercase font-orbitron rounded">
                                         ✅ Cumplido (+${signedForTab.reward} €v Asignados)
                                     </span>
                                 ` : (isFailed ? `
-                                    <span class="px-3.5 py-1.5 bg-rose-600 text-white font-black text-xs uppercase font-orbitron shadow-[0_0_12px_rgba(244,63,94,0.5)]">
+                                    <span style="background-color: #ff0055 !important; color: #ffffff !important; font-weight: 900 !important; box-shadow: 0 0 15px rgba(255,0,85,0.6) !important;" class="px-3.5 py-1.5 text-xs uppercase font-orbitron rounded">
                                         ❌ No Cumplido (-${signedForTab.penalty} €v Penalizados)
                                     </span>
                                 ` : `
-                                    <span class="px-3 py-1 bg-indigo-500/30 border border-indigo-400 text-indigo-200 font-bold text-xs uppercase font-mono animate-pulse">
+                                    <span style="background-color: rgba(99, 102, 241, 0.25) !important; border: 1px solid #818cf8 !important; color: #c7d2fe !important; font-weight: bold !important;" class="px-3 py-1 text-xs uppercase font-mono rounded animate-pulse">
                                         ⏳ En Curso • Pendiente de Auditoría Docente
                                     </span>
                                 `)}
@@ -3494,14 +3641,14 @@ Object.assign(ui, {
                                 <span class="text-slate-400 font-bold uppercase block mb-0.5">Requisitos Operativos Exigidos:</span>
                                 <p class="text-white leading-relaxed font-sans">${this.escapeHTML(signedForTab.requirements)}</p>
                                 <span class="text-slate-400 font-bold uppercase block mt-2 mb-0.5">Método de Verificación Docente:</span>
-                                <p class="${isSuccess ? 'text-emerald-300' : 'text-indigo-300'} font-sans">${this.escapeHTML(signedForTab.verification)}</p>
+                                <p style="${isSuccess ? 'color: #5eead4 !important;' : (isFailed ? 'color: #fca5a5 !important;' : 'color: #a5b4fc !important;')}" class="font-sans font-semibold">${this.escapeHTML(signedForTab.verification)}</p>
                             </div>
-                            <div class="${innerBoxClass} p-3 flex flex-col justify-between">
+                            <div style="${innerBoxStyle}" class="p-3 rounded flex flex-col justify-between">
                                 <div>
                                     <span class="text-slate-400 font-bold uppercase block text-[10px]">Impacto en Tesorería:</span>
-                                    <div class="flex justify-between items-center mt-1">
-                                        <span class="text-emerald-400 font-mono font-bold">+${signedForTab.reward} €v (Éxito)</span>
-                                        <span class="text-rose-400 font-mono font-bold">-${signedForTab.penalty} €v (Fallo)</span>
+                                    <div class="flex justify-between items-center mt-1 font-mono font-bold">
+                                        <span style="color: #00ff66 !important;">+${signedForTab.reward} €v (Éxito)</span>
+                                        <span style="color: #ff0055 !important;">-${signedForTab.penalty} €v (Fallo)</span>
                                     </div>
                                 </div>
                                 <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] font-mono text-slate-400">

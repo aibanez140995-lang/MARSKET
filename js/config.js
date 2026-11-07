@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.72) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.73) ---
 
-const APP_VERSION = "1.1.72";
+const APP_VERSION = "1.1.73";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1089,8 +1089,26 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.72
+// Changelog Oficial de Producción v1.1.73
 const APP_CHANGELOG = [
+    {
+      version: "1.1.73",
+      date: new Date().toISOString().split('T')[0],
+      title: "Tarjeta de Contrato en Sala de Mando CEO, Corrección de Contraste y Banners Departamentales",
+      items: [
+        "Módulo de Contrato en Sala de Mando del CEO: División del espacio izquierdo del CEO bajo la Licencia AESA, integrando tarjeta en tiempo real del contrato en vigor de la fase activa con acceso directo a licitaciones.",
+        "Contador Ejecutivo de Éxito en Contratos: Registro visual de contratos cumplidos respecto al total de contratos firmados (🏆 X / Y Cumplidos) en Sala de Mando y cabecera de Contratos.",
+        "Erradicación del Fallo de Contraste en Contrato Cumplido: Implementación de estilos inline de alta prioridad (#00ff66 y #ff0055) en bordes, resplandor cósmico y badges, garantizando legibilidad perfecta (WCAG AAA) sin dependencia del compilador estático de Tailwind.",
+        "Barra de Rendimiento Global en Contratos: Cuadrícula con métricas de Contratos Suscritos, Contratos Cumplidos con porcentaje de éxito, Licitaciones en Curso e Impacto Neto Acumulado en Tesorería (€v).",
+        "Sincronización de Misión en Todos los Roles de Alumno: Incorporación del banner táctico de contrato activo en las vistas de Técnico (I+D), Operaciones (Logística) y Marketing (Marca y Negocio).",
+        "Blindaje de Balances de Fases Futuras en Finanzas: Bloqueo de registro anticipado de balances (DOC_17) para fases no iniciadas, manteniendo el rigor cronológico del claustro."
+      ],
+      highlights: [
+        { type: "CEO", text: "Tarjeta de contrato en vigor y contador de éxito (🏆 X / Y) en Sala de Mando." },
+        { type: "DISEÑO", text: "Corrección de contraste (texto ilegible) con estilos inline de alto impacto #00ff66." },
+        { type: "ROLES", text: "Banner táctico de misión activa integrado en Técnico, Operaciones y Marketing." }
+      ]
+    },
     {
       version: "1.1.72",
       date: new Date().toISOString().split('T')[0],

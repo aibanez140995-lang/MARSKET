@@ -963,6 +963,9 @@ Object.assign(ui, {
 
         const phaseBalancesCardsHtml = phaseDefs.map(p => {
             const b = co.phaseBalances[p.phase];
+            const isPhaseOpen = (typeof this.isPhaseUnlocked === 'function') ? this.isPhaseUnlocked(p.phase, co) : true;
+            const isMasterOrAdmin = Boolean(state.user && state.user.admin || co.unlockAllContracts === true || co.isTestCompany === true);
+            const canRegister = (isFinanzas || isCEO) && (isPhaseOpen || isMasterOrAdmin);
             return `
             <div class="p-3 bg-black/70 border border-slate-800 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <div class="min-w-0 flex-1">
@@ -992,13 +995,17 @@ Object.assign(ui, {
                             </button>
                         ` : ''}
                     ` : `
-                        ${(isFinanzas || isCEO) ? `
+                        ${canRegister ? `
                             <button type="button" onclick="ui.modalRegisterPhaseBalance('${this.escapeHTML(p.phase)}')" class="min-h-[36px] bg-amber-400 text-black font-black uppercase text-[11px] px-3 py-1 hover:bg-white transition-all shadow-sm w-full sm:w-auto">
                                 [ + Registrar Balance Fase ${this.escapeHTML(p.phase)} ]
                             </button>
+                        ` : (!isPhaseOpen ? `
+                            <button type="button" disabled class="min-h-[36px] bg-slate-900 border border-slate-800 text-slate-500 font-bold uppercase text-[11px] px-2.5 py-1 cursor-not-allowed">
+                                🔒 Bloqueado hasta corte de Fase
+                            </button>
                         ` : `
                             <span class="text-[10px] text-slate-500 font-mono uppercase">En espera</span>
-                        `}
+                        `)}
                     `}
                 </div>
             </div>`;

@@ -214,6 +214,7 @@ Object.assign(ui, {
         const hojaHtml = hojaWorkshopHtml;
 
         wrapper.innerHTML = `
+            ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
                 <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">Logística de Despliegue Físico</h2>
                 <div class="flex gap-2 flex-wrap">

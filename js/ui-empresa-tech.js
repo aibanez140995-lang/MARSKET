@@ -234,6 +234,7 @@ Object.assign(ui, {
 
         wrapper.innerHTML = `
         <div class="space-y-6">
+            ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <!-- Columna Izquierda: Banco de Pruebas de Vuelo -->
                 <div class="lg:col-span-7 space-y-6">

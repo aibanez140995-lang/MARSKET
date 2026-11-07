@@ -333,7 +333,9 @@ Object.assign(ui, {
         </div>`;
 
         wrapper.innerHTML = `
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="space-y-6">
+            ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div class="lg:col-span-8 space-y-6">
                 ${nameChangeHtml}
                 ${ceoSloganApprovalHtml}
@@ -446,6 +448,7 @@ Object.assign(ui, {
                     <button type="button" onclick="ui.modalReportInactivity()" class="w-full min-h-[48px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-3 text-xs font-black uppercase tracking-wider hover:bg-mars-magenta hover:text-white transition-all shadow-[0_0_10px_rgba(255,0,85,0.2)]">Abrir Expediente HR</button>
                 </div>
             </div>
+        </div>
         </div>`;
         el.appendChild(wrapper);
     },
@@ -1260,7 +1263,9 @@ Object.assign(ui, {
         }
 
         wrapper.innerHTML = `
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="space-y-6">
+            ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div class="lg:col-span-6 space-y-6 w-full overflow-hidden">
                 <!-- Bloque Oficial Registro Mercantil // Aprobación Slogan Corporativo -->
                 <div id="brand-slogan-section" class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-magenta w-full">
@@ -1384,6 +1389,7 @@ Object.assign(ui, {
 
                 ${englishRubricHtml}
             </div>
+        </div>
         </div>`;
         el.appendChild(wrapper);
     },
