@@ -353,7 +353,12 @@ Object.assign(ui, {
             const docs = co.deliverables || {};
             const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
             const isAdmin = Boolean(state.user && state.user.admin);
-            const activeDefs = (!isAdmin) ? defs.filter(d => !ui.isDeliverableLocked(d.key, co)) : defs;
+            const activeDefs = (!isAdmin)
+                ? defs.filter(d => {
+                    const p = ui.getDeliverablePhase ? ui.getDeliverablePhase(d.key) : (d.phase || 'I');
+                    return ui.isPhaseUnlocked(p, co) && !ui.isDeliverableLocked(d.key, co);
+                })
+                : defs;
             const deliveredCount = activeDefs.filter(d => docs[d.key] && docs[d.key].status === 'DELIVERED_TO_TEACHER').length;
             const activeGroup = this.activeMilestoneGroup || 'PHASE_I';
             const isCEO = state.user && state.user.role === 'CEO';
@@ -366,6 +371,7 @@ Object.assign(ui, {
                     title: pDefs.I ? pDefs.I.name : 'FASE I: PREPARACIÓN, IDENTIDAD Y PRESUPUESTO INICIAL',
                     desc: pDefs.I ? pDefs.I.desc : '',
                     badge: 'FASE I // INICIO: 02/11/2026',
+                    openDate: '02/11/2026',
                     accent: 'border-mars-cyan text-mars-cyan'
                 },
                 {
@@ -374,6 +380,7 @@ Object.assign(ui, {
                     title: pDefs.II ? pDefs.II.name : 'FASE II: ANÁLISIS MATEMÁTICO Y LANZAMIENTOS DE PRUEBA',
                     desc: pDefs.II ? pDefs.II.desc : '',
                     badge: 'FASE II // INICIO: 15/12/2026',
+                    openDate: '15/12/2026',
                     accent: 'border-mars-yellow text-mars-yellow'
                 },
                 {
@@ -382,6 +389,7 @@ Object.assign(ui, {
                     title: pDefs.III ? pDefs.III.name : 'FASE III: DOCUMENTACIÓN TÉCNICA, BALANCE Y MODELO DE NEGOCIO',
                     desc: pDefs.III ? pDefs.III.desc : '',
                     badge: 'FASE III // INICIO: 15/02/2027',
+                    openDate: '15/02/2027',
                     accent: 'border-blue-400 text-blue-400'
                 },
                 {
@@ -390,22 +398,35 @@ Object.assign(ui, {
                     title: pDefs.IV ? pDefs.IV.name : 'FASE IV: CIERRE FORMAL, DOSSIER DE INVERSIÓN Y CUENTA DE RESULTADOS',
                     desc: pDefs.IV ? pDefs.IV.desc : '',
                     badge: 'FASE IV // INICIO: 31/03/2027',
+                    openDate: '31/03/2027',
                     accent: 'border-mars-magenta text-mars-magenta'
                 }
             ];
 
-            const visiblePhases = milestonePhases.map(phase => {
+            const accordionsHtml = milestonePhases.map(phase => {
+                const isUnlocked = ui.isPhaseUnlocked(phase.phaseCode, co);
                 let phaseDefs = defs.filter(d => (ui.getDeliverablePhase ? ui.getDeliverablePhase(d.key) : (d.phase || 'I')) === phase.phaseCode);
                 if (!isAdmin) {
                     phaseDefs = phaseDefs.filter(def => !ui.isDeliverableLocked(def.key, co));
                 }
-                return { ...phase, phaseDefs };
-            }).filter(phase => isAdmin || phase.phaseDefs.length > 0);
 
-            const accordionsHtml = visiblePhases.length === 0
-                ? `<div class="p-6 bg-slate-900/60 border border-slate-800 text-center rounded"><span class="text-xs font-mono uppercase text-slate-400">🔒 No hay entregables ni fases activas en este momento. Se habilitarán según el cronograma oficial.</span></div>`
-                : visiblePhases.map(phase => {
-                const phaseDefs = phase.phaseDefs;
+                if (!isUnlocked && !isAdmin) {
+                    return `
+                    <div class="terminal-border bg-mars-card border-l-4 border-slate-700 p-4 bg-slate-950/70 opacity-60">
+                        <div class="flex items-center justify-between gap-3 flex-wrap">
+                            <div>
+                                <div class="flex items-center gap-2 flex-wrap mb-1">
+                                    <span class="text-xs font-black uppercase px-2 py-0.5 border border-slate-700 bg-black text-slate-400">🔒 FASE ${phase.phaseCode} // BLOQUEADA</span>
+                                    <span class="text-xs text-slate-400 font-mono font-bold uppercase">APERTURA OFICIAL: ${phase.openDate}</span>
+                                </div>
+                                <h4 class="font-orbitron font-bold text-xs sm:text-sm text-slate-400 uppercase tracking-wider">${this.escapeHTML(phase.title)}</h4>
+                                ${phase.desc ? `<p class="text-[11px] text-slate-500 mt-0.5 line-clamp-1">${this.escapeHTML(phase.desc)}</p>` : ''}
+                            </div>
+                            <span class="text-slate-500 font-mono font-bold text-xs px-2.5 py-1 border border-slate-800 bg-black">🔒 PRÓXIMAMENTE</span>
+                        </div>
+                    </div>`;
+                }
+
                 const phaseDelivered = phaseDefs.filter(d => docs[d.key] && docs[d.key].status === 'DELIVERED_TO_TEACHER').length;
                 const isExpanded = activeGroup === phase.id;
 
@@ -1042,6 +1063,11 @@ Object.assign(ui, {
     },
 
     setRoleDeliverablesPhaseFilter(phase) {
+        const co = state.data?.companies?.[state.user?.coId];
+        if (phase !== 'ALL' && !ui.isPhaseUnlocked(phase, co)) {
+            ui.notify(`La Fase ${phase} aún no ha comenzado.`, 'warning');
+            return;
+        }
         this.roleDeliverablesPhase = phase || 'ALL';
         this.render();
     },
@@ -1077,36 +1103,55 @@ Object.assign(ui, {
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
         const docs = co.deliverables || {};
 
-        const scope = this.roleDeliverablesScope || 'MY_ROLE';
-        const phaseFilter = this.roleDeliverablesPhase || 'ALL';
-        const statusFilter = this.roleDeliverablesStatus || 'ALL';
+        const activePhaseInfo = (typeof ui.getCurrentPhaseInfo === 'function') ? ui.getCurrentPhaseInfo() : { id: 'I', key: 'I' };
+        const activePhaseId = activePhaseInfo.id || activePhaseInfo.key || 'I';
 
-        // 1. Filtrado por rol / ámbito
-        let baseDefs = defs;
-        if (scope === 'MY_ROLE') {
-            if (role === 'CEO') {
-                baseDefs = defs; // El CEO supervisa todos los de la startup
-            } else if (effectiveRole === 'OPERACIONES_IA' || effectiveRole === 'OPERACIONES') {
-                baseDefs = defs.filter(d => d.role === 'OPERACIONES_IA' || d.role === 'OPERACIONES');
-            } else {
-                baseDefs = defs.filter(d => d.role === effectiveRole);
-            }
+        // 1. Apertura Automática en Fase Activa y Reseteo si la fase guardada está bloqueada
+        if (!this.roleDeliverablesPhase) {
+            this.roleDeliverablesPhase = activePhaseId;
+        } else if (this.roleDeliverablesPhase !== 'ALL' && !ui.isPhaseUnlocked(this.roleDeliverablesPhase, co)) {
+            this.roleDeliverablesPhase = activePhaseId;
         }
 
-        // 2. Contadores del resumen superior (sobre los entregables visibles)
+        const phaseFilter = this.roleDeliverablesPhase || activePhaseId;
+        const scope = this.roleDeliverablesScope || 'MY_ROLE';
+        const statusFilter = this.roleDeliverablesStatus || 'ALL';
+
+        // 2. Blindaje de fases no iniciadas para alumnado
+        const isAdmin = Boolean(state.user?.admin);
+        const availableDefs = isAdmin
+            ? defs
+            : defs.filter(d => {
+                const p = ui.getDeliverablePhase ? ui.getDeliverablePhase(d.key) : (d.phase || 'I');
+                return ui.isPhaseUnlocked(p, co);
+            });
+
+        // 3. Filtrado por Fase de trabajo
+        const phaseDefs = (phaseFilter === 'ALL')
+            ? availableDefs
+            : availableDefs.filter(d => (ui.getDeliverablePhase ? ui.getDeliverablePhase(d.key) : (d.phase || 'I')) === phaseFilter);
+
+        // 4. Filtrado por Rol / Ámbito
+        let myRolePhaseDefs = phaseDefs;
+        if (role === 'CEO') {
+            myRolePhaseDefs = phaseDefs;
+        } else if (effectiveRole === 'OPERACIONES_IA' || effectiveRole === 'OPERACIONES') {
+            myRolePhaseDefs = phaseDefs.filter(d => d.role === 'OPERACIONES_IA' || d.role === 'OPERACIONES');
+        } else {
+            myRolePhaseDefs = phaseDefs.filter(d => d.role === effectiveRole);
+        }
+        const allStartupPhaseDefs = phaseDefs;
+        const baseDefs = (scope === 'MY_ROLE') ? myRolePhaseDefs : allStartupPhaseDefs;
+
+        // 5. Contadores del resumen superior calculados sobre la fase y ámbito activos
         const totalVisible = baseDefs.length;
         const deliveredCount = baseDefs.filter(d => docs[d.key] && docs[d.key].status === 'DELIVERED_TO_TEACHER').length;
         const ceoReviewCount = baseDefs.filter(d => docs[d.key] && docs[d.key].status === 'SUBMITTED_TO_CEO').length;
         const actionRequiredCount = baseDefs.filter(d => docs[d.key] && (docs[d.key].status === 'CEO_REVISION' || docs[d.key].status === 'DEVUELTO_A_TECNICO')).length;
-        const pendingCount = totalVisible - deliveredCount - ceoReviewCount - actionRequiredCount;
+        const pendingCount = Math.max(0, totalVisible - deliveredCount - ceoReviewCount - actionRequiredCount);
 
-        // 3. Filtrado por Fase
+        // 6. Filtrado por Estado
         let filteredDefs = baseDefs;
-        if (phaseFilter !== 'ALL') {
-            filteredDefs = filteredDefs.filter(d => (ui.getDeliverablePhase ? ui.getDeliverablePhase(d.key) : (d.phase || 'I')) === phaseFilter);
-        }
-
-        // 4. Filtrado por Estado
         if (statusFilter === 'ACTION_REQUIRED') {
             filteredDefs = filteredDefs.filter(d => docs[d.key] && (docs[d.key].status === 'CEO_REVISION' || docs[d.key].status === 'DEVUELTO_A_TECNICO'));
         } else if (statusFilter === 'CEO_REVIEW') {
@@ -1129,6 +1174,45 @@ Object.assign(ui, {
             const pB = phaseOrder[ui.getDeliverablePhase ? ui.getDeliverablePhase(b.key) : (b.phase || 'I')] || 99;
             return pA - pB;
         });
+
+        // Detección de entregables pendientes de fases anteriores abiertas (Mejora D)
+        const phaseOrderIdx = { 'I': 1, 'II': 2, 'III': 3, 'IV': 4 };
+        const activeIdx = phaseOrderIdx[activePhaseId] || 1;
+        const earlierPhasesPending = [];
+
+        ['I', 'II', 'III'].forEach(pId => {
+            if (phaseOrderIdx[pId] < activeIdx && ui.isPhaseUnlocked(pId, co)) {
+                const pDefs = defs.filter(d => (ui.getDeliverablePhase ? ui.getDeliverablePhase(d.key) : (d.phase || 'I')) === pId);
+                const pendingOrReturned = pDefs.filter(d => {
+                    const st = docs[d.key]?.status;
+                    return st !== 'DELIVERED_TO_TEACHER';
+                });
+                if (pendingOrReturned.length > 0) {
+                    earlierPhasesPending.push({
+                        phaseId: pId,
+                        count: pendingOrReturned.length,
+                        hasReturned: pendingOrReturned.some(d => docs[d.key]?.status === 'CEO_REVISION' || docs[d.key]?.status === 'DEVUELTO_A_TECNICO')
+                    });
+                }
+            }
+        });
+
+        let debtBannerHtml = '';
+        if (earlierPhasesPending.length > 0 && !earlierPhasesPending.some(ep => ep.phaseId === phaseFilter)) {
+            const firstDebt = earlierPhasesPending[0];
+            debtBannerHtml = `
+            <div class="bg-red-950/80 border-2 border-red-500 p-3 mb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs font-mono shadow-[0_0_15px_rgba(255,0,0,0.3)]">
+                <div class="flex items-center gap-2">
+                    <span class="text-base animate-pulse">⚠️</span>
+                    <span class="text-red-200">
+                        <strong>Atención:</strong> Tu Startup tiene <strong>${firstDebt.count} entregable(s) pendiente(s)${firstDebt.hasReturned ? ' o devueltos para subsanar' : ''}</strong> de la <strong>Fase ${firstDebt.phaseId}</strong>.
+                    </span>
+                </div>
+                <button type="button" onclick="ui.setRoleDeliverablesPhaseFilter('${firstDebt.phaseId}')" class="min-h-[36px] px-3.5 py-1.5 bg-red-600 hover:bg-white text-white hover:text-black font-bold uppercase transition-all shrink-0 shadow-sm active:scale-95">
+                    [ Ir a Fase ${firstDebt.phaseId} ➔ ]
+                </button>
+            </div>`;
+        }
 
         // Renderizado del resumen con contadores interactivos
         const summaryHtml = `
@@ -1155,18 +1239,43 @@ Object.assign(ui, {
             </button>
         </div>`;
 
-        // Filtros de barra de herramientas
-        const phaseTabsHtml = [
-            { id: 'ALL', label: 'Todas las Fases' },
-            { id: 'I', label: 'Fase I' },
-            { id: 'II', label: 'Fase II' },
-            { id: 'III', label: 'Fase III' },
-            { id: 'IV', label: 'Fase IV' }
-        ].map(p => `
-            <button type="button" role="tab" aria-selected="${phaseFilter === p.id}" onclick="ui.setRoleDeliverablesPhaseFilter('${p.id}')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-colors whitespace-nowrap ${phaseFilter === p.id ? 'bg-mars-cyan text-black shadow-sm' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800'}">
-                ${p.label}
+        // Filtros de barra de herramientas con candado y fecha corta (Mejoras B y C)
+        const phaseDefinitions = [
+            { id: 'I', label: 'Fase I', openShort: '02 Nov' },
+            { id: 'II', label: 'Fase II', openShort: '15 Dic' },
+            { id: 'III', label: 'Fase III', openShort: '15 Feb' },
+            { id: 'IV', label: 'Fase IV', openShort: '31 Mar' }
+        ];
+
+        let phaseTabsHtml = `
+            <button type="button" role="tab" aria-selected="${phaseFilter === 'ALL'}" onclick="ui.setRoleDeliverablesPhaseFilter('ALL')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-colors whitespace-nowrap ${phaseFilter === 'ALL' ? 'bg-mars-cyan text-black shadow-sm font-black' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800'}">
+                Todas las Fases
             </button>
-        `).join('');
+        `;
+
+        phaseDefinitions.forEach(p => {
+            const isUnlocked = ui.isPhaseUnlocked(p.id, co);
+            const debt = earlierPhasesPending.find(ep => ep.phaseId === p.id);
+            const isSelected = (phaseFilter === p.id);
+
+            if (isUnlocked) {
+                const alertDot = debt ? `<span class="inline-block w-2 h-2 rounded-full bg-red-500 animate-ping mr-1"></span>` : '';
+                const activeClass = isSelected
+                    ? 'bg-mars-cyan text-black shadow-sm font-black'
+                    : (debt ? 'bg-slate-900 text-red-400 border border-red-500/60 hover:text-white font-bold' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800');
+                phaseTabsHtml += `
+                    <button type="button" role="tab" aria-selected="${isSelected}" onclick="ui.setRoleDeliverablesPhaseFilter('${p.id}')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-colors whitespace-nowrap flex items-center gap-1 ${activeClass}">
+                        ${alertDot}${debt ? '🔴 ' : ''}${p.label}
+                    </button>
+                `;
+            } else {
+                phaseTabsHtml += `
+                    <button type="button" disabled title="Fase ${p.id} bloqueada hasta ${p.openShort}. Se habilitará según el cronograma oficial." class="min-h-[44px] px-3 py-2 text-xs font-bold uppercase whitespace-nowrap bg-slate-950/80 text-slate-500 border border-slate-800/60 cursor-not-allowed opacity-60 flex items-center gap-1.5">
+                        <span>🔒</span> ${p.label} <span class="text-[10px] text-slate-500 font-mono">(Abre ${p.openShort})</span>
+                    </button>
+                `;
+            }
+        });
 
         const statusTabsHtml = [
             { id: 'ALL', label: 'Todos los Estados' },
@@ -1182,11 +1291,11 @@ Object.assign(ui, {
 
         const scopeSwitchHtml = `
             <div class="flex items-center gap-2 bg-black p-1 border border-mars-border">
-                <button type="button" onclick="ui.setRoleDeliverablesScopeFilter('MY_ROLE')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${scope === 'MY_ROLE' ? 'bg-mars-cyan text-black' : 'text-slate-400 hover:text-white'}">
-                    🎯 Mis Entregables (${role})
+                <button type="button" onclick="ui.setRoleDeliverablesScopeFilter('MY_ROLE')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${scope === 'MY_ROLE' ? 'bg-mars-cyan text-black font-bold' : 'text-slate-400 hover:text-white'}">
+                    🎯 Mis Entregables (${myRolePhaseDefs.length})
                 </button>
-                <button type="button" onclick="ui.setRoleDeliverablesScopeFilter('ALL')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${scope === 'ALL' ? 'bg-mars-cyan text-black' : 'text-slate-400 hover:text-white'}">
-                    🏢 Toda la Startup (${defs.length})
+                <button type="button" onclick="ui.setRoleDeliverablesScopeFilter('ALL')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${scope === 'ALL' ? 'bg-mars-cyan text-black font-bold' : 'text-slate-400 hover:text-white'}">
+                    🏢 Toda la Startup (${allStartupPhaseDefs.length})
                 </button>
             </div>
         `;
@@ -1403,6 +1512,7 @@ Object.assign(ui, {
                 </div>
 
                 ${activeSection === 'deliverables' ? `
+                    ${debtBannerHtml ? `<div class="mt-4">${debtBannerHtml}</div>` : ''}
                     <!-- CONTADORES RESUMEN -->
                     <div class="mt-4">
                         ${summaryHtml}

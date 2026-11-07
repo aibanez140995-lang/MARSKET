@@ -1,7 +1,7 @@
 // js/config.js
 // --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.70) ---
 
-const APP_VERSION = "1.1.70";
+const APP_VERSION = "1.1.71";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1089,8 +1089,25 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.68
+// Changelog Oficial de Producción v1.1.71
 const APP_CHANGELOG = [
+    {
+      version: "1.1.71",
+      date: new Date().toISOString().split('T')[0],
+      title: "Enfoque por Fase Activa, Blindaje de Fases Futuras y Radar de Subsanaciones Anteriores",
+      items: [
+        "Apertura Automática en Fase Activa: Al acceder a Mis Entregables, la vista selecciona por defecto la fase en curso (Fase I), mostrando únicamente los entregables de dicha fase y evitando la sobrecarga cognitiva de los 18 hitos del curso.",
+        "Sincronización Total de Contadores y Alcance: Los 4 contadores de resumen (Entregados, En Revisión CEO, Requieren Acción y Pendientes) y los botones de alcance (Mis Entregables y Toda la Startup) se calculan en tiempo real sobre la fase seleccionada.",
+        "Blindaje y Candado en Fases Futuras: Las fases no iniciadas (Fases II, III y IV) muestran candado con fecha corta de apertura (🔒 FASE II • Abre 15 Dic) y permanecen deshabilitadas para el alumnado. El filtro 'Todas las Fases' agrupa únicamente fases abiertas.",
+        "Radar y Alerta de Deuda de Fase Anterior: Si la misión avanza y una startup tiene entregables pendientes o devueltos para subsanar de una fase anterior abierta, se muestra un aviso prioritario con acceso directo de 1 clic y señalización pulsante en la pestaña correspondiente.",
+        "Candado Coherente en Bóveda General del Dossier: Las fases futuras en el Dossier General se muestran selladas y el contador general solo cuantifica entregables de fases activas."
+      ],
+      highlights: [
+        { type: "FOCO 4º ESO", text: "Apertura directa en Fase I y contadores ajustados a la misión activa." },
+        { type: "BLINDAJE", text: "Fases futuras selladas con candado y fecha estimada de apertura oficial." },
+        { type: "SEGUIMIENTO", text: "Radar de subsanaciones anteriores para evitar pérdidas de notas por despistes." }
+      ]
+    },
     {
       version: "1.1.70",
       date: new Date().toISOString().split('T')[0],

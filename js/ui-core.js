@@ -324,6 +324,13 @@ const ui = {
     },
 
     toggleMilestoneAccordion(groupId) {
+        if (groupId && groupId.startsWith('PHASE_') && !state.user?.admin) {
+            const pCode = groupId.replace('PHASE_', '');
+            if (!this.isPhaseUnlocked(pCode)) {
+                this.notify(`La Fase ${pCode} aún no ha comenzado.`, 'warning');
+                return;
+            }
+        }
         this.activeMilestoneGroup = (this.activeMilestoneGroup === groupId) ? 'NONE' : groupId;
         this.render();
     },
@@ -789,6 +796,7 @@ const ui = {
         };
 
         return {
+            id: currentKey,
             key: currentKey,
             name: def.name || `Fase ${currentKey}`,
             desc: def.desc || '',
@@ -2956,6 +2964,32 @@ const ui = {
         const openTime = new Date(openDate).getTime();
         if (isNaN(openTime)) return false;
         return Date.now() < openTime;
+    },
+
+    isPhaseUnlocked(phaseId, co) {
+        if (typeof state !== 'undefined' && typeof state.isPhaseUnlocked === 'function') {
+            return state.isPhaseUnlocked(phaseId, co);
+        }
+        if (!phaseId) return true;
+        if (state.user?.admin) return true;
+        const comp = co || (state.data?.companies?.[state.user?.coId]);
+        if (comp?.isTestCompany) return true;
+
+        const pDefs = (typeof PROJECT_PHASES_DEF !== 'undefined') ? PROJECT_PHASES_DEF : {};
+        const pDef = pDefs[phaseId];
+        if (pDef && pDef.startDate) {
+            const startTime = new Date(pDef.startDate + 'T00:00:00').getTime();
+            if (!isNaN(startTime) && Date.now() >= startTime) {
+                return true;
+            }
+        }
+        if (phaseId === 'I') return true;
+
+        const defs = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).filter(d => (this.getDeliverablePhase ? this.getDeliverablePhase(d.key) : (d.phase || 'I')) === phaseId);
+        if (defs.length > 0 && defs.some(d => !this.isDeliverableLocked(d.key, comp))) {
+            return true;
+        }
+        return false;
     },
 
     renderDriveLinkBox(title, desc, docKey, currentDoc) {

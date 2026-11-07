@@ -1790,6 +1790,29 @@ const state = {
         return Date.now() < openTime;
     },
 
+    isPhaseUnlocked(phaseId, co) {
+        if (!phaseId) return true;
+        if (this.user?.admin) return true;
+        const comp = co || (this.data?.companies?.[this.user?.coId]);
+        if (comp?.isTestCompany) return true;
+
+        const pDefs = (typeof PROJECT_PHASES_DEF !== 'undefined') ? PROJECT_PHASES_DEF : {};
+        const pDef = pDefs[phaseId];
+        if (pDef && pDef.startDate) {
+            const startTime = new Date(pDef.startDate + 'T00:00:00').getTime();
+            if (!isNaN(startTime) && Date.now() >= startTime) {
+                return true;
+            }
+        }
+        if (phaseId === 'I') return true;
+
+        const defs = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).filter(d => (d.phase || 'I') === phaseId);
+        if (defs.length > 0 && defs.some(d => !this.isDeliverableLocked(d.key, comp))) {
+            return true;
+        }
+        return false;
+    },
+
     async submitDeliverable(docType, payload) {
         const driveUrl = String(payload?.driveUrl || '').trim();
         if (!this.user || !this.user.coId) return;
