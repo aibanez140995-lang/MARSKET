@@ -848,6 +848,55 @@ const ui = {
         };
     },
 
+    initTextZoom() {
+        if (typeof window === 'undefined' || !window.localStorage) return;
+        const currentZoom = localStorage.getItem('marsket_text_zoom') || 'normal';
+        this.applyTextZoom(currentZoom);
+    },
+
+    toggleTextZoom() {
+        const levels = ['normal', 'large', 'xlarge'];
+        const current = (typeof document !== 'undefined' && document.documentElement.getAttribute('data-text-zoom')) || 'normal';
+        const nextIdx = (levels.indexOf(current) + 1) % levels.length;
+        const nextZoom = levels[nextIdx];
+        this.applyTextZoom(nextZoom);
+        const labels = { normal: '100% (Estándar)', large: '110% (Grande)', xlarge: '120% (Extra)' };
+        this.notify(`🔠 Tamaño de texto: ${labels[nextZoom] || '100%'}`, 'info');
+    },
+
+    applyTextZoom(level) {
+        if (typeof document === 'undefined') return;
+        const validLevels = ['normal', 'large', 'xlarge'];
+        const target = validLevels.includes(level) ? level : 'normal';
+        if (target === 'normal') {
+            document.documentElement.removeAttribute('data-text-zoom');
+        } else {
+            document.documentElement.setAttribute('data-text-zoom', target);
+        }
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('marsket_text_zoom', target);
+            }
+        } catch(e) {}
+        this.updateZoomButtonUI(target);
+    },
+
+    updateZoomButtonUI(level) {
+        const lbl = document.getElementById('hud-zoom-label');
+        const btn = document.getElementById('hud-btn-zoom');
+        const labels = { normal: '100%', large: '110%', xlarge: '120%' };
+        const text = labels[level] || '100%';
+        if (lbl) lbl.innerText = text;
+        if (btn) {
+            btn.title = `Tamaño de texto: ${text}. Pulsa para alternar (100% ➔ 110% ➔ 120%)`;
+            if (level === 'large' || level === 'xlarge') {
+                btn.className = 'min-h-[44px] min-w-[44px] px-2.5 py-1.5 bg-mars-cyan/20 border-2 border-mars-cyan text-mars-cyan font-mono font-bold text-xs uppercase flex items-center justify-center gap-1.5 transition-all rounded-sm shadow-[0_0_10px_rgba(0,240,255,0.3)] active:scale-95';
+            } else {
+                btn.className = 'min-h-[44px] min-w-[44px] px-2.5 py-1.5 bg-black/60 border border-slate-700 hover:border-mars-cyan text-slate-300 hover:text-mars-cyan font-mono font-bold text-xs uppercase flex items-center justify-center gap-1.5 transition-all rounded-sm shadow-sm active:scale-95';
+            }
+        }
+    },
+
     setupNavigationHistory() {
         const metaTheme = document.querySelector('meta[name="theme-color"]');
         if (metaTheme) metaTheme.setAttribute('content', '#05070f');
@@ -2376,6 +2425,10 @@ const ui = {
             phaseBadge.innerText = `FASE ${pInfo.key}`;
             phaseBadge.title = `${pInfo.name} — Cierre estimado: ${pInfo.deadline}`;
             phaseBadge.classList.remove('hidden');
+        }
+
+        if (typeof localStorage !== 'undefined') {
+            this.updateZoomButtonUI(localStorage.getItem('marsket_text_zoom') || 'normal');
         }
 
         const balEl = document.getElementById('hud-balance');

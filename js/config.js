@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.69) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.70) ---
 
-const APP_VERSION = "1.1.69";
+const APP_VERSION = "1.1.70";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1091,6 +1091,20 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.68
 const APP_CHANGELOG = [
+    {
+      version: "1.1.70",
+      date: new Date().toISOString().split('T')[0],
+      title: "Optimización Tipográfica de Alta Legibilidad y Accesibilidad con Selector de Zoom",
+      items: [
+        "Tipografía Técnica Moderna de Pantalla: Transición desde Courier New hacia una familia monoespaciada moderna de alta legibilidad (Cascadia Mono, Consolas, SF Mono y Segoe UI Mono) con glifos 25% más altos y trazo nítido sin alterar el ancho ni descuadrar tarjetas.",
+        "Suelo Tipográfico Inteligente y Mayor Contraste: Elevación de fuentes mínimas (11px en microetiquetas, 12px en descripciones secundarias y 13.2px en textos estándar) con contraste optimizado en grises secundarios (plata suave WCAG AAA).",
+        "Selector de Zoom de Texto Accesible [ 🔠 A+ ]: Botón táctil en el HUD superior con 3 niveles (100% Estándar, 110% Grande y 120% Extra) con persistencia en localStorage para adaptación individual BYOD sin desbordamientos."
+      ],
+      highlights: [
+        { type: "ACCESIBILIDAD", text: "Selector de zoom de texto en HUD (100% ➔ 110% ➔ 120%) con memoria local." },
+        { type: "LEGIBILIDAD", text: "Nueva tipografía técnica de pantalla de alto contraste y suelo de 11.5px/13px." }
+      ]
+    },
     {
       version: "1.1.69",
       date: new Date().toISOString().split('T')[0],
