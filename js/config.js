@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.75) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.76) ---
 
-const APP_VERSION = "1.1.75";
+const APP_VERSION = "1.1.76";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1099,6 +1099,24 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.75
 const APP_CHANGELOG = [
+    {
+      version: "1.1.76",
+      date: new Date().toISOString().split('T')[0],
+      title: "Circuito B2B con Aduana Docente, Orden de Adquisición DOC_9, Órdenes Correlativas y Contador Financiero",
+      items: [
+        "Circuito B2B Integral de 4 Fases con Validación Docente: La adquisición de piezas de 2ª mano requiere solicitud de I+D (PENDIENTE_FINANZAS), autorización de Finanzas con retención de fondos (PENDIENTE_DOCENTE), validación oficial del docente en Aduana Aeroespacial B2B (APROBADO_DOCENTE) y confirmación de recepción física en Taller por Operaciones (EJECUTADO).",
+        "Justificación Obligatoria DOC_9 con Clonación Oficial en B2B: Al solicitar una pieza en el mercado secundario, el Técnico debe adjuntar obligatoriamente el enlace a Google Docs con la Orden de Adquisición (DOC_9), contando con botón de clonación directa de la plantilla oficial (política Zero-Text).",
+        "Doble Auditoría Documental en Aduana Docente: El coordinador y profesorado disponen en la Aduana B2B de los accesos simultáneos tanto a la Orden de Adquisición del comprador (DOC_9) como a la Memoria de Venta del vendedor.",
+        "Numeración Correlativa de Órdenes a Finanzas (001, 002...): Todas las solicitudes de compra a Finanzas se numeran correlativamente con formato de 3 dígitos (001, 002, 003...) para un seguimiento ordenado y profesional.",
+        "Contador Numérico Reactivo en Pestaña de Finanzas (badge-finance): La cabecera de '💰 Finanzas & ECO' muestra en tiempo real un distintivo numérico con el total de órdenes de compra B2B, pedidos de I+D y packs de marketing pendientes de autorización.",
+        "Blindaje Anti-Doble Cargo y Reembolsos Automáticos: Protección estricta del Libro Mayor para que la recepción física en taller no duplique el cargo previamente retenido en B2B, y reembolso inmediato del 100% ante denegaciones docentes o ventas a competidores."
+      ],
+      highlights: [
+        { type: "B2B/ADUANA", text: "Circuito de 4 pasos para compras B2B: I+D ➔ Finanzas ➔ Aduana Docente ➔ Taller Operaciones." },
+        { type: "DOC_9", text: "Orden de adquisición en Google Docs obligatoria para comprar material de segunda mano." },
+        { type: "CONTROL", text: "Órdenes correlativas 001, 002... y contador numérico de trámites pendientes en Finanzas." }
+      ]
+    },
     {
       version: "1.1.75",
       date: new Date().toISOString().split('T')[0],

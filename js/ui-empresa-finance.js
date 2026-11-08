@@ -101,25 +101,66 @@ Object.assign(ui, {
         if (deptFilter === 'ALL' || deptFilter === 'TECNICO') {
             (co.orders || []).forEach(order => {
                 const st = order.status;
+                const isB2B = order.type === 'B2B_BUY_REQUEST' || !!order.offerId;
                 let matchesTab = false;
-                if (ordersTab === 'EN_PROCESO') matchesTab = (st === 'PENDIENTE_FINANZAS' || st === 'APROBADO_FINANZAS');
-                else if (ordersTab === 'COMPLETADAS') matchesTab = (st === 'EJECUTADO');
-                else if (ordersTab === 'DENEGADAS') matchesTab = (st === 'RECHAZADO');
+                if (ordersTab === 'EN_PROCESO') {
+                    matchesTab = (st === 'PENDIENTE_FINANZAS' || st === 'APROBADO_FINANZAS' || st === 'PENDIENTE_DOCENTE' || st === 'APROBADO_DOCENTE');
+                } else if (ordersTab === 'COMPLETADAS') {
+                    matchesTab = (st === 'EJECUTADO');
+                } else if (ordersTab === 'DENEGADAS') {
+                    matchesTab = (st === 'RECHAZADO' || st === 'DENEGADO_DOCENTE' || st === 'CANCELADO_OTRA_EMPRESA');
+                }
 
                 if (matchesTab) {
                     const isPending = st === 'PENDIENTE_FINANZAS';
-                    const isApproved = st === 'APROBADO_FINANZAS';
+                    const isApproved = st === 'APROBADO_FINANZAS' || st === 'APROBADO_DOCENTE';
                     const isExecuted = st === 'EJECUTADO';
-                    const isRejected = st === 'RECHAZADO';
+                    const isRejected = st === 'RECHAZADO' || st === 'DENEGADO_DOCENTE' || st === 'CANCELADO_OTRA_EMPRESA';
 
-                    let trackerIdx = 0;
-                    if (isApproved) trackerIdx = 1;
-                    if (isExecuted) trackerIdx = 2;
-
+                    let trackerHtml = '';
                     let stBadge = 'bg-mars-yellow/20 text-mars-yellow border-mars-yellow animate-pulse';
-                    if (isApproved) stBadge = 'bg-blue-500/20 text-blue-300 border-blue-500';
-                    if (isExecuted) stBadge = 'bg-mars-green/20 text-mars-green border-mars-green';
-                    if (isRejected) stBadge = 'bg-mars-magenta/20 text-mars-magenta border-mars-magenta';
+                    let stLabel = st;
+
+                    if (isB2B) {
+                        let b2bTrackerIdx = 0;
+                        if (st === 'PENDIENTE_DOCENTE') b2bTrackerIdx = 2;
+                        else if (st === 'APROBADO_DOCENTE') b2bTrackerIdx = 3;
+                        else if (st === 'EJECUTADO') b2bTrackerIdx = 3;
+                        else if (st === 'PENDIENTE_FINANZAS') b2bTrackerIdx = 1;
+
+                        trackerHtml = ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Aduana Docente', '4. Taller (Ejecuta)'], b2bTrackerIdx);
+
+                        if (st === 'PENDIENTE_FINANZAS') {
+                            stBadge = 'bg-amber-950/40 text-amber-300 border-amber-500 animate-pulse';
+                            stLabel = 'PENDIENTE FINANZAS';
+                        } else if (st === 'PENDIENTE_DOCENTE') {
+                            stBadge = 'bg-purple-950/40 text-purple-300 border-purple-400 animate-pulse';
+                            stLabel = '⏳ PENDIENTE DE DOCENTE (ADUANA)';
+                        } else if (st === 'APROBADO_DOCENTE') {
+                            stBadge = 'bg-blue-950/40 text-blue-300 border-blue-400';
+                            stLabel = '✓ APROBADO EN ADUANA (EN TALLER)';
+                        } else if (st === 'EJECUTADO') {
+                            stBadge = 'bg-emerald-950/40 text-emerald-400 border-emerald-500';
+                            stLabel = '✓ EJECUTADO EN TALLER';
+                        } else if (st === 'DENEGADO_DOCENTE') {
+                            stBadge = 'bg-rose-950/40 text-rose-400 border-rose-500';
+                            stLabel = '❌ DENEGADO EN ADUANA (REEMBOLSADO)';
+                        } else if (st === 'CANCELADO_OTRA_EMPRESA') {
+                            stBadge = 'bg-slate-900 text-slate-400 border-slate-700';
+                            stLabel = 'ADJUDICADO A OTRA STARTUP';
+                        }
+                    } else {
+                        let b2cTrackerIdx = 0;
+                        if (st === 'APROBADO_FINANZAS') b2cTrackerIdx = 1;
+                        else if (st === 'EJECUTADO') b2cTrackerIdx = 2;
+
+                        trackerHtml = ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Logística (Ejecuta)'], b2cTrackerIdx);
+
+                        if (st === 'PENDIENTE_FINANZAS') stBadge = 'bg-mars-yellow/20 text-mars-yellow border-mars-yellow animate-pulse';
+                        else if (st === 'APROBADO_FINANZAS') stBadge = 'bg-blue-500/20 text-blue-300 border-blue-500';
+                        else if (st === 'EJECUTADO') stBadge = 'bg-mars-green/20 text-mars-green border-mars-green';
+                        else if (st === 'RECHAZADO') stBadge = 'bg-mars-magenta/20 text-mars-magenta border-mars-magenta';
+                    }
 
                     let finActions = '';
                     if (isFinanzas && isPending) {
@@ -144,17 +185,17 @@ Object.assign(ui, {
                         html: `
                         <div class="bg-slate-900 border ${isPending ? 'border-mars-yellow/60' : 'border-mars-border'} p-4 text-xs mb-3">
                             <div class="flex items-center gap-2 mb-2 flex-wrap">
-                                ${order.type === 'B2B_BUY_REQUEST'
-                                    ? `<span class="text-[10px] font-black uppercase px-2 py-0.5 bg-amber-950 text-mars-yellow border border-amber-500/50">MERCADO SECUNDARIO (B2B) • COMPRA</span>`
-                                    : `<span class="text-[10px] font-black uppercase px-2 py-0.5 bg-cyan-950 text-mars-cyan border border-mars-cyan/40">DEPTO: I+D (TÉCNICO)</span>`
+                                ${isB2B
+                                    ? `<span class="text-[10px] font-black uppercase px-2 py-0.5 bg-amber-950 text-mars-yellow border border-amber-500/50">[🤝 MERCADO B2B] COMPRA DE 2ª MANO</span>`
+                                    : `<span class="text-[10px] font-black uppercase px-2 py-0.5 bg-cyan-950 text-mars-cyan border border-mars-cyan/40">[🚀 CATÁLOGO B2C] DEPTO: I+D</span>`
                                 }
                                 ${order.partialApproval ? `<span class="text-[10px] font-mono text-amber-400 bg-amber-950/40 border border-amber-500/50 px-2 py-0.5 rounded">⚠️ Aprobación Parcial</span>` : ''}
                             </div>
-                            ${ui.renderWorkflowTracker(['I+D (Solicita)', 'Finanzas (Audita)', 'Logística (Ejecuta)'], trackerIdx)}
+                            ${trackerHtml}
                             <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
                                 <div>
-                                    <span class="text-xs font-black uppercase px-2 py-0.5 border ${stBadge}">${this.escapeHTML(st)}</span>
-                                    <h4 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">Orden #${this.escapeHTML(order.id)}</h4>
+                                    <span class="text-xs font-black uppercase px-2 py-0.5 border ${stBadge}">${this.escapeHTML(stLabel)}</span>
+                                    <h4 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">${isB2B ? 'Orden B2B #' : 'Orden #'}${this.escapeHTML(order.id)}</h4>
                                 </div>
                                 <div class="text-right">
                                     <span class="text-mars-green font-mono font-bold text-sm sm:text-base">${Number(order.total).toFixed(2)} €v</span>
@@ -163,7 +204,11 @@ Object.assign(ui, {
                             </div>
                             <div class="mb-2 flex flex-wrap gap-2">
                                 ${(order.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(order.driveUrl))
-                                    ? `<a href="${encodeURI(order.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Informe Técnico en Docs ↗</span></a>`
+                                    ? `<a href="${encodeURI(order.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>📄 Orden Adquisición DOC_9 en Docs ↗</span></a>`
+                                    : ''
+                                }
+                                ${(order.sellerDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(order.sellerDriveUrl))
+                                    ? `<a href="${encodeURI(order.sellerDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-amber-950/40 text-amber-300 border border-amber-500/30 rounded hover:bg-amber-900/50 transition-colors font-mono"><span>📄 Memoria Vendedor en Docs ↗</span></a>`
                                     : ''
                                 }
                                 ${(order.responseDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(order.responseDriveUrl))
@@ -171,6 +216,8 @@ Object.assign(ui, {
                                     : ''
                                 }
                             </div>
+                            ${st === 'PENDIENTE_DOCENTE' ? `<p class="text-xs text-purple-300 font-mono mt-1 mb-2 p-2 bg-purple-950/30 border border-purple-500/30 rounded">🛃 Compra autorizada por Finanzas. Retenida en Aduana Docente a la espera de validación oficial.</p>` : ''}
+                            ${st === 'DENEGADO_DOCENTE' ? `<p class="text-xs text-rose-300 font-mono mt-1 mb-2 p-2 bg-rose-950/30 border border-rose-500/30 rounded">❌ Traspaso denegado por Aduana Docente. El 100% del importe ha sido reembolsado en vuestra tesorería.</p>` : ''}
                             <div class="space-y-1.5 mb-2 bg-black/60 p-2.5 border border-slate-800">
                                 ${(order.items || []).map(it => `
                                     <div class="flex justify-between text-xs text-slate-300 gap-2">
@@ -591,8 +638,10 @@ Object.assign(ui, {
         if (!co) return;
 
         co.orders = co.orders || [];
+        const orderNum = ui.getNextOrderNumber ? ui.getNextOrderNumber(co) : String(Date.now()).slice(-3);
         const newOrder = {
-            id: 'ORD-' + Date.now().toString().slice(-4),
+            id: orderNum,
+            type: 'B2C_ORDER',
             items: JSON.parse(JSON.stringify(co.cart)),
             total: total,
             driveUrl: driveUrl,
@@ -1722,6 +1771,8 @@ Object.assign(ui, {
             price: offer.price,
             sourceOrderKey: offer.sourceOrderKey || '',
             driveUrl: offer.driveUrl || '',
+            buyerDriveUrl: order.driveUrl || '',
+            buyerOrderId: order.id,
             status: 'PENDIENTE_ADUANA',
             date: new Date().toLocaleString(),
             timestamp: now,
@@ -1730,9 +1781,9 @@ Object.assign(ui, {
 
         state.addToLedger(coId, `[RETENCIÓN B2B] Compra autorizada por Finanzas: ${offer.itemName}`, 'ADUANA_B2B', -price);
 
-        order.status = 'APROBADO_FINANZAS';
+        order.status = 'PENDIENTE_DOCENTE';
         order.b2bContractId = contractId;
-        order.approvedAt = now;
+        order.approvedByFinanzasAt = now;
         co.updatedAt = now;
 
         // Cancelar solicitudes competidoras en otras empresas para la misma oferta

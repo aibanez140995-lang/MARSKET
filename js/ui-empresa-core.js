@@ -15,6 +15,21 @@ Object.assign(ui, {
         return `<span style="${s}" class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded uppercase whitespace-nowrap">[${this.escapeHTML(tier)}]</span>`;
     },
 
+    getNextOrderNumber(co) {
+        const orders = co?.orders || [];
+        let maxNum = 0;
+        orders.forEach(o => {
+            const strId = String(o.id || '').trim();
+            const match = strId.match(/^(?:ORD-|B2B-)?(\d+)$/i);
+            if (match) {
+                const n = parseInt(match[1], 10);
+                if (!isNaN(n) && n > maxNum) maxNum = n;
+            }
+        });
+        const nextNum = maxNum + 1;
+        return String(nextNum).padStart(3, '0');
+    },
+
     viewLogin(el) {
         if (!el) return;
         const verifiedCoId = typeof auth !== 'undefined' ? auth.verifiedCoId : null;

@@ -15,27 +15,36 @@ Object.assign(ui, {
         const isOperario = (state.user.role === 'OPERACIONES_IA' || state.user.role === 'OPERACIONES' || state.user.admin);
         
         const allOrders = co.orders || [];
-        const approvedOrders = allOrders.filter(o => o.status === 'APROBADO_FINANZAS');
+        const approvedOrders = allOrders.filter(o => o.status === 'APROBADO_FINANZAS' || o.status === 'APROBADO_DOCENTE');
 
         const wrapper = document.createElement('div');
 
         let ordersTabContentHtml = '';
 
         if (approvedOrders.length > 0) {
-            ordersTabContentHtml = approvedOrders.map(order => `
-                <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-green mb-6 w-full">
-                    ${ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Logística (Ejecuta)'], 1)}
+            ordersTabContentHtml = approvedOrders.map(order => {
+                const isB2B = order.type === 'B2B_BUY_REQUEST' || !!order.offerId;
+                const tracker = isB2B
+                    ? ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Aduana Docente', '4. Taller (Ejecuta)'], 3)
+                    : ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Logística (Ejecuta)'], 1);
+                const statusBadge = isB2B
+                    ? `<span class="text-xs font-bold uppercase text-mars-cyan bg-cyan-950/60 border border-cyan-500/50 px-2.5 py-1 tracking-wider">[AUTORIZADO POR ADUANA DOCENTE]</span>`
+                    : `<span class="text-xs font-bold uppercase text-mars-green bg-mars-green/10 border border-mars-green/40 px-2.5 py-1 tracking-wider">[APROBADO POR FINANZAS]</span>`;
+
+                return `
+                <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 ${isB2B ? 'border-l-mars-cyan' : 'border-l-mars-green'} mb-6 w-full">
+                    ${tracker}
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-2 mt-4">
                         <div>
-                            <span class="text-xs font-bold uppercase text-mars-green bg-mars-green/10 border border-mars-green/40 px-2.5 py-1 tracking-wider">[APROBADO POR FINANZAS]</span>
-                            <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">ORDEN #${this.escapeHTML(order.id)}</h3>
+                            ${statusBadge}
+                            <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">${isB2B ? 'ORDEN B2B #' : 'ORDEN #'}${this.escapeHTML(order.id)}</h3>
                         </div>
                         <div class="text-left sm:text-right">
                             <p class="text-mars-green font-black font-mono text-xl">${Number(order.total).toFixed(2)} €v</p>
                             <p class="text-xs text-slate-300 uppercase">${this.escapeHTML(order.date)}</p>
                         </div>
                     </div>
-                    <p class="text-xs text-mars-yellow uppercase font-bold mb-3">Registra el coste real físico (€) y el comercio oficial de adquisición:</p>
+                    <p class="text-xs text-mars-yellow uppercase font-bold mb-3">${isB2B ? 'Registra la recepción física de la pieza B2B de segunda mano en taller:' : 'Registra el coste real físico (€) y el comercio oficial de adquisición:'}</p>
                     <div class="space-y-3 mb-6">
                         ${(order.items || []).map((item, idx) => `
                             <div class="border border-slate-800 bg-slate-900/90 p-3 mb-3 rounded flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
@@ -45,11 +54,12 @@ Object.assign(ui, {
                                         <span class="mars-checkbox-visual"></span>
                                         <span class="break-words">${this.escapeHTML(item.name)} (x${Number(item.qty)||1}) - <span class="text-mars-cyan font-mono">${Number(item.price).toFixed(2)} €v</span></span>
                                     </label>
-                                    <p class="text-[10px] text-slate-400 font-mono mt-0.5 ml-7">Material donado o reciclado: registrar 0.00 €</p>
+                                    <p class="text-[10px] text-slate-400 font-mono mt-0.5 ml-7">${isB2B ? 'Pieza adquirida en mercado secundario B2B (coste en € = 0.00)' : 'Material donado o reciclado: registrar 0.00 €'}</p>
                                 </div>
                                 <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                                    <input type="number" id="real-eur-${this.escapeHTML(order.id)}-${idx}" aria-label="Coste real en euros de ${this.escapeHTML(item.name)}" placeholder="Coste Real (€) - 0.00 si es reciclado" step="0.01" min="0" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-mars-magenta p-2.5 text-base sm:text-xs text-white w-full sm:w-48 outline-none focus:border-mars-cyan font-mono">
+                                    <input type="number" id="real-eur-${this.escapeHTML(order.id)}-${idx}" aria-label="Coste real en euros de ${this.escapeHTML(item.name)}" placeholder="${isB2B ? 'Coste Real (€) 0.00' : 'Coste Real (€) - 0.00 si es reciclado'}" value="${isB2B ? '0.00' : ''}" step="0.01" min="0" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-mars-magenta p-2.5 text-base sm:text-xs text-white w-full sm:w-48 outline-none focus:border-mars-cyan font-mono">
                                     <select id="real-shop-${this.escapeHTML(order.id)}-${idx}" aria-label="Comercio de adquisición de ${this.escapeHTML(item.name)}" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-slate-700 p-2.5 text-base sm:text-xs text-white w-full sm:w-44 outline-none focus:border-mars-cyan">
+                                        ${isB2B ? `<option value="Mercado B2B">Mercado B2B</option>` : ''}
                                         ${(typeof COMMERCIAL_SHOPS_DEF !== 'undefined' ? COMMERCIAL_SHOPS_DEF : [
                                             { id: 'mercadona', name: 'Mercadona' },
                                             { id: 'carrefour', name: 'Carrefour' },
@@ -65,11 +75,11 @@ Object.assign(ui, {
                         `).join('')}
                     </div>
                     ${isOperario
-                        ? `<button type="button" onclick="ui.executePhysicalOrder('${this.escapeHTML(order.id)}')" class="w-full min-h-[48px] bg-mars-cyan text-black font-black py-3 px-4 text-xs uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)]">[ CONFIRMAR COMPRA FÍSICA Y ENSAMBLAJE ]</button>`
+                        ? `<button type="button" onclick="ui.executePhysicalOrder('${this.escapeHTML(order.id)}')" class="w-full min-h-[48px] bg-mars-cyan text-black font-black py-3 px-4 text-xs uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)]">[ CONFIRMAR ${isB2B ? 'RECEPCIÓN FÍSICA B2B Y ENSAMBLE' : 'COMPRA FÍSICA Y ENSAMBLAJE'} ]</button>`
                         : `<div class="p-3 bg-slate-950 border border-slate-800 text-center text-xs text-slate-400 uppercase font-mono">🔒 Vista de Sólo Lectura: Registro de compra física reservado exclusivamente al Operario de Taller.</div>`
                     }
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         } else {
             ordersTabContentHtml = `
             <div class="terminal-border border-dashed p-8 text-center text-slate-400 italic text-xs uppercase bg-black/40">
@@ -274,25 +284,30 @@ Object.assign(ui, {
             }
         }
 
+        const isB2B = order.type === 'B2B_BUY_REQUEST' || !!order.offerId;
         if(finalItems.length === 0) return this.notify("Debes marcar al menos un componente como comprado/ensamblado.", "warning");
-        if(co.balance < finalTotalEurV) return this.notify("Fondos virtuales insuficientes en la cuenta de la empresa.", "error");
+        if(!isB2B && co.balance < finalTotalEurV) return this.notify("Fondos virtuales insuficientes en la cuenta de la empresa.", "error");
 
         order.items = finalItems;
         order.total = finalTotalEurV;
         order.status = 'EJECUTADO';
 
-        state.addToLedger(state.user.coId, `Ejecución Logística Orden #${order.id}`, 'OPERACIONES_IA', -finalTotalEurV);
+        if (!isB2B) {
+            state.addToLedger(state.user.coId, `Ejecución Logística Orden #${order.id}`, 'OPERACIONES_IA', -finalTotalEurV);
+        }
         co.realCosts.push(...realCostsToLog);
         co.updatedAt = Date.now();
 
-        telemetry.log("EJECUCIÓN LOGÍSTICA", `Orden #${order.id} completada por ${finalTotalEurV.toFixed(2)}€v`);
+        telemetry.log("EJECUCIÓN LOGÍSTICA", `Orden ${isB2B ? 'B2B ' : ''}#${order.id} completada por ${finalTotalEurV.toFixed(2)}€v`);
         state.save(state.user.coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         
-        ui.pushNotification(state.user.coId, 'TECNICO', `📦 Orden #${order.id} física completada y ensamblada por Operaciones.`, 'success', { view: 'orders', filter: 'COMPLETADAS', dept: 'TECNICO' });
-        ui.pushNotification(state.user.coId, 'FINANZAS', `📦 Orden #${order.id} ejecutada: ${finalTotalEurV.toFixed(2)} €v descontados en el Libro Mayor.`, 'info', { view: 'finance' });
+        ui.pushNotification(state.user.coId, 'TECNICO', `📦 Orden #${order.id} (${isB2B ? 'Pieza B2B' : 'Material'}) recibida y ensamblada en Taller.`, 'success', { view: 'orders', filter: 'COMPLETADAS', dept: 'TECNICO' });
+        if (!isB2B) {
+            ui.pushNotification(state.user.coId, 'FINANZAS', `📦 Orden #${order.id} ejecutada: ${finalTotalEurV.toFixed(2)} €v descontados en el Libro Mayor.`, 'info', { view: 'finance' });
+        }
 
-        this.notify(`✅ Orden #${order.id} ejecutada. El saldo virtual ha sido descontado y los componentes registrados para ensamble.`, "success");
+        this.notify(`✅ Orden #${order.id} ejecutada. Los componentes han sido registrados para ensamble.`, "success");
         this.render();
     },
 

@@ -195,10 +195,14 @@ Object.assign(ui, {
                             <p class="text-slate-200 uppercase text-xs break-words">
                                 Vendedor: <strong class="text-mars-cyan">${this.escapeHTML(c.sellerName)}</strong> ➔ Comprador: <strong class="text-mars-yellow">${this.escapeHTML(c.buyerName)}</strong>
                             </p>
-                            ${c.driveUrl ? `
-                            <div class="mt-2">
-                                <a href="${encodeURI(c.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50"><span>📄 Abrir Memoria de Desinversión en Google Drive ↗</span></a>
-                            </div>` : ''}
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                ${c.buyerDriveUrl ? `
+                                    <a href="${encodeURI(c.buyerDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50"><span>📄 DOC_9 Adquisición (Comprador) ↗</span></a>
+                                ` : ''}
+                                ${c.driveUrl ? `
+                                    <a href="${encodeURI(c.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-amber-950/40 text-amber-300 border border-amber-500/30 rounded font-mono hover:bg-amber-900/50"><span>📄 Memoria Venta (Vendedor) ↗</span></a>
+                                ` : ''}
+                            </div>
                         </div>
                         <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end shrink-0 border-t sm:border-t-0 border-slate-800 pt-2 sm:pt-0">
                             <span class="text-mars-green font-mono font-black text-base">${Number(c.price).toFixed(2)} €v</span>
@@ -2128,23 +2132,43 @@ Object.assign(ui, {
 
             if (buyerCo) {
                 buyerCo.orders = buyerCo.orders || [];
-                buyerCo.orders.unshift({
-                    id: 'B2B-' + now.toString().slice(-4),
-                    items: [{
-                        id: 'B2B-ITEM',
-                        name: `[B2B] ${c.itemName}`,
-                        qty: c.qty || 1,
-                        price: price,
-                        category: c.category || 'B2B',
-                        realEur: 0,
-                        realShop: `B2B (${c.sellerName})`
-                    }],
-                    total: price,
-                    justification: `Adquisición en Mercado Secundario B2B a ${c.sellerName}.`,
-                    status: 'EJECUTADO',
-                    date: new Date().toLocaleString()
-                });
-                ui.pushNotification(c.buyerCoId, 'TECNICO', `¡Aduana B2B autorizó tu compra! "${c.itemName}" está en tu Inventario.`, 'success');
+                let existingBuyerOrder = buyerCo.orders.find(o => 
+                    (o.b2bContractId && o.b2bContractId === c.id) ||
+                    (c.buyerOrderId && String(o.id) === String(c.buyerOrderId)) ||
+                    (c.offerId && o.offerId === c.offerId)
+                );
+                if (existingBuyerOrder) {
+                    existingBuyerOrder.status = 'APROBADO_DOCENTE';
+                    existingBuyerOrder.approvedByDocenteAt = now;
+                    existingBuyerOrder.b2bContractId = c.id;
+                } else {
+                    const orderNum = ui.getNextOrderNumber ? ui.getNextOrderNumber(buyerCo) : String(now).slice(-3);
+                    buyerCo.orders.unshift({
+                        id: orderNum,
+                        type: 'B2B_BUY_REQUEST',
+                        offerId: c.offerId,
+                        b2bContractId: c.id,
+                        driveUrl: c.buyerDriveUrl || '',
+                        sellerDriveUrl: c.driveUrl || '',
+                        items: [{
+                            id: 'B2B-ITEM',
+                            name: `[B2B] ${c.itemName}`,
+                            qty: c.qty || 1,
+                            price: price,
+                            category: c.category || 'B2B',
+                            realEur: 0,
+                            realShop: `B2B (${c.sellerName})`
+                        }],
+                        total: price,
+                        justification: `Adquisición en Mercado Secundario B2B a ${c.sellerName}.`,
+                        status: 'APROBADO_DOCENTE',
+                        date: new Date().toLocaleString(),
+                        approvedByDocenteAt: now
+                    });
+                }
+                buyerCo.updatedAt = now;
+                ui.pushNotification(c.buyerCoId, 'OPERACIONES_IA', `🛃 Aduana B2B autorizó el traspaso de "${c.itemName}". Registra la recepción física y ensamble en Taller.`, 'success', { view: 'cart' });
+                ui.pushNotification(c.buyerCoId, 'TECNICO', `🛃 Aduana B2B autorizó tu compra de "${c.itemName}". La orden pasa a Operaciones para su recepción física.`, 'success', { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' });
             }
 
             // Blindaje anti-duplicados: Si otra empresa o solicitud intentó comprar el mismo lote, cancelar y reembolsar íntegramente
@@ -2160,7 +2184,18 @@ Object.assign(ui, {
                 const dupBuyerCo = state.data.companies[dup.buyerCoId];
                 if (dupBuyerCo && dupPrice > 0) {
                     state.addToLedger(dup.buyerCoId, `[REEMBOLSO ADUANA B2B] Oferta adjudicada a otra startup: ${dup.itemName}`, 'ADUANA_B2B', dupPrice);
+                    let dupOrder = (dupBuyerCo.orders || []).find(o => 
+                        (o.b2bContractId && o.b2bContractId === dup.id) ||
+                        (dup.buyerOrderId && String(o.id) === String(dup.buyerOrderId)) ||
+                        (dup.offerId && o.offerId === dup.offerId)
+                    );
+                    if (dupOrder) {
+                        dupOrder.status = 'CANCELADO_OTRA_EMPRESA';
+                        dupOrder.cancelledAt = now;
+                        dupBuyerCo.updatedAt = now;
+                    }
                     ui.pushNotification(dup.buyerCoId, 'FINANZAS', `Aduana B2B: El lote único de "${dup.itemName}" ya fue adjudicado a ${c.buyerName}. Importe de ${dupPrice.toFixed(2)} €v reembolsado íntegramente.`, 'warning');
+                    ui.pushNotification(dup.buyerCoId, 'TECNICO', `Aduana B2B: El lote de "${dup.itemName}" fue adjudicado a ${c.buyerName}. Orden cancelada y reembolsada.`, 'warning');
                 }
             });
 
@@ -2173,8 +2208,19 @@ Object.assign(ui, {
             c.updatedAt = now;
 
             if (buyerCo) {
-                state.addToLedger(c.buyerCoId, `[REEMBOLSO ADUANA B2B] Contrato rechazado: ${c.itemName}`, 'ADUANA_B2B', price);
+                state.addToLedger(c.buyerCoId, `[REEMBOLSO ADUANA B2B] Contrato rechazado por Aduana: ${c.itemName}`, 'ADUANA_B2B', price);
+                let existingBuyerOrder = (buyerCo.orders || []).find(o => 
+                    (o.b2bContractId && o.b2bContractId === c.id) ||
+                    (c.buyerOrderId && String(o.id) === String(c.buyerOrderId)) ||
+                    (c.offerId && o.offerId === c.offerId)
+                );
+                if (existingBuyerOrder) {
+                    existingBuyerOrder.status = 'DENEGADO_DOCENTE';
+                    existingBuyerOrder.rejectedByDocenteAt = now;
+                    buyerCo.updatedAt = now;
+                }
                 ui.pushNotification(c.buyerCoId, 'FINANZAS', `Aduana B2B rechazó el contrato #${c.id}. Reembolso: +${price.toFixed(2)} €v.`, 'warning');
+                ui.pushNotification(c.buyerCoId, 'TECNICO', `Aduana B2B rechazó el contrato #${c.id}. Reembolso tramitado.`, 'warning', { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' });
             }
 
             const hasOtherPending = (state.data.b2bContracts || []).some(other => 

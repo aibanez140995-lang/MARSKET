@@ -48,14 +48,14 @@ Object.assign(ui, {
         // --- Panel de Seguimiento de Órdenes I+D (Técnico) ---
         const techFilter = this.techOrdersFilter || 'EN_PROCESO';
         const techOrders = co.orders || [];
-        const techPendingCount = techOrders.filter(o => o.status === 'PENDIENTE_FINANZAS' || o.status === 'APROBADO_FINANZAS').length;
+        const techPendingCount = techOrders.filter(o => o.status === 'PENDIENTE_FINANZAS' || o.status === 'APROBADO_FINANZAS' || o.status === 'PENDIENTE_DOCENTE' || o.status === 'APROBADO_DOCENTE').length;
         const techCompletedCount = techOrders.filter(o => o.status === 'EJECUTADO').length;
-        const techRejectedCount = techOrders.filter(o => o.status === 'RECHAZADO').length;
+        const techRejectedCount = techOrders.filter(o => o.status === 'RECHAZADO' || o.status === 'DENEGADO_DOCENTE' || o.status === 'CANCELADO_OTRA_EMPRESA').length;
 
         const filteredTechOrders = techOrders.filter(o => {
-            if (techFilter === 'EN_PROCESO') return (o.status === 'PENDIENTE_FINANZAS' || o.status === 'APROBADO_FINANZAS');
+            if (techFilter === 'EN_PROCESO') return (o.status === 'PENDIENTE_FINANZAS' || o.status === 'APROBADO_FINANZAS' || o.status === 'PENDIENTE_DOCENTE' || o.status === 'APROBADO_DOCENTE');
             if (techFilter === 'COMPLETADAS') return o.status === 'EJECUTADO';
-            if (techFilter === 'DENEGADAS') return o.status === 'RECHAZADO';
+            if (techFilter === 'DENEGADAS') return (o.status === 'RECHAZADO' || o.status === 'DENEGADO_DOCENTE' || o.status === 'CANCELADO_OTRA_EMPRESA');
             return true;
         });
 
@@ -63,26 +63,61 @@ Object.assign(ui, {
             ? `<div class="terminal-border border-dashed p-6 text-center text-slate-400 italic text-xs uppercase">No hay órdenes en esta vista.</div>`
             : filteredTechOrders.map(order => {
                 const st = order.status || 'PENDIENTE_FINANZAS';
+                const isB2B = order.type === 'B2B_BUY_REQUEST' || !!order.offerId;
                 let stBadge = 'bg-amber-950/40 text-amber-400 border border-amber-500';
-                let trackerIdx = 0;
-                if (st === 'APROBADO_FINANZAS') {
-                    stBadge = 'bg-blue-950/40 text-blue-400 border border-blue-500';
-                    trackerIdx = 1;
-                } else if (st === 'EJECUTADO') {
-                    stBadge = 'bg-emerald-950/40 text-emerald-400 border border-emerald-500';
-                    trackerIdx = 2;
-                } else if (st === 'RECHAZADO') {
-                    stBadge = 'bg-rose-950/40 text-rose-400 border border-rose-500';
-                    trackerIdx = 0;
+                let stLabel = st;
+                let trackerHtml = '';
+
+                if (isB2B) {
+                    let b2bTrackerIdx = 0;
+                    if (st === 'PENDIENTE_DOCENTE') b2bTrackerIdx = 2;
+                    else if (st === 'APROBADO_DOCENTE') b2bTrackerIdx = 3;
+                    else if (st === 'EJECUTADO') b2bTrackerIdx = 3;
+                    else if (st === 'PENDIENTE_FINANZAS') b2bTrackerIdx = 1;
+
+                    trackerHtml = ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Aduana Docente', '4. Taller (Ejecuta)'], b2bTrackerIdx);
+
+                    if (st === 'PENDIENTE_FINANZAS') {
+                        stBadge = 'bg-amber-950/40 text-amber-300 border-amber-500 animate-pulse';
+                        stLabel = 'PENDIENTE FINANZAS';
+                    } else if (st === 'PENDIENTE_DOCENTE') {
+                        stBadge = 'bg-purple-950/40 text-purple-300 border-purple-400 animate-pulse';
+                        stLabel = '⏳ PENDIENTE DE DOCENTE (ADUANA)';
+                    } else if (st === 'APROBADO_DOCENTE') {
+                        stBadge = 'bg-blue-950/40 text-blue-300 border-blue-400';
+                        stLabel = '✓ APROBADO EN ADUANA (EN TALLER)';
+                    } else if (st === 'EJECUTADO') {
+                        stBadge = 'bg-emerald-950/40 text-emerald-400 border-emerald-500';
+                        stLabel = '✓ EJECUTADO EN TALLER';
+                    } else if (st === 'DENEGADO_DOCENTE') {
+                        stBadge = 'bg-rose-950/40 text-rose-400 border-rose-500';
+                        stLabel = '❌ DENEGADO EN ADUANA (REEMBOLSADO)';
+                    } else if (st === 'CANCELADO_OTRA_EMPRESA') {
+                        stBadge = 'bg-slate-900 text-slate-400 border-slate-700';
+                        stLabel = 'ADJUDICADO A OTRA STARTUP';
+                    }
+                } else {
+                    let trackerIdx = 0;
+                    if (st === 'APROBADO_FINANZAS') {
+                        stBadge = 'bg-blue-950/40 text-blue-400 border border-blue-500';
+                        trackerIdx = 1;
+                    } else if (st === 'EJECUTADO') {
+                        stBadge = 'bg-emerald-950/40 text-emerald-400 border border-emerald-500';
+                        trackerIdx = 2;
+                    } else if (st === 'RECHAZADO') {
+                        stBadge = 'bg-rose-950/40 text-rose-400 border border-rose-500';
+                        trackerIdx = 0;
+                    }
+                    trackerHtml = ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Logística (Ejecuta)'], trackerIdx);
                 }
 
                 return `
                 <div class="terminal-border bg-slate-900/90 border border-mars-border/80 p-4 mb-4">
-                    ${ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Logística (Ejecuta)'], trackerIdx)}
+                    ${trackerHtml}
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-2 mb-3 gap-2">
                         <div>
-                            <span class="text-xs font-black uppercase px-2 py-0.5 rounded ${stBadge}">${this.escapeHTML(st)}</span>
-                            <h3 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">Orden #${this.escapeHTML(order.id)}</h3>
+                            <span class="text-xs font-black uppercase px-2 py-0.5 rounded ${stBadge}">${this.escapeHTML(stLabel)}</span>
+                            <h3 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">${isB2B ? 'Orden B2B #' : 'Orden #'}${this.escapeHTML(order.id)}</h3>
                         </div>
                         <div class="text-left sm:text-right">
                             <span class="text-mars-green font-mono font-bold text-sm sm:text-base">${Number(order.total).toFixed(2)} €v</span>
@@ -91,13 +126,23 @@ Object.assign(ui, {
                     </div>
 
                     ${(order.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(order.driveUrl))
-                        ? `<div class="mb-3">
+                        ? `<div class="mb-2">
                             <a href="${encodeURI(order.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono">
                                 <span>📄 Ver Justificación Técnica DOC_9 en Docs ↗</span>
                             </a>
                         </div>`
                         : ''
                     }
+                    ${(order.sellerDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(order.sellerDriveUrl))
+                        ? `<div class="mb-2">
+                            <a href="${encodeURI(order.sellerDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-amber-950/40 text-amber-300 border border-amber-500/30 rounded hover:bg-amber-900/50 transition-colors font-mono">
+                                <span>📄 Memoria Vendedor en Docs ↗</span>
+                            </a>
+                        </div>`
+                        : ''
+                    }
+                    ${st === 'PENDIENTE_DOCENTE' ? `<p class="text-xs text-purple-300 font-mono mt-1 mb-2 p-2 bg-purple-950/30 border border-purple-500/30 rounded">🛃 Compra autorizada por Finanzas. Retenida en Aduana Docente a la espera de validación oficial.</p>` : ''}
+                    ${st === 'DENEGADO_DOCENTE' ? `<p class="text-xs text-rose-300 font-mono mt-1 mb-2 p-2 bg-rose-950/30 border border-rose-500/30 rounded">❌ Traspaso denegado por Aduana Docente. El 100% del importe ha sido reembolsado a Finanzas.</p>` : ''}
 
                     <div class="space-y-1.5 bg-black/60 p-2.5 border border-slate-800 rounded">
                         <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Partidas Solicitadas:</p>

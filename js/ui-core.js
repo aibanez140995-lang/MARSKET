@@ -2324,7 +2324,10 @@ const ui = {
             if (state.user.role === 'FINANZAS') {
                 const iDOrders = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS').length;
                 const mktOrders = (co.marketingCampaigns || []).filter(m => m.status === 'PENDIENTE_FINANZAS').length;
-                pendingOrders = iDOrders + mktOrders;
+                const b2bSales = (state.data.b2bMarket || []).filter(o => o && o.sellerCoId === state.user.coId && o.status === 'PENDIENTE_FINANZAS').length;
+                pendingOrders = iDOrders + mktOrders + b2bSales;
+            } else if (state.user.role === 'TECNICO') {
+                pendingOrders = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS' || o.status === 'PENDIENTE_DOCENTE').length;
             } else if (state.user.role === 'CEO') {
                 let mktCeoActions = 0;
                 (co.marketingCampaigns || []).forEach(c => {
@@ -2338,6 +2341,19 @@ const ui = {
             }
             if (pendingOrders > 0) { elOrders.innerText = pendingOrders; elOrders.classList.remove('hidden'); }
             else { elOrders.classList.add('hidden'); }
+        }
+
+        const elFinance = document.getElementById('badge-finance');
+        if (elFinance) {
+            let pendingFin = 0;
+            if (state.user.role === 'FINANZAS') {
+                const pendingOrdersList = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS').length;
+                const pendingB2BSales = (state.data.b2bMarket || []).filter(o => o && o.sellerCoId === state.user.coId && o.status === 'PENDIENTE_FINANZAS').length;
+                const pendingMktPacks = (co.marketingCampaigns || []).filter(c => c.status === 'PENDIENTE_FINANZAS').length;
+                pendingFin = pendingOrdersList + pendingB2BSales + pendingMktPacks;
+            }
+            if (pendingFin > 0) { elFinance.innerText = pendingFin; elFinance.classList.remove('hidden'); }
+            else { elFinance.classList.add('hidden'); }
         }
 
         const elDossier = document.getElementById('badge-dossier');
@@ -2396,7 +2412,7 @@ const ui = {
 
         const elCart = document.getElementById('badge-cart');
         if (elCart) {
-            const pendingLogistics = (co.orders || []).filter(o => o.status === 'APROBADO_FINANZAS' && o.type !== 'MARKETING').length;
+            const pendingLogistics = (co.orders || []).filter(o => (o.status === 'APROBADO_FINANZAS' || o.status === 'APROBADO_DOCENTE') && o.type !== 'MARKETING').length;
             if (pendingLogistics > 0) { elCart.innerText = pendingLogistics; elCart.classList.remove('hidden'); }
             else { elCart.classList.add('hidden'); }
         }

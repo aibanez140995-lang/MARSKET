@@ -203,7 +203,7 @@ Object.assign(ui, {
             offersHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">` + b2b.map(item => {
                 const isMine = !state.user.admin && item.sellerCoId === state.user.coId;
                 const isFinanzas = state.user.role === 'FINANZAS' || state.user.admin;
-                const pendingBuyOrder = myCo ? (myCo.orders || []).find(o => o.offerId === item.id && o.status === 'PENDIENTE_FINANZAS') : null;
+                const pendingBuyOrder = myCo ? (myCo.orders || []).find(o => o.offerId === item.id && (o.status === 'PENDIENTE_FINANZAS' || o.status === 'PENDIENTE_DOCENTE')) : null;
                 let btn = '';
                 if (isMine) {
                     if (isFinanzas) {
@@ -218,7 +218,9 @@ Object.assign(ui, {
                         btn = `<span class="block w-full text-center bg-slate-800 text-slate-200 font-bold py-2.5 text-xs uppercase border border-slate-700 min-h-[44px] flex items-center justify-center">Tu Oferta Activa</span>`;
                     }
                 } else if (pendingBuyOrder) {
-                    if (state.user.role === 'FINANZAS') {
+                    if (pendingBuyOrder.status === 'PENDIENTE_DOCENTE') {
+                        btn = `<span class="w-full min-h-[44px] flex items-center justify-center bg-purple-950/60 border border-purple-500/60 text-purple-300 font-bold text-xs uppercase px-2 text-center rounded">⏳ Retenido en Aduana Docente</span>`;
+                    } else if (state.user.role === 'FINANZAS') {
                         btn = `<button type="button" onclick="ui.approveB2BBuyByFinanzas('${this.escapeHTML(pendingBuyOrder.id)}')" class="w-full min-h-[44px] bg-mars-yellow text-black font-black py-2.5 px-3 text-xs uppercase shadow-[0_0_12px_rgba(255,204,0,0.4)] hover:bg-white transition-all">[ 🤝 Autorizar Compra B2B (${Number(item.price).toFixed(2)} €v) ]</button>`;
                     } else {
                         btn = `<span class="w-full min-h-[44px] flex items-center justify-center bg-amber-950/60 border border-amber-500/60 text-amber-300 font-bold text-xs uppercase px-2 text-center rounded">⏳ Solicitado a Finanzas</span>`;
@@ -432,7 +434,7 @@ Object.assign(ui, {
         if (co.balance < offer.price) return this.notify("Fondos insuficientes para esta operación.", "error");
 
         const html = `
-            <div class="bg-black border border-mars-yellow p-4 text-xs mb-4 space-y-2">
+            <div class="bg-black border border-mars-yellow p-4 text-xs mb-3 space-y-2">
                 <div class="flex justify-between border-b border-slate-800 pb-1.5 gap-2">
                     <span class="text-slate-300 uppercase">Vendedor:</span>
                     <span class="text-mars-yellow font-bold uppercase break-words text-right">${this.escapeHTML(offer.sellerName)}</span>
@@ -446,9 +448,25 @@ Object.assign(ui, {
                     <span class="text-mars-yellow font-mono font-bold text-lg">${Number(offer.price).toFixed(2)} €v</span>
                 </div>
             </div>
+            ${offer.driveUrl ? `
+            <div class="mb-3">
+                <a href="${encodeURI(offer.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50">
+                    <span>📄 Ver Ficha Técnica / Excedentes del Vendedor en Docs ↗</span>
+                </a>
+            </div>` : ''}
+            <div class="space-y-1.5 mb-3 bg-slate-900/90 border border-mars-cyan/40 p-3 rounded">
+                <label for="b2b-buy-drive-url" class="text-xs text-mars-cyan font-bold uppercase block">
+                    Informe Técnico de Especificación (Google Drive / Docs) *
+                </label>
+                <div class="mb-2">
+                    ${this.renderDocTemplateBtn ? this.renderDocTemplateBtn('DOC_9_ORDEN_ADQUISICION', '📄 Plantilla Orden Adquisición (Clonar Drive)') : ''}
+                </div>
+                <input type="url" id="b2b-buy-drive-url" required placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." class="w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono min-h-[44px]">
+                <p class="text-[10px] text-slate-400">De conformidad con la política Zero-Text, la justificación de la compra debe alojarse en el Google Doc corporativo con permisos de lectura para Finanzas y la Aduana Docente.</p>
+            </div>
             <div class="bg-amber-950/40 border border-amber-500/50 p-3 rounded text-xs text-amber-200 mb-2 space-y-1">
-                <p class="font-bold uppercase tracking-wide">⚠️ Circuito de Aprobación B2B:</p>
-                <p>Al pulsar solicitar, se generará una orden para tu <strong>Departamento Financiero</strong>. La pieza permanece <strong>DISPONIBLE EN EL MERCADO</strong> para otras empresas hasta que tus Finanzas autoricen la compra. ¡La primera empresa cuyas Finanzas aprueben la compra se queda con la pieza!</p>
+                <p class="font-bold uppercase tracking-wide">⚠️ Circuito Regulatorio B2B:</p>
+                <p>1. <strong>Técnico Solicita:</strong> Adjunta tu informe DOC_9.<br>2. <strong>Finanzas Autoriza:</strong> Bloquea la pieza en Aduana y retiene saldo.<br>3. <strong>Docente en Aduana:</strong> Valida la compraventa.<br>4. <strong>Logística/Taller:</strong> Recibe el material físico.</p>
             </div>
         `;
         const actions = `<button type="button" onclick="ui.confirmBuyB2B('${this.escapeHTML(offerId)}')" class="min-h-[44px] bg-mars-yellow text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all w-full sm:w-auto">[ 🤝 Solicitar Compra B2B a Finanzas ]</button>`;
@@ -469,24 +487,36 @@ Object.assign(ui, {
             return this.notify("No puedes adquirir un artículo puesto en venta por tu propia empresa.", "warning");
         }
 
+        const elDrive = document.getElementById('b2b-buy-drive-url');
+        const driveUrl = elDrive ? this.cleanInput(elDrive.value).trim() : '';
+        if (!driveUrl) {
+            return this.notify("Debes indicar el enlace Drive del informe técnico de especificación (DOC_9).", "warning");
+        }
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+        }
+
         const co = state.data.companies[state.user.coId];
         if (!co) return;
 
         // Comprobar si ya hay una solicitud pendiente de Finanzas para esta misma oferta
         co.orders = co.orders || [];
-        const existingReq = co.orders.find(o => o.offerId === offerId && o.status === 'PENDIENTE_FINANZAS');
+        const existingReq = co.orders.find(o => o.offerId === offerId && (o.status === 'PENDIENTE_FINANZAS' || o.status === 'PENDIENTE_DOCENTE'));
         if (existingReq) {
             this.closeModal();
-            return this.notify("Ya has solicitado la compra de esta pieza a tu Departamento Financiero. Está pendiente de su autorización.", "warning");
+            return this.notify("Ya has solicitado la compra de esta pieza a tu Departamento Financiero. Está pendiente de trámite.", "warning");
         }
 
         const now = Date.now();
+        const orderNum = ui.getNextOrderNumber ? ui.getNextOrderNumber(co) : String(now).slice(-3);
         const newOrder = {
-            id: 'B2B-' + now.toString().slice(-4),
+            id: orderNum,
             type: 'B2B_BUY_REQUEST',
             offerId: offer.id,
             sellerCoId: offer.sellerCoId,
             sellerName: offer.sellerName,
+            sellerDriveUrl: offer.driveUrl || '',
+            driveUrl: driveUrl,
             items: [{
                 name: `[B2B] ${offer.itemName}`,
                 qty: offer.qty || 1,
@@ -502,13 +532,13 @@ Object.assign(ui, {
         co.orders.unshift(newOrder);
         co.updatedAt = now;
 
-        ui.pushNotification(state.user.coId, 'FINANZAS', `🤝 Técnico ha solicitado adquirir la pieza B2B "${offer.itemName}" (${Number(offer.price).toFixed(2)} €v). Autoriza antes de que otra empresa la compre.`, 'warning', { view: 'orders' });
+        ui.pushNotification(state.user.coId, 'FINANZAS', `🤝 Técnico ha solicitado adquirir la pieza B2B "${offer.itemName}" (${Number(offer.price).toFixed(2)} €v, Orden #${orderNum}). Autoriza antes de que otra empresa la compre.`, 'warning', { view: 'orders' });
 
         state.save(state.user.coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
         this.closeModal();
         this.render();
-        this.notify(`✅ Solicitud enviada a Finanzas. La pieza sigue en el mercado hasta que Finanzas la autorice.`, "success");
+        this.notify(`✅ Orden #${orderNum} enviada a Finanzas con DOC_9. La pieza sigue en el mercado hasta que Finanzas la autorice.`, "success");
     }
 });

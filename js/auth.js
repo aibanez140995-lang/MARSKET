@@ -480,7 +480,7 @@ const auth = (function() {
                 'contracts': { id: 'contracts', label: '🤝 Contratos & Patrocinios' },
                 'orders': { id: 'orders', label: '📡 Seguimiento de Órdenes', badge: 'badge-orders' },
                 'role_deliverables': { id: 'role_deliverables', label: '📤 Entregables & Dossier', badge: 'badge-deliverables' },
-                'finance': { id: 'finance', label: '💰 Finanzas & ECO' },
+                'finance': { id: 'finance', label: '💰 Finanzas & ECO', badge: 'badge-finance' },
                 'tech': { id: 'tech', label: '🧪 Banco I+D' },
                 'tech_workshop': { id: 'tech_workshop', label: '🔧 Taller', badge: 'badge-workshop' },
                 'market': { id: 'market', label: '🛒 SUPER-MARSKET', badge: 'badge-market' },
