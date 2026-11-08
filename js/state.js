@@ -2663,6 +2663,37 @@ const state = {
         return Date.now() >= new Date(p.phaseCutoff).getTime();
     },
 
+    isPhaseBalanceUnlocked(phaseKey, co) {
+        if (!co && this.user) {
+            co = this.data.companies?.[this.user.coId];
+        }
+        if (!co) return false;
+        if (co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000' || (this.user && this.user.admin)) {
+            return true;
+        }
+        const phaseDefs = typeof FINANCIAL_PHASE_BALANCES_DEF !== 'undefined' ? FINANCIAL_PHASE_BALANCES_DEF : [];
+        const p = phaseDefs.find(item => item.phase === phaseKey);
+        if (!p || !p.cutoffDate) return false;
+        return Date.now() >= new Date(p.cutoffDate).getTime();
+    },
+
+    isPhaseBalanceInWindow(phaseKey, co) {
+        if (!co && this.user) {
+            co = this.data.companies?.[this.user.coId];
+        }
+        if (!co) return false;
+        if (co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000' || (this.user && this.user.admin)) {
+            return true;
+        }
+        const phaseDefs = typeof FINANCIAL_PHASE_BALANCES_DEF !== 'undefined' ? FINANCIAL_PHASE_BALANCES_DEF : [];
+        const p = phaseDefs.find(item => item.phase === phaseKey);
+        if (!p || !p.cutoffDate) return false;
+        const cutoffMs = new Date(p.cutoffDate).getTime();
+        const now = Date.now();
+        const windowEndMs = cutoffMs + (14 * 24 * 60 * 60 * 1000);
+        return now >= cutoffMs && now <= windowEndMs;
+    },
+
     isLaunchLicenseUnlocked(co) {
         if (!co && this.user) {
             co = this.data.companies?.[this.user.coId];

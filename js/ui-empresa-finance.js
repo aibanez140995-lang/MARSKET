@@ -123,11 +123,19 @@ Object.assign(ui, {
 
                     let finActions = '';
                     if (isFinanzas && isPending) {
-                        finActions = `
-                        <div class="flex flex-col sm:flex-row gap-2 mt-4 pt-3 border-t border-slate-800">
-                            <button type="button" onclick="ui.approveOrder('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1">Aprobar Presupuesto</button>
-                            <button type="button" onclick="ui.rejectOrder('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Rechazar</button>
-                        </div>`;
+                        if (order.type === 'B2B_BUY_REQUEST') {
+                            finActions = `
+                            <div class="flex flex-col sm:flex-row gap-2 mt-4 pt-3 border-t border-slate-800">
+                                <button type="button" onclick="ui.approveB2BBuyByFinanzas('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1 shadow-[0_0_10px_rgba(255,204,0,0.3)]">[ 🤝 Aprobar Compra B2B y Bloquear en Aduana ]</button>
+                                <button type="button" onclick="ui.rejectOrder('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Descartar</button>
+                            </div>`;
+                        } else {
+                            finActions = `
+                            <div class="flex flex-col sm:flex-row gap-2 mt-4 pt-3 border-t border-slate-800">
+                                <button type="button" onclick="ui.modalReviewOrderFinanzas('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1 shadow-[0_0_10px_rgba(0,255,102,0.3)]">Revisar y Autorizar Partidas</button>
+                                <button type="button" onclick="ui.modalRejectOrderWithDoc('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Denegar Orden</button>
+                            </div>`;
+                        }
                     }
 
                     allUnifiedItems.push({
@@ -135,8 +143,12 @@ Object.assign(ui, {
                         timestamp: order.timestamp || 0,
                         html: `
                         <div class="bg-slate-900 border ${isPending ? 'border-mars-yellow/60' : 'border-mars-border'} p-4 text-xs mb-3">
-                            <div class="flex items-center gap-2 mb-2">
-                                <span class="text-[10px] font-black uppercase px-2 py-0.5 bg-cyan-950 text-mars-cyan border border-mars-cyan/40">DEPTO: I+D (TÉCNICO)</span>
+                            <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                ${order.type === 'B2B_BUY_REQUEST'
+                                    ? `<span class="text-[10px] font-black uppercase px-2 py-0.5 bg-amber-950 text-mars-yellow border border-amber-500/50">MERCADO SECUNDARIO (B2B) • COMPRA</span>`
+                                    : `<span class="text-[10px] font-black uppercase px-2 py-0.5 bg-cyan-950 text-mars-cyan border border-mars-cyan/40">DEPTO: I+D (TÉCNICO)</span>`
+                                }
+                                ${order.partialApproval ? `<span class="text-[10px] font-mono text-amber-400 bg-amber-950/40 border border-amber-500/50 px-2 py-0.5 rounded">⚠️ Aprobación Parcial</span>` : ''}
                             </div>
                             ${ui.renderWorkflowTracker(['I+D (Solicita)', 'Finanzas (Audita)', 'Logística (Ejecuta)'], trackerIdx)}
                             <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
@@ -149,19 +161,34 @@ Object.assign(ui, {
                                     <span class="block text-xs text-slate-300 font-mono">${this.escapeHTML(order.date)}</span>
                                 </div>
                             </div>
-                            <div class="hidden sm:block mb-2">
+                            <div class="mb-2 flex flex-wrap gap-2">
                                 ${(order.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(order.driveUrl))
                                     ? `<a href="${encodeURI(order.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Informe Técnico en Docs ↗</span></a>`
-                                    : `<span class="text-xs text-amber-500/80 font-mono italic">[Memoria técnica legacy archivada por protocolo RGPD]</span>`
+                                    : ''
+                                }
+                                ${(order.responseDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(order.responseDriveUrl))
+                                    ? `<a href="${encodeURI(order.responseDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-amber-950/40 text-amber-300 border border-amber-500/40 rounded hover:bg-amber-900/50 transition-colors font-mono font-bold"><span>📄 Justificación Financiera en Docs ↗</span></a>`
+                                    : ''
                                 }
                             </div>
-                            <div class="hidden sm:block space-y-1.5 mb-2 bg-black/60 p-2.5 border border-slate-800">
+                            <div class="space-y-1.5 mb-2 bg-black/60 p-2.5 border border-slate-800">
                                 ${(order.items || []).map(it => `
                                     <div class="flex justify-between text-xs text-slate-300 gap-2">
                                         <span class="break-words">${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
                                         <span class="font-mono text-white shrink-0">${Number(it.price).toFixed(2)} €v</span>
                                     </div>
                                 `).join('')}
+                                ${(order.rejectedItems && order.rejectedItems.length > 0) ? `
+                                    <div class="pt-1.5 border-t border-slate-800">
+                                        <span class="text-[10px] text-rose-400 font-bold uppercase block mb-1">Partidas denegadas por Finanzas:</span>
+                                        ${order.rejectedItems.map(rit => `
+                                            <div class="flex justify-between text-[11px] text-rose-400/80 line-through">
+                                                <span>${this.escapeHTML(rit.name)} (x${Number(rit.qty) || 1})</span>
+                                                <span class="font-mono">${Number(rit.price).toFixed(2)} €v</span>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
                             </div>
                             ${(st === 'EJECUTADO') ? `
                             <div class="mt-2.5 pt-2 border-t border-slate-800 bg-black/40 p-2.5 rounded text-xs space-y-1.5">
@@ -963,15 +990,30 @@ Object.assign(ui, {
 
         const phaseBalancesCardsHtml = phaseDefs.map(p => {
             const b = co.phaseBalances[p.phase];
-            const isPhaseOpen = (typeof this.isPhaseUnlocked === 'function') ? this.isPhaseUnlocked(p.phase, co) : true;
-            const isMasterOrAdmin = Boolean(state.user && state.user.admin || co.unlockAllContracts === true || co.isTestCompany === true);
-            const canRegister = (isFinanzas || isCEO) && (isPhaseOpen || isMasterOrAdmin);
+            const isPhaseUnlocked = (typeof this.isPhaseBalanceUnlocked === 'function') ? this.isPhaseBalanceUnlocked(p.phase, co) : true;
+            const isInWindow = (typeof this.isPhaseBalanceInWindow === 'function') ? this.isPhaseBalanceInWindow(p.phase, co) : true;
+            const isMasterOrAdmin = Boolean(state.user && state.user.admin || co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000');
+            const canRegister = (isFinanzas || isCEO) && (isPhaseUnlocked || isMasterOrAdmin);
+
+            const bStatus = b ? (b.status || 'DELIVERED_TO_TEACHER') : null;
+            let statusBadge = '';
+            if (b) {
+                if (bStatus === 'PENDIENTE_CEO') {
+                    statusBadge = '<span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-400 animate-pulse">🟡 EN REVISIÓN CEO</span>';
+                } else if (bStatus === 'RETURNED_BY_CEO') {
+                    statusBadge = '<span style="background-color: rgba(255, 0, 85, 0.15); border: 1px solid #ff0055; color: #ff0055;" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded animate-pulse">🔴 DEVUELTO POR CEO</span>';
+                } else {
+                    statusBadge = '<span style="background-color: rgba(0, 255, 102, 0.15); border: 1px solid #00ff66; color: #00ff66;" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded">🟢 ENTREGADO A ECONOMÍA</span>';
+                }
+            }
+
             return `
             <div class="p-3 bg-black/70 border border-slate-800 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-xs font-black uppercase text-amber-400 font-orbitron">${this.escapeHTML(p.title)}</span>
-                        <span class="text-[10px] text-slate-400 font-mono">Corte: ${this.escapeHTML(p.cutoffLabel)}</span>
+                        <span class="text-[10px] text-slate-400 font-mono">Corte: ${this.escapeHTML(p.cutoffLabel)} • Plazo: ${this.escapeHTML(p.windowEndLabel || '14 días tras corte')}</span>
+                        ${statusBadge}
                     </div>
                     ${b ? `
                         <div class="mt-1 space-y-0.5">
@@ -979,29 +1021,41 @@ Object.assign(ui, {
                             <div class="text-[10px] text-slate-400 font-mono">
                                 Saldo congelado: <span class="text-white font-bold">${Number(b.snapshot?.balance || 0).toFixed(2)} €v</span> | Gasto: <span class="text-mars-yellow font-bold">${Number(b.snapshot?.virtualSpend || 0).toFixed(2)} €v</span> (${this.escapeHTML(b.date || '')})
                             </div>
+                            ${b.returnReason ? `<p class="text-[10px] text-rose-300 font-sans italic mt-1">⚠️ Observaciones CEO: "${this.escapeHTML(b.returnReason)}"</p>` : ''}
                         </div>
                     ` : `
-                        <p class="text-[11px] text-slate-400 italic mt-0.5">Pendiente de cierre y entrega formal por el Dpto. Financiero.</p>
+                        <p class="text-[11px] text-slate-400 italic mt-0.5">Pendiente de cierre y entrega formal por el Dpto. Financiero tras el corte de fase.</p>
                     `}
                 </div>
-                <div class="shrink-0 flex items-center gap-2 w-full sm:w-auto justify-end">
+                <div class="shrink-0 flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
                     ${b ? `
                         <a href="${encodeURI(b.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[36px] inline-flex items-center px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-300 border border-cyan-500/40 rounded font-mono hover:bg-cyan-900/60 transition-colors">
                             <span>DOC_17 ↗</span>
                         </a>
-                        ${(isFinanzas || isCEO) ? `
+                        ${(isCEO && bStatus === 'PENDIENTE_CEO') ? `
+                            <button type="button" onclick="ui.approvePhaseBalanceByCEO('${this.escapeHTML(p.phase)}')" class="min-h-[36px] bg-mars-green text-black font-black uppercase text-[11px] px-3 py-1 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">
+                                [ ✓ Visar ]
+                            </button>
+                            <button type="button" onclick="ui.modalCeoReturnPhaseBalance('${this.escapeHTML(p.phase)}')" class="min-h-[36px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-[11px] px-3 py-1 hover:bg-mars-magenta hover:text-white transition-all">
+                                [ ↩ Devolver ]
+                            </button>
+                        ` : ''}
+                        ${(isFinanzas && (bStatus === 'PENDIENTE_CEO' || bStatus === 'RETURNED_BY_CEO')) ? `
                             <button type="button" onclick="ui.modalRegisterPhaseBalance('${this.escapeHTML(p.phase)}')" class="min-h-[36px] bg-slate-800 border border-slate-700 text-slate-200 hover:text-white px-2 py-1 text-[11px] uppercase font-bold transition-all">
-                                ✏️
+                                ✏️ Modificar
                             </button>
                         ` : ''}
                     ` : `
                         ${canRegister ? `
-                            <button type="button" onclick="ui.modalRegisterPhaseBalance('${this.escapeHTML(p.phase)}')" class="min-h-[36px] bg-amber-400 text-black font-black uppercase text-[11px] px-3 py-1 hover:bg-white transition-all shadow-sm w-full sm:w-auto">
-                                [ + Registrar Balance Fase ${this.escapeHTML(p.phase)} ]
-                            </button>
-                        ` : (!isPhaseOpen ? `
-                            <button type="button" disabled class="min-h-[36px] bg-slate-900 border border-slate-800 text-slate-500 font-bold uppercase text-[11px] px-2.5 py-1 cursor-not-allowed">
-                                🔒 Bloqueado hasta corte de Fase
+                            <div class="flex items-center gap-1 w-full sm:w-auto">
+                                ${isMasterOrAdmin && !isPhaseUnlocked ? `<span class="px-1.5 py-0.5 bg-amber-400 text-black text-[9px] font-mono font-bold uppercase rounded">🧪 Sandbox</span>` : ''}
+                                <button type="button" onclick="ui.modalRegisterPhaseBalance('${this.escapeHTML(p.phase)}')" class="min-h-[36px] bg-amber-400 text-black font-black uppercase text-[11px] px-3 py-1 hover:bg-white transition-all shadow-sm w-full sm:w-auto">
+                                    [ + Registrar Balance Fase ${this.escapeHTML(p.phase)} ]
+                                </button>
+                            </div>
+                        ` : (!isPhaseUnlocked ? `
+                            <button type="button" disabled class="min-h-[36px] bg-slate-900 border border-slate-800 text-slate-500 font-bold uppercase text-[11px] px-2.5 py-1 cursor-not-allowed" title="Se abrirá al cerrar la fase (${p.cutoffLabel})">
+                                🔒 Bloqueado hasta cierre (${this.escapeHTML(p.cutoffLabel)})
                             </button>
                         ` : `
                             <span class="text-[10px] text-slate-500 font-mono uppercase">En espera</span>
@@ -1041,6 +1095,7 @@ Object.assign(ui, {
         wrapper.innerHTML = `
         ${debtAlertHtml}
         ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
+        ${this.renderRoleActivePhaseDeliverableBanner ? this.renderRoleActivePhaseDeliverableBanner(co) : ''}
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <!-- Columna Izquierda: Balance, KPIs y Ledger Inmutable -->
             <div class="lg:col-span-7 space-y-6">
@@ -1097,36 +1152,9 @@ Object.assign(ui, {
                 </div>
             </div>
 
-            <!-- Columna Derecha: Balances de Cierre de Fase & Entregables Oficiales -->
+            <!-- Columna Derecha: Balances de Cierre de Fase (DOC_17) -->
             <div class="lg:col-span-5 space-y-6">
                 ${phaseBalancesBlockHtml}
-                ${isCEO ? `
-                <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-cyan">
-                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
-                        <div>
-                            <h3 class="font-orbitron text-mars-cyan text-sm uppercase tracking-tighter">Supervisión Contable & Auditoría</h3>
-                            <p class="text-xs text-slate-300 uppercase mt-0.5">Resp. de Entrega: Departamento Financiero.</p>
-                        </div>
-                    </div>
-                    <p class="text-xs text-slate-300 leading-relaxed mb-4">Los 4 entregables oficiales de Economía (Presupuestos, Cuenta de Resultados y Balance) son elaborados por Finanzas. Como CEO, supervisas y visas su calidad en el Dossier General.</p>
-                    <button type="button" onclick="ui.navigate('dossier')" class="w-full min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs py-2.5 px-4 hover:bg-white transition-all flex items-center justify-center gap-2 shadow-sm">
-                        <span>📋 ACCEDER A SUPERVISIÓN EN DOSSIER</span> ➔
-                    </button>
-                </div>
-                ` : `
-                <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-green">
-                    <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2">
-                        <div>
-                            <h3 class="font-orbitron text-mars-green text-sm uppercase tracking-tighter">Entregables Oficiales: Economía (10%)</h3>
-                            <p class="text-xs text-slate-300 uppercase mt-0.5">Resp: Departamento Financiero.</p>
-                        </div>
-                    </div>
-                    <p class="text-xs text-slate-300 leading-relaxed mb-4">Los 4 hitos contables de la startup (Presupuesto Inicial, Cuenta de Resultados, Presupuesto Post-Prototipo y Balance) se gestionan con flujo guiado y control de versiones en <strong>Mis Entregables</strong>.</p>
-                    <button type="button" onclick="ui.navigate('role_deliverables')" class="w-full min-h-[44px] bg-mars-green text-black font-black uppercase text-xs py-2.5 px-4 hover:bg-white transition-all flex items-center justify-center gap-2 shadow-sm">
-                        <span>📤 GESTIONAR ENTREGABLES EN "MIS ENTREGABLES"</span> ➔
-                    </button>
-                </div>
-                `}
             </div>
         </div>`;
 
@@ -1228,6 +1256,7 @@ Object.assign(ui, {
         const co = state.data.companies[coId];
         if (!co) return;
 
+        const isCEO = state.user?.role === 'CEO';
         const grossCosts = state.getCompanyGrossOperatingCosts ? state.getCompanyGrossOperatingCosts(co) : 0;
         const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
         const virtualSpend = (co.ledger || []).filter(l => l.delta < 0).reduce((acc, l) => acc + Math.abs(Number(l.delta) || 0), 0);
@@ -1236,6 +1265,7 @@ Object.assign(ui, {
         co.phaseBalances[phaseKey] = {
             id: 'BAL-' + coId + '-' + phaseKey,
             phase: phaseKey,
+            status: isCEO ? 'DELIVERED_TO_TEACHER' : 'PENDIENTE_CEO',
             verdict: verdict,
             driveUrl: driveUrl,
             snapshot: {
@@ -1249,17 +1279,373 @@ Object.assign(ui, {
             date: new Date().toLocaleDateString(),
             timestamp: Date.now()
         };
+        delete co.phaseBalances[phaseKey].returnReason;
+        delete co.phaseBalances[phaseKey].returnDriveUrl;
         co.updatedAt = Date.now();
 
         state.save(coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
-        ui.pushNotification(coId, 'CEO', `📊 Finanzas ha registrado el Balance de Cierre de la Fase ${phaseKey} ("${verdict}"). Listo para la Nota de Prensa.`, 'info');
-        ui.pushNotification(coId, 'ALL', `📊 Balance Contable de Cierre de la Fase ${phaseKey} formalizado en tesorería.`, 'info');
-        ui.pushNotification('ADMIN', 'ALL', `📊 [${co.name}] Balance Contable Fase ${phaseKey} registrado por Finanzas.`, 'info');
+        if (isCEO) {
+            ui.pushNotification(coId, 'ALL', `📊 Balance de Cierre de Fase ${phaseKey} formalizado y elevado al Claustro para Economía.`, 'success');
+            this.notify(`✅ Balance Contable de Cierre de Fase ${phaseKey} visado y entregado.`, "success");
+        } else {
+            ui.pushNotification(coId, 'CEO', `📊 Finanzas ha formalizado el Balance de Cierre de Fase ${phaseKey} (DOC_17). Pendiente de tu visado para Economía.`, 'warning', { view: 'dashboard' });
+            this.notify(`✅ Balance registrado y enviado a Dirección General (CEO) para visado.`, "success");
+        }
 
         this.closeModal();
-        this.notify(`✅ Balance Contable de Cierre de Fase ${phaseKey} registrado con éxito.`, "success");
+        this.render();
+    },
+
+    approvePhaseBalanceByCEO(phaseKey) {
+        if (!state.user || state.user.role !== 'CEO') return;
+        const coId = state.user.coId;
+        const co = state.data.companies[coId];
+        if (!co || !co.phaseBalances || !co.phaseBalances[phaseKey]) return;
+
+        co.phaseBalances[phaseKey].status = 'DELIVERED_TO_TEACHER';
+        co.phaseBalances[phaseKey].ceoValidatedAt = Date.now();
+        co.updatedAt = Date.now();
+
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
+        ui.pushNotification(coId, 'FINANZAS', `✅ El CEO ha VISADO el Balance de Cierre de Fase ${phaseKey}. Ya está elevado al docente de Economía.`, 'success', { view: 'finance' });
+        this.notify(`✅ Balance de Cierre de Fase ${phaseKey} visado y elevado a Economía.`, "success");
+        this.render();
+    },
+
+    modalCeoReturnPhaseBalance(phaseKey) {
+        if (!state.user || state.user.role !== 'CEO') return;
+        const reasons = [
+            "Descuadre contable o divergencia en el saldo registrado",
+            "Falta comprobación de partidas de I+D o compras de taller",
+            "Plantilla DOC_17 incompleta o sin permisos de lectura abiertos",
+            "Se requiere reajuste del dictamen de tesorería"
+        ];
+        const opts = reasons.map(r => `<option value="${this.escapeHTML(r)}">${this.escapeHTML(r)}</option>`).join('');
+
+        const html = `
+            <div class="space-y-3 font-mono text-xs">
+                <p class="text-slate-300 font-sans leading-relaxed">Selecciona el motivo tipificado de devolución del Balance de Cierre de Fase ${this.escapeHTML(phaseKey)}. Por política Zero-Text, no se permite texto libre.</p>
+                <div>
+                    <label for="return-balance-reason" class="text-amber-400 font-bold uppercase block mb-1">Motivo Tipificado de Devolución</label>
+                    <select id="return-balance-reason" class="w-full min-h-[44px] bg-slate-900 border border-amber-500/50 p-2.5 text-base sm:text-xs text-white uppercase outline-none focus:border-amber-400">
+                        ${opts}
+                    </select>
+                </div>
+                <div>
+                    <label for="return-balance-drive-url" class="text-mars-cyan font-bold uppercase block mb-1">Enlace a Google Docs con Anotaciones de Corrección (Opcional)</label>
+                    <input type="url" id="return-balance-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono">
+                </div>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.confirmCeoReturnPhaseBalance('${this.escapeHTML(phaseKey)}')" class="min-h-[44px] bg-mars-magenta text-white font-black uppercase text-xs px-5 py-2 hover:bg-white hover:text-mars-magenta transition-all w-full sm:w-auto">Confirmar Devolución a Finanzas</button>`;
+        this.showModal(`Devolver Balance Fase ${phaseKey}`, html, actions);
+    },
+
+    confirmCeoReturnPhaseBalance(phaseKey) {
+        if (!state.user || state.user.role !== 'CEO') return;
+        const coId = state.user.coId;
+        const co = state.data.companies[coId];
+        if (!co || !co.phaseBalances || !co.phaseBalances[phaseKey]) return;
+
+        const elReason = document.getElementById('return-balance-reason');
+        const elUrl = document.getElementById('return-balance-drive-url');
+        const reason = elReason ? this.cleanInput(elReason.value) : 'Requiere subsanación contable';
+        const driveUrl = elUrl ? this.cleanInput(elUrl.value).trim() : '';
+
+        if (driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+        }
+
+        co.phaseBalances[phaseKey].status = 'RETURNED_BY_CEO';
+        co.phaseBalances[phaseKey].returnReason = reason;
+        if (driveUrl) co.phaseBalances[phaseKey].returnDriveUrl = driveUrl;
+        co.updatedAt = Date.now();
+
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
+        ui.pushNotification(coId, 'FINANZAS', `⚠️ El CEO ha devuelto el Balance de Fase ${phaseKey}: "${reason}". Subsanar y reenviar.`, 'warning', { view: 'finance' });
+        this.closeModal();
+        this.notify(`⚠️ Balance devuelto al Departamento Financiero para corrección.`, "warning");
+        this.render();
+    },
+
+    modalReviewOrderFinanzas(orderId) {
+        if (!state.user || state.user.role !== 'FINANZAS') return;
+        const co = state.data.companies[state.user.coId];
+        if (!co || !co.orders) return;
+        const order = co.orders.find(o => String(o.id) === String(orderId));
+        if (!order || order.status !== 'PENDIENTE_FINANZAS') return;
+
+        const items = order.items || [];
+        const itemsHtml = items.map((it, idx) => `
+            <div class="border border-slate-800 bg-slate-900/90 p-3 rounded flex items-center justify-between gap-3">
+                <label class="mars-checkbox-label flex items-center gap-2.5 text-xs text-white font-bold cursor-pointer min-h-[44px] flex-1">
+                    <input type="checkbox" id="order-item-cb-${idx}" checked data-price="${Number(it.price) || 0}" data-qty="${Number(it.qty) || 1}" onchange="ui.recalcOrderReviewTotal()" class="mars-touch-input">
+                    <span class="mars-checkbox-visual"></span>
+                    <span>${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
+                </label>
+                <span class="text-mars-cyan font-mono font-bold text-xs shrink-0">${((Number(it.price) || 0) * (Number(it.qty) || 1)).toFixed(2)} €v</span>
+            </div>
+        `).join('');
+
+        const html = `
+            <div class="space-y-4 font-mono text-xs">
+                <p class="text-slate-300 font-sans leading-relaxed">
+                    Revisa las partidas solicitadas por I+D. Puedes desmarcar partidas no prioritarias para realizar una <strong>aprobación parcial</strong>.
+                </p>
+                <div class="space-y-2 max-h-60 overflow-y-auto">
+                    ${itemsHtml}
+                </div>
+                <div class="bg-black/60 p-3 border border-slate-800 flex justify-between items-center rounded">
+                    <span class="text-xs text-slate-300 uppercase font-bold">Total Partidas Seleccionadas:</span>
+                    <span id="order-review-total-badge" class="text-base font-bold text-mars-green font-mono">${Number(order.total).toFixed(2)} €v</span>
+                </div>
+                <div id="order-partial-justification-block" class="hidden space-y-2 p-3 bg-amber-950/40 border border-amber-500/50 rounded">
+                    <span class="text-amber-400 font-bold uppercase block">⚠️ Aprobación Parcial / Partidas Descartadas</span>
+                    <p class="text-[11px] text-slate-300 font-sans leading-relaxed">
+                        Has desmarcado una o más partidas. Para cumplir con la política Zero-Text, debes adjuntar el enlace a un Google Doc explicando qué partidas se autorizan, cuáles se descartan y por qué:
+                    </p>
+                    <input type="url" id="order-partial-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-amber-400 p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono">
+                </div>
+            </div>
+        `;
+        const actions = `
+            <div class="flex flex-col sm:flex-row gap-2 w-full justify-end">
+                <button type="button" onclick="ui.confirmReviewOrderFinanzas('${this.escapeHTML(orderId)}')" class="min-h-[44px] bg-mars-green text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">[ ✓ Confirmar Aprobación de Partidas ]</button>
+            </div>
+        `;
+        this.showModal(`Auditoría de Orden #${order.id}`, html, actions);
+    },
+
+    recalcOrderReviewTotal() {
+        const cbs = document.querySelectorAll('[id^="order-item-cb-"]');
+        let total = 0;
+        let uncheckedCount = 0;
+        cbs.forEach(cb => {
+            if (cb.checked) {
+                const p = parseFloat(cb.getAttribute('data-price') || 0);
+                const q = parseFloat(cb.getAttribute('data-qty') || 1);
+                total += p * q;
+            } else {
+                uncheckedCount++;
+            }
+        });
+        const badge = document.getElementById('order-review-total-badge');
+        if (badge) badge.textContent = `${total.toFixed(2)} €v`;
+
+        const justBlock = document.getElementById('order-partial-justification-block');
+        if (justBlock) {
+            if (uncheckedCount > 0) {
+                justBlock.classList.remove('hidden');
+            } else {
+                justBlock.classList.add('hidden');
+            }
+        }
+    },
+
+    confirmReviewOrderFinanzas(orderId) {
+        if (!state.user || state.user.role !== 'FINANZAS') return;
+        const coId = state.user.coId;
+        const co = state.data.companies[coId];
+        if (!co || !co.orders) return;
+        const order = co.orders.find(o => String(o.id) === String(orderId));
+        if (!order || order.status !== 'PENDIENTE_FINANZAS') return;
+
+        let approvedItems = [];
+        let rejectedItems = [];
+        let newTotal = 0;
+
+        (order.items || []).forEach((it, idx) => {
+            const cb = document.getElementById(`order-item-cb-${idx}`);
+            if (cb && cb.checked) {
+                approvedItems.push(it);
+                newTotal += (Number(it.price) || 0) * (Number(it.qty) || 1);
+            } else {
+                rejectedItems.push(it);
+            }
+        });
+
+        if (approvedItems.length === 0) {
+            return this.notify("No has seleccionado ninguna partida para aprobar. Si deseas rechazar la orden completa, pulsa Denegar Orden.", "warning");
+        }
+
+        if (co.balance < newTotal) {
+            return this.notify(`Fondos virtuales insuficientes (${co.balance.toFixed(2)} €v disponibles para un total de ${newTotal.toFixed(2)} €v).`, "error");
+        }
+
+        let partialDriveUrl = null;
+        if (rejectedItems.length > 0) {
+            const elDrive = document.getElementById('order-partial-drive-url');
+            partialDriveUrl = elDrive ? this.cleanInput(elDrive.value).trim() : '';
+            if (!partialDriveUrl) {
+                return this.notify("Al desmarcar partidas debes adjuntar la URL de Google Docs con la justificación oficial.", "warning");
+            }
+            if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(partialDriveUrl)) {
+                return this.notify("El enlace a la justificación debe ser una URL válida de Google Drive / Docs.", "error");
+            }
+        }
+
+        order.items = approvedItems;
+        order.total = newTotal;
+        order.status = 'APROBADO_FINANZAS';
+        if (rejectedItems.length > 0) {
+            order.rejectedItems = rejectedItems;
+            order.partialApproval = true;
+            order.responseDriveUrl = partialDriveUrl;
+        }
+        order.approvedAt = Date.now();
+
+        co.updatedAt = Date.now();
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
+        if (rejectedItems.length > 0) {
+            ui.pushNotification(coId, 'TECNICO', `⚠️ Finanzas ha APROBADO PARCIALMENTE la orden #${order.id} (${newTotal.toFixed(2)} €v). Partidas denegadas justificadas en Docs.`, 'warning', { view: 'orders' });
+        } else {
+            ui.pushNotification(coId, 'TECNICO', `✅ Finanzas ha APROBADO la orden #${order.id} (${newTotal.toFixed(2)} €v). Ya está en Logística.`, 'success', { view: 'orders' });
+        }
+        ui.pushNotification(coId, 'OPERACIONES_IA', `📦 Orden #${order.id} autorizada por Finanzas (${newTotal.toFixed(2)} €v) lista para compra física y ensamble.`, 'info', { view: 'cart' });
+
+        this.closeModal();
+        this.notify(`✅ Orden #${order.id} autorizada (${newTotal.toFixed(2)} €v). Pasa a Operaciones.`, "success");
+        this.render();
+    },
+
+    modalRejectOrderWithDoc(orderId) {
+        if (!state.user || state.user.role !== 'FINANZAS') return;
+        const co = state.data.companies[state.user.coId];
+        if (!co || !co.orders) return;
+        const order = co.orders.find(o => String(o.id) === String(orderId));
+        if (!order || order.status !== 'PENDIENTE_FINANZAS') return;
+
+        const html = `
+            <div class="space-y-3 font-mono text-xs">
+                <p class="text-slate-300 font-sans leading-relaxed">
+                    Vas a denegar la Orden #${this.escapeHTML(order.id)} (${Number(order.total).toFixed(2)} €v). Para cumplir con la política Zero-Text, debes adjuntar el enlace al Google Doc oficial explicando la justificación presupuestaria:
+                </p>
+                <div>
+                    <label for="reject-order-drive-url" class="text-mars-magenta font-bold uppercase block mb-1">Enlace a Google Docs con Justificación de Denegación (Obligatorio)</label>
+                    <input type="url" id="reject-order-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                </div>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.confirmRejectOrderWithDoc('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-magenta text-white font-black uppercase text-xs px-5 py-2.5 hover:bg-white hover:text-mars-magenta transition-all w-full sm:w-auto">Confirmar Denegación en Docs</button>`;
+        this.showModal(`Denegar Orden #${order.id}`, html, actions);
+    },
+
+    confirmRejectOrderWithDoc(orderId) {
+        if (!state.user || state.user.role !== 'FINANZAS') return;
+        const co = state.data.companies[state.user.coId];
+        if (!co || !co.orders) return;
+        const order = co.orders.find(o => String(o.id) === String(orderId));
+        if (!order || order.status !== 'PENDIENTE_FINANZAS') return;
+
+        const elDrive = document.getElementById('reject-order-drive-url');
+        const driveUrl = elDrive ? this.cleanInput(elDrive.value).trim() : '';
+        if (!driveUrl) return this.notify("Debes indicar la URL del Google Doc justificando la denegación.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+        }
+
+        order.status = 'RECHAZADO';
+        order.responseDriveUrl = driveUrl;
+        order.rejectedAt = Date.now();
+        co.updatedAt = Date.now();
+
+        state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
+        ui.pushNotification(state.user.coId, 'TECNICO', `❌ Finanzas ha DENEGADO la orden #${order.id}. Consulta el informe justificativo en Google Docs.`, 'error', { view: 'orders' });
+        this.closeModal();
+        this.notify(`❌ Orden #${order.id} denegada.`, "info");
+        this.render();
+    },
+
+    approveB2BBuyByFinanzas(orderId) {
+        if (!state.user || state.user.role !== 'FINANZAS') return;
+        const coId = state.user.coId;
+        const co = state.data.companies[coId];
+        if (!co || !co.orders) return;
+        const order = co.orders.find(o => String(o.id) === String(orderId));
+        if (!order || order.status !== 'PENDIENTE_FINANZAS') return;
+
+        const offerId = order.offerId;
+        const offer = (state.data.b2bMarket || []).find(o => o.id === offerId);
+
+        // Comprobación de que la pieza sigue en venta en el mercado
+        if (!offer || offer.status !== 'EN_VENTA') {
+            order.status = 'CANCELADO_OTRA_EMPRESA';
+            co.updatedAt = Date.now();
+            state.save(coId);
+            this.render();
+            return this.notify("⚠️ Demasiado tarde: Otra empresa ha autorizado la compra antes y la pieza ya no está disponible.", "error");
+        }
+
+        const price = Number(offer.price) || 0;
+        if (co.balance < price) {
+            return this.notify(`Fondos virtuales insuficientes (${co.balance.toFixed(2)} €v disponibles, precio: ${price.toFixed(2)} €v).`, "error");
+        }
+
+        const now = Date.now();
+        offer.status = 'EN_ADUANA';
+        offer.buyerCoId = coId;
+        offer.buyerName = co.name;
+        offer.updatedAt = now;
+
+        const contractId = 'B2BC-' + now.toString().slice(-4) + '-' + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        state.data.b2bContracts = state.data.b2bContracts || [];
+        state.data.b2bContracts.unshift({
+            id: contractId,
+            offerId: offer.id,
+            sellerCoId: offer.sellerCoId,
+            sellerName: offer.sellerName,
+            buyerCoId: coId,
+            buyerName: co.name,
+            itemName: offer.itemName,
+            qty: offer.qty || 1,
+            category: offer.category || 'Componente',
+            price: offer.price,
+            sourceOrderKey: offer.sourceOrderKey || '',
+            driveUrl: offer.driveUrl || '',
+            status: 'PENDIENTE_ADUANA',
+            date: new Date().toLocaleString(),
+            timestamp: now,
+            updatedAt: now
+        });
+
+        state.addToLedger(coId, `[RETENCIÓN B2B] Compra autorizada por Finanzas: ${offer.itemName}`, 'ADUANA_B2B', -price);
+
+        order.status = 'APROBADO_FINANZAS';
+        order.b2bContractId = contractId;
+        order.approvedAt = now;
+        co.updatedAt = now;
+
+        // Cancelar solicitudes competidoras en otras empresas para la misma oferta
+        Object.keys(state.data.companies || {}).forEach(otherCoId => {
+            if (otherCoId !== coId) {
+                const otherCo = state.data.companies[otherCoId];
+                (otherCo?.orders || []).forEach(otherOrd => {
+                    if (otherOrd.offerId === offerId && otherOrd.status === 'PENDIENTE_FINANZAS') {
+                        otherOrd.status = 'CANCELADO_OTRA_EMPRESA';
+                        ui.pushNotification(otherCoId, 'TECNICO', `⚠️ La pieza B2B "${offer.itemName}" ha sido adquirida por otra empresa. Tu solicitud se ha cancelado.`, 'warning');
+                        ui.pushNotification(otherCoId, 'FINANZAS', `⚠️ La pieza B2B "${offer.itemName}" ha sido adquirida por otra empresa. Solicitud cancelada.`, 'info');
+                    }
+                });
+            }
+        });
+
+        ui.pushNotification(coId, 'TECNICO', `🎉 ¡Conseguido! Finanzas autorizó la compra B2B de "${offer.itemName}". Bloqueado en Aduana Docente.`, 'success', { view: 'orders' });
+        ui.pushNotification(offer.sellerCoId, 'TECNICO', `🤝 ${co.name} ha formalizado la compra B2B de tu pieza "${offer.itemName}". Esperando validación en Aduana.`, 'info');
+
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
+        this.notify(`✅ Compra B2B autorizada (-${price.toFixed(2)} €v). Pieza bloqueada y elevada a la Aduana Docente.`, "success");
         this.render();
     }
 });

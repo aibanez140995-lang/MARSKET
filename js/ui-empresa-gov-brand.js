@@ -1177,46 +1177,9 @@ Object.assign(ui, {
         const netOpCosts = (opCosts && typeof opCosts.net === 'number') ? opCosts.net : ((typeof opCosts === 'number') ? opCosts : grossCosts);
         const sponsorTierLabel = co.sponsorAwarded ? (co.sponsorData?.tier || co.sponsorAwarded || 'SPONSOR') : null;
 
-        const englishRubricHtml = `
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow w-full">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="font-orbitron text-mars-yellow text-sm font-bold uppercase tracking-wider">Evaluación Inglés (5% Global)</h3>
-                    <span class="text-xs font-mono font-bold text-mars-yellow bg-mars-yellow/10 border border-mars-yellow/30 px-2 py-0.5 rounded">Aula Presencial</span>
-                </div>
-                <p class="text-xs text-slate-300 mb-3 uppercase leading-relaxed">Criterios oficiales evaluados de forma continua por el profesorado durante las sesiones lectivas y pitch de prototipo.</p>
-                <div class="space-y-2 mb-3">
-                    <div class="flex justify-between items-center p-2.5 bg-slate-900 border border-slate-800">
-                        <div>
-                            <span class="text-white font-bold text-xs block">1. Expresión Oral (Presentación / Pitch)</span>
-                            <span class="text-[11px] text-slate-400">Defensa oral, fluidez y respuesta a preguntas</span>
-                        </div>
-                        <span class="text-mars-yellow font-mono font-bold text-xs bg-mars-yellow/10 border border-mars-yellow/30 px-2 py-0.5 shrink-0">70%</span>
-                    </div>
-                    <div class="flex justify-between items-center p-2.5 bg-slate-900 border border-slate-800">
-                        <div>
-                            <span class="text-white font-bold text-xs block">2. Expresión Escrita (Fichas Técnicas)</span>
-                            <span class="text-[11px] text-slate-400">Vocabulario aeroespacial y corrección textual</span>
-                        </div>
-                        <span class="text-mars-yellow font-mono font-bold text-xs bg-mars-yellow/10 border border-mars-yellow/30 px-2 py-0.5 shrink-0">30%</span>
-                    </div>
-                </div>
-                <p class="text-slate-400 text-[11px] font-mono">ℹ️ Evaluación docente directa en clase. No requiere entrega digital en plataforma.</p>
-            </div>
-        `;
-
         const coCode = co.code || state.user.coId;
         const expId = (co.brandApproval && co.brandApproval.expId) || ('PROP-SLOGAN-' + coCode + '-001');
         const estadoActual = (co.brandApproval && co.brandApproval.status) || 'APROBADO';
-        const brandConcepts = typeof BRAND_CONCEPTS_DEF !== 'undefined' ? BRAND_CONCEPTS_DEF : [
-            { id: "EXPLORACION", label: "Exploración y Conquista de Nuevas Fronteras Espaciales" },
-            { id: "SOSTENIBILIDAD", label: "Sostenibilidad y Eficiencia en Recursos Planetarios" },
-            { id: "INNOVACION", label: "Innovación Radical en Propulsión e Ingeniería Aeroespacial" },
-            { id: "ACCESIBILIDAD", label: "Democratización y Accesibilidad del Transporte Orbital" },
-            { id: "SEGURIDAD", label: "Máxima Seguridad y Fiabilidad en Misiones Críticas" }
-        ];
-        const conceptOptionsHtml = brandConcepts.map(c => `
-            <option value="${this.escapeHTML(c.label)}" ${(co.brandApproval?.concept === c.label) ? 'selected' : ''}>${this.escapeHTML(c.label)}</option>
-        `).join('');
 
         const doc11Btn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_11_SLOGAN', '📄 Modelo Oficial Solicitud de Slogan (Hacer copia)') : '';
 
@@ -1265,6 +1228,7 @@ Object.assign(ui, {
         wrapper.innerHTML = `
         <div class="space-y-6">
             ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
+            ${this.renderRoleActivePhaseDeliverableBanner ? this.renderRoleActivePhaseDeliverableBanner(co) : ''}
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div class="lg:col-span-6 space-y-6 w-full overflow-hidden">
                 <!-- Bloque Oficial Registro Mercantil // Aprobación Slogan Corporativo -->
@@ -1300,12 +1264,6 @@ Object.assign(ui, {
                         <span class="text-xs text-mars-cyan font-bold uppercase block">Paso 1: Formulación de Propuesta (Dpto. Marketing)</span>
                         <div class="mb-2">
                             ${doc11Btn}
-                        </div>
-                        <div>
-                            <label for="brand-concept-select" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Enfoque Conceptual Aeroespacial</label>
-                            <select id="brand-concept-select" class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-magenta uppercase">
-                                ${conceptOptionsHtml}
-                            </select>
                         </div>
                         <div>
                             <label for="company-logo-drive" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Enlace al Escudo / Logo Corporativo (Google Drive)</label>
@@ -1347,47 +1305,38 @@ Object.assign(ui, {
                 </div>
             </div>
 
-            <!-- Columna Derecha: Entregables Oficiales LyE, Lengua e Inglés -->
+            <!-- Columna Derecha: Campañas Publicitarias y Difusión B2C -->
             <div class="lg:col-span-6 space-y-6 w-full">
-                <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan w-full">
+                <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow w-full">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-2">
                         <div>
-                            <span class="text-xs font-bold uppercase text-mars-cyan bg-mars-cyan/10 border border-mars-cyan/40 px-2.5 py-1 tracking-wider">[LIDERAZGO Y COMUNICACIÓN]</span>
-                            <h2 class="font-orbitron text-white text-base uppercase tracking-tighter mt-2">Entregables Curriculares de Marca y Negocio</h2>
+                            <span class="text-xs font-bold uppercase text-mars-yellow bg-mars-yellow/10 border border-mars-yellow/40 px-2.5 py-1 tracking-wider">[DIFUSIÓN Y MEDIOS]</span>
+                            <h2 class="font-orbitron text-white text-base uppercase tracking-tighter mt-2">Campañas Publicitarias y Difusión</h2>
                         </div>
-                        <span class="text-xs bg-black text-mars-cyan border border-mars-cyan px-2.5 py-1 font-bold font-mono">5 Hitos Oficiales</span>
+                        <span class="text-xs bg-black text-mars-yellow border border-mars-yellow px-2.5 py-1 font-bold font-mono">B2C • Escolar</span>
                     </div>
                     <p class="text-xs text-slate-300 mb-4 leading-relaxed">
-                        Los documentos oficiales de <strong class="text-white">Identidad de Marca (10%+10%)</strong>, <strong class="text-white">Business Model (25%)</strong>, <strong class="text-white">Canvas (15%)</strong> y <strong class="text-white">Dossier de Inversores (40% LEN)</strong> se gestionan y supervisan de forma centralizada con trazabilidad completa de versiones y correcciones docentes.
+                        Contrata paquetes de marketing para promocionar tu prototipo ante la comunidad educativa, ganar tracción comercial y maximizar el impacto público del proyecto.
                     </p>
-                    <div class="space-y-2 mb-6">
+                    <div class="space-y-3 mb-6">
                         <div class="bg-black/60 border border-slate-800 p-3 rounded flex justify-between items-center text-xs">
-                            <span class="text-slate-300">1A. Identidad de Marca (Diciembre) • LyE</span>
-                            <span class="text-mars-cyan font-mono font-bold">10%</span>
+                            <span class="text-slate-300">Campañas Activas / Contratadas</span>
+                            <span class="text-mars-yellow font-mono font-bold">${(co.marketingCampaigns || []).filter(c => c.status === 'ACTIVO').length}</span>
                         </div>
                         <div class="bg-black/60 border border-slate-800 p-3 rounded flex justify-between items-center text-xs">
-                            <span class="text-slate-300">1B. Identidad de Marca (Abril) • LyE</span>
-                            <span class="text-mars-cyan font-mono font-bold">10%</span>
-                        </div>
-                        <div class="bg-black/60 border border-slate-800 p-3 rounded flex justify-between items-center text-xs">
-                            <span class="text-slate-300">2. Business Model Escrito • LyE</span>
-                            <span class="text-mars-cyan font-mono font-bold">25%</span>
-                        </div>
-                        <div class="bg-black/60 border border-slate-800 p-3 rounded flex justify-between items-center text-xs">
-                            <span class="text-slate-300">3. Business Model Canvas • LyE</span>
-                            <span class="text-mars-cyan font-mono font-bold">15%</span>
-                        </div>
-                        <div class="bg-black/60 border border-slate-800 p-3 rounded flex justify-between items-center text-xs">
-                            <span class="text-slate-300">Dossier para Inversores • Lengua Castellana</span>
-                            <span class="text-mars-magenta font-mono font-bold">40% LEN</span>
+                            <span class="text-slate-300">Solicitudes en Revisión de Finanzas</span>
+                            <span class="text-amber-400 font-mono font-bold">${(co.marketingCampaigns || []).filter(c => c.status === 'PENDIENTE_FINANZAS').length}</span>
                         </div>
                     </div>
-                    <button type="button" onclick="ui.navigate('role_deliverables')" class="w-full min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_12px_rgba(0,255,204,0.3)] flex items-center justify-center gap-2">
-                        <span>📤 Gestionar Entregables en "Mis Entregables" ↗</span>
-                    </button>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button type="button" onclick="ui.modalRequestMktPackage()" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_12px_rgba(255,204,0,0.3)] flex items-center justify-center gap-1.5">
+                            <span>+ Contratar Paquete</span>
+                        </button>
+                        <button type="button" onclick="ui.navigate('campaigns')" class="min-h-[44px] bg-slate-900 text-mars-yellow border border-mars-yellow/60 px-4 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-mars-yellow hover:text-black transition-all flex items-center justify-center gap-1.5">
+                            <span>📡 Ver Mis Campañas ➔</span>
+                        </button>
+                    </div>
                 </div>
-
-                ${englishRubricHtml}
             </div>
         </div>
         </div>`;
@@ -1801,15 +1750,12 @@ Object.assign(ui, {
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
 
-        const elConcept = document.getElementById('brand-concept-select');
         const elDrive = document.getElementById('brand-slogan-drive-url');
         const elLogo = document.getElementById('company-logo-drive');
 
-        const concept = elConcept ? this.cleanInput(elConcept.value) : '';
         const driveUrl = elDrive ? this.cleanInput(elDrive.value) : '';
         const logoUrl = elLogo ? this.cleanInput(elLogo.value) : '';
 
-        if (!concept) return this.notify("Debes seleccionar un enfoque aeroespacial.", "warning");
         if (!driveUrl) return this.notify("Debes indicar la URL de Google Drive con la propuesta oficial del Slogan.", "warning");
         if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
             return this.notify("El enlace al documento del eslogan debe ser una URL válida de Google Drive / Docs.", "error");
@@ -1824,7 +1770,7 @@ Object.assign(ui, {
         co.brandApproval = {
             expId: expId,
             status: 'PENDIENTE_CEO',
-            concept: concept,
+            concept: co.brandApproval?.concept || 'Identidad Corporativa',
             pendingLogo: logoUrl || co.brandApproval?.pendingLogo || co.logo || null,
             pendingSlogan: '',
             driveUrl: driveUrl,

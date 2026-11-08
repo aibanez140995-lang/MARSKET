@@ -74,7 +74,11 @@ Object.assign(ui, {
         let groupsHtml = filteredCategories.length === 0
             ? `<div class="terminal-border bg-slate-950 p-6 my-4 text-center border-dashed border-mars-cyan/40">
                 <p class="text-xs text-slate-300 uppercase">No hay artículos disponibles en esta categoría.</p>
-                <button type="button" onclick="ui.setCatalogCategory('ALL')" class="mt-3 min-h-[44px] px-4 py-2 bg-mars-cyan text-black font-bold text-xs uppercase">Ver Todas las Categorías</button>
+                <p class="text-[11px] text-slate-400 mt-1">¿No encuentras lo que buscas? Puedes solicitar materiales especiales de I+D fuera de catálogo.</p>
+                <div class="flex justify-center gap-2 mt-3 flex-wrap">
+                    <button type="button" onclick="ui.setCatalogCategory('ALL')" class="min-h-[44px] px-4 py-2 bg-mars-cyan text-black font-bold text-xs uppercase">Ver Todas las Categorías</button>
+                    ${canBuy ? `<button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] px-4 py-2 bg-mars-magenta text-white font-bold text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all shadow-[0_0_10px_rgba(255,0,85,0.3)]">+ Solicitar Material I+D</button>` : ''}
+                </div>
                </div>`
             : filteredCategories.map(cat => {
             const items = visibleItems.filter(i => i.category === cat);
@@ -115,11 +119,14 @@ Object.assign(ui, {
             </div>
             ${canBuy ? `
             <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] bg-mars-magenta text-white hover:bg-white hover:text-mars-magenta px-3.5 py-2.5 font-black uppercase text-xs tracking-wider transition-all whitespace-nowrap shadow-[0_0_10px_rgba(255,0,85,0.3)]">
+                    📡 + Solicitar Material I+D
+                </button>
                 <button type="button" onclick="ui.navigate('orders')" class="min-h-[44px] bg-slate-900 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-3.5 py-2.5 font-bold uppercase text-xs tracking-wider transition-all whitespace-nowrap shadow-sm">
-                    📡 Mis Órdenes (${((state.data.companies[state.user.coId]?.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS' || o.status === 'APROBADO_FINANZAS')).length})
+                    Mis Órdenes (${((state.data.companies[state.user.coId]?.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS' || o.status === 'APROBADO_FINANZAS')).length})
                 </button>
                 <button type="button" id="btn-cart-toggle" onclick="ui.modalCheckout()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 font-black uppercase text-xs tracking-wider shadow-[0_0_15px_#00f0ff] hover:bg-white transition-all w-full sm:w-auto text-center shrink-0">
-                    🛒 Carrito de la compra (${(state.data.companies[state.user.coId]?.cart || []).length})
+                    🛒 Carrito (${(state.data.companies[state.user.coId]?.cart || []).length})
                 </button>
             </div>` : ''}
         </div>`;
@@ -129,7 +136,18 @@ Object.assign(ui, {
             <input type="text" id="catalog-search-input" oninput="ui.filterCatalog(this.value)" placeholder="🔍 Buscar material o reactivo (ej: Manómetro, Bicarbonato, Válvula...)" class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan/50 p-2.5 text-xs text-white uppercase outline-none focus:border-mars-cyan font-mono">
         </div>`;
 
-        return header + searchBarHtml + pillsHtml + groupsHtml;
+        const catalogFooterHtml = canBuy ? `
+        <div class="terminal-border bg-slate-950 p-4 sm:p-5 mt-6 border-t-2 border-t-mars-magenta flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div>
+                <h4 class="font-orbitron text-xs sm:text-sm text-mars-magenta uppercase font-bold">¿Necesitas reactivos o piezas fuera de catálogo?</h4>
+                <p class="text-xs text-slate-300 uppercase mt-0.5">El Dpto. Técnico puede solicitar materiales especiales de I+D a Coordinación mediante memoria técnica en Google Docs.</p>
+            </div>
+            <button type="button" onclick="ui.modalSpecialItem()" class="shrink-0 min-h-[44px] px-4 py-2 bg-mars-magenta text-white font-black text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all shadow-[0_0_10px_rgba(255,0,85,0.3)]">
+                + Solicitar Material I+D
+            </button>
+        </div>` : '';
+
+        return header + searchBarHtml + pillsHtml + groupsHtml + catalogFooterHtml;
     },
 
     filterCatalog(query) {
@@ -397,14 +415,17 @@ Object.assign(ui, {
                     <span class="text-white font-bold uppercase break-words text-right">${this.escapeHTML(offer.itemName)} (x${Number(offer.qty)||1})</span>
                 </div>
                 <div class="flex justify-between items-end pt-2 gap-2">
-                    <span class="text-slate-300 uppercase text-xs">Importe a deducir:</span>
-                    <span class="text-mars-magenta font-mono font-bold text-lg">-${Number(offer.price).toFixed(2)} €v</span>
+                    <span class="text-slate-300 uppercase text-xs">Importe a solicitar:</span>
+                    <span class="text-mars-yellow font-mono font-bold text-lg">${Number(offer.price).toFixed(2)} €v</span>
                 </div>
             </div>
-            <p class="text-xs text-slate-300 uppercase italic leading-relaxed">⚠️ La operación se descontará de Finanzas y pasará a revisión de la Aduana Docente antes de la entrega física de la pieza.</p>
+            <div class="bg-amber-950/40 border border-amber-500/50 p-3 rounded text-xs text-amber-200 mb-2 space-y-1">
+                <p class="font-bold uppercase tracking-wide">⚠️ Circuito de Aprobación B2B:</p>
+                <p>Al pulsar solicitar, se generará una orden para tu <strong>Departamento Financiero</strong>. La pieza permanece <strong>DISPONIBLE EN EL MERCADO</strong> para otras empresas hasta que tus Finanzas autoricen la compra. ¡La primera empresa cuyas Finanzas aprueben la compra se queda con la pieza!</p>
+            </div>
         `;
-        const actions = `<button type="button" onclick="ui.confirmBuyB2B('${this.escapeHTML(offerId)}')" class="min-h-[44px] bg-mars-yellow text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all w-full sm:w-auto">Firmar Compra B2B</button>`;
-        this.showModal("Autorizar Compra B2B", html, actions);
+        const actions = `<button type="button" onclick="ui.confirmBuyB2B('${this.escapeHTML(offerId)}')" class="min-h-[44px] bg-mars-yellow text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all w-full sm:w-auto">[ 🤝 Solicitar Compra B2B a Finanzas ]</button>`;
+        this.showModal("Solicitar Compra B2B a Finanzas", html, actions);
     },
 
     confirmBuyB2B(offerId) {
@@ -423,58 +444,44 @@ Object.assign(ui, {
 
         const co = state.data.companies[state.user.coId];
         if (!co) return;
-        if (co.balance < offer.price) return this.notify("Fondos insuficientes.", "error");
 
-        state.data.b2bContracts = state.data.b2bContracts || [];
-        const existingActive = state.data.b2bContracts.find(c => 
-            (c.offerId === offerId || (c.sourceOrderKey && offer.sourceOrderKey && c.sourceOrderKey === offer.sourceOrderKey)) && 
-            (c.status === 'PENDIENTE_ADUANA' || c.status === 'APROBADO')
-        );
-        if (existingActive) {
-            offer.status = existingActive.status === 'APROBADO' ? 'VENDIDO' : 'EN_ADUANA';
-            offer.updatedAt = Date.now();
-            state.save();
+        // Comprobar si ya hay una solicitud pendiente de Finanzas para esta misma oferta
+        co.orders = co.orders || [];
+        const existingReq = co.orders.find(o => o.offerId === offerId && o.status === 'PENDIENTE_FINANZAS');
+        if (existingReq) {
             this.closeModal();
-            this.render();
-            return this.notify("⚠️ Esta oferta ya ha sido solicitada o adquirida y está en trámite en la Aduana Docente.", "warning");
+            return this.notify("Ya has solicitado la compra de esta pieza a tu Departamento Financiero. Está pendiente de su autorización.", "warning");
         }
 
         const now = Date.now();
-        offer.status = 'EN_ADUANA';
-        offer.updatedAt = now;
-        offer.buyerCoId = state.user.coId;
-        offer.buyerName = co.name;
-
-        const contractId = 'B2BC-' + now.toString().slice(-4) + '-' + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-        state.data.b2bContracts.unshift({
-            id: contractId,
+        const newOrder = {
+            id: 'B2B-' + now.toString().slice(-4),
+            type: 'B2B_BUY_REQUEST',
             offerId: offer.id,
             sellerCoId: offer.sellerCoId,
             sellerName: offer.sellerName,
-            buyerCoId: state.user.coId,
-            buyerName: co.name,
-            itemName: offer.itemName,
-            qty: offer.qty || 1,
-            category: offer.category || 'Componente',
-            price: offer.price,
-            sourceOrderKey: offer.sourceOrderKey || '',
-            driveUrl: offer.driveUrl || '',
-            status: 'PENDIENTE_ADUANA',
-            date: new Date().toLocaleString(),
-            timestamp: now,
-            updatedAt: now
-        });
+            items: [{
+                name: `[B2B] ${offer.itemName}`,
+                qty: offer.qty || 1,
+                price: Number(offer.price) || 0,
+                category: offer.category || 'Componente'
+            }],
+            total: Number(offer.price) || 0,
+            status: 'PENDIENTE_FINANZAS',
+            date: new Date().toLocaleDateString(),
+            timestamp: now
+        };
 
-        state.addToLedger(state.user.coId, `[RETENCIÓN B2B] Compra pendiente de aduana: ${offer.itemName}`, 'ADUANA_B2B', -offer.price);
+        co.orders.unshift(newOrder);
+        co.updatedAt = now;
 
-        ui.pushNotification(state.user.coId, 'FINANZAS', `Cargo en Ledger: -${offer.price.toFixed(2)} €v por compra B2B (${offer.itemName}). En Aduana.`, 'warning');
-        ui.pushNotification(offer.sellerCoId, 'TECNICO', `🤝 ${co.name} ha solicitado adquirir tu lote B2B (${offer.itemName}). El contrato está en la Aduana Docente.`, 'info');
-        
-        telemetry.log("COMPRA B2B", `Contrato generado por ${offer.itemName}`);
-        state.save();
+        ui.pushNotification(state.user.coId, 'FINANZAS', `🤝 Técnico ha solicitado adquirir la pieza B2B "${offer.itemName}" (${Number(offer.price).toFixed(2)} €v). Autoriza antes de que otra empresa la compre.`, 'warning', { view: 'orders' });
+
+        state.save(state.user.coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
         this.closeModal();
         this.render();
-        this.notify("✅ Contrato B2B firmado. Fondos retenidos. A la espera de autorización aduanera docente.", "success");
+        this.notify(`✅ Solicitud enviada a Finanzas. La pieza sigue en el mercado hasta que Finanzas la autorice.`, "success");
     }
 });

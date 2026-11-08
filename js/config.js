@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.73) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.74) ---
 
-const APP_VERSION = "1.1.73";
+const APP_VERSION = "1.1.74";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -547,6 +547,8 @@ const FINANCIAL_PHASE_BALANCES_DEF = Object.freeze([
         phaseName: 'Fase I: Fundación y Viabilidad',
         cutoffDate: '2026-12-15T23:59',
         cutoffLabel: '15/12/2026',
+        windowEndLabel: '29/12/2026',
+        deadlineLabel: '29/12/2026 (Corte: 15/12 + 14 días)',
         title: 'Balance Contable de Cierre — Fase I',
         desc: 'Cierre de tesorería, registro de patrocinios captados y gastos iniciales de constitución.',
         docKey: 'DOC_17_BALANCE_FASE'
@@ -556,6 +558,8 @@ const FINANCIAL_PHASE_BALANCES_DEF = Object.freeze([
         phaseName: 'Fase II: I+D y Prototipado Aeroespacial',
         cutoffDate: '2027-02-15T23:59',
         cutoffLabel: '15/02/2027',
+        windowEndLabel: '01/03/2027',
+        deadlineLabel: '01/03/2027 (Corte: 15/02 + 14 días)',
         title: 'Balance Contable de Cierre — Fase II',
         desc: 'Inversión en prototipado, materiales I+D, tasa de licencia AESA y telemetría de costes.',
         docKey: 'DOC_17_BALANCE_FASE'
@@ -565,6 +569,8 @@ const FINANCIAL_PHASE_BALANCES_DEF = Object.freeze([
         phaseName: 'Fase III: Producción y Finanzas B2B',
         cutoffDate: '2027-03-31T23:59',
         cutoffLabel: '31/03/2027',
+        windowEndLabel: '14/04/2027',
+        deadlineLabel: '14/04/2027 (Corte: 31/03 + 14 días)',
         title: 'Balance Contable de Cierre — Fase III',
         desc: 'Costes de taller, transacciones del mercado B2B, campañas publicitarias y balance de situación.',
         docKey: 'DOC_17_BALANCE_FASE'
@@ -574,6 +580,8 @@ const FINANCIAL_PHASE_BALANCES_DEF = Object.freeze([
         phaseName: 'Fase IV: Validación Científica y Comercialización',
         cutoffDate: '2027-04-23T23:59',
         cutoffLabel: '23/04/2027',
+        windowEndLabel: '07/05/2027',
+        deadlineLabel: '07/05/2027 (Corte: 23/04 + 14 días)',
         title: 'Balance Contable de Cierre — Fase IV',
         desc: 'Liquidación final, cuenta de pérdidas y ganancias provisional, solvencia y preparación del Pitch.',
         docKey: 'DOC_17_BALANCE_FASE'
@@ -1089,8 +1097,27 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.73
+// Changelog Oficial de Producción v1.1.74
 const APP_CHANGELOG = [
+    {
+      version: "1.1.74",
+      date: new Date().toISOString().split('T')[0],
+      title: "Ventana de Balances 14 Días con Visado CEO, Aprobación Parcial de Órdenes, Circuito B2B con Finanzas y Ergonomía Departamental",
+      items: [
+        "Ventana de 14 Días y Visado CEO para Balances Contables: Bloqueo de balances (DOC_17) hasta el cierre oficial de cada fase. Se abre una ventana de 14 días lectivos donde Finanzas envía el balance al CEO en estado PENDIENTE_CEO; el CEO lo visa elevándolo a Economía o lo devuelve a Finanzas con enlace Drive de subsanación.",
+        "Aprobación Parcial y Justificación en Órdenes de Compra: Finanzas puede seleccionar qué artículos de la orden de I+D aprueba y cuáles rechaza con recálculo dinámico en tiempo real. En aprobaciones parciales o rechazos, se exige obligatoriamente enlace a Google Docs con la memoria justificativa (Zero-Text).",
+        "Circuito B2B de Compra con Finanzas (Opción A): Al pulsar Adquirir B2B en el mercado secundario, el Técnico genera una petición interna a su Finanzas (PENDIENTE_FINANZAS). La pieza permanece EN_VENTA; el primer Finanzas que la aprueba la bloquea atómicamente en EN_ADUANA, descuenta fondos del ledger y cancela solicitudes competidoras.",
+        "Paleta Real Metálica en Patrocinios: Asignación de colores y resplandores metálicos auténticos en insignias y banners (Oro #FFD700, Plata #E2E8F0, Bronce #CD7F32, Cobre #B87333 y Colaborador #00F0FF).",
+        "Cuaderno de Bitácora e IA Operacional (DOC_4): Sustitución del entregable genérico en la pestaña Bitácora e IA por tarjeta dedicada con clonación oficial de plantilla de Google Docs y subida directa de evidencias.",
+        "Máxima Visibilidad de Material I+D: Integración del botón táctico [+ Solicitar Material I+D] en el Banco de Pruebas de FYQ, cabecera de Catálogo B2C, pie de catálogo y Taller & BOM.",
+        "Depuración de Entregables Redundantes y Tique en Operaciones: Supresión de tarjetas de entregables masivos en pantallas de inicio departamentales (reemplazadas por un banner horizontal compacto) y eliminación del campo innecesario de URL Tique Drive en compras físicas."
+      ],
+      highlights: [
+        { type: "FINANZAS", text: "Aprobación parcial de compras con enlace a Google Docs y ventana de 14 días para balances." },
+        { type: "B2B", text: "Circuito de compra de segunda mano supervisado por Finanzas con bloqueo atómico en Aduana." },
+        { type: "ERGONOMÍA", text: "Banner horizontal de entregable activo por rol y solicitud directa de material I+D visible en 4 vistas." }
+      ]
+    },
     {
       version: "1.1.73",
       date: new Date().toISOString().split('T')[0],

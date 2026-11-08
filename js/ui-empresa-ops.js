@@ -35,7 +35,7 @@ Object.assign(ui, {
                             <p class="text-xs text-slate-300 uppercase">${this.escapeHTML(order.date)}</p>
                         </div>
                     </div>
-                    <p class="text-xs text-mars-yellow uppercase font-bold mb-3">Registra el coste real físico (€), el comercio oficial y el ticket en Google Drive:</p>
+                    <p class="text-xs text-mars-yellow uppercase font-bold mb-3">Registra el coste real físico (€) y el comercio oficial de adquisición:</p>
                     <div class="space-y-3 mb-6">
                         ${(order.items || []).map((item, idx) => `
                             <div class="border border-slate-800 bg-slate-900/90 p-3 mb-3 rounded flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
@@ -60,7 +60,6 @@ Object.assign(ui, {
                                             { id: 'comercio_generico', name: 'Comercio genérico' }
                                         ]).map(shop => `<option value="${this.escapeHTML(shop.name)}">${this.escapeHTML(shop.name)}</option>`).join('')}
                                     </select>
-                                    <input type="url" id="real-ticket-${this.escapeHTML(order.id)}-${idx}" aria-label="Ticket Drive de ${this.escapeHTML(item.name)}" placeholder="URL Ticket Drive" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-mars-cyan/60 p-2 text-base sm:text-xs text-white w-full sm:w-44 outline-none focus:border-mars-cyan font-mono">
                                 </div>
                             </div>
                         `).join('')}
@@ -215,6 +214,7 @@ Object.assign(ui, {
 
         wrapper.innerHTML = `
             ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
+            ${this.renderRoleActivePhaseDeliverableBanner ? this.renderRoleActivePhaseDeliverableBanner(co) : ''}
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
                 <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">Logística de Despliegue Físico</h2>
                 <div class="flex gap-2 flex-wrap">
@@ -256,26 +256,21 @@ Object.assign(ui, {
             const cb = document.getElementById(`assembled-${order.id}-${i}`);
             const eurInput = document.getElementById(`real-eur-${order.id}-${i}`);
             const shopInput = document.getElementById(`real-shop-${order.id}-${i}`);
-            const ticketInput = document.getElementById(`real-ticket-${order.id}-${i}`);
             
             if(cb && cb.checked) {
                 const valEur = parseFloat(eurInput ? eurInput.value : 0);
                 const valShop = shopInput ? this.cleanInput(shopInput.value) : '';
-                const ticketUrl = ticketInput ? this.cleanInput(ticketInput.value) : '';
                 
                 if(isNaN(valEur) || valEur < 0 || !valShop) {
                     return this.notify(`Falta indicar el coste real (€) o el comercio para: ${order.items[i].name}`, "warning");
                 }
-                if(ticketUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(ticketUrl)) {
-                    return this.notify(`El comprobante de ${order.items[i].name} debe ser una URL válida de Google Drive.`, "error");
-                }
                 order.items[i].realEur = valEur;
                 order.items[i].realShop = valShop;
-                order.items[i].ticketUrl = ticketUrl;
+                order.items[i].ticketUrl = null;
                 finalItems.push(order.items[i]);
                 const itemQty = Number(order.items[i].qty) || 1;
                 finalTotalEurV += (Number(order.items[i].price) || 0) * itemQty;
-                realCostsToLog.push({ id: 'RC-'+Date.now()+'-'+i, date: new Date().toLocaleDateString(), item: order.items[i].name, eur: valEur, shop: valShop, ticketUrl: ticketUrl, qty: itemQty });
+                realCostsToLog.push({ id: 'RC-'+Date.now()+'-'+i, date: new Date().toLocaleDateString(), item: order.items[i].name, eur: valEur, shop: valShop, ticketUrl: null, qty: itemQty });
             }
         }
 
@@ -341,29 +336,65 @@ Object.assign(ui, {
             </div>`;
         }
 
-        const diaryDocsHtml = `
-        <div class="terminal-border bg-mars-card p-4 sm:p-5 border-l-4 border-l-mars-cyan mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2 mb-1.5 flex-wrap">
-                    <span class="text-xs bg-mars-cyan/20 text-mars-cyan border border-mars-cyan/40 px-2 py-0.5 font-bold uppercase font-mono">Entregables Curriculares</span>
-                    <span class="text-xs text-mars-yellow font-bold uppercase font-mono">Matemáticas (4 Hitos) & Lengua (LyE)</span>
+        const curPhaseKey = (typeof this.getCurrentPhaseKey === 'function') ? this.getCurrentPhaseKey() : 'I';
+        const bitacoraDocKey = curPhaseKey === 'IV' ? 'decisionDiary_apr' : 'decisionDiary_dec';
+        const bitacoraDoc = (co.deliverables || {})[bitacoraDocKey];
+        const bitacoraStatus = (typeof bitacoraDoc === 'object' && bitacoraDoc) ? bitacoraDoc.status : (typeof bitacoraDoc === 'string' && bitacoraDoc ? 'DELIVERED_TO_TEACHER' : 'PENDING');
+        
+        let bitacoraBadge = '<span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-amber-400 border border-amber-500/40">⏳ PENDIENTE</span>';
+        if (bitacoraStatus === 'CEO_REVISION') {
+            bitacoraBadge = '<span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-400 animate-pulse">🟡 EN REVISIÓN CEO</span>';
+        } else if (bitacoraStatus === 'DELIVERED_TO_TEACHER') {
+            bitacoraBadge = '<span style="background-color: rgba(0, 255, 102, 0.15); border: 1px solid #00ff66; color: #00ff66;" class="text-xs font-mono font-bold px-2 py-0.5 rounded">🟢 ENTREGADO A DOCENTE</span>';
+        } else if (bitacoraStatus === 'RETURNED_BY_CEO' || bitacoraStatus === 'RETURNED_BY_TEACHER') {
+            bitacoraBadge = '<span style="background-color: rgba(255, 0, 85, 0.15); border: 1px solid #ff0055; color: #ff0055;" class="text-xs font-mono font-bold px-2 py-0.5 rounded animate-pulse">🔴 SUBSANAR</span>';
+        } else if (bitacoraStatus === 'REVIEWED' || bitacoraStatus === 'ACCEPTED') {
+            bitacoraBadge = '<span style="background-color: #00ff66; color: #000; font-weight: 900;" class="text-xs font-mono px-2 py-0.5 rounded">✓ CALIFICADO</span>';
+        }
+
+        const bitacoraCardHtml = `
+        <div class="terminal-border bg-mars-card p-4 sm:p-5 border-l-4 border-l-mars-cyan mb-8">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-mars-border pb-3 mb-3">
+                <div>
+                    <div class="flex items-center gap-2 mb-1 flex-wrap">
+                        <span class="text-xs bg-mars-cyan/20 text-mars-cyan border border-mars-cyan/40 px-2 py-0.5 font-bold uppercase font-mono">Entregable Curricular Oficial</span>
+                        <span class="text-xs text-mars-yellow font-bold uppercase font-mono">Liderazgo (LYE • 10%)</span>
+                        ${bitacoraBadge}
+                    </div>
+                    <h3 class="text-white font-orbitron text-sm sm:text-base font-bold uppercase">Cuaderno de Bitácora y Auditoría Ética de IA (DOC_4)</h3>
+                    <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+                        Documento oficial donde se recopila el proceso de toma de decisiones, resolución de crisis departamentales y la justificación ética de los prompts y herramientas IA utilizadas.
+                    </p>
                 </div>
-                <h3 class="text-white font-orbitron text-sm sm:text-base font-bold uppercase">Entregables Asignados a Operaciones e IA</h3>
-                <p class="text-xs text-slate-300 mt-1 leading-relaxed">
-                    Operaciones gestiona los 4 hitos de <strong>Matemáticas</strong> (Goniómetro, mediciones angulares, informe de distancia y comparativo final) junto al <strong>Diario de Bitácora e IA</strong>.
-                </p>
             </div>
-            <button type="button" onclick="ui.navigate('role_deliverables')" class="shrink-0 w-full md:w-auto justify-center min-h-[44px] whitespace-nowrap px-4 py-2.5 bg-black border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold uppercase text-xs transition-colors flex items-center gap-2 shadow-[0_0_10px_rgba(0,240,255,0.2)] text-center">
-                <span>📤 Gestionar en "Mis Entregables" ➔</span>
-            </button>
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <div class="flex flex-wrap items-center gap-2">
+                    ${this.renderDocTemplateBtn('DOC_4_BITACORA_IA', '📄 Modelo Oficial Bitácora (Clonar Drive)')}
+                    ${bitacoraDoc?.driveUrl ? `
+                        <a href="${encodeURI(bitacoraDoc.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 bg-slate-900 border border-slate-700 text-cyan-400 hover:border-cyan-400 font-mono text-xs rounded transition-colors">
+                            <span>📄 Abrir Mi Bitácora Entregada ↗</span>
+                        </a>
+                    ` : ''}
+                </div>
+                <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <button type="button" onclick="ui.modalSubmitRoleDeliverable('${bitacoraDocKey}')" class="min-h-[44px] flex-1 sm:flex-initial px-4 py-2.5 bg-mars-cyan text-black hover:bg-white font-black uppercase text-xs transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)] text-center">
+                        [ 📤 Entregar / Subir Bitácora ]
+                    </button>
+                    <button type="button" onclick="ui.current = 'role_deliverables'; ui.roleDeliverablesPhase = '${curPhaseKey}'; ui.roleDeliverablesScope = 'MY_ROLE'; ui.render();" class="min-h-[44px] flex-1 sm:flex-initial px-3.5 py-2.5 bg-black border border-slate-700 text-slate-300 hover:text-white hover:border-mars-cyan font-bold uppercase text-xs transition-all text-center">
+                        Mis Entregables ➔
+                    </button>
+                </div>
+            </div>
         </div>`;
 
         wrapper.innerHTML = `
+            ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
+            ${this.renderRoleActivePhaseDeliverableBanner ? this.renderRoleActivePhaseDeliverableBanner(co) : ''}
             <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
                 <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">Bitácora y Auditoría de Inteligencia Artificial</h2>
                 <button type="button" onclick="ui.modalReportAI()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_12px_rgba(0,240,255,0.3)]">[🤖 Nuevo Reporte IA]</button>
             </div>
-            ${diaryDocsHtml}
+            ${bitacoraCardHtml}
             ${pendingHtml}
             <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
                 <h3 class="font-orbitron text-mars-cyan text-sm sm:text-base mb-4 uppercase tracking-tighter">Historial Oficial de Uso de IA (Aprobados)</h3>

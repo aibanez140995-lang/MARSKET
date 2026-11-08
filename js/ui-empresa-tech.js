@@ -235,6 +235,7 @@ Object.assign(ui, {
         wrapper.innerHTML = `
         <div class="space-y-6">
             ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
+            ${this.renderRoleActivePhaseDeliverableBanner ? this.renderRoleActivePhaseDeliverableBanner(co) : ''}
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <!-- Columna Izquierda: Banco de Pruebas de Vuelo -->
                 <div class="lg:col-span-7 space-y-6">
@@ -244,9 +245,14 @@ Object.assign(ui, {
                                 <h2 class="font-orbitron text-mars-yellow text-base sm:text-lg uppercase tracking-tighter">Banco de Pruebas de Vuelo (Fase II)</h2>
                                 <p class="text-[11px] text-mars-cyan font-mono">ℹ️ La Eficiencia (E = Altura / Coste) es calculada de forma matemática automática por la terminal al registrar el ensayo.</p>
                             </div>
-                            <button type="button" onclick="ui.navigate('tech_workshop')" class="shrink-0 w-full sm:w-auto justify-center min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-3.5 py-1.5 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors whitespace-nowrap text-center">
-                                🔧 Ir a Taller y BOM ➔
-                            </button>
+                            <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                                <button type="button" onclick="ui.modalSpecialItem()" class="flex-1 sm:flex-initial min-h-[44px] bg-mars-magenta text-white font-black px-3.5 py-1.5 text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all shadow-[0_0_10px_rgba(255,0,85,0.3)] whitespace-nowrap text-center">
+                                    + Solicitar Material I+D
+                                </button>
+                                <button type="button" onclick="ui.navigate('tech_workshop')" class="flex-1 sm:flex-initial min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-3.5 py-1.5 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors whitespace-nowrap text-center">
+                                    🔧 Ir a Taller y BOM ➔
+                                </button>
+                            </div>
                         </div>
 
                         ${(() => {
@@ -346,32 +352,15 @@ Object.assign(ui, {
 
                 <!-- Columna Derecha: Acceso a Entregables Científicos y Órdenes -->
                 <div class="lg:col-span-5 space-y-6">
-                    <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
-                        <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-3 flex-wrap gap-2">
-                            <h2 class="font-orbitron text-mars-cyan text-sm sm:text-base uppercase tracking-tighter">Entregables Científicos (FYQ - 25%)</h2>
-                            <span class="text-xs bg-mars-cyan/10 text-mars-cyan border border-mars-cyan/40 px-2 py-0.5 font-bold uppercase">Resp: Dpto. Técnico</span>
+                    <!-- Panel Operativo: Solicitud de Material I+D -->
+                    <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-magenta">
+                        <div class="flex justify-between items-center mb-2 border-b border-mars-border pb-2">
+                            <h3 class="font-orbitron text-mars-magenta text-xs sm:text-sm uppercase tracking-tight">Material I+D Especial</h3>
+                            <span class="text-xs font-mono text-slate-400">${(co.specialItemRequests || []).length} Solicitudes</span>
                         </div>
-                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
-                            Los 2 hitos de Física y Química (Hoja de Registro Preliminar e Informe Técnico Exhaustivo) se gestionan de forma guiada en <strong>Mis Entregables</strong>.
-                        </p>
-                        <div class="space-y-3 mb-4">
-                            <div class="p-3 bg-black/60 border border-slate-800 rounded text-xs flex justify-between items-center">
-                                <div>
-                                    <span class="text-white font-bold block uppercase">Física y Química (25%)</span>
-                                    <span class="text-[11px] text-slate-400">Informe Preliminar & Final Exhaustivo</span>
-                                </div>
-                                <span class="text-xs font-mono text-mars-cyan font-bold">2 Hitos</span>
-                            </div>
-                            <div class="p-3 bg-black/60 border border-slate-800/60 rounded text-xs">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-slate-300 font-bold block uppercase">Matemáticas (4 Hitos)</span>
-                                    <span class="text-[10px] text-mars-yellow font-mono font-bold">Operaciones e IA</span>
-                                </div>
-                                <span class="text-[10px] text-slate-400 block mt-0.5">Goniómetro, mediciones angulares e informe final transferidos al Dpto. de Operaciones.</span>
-                            </div>
-                        </div>
-                        <button type="button" onclick="ui.navigate('role_deliverables')" class="w-full min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs py-2.5 px-4 hover:bg-white transition-all flex items-center justify-center gap-2 shadow-sm">
-                            <span>📤 GESTIONAR ENTREGABLES EN "MIS ENTREGABLES"</span> ➔
+                        <p class="text-xs text-slate-300 mb-3 leading-relaxed">¿Necesitas piezas o reactivos no listados en el catálogo oficial? Tramita una solicitud oficial de I+D a Coordinación con memoria técnica en Google Docs.</p>
+                        <button type="button" onclick="ui.modalSpecialItem()" class="w-full min-h-[44px] bg-mars-magenta text-white font-black uppercase text-xs py-2 px-3 hover:bg-white hover:text-mars-magenta transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(255,0,85,0.3)]">
+                            <span>📡 + SOLICITAR MATERIAL I+D</span>
                         </button>
                     </div>
 
@@ -648,6 +637,9 @@ Object.assign(ui, {
                     <span class="px-2.5 py-1 bg-slate-900 border border-slate-700 text-slate-300">📦 Stock: ${stockCount}</span>
                     <span class="px-2.5 py-1 bg-mars-green/10 border border-mars-green text-mars-green">🚀 En BOM: ${bomCount}</span>
                     <span class="px-2.5 py-1 bg-mars-yellow/10 border border-mars-yellow text-mars-yellow">🤝 En Venta B2B: ${b2bCount}</span>
+                    <button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] bg-mars-magenta text-white font-black px-3.5 py-2 text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all shadow-[0_0_10px_rgba(255,0,85,0.3)] whitespace-nowrap">
+                        + Solicitar Material I+D
+                    </button>
                 </div>
             </div>
 

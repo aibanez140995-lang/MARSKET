@@ -559,7 +559,9 @@ Object.assign(ui, {
 
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
         const docs = co.deliverables || {};
-        const pendingCeoDeliverables = Object.values(docs).filter(d => d && d.status === 'SUBMITTED_TO_CEO').length;
+        const submittedCeoDefs = defs.filter(d => docs[d.key] && docs[d.key].status === 'SUBMITTED_TO_CEO');
+        const pendingPhaseBalances = Object.values(co.phaseBalances || {}).filter(b => b && b.status === 'PENDIENTE_CEO');
+        const pendingCeoDeliverables = Object.values(docs).filter(d => d && d.status === 'SUBMITTED_TO_CEO').length + pendingPhaseBalances.length;
         const returnedDeliverables = Object.values(docs).filter(d => d && (d.status === 'CEO_REVISION' || d.status === 'DEVUELTO_A_TECNICO')).length;
         const deliveredCount = Object.values(docs).filter(d => d && d.status === 'DELIVERED_TO_TEACHER').length;
 
@@ -572,7 +574,7 @@ Object.assign(ui, {
             });
         });
 
-        const submittedCeoDefs = defs.filter(d => docs[d.key] && docs[d.key].status === 'SUBMITTED_TO_CEO');
+        const totalPendingCeoItems = submittedCeoDefs.length + pendingPhaseBalances.length;
         let ceoTrayHtml = '';
         if (isCEO) {
             ceoTrayHtml = `
@@ -580,8 +582,8 @@ Object.assign(ui, {
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-mars-border pb-3 mb-4">
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2 mb-1">
-                            <span class="px-2.5 py-0.5 text-xs font-black uppercase bg-mars-yellow/20 border border-mars-yellow text-mars-yellow ${submittedCeoDefs.length > 0 ? 'animate-pulse' : ''}">SUPERVISIÓN DIRECTIVA</span>
-                            <span class="text-xs text-slate-400 font-mono">${submittedCeoDefs.length} PENDIENTES DE VISADO</span>
+                            <span class="px-2.5 py-0.5 text-xs font-black uppercase bg-mars-yellow/20 border border-mars-yellow text-mars-yellow ${totalPendingCeoItems > 0 ? 'animate-pulse' : ''}">SUPERVISIÓN DIRECTIVA</span>
+                            <span class="text-xs text-slate-400 font-mono">${totalPendingCeoItems} PENDIENTES DE VISADO</span>
                         </div>
                         <h3 class="text-base sm:text-lg font-orbitron font-black text-white uppercase tracking-tight">
                             📋 Bandeja de Visado Ejecutivo
@@ -592,13 +594,39 @@ Object.assign(ui, {
                         Ver Mis Entregables ➔
                     </button>
                 </div>
-                ${submittedCeoDefs.length === 0 ? `
+                ${totalPendingCeoItems === 0 ? `
                     <div class="p-6 bg-slate-900/60 border border-slate-800 text-center rounded">
                         <p class="text-xs font-mono text-emerald-400 uppercase font-bold">✨ Todos los entregables departamentales están al día o ya visados.</p>
                         <p class="text-[11px] text-slate-400 mt-1">Cuando los departamentos (Técnico, Finanzas, Marketing, Operaciones) envíen sus borradores, aparecerán aquí para tu firma o devolución.</p>
                     </div>
                 ` : `
                     <div class="space-y-3">
+                        ${pendingPhaseBalances.map(b => `
+                            <div class="bg-slate-900/90 border border-amber-500/50 p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div class="min-w-0 flex-grow">
+                                    <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                                        <span class="text-xs font-black uppercase px-2 py-0.5 bg-black border border-amber-400 text-amber-400">FASE ${this.escapeHTML(b.phase)}</span>
+                                        <span class="text-xs font-bold uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2 py-0.5">Resp: Finanzas</span>
+                                        <span class="text-xs text-slate-400 font-mono">Economía • DOC_17</span>
+                                    </div>
+                                    <h4 class="text-white font-bold text-sm uppercase leading-snug">Balance Contable de Cierre — Fase ${this.escapeHTML(b.phase)}</h4>
+                                    <div class="mt-1 text-[11px] text-emerald-300 font-mono">
+                                        Dictamen: ${this.escapeHTML(b.verdict)} | Saldo: ${Number(b.snapshot?.balance || 0).toFixed(2)} €v
+                                    </div>
+                                    <div class="mt-2.5 flex flex-wrap items-center gap-2">
+                                        ${b.driveUrl ? `
+                                            <a href="${encodeURI(b.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                                <span>📄 Ver DOC_17 en Docs ↗</span>
+                                            </a>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                                <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
+                                    <button type="button" onclick="ui.approvePhaseBalanceByCEO('${this.escapeHTML(b.phase)}')" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">[ ✓ VISAR Y ELEVAR A ECONOMÍA ]</button>
+                                    <button type="button" onclick="ui.modalCeoReturnPhaseBalance('${this.escapeHTML(b.phase)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-4 py-2 hover:bg-mars-magenta hover:text-white transition-all">[ ↩ DEVOLVER A FINANZAS ]</button>
+                                </div>
+                            </div>
+                        `).join('')}
                         ${submittedCeoDefs.map(d => {
                             const doc = docs[d.key];
                             return `
@@ -1797,6 +1825,10 @@ Object.assign(ui, {
         `;
 
         el.appendChild(wrapper);
+    },
+
+    modalDeliverRoleDoc(docKey) {
+        return this.modalSubmitRoleDeliverable(docKey);
     },
 
     modalSubmitRoleDeliverable(docKey) {
@@ -3227,6 +3259,89 @@ Object.assign(ui, {
         }
     },
 
+    renderRoleActivePhaseDeliverableBanner(co) {
+        if (!co || !state.user) return '';
+        const role = state.user.role;
+        if (role === 'DOCENTE') return '';
+
+        const curPhase = (typeof this.getCurrentPhaseKey === 'function') ? this.getCurrentPhaseKey() : 'I';
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+
+        const isAux = role === 'AUXILIAR';
+        const auxDept = isAux ? co?.auxRoleDept : null;
+        const targetRole = (isAux && auxDept) ? auxDept : role;
+
+        const myActiveDeliverables = defs.filter(d => {
+            const p = (typeof this.getDeliverablePhase === 'function') ? this.getDeliverablePhase(d.key) : (d.phase || 'I');
+            if (p !== curPhase) return false;
+            if (targetRole === 'CEO') return true;
+            if (targetRole === 'OPERACIONES' || targetRole === 'OPERACIONES_IA') {
+                return d.role === 'OPERACIONES' || d.role === 'OPERACIONES_IA';
+            }
+            return d.role === targetRole;
+        });
+
+        if (myActiveDeliverables.length === 0) return '';
+
+        const docs = co.deliverables || {};
+        const itemsHtml = myActiveDeliverables.map(d => {
+            const docItem = docs[d.key];
+            const rawStatus = (typeof docItem === 'object' && docItem) ? docItem.status : (typeof docItem === 'string' && docItem ? 'DELIVERED_TO_TEACHER' : 'PENDING');
+            
+            let statusBadge = '<span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-amber-400 border border-amber-500/40">⏳ PENDIENTE</span>';
+            let borderStyle = 'border: 1px solid rgba(245, 158, 11, 0.4);';
+            
+            if (rawStatus === 'CEO_REVISION') {
+                statusBadge = '<span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-400 animate-pulse">🟡 EN REVISIÓN CEO</span>';
+                borderStyle = 'border: 1px solid rgba(0, 240, 255, 0.5);';
+            } else if (rawStatus === 'DELIVERED_TO_TEACHER') {
+                statusBadge = '<span style="background-color: rgba(0, 255, 102, 0.15); border: 1px solid #00ff66; color: #00ff66;" class="text-[11px] font-mono font-bold px-2 py-0.5 rounded">🟢 ENTREGADO A DOCENTE</span>';
+                borderStyle = 'border: 1px solid rgba(0, 255, 102, 0.4);';
+            } else if (rawStatus === 'RETURNED_BY_CEO' || rawStatus === 'RETURNED_BY_TEACHER') {
+                statusBadge = '<span style="background-color: rgba(255, 0, 85, 0.15); border: 1px solid #ff0055; color: #ff0055;" class="text-[11px] font-mono font-bold px-2 py-0.5 rounded animate-pulse">🔴 SUBSANAR</span>';
+                borderStyle = 'border: 1px solid rgba(255, 0, 85, 0.5);';
+            } else if (rawStatus === 'REVIEWED' || rawStatus === 'ACCEPTED') {
+                statusBadge = '<span style="background-color: #00ff66; color: #000; font-weight: 900;" class="text-[11px] font-mono px-2 py-0.5 rounded">✓ CALIFICADO</span>';
+                borderStyle = 'border: 1px solid #00ff66;';
+            }
+
+            const deadlineLabel = d.defaultDate ? d.defaultDate.replace('T', ' ') : 'Fin de Fase';
+
+            return `
+            <div style="${borderStyle}" class="bg-black/60 p-3 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 flex-wrap mb-1">
+                        <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-mars-cyan">[${this.escapeHTML(d.subject || 'LOMLOE')} • ${this.escapeHTML(d.weight || '')}]</span>
+                        <span class="text-[10px] font-mono text-slate-400">Límite: ${this.escapeHTML(deadlineLabel)}</span>
+                        ${statusBadge}
+                    </div>
+                    <h5 class="font-orbitron font-bold text-white text-xs uppercase tracking-tight break-words">${this.escapeHTML(d.name || d.title || d.key)}</h5>
+                </div>
+                <button type="button" onclick="ui.current = 'role_deliverables'; ui.roleDeliverablesPhase = '${curPhase}'; ui.roleDeliverablesScope = 'MY_ROLE'; ui.render();" class="shrink-0 min-h-[38px] px-3.5 py-1.5 bg-slate-900 hover:bg-mars-cyan hover:text-black text-mars-cyan border border-mars-cyan/60 font-bold uppercase text-[11px] rounded transition-all flex items-center gap-1.5 shadow-sm">
+                    <span>📤 Gestionar en Mis Entregables ➔</span>
+                </button>
+            </div>`;
+        }).join('');
+
+        return `
+        <div class="terminal-border bg-slate-950/80 border border-slate-800 p-3.5 sm:p-4 mb-6 rounded shadow-sm">
+            <div class="flex justify-between items-center mb-2.5 border-b border-slate-800 pb-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs">📌</span>
+                    <span class="text-[11px] font-orbitron font-bold uppercase tracking-wider text-slate-300">
+                        Entregable(s) Oficial(es) de ${this.escapeHTML(targetRole)} • Fase ${this.escapeHTML(curPhase)}
+                    </span>
+                </div>
+                <button type="button" onclick="ui.current = 'role_deliverables'; ui.roleDeliverablesPhase = '${curPhase}'; ui.roleDeliverablesScope = 'MY_ROLE'; ui.render();" class="text-[11px] text-mars-cyan hover:underline font-mono">
+                    Ver todos en Mis Entregables ↗
+                </button>
+            </div>
+            <div class="space-y-2">
+                ${itemsHtml}
+            </div>
+        </div>`;
+    },
+
     isContractPhaseUnlocked(phase, co) {
         if (typeof state !== 'undefined' && typeof state.isContractPhaseUnlocked === 'function') {
             return state.isContractPhaseUnlocked(phase, co);
@@ -3253,6 +3368,20 @@ Object.assign(ui, {
         const p = prPhases.find(item => item.phase === phaseKey);
         if (!p || !p.phaseCutoff) return false;
         return Date.now() >= new Date(p.phaseCutoff).getTime();
+    },
+
+    isPhaseBalanceUnlocked(phaseKey, co) {
+        if (typeof state !== 'undefined' && typeof state.isPhaseBalanceUnlocked === 'function') {
+            return state.isPhaseBalanceUnlocked(phaseKey, co);
+        }
+        return true;
+    },
+
+    isPhaseBalanceInWindow(phaseKey, co) {
+        if (typeof state !== 'undefined' && typeof state.isPhaseBalanceInWindow === 'function') {
+            return state.isPhaseBalanceInWindow(phaseKey, co);
+        }
+        return true;
     },
 
     isLaunchLicenseUnlocked(co) {
@@ -3361,13 +3490,13 @@ Object.assign(ui, {
         const sponsorAmount = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : (sponsorData.amount || 0);
 
         const tierStyles = {
-            'ORO': 'text-[#ffd700] border-[#ffd700] bg-[#ffd700]/10',
-            'PLATA': 'text-[#c0c0c0] border-[#c0c0c0] bg-[#c0c0c0]/10',
-            'BRONCE': 'text-[#cd7f32] border-[#cd7f32] bg-[#cd7f32]/10',
-            'COBRE': 'text-[#b87333] border-[#b87333] bg-[#b87333]/10',
-            'COLABORADOR': 'text-mars-cyan border-mars-cyan bg-mars-cyan/10'
+            'ORO': 'style="color: #FFD700 !important; border-color: #FFD700 !important; background-color: rgba(255, 215, 0, 0.15) !important;"',
+            'PLATA': 'style="color: #E2E8F0 !important; border-color: #E2E8F0 !important; background-color: rgba(226, 232, 240, 0.15) !important;"',
+            'BRONCE': 'style="color: #CD7F32 !important; border-color: #CD7F32 !important; background-color: rgba(205, 127, 50, 0.15) !important;"',
+            'COBRE': 'style="color: #B87333 !important; border-color: #B87333 !important; background-color: rgba(184, 115, 51, 0.15) !important;"',
+            'COLABORADOR': 'style="color: #00F0FF !important; border-color: #00F0FF !important; background-color: rgba(0, 240, 255, 0.15) !important;"'
         };
-        const sponsorStyle = sponsorAwarded ? (tierStyles[sponsorAwarded] || 'text-slate-300 border-slate-700 bg-slate-900') : '';
+        const sponsorStyle = sponsorAwarded ? (tierStyles[sponsorAwarded] || 'class="text-slate-300 border-slate-700 bg-slate-900"') : '';
 
         const sponsorStatusBanner = sponsorAwarded ? `
             <div class="terminal-border p-4 sm:p-5 mb-4 border-t-4 border-t-amber-400 bg-mars-card">
@@ -3377,7 +3506,7 @@ Object.assign(ui, {
                         <div>
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">Patrocinador Oficial Confirmado (Fase I)</span>
-                                <span class="text-xs font-black uppercase border px-2 py-0.5 rounded-sm ${sponsorStyle}">[NIVEL ${this.escapeHTML(sponsorAwarded)}]</span>
+                                <span class="text-xs font-black uppercase border px-2 py-0.5 rounded-sm" ${sponsorStyle}>[NIVEL ${this.escapeHTML(sponsorAwarded)}]</span>
                             </div>
                             <h3 class="text-base sm:text-lg font-orbitron font-black text-white uppercase mt-0.5">${this.escapeHTML(sponsorData.name || 'Fondo Semilla Aeroespacial')}</h3>
                             <p class="text-xs text-slate-300">Capital concedido tras el micro-pitch en lengua inglesa para dotación de constitución.</p>
@@ -3405,11 +3534,11 @@ Object.assign(ui, {
         `;
 
         const sponsorTiersDef = [
-            { id: 'ORO', name: 'Nivel ORO', amount: 500, emoji: '🥇', border: 'border-yellow-400', glow: 'shadow-[0_0_12px_rgba(250,204,21,0.25)]', text: 'text-yellow-300', perk: 'Dotación de patrocinio Nivel Oro' },
-            { id: 'PLATA', name: 'Nivel PLATA', amount: 400, emoji: '🥈', border: 'border-slate-300', glow: 'shadow-[0_0_10px_rgba(203,213,225,0.2)]', text: 'text-slate-200', perk: 'Dotación de patrocinio Nivel Plata' },
-            { id: 'BRONCE', name: 'Nivel BRONCE', amount: 250, emoji: '🥉', border: 'border-amber-600', glow: '', text: 'text-amber-400', perk: 'Dotación de patrocinio Nivel Bronce' },
-            { id: 'COBRE', name: 'Nivel COBRE', amount: 150, emoji: '🔶', border: 'border-amber-700', glow: '', text: 'text-amber-500', perk: 'Dotación de patrocinio Nivel Cobre' },
-            { id: 'COLABORADOR', name: 'Nivel COLABORADOR', amount: 100, emoji: '🤝', border: 'border-cyan-500', glow: '', text: 'text-cyan-300', perk: 'Dotación de patrocinio Nivel Colaborador' }
+            { id: 'ORO', name: 'Nivel ORO', amount: 500, emoji: '🥇', colorHex: '#FFD700', perk: 'Dotación de patrocinio Nivel Oro' },
+            { id: 'PLATA', name: 'Nivel PLATA', amount: 400, emoji: '🥈', colorHex: '#E2E8F0', perk: 'Dotación de patrocinio Nivel Plata' },
+            { id: 'BRONCE', name: 'Nivel BRONCE', amount: 250, emoji: '🥉', colorHex: '#CD7F32', perk: 'Dotación de patrocinio Nivel Bronce' },
+            { id: 'COBRE', name: 'Nivel COBRE', amount: 150, emoji: '🔶', colorHex: '#B87333', perk: 'Dotación de patrocinio Nivel Cobre' },
+            { id: 'COLABORADOR', name: 'Nivel COLABORADOR', amount: 100, emoji: '🤝', colorHex: '#00F0FF', perk: 'Dotación de patrocinio Nivel Colaborador' }
         ];
 
         const sponsorHtml = `
@@ -3427,22 +3556,25 @@ Object.assign(ui, {
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 mb-3">
                         ${sponsorTiersDef.map(t => {
                             const isMyTier = sponsorAwarded === t.id;
+                            const cardStyle = isMyTier
+                                ? `background-color: rgba(255, 215, 0, 0.15) !important; border: 2px solid ${t.colorHex} !important; box-shadow: 0 0 20px ${t.colorHex}55 !important;`
+                                : `background-color: rgba(15, 23, 42, 0.6) !important; border: 1.5px solid ${t.colorHex}88 !important;`;
                             return `
-                            <div class="p-3 rounded border ${t.border} ${isMyTier ? 'bg-amber-950/40 ring-2 ring-amber-400 ' + t.glow : 'bg-slate-900/60'} flex flex-col justify-between transition-all">
+                            <div style="${cardStyle}" class="p-3 rounded flex flex-col justify-between transition-all">
                                 <div>
                                     <div class="flex items-center justify-between gap-1 mb-1.5">
                                         <span class="text-xl">${t.emoji}</span>
                                         ${isMyTier ? `
-                                            <span class="text-[9px] font-black uppercase px-1.5 py-0.5 bg-amber-400 text-black font-mono">CONCEDIDO</span>
+                                            <span style="background-color: ${t.colorHex} !important; color: #000000 !important; font-weight: 900 !important;" class="text-[9px] uppercase px-1.5 py-0.5 font-mono rounded">CONCEDIDO</span>
                                         ` : `
-                                            <span class="text-[9px] font-mono uppercase text-slate-500">${sponsorAwarded ? 'Disponible' : 'En Juego'}</span>
+                                            <span class="text-[9px] font-mono uppercase text-slate-400">${sponsorAwarded ? 'Disponible' : 'En Juego'}</span>
                                         `}
                                     </div>
-                                    <h4 class="font-orbitron font-bold text-xs uppercase ${t.text}">${this.escapeHTML(t.name)}</h4>
+                                    <h4 style="color: ${t.colorHex} !important;" class="font-orbitron font-bold text-xs uppercase">${this.escapeHTML(t.name)}</h4>
                                     <p class="text-[10px] text-slate-300 mt-1 leading-snug">${this.escapeHTML(t.perk)}</p>
                                 </div>
                                 <div class="mt-3 pt-2 border-t border-slate-800/80 text-right">
-                                    <span class="text-sm sm:text-base font-orbitron font-black ${isMyTier ? 'text-mars-green' : t.text}">+${t.amount} €v</span>
+                                    <span style="color: ${isMyTier ? '#00ff66' : t.colorHex} !important;" class="text-sm sm:text-base font-orbitron font-black">+${t.amount} €v</span>
                                 </div>
                             </div>`;
                         }).join('')}
