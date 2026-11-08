@@ -24,11 +24,19 @@ Object.assign(ui, {
     viewMarket(el) {
         if (!el || !state.user) return;
         const wrapper = document.createElement('div');
+        const canBuy = state.user?.role === 'TECNICO' && !state.user?.admin;
         
         let tabsHtml = `
-        <div role="tablist" aria-label="Mercados de suministro" class="flex flex-wrap gap-2 mb-6 border-b border-mars-border pb-2">
-            <button type="button" role="tab" aria-selected="${this.marketTab==='B2C'}" onclick="ui.setMarketTab('B2C')" class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase transition-colors whitespace-nowrap ${this.marketTab==='B2C'?'bg-mars-cyan text-black':'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'}">🚀 Catálogo Oficial (B2C)</button>
-            <button type="button" role="tab" aria-selected="${this.marketTab==='B2B'}" onclick="ui.setMarketTab('B2B')" class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase transition-colors whitespace-nowrap ${this.marketTab==='B2B'?'bg-mars-yellow text-black':'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'}">🤝 Mercado Secundario (B2B)</button>
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 border-b border-mars-border pb-3">
+            <div role="tablist" aria-label="Mercados de suministro" class="flex flex-wrap gap-2">
+                <button type="button" role="tab" aria-selected="${this.marketTab==='B2C'}" onclick="ui.setMarketTab('B2C')" class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase transition-colors whitespace-nowrap ${this.marketTab==='B2C'?'bg-mars-cyan text-black font-black shadow-[0_0_10px_rgba(0,240,255,0.4)]':'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'}">🚀 Catálogo Oficial (B2C)</button>
+                <button type="button" role="tab" aria-selected="${this.marketTab==='B2B'}" onclick="ui.setMarketTab('B2B')" class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase transition-colors whitespace-nowrap ${this.marketTab==='B2B'?'bg-mars-yellow text-black font-black shadow-[0_0_10px_rgba(255,204,0,0.4)]':'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'}">🤝 Mercado Secundario (B2B)</button>
+            </div>
+            ${canBuy ? `
+                <button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] bg-mars-magenta text-white hover:bg-white hover:text-mars-magenta px-4 py-2 font-black uppercase text-xs tracking-wider transition-all whitespace-nowrap shadow-[0_0_12px_rgba(255,0,85,0.4)] flex items-center justify-center gap-1.5 w-full sm:w-auto">
+                    <span>📡 + Solicitar Material I+D</span>
+                </button>
+            ` : ''}
         </div>`;
         wrapper.innerHTML = tabsHtml;
 
@@ -185,6 +193,7 @@ Object.assign(ui, {
     renderB2BMarket() {
         const canSell = state.user.role === 'TECNICO' && !state.user.admin;
         const canBuy = canSell;
+        const myCo = !state.user.admin ? state.data.companies[state.user.coId] : null;
         const b2b = (state.data.b2bMarket || []).filter(i => i && (!i.status || i.status === 'EN_VENTA'));
 
         let offersHtml = '';
@@ -194,6 +203,7 @@ Object.assign(ui, {
             offersHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">` + b2b.map(item => {
                 const isMine = !state.user.admin && item.sellerCoId === state.user.coId;
                 const isFinanzas = state.user.role === 'FINANZAS' || state.user.admin;
+                const pendingBuyOrder = myCo ? (myCo.orders || []).find(o => o.offerId === item.id && o.status === 'PENDIENTE_FINANZAS') : null;
                 let btn = '';
                 if (isMine) {
                     if (isFinanzas) {
@@ -207,10 +217,18 @@ Object.assign(ui, {
                     } else {
                         btn = `<span class="block w-full text-center bg-slate-800 text-slate-200 font-bold py-2.5 text-xs uppercase border border-slate-700 min-h-[44px] flex items-center justify-center">Tu Oferta Activa</span>`;
                     }
+                } else if (pendingBuyOrder) {
+                    if (state.user.role === 'FINANZAS') {
+                        btn = `<button type="button" onclick="ui.approveB2BBuyByFinanzas('${this.escapeHTML(pendingBuyOrder.id)}')" class="w-full min-h-[44px] bg-mars-yellow text-black font-black py-2.5 px-3 text-xs uppercase shadow-[0_0_12px_rgba(255,204,0,0.4)] hover:bg-white transition-all">[ 🤝 Autorizar Compra B2B (${Number(item.price).toFixed(2)} €v) ]</button>`;
+                    } else {
+                        btn = `<span class="w-full min-h-[44px] flex items-center justify-center bg-amber-950/60 border border-amber-500/60 text-amber-300 font-bold text-xs uppercase px-2 text-center rounded">⏳ Solicitado a Finanzas</span>`;
+                    }
                 } else if (canBuy) {
                     btn = `<button type="button" onclick="ui.modalBuyB2B('${this.escapeHTML(item.id)}')" class="w-full min-h-[44px] bg-mars-yellow/20 text-mars-yellow border border-mars-yellow hover:bg-mars-yellow hover:text-black font-black py-2.5 px-3 text-xs uppercase tracking-wider transition-all">Adquirir B2B</button>`;
+                } else if (state.user.role === 'FINANZAS') {
+                    btn = `<span class="block text-center text-slate-400 text-xs uppercase font-bold border border-slate-800 p-2.5 bg-black/40 min-h-[44px] flex items-center justify-center">I+D debe solicitar la compra</span>`;
                 } else {
-                    btn = `<span class="block text-center text-slate-300 text-xs uppercase font-bold border border-slate-700 p-2.5 bg-black/40">Solo Dpto. Técnico</span>`;
+                    btn = `<span class="block text-center text-slate-300 text-xs uppercase font-bold border border-slate-700 p-2.5 bg-black/40 min-h-[44px] flex items-center justify-center">Solo Dpto. Técnico</span>`;
                 }
 
                 const itemObs = item.obs || item.notes || 'Sin observaciones';
@@ -232,8 +250,17 @@ Object.assign(ui, {
 
         return `
         <div class="terminal-border bg-mars-card p-4 sm:p-6 mb-6 border-t-4 border-t-mars-yellow">
-            <h2 class="font-orbitron text-mars-yellow text-base sm:text-lg uppercase tracking-tighter">Mercado Secundario (B2B)</h2>
-            <p class="text-xs text-slate-300 uppercase mt-1 mb-6">Compra y venta entre startups. Toda transacción requiere validación en la Aduana Docente.</p>
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                <div>
+                    <h2 class="font-orbitron text-mars-yellow text-base sm:text-lg uppercase tracking-tighter">Mercado Secundario (B2B)</h2>
+                    <p class="text-xs text-slate-300 uppercase mt-1">Compra y venta entre startups. Toda transacción requiere validación en la Aduana Docente.</p>
+                </div>
+                ${canBuy ? `
+                    <button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] bg-mars-magenta text-white hover:bg-white hover:text-mars-magenta px-4 py-2 font-black uppercase text-xs tracking-wider transition-all whitespace-nowrap shadow-[0_0_12px_rgba(255,0,85,0.4)] flex items-center justify-center gap-1.5 w-full sm:w-auto">
+                        <span>📡 + Solicitar Material I+D</span>
+                    </button>
+                ` : ''}
+            </div>
             ${offersHtml}
         </div>`;
     },

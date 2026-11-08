@@ -269,24 +269,24 @@ Object.assign(ui, {
                                     const opCosts = state.getCompanyOperatingCosts ? state.getCompanyOperatingCosts(c) : { gross: c.ledger.filter(l => l.delta < 0).reduce((s, l) => s + Math.abs(Number(l.delta)||0), 0), sponsorReduction: 0, net: c.ledger.filter(l => l.delta < 0).reduce((s, l) => s + Math.abs(Number(l.delta)||0), 0) };
                                     
                                     const tierStyles = {
-                                        'ORO': 'text-[#ffd700] border-[#ffd700]',
-                                        'PLATA': 'text-[#c0c0c0] border-[#c0c0c0]',
-                                        'BRONCE': 'text-[#cd7f32] border-[#cd7f32]',
-                                        'COBRE': 'text-[#b87333] border-[#b87333]',
-                                        'COLABORADOR': 'text-mars-cyan border-mars-cyan'
+                                        'ORO': 'style="color: #FFD700 !important; border: 1.5px solid #FFD700 !important; background-color: rgba(255, 215, 0, 0.15) !important;"',
+                                        'PLATA': 'style="color: #E2E8F0 !important; border: 1.5px solid #E2E8F0 !important; background-color: rgba(226, 232, 240, 0.15) !important;"',
+                                        'BRONCE': 'style="color: #CD7F32 !important; border: 1.5px solid #CD7F32 !important; background-color: rgba(205, 127, 50, 0.15) !important;"',
+                                        'COBRE': 'style="color: #B87333 !important; border: 1.5px solid #B87333 !important; background-color: rgba(184, 115, 51, 0.15) !important;"',
+                                        'COLABORADOR': 'style="color: #00F0FF !important; border: 1.5px solid #00F0FF !important; background-color: rgba(0, 240, 255, 0.15) !important;"'
                                     };
-                                    const cl = tierStyles[c.sponsorAwarded] || 'text-slate-300 border-slate-700';
+                                    const cl = tierStyles[c.sponsorAwarded] || 'class="text-slate-300 border border-slate-700 bg-slate-900"';
 
                                     let sponsorHtml = '';
                                     if(canSponsor) {
-                                        sponsorHtml = `<button onclick="ui.modalAssignSponsor('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-slate-900 border ${cl} ${cl.split(' ')[0]} px-3 py-1.5 font-bold text-xs uppercase hover:bg-white hover:text-black transition-all whitespace-nowrap">${c.sponsorAwarded ? `[${this.escapeHTML(c.sponsorAwarded)}] Editar` : 'Asignar Patrocinio'}</button>`;
+                                        sponsorHtml = `<button onclick="ui.modalAssignSponsor('${this.escapeHTML(cid)}')" ${cl} class="min-h-[44px] px-3 py-1.5 font-bold text-xs uppercase hover:bg-white hover:text-black transition-all whitespace-nowrap rounded">${c.sponsorAwarded ? `[${this.escapeHTML(c.sponsorAwarded)}] Editar` : 'Asignar Patrocinio'}</button>`;
                                     } else {
                                         if(c.sponsorAwarded) {
                                             let spName = c.sponsorData?.name ? ` - ${this.escapeHTML(c.sponsorData.name)}` : '';
                                             let spLogo = c.sponsorData?.logo ? `<img src="${this.escapeHTML(c.sponsorData.logo)}" alt="Logo patrocinador" width="16" height="16" class="h-4 inline-block ml-2 rounded-sm object-contain bg-black/50 p-0.5">` : '';
-                                            sponsorHtml = `<span class="${cl} font-bold text-xs uppercase border px-2 py-1 bg-black/50 flex items-center w-max gap-1">[PATROCINIO: ${this.escapeHTML(c.sponsorAwarded)}${spName}]${spLogo}</span>`;
+                                            sponsorHtml = `<span ${cl} class="font-bold text-xs uppercase px-2 py-1 flex items-center w-max gap-1 rounded">[PATROCINIO: ${this.escapeHTML(c.sponsorAwarded)}${spName}]${spLogo}</span>`;
                                         } else {
-                                            sponsorHtml = `<span class="text-slate-300 font-bold text-xs uppercase border border-slate-700 px-2 py-1 bg-slate-900 block w-max">[SIN PATROCINIO]</span>`;
+                                            sponsorHtml = `<span class="text-slate-300 font-bold text-xs uppercase border border-slate-700 px-2 py-1 bg-slate-900 block w-max rounded">[SIN PATROCINIO]</span>`;
                                         }
                                     }
 
@@ -2318,11 +2318,11 @@ Object.assign(ui, {
                 <div>
                     <label for="sp-tier" class="text-xs text-mars-yellow uppercase font-bold block mb-1">Nivel de Patrocinio</label>
                     <select id="sp-tier" onchange="const amounts = { ORO: 500, PLATA: 400, BRONCE: 250, COBRE: 150, COLABORADOR: 100 }; document.getElementById('sp-amount').value = amounts[this.value] || 100;" class="min-h-[44px] w-full bg-slate-900 border border-mars-yellow p-2.5 text-xs text-white font-bold uppercase outline-none">
-                        <option value="ORO" ${currentTier==='ORO'?'selected':''}>🥇 Nivel ORO (+500 €v)</option>
-                        <option value="PLATA" ${currentTier==='PLATA'?'selected':''}>🥈 Nivel PLATA (+400 €v)</option>
-                        <option value="BRONCE" ${currentTier==='BRONCE'?'selected':''}>🥉 Nivel BRONCE (+250 €v)</option>
-                        <option value="COBRE" ${currentTier==='COBRE'?'selected':''}>🔶 Nivel COBRE (+150 €v)</option>
-                        <option value="COLABORADOR" ${currentTier==='COLABORADOR'?'selected':''}>🤝 Nivel COLABORADOR (+100 €v)</option>
+                        <option value="ORO" style="color: #FFD700; background: #000;" ${currentTier==='ORO'?'selected':''}>🥇 Nivel ORO (+500 €v)</option>
+                        <option value="PLATA" style="color: #E2E8F0; background: #000;" ${currentTier==='PLATA'?'selected':''}>🥈 Nivel PLATA (+400 €v)</option>
+                        <option value="BRONCE" style="color: #CD7F32; background: #000;" ${currentTier==='BRONCE'?'selected':''}>🥉 Nivel BRONCE (+250 €v)</option>
+                        <option value="COBRE" style="color: #B87333; background: #000;" ${currentTier==='COBRE'?'selected':''}>🔶 Nivel COBRE (+150 €v)</option>
+                        <option value="COLABORADOR" style="color: #00F0FF; background: #000;" ${currentTier==='COLABORADOR'?'selected':''}>🤝 Nivel COLABORADOR (+100 €v)</option>
                     </select>
                 </div>
                 <div>

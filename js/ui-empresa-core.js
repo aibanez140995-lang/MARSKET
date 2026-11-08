@@ -2,6 +2,19 @@
 // --- MÓDULO CORE: LOGIN EN 2 PASOS (ZERO-KNOWLEDGE), NOTIFICACIONES Y DOSSIER ACADÉMICO (v1.1.44) ---
 
 Object.assign(ui, {
+    getSponsorTierBadge(tier) {
+        if (!tier) return '';
+        const styles = {
+            'ORO': 'color: #FFD700 !important; border: 1px solid #FFD700 !important; background-color: rgba(255, 215, 0, 0.18) !important;',
+            'PLATA': 'color: #E2E8F0 !important; border: 1px solid #E2E8F0 !important; background-color: rgba(226, 232, 240, 0.18) !important;',
+            'BRONCE': 'color: #CD7F32 !important; border: 1px solid #CD7F32 !important; background-color: rgba(205, 127, 50, 0.20) !important;',
+            'COBRE': 'color: #B87333 !important; border: 1px solid #B87333 !important; background-color: rgba(184, 115, 51, 0.20) !important;',
+            'COLABORADOR': 'color: #00F0FF !important; border: 1px solid #00F0FF !important; background-color: rgba(0, 240, 255, 0.18) !important;'
+        };
+        const s = styles[tier] || 'color: #94a3b8; border: 1px solid #475569; background-color: rgba(15, 23, 42, 0.6);';
+        return `<span style="${s}" class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded uppercase whitespace-nowrap">[${this.escapeHTML(tier)}]</span>`;
+    },
+
     viewLogin(el) {
         if (!el) return;
         const verifiedCoId = typeof auth !== 'undefined' ? auth.verifiedCoId : null;
@@ -556,6 +569,7 @@ Object.assign(ui, {
         const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
         const opCosts = state.getCompanyOperatingCosts ? state.getCompanyOperatingCosts(co) : { gross: grossCosts, sponsorReduction: sponsorAmt, net: grossCosts };
         const netOpCosts = (opCosts && typeof opCosts.net === 'number') ? opCosts.net : ((typeof opCosts === 'number') ? opCosts : grossCosts);
+        const sponsorTierLabel = co.sponsorAwarded ? (co.sponsorData?.tier || co.sponsorAwarded || 'SPONSOR') : null;
 
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
         const docs = co.deliverables || {};
@@ -1225,7 +1239,7 @@ Object.assign(ui, {
                     <div class="bg-black/50 p-3 sm:p-4 border border-slate-800">
                         <span class="text-[10px] sm:text-xs text-slate-400 font-bold uppercase block mb-1">Coste Neto Operativo</span>
                         <p class="text-base sm:text-xl font-orbitron font-black text-mars-cyan">${netOpCosts.toFixed(2)} €v</p>
-                        <span class="text-[10px] text-slate-500 font-mono">${sponsorAmt > 0 ? `Patrocinio: -${sponsorAmt.toFixed(2)} €v` : 'Sin patrocinios'}</span>
+                        <span class="text-[10px] text-slate-500 font-mono">${sponsorAmt > 0 ? `Patrocinio: -${sponsorAmt.toFixed(2)} €v ${sponsorTierLabel ? this.getSponsorTierBadge(sponsorTierLabel) : ''}` : 'Sin patrocinios'}</span>
                     </div>
                     <div class="bg-black/50 p-3 sm:p-4 border border-slate-800">
                         <span class="text-[10px] sm:text-xs text-slate-400 font-bold uppercase block mb-1">Progreso Hitos (Fase ${this.escapeHTML(phaseInfo.key)})</span>
@@ -3556,9 +3570,16 @@ Object.assign(ui, {
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 mb-3">
                         ${sponsorTiersDef.map(t => {
                             const isMyTier = sponsorAwarded === t.id;
+                            const bgMap = {
+                                'ORO': 'rgba(255, 215, 0, 0.14)',
+                                'PLATA': 'rgba(226, 232, 240, 0.14)',
+                                'BRONCE': 'rgba(205, 127, 50, 0.16)',
+                                'COBRE': 'rgba(184, 115, 51, 0.16)',
+                                'COLABORADOR': 'rgba(0, 240, 255, 0.14)'
+                            };
                             const cardStyle = isMyTier
-                                ? `background-color: rgba(255, 215, 0, 0.15) !important; border: 2px solid ${t.colorHex} !important; box-shadow: 0 0 20px ${t.colorHex}55 !important;`
-                                : `background-color: rgba(15, 23, 42, 0.6) !important; border: 1.5px solid ${t.colorHex}88 !important;`;
+                                ? `background: ${bgMap[t.id] || 'rgba(255, 215, 0, 0.2)'} !important; border: 2px solid ${t.colorHex} !important; box-shadow: 0 0 25px ${t.colorHex}77 !important;`
+                                : `background: ${bgMap[t.id] || 'rgba(15, 23, 42, 0.7)'} !important; border: 1.5px solid ${t.colorHex} !important; box-shadow: 0 0 10px ${t.colorHex}33 !important;`;
                             return `
                             <div style="${cardStyle}" class="p-3 rounded flex flex-col justify-between transition-all">
                                 <div>

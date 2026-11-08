@@ -60,7 +60,7 @@ Object.assign(ui, {
             <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-amber-400 text-center">
                 <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Reducción Patrocinio</span>
                 <p class="text-lg sm:text-xl font-orbitron font-black text-amber-400">${sponsorAmt > 0 ? `-${sponsorAmt.toFixed(2)} €v` : '0.00 €v'}</p>
-                <span class="text-[10px] text-amber-400/80 block mt-1 font-mono">${(sponsorAmt > 0 && sponsorTierLabel) ? `[${this.escapeHTML(sponsorTierLabel)}] Descuento aplicado` : 'Sin patrocinios activos'}</span>
+                <span class="text-[10px] text-amber-400/80 block mt-1 font-mono">${(sponsorAmt > 0 && sponsorTierLabel) ? `${this.getSponsorTierBadge ? this.getSponsorTierBadge(sponsorTierLabel) : `[${this.escapeHTML(sponsorTierLabel)}]`} Descuento aplicado` : 'Sin patrocinios activos'}</span>
             </div>
             <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-cyan text-center">
                 <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Coste Operativo Neto</span>
@@ -679,6 +679,10 @@ Object.assign(ui, {
         return this.approveMktCamp(campId);
     },
 
+    rejectMktPackage(campId) {
+        return this.rejectMktCamp(campId);
+    },
+
     rejectMktCamp(campId) {
         if (!state.user || state.user.role !== 'FINANZAS') return;
         const co = state.data.companies[state.user.coId];
@@ -1081,6 +1085,111 @@ Object.assign(ui, {
             </div>
         </div>`;
 
+        const pendingOrdersList = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS');
+        const pendingB2BSales = (state.data.b2bMarket || []).filter(o => o && o.sellerCoId === state.user.coId && o.status === 'PENDIENTE_FINANZAS');
+        const pendingMktPacks = (co.marketingCampaigns || []).filter(c => c.status === 'PENDIENTE_FINANZAS');
+        const totalPendingFinCount = pendingOrdersList.length + pendingB2BSales.length + pendingMktPacks.length;
+
+        let pendingAuthorizationsHtml = '';
+        if (isFinanzas && totalPendingFinCount > 0) {
+            pendingAuthorizationsHtml = `
+            <div class="terminal-border p-4 sm:p-5 mb-6 border-t-4 border-t-mars-yellow bg-slate-900 shadow-md">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 border-b border-slate-800 pb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-mars-yellow animate-ping"></span>
+                        <h3 class="font-orbitron text-mars-yellow font-bold text-xs sm:text-sm uppercase tracking-tight">
+                            ⚡ Bandeja de Autorización Presupuestaria (${totalPendingFinCount} pendientes)
+                        </h3>
+                    </div>
+                    <span class="text-[10px] font-mono text-slate-400 uppercase">Requieren Acción Financiera</span>
+                </div>
+                <div class="space-y-3">
+                    ${pendingOrdersList.map(order => {
+                        const isB2BBuy = order.type === 'B2B_BUY_REQUEST';
+                        return `
+                        <div class="bg-black/70 border border-amber-500/50 p-3.5 rounded flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                    <span class="px-2 py-0.5 text-[10px] font-black uppercase rounded ${isB2BBuy ? 'bg-amber-950 text-mars-yellow border border-amber-500' : 'bg-cyan-950 text-mars-cyan border border-cyan-500'}">
+                                        ${isB2BBuy ? '🤝 MERCADO B2B • COMPRA DE 2ª MANO' : '🧪 I+D • PEDIDO DE MATERIALES'}
+                                    </span>
+                                    <span class="text-xs text-slate-400 font-mono">Orden #${this.escapeHTML(order.id)}</span>
+                                </div>
+                                <h4 class="text-white font-bold text-xs sm:text-sm uppercase">
+                                    ${isB2BBuy ? `${this.escapeHTML(order.items[0]?.name || 'Pieza B2B')} (Vendedor: ${this.escapeHTML(order.sellerName || 'Otra Empresa')})` : `${(order.items || []).length} Partidas solicitadas por I+D`}
+                                </h4>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-mars-green font-mono font-bold text-sm">${Number(order.total).toFixed(2)} €v</span>
+                                    ${order.driveUrl ? `<a href="${encodeURI(order.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-mars-cyan underline font-mono text-[11px]">[Docs ↗]</a>` : ''}
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0 w-full md:w-auto">
+                                ${isB2BBuy ? `
+                                    <button type="button" onclick="ui.approveB2BBuyByFinanzas('${this.escapeHTML(order.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-yellow text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.4)]">
+                                        [ 🤝 Aprobar Compra B2B y Bloquear en Aduana ]
+                                    </button>
+                                    <button type="button" onclick="ui.rejectOrder('${this.escapeHTML(order.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all">
+                                        Descartar
+                                    </button>
+                                ` : `
+                                    <button type="button" onclick="ui.modalReviewOrderFinanzas('${this.escapeHTML(order.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-green text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">
+                                        Revisar y Autorizar Partidas
+                                    </button>
+                                    <button type="button" onclick="ui.modalRejectOrderWithDoc('${this.escapeHTML(order.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all">
+                                        Denegar Orden
+                                    </button>
+                                `}
+                            </div>
+                        </div>`;
+                    }).join('')}
+
+                    ${pendingB2BSales.map(offer => `
+                        <div class="bg-black/70 border border-amber-500/50 p-3.5 rounded flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                    <span class="px-2 py-0.5 text-[10px] font-black uppercase rounded bg-yellow-950 text-mars-yellow border border-yellow-500">
+                                        🤝 PROPUESTA DE VENTA B2B (I+D)
+                                    </span>
+                                </div>
+                                <h4 class="text-white font-bold text-xs sm:text-sm uppercase">${this.escapeHTML(offer.itemName)} (x${Number(offer.qty) || 1})</h4>
+                                <span class="text-mars-green font-mono font-bold text-sm mt-1 block">Precio propuesto: ${Number(offer.price).toFixed(2)} €v</span>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0 w-full md:w-auto">
+                                <button type="button" onclick="ui.approveB2BSell('${this.escapeHTML(offer.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-green text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all">
+                                    Aprobar y Publicar B2B
+                                </button>
+                                <button type="button" onclick="ui.modalRejectB2BSell('${this.escapeHTML(offer.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all">
+                                    Rechazar / Contraoferta
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+
+                    ${pendingMktPacks.map(camp => `
+                        <div class="bg-black/70 border border-amber-500/50 p-3.5 rounded flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                    <span class="px-2 py-0.5 text-[10px] font-black uppercase rounded bg-yellow-950 text-mars-yellow border border-yellow-500">
+                                        📢 SOLICITUD PACK MARKETING
+                                    </span>
+                                </div>
+                                <h4 class="text-white font-bold text-xs sm:text-sm uppercase">${this.escapeHTML(camp.packageName || camp.type || 'Campaña')}</h4>
+                                <span class="text-mars-green font-mono font-bold text-sm mt-1 block">${Number(camp.price || camp.cost || 0).toFixed(2)} €v</span>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0 w-full md:w-auto">
+                                <button type="button" onclick="ui.approveMktPackage('${this.escapeHTML(camp.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-green text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all">
+                                    Autorizar Pack
+                                </button>
+                                <button type="button" onclick="ui.rejectMktPackage('${this.escapeHTML(camp.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all">
+                                    Denegar Pack
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>`;
+        }
+
         const debtAlertHtml = co.balance < 0 ? `
         <div class="terminal-border bg-red-950/40 border-2 border-red-500/80 p-4 mb-6 text-red-200 shadow-[0_0_15px_rgba(255,0,0,0.2)] animate-pulse">
             <div class="flex items-center gap-3">
@@ -1094,6 +1203,7 @@ Object.assign(ui, {
 
         wrapper.innerHTML = `
         ${debtAlertHtml}
+        ${pendingAuthorizationsHtml}
         ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
         ${this.renderRoleActivePhaseDeliverableBanner ? this.renderRoleActivePhaseDeliverableBanner(co) : ''}
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1107,7 +1217,7 @@ Object.assign(ui, {
                     <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-cyan text-center">
                         <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Coste Neto</span>
                         <p class="text-lg sm:text-xl font-orbitron font-black text-mars-cyan">${netOpCosts.toFixed(2)} €v</p>
-                        ${sponsorAmt > 0 ? `<span class="text-[10px] text-amber-400 font-mono block mt-0.5">(Bruto: ${grossCosts.toFixed(2)} | Patr: -${sponsorAmt.toFixed(2)}${sponsorTierLabel ? ` [${this.escapeHTML(sponsorTierLabel)}]` : ''})</span>` : ''}
+                        ${sponsorAmt > 0 ? `<span class="text-[10px] text-amber-400 font-mono block mt-0.5 text-slate-300">(Bruto: ${grossCosts.toFixed(2)} | Patr: -${sponsorAmt.toFixed(2)}${sponsorTierLabel ? ` ${this.getSponsorTierBadge ? this.getSponsorTierBadge(sponsorTierLabel) : `[${this.escapeHTML(sponsorTierLabel)}]`}` : ''})</span>` : ''}
                     </div>
                     <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-yellow text-center">
                         <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Gasto Acumulado</span>

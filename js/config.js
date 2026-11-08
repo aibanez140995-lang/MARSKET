@@ -1,14 +1,14 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.74) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.75) ---
 
-const APP_VERSION = "1.1.74";
+const APP_VERSION = "1.1.75";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
-    ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
-    PLATA: { id: 'PLATA', name: 'Nivel PLATA', amount: 400, badgeClass: 'text-[#c0c0c0] border-[#c0c0c0]', emoji: '🥈' },
-    BRONCE: { id: 'BRONCE', name: 'Nivel BRONCE', amount: 250, badgeClass: 'text-[#cd7f32] border-[#cd7f32]', emoji: '🥉' },
-    COBRE: { id: 'COBRE', name: 'Nivel COBRE', amount: 150, badgeClass: 'text-[#b87333] border-[#b87333]', emoji: '🔶' },
-    COLABORADOR: { id: 'COLABORADOR', name: 'Nivel COLABORADOR', amount: 100, badgeClass: 'text-mars-cyan border-mars-cyan', emoji: '🤝' }
+    ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
+    PLATA: { id: 'PLATA', name: 'Nivel PLATA', amount: 400, colorHex: '#E2E8F0', badgeClass: 'text-[#c0c0c0] border-[#c0c0c0]', emoji: '🥈' },
+    BRONCE: { id: 'BRONCE', name: 'Nivel BRONCE', amount: 250, colorHex: '#CD7F32', badgeClass: 'text-[#cd7f32] border-[#cd7f32]', emoji: '🥉' },
+    COBRE: { id: 'COBRE', name: 'Nivel COBRE', amount: 150, colorHex: '#B87333', badgeClass: 'text-[#b87333] border-[#b87333]', emoji: '🔶' },
+    COLABORADOR: { id: 'COLABORADOR', name: 'Nivel COLABORADOR', amount: 100, colorHex: '#00F0FF', badgeClass: 'text-mars-cyan border-mars-cyan', emoji: '🤝' }
 });
 
 const AEE_SANCTION_ARTICLES_DEF = Object.freeze([
@@ -1097,8 +1097,26 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.74
+// Changelog Oficial de Producción v1.1.75
 const APP_CHANGELOG = [
+    {
+      version: "1.1.75",
+      date: new Date().toISOString().split('T')[0],
+      title: "Bandeja de Autorizaciones en Finanzas, Visibilidad B2B, Botón I+D Universal y Purga Anti-Caché",
+      items: [
+        "Bandeja de Autorización Presupuestaria en Finanzas: Integración en la pantalla principal de Finanzas & ECO de un panel de gestión inmediata para órdenes de compra B2B de 2ª mano, pedidos de I+D, propuestas de venta y packs de marketing con botones de acción directa en 1 clic.",
+        "Visibilidad de Estado B2B en Mercado Secundario: Indicador en tiempo real de 'Solicitado a Finanzas' en la tarjeta del artículo cuando el Técnico solicita la compra, y botón directo de autorización para Finanzas desde el propio mercado.",
+        "Botón de Material I+D Universal en Mercado: El acceso táctico [+ Solicitar Material I+D] se ubica de forma fija en la cabecera superior del Mercado junto a las pestañas B2C y B2B, garantizando máxima visibilidad en todo momento.",
+        "Depuración Total de Entregables de Matemáticas en Técnico: Supresión definitiva de residuos de entregables de Matemáticas y FyQ en la vista de vuelo técnico, centralizando la gestión en Mis Entregables y Operaciones.",
+        "Paleta Metálica Real Universal e Inmune a Tailwind: Implementación de colores metálicos puros inline (#FFD700 Oro, #E2E8F0 Plata, #CD7F32 Bronce, #B87333 Cobre, #00F0FF Colaborador) en el panel docente, modal de asignación y tarjetas de KPI de todos los roles.",
+        "Blindaje Anti-Caché y Actualización Automática: Configuración HTTP no-store para index.html y sw.js, con recarga automática sin parpadeo al detectar una nueva versión en producción."
+      ],
+      highlights: [
+        { type: "FINANZAS", text: "Bandeja de autorizaciones presupuestarias directas para compras B2B y pedidos I+D en Finanzas & ECO." },
+        { type: "B2B/I+D", text: "Botón permanente [+ Solicitar Material I+D] en la cabecera del mercado y estado de compra en tiempo real." },
+        { type: "CACHÉ", text: "Purga de caché y recarga automática transparente para recibir siempre la última versión." }
+      ]
+    },
     {
       version: "1.1.74",
       date: new Date().toISOString().split('T')[0],

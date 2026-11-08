@@ -1292,7 +1292,7 @@ Object.assign(ui, {
                             </div>
                             ${(sponsorAmt > 0 && sponsorTierLabel) ? `
                             <div class="flex justify-between items-center text-xs">
-                                <span class="text-mars-yellow uppercase font-bold">Reducción Patrocinio (${this.escapeHTML(sponsorTierLabel)}):</span>
+                                <span class="text-mars-yellow uppercase font-bold">Reducción Patrocinio ${this.getSponsorTierBadge ? this.getSponsorTierBadge(sponsorTierLabel) : `(${this.escapeHTML(sponsorTierLabel)})`}:</span>
                                 <span class="text-mars-yellow font-mono font-bold">-${sponsorAmt.toFixed(2)} €v</span>
                             </div>` : ''}
                             <div class="flex justify-between items-center text-xs border-t border-slate-800 pt-1.5">

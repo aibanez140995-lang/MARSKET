@@ -1,26 +1,26 @@
-// sw.js — MARS-KET 2.0 Service Worker (Caché estática versionada v1.1.74, excluyendo /api/*)
-const CACHE_NAME = 'marsket-cache-v1.1.74';
+// sw.js — MARS-KET 2.0 Service Worker (Caché estática versionada v1.1.75, excluyendo /api/*)
+const CACHE_NAME = 'marsket-cache-v1.1.75';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './logo.png',
   './logo.jpg',
-  './manifest.json?v=1.1.74',
-  './css/tailwind.css?v=1.1.74',
-  './js/lexicon-data.js?v=1.1.74',
-  './js/config.js?v=1.1.74',
-  './js/state.js?v=1.1.74',
-  './js/auth.js?v=1.1.74',
-  './js/ui-core.js?v=1.1.74',
-  './js/ui-empresa-core.js?v=1.1.74',
-  './js/ui-empresa-market.js?v=1.1.74',
-  './js/ui-empresa-tech.js?v=1.1.74',
-  './js/ui-empresa-finance.js?v=1.1.74',
-  './js/ui-empresa-ops.js?v=1.1.74',
-  './js/ui-empresa-gov-brand.js?v=1.1.74',
-  './js/ui-docente-core.js?v=1.1.74',
-  './js/ui-docente-eval.js?v=1.1.74',
-  './js/ui-docente-management.js?v=1.1.74'
+  './manifest.json?v=1.1.75',
+  './css/tailwind.css?v=1.1.75',
+  './js/lexicon-data.js?v=1.1.75',
+  './js/config.js?v=1.1.75',
+  './js/state.js?v=1.1.75',
+  './js/auth.js?v=1.1.75',
+  './js/ui-core.js?v=1.1.75',
+  './js/ui-empresa-core.js?v=1.1.75',
+  './js/ui-empresa-market.js?v=1.1.75',
+  './js/ui-empresa-tech.js?v=1.1.75',
+  './js/ui-empresa-finance.js?v=1.1.75',
+  './js/ui-empresa-ops.js?v=1.1.75',
+  './js/ui-empresa-gov-brand.js?v=1.1.75',
+  './js/ui-docente-core.js?v=1.1.75',
+  './js/ui-docente-eval.js?v=1.1.75',
+  './js/ui-docente-management.js?v=1.1.75'
 ].map((path) => new URL(path, self.registration.scope).toString());
 
 self.addEventListener('install', (event) => {
@@ -51,9 +51,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-First para garantizar que siempre se sirva la versión más reciente del servidor, con fallback a caché offline
+  // Network-First con cache no-store para garantizar que siempre se sirva la versión más reciente del servidor
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: 'no-store' })
       .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && url.origin === self.location.origin) {
           const responseClone = networkResponse.clone();

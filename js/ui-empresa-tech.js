@@ -2,11 +2,6 @@
 // --- MÓDULO I+D: BANCO DE PRUEBAS (en mm), MATEMÁTICAS, ENTREGABLES CIENTÍFICOS Y TALLER BOM (v1.1.44) ---
 
 Object.assign(ui, {
-    setTechDocTab(tab) {
-        this.techDocTab = tab;
-        this.render();
-    },
-
     techSendHojaTaller() {
         if (!state.user) return;
         if (!state.user.admin && this.isDeliverableLocked('hoja_taller_fyq')) {
@@ -27,11 +22,9 @@ Object.assign(ui, {
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
         
-        const docs = co.deliverables || {};
         co.flightTests = co.flightTests || [];
         co.orders = co.orders || [];
         
-        const activeDocTab = this.techDocTab || 'FYQ';
         const wrapper = document.createElement('div');
         
         let ftHtml = co.flightTests.map(f => {
@@ -51,50 +44,6 @@ Object.assign(ui, {
                 <td class="py-2.5 font-orbitron font-mono tabular-nums text-mars-yellow font-black">${effVal.toFixed(2)}</td>
             </tr>`;
         }).join('') || `<tr><td colspan="6" class="p-4"><div class="terminal-border bg-slate-950 p-4 text-center border-dashed border-mars-yellow/40"><p class="text-xs text-mars-yellow font-bold uppercase mb-1">🚀 Banco de Pruebas sin Ensayos</p><p class="text-[11px] text-slate-400">Introduce los reactivos y la altura arriba para registrar el primer vuelo de tu prototipo.</p></div></td></tr>`;
-
-        const isFyqAllLocked = !state.user?.admin && ['preliminaryReport', 'technicalReport'].every(k => this.isDeliverableLocked(k, co));
-        const isMatAllLocked = !state.user?.admin && ['goniometerEvidence', 'mathReportDist', 'mathReportTwoPoints', 'mathReportFinal'].every(k => this.isDeliverableLocked(k, co));
-
-        let docSectionContent = '';
-        if (activeDocTab === 'FYQ') {
-            docSectionContent = `
-                <div class="mb-3 flex flex-wrap justify-between items-center gap-2">
-                    <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan text-xs font-black px-2.5 py-1 uppercase">Peso en Proyecto: 25% Global</span>
-                    <span class="text-xs text-slate-300 uppercase font-bold">Resp: Dpto. Técnico</span>
-                </div>
-                <p class="text-xs text-slate-300 mb-3 uppercase leading-relaxed">Sube únicamente enlaces verificados de Google Drive con permisos de lectura compartidos ("Cualquiera con el enlace puede ver").</p>
-                ${state.data.config.guidelines.techReportNotes ? `<p class="text-xs text-mars-yellow mb-3 italic">Info: ${this.escapeHTML(state.data.config.guidelines.techReportNotes)}</p>` : ''}
-                ${state.data.config.guidelines.techReportDocUrl ? `<a href="${this.escapeHTML(state.data.config.guidelines.techReportDocUrl)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] flex items-center justify-center border border-mars-cyan text-mars-cyan text-xs py-2.5 mb-4 font-bold uppercase hover:bg-mars-cyan hover:text-black transition-colors">Abrir Guía Oficial FYQ</a>` : ''}
-                
-                ${isFyqAllLocked ? `
-                    <div class="terminal-border border-dashed p-6 text-center text-slate-400 italic text-xs uppercase">
-                        🔒 No hay entregables activos en esta fase. Se habilitarán según el cronograma oficial.
-                    </div>
-                ` : `
-                    ${this.renderDriveLinkBox('1. Hoja de Registro Preliminar (Fase I)', 'Enlace Drive al presupuesto teórico, materiales del catálogo, altura estimada, boceto y foto del prototipo montado sin combustible.', 'preliminaryReport', docs.preliminaryReport)}
-                    ${this.renderDriveLinkBox('2. Informe Técnico Exhaustivo (Fase IV)', 'Enlace Drive al documento formal con marco químico estequiométrico, análisis físico-aerodinámico, balance definitivo y análisis V2.0.', 'technicalReport', docs.technicalReport)}
-                `}
-            `;
-        } else {
-            docSectionContent = `
-                <div class="mb-3 flex flex-wrap justify-between items-center gap-2">
-                    <span class="bg-mars-yellow/10 border border-mars-yellow text-mars-yellow text-xs font-black px-2.5 py-1 uppercase">Peso en Proyecto: 5% Global (25% cada criterio)</span>
-                    <span class="text-xs text-slate-300 uppercase font-bold">Resp: Dpto. Operaciones e IA</span>
-                </div>
-                <p class="text-xs text-slate-300 mb-4 uppercase leading-relaxed">Entregables trigonométricos y constructivos para Matemáticas (Solo Enlaces Drive/Cloud).</p>
-                
-                ${isMatAllLocked ? `
-                    <div class="terminal-border border-dashed p-6 text-center text-slate-400 italic text-xs uppercase">
-                        🔒 No hay entregables activos en esta fase. Se habilitarán según el cronograma oficial.
-                    </div>
-                ` : `
-                    ${this.renderDriveLinkBox('1. Elaboración de Goniómetro/s (25% MAT)', 'Enlace a carpeta/documento Drive con fotografías, diseño constructivo y calibración del goniómetro casero.', 'goniometerEvidence', docs.goniometerEvidence)}
-                    ${this.renderDriveLinkBox('2. Informe Empírico: Distancia Conocida (25% MAT)', 'Enlace Drive al cálculo trigonométrico de apogeo con datos objetivos desde una distancia conocida a la base.', 'mathReportDist', docs.mathReportDist)}
-                    ${this.renderDriveLinkBox('3. Informe Empírico: Dos Mediciones (25% MAT)', 'Enlace Drive al cálculo de altitud mediante sistema de dos mediciones tomadas a una distancia de separación conocida.', 'mathReportTwoPoints', docs.mathReportTwoPoints)}
-                    ${this.renderDriveLinkBox('4. Informe Técnico Final Comparativo (25% MAT)', 'Enlace Drive al análisis de coherencia comparando resultados anteriores y parámetros adicionales.', 'mathReportFinal', docs.mathReportFinal)}
-                `}
-            `;
-        }
 
         // --- Panel de Seguimiento de Órdenes I+D (Técnico) ---
         const techFilter = this.techOrdersFilter || 'EN_PROCESO';
@@ -679,7 +628,7 @@ Object.assign(ui, {
                             </div>
                             ${(sponsorAmt > 0 && sponsorTierLabel) ? `
                             <div class="flex justify-between items-center text-xs">
-                                <span class="text-amber-400 uppercase font-bold">Reducción Patrocinio (${this.escapeHTML(sponsorTierLabel)}):</span>
+                                <span class="text-amber-400 uppercase font-bold">Reducción Patrocinio ${this.getSponsorTierBadge ? this.getSponsorTierBadge(sponsorTierLabel) : `(${this.escapeHTML(sponsorTierLabel)})`}:</span>
                                 <span class="text-amber-400 font-mono font-bold">-${sponsorAmt.toFixed(2)} €v</span>
                             </div>` : ''}
                             <div class="flex justify-between items-center text-xs border-t border-slate-800 pt-1.5">
@@ -974,5 +923,10 @@ Object.assign(ui, {
 
     submitCustom() {
         return this.submitSpecialItem();
+    },
+
+    setTechDocTab(tab) {
+        this.techDocTab = tab;
+        this.render();
     }
 });
