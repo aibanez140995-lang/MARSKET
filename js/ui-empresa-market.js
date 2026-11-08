@@ -127,9 +127,6 @@ Object.assign(ui, {
             </div>
             ${canBuy ? `
             <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                <button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] bg-mars-magenta text-white hover:bg-white hover:text-mars-magenta px-3.5 py-2.5 font-black uppercase text-xs tracking-wider transition-all whitespace-nowrap shadow-[0_0_10px_rgba(255,0,85,0.3)]">
-                    📡 + Solicitar Material I+D
-                </button>
                 <button type="button" onclick="ui.navigate('orders')" class="min-h-[44px] bg-slate-900 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-3.5 py-2.5 font-bold uppercase text-xs tracking-wider transition-all whitespace-nowrap shadow-sm">
                     Mis Órdenes (${((state.data.companies[state.user.coId]?.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS' || o.status === 'APROBADO_FINANZAS')).length})
                 </button>
@@ -257,11 +254,6 @@ Object.assign(ui, {
                     <h2 class="font-orbitron text-mars-yellow text-base sm:text-lg uppercase tracking-tighter">Mercado Secundario (B2B)</h2>
                     <p class="text-xs text-slate-300 uppercase mt-1">Compra y venta entre startups. Toda transacción requiere validación en la Aduana Docente.</p>
                 </div>
-                ${canBuy ? `
-                    <button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] bg-mars-magenta text-white hover:bg-white hover:text-mars-magenta px-4 py-2 font-black uppercase text-xs tracking-wider transition-all whitespace-nowrap shadow-[0_0_12px_rgba(255,0,85,0.4)] flex items-center justify-center gap-1.5 w-full sm:w-auto">
-                        <span>📡 + Solicitar Material I+D</span>
-                    </button>
-                ` : ''}
             </div>
             ${offersHtml}
         </div>`;

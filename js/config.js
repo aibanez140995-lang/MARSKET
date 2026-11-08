@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.76) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.77) ---
 
-const APP_VERSION = "1.1.76";
+const APP_VERSION = "1.1.77";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1099,6 +1099,21 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.75
 const APP_CHANGELOG = [
+    {
+      version: "1.1.77",
+      date: new Date().toISOString().split('T')[0],
+      title: "Desaturación de Botones I+D, Limpieza de Cabeceras en Mercado y Enfoque Operativo en Banco y Taller",
+      items: [
+        "Desaturación Visual en SUPER-MARSKET: Eliminación de los botones duplicados de 'Solicitar Material I+D' en las cabeceras internas del Catálogo B2C y del Mercado Secundario B2B. Se preserva un único botón maestro permanente y elegante en la barra superior junto a las pestañas de suministro.",
+        "Limpieza en Cabecera de Catálogo B2C: El encabezado del catálogo aeroespacial concentra ahora toda la jerarquía operativa en los accesos tácticos de 'Mis Órdenes' y '🛒 Carrito', eliminando ruido cognitivo para el alumno.",
+        "Despeje del Banco de Pruebas de Vuelo: Supresión del botón redundante de I+D en el encabezado de ensayos de vuelo, dejando como acción prioritaria el enlace '🔧 Ir a Taller y BOM'. La gestión de componentes especiales queda centralizada en la tarjeta dedicada contigua.",
+        "Enfoque Operativo en Taller y BOM: Retirada del botón flotante de I+D en la cabecera del taller, delimitando el área exclusivamente a la supervisión del inventario de stock, escandallo BOM y venta de excedentes."
+      ],
+      highlights: [
+        { type: "ERGONOMÍA", text: "Erradicación de botones apilados y duplicidades en las vistas de Técnico (Mercado, Banco y Taller)." },
+        { type: "MERCADO", text: "Botón maestro único de I+D en la barra superior de SUPER-MARSKET y cabeceras limpias." }
+      ]
+    },
     {
       version: "1.1.76",
       date: new Date().toISOString().split('T')[0],

@@ -240,9 +240,6 @@ Object.assign(ui, {
                                 <p class="text-[11px] text-mars-cyan font-mono">ℹ️ La Eficiencia (E = Altura / Coste) es calculada de forma matemática automática por la terminal al registrar el ensayo.</p>
                             </div>
                             <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-                                <button type="button" onclick="ui.modalSpecialItem()" class="flex-1 sm:flex-initial min-h-[44px] bg-mars-magenta text-white font-black px-3.5 py-1.5 text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all shadow-[0_0_10px_rgba(255,0,85,0.3)] whitespace-nowrap text-center">
-                                    + Solicitar Material I+D
-                                </button>
                                 <button type="button" onclick="ui.navigate('tech_workshop')" class="flex-1 sm:flex-initial min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-3.5 py-1.5 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors whitespace-nowrap text-center">
                                     🔧 Ir a Taller y BOM ➔
                                 </button>
@@ -631,9 +628,6 @@ Object.assign(ui, {
                     <span class="px-2.5 py-1 bg-slate-900 border border-slate-700 text-slate-300">📦 Stock: ${stockCount}</span>
                     <span class="px-2.5 py-1 bg-mars-green/10 border border-mars-green text-mars-green">🚀 En BOM: ${bomCount}</span>
                     <span class="px-2.5 py-1 bg-mars-yellow/10 border border-mars-yellow text-mars-yellow">🤝 En Venta B2B: ${b2bCount}</span>
-                    <button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] bg-mars-magenta text-white font-black px-3.5 py-2 text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all shadow-[0_0_10px_rgba(255,0,85,0.3)] whitespace-nowrap">
-                        + Solicitar Material I+D
-                    </button>
                 </div>
             </div>
 
