@@ -547,7 +547,7 @@ Object.assign(ui, {
                                         <div class="flex items-center gap-2">
                                             ${isCoord ? `<button onclick="ui.regenerateCompanyPins('${this.escapeHTML(cid)}')" id="co-pins-regen-${this.escapeHTML(cid)}" title="Generar nuevos PINs aleatorios de 4 dígitos para todos los roles de ${this.escapeHTML(co.name)}" class="min-h-[44px] bg-mars-yellow/20 border border-mars-yellow text-mars-yellow hover:bg-mars-yellow hover:text-black font-bold text-xs px-2.5 py-1 transition-colors whitespace-nowrap flex items-center gap-1">🎲 PINs</button>` : ''}
                                             ${isCoord ? `<button onclick="ui.generateCompanyCredentialCards('${this.escapeHTML(cid)}')" title="Emitir todas las credenciales de flota de ${this.escapeHTML(co.name)}" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold text-xs px-2.5 py-1 transition-colors whitespace-nowrap">🪪 Flota PDF</button>` : ''}
-                                            ${isCoord ? `<button onclick="ui.confirmAction('Eliminar Startup', '¿Borrar startup irreversiblemente?', () => ui.deleteStartup('${this.escapeHTML(cid)}'), 'Eliminar')" class="min-h-[44px] text-mars-magenta font-bold hover:underline px-2">Eliminar</button>` : `<span class="text-slate-400">Bloqueado</span>`}
+                                            ${isCoord ? (co.isTestCompany || cid === 'sandbox_master' || co.classGroup === 'TEST' ? `<button onclick="ui.confirmAction('Resetear Empresa TEST', '¿Resetear la empresa de pruebas TEST a su estado limpio de fábrica (2400 €v)? Se borrarán todos los ensayos, órdenes y entregables de prueba.', () => ui.resetTestCompany('${this.escapeHTML(cid)}'), 'Resetear')" class="min-h-[44px] text-mars-yellow font-bold hover:underline px-2 flex items-center gap-1">🔄 Resetear</button>` : `<button onclick="ui.confirmAction('Eliminar Startup', '¿Borrar startup irreversiblemente? Esta acción purgará la empresa y todas sus operaciones de forma permanente.', () => ui.deleteStartup('${this.escapeHTML(cid)}'), 'Eliminar')" class="min-h-[44px] text-mars-magenta font-bold hover:underline px-2">Eliminar</button>`) : `<span class="text-slate-400">Bloqueado</span>`}
                                         </div>
                                     </td>
                                 </tr>`;
@@ -1934,9 +1934,163 @@ Object.assign(ui, {
     },
 
     deleteStartup(cid) { 
-        delete state.data.companies[cid]; 
+        if (!state.user || !state.user.role || !state.user.role.startsWith('COORD')) {
+            return this.notify("Solo Coordinación puede eliminar startups.", "error");
+        }
+        const co = state.data.companies?.[cid];
+        if (!co) return;
+
+        if (cid === 'sandbox_master' || co.isTestCompany || co.classGroup === 'TEST') {
+            return this.resetTestCompany(cid);
+        }
+
+        const coName = co.name || cid;
+        const now = Date.now();
+
+        // 1. Reembolso automático en Mercado Secundario B2B si vendía algo con fondos retenidos en Aduana
+        if (Array.isArray(state.data.b2bContracts)) {
+            state.data.b2bContracts.forEach(c => {
+                if (c && c.sellerCoId === cid && c.status === 'PENDIENTE_ADUANA') {
+                    c.status = 'CANCELADO_BAJA';
+                    c.updatedAt = now;
+                    const price = parseFloat(c.price) || 0;
+                    const buyerCo = state.data.companies[c.buyerCoId];
+                    if (buyerCo && price > 0) {
+                        state.addToLedger(c.buyerCoId, `[REEMBOLSO B2B] Cancelación por baja de empresa vendedora (${coName}): ${c.itemName}`, 'ADUANA_B2B', price);
+                        const buyerOrd = (buyerCo.orders || []).find(o => (o.b2bContractId && o.b2bContractId === c.id) || (o.offerId && o.offerId === c.offerId));
+                        if (buyerOrd) buyerOrd.status = 'CANCELADO_DOCENTE';
+                        ui.pushNotification(c.buyerCoId, 'FINANZAS', `La compra B2B de "${c.itemName}" ha sido cancelada por baja de la startup vendedora. Fondos reembolsados (+${price.toFixed(2)} €v).`, 'warning');
+                    }
+                }
+            });
+        }
+
+        // 2. Limpieza de Mercado Secundario B2B
+        if (Array.isArray(state.data.b2bMarket)) {
+            state.data.b2bMarket = state.data.b2bMarket.filter(item => item && item.sellerCoId !== cid);
+        }
+
+        // 3. Limpieza de solicitudes especiales de I+D (pendingCustom)
+        if (Array.isArray(state.data.pendingCustom)) {
+            state.data.pendingCustom = state.data.pendingCustom.filter(req => req && req.coId !== cid);
+        }
+
+        // 4. Limpieza de notas de prensa publicadas
+        if (Array.isArray(state.data.pressReleases)) {
+            state.data.pressReleases = state.data.pressReleases.filter(pr => pr && pr.authorCoId !== cid && pr.coId !== cid);
+        }
+
+        // 5. Limpieza de sugerencias
+        if (Array.isArray(state.data.suggestionsToAlex)) {
+            state.data.suggestionsToAlex = state.data.suggestionsToAlex.filter(s => s && s.coId !== cid);
+        }
+
+        // 6. Lista negra persistente para evitar resurrecciones de sincronización
+        state.data.deletedCompanyIds = Array.isArray(state.data.deletedCompanyIds) ? state.data.deletedCompanyIds : [];
+        if (!state.data.deletedCompanyIds.includes(cid)) {
+            state.data.deletedCompanyIds.push(cid);
+        }
+
+        // 7. Borrado efectivo de la empresa en memoria local
+        delete state.data.companies[cid];
+
+        // 8. Limpiar selección docente si apuntaba a esta empresa
+        if (this.evalSelectedCo === cid) {
+            this.evalSelectedCo = '';
+        }
+
         state.save();
+        this.notify(`Startup "${coName}" eliminada completamente del sistema.`, "success");
         this.render(); 
+    },
+
+    resetTestCompany(cid = 'sandbox_master') {
+        if (!state.user || !state.user.role || !state.user.role.startsWith('COORD')) {
+            return this.notify("Solo Coordinación puede resetear la empresa de pruebas.", "error");
+        }
+        const co = state.data.companies?.[cid];
+        if (!co) return;
+
+        const now = Date.now();
+        const coName = co.name || 'MARS-X SANDBOX (PRUEBAS)';
+
+        // 1. Reembolso de fondos a compradores si TEST tenía ventas pendientes en Aduana B2B
+        if (Array.isArray(state.data.b2bContracts)) {
+            state.data.b2bContracts.forEach(c => {
+                if (c && c.sellerCoId === cid && c.status === 'PENDIENTE_ADUANA') {
+                    c.status = 'CANCELADO_BAJA';
+                    c.updatedAt = now;
+                    const price = parseFloat(c.price) || 0;
+                    const buyerCo = state.data.companies[c.buyerCoId];
+                    if (buyerCo && price > 0) {
+                        state.addToLedger(c.buyerCoId, `[REEMBOLSO B2B] Cancelación por reseteo de sandbox de pruebas: ${c.itemName}`, 'ADUANA_B2B', price);
+                        const buyerOrd = (buyerCo.orders || []).find(o => (o.b2bContractId && o.b2bContractId === c.id) || (o.offerId && o.offerId === c.offerId));
+                        if (buyerOrd) buyerOrd.status = 'CANCELADO_DOCENTE';
+                        ui.pushNotification(c.buyerCoId, 'FINANZAS', `La compra B2B de "${c.itemName}" ha sido cancelada por reseteo del sandbox de pruebas. Fondos reembolsados (+${price.toFixed(2)} €v).`, 'warning');
+                    }
+                }
+            });
+        }
+
+        // 2. Limpieza de ofertas y residuos globales de TEST
+        if (Array.isArray(state.data.b2bMarket)) {
+            state.data.b2bMarket = state.data.b2bMarket.filter(item => item && item.sellerCoId !== cid);
+        }
+        if (Array.isArray(state.data.pendingCustom)) {
+            state.data.pendingCustom = state.data.pendingCustom.filter(req => req && req.coId !== cid);
+        }
+        if (Array.isArray(state.data.pressReleases)) {
+            state.data.pressReleases = state.data.pressReleases.filter(pr => pr && pr.authorCoId !== cid && pr.coId !== cid);
+        }
+
+        // 3. Reseteo atómico de propiedades de simulación a estado limpio de fábrica
+        co.name = "MARS-X SANDBOX (PRUEBAS)";
+        co.balance = 2400;
+        co.logo = null;
+        co.slogan = "BANCO MAESTRO DE PRUEBAS";
+        co.valueProposition = "Entorno de evaluación y pruebas";
+        co.classGroup = 'TEST';
+        co.isTestCompany = true;
+        co.unlockAllContracts = true;
+        co.brandApproval = { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "" };
+        co.sponsorAwarded = null;
+        co.sponsorData = { name: null, logo: null };
+        co.aiPrompts = [];
+        co.executiveResolutions = [];
+        co.flightTests = [];
+        co.votingMotions = [];
+        co.cart = [];
+        co.orders = [];
+        co.ledger = [
+            { id: 'LEDGER_INIT_TEST_' + now, desc: 'Dotación inicial Sandbox de Pruebas', amount: 2400, date: new Date().toLocaleDateString(), delta: 2400, dept: 'GENERAL', final: 2400 }
+        ];
+        co.realCosts = [];
+        co.grades = {};
+        co.marketingCampaigns = [];
+        co.inactivityReports = [];
+        co.notifications = [];
+        co.sanctions = [];
+        co.crisisAlerts = [];
+        co.bom = [];
+        co.deliverables = {};
+        co.contracts = {};
+        co.loginStats = { totalLogins: 0, roles: {} };
+        co.resetAt = now;
+        co.updatedAt = now;
+
+        // Mantener credenciales maestras intactas
+        if (!state.getCompanyCode(co)) {
+            state.setCompanyCode(co, 'TEST-0000', false);
+        }
+        ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'].forEach(r => {
+            if (!state.getRolePin(co, r)) {
+                state.setRolePin(co, r, '1234', false);
+            }
+        });
+
+        state.save(cid);
+        this.notify(`Empresa de pruebas "${coName}" reseteada a estado limpio de fábrica (2400 €v).`, "success");
+        this.render();
     },
 
     async updatePIN(coId, role, val) { 

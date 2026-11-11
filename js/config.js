@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.00) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.01) ---
 
-const APP_VERSION = "2.0.00";
+const APP_VERSION = "2.0.01";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1099,6 +1099,22 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.75
 const APP_CHANGELOG = [
+    {
+      version: "2.0.01",
+      date: new Date().toISOString().split('T')[0],
+      title: "Eliminación Integral de Startups, Purga en Cascada B2B y Reseteo Limpio de Fábrica para TEST",
+      items: [
+        "Eliminación Integral sin Residuos (Tombstones): Las empresas eliminadas por Coordinación se registran en una lista negra persistente (deletedCompanyIds) y se purgan de la base de datos (SQLite y D1), impidiendo su reaparición.",
+        "Blindaje y Reembolso Transaccional B2B: Al eliminar una empresa o resetear TEST, cualquier venta en curso en Aduana B2B se cancela de inmediato y el 100% de los fondos (€v) se reembolsan automáticamente en el Ledger de los compradores.",
+        "Limpieza en Cascada de Módulos Globales: Erradicación automática de ofertas B2B huérfanas, solicitudes de I+D, notas de prensa y referencias de evaluación docente asociadas a startups eliminadas.",
+        "Reseteo de Fábrica para Empresa TEST (2.400 €v): Botón dedicado '🔄 Resetear' en el Llavero Maestro que devuelve la empresa de pruebas a su estado virgen con dotación completa de 2.400 €v, preservando código y PINs maestros sin contaminar el entorno de aula."
+      ],
+      highlights: [
+        { type: "BORRADO", text: "Purga integral e irreversible de startups con erradicación de datos residuales." },
+        { type: "SANDBOX", text: "Botón de reseteo de fábrica para TEST con dotación limpia de 2.400 €v." },
+        { type: "B2B", text: "Reembolso automático inmediato de fondos retenidos en aduana al eliminar o resetear empresas." }
+      ]
+    },
     {
       version: "2.0.00",
       date: new Date().toISOString().split('T')[0],

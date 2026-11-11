@@ -175,6 +175,7 @@ function seedInitialState(PDO $pdo): void {
         'b2bContracts' => [],
         'securityIncidents' => [],
         'suggestionsToAlex' => [],
+        'deletedCompanyIds' => [],
         'pendingCustom' => [],
         'telemetry' => [
             'totalLogins' => 0,

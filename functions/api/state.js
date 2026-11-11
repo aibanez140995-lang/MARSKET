@@ -503,6 +503,22 @@ export async function onRequest(context) {
                 }
             }
 
+            // Manejo de deletedCompanyIds (Lista negra persistente de startups eliminadas en Cloudflare D1)
+            const allDeletedCompanyIds = Array.from(new Set([
+                ...(Array.isArray(currentState.deletedCompanyIds) ? currentState.deletedCompanyIds : []),
+                ...(Array.isArray(payload.deletedCompanyIds) ? payload.deletedCompanyIds : [])
+            ]));
+            payload.deletedCompanyIds = allDeletedCompanyIds;
+            currentState.deletedCompanyIds = allDeletedCompanyIds;
+
+            for (const delCid of allDeletedCompanyIds) {
+                if (currentState.companies) delete currentState.companies[delCid];
+                if (payload.companies) delete payload.companies[delCid];
+                try {
+                    await env.MARSKET_DB.prepare("DELETE FROM company_state WHERE company_id = ?").bind(delCid).run();
+                } catch(e) {}
+            }
+
             // B. Restaurar Bóvedas de Startups (authVault, accessCode, roles)
             if (payload.companies) {
                 for (const cid in payload.companies) {

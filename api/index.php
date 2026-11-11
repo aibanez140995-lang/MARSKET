@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.00
+// Versión: v2.0.01
 
 declare(strict_types=1);
 
@@ -590,6 +590,26 @@ try {
                 }
             } elseif (isset($currentState['config'])) {
                 $payload['config'] = $currentState['config'];
+            }
+
+            // Manejo de deletedCompanyIds (Lista negra persistente de startups eliminadas)
+            $allDeletedCompanyIds = array_values(array_unique(array_map('strval', array_merge(
+                is_array($currentState['deletedCompanyIds'] ?? null) ? $currentState['deletedCompanyIds'] : [],
+                is_array($payload['deletedCompanyIds'] ?? null) ? $payload['deletedCompanyIds'] : []
+            ))));
+            $payload['deletedCompanyIds'] = $allDeletedCompanyIds;
+            $currentState['deletedCompanyIds'] = $allDeletedCompanyIds;
+
+            foreach ($allDeletedCompanyIds as $delCid) {
+                if (isset($currentState['companies'][$delCid])) {
+                    unset($currentState['companies'][$delCid]);
+                }
+                if (isset($payload['companies'][$delCid])) {
+                    unset($payload['companies'][$delCid]);
+                }
+                try {
+                    $pdo->prepare("DELETE FROM company_state WHERE company_id = :cid")->execute([':cid' => $delCid]);
+                } catch (\Exception $e) {}
             }
 
             if (isset($payload['companies']) && is_array($payload['companies'])) {

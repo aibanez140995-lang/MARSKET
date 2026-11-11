@@ -6,6 +6,7 @@ const DEFAULT_STATE = {
     resetEpoch: 0,
     officialNews: [],
     deletedOfficialNewsIds: [],
+    deletedCompanyIds: [],
     pressReleases: [],
     b2bMarket: [],
     b2bContracts: [],
@@ -369,6 +370,12 @@ const state = {
         d.securityIncidents = Array.isArray(d.securityIncidents) ? d.securityIncidents : [];
         
                 d.deletedSuggestionIds = Array.isArray(d.deletedSuggestionIds) ? d.deletedSuggestionIds : [];
+        d.deletedCompanyIds = Array.isArray(d.deletedCompanyIds) ? d.deletedCompanyIds : [];
+        if (d.companies && d.deletedCompanyIds.length > 0) {
+            d.deletedCompanyIds.forEach(delId => {
+                delete d.companies[delId];
+            });
+        }
         d.dismissedNotificationIds = Array.isArray(d.dismissedNotificationIds) ? d.dismissedNotificationIds : [];
         d.config.deadlines = d.config.deadlines || {};
         if (!d.config.scheduleBaselineVersion || d.config.scheduleBaselineVersion < 1168) {
@@ -783,7 +790,17 @@ const state = {
             }
         }
         
+        const allDeletedCompanyIds = new Set([
+            ...(Array.isArray(serverData.deletedCompanyIds) ? serverData.deletedCompanyIds.map(String) : []),
+            ...(Array.isArray(localData.deletedCompanyIds) ? localData.deletedCompanyIds.map(String) : [])
+        ]);
+        merged.deletedCompanyIds = Array.from(allDeletedCompanyIds);
+        allDeletedCompanyIds.forEach(delId => {
+            delete merged.companies[delId];
+        });
+
         for (let k in localData.companies) {
+            if (allDeletedCompanyIds.has(k)) continue;
             const sCo = merged.companies[k];
             const lCo = localData.companies[k];
             
@@ -916,9 +933,31 @@ const state = {
                         return finalMerged;
                     };
                     const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'cart', 'bom', 'coordinatorReports'];
-                    arraysToMerge.forEach(arrName => {
-                        merged.companies[k][arrName] = mergeArraysLocalDominant(lCo[arrName], sCo[arrName], arrName);
-                    });
+                    const sResetAt = Number(sCo.resetAt) || 0;
+                    const lResetAt = Number(lCo.resetAt) || 0;
+                    const isTestCo = (k === 'sandbox_master' || merged.companies[k].isTestCompany);
+                    if (isTestCo && (lResetAt > sTime || sResetAt > lTime)) {
+                        merged.companies[k].resetAt = Math.max(sResetAt, lResetAt);
+                        if (lResetAt >= sResetAt) {
+                            arraysToMerge.forEach(arrName => {
+                                merged.companies[k][arrName] = Array.isArray(lCo[arrName]) ? JSON.parse(JSON.stringify(lCo[arrName])) : [];
+                            });
+                            merged.companies[k].deliverables = JSON.parse(JSON.stringify(lCo.deliverables || {}));
+                            merged.companies[k].contracts = JSON.parse(JSON.stringify(lCo.contracts || {}));
+                            merged.companies[k].grades = JSON.parse(JSON.stringify(lCo.grades || {}));
+                        } else {
+                            arraysToMerge.forEach(arrName => {
+                                merged.companies[k][arrName] = Array.isArray(sCo[arrName]) ? JSON.parse(JSON.stringify(sCo[arrName])) : [];
+                            });
+                            merged.companies[k].deliverables = JSON.parse(JSON.stringify(sCo.deliverables || {}));
+                            merged.companies[k].contracts = JSON.parse(JSON.stringify(sCo.contracts || {}));
+                            merged.companies[k].grades = JSON.parse(JSON.stringify(sCo.grades || {}));
+                        }
+                    } else {
+                        arraysToMerge.forEach(arrName => {
+                            merged.companies[k][arrName] = mergeArraysLocalDominant(lCo[arrName], sCo[arrName], arrName);
+                        });
+                    }
                     merged.companies[k].balance = this.calculateBalance(merged.companies[k]);
                     if (lCo.nameChangeRequest && sCo.nameChangeRequest) {
                         const lReq = lCo.nameChangeRequest;
@@ -1032,9 +1071,31 @@ const state = {
                     };
 
                     const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'cart', 'bom', 'coordinatorReports'];
-                    arraysToMerge.forEach(arrName => {
-                        sCo[arrName] = mergeArrays(sCo[arrName], lCo[arrName], arrName);
-                    });
+                    const sResetAt = Number(sCo.resetAt) || 0;
+                    const lResetAt = Number(lCo.resetAt) || 0;
+                    const isTestCo = (k === 'sandbox_master' || sCo.isTestCompany);
+                    if (isTestCo && (sResetAt > lTime || lResetAt > sTime)) {
+                        sCo.resetAt = Math.max(sResetAt, lResetAt);
+                        if (sResetAt >= lResetAt) {
+                            arraysToMerge.forEach(arrName => {
+                                sCo[arrName] = Array.isArray(sCo[arrName]) ? JSON.parse(JSON.stringify(sCo[arrName])) : [];
+                            });
+                            sCo.deliverables = JSON.parse(JSON.stringify(sCo.deliverables || {}));
+                            sCo.contracts = JSON.parse(JSON.stringify(sCo.contracts || {}));
+                            sCo.grades = JSON.parse(JSON.stringify(sCo.grades || {}));
+                        } else {
+                            arraysToMerge.forEach(arrName => {
+                                sCo[arrName] = Array.isArray(lCo[arrName]) ? JSON.parse(JSON.stringify(lCo[arrName])) : [];
+                            });
+                            sCo.deliverables = JSON.parse(JSON.stringify(lCo.deliverables || {}));
+                            sCo.contracts = JSON.parse(JSON.stringify(lCo.contracts || {}));
+                            sCo.grades = JSON.parse(JSON.stringify(lCo.grades || {}));
+                        }
+                    } else {
+                        arraysToMerge.forEach(arrName => {
+                            sCo[arrName] = mergeArrays(sCo[arrName], lCo[arrName], arrName);
+                        });
+                    }
                     sCo.balance = this.calculateBalance(sCo);
                 }
 
@@ -1125,12 +1186,16 @@ const state = {
 
         merged.officialNews = mergeArraysGlobal(merged.officialNews, localData.officialNews)
             .filter(n => n && n.id && !allDeletedOfficialNewsIds.has(String(n.id)));
-        merged.pressReleases = mergeArraysGlobal(merged.pressReleases, localData.pressReleases);
+        merged.pressReleases = mergeArraysGlobal(merged.pressReleases, localData.pressReleases)
+            .filter(pr => pr && !allDeletedCompanyIds.has(String(pr.coId)) && !allDeletedCompanyIds.has(String(pr.authorCoId)));
         merged.suggestionsToAlex = mergeArraysGlobal(merged.suggestionsToAlex, localData.suggestionsToAlex)
-            .filter(s => s && s.id && !allDeletedSuggestionIds.has(String(s.id)));
-        merged.pendingCustom = mergeArraysGlobal(merged.pendingCustom, localData.pendingCustom);
-        merged.b2bMarket = mergeArraysGlobal(merged.b2bMarket, localData.b2bMarket);
-        merged.b2bContracts = mergeArraysGlobal(merged.b2bContracts, localData.b2bContracts);
+            .filter(s => s && s.id && !allDeletedSuggestionIds.has(String(s.id)) && !allDeletedCompanyIds.has(String(s.coId)));
+        merged.pendingCustom = mergeArraysGlobal(merged.pendingCustom, localData.pendingCustom)
+            .filter(p => p && !allDeletedCompanyIds.has(String(p.coId)));
+        merged.b2bMarket = mergeArraysGlobal(merged.b2bMarket, localData.b2bMarket)
+            .filter(i => i && !allDeletedCompanyIds.has(String(i.sellerCoId)));
+        merged.b2bContracts = mergeArraysGlobal(merged.b2bContracts, localData.b2bContracts)
+            .filter(c => c && !allDeletedCompanyIds.has(String(c.sellerCoId)) && !allDeletedCompanyIds.has(String(c.buyerCoId)));
         merged.securityIncidents = mergeArraysGlobal(merged.securityIncidents, localData.securityIncidents);
 
         if (Array.isArray(localData.catalog) && Array.isArray(merged.catalog)) {
