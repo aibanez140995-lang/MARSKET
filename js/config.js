@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v1.1.77) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.00) ---
 
-const APP_VERSION = "1.1.77";
+const APP_VERSION = "2.0.00";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1099,6 +1099,21 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v1.1.75
 const APP_CHANGELOG = [
+    {
+      version: "2.0.00",
+      date: new Date().toISOString().split('T')[0],
+      title: "Lanzamiento Mayor 2.0: Credenciales y Llavero Maestro Acoplados por Clase y Sincronización de Versión",
+      items: [
+        "Sincronización Dinámica de Versión en Tarjetas: Las credenciales Cyberpunk de alumnos y claustro docente reflejan en tiempo real la versión oficial del sistema (v2.0.00) eliminando versiones estáticas obsoletas.",
+        "Emisión de Credenciales PDF Exclusiva por Clase: Sustitución de la descarga masiva por el generador segmentado por grupo de clase (A, B, C, D, E, F y TEST), optimizando la impresión para el aula.",
+        "Exportación CSV de Llavero Maestro por Clase: Descarga de credenciales y PINs en CSV filtrado por la clase seleccionada para mayor seguridad y comodidad organizativa del docente.",
+        "Blindaje de Regeneración de PINs por Grupo: El generador aleatorio de PINs actúa únicamente sobre la clase activa protegiendo las contraseñas del resto de grupos de alumnos."
+      ],
+      highlights: [
+        { type: "LLAVERO", text: "Gestión y descarga de credenciales PDF y CSV segmentadas exclusivamente por clase." },
+        { type: "VERSIONADO", text: "Sincronización global y automática de la versión v2.0.00 en todas las tarjetas físicas." }
+      ]
+    },
     {
       version: "1.1.77",
       date: new Date().toISOString().split('T')[0],

@@ -374,8 +374,9 @@ Object.assign(ui, {
             });
         }
         const rawClasses = Object.values(state.data.companies || {}).map(c => c.classGroup).filter(Boolean);
-        const uniqueClasses = [...new Set(['A', 'B', 'C', 'D', 'E', 'F', 'TEST', ...rawClasses])].sort();
-        const currentKeychainClass = this.selectedKeychainClass || this.currentClassFilter || (uniqueClasses[0] || 'A');
+        const uniqueClasses = [...new Set(['A', 'B', 'C', 'D', 'E', 'F', 'TEST', ...rawClasses])].filter(c => c !== 'ALL').sort();
+        let currentKeychainClass = this.selectedKeychainClass || this.currentClassFilter || (uniqueClasses[0] || 'A');
+        if (currentKeychainClass === 'ALL') currentKeychainClass = 'A';
         
         const pendingAuxCoIds = Object.keys(state.data.companies).filter(cid => {
             const co = state.data.companies[cid];
@@ -468,10 +469,10 @@ Object.assign(ui, {
                     </div>
                     <div class="flex items-center gap-2 flex-wrap">
                         ${isCoord ? `<button id="toggle-pins-btn" onclick="ui.togglePinsVisibility()" class="min-h-[44px] bg-slate-800 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase hover:bg-mars-cyan hover:text-black transition-colors shrink-0">${this.pinsVisible ? '[ 🔒 Ocultar PINs ]' : '[ 👁️ Revelar PINs ]'}</button>` : ''}
-                        ${isCoord ? `<button onclick="ui.promptRegenerateAllStartupsPins()" id="btn-regen-all-pins" title="Asignar nuevos PINs aleatorios a todas las empresas de la misión" class="min-h-[44px] bg-amber-400 text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0 flex items-center gap-1.5 shadow-[0_0_10px_rgba(251,191,36,0.2)]">🎲 PINs Aleatorios (Todas)</button>` : ''}
+                        ${isCoord ? `<button onclick="ui.promptRegenerateAllStartupsPins('${this.escapeHTML(currentKeychainClass)}')" id="btn-regen-all-pins" title="Asignar nuevos PINs aleatorios a todas las empresas de la Clase ${this.escapeHTML(currentKeychainClass)}" class="min-h-[44px] bg-amber-400 text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0 flex items-center gap-1.5 shadow-[0_0_10px_rgba(251,191,36,0.2)]">🎲 PINs Aleatorios (Clase ${this.escapeHTML(currentKeychainClass)})</button>` : ''}
                         ${isCoord ? `<button onclick="ui.exportTeacherBadgesPDF()" class="min-h-[44px] bg-[#00F0FF] text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">[🪪 Claustro PDF]</button>` : ''}
-                        ${isCoord ? `<button onclick="ui.generateAllCompaniesCredentialCards()" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-4 py-2 text-xs font-black uppercase transition-colors shrink-0">[🪪 TODAS LAS CREDENCIALES PDF]</button>` : ''}
-                        ${isCoord ? `<button onclick="ui.exportCredentialsCSV()" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">[📥 Exportar Llavero CSV]</button>` : ''}
+                        ${isCoord ? `<button onclick="ui.generateClassCredentialCards('${this.escapeHTML(currentKeychainClass)}')" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-4 py-2 text-xs font-black uppercase transition-colors shrink-0">[🪪 CREDENCIALES CLASE ${this.escapeHTML(currentKeychainClass)} (PDF)]</button>` : ''}
+                        ${isCoord ? `<button onclick="ui.exportCredentialsCSV('${this.escapeHTML(currentKeychainClass)}')" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">[📥 Exportar CSV (Clase ${this.escapeHTML(currentKeychainClass)})]</button>` : ''}
                     </div>
                 </div>
                 <div class="flex flex-wrap items-center gap-2 mb-3">
@@ -481,9 +482,6 @@ Object.assign(ui, {
                             Clase ${this.escapeHTML(cls)}
                         </button>
                     `).join('')}
-                    <button type="button" onclick="ui.filterKeychainClass('ALL')" class="min-h-[40px] px-3.5 py-1.5 text-xs font-bold uppercase transition-colors ${currentKeychainClass === 'ALL' ? 'bg-mars-cyan text-black font-black shadow-sm' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-700'}">
-                        Todas las Clases
-                    </button>
                 </div>
                 <div class="overflow-x-auto w-full max-h-[580px] overflow-y-auto border border-mars-border/40">
                     <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
@@ -1169,37 +1167,48 @@ Object.assign(ui, {
         }
     },
 
-    promptRegenerateAllStartupsPins() {
+    promptRegenerateAllStartupsPins(targetClass = null) {
         if (!state.user || !state.user.role.startsWith('COORD')) return;
-        const totalCos = Object.keys(state.data.companies).length;
-        if (totalCos === 0) return this.notify("No hay startups registradas.", "warning");
+        const cls = targetClass || this.selectedKeychainClass || this.currentClassFilter || 'A';
+        const cosInClass = Object.keys(state.data.companies).filter(cid => {
+            const co = state.data.companies[cid];
+            return co && (cls === 'ALL' || co.classGroup === cls);
+        });
+        if (cosInClass.length === 0) return this.notify(`No hay startups registradas en la Clase ${cls}.`, "warning");
 
-        const msg = `Se generarán nuevos PINs de 4 dígitos totalmente aleatorios y distintos para todos los roles de las ${totalCos} startups registradas en la misión. Esta acción evitará claves por defecto (1234). ¿Deseas continuar?`;
+        const msg = cls === 'ALL'
+            ? `Se generarán nuevos PINs de 4 dígitos totalmente aleatorios y distintos para todos los roles de las ${cosInClass.length} startups registradas en la misión. Esta acción evitará claves por defecto (1234). ¿Deseas continuar?`
+            : `Se generarán nuevos PINs de 4 dígitos totalmente aleatorios para todos los roles de las ${cosInClass.length} startups de la Clase ${cls}. Las demás clases mantendrán sus PINs intactos. ¿Deseas continuar?`;
+
         this.confirmAction(
-            "Regenerar PINs de TODAS las Startups",
+            `Regenerar PINs ${cls === 'ALL' ? 'de TODAS las Startups' : 'de la Clase ' + cls}`,
             msg,
             async () => {
                 let successCount = 0;
-                for (const cid of Object.keys(state.data.companies)) {
+                for (const cid of cosInClass) {
                     const co = state.data.companies[cid];
                     const newPins = state.generateCompanyPins(co);
                     const ok = await state.updateCompanyPins(cid, newPins);
                     if (ok) successCount++;
                 }
                 this.render();
-                this.notify(`✅ Asignados nuevos PINs aleatorios a ${successCount}/${totalCos} startups.`, "success");
+                this.notify(`✅ Asignados nuevos PINs aleatorios a ${successCount}/${cosInClass.length} startups de la Clase ${cls}.`, "success");
             },
-            "Regenerar Todos los PINs"
+            `Regenerar PINs (Clase ${cls})`
         );
     },
 
-    async exportCredentialsCSV() {
+    async exportCredentialsCSV(targetClass = null) {
         if (!state.user || !state.user.role.startsWith('COORD')) return;
+        const cls = targetClass || this.selectedKeychainClass || this.currentClassFilter || 'A';
         if (typeof state.fetchAdminCredentials === 'function') {
             await state.fetchAdminCredentials().catch(() => {});
         }
         let csv = "Empresa,Clase,Codigo_Empresa,PIN_CEO,PIN_TECNICO,PIN_FINANZAS,PIN_MARKETING,PIN_OPERACIONES_IA,PIN_AUXILIAR,DPTO_AUXILIAR\n";
-        Object.values(state.data.companies).forEach(co => {
+        const cos = Object.values(state.data.companies).filter(co => cls === 'ALL' || co.classGroup === cls);
+        if (cos.length === 0) return this.notify(`No hay startups registradas en la Clase ${cls}.`, "warning");
+
+        cos.forEach(co => {
             const code = state.getCompanyCode(co);
             const pCeo = state.getRolePin(co, 'CEO') || '';
             const pTec = state.getRolePin(co, 'TECNICO') || '';
@@ -1210,7 +1219,11 @@ Object.assign(ui, {
             const dAux = co.auxRoleDept || 'N/A';
             csv += `"${(co.name || '').replace(/"/g, '""')}","${co.classGroup || 'A'}","${code}","${pCeo}","${pTec}","${pFin}","${pMkt}","${pOps}","${pAux}","${dAux}"\n`;
         });
-        this.downloadFile(csv, 'csv', 'marsket_llavero_credenciales_empresas.csv');
+        const filename = cls === 'ALL'
+            ? 'marsket_llavero_credenciales_empresas.csv'
+            : `marsket_llavero_credenciales_clase_${String(cls).toLowerCase()}.csv`;
+        this.downloadFile(csv, 'csv', filename);
+        this.notify(`✅ Llavero CSV de Clase ${cls} exportado con éxito.`, "success");
     },
 
     async resolveAuxRoleRequest(cid, isApproved) {
@@ -2797,7 +2810,7 @@ Object.assign(ui, {
 
                 <!-- Encabezado Reverso: Misión y Protocolo -->
                 <div class="relative z-10 flex justify-between items-center border-b border-[#1A2333] pb-2">
-                    <span class="font-orbitron font-black text-[10px] text-slate-400 uppercase tracking-widest">MARS-KET OS // v1.1.02</span>
+                    <span class="font-orbitron font-black text-[10px] text-slate-400 uppercase tracking-widest">MARS-KET OS // v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '2.0.00'}</span>
                     <span class="text-[9px] font-mono text-[#00F0FF] uppercase">ESA / AEE CERTIFIED</span>
                 </div>
 
@@ -2904,13 +2917,17 @@ Object.assign(ui, {
         this.showCredentialsModal(`CREDENCIALES DE FLOTA // ${co.name}`, previewHtml, cardsGrid);
     },
 
-    async generateAllCompaniesCredentialCards() {
+    async generateClassCredentialCards(targetClass) {
         if (!this.checkCoordinatorAccess()) return;
+        const cls = targetClass || this.selectedKeychainClass || this.currentClassFilter || 'A';
         if (typeof state.fetchAdminCredentials === 'function') {
             await state.fetchAdminCredentials().catch(() => {});
         }
-        const cos = Object.keys(state.data.companies || {});
-        if (cos.length === 0) return this.notify("No hay startups registradas en el sistema.", "warning");
+        const cos = Object.keys(state.data.companies || {}).filter(cid => {
+            const co = state.data.companies[cid];
+            return co && (cls === 'ALL' || co.classGroup === cls);
+        });
+        if (cos.length === 0) return this.notify(`No hay startups registradas en la Clase ${cls}.`, "warning");
         
         let allCardsHtml = '';
         let totalCards = 0;
@@ -2938,14 +2955,18 @@ Object.assign(ui, {
         const previewHtml = `
             <div class="space-y-4">
                 <div class="bg-slate-900 border border-slate-800 p-2.5 text-xs text-slate-300 flex justify-between items-center flex-wrap gap-2">
-                    <span>🪪 Baraja completa de aula: <strong>${totalCards} credenciales</strong> generadas para ${cos.length} startups.</span>
+                    <span>🪪 Credenciales oficiales de <strong>Clase ${this.escapeHTML(cls)}</strong>: <strong>${totalCards} credenciales</strong> (${cos.length} startups).</span>
                     <span class="text-mars-green font-bold uppercase">Listo para Impresión A4</span>
                 </div>
                 ${cardsGrid}
             </div>
         `;
 
-        this.showCredentialsModal(`BARAJA COMPLETA DE CREDENCIALES (${totalCards} TARJETAS)`, previewHtml, cardsGrid);
+        this.showCredentialsModal(`CREDENCIALES OFICIALES // CLASE ${cls} (${totalCards} TARJETAS)`, previewHtml, cardsGrid);
+    },
+
+    async generateAllCompaniesCredentialCards() {
+        return this.generateClassCredentialCards('ALL');
     },
 
     showCredentialsModal(title, previewBody, printCardsHtml) {
@@ -3091,7 +3112,7 @@ Object.assign(ui, {
                 </svg>
 
                 <div class="relative z-10 flex justify-between items-center border-b border-[#1A2333] pb-2">
-                    <span class="font-orbitron font-black text-[10px] text-slate-400 uppercase tracking-widest">MARS-KET OS // v1.1.05</span>
+                    <span class="font-orbitron font-black text-[10px] text-slate-400 uppercase tracking-widest">MARS-KET OS // v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '2.0.00'}</span>
                     <span class="text-[9px] font-mono text-[#00F0FF] uppercase">AEE FACULTY PROTOCOL</span>
                 </div>
 
