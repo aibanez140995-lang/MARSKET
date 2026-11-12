@@ -12,7 +12,7 @@ Object.assign(ui, {
         if (!co) return auth.logout(); 
         
         co.orders = co.orders || []; 
-        const isOperario = (state.user.role === 'OPERACIONES_IA' || state.user.role === 'OPERACIONES' || state.user.admin);
+        const isOperario = (this.getEffectiveRole(co) === 'OPERACIONES_IA' || Boolean(state.user.admin));
         
         const allOrders = co.orders || [];
         const approvedOrders = allOrders.filter(o => o.status === 'APROBADO_FINANZAS' || o.status === 'APROBADO_DOCENTE');
@@ -244,7 +244,7 @@ Object.assign(ui, {
 
     executePhysicalOrder(oid) {
         if (!state.user) return;
-        const isOperario = (state.user.role === 'OPERACIONES_IA' || state.user.role === 'OPERACIONES' || state.user.admin);
+        const isOperario = (this.getEffectiveRole() === 'OPERACIONES_IA' || Boolean(state.user.admin));
         if (!isOperario) {
             return this.notify("Acceso restringido: Solo Operaciones/Operario puede registrar compras reales físicas.", "error");
         }
@@ -319,7 +319,7 @@ Object.assign(ui, {
         const docs = co.deliverables || {};
         co.aiPrompts = co.aiPrompts || [];
         
-        const isOps = state.user.role === 'OPERACIONES_IA';
+        const isOps = this.getEffectiveRole(co) === 'OPERACIONES_IA';
         const wrapper = document.createElement('div');
         wrapper.id = 'ailog-section';
         
@@ -332,9 +332,11 @@ Object.assign(ui, {
             <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow mb-8">
                 <h3 class="font-orbitron text-mars-yellow text-sm sm:text-base mb-4 uppercase tracking-tighter">Prompts Pendientes de Auditoría (${pendingPrompts.length})</h3>
                 <div class="space-y-4">
-                    ${pendingPrompts.map(p => `
+                    ${pendingPrompts.map(p => {
+                        const authorLabel = (p.submittedBy && p.submittedBy !== p.role) ? `${p.submittedBy} (${p.role})` : p.role;
+                        return `
                         <div class="bg-slate-900 border border-mars-yellow/50 p-4 text-xs">
-                            <div class="flex flex-wrap justify-between gap-2 mb-2"><span class="text-mars-cyan font-bold uppercase">Autor: ${this.escapeHTML(p.role)} | Herramienta: ${this.escapeHTML(p.tool)}</span><span class="text-slate-300">${this.escapeHTML(p.date)}</span></div>
+                            <div class="flex flex-wrap justify-between gap-2 mb-2"><span class="text-mars-cyan font-bold uppercase">Autor: ${this.escapeHTML(authorLabel)} | Herramienta: ${this.escapeHTML(p.tool)}</span><span class="text-slate-300">${this.escapeHTML(p.date)}</span></div>
                             <div class="mb-3">
                                 ${(p.bitacoraUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(p.bitacoraUrl)) || (p.prompt && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(p.prompt))
                                     ? `<a href="${encodeURI(p.bitacoraUrl || p.prompt).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Bitácora en Docs ↗</span></a>`
@@ -346,7 +348,7 @@ Object.assign(ui, {
                                 <button type="button" onclick="ui.validateAIPrompt('${this.escapeHTML(p.id)}', false)" class="min-h-[44px] bg-mars-magenta text-white px-4 py-2 text-xs font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Rechazar</button>
                             </div>
                         </div>
-                    `).join('')}
+                    `; }).join('')}
                 </div>
             </div>`;
         }
@@ -357,7 +359,7 @@ Object.assign(ui, {
         const bitacoraStatus = (typeof bitacoraDoc === 'object' && bitacoraDoc) ? bitacoraDoc.status : (typeof bitacoraDoc === 'string' && bitacoraDoc ? 'DELIVERED_TO_TEACHER' : 'PENDING');
         
         let bitacoraBadge = '<span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-amber-400 border border-amber-500/40">⏳ PENDIENTE</span>';
-        if (bitacoraStatus === 'CEO_REVISION') {
+        if (bitacoraStatus === 'CEO_REVISION' || bitacoraStatus === 'SUBMITTED_TO_CEO') {
             bitacoraBadge = '<span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-400 animate-pulse">🟡 EN REVISIÓN CEO</span>';
         } else if (bitacoraStatus === 'DELIVERED_TO_TEACHER') {
             bitacoraBadge = '<span style="background-color: rgba(0, 255, 102, 0.15); border: 1px solid #00ff66; color: #00ff66;" class="text-xs font-mono font-bold px-2 py-0.5 rounded">🟢 ENTREGADO A DOCENTE</span>';
@@ -366,6 +368,17 @@ Object.assign(ui, {
         } else if (bitacoraStatus === 'REVIEWED' || bitacoraStatus === 'ACCEPTED') {
             bitacoraBadge = '<span style="background-color: #00ff66; color: #000; font-weight: 900;" class="text-xs font-mono px-2 py-0.5 rounded">✓ CALIFICADO</span>';
         }
+
+        const bitacoraReturnHtml = (bitacoraStatus === 'RETURNED_BY_CEO' || bitacoraStatus === 'RETURNED_BY_TEACHER') && bitacoraDoc ? `
+            <div class="mb-3 bg-rose-950/30 border border-rose-500/40 p-3 text-xs">
+                <p class="font-bold text-rose-300 uppercase mb-1">⚠️ Bitácora devuelta para subsanar:</p>
+                <p class="text-slate-200">${this.escapeHTML(bitacoraDoc.returnReason || 'Revisar las observaciones antes de reenviar.')}</p>
+                ${(bitacoraDoc.returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(bitacoraDoc.returnDriveUrl)) ? `
+                    <a href="${encodeURI(bitacoraDoc.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-slate-900 border border-rose-400/40 text-rose-200 hover:border-rose-300 rounded font-mono text-xs">
+                        <span>📄 Ver Informe de Devolución ↗</span>
+                    </a>
+                ` : ''}
+            </div>` : '';
 
         const bitacoraCardHtml = `
         <div class="terminal-border bg-mars-card p-4 sm:p-5 border-l-4 border-l-mars-cyan mb-8">
@@ -382,6 +395,7 @@ Object.assign(ui, {
                     </p>
                 </div>
             </div>
+            ${bitacoraReturnHtml}
             <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
                 <div class="flex flex-wrap items-center gap-2">
                     ${this.renderDocTemplateBtn('DOC_4_BITACORA_IA', '📄 Modelo Oficial Bitácora (Clonar Drive)')}
@@ -414,10 +428,12 @@ Object.assign(ui, {
             <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
                 <h3 class="font-orbitron text-mars-cyan text-sm sm:text-base mb-4 uppercase tracking-tighter">Historial Oficial de Uso de IA (Aprobados)</h3>
                 <div class="space-y-4">
-                    ${approvedPrompts.map(p => `
+                    ${approvedPrompts.map(p => {
+                        const authorLabel = (p.submittedBy && p.submittedBy !== p.role) ? `${p.submittedBy} (${p.role})` : p.role;
+                        return `
                         <div class="bg-black/60 border border-mars-cyan/40 p-4 text-xs">
                             <div class="flex flex-wrap justify-between gap-2 border-b border-slate-800 pb-2 mb-2">
-                                <span class="text-mars-cyan font-bold uppercase">${this.escapeHTML(p.role)} • ${this.escapeHTML(p.tool)}</span>
+                                <span class="text-mars-cyan font-bold uppercase">${this.escapeHTML(authorLabel)} • ${this.escapeHTML(p.tool)}</span>
                                 <span class="text-slate-300">${this.escapeHTML(p.date)}</span>
                             </div>
                             <div class="mt-2">
@@ -427,7 +443,7 @@ Object.assign(ui, {
                                 }
                             </div>
                         </div>
-                    `).join('') || '<p class="text-slate-300 italic text-xs">No hay registros de IA aprobados todavía.</p>'}
+                    `; }).join('') || '<p class="text-slate-300 italic text-xs">No hay registros de IA aprobados todavía.</p>'}
                 </div>
             </div>
         `;
@@ -435,7 +451,7 @@ Object.assign(ui, {
     },
 
     opsValidateHojaTaller() {
-        if (!state.user || (state.user.role !== 'OPERACIONES_IA' && state.user.role !== 'OPERACIONES' && !state.user.admin)) {
+        if (!state.user || (this.getEffectiveRole() !== 'OPERACIONES_IA' && !state.user.admin)) {
             return this.notify("Acceso restringido: Solo Operaciones/Operario puede visar el ensamble en taller.", "error");
         }
         state.validateHojaTallerByOperator();
@@ -444,7 +460,7 @@ Object.assign(ui, {
     },
 
     modalTallerReturnReason() {
-        if (!state.user || (state.user.role !== 'OPERACIONES_IA' && state.user.role !== 'OPERACIONES' && !state.user.admin)) {
+        if (!state.user || (this.getEffectiveRole() !== 'OPERACIONES_IA' && !state.user.admin)) {
             return this.notify("Acceso restringido: Solo Operaciones/Operario puede reportar incidencias de taller.", "error");
         }
         const reasons = typeof WORKSHOP_INCIDENCE_REASONS !== 'undefined' ? WORKSHOP_INCIDENCE_REASONS : [];
@@ -475,7 +491,7 @@ Object.assign(ui, {
     },
 
     confirmTallerReturnReason() {
-        if (!state.user || (state.user.role !== 'OPERACIONES_IA' && state.user.role !== 'OPERACIONES' && !state.user.admin)) return;
+        if (!state.user || (this.getEffectiveRole() !== 'OPERACIONES_IA' && !state.user.admin)) return;
         const el = document.getElementById('taller-return-reason');
         const elUrl = document.getElementById('taller-return-drive-url');
         if (!el) return;
@@ -502,14 +518,16 @@ Object.assign(ui, {
             "Google Gemini", "OpenAI ChatGPT", "Anthropic Claude", "Microsoft Copilot", "Perplexity AI", "DeepSeek", "Otro autorizado por Coordinación"
         ];
         const optionsHtml = aiProviders.map(p => `<option value="${this.escapeHTML(p)}">${this.escapeHTML(p)}</option>`).join('');
-        const isOps = state.user.role === 'OPERACIONES_IA' || state.user.role === 'OPERACIONES';
+        const effRole = this.getEffectiveRole();
+        const isOps = effRole === 'OPERACIONES_IA';
+        const roleDisplay = (state.user.role !== effRole) ? `${state.user.role} (${effRole})` : effRole;
 
         const html = `
             <p class="text-xs text-slate-300 mb-3 leading-relaxed">Todo uso de IA generativa debe registrarse en el Cuaderno de Bitácora oficial (Google Docs) con permisos de lectura compartidos antes de integrarse en cualquier entregable.</p>
             <div class="bg-cyan-950/30 border border-cyan-500/30 p-2.5 mb-3 text-xs text-slate-300 font-mono">
                 ${isOps 
                     ? `<span class="text-mars-cyan font-bold">ℹ️ MODO OPERACIONES:</span> Tu registro se consolidará directamente en la Bitácora oficial del equipo.` 
-                    : `<span class="text-mars-yellow font-bold">ℹ️ FLUJO INTERDEPARTAMENTAL:</span> Tu declaración (${this.escapeHTML(state.user.role)}) se enviará a Operaciones e IA para su validación ética y consolidación.`
+                    : `<span class="text-mars-yellow font-bold">ℹ️ FLUJO INTERDEPARTAMENTAL:</span> Tu declaración (${this.escapeHTML(roleDisplay)}) se enviará a Operaciones e IA para su validación ética y consolidación.`
                 }
             </div>
             <div class="space-y-3">
@@ -564,10 +582,13 @@ Object.assign(ui, {
         if (!co) return auth.logout();
         co.aiPrompts = co.aiPrompts || [];
         
-        const autoApprove = state.user.role === 'OPERACIONES_IA' || state.user.role === 'OPERACIONES';
+        const effRole = this.getEffectiveRole(co);
+        const autoApprove = effRole === 'OPERACIONES_IA';
+        const roleLabel = (state.user.role !== effRole) ? `${state.user.role} (${effRole})` : effRole;
         const newPrompt = {
             id: 'AI-' + Date.now(),
-            role: state.user.role,
+            role: effRole,
+            submittedBy: state.user.role,
             tool,
             bitacoraUrl,
             date: new Date().toLocaleString(),
@@ -576,7 +597,7 @@ Object.assign(ui, {
         co.aiPrompts.unshift(newPrompt);
         
         if (!autoApprove) {
-            ui.pushNotification(state.user.coId, 'OPERACIONES_IA', `Nuevo uso de IA reportado por ${state.user.role} pendiente de tu validación.`, 'info');
+            ui.pushNotification(state.user.coId, 'OPERACIONES_IA', `Nuevo uso de IA reportado por ${roleLabel} pendiente de tu validación.`, 'info', { view: 'ailog', anchorId: 'ailog-section' });
         }
         
         telemetry.log("REPORTE IA", `Declarado uso de ${tool}`);
@@ -595,11 +616,11 @@ Object.assign(ui, {
         if(p) {
             if(ok) {
                 p.status = 'APROBADO';
-                ui.pushNotification(state.user.coId, p.role, `Tu reporte de uso de IA (${p.tool}) ha sido validado por Operaciones.`, 'success');
+                ui.pushNotification(state.user.coId, p.role, `Tu reporte de uso de IA (${p.tool}) ha sido validado por Operaciones.`, 'success', { view: 'ailog', anchorId: 'ailog-section' });
                 this.notify("Reporte de IA validado y archivado.", "success");
             } else {
                 co.aiPrompts = co.aiPrompts.filter(x => x.id !== pid);
-                ui.pushNotification(state.user.coId, p.role, `Tu reporte de uso de IA (${p.tool}) fue rechazado por falta de verificación humana rigurosa.`, 'error');
+                ui.pushNotification(state.user.coId, p.role, `Tu reporte de uso de IA (${p.tool}) fue rechazado por falta de verificación humana rigurosa.`, 'error', { view: 'ailog', anchorId: 'ailog-section' });
                 this.notify("Reporte de IA rechazado.", "info");
             }
             state.save();

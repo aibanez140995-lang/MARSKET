@@ -910,6 +910,9 @@ const state = {
                             const sItem = serverMap.get(String(lItem.id));
                             if (!sItem) return lItem;
                             const isRead = Boolean(lItem.read || sItem.read);
+                            const mergedReadBy = (lItem.readBy || sItem.readBy)
+                                ? { ...(sItem.readBy || {}), ...(lItem.readBy || {}) }
+                                : undefined;
                             let status = lItem.status;
                             if (lItem.status === 'PENDIENTE' && sItem.status && sItem.status !== 'PENDIENTE') {
                                 status = sItem.status;
@@ -918,7 +921,7 @@ const state = {
                             if (arrName === 'marketingCampaigns' || lItem.executedActions || sItem.executedActions) {
                                 executedActions = reconcileExecutedActions(lItem.executedActions, sItem.executedActions);
                             }
-                            return { ...sItem, ...lItem, read: isRead, status: status || lItem.status, ...(executedActions ? { executedActions } : {}) };
+                            return { ...sItem, ...lItem, read: isRead, ...(mergedReadBy ? { readBy: mergedReadBy } : {}), status: status || lItem.status, ...(executedActions ? { executedActions } : {}) };
                         });
                         const localIds = new Set(arrLocal.map(i => String(i?.id)));
                         const missingInLocal = arrServer.filter(i => i && i.id && !localIds.has(String(i.id)));
@@ -1054,6 +1057,9 @@ const state = {
                             
                             // Preservar estado leído de notificaciones (una vez leída, nunca vuelve a no leída)
                             const isRead = Boolean(sItem.read || lItem.read);
+                            const mergedReadBy = (sItem.readBy || lItem.readBy)
+                                ? { ...(sItem.readBy || {}), ...(lItem.readBy || {}) }
+                                : undefined;
                             let status = sItem.status;
                             if (sItem.status === 'PENDIENTE' && lItem.status && lItem.status !== 'PENDIENTE') {
                                 status = lItem.status;
@@ -1062,12 +1068,20 @@ const state = {
                             if (arrName === 'marketingCampaigns' || sItem.executedActions || lItem.executedActions) {
                                 executedActions = reconcileExecutedActions(lItem.executedActions, sItem.executedActions);
                             }
-                            return { ...sItem, ...lItem, read: isRead, status: status || sItem.status, ...(executedActions ? { executedActions } : {}) };
+                            return { ...sItem, ...lItem, read: isRead, ...(mergedReadBy ? { readBy: mergedReadBy } : {}), status: status || sItem.status, ...(executedActions ? { executedActions } : {}) };
                         });
                         
                         const serverIds = new Set(arrServer.map(i => String(i?.id)));
                         const missingInServer = arrLocal.filter(i => i && i.id && !serverIds.has(String(i.id)));
-                        return [...missingInServer, ...mergedServer];
+                        let finalMerged = [...missingInServer, ...mergedServer];
+                        if (arrName === 'notifications') {
+                            const dismissedIds = new Set([
+                                ...(Array.isArray(serverData.dismissedNotificationIds) ? serverData.dismissedNotificationIds.map(String) : []),
+                                ...(Array.isArray(localData.dismissedNotificationIds) ? localData.dismissedNotificationIds.map(String) : [])
+                            ]);
+                            finalMerged = finalMerged.filter(n => n && n.id && !dismissedIds.has(String(n.id)));
+                        }
+                        return finalMerged;
                     };
 
                     const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'cart', 'bom', 'coordinatorReports'];
@@ -1216,6 +1230,20 @@ const state = {
         }
 
         return merged;
+    },
+
+    getEffectiveRole(user = this.user, co = null) {
+        if (!user || !user.role) return '';
+        const rawRole = String(user.role).toUpperCase();
+        if (user.admin) return rawRole;
+        const company = co || (user.coId ? this.data?.companies?.[user.coId] : null);
+        if (rawRole === 'AUXILIAR' || rawRole === 'SECRETARIO') {
+            const linkedDept = company?.auxRoleDept ? String(company.auxRoleDept).toUpperCase() : '';
+            if (linkedDept === 'OPERACIONES') return 'OPERACIONES_IA';
+            return linkedDept || 'AUXILIAR';
+        }
+        if (rawRole === 'OPERACIONES') return 'OPERACIONES_IA';
+        return rawRole;
     },
 
     verifySessionIntegrity(serverOrMergedData = this.data) {
@@ -1894,7 +1922,8 @@ const state = {
         }
 
         co.deliverables = co.deliverables || {};
-        const isCEO = (this.user.role === 'CEO');
+        const effectiveRole = this.getEffectiveRole(this.user, co);
+        const isCEO = (effectiveRole === 'CEO');
         const targetStatus = isCEO ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
 
         const sanitizedItem = { 
@@ -1914,9 +1943,10 @@ const state = {
             const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
             const def = defs.find(d => d.key === docType);
             const docName = def ? (def.shortName || def.name) : docType;
-            ui.pushNotification(coId, 'CEO', `${this.user.role} ha subido el entregable "${docName}". Requiere tu supervisión y visado.`, 'warning', {
-                view: 'dossier',
-                subTab: 'docs',
+            const senderLabel = (effectiveRole !== this.user.role) ? `${this.user.role} (${effectiveRole})` : this.user.role;
+            ui.pushNotification(coId, 'CEO', `${senderLabel} ha subido el entregable "${docName}". Requiere tu supervisión y visado.`, 'warning', {
+                view: 'role_deliverables',
+                section: 'deliverables',
                 docKey: docType
             });
         }
@@ -1944,7 +1974,7 @@ const state = {
 
     async sendHojaTallerToWorkshop(driveUrl) {
         if (!this.user || !this.user.coId) return;
-        if (this.user.role !== 'TECNICO' && !this.user.admin) {
+        if (this.getEffectiveRole() !== 'TECNICO' && !this.user.admin) {
             if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
                 ui.notify("Acceso restringido: solo el departamento Técnico puede remitir la Hoja de Taller.", "error");
             }
@@ -2008,8 +2038,8 @@ const state = {
             telemetry.log("TALLER_VALIDADO", "Operario validó ensamble físico de Hoja de Taller.");
         }
         ui.pushNotification(this.user.coId, 'CEO', 'El Operario ha validado el ensamble físico de la Hoja de Taller. Pendiente de tu visado final.', 'warning', {
-            view: 'dossier',
-            subTab: 'docs',
+            view: 'role_deliverables',
+            section: 'deliverables',
             docKey: 'hoja_taller_fyq'
         });
         this.save();
@@ -2063,7 +2093,7 @@ const state = {
     },
 
     async approveDeliverableByCEO(docType) {
-        if (!this.user || !this.user.coId || this.user.role !== 'CEO') return;
+        if (!this.user || !this.user.coId || this.getEffectiveRole() !== 'CEO') return;
         const coId = this.user.coId;
         const co = this.data.companies?.[coId];
         if (!co || !co.deliverables || !co.deliverables[docType]) return;
@@ -2082,11 +2112,11 @@ const state = {
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
         const def = defs.find(d => d.key === docType);
         const docName = def ? (def.shortName || def.name) : docType;
-        const targetRole = def ? def.role : null;
+        const targetRole = def ? (def.role === 'OPERACIONES' ? 'OPERACIONES_IA' : def.role) : null;
         if (targetRole && typeof ui !== 'undefined' && typeof ui.pushNotification === 'function') {
             ui.pushNotification(coId, targetRole, `El CEO ha VALIDADO vuestro entregable "${docName}". Elevado formalmente a evaluación docente.`, 'success', {
-                view: 'dossier',
-                subTab: 'docs',
+                view: 'role_deliverables',
+                section: 'deliverables',
                 docKey: docType
             });
         }
@@ -2108,7 +2138,7 @@ const state = {
     },
 
     async returnDeliverableByCEO(docType, reasonId, returnDriveUrl = null) {
-        if (!this.user || !this.user.coId || this.user.role !== 'CEO') return;
+        if (!this.user || !this.user.coId || this.getEffectiveRole() !== 'CEO') return;
         const coId = this.user.coId;
         const co = this.data.companies?.[coId];
         if (!co || !co.deliverables || !co.deliverables[docType]) return;
@@ -2131,11 +2161,11 @@ const state = {
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
         const def = defs.find(d => d.key === docType);
         const docName = def ? (def.shortName || def.name) : docType;
-        const targetRole = def ? def.role : null;
+        const targetRole = def ? (def.role === 'OPERACIONES' ? 'OPERACIONES_IA' : def.role) : null;
         if (targetRole && typeof ui !== 'undefined' && typeof ui.pushNotification === 'function') {
             ui.pushNotification(coId, targetRole, `El CEO ha DEVUELTO vuestro entregable "${docName}" para subsanación. Motivo: ${reasonText}`, 'error', {
-                view: 'dossier',
-                subTab: 'docs',
+                view: 'role_deliverables',
+                section: 'deliverables',
                 docKey: docType
             });
         }
@@ -2184,20 +2214,20 @@ const state = {
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
         const def = defs.find(d => d.key === docType);
         const docName = def ? (def.shortName || def.name) : docType;
-        const targetRole = def ? def.role : null;
+        const targetRole = def ? (def.role === 'OPERACIONES' ? 'OPERACIONES_IA' : def.role) : null;
         const teacherName = this.user.role || 'Docente';
 
         if (typeof ui !== 'undefined' && typeof ui.pushNotification === 'function') {
             if (targetRole) {
                 ui.pushNotification(coId, targetRole, `El Profesorado (${teacherName}) ha DEVUELTO vuestro entregable "${docName}" para subsanación urgente. Motivo: ${reasonText}`, 'error', {
-                    view: 'dossier',
-                    subTab: 'docs',
+                    view: 'role_deliverables',
+                    section: 'deliverables',
                     docKey: docType
                 });
             }
             ui.pushNotification(coId, 'CEO', `El Profesorado (${teacherName}) ha devuelto el entregable "${docName}" para subsanación. Motivo: ${reasonText}`, 'error', {
-                view: 'dossier',
-                subTab: 'docs',
+                view: 'role_deliverables',
+                section: 'deliverables',
                 docKey: docType
             });
         }
@@ -2222,7 +2252,7 @@ const state = {
     },
 
     async decideMktAction(campId, actId, approved, feedback = '', returnDriveUrl = '') {
-        if (!this.user || !this.user.coId || (this.user.role !== 'CEO' && !this.user.admin && !this.user.isCoordinator)) return;
+        if (!this.user || !this.user.coId || (this.getEffectiveRole() !== 'CEO' && !this.user.admin && !this.user.isCoordinator)) return;
         const coId = this.user.coId;
         const co = this.data.companies?.[coId];
         if (!co || !Array.isArray(co.marketingCampaigns)) return;
@@ -2245,12 +2275,12 @@ const state = {
         if (typeof ui !== 'undefined' && typeof ui.pushNotification === 'function') {
             if (approved) {
                 ui.pushNotification(coId, 'MARKETING', `El CEO ha VALIDADO la acción publicitaria "${act.title}". Elevada al docente de Liderazgo y Coordinación.`, 'success', {
-                    view: 'brand',
+                    view: 'campaigns',
                     anchorId: 'mkt-campaigns-section'
                 });
             } else {
                 ui.pushNotification(coId, 'MARKETING', `El CEO ha DEVUELTO la acción publicitaria "${act.title}". Motivo: ${act.feedback}`, 'error', {
-                    view: 'brand',
+                    view: 'campaigns',
                     anchorId: 'mkt-campaigns-section'
                 });
             }
@@ -2795,7 +2825,8 @@ const state = {
             return { ok: false, error: 'Empresa no encontrada' };
         }
         // Validar rol CEO o Claustro
-        const isCEO = this.user && (this.user.role === 'CEO' || this.user.admin);
+        const effectiveRole = this.getEffectiveRole(this.user, co);
+        const isCEO = this.user && (effectiveRole === 'CEO' || this.user.admin);
         if (!isCEO) {
             return { ok: false, error: 'Solo la Dirección General (CEO) tiene potestad legal para firmar contratos comerciales.' };
         }
@@ -2833,7 +2864,7 @@ const state = {
             dept: contract.dept,
             signedAt: now,
             signedDate: new Date().toLocaleString(),
-            signedBy: this.user?.role || 'CEO',
+            signedBy: this.user ? (effectiveRole !== this.user.role ? `${this.user.role} (${effectiveRole})` : this.user.role) : 'CEO',
             status: 'EN_CURSO',
             settledAt: null,
             settledBy: null,

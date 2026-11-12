@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.01) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.02) ---
 
-const APP_VERSION = "2.0.01";
+const APP_VERSION = "2.0.02";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1097,8 +1097,25 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v1.1.75
+// Changelog Oficial de Producción v2.0.02
 const APP_CHANGELOG = [
+    {
+      version: "2.0.02",
+      date: new Date().toISOString().split('T')[0],
+      title: "Paridad Operativa Total del Rol Auxiliar, Enrutamiento Exacto de Notificaciones y Auditoría Integral por Roles",
+      items: [
+        "Paridad Operativa del Rol Auxiliar (getEffectiveRole): Cuando el Rol Auxiliar está vinculado a un departamento, opera en igualdad funcional plena (UI, contadores, acciones B2B/I+D/Finanzas/Operaciones/Marketing/CEO, notificaciones y validaciones en servidor PHP/D1), conservando su PIN propio y su escaño individual de voto en Asamblea.",
+        "Enrutamiento Exacto de [👁️ Ver Notificación ➔]: Redirección precisa y sin rebotes para avisos de Balances DOC_17, I+D Especial, Licencias AESA, Contratos/Patrocinios, Crónicas AEE, Entregables, Gobernanza, Campañas de Marketing, Hoja de Taller y Aduana B2B.",
+        "Difusión Multi-Departamento de Avisos Globales ('ALL'): Desdoblamiento por destinatario al emitir avisos generales y soporte de lectura por rol efectivo (readBy), evitando que descartar un aviso lo borre para otros departamentos o startups.",
+        "Bandeja de Visado Ejecutivo del CEO y Subsanaciones: Visibilidad directa en el Dashboard del CEO de propuestas de Eslogan y Acciones Publicitarias pendientes, además de reenvío directo para solicitudes de I+D Especial devueltas, informe de devolución en DOC_17 y enlace a dictamen en Eslogan/DOC_4.",
+        "Blindaje AESA Anti-Doble Cargo y Depuración Docente: Exención automática de la segunda tasa de 50 €v al subsanar licencias AESA denegadas, limpieza del panel duplicado de Eslogan en Coordinación, sincronización del badge 🚀 AESA OK, histórico de cambios de denominación y corrección en PHP y Cloudflare Workers."
+      ],
+      highlights: [
+        { type: "AUXILIAR", text: "Paridad operativa completa con su departamento vinculado sin perder su voto ni PIN individual." },
+        { type: "NOTIFICACIONES", text: "Botón [👁️ Ver Notificación ➔] sincronizado con destino exacto en todos los roles y avisos globales." },
+        { type: "AUDITORÍA", text: "Correcciones integrales en CEO, I+D, Finanzas, Operaciones, Marketing y Coordinación Docente." }
+      ]
+    },
     {
       version: "2.0.01",
       date: new Date().toISOString().split('T')[0],

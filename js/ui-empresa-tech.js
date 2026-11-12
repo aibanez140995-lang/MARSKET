@@ -215,13 +215,18 @@ Object.assign(ui, {
                                         <span>📄 Abrir Mi Solicitud en Docs ↗</span>
                                     </a>
                                 ` : ''}
-                                ${(item.status === 'DENEGADA' && item.responseDriveUrl) ? `
+                                ${(item.responseDriveUrl && (item.status === 'DENEGADA' || item.status === 'DEVUELTO_CEO' || item.status === 'RECHAZADO_CEO')) ? `
                                     <a href="${encodeURI(item.responseDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[36px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/50 text-red-200 border border-red-400 rounded font-mono hover:bg-red-900/60 transition-colors font-bold">
                                         <span>📄 Ver Dictamen / Respuesta de Coordinación ↗</span>
                                     </a>
                                 ` : ''}
                             </div>
                         </div>
+                        ${(item.status === 'DEVUELTO_CEO' || item.status === 'RECHAZADO_CEO') && (this.getEffectiveRole(co) === 'TECNICO' || state.user?.admin) ? `
+                            <div class="shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
+                                <button type="button" onclick="ui.modalResubmitSpecialItem('${this.escapeHTML(item.id)}')" class="min-h-[44px] w-full sm:w-auto bg-mars-yellow text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ ✏️ Subsanar y Reenviar ]</button>
+                            </div>
+                        ` : ''}
                     </div>`;
                 }).join('')}
             </div>`;
@@ -343,18 +348,6 @@ Object.assign(ui, {
 
                 <!-- Columna Derecha: Acceso a Entregables Científicos y Órdenes -->
                 <div class="lg:col-span-5 space-y-6">
-                    <!-- Panel Operativo: Solicitud de Material I+D -->
-                    <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-magenta">
-                        <div class="flex justify-between items-center mb-2 border-b border-mars-border pb-2">
-                            <h3 class="font-orbitron text-mars-magenta text-xs sm:text-sm uppercase tracking-tight">Material I+D Especial</h3>
-                            <span class="text-xs font-mono text-slate-400">${(co.specialItemRequests || []).length} Solicitudes</span>
-                        </div>
-                        <p class="text-xs text-slate-300 mb-3 leading-relaxed">¿Necesitas piezas o reactivos no listados en el catálogo oficial? Tramita una solicitud oficial de I+D a Coordinación con memoria técnica en Google Docs.</p>
-                        <button type="button" onclick="ui.modalSpecialItem()" class="w-full min-h-[44px] bg-mars-magenta text-white font-black uppercase text-xs py-2 px-3 hover:bg-white hover:text-mars-magenta transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(255,0,85,0.3)]">
-                            <span>📡 + SOLICITAR MATERIAL I+D</span>
-                        </button>
-                    </div>
-
                     <!-- Acceso a Seguimiento de Órdenes -->
                     <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-amber-400">
                         <div class="flex justify-between items-center mb-2 border-b border-mars-border pb-2">
@@ -370,7 +363,7 @@ Object.assign(ui, {
             </div>
 
             <!-- Panel de Solicitudes de Material I+D a Coordinación -->
-            <div class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-magenta shadow-sm">
+            <div id="tech-special-items-panel" class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-magenta shadow-sm">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-mars-border pb-3 mb-4">
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2 mb-1">
@@ -825,7 +818,7 @@ Object.assign(ui, {
             offer.updatedAt = Date.now();
         }
 
-        ui.pushNotification(state.user.coId, 'FINANZAS', `I+D propone venta B2B de "${item.name}" por ${price.toFixed(2)} €v. Revisa la propuesta en Órdenes.`, 'info');
+        ui.pushNotification(state.user.coId, 'FINANZAS', `I+D propone venta B2B de "${item.name}" por ${price.toFixed(2)} €v. Revisa la propuesta en Órdenes.`, 'info', { view: 'finance' });
         telemetry.log("PROPUESTA B2B", `I+D propone venta B2B: ${item.name} por ${price}€v`);
         co.updatedAt = Date.now();
         state.save(state.user.coId);
@@ -947,12 +940,71 @@ Object.assign(ui, {
             createdAt: Date.now()
         });
         
-        ui.pushNotification(coId, 'CEO', `🔬 Solicitud de Material I+D fuera de catálogo remitida por el Dpto. Técnico para visado.`, 'info', { view: 'dashboard' });
+        ui.pushNotification(coId, 'CEO', `🔬 Solicitud de Material I+D fuera de catálogo remitida por el Dpto. Técnico para visado.`, 'info', { view: 'dashboard', anchorId: 'ceo-special-items-panel' });
         
         co.updatedAt = Date.now();
         state.save(coId);
         this.closeModal();
         this.notify("✅ Solicitud de material I+D enviada al CEO para su aprobación previa.", "success");
+        this.render();
+    },
+
+    modalResubmitSpecialItem(reqId) {
+        if (!state.user) return;
+        const co = state.data.companies?.[state.user.coId];
+        if (!co || !Array.isArray(co.specialItemRequests)) return;
+        const req = co.specialItemRequests.find(r => r.id === reqId);
+        if (!req) return;
+
+        const html = `
+            <div class="space-y-4 font-mono text-xs">
+                <div class="bg-rose-950/40 border border-rose-500/50 p-3 text-rose-200 space-y-1">
+                    <strong class="uppercase text-rose-400 block">↩ Observación del CEO:</strong>
+                    <p>${this.escapeHTML(req.returnReason || 'Revisión de memoria técnica DOC_13 solicitada por el CEO.')}</p>
+                </div>
+                <div>
+                    <label for="resubmit-special-item-url" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">
+                        📄 Nuevo o Actualizado Enlace a DOC_13 en Google Drive / Docs (URL)
+                    </label>
+                    <input type="url" id="resubmit-special-item-url" value="${req.driveUrl ? this.escapeHTML(req.driveUrl) : ''}" placeholder="https://docs.google.com/... o https://drive.google.com/..." required class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow">
+                    <p class="text-[10px] text-slate-400 mt-1 font-sans">Asegúrate de haber corregido el documento y mantenido permisos públicos de lectura.</p>
+                </div>
+                <div class="pt-1">
+                    ${this.renderDocTemplateBtn('DOC_13_SOLICITUD_ID', '📄 Ver Plantilla Solicitud I+D (DOC_13)')}
+                </div>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.resubmitSpecialItem('${this.escapeHTML(reqId)}')" class="min-h-[44px] bg-mars-yellow text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-colors tracking-wider">[ 🔄 Reenviar al CEO para Visado ]</button>`;
+        this.showModal("Subsanar Solicitud de Material I+D", html, actions);
+    },
+
+    resubmitSpecialItem(reqId) {
+        if (!state.user) return;
+        const elUrl = document.getElementById('resubmit-special-item-url');
+        if (!elUrl) return;
+        const driveUrl = this.cleanInput(elUrl.value).trim();
+        if (!driveUrl) return this.notify("Debes incluir el enlace a la memoria técnica en Google Drive o Docs.", "warning");
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            return this.notify("El enlace debe ser una URL válida de Google Drive o Docs.", "error");
+        }
+
+        const coId = state.user.coId;
+        const co = state.data.companies?.[coId];
+        if (!co || !Array.isArray(co.specialItemRequests)) return;
+        const req = co.specialItemRequests.find(r => r.id === reqId);
+        if (!req) return;
+
+        req.driveUrl = driveUrl;
+        req.status = 'PENDIENTE_CEO';
+        delete req.returnReason;
+        req.resubmittedAt = Date.now();
+
+        ui.pushNotification(coId, 'CEO', `🔬 El Dpto. Técnico ha subsanado y reenviado la solicitud de Material I+D "${req.name || 'Componente'}" para visado.`, 'info', { view: 'dashboard', anchorId: 'ceo-special-items-panel' });
+
+        co.updatedAt = Date.now();
+        state.save(coId);
+        this.closeModal();
+        this.notify("✅ Solicitud subsanada y reenviada al CEO.", "success");
         this.render();
     },
 

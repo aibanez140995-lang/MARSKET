@@ -33,9 +33,10 @@ Object.assign(ui, {
         co.sanctions = co.sanctions || [];
         co.deliverables = co.deliverables || {};
 
-        const isCEO = state.user.role === 'CEO';
-        const isFinanzas = state.user.role === 'FINANZAS';
-        const isMarketing = state.user.role === 'MARKETING' || state.user.admin || state.user.isCoordinator;
+        const effectiveRole = this.getEffectiveRole(co);
+        const isCEO = effectiveRole === 'CEO';
+        const isFinanzas = effectiveRole === 'FINANZAS';
+        const isMarketing = effectiveRole === 'MARKETING' || state.user.admin || state.user.isCoordinator;
 
         const wrapper = document.createElement('div');
 
@@ -653,7 +654,7 @@ Object.assign(ui, {
         co.cart = [];
         this._lastOrderDriveUrl = '';
         
-        ui.pushNotification(state.user.coId, 'FINANZAS', `Nueva orden #${newOrder.id} (${total.toFixed(2)} €v) recibida de I+D. Requiere validación urgente.`, 'warning');
+        ui.pushNotification(state.user.coId, 'FINANZAS', `Nueva orden #${newOrder.id} (${total.toFixed(2)} €v) recibida de I+D. Requiere validación urgente.`, 'warning', { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' });
         telemetry.log("ORDEN ENVIADA", `I+D generó orden #${newOrder.id}`);
         state.save();
         this.closeModal();
@@ -662,7 +663,7 @@ Object.assign(ui, {
     },
 
     approveOrder(oid) {
-        if (!state.user || state.user.role !== 'FINANZAS') return this.notify("Solo Finanzas puede aprobar órdenes.", "warning");
+        if (!state.user || this.getEffectiveRole() !== 'FINANZAS') return this.notify("Solo Finanzas puede aprobar órdenes.", "warning");
         const co = state.data.companies[state.user.coId];
         if (!co || !co.orders) return;
 
@@ -674,8 +675,8 @@ Object.assign(ui, {
         }
 
         order.status = 'APROBADO_FINANZAS';
-        ui.pushNotification(state.user.coId, 'TECNICO', `Finanzas ha APROBADO la orden #${order.id} (${order.total.toFixed(2)} €v). Ya está en Logística.`, 'success');
-        ui.pushNotification(state.user.coId, 'OPERACIONES_IA', `Nueva orden #${order.id} aprobada lista para ensamblaje físico.`, 'info');
+        ui.pushNotification(state.user.coId, 'TECNICO', `Finanzas ha APROBADO la orden #${order.id} (${order.total.toFixed(2)} €v). Ya está en Logística.`, 'success', { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' });
+        ui.pushNotification(state.user.coId, 'OPERACIONES_IA', `Nueva orden #${order.id} aprobada lista para ensamblaje físico.`, 'info', { view: 'cart', anchorId: 'ops-orders-tracking-panel' });
         
         telemetry.log("ORDEN APROBADA", `Finanzas aprobó orden #${order.id} por ${order.total}€v`);
         co.updatedAt = Date.now();
@@ -685,7 +686,7 @@ Object.assign(ui, {
     },
 
     rejectOrder(oid) {
-        if (!state.user || state.user.role !== 'FINANZAS') return this.notify("Solo Finanzas puede rechazar órdenes.", "warning");
+        if (!state.user || this.getEffectiveRole() !== 'FINANZAS') return this.notify("Solo Finanzas puede rechazar órdenes.", "warning");
         const co = state.data.companies[state.user.coId];
         if (!co || !co.orders) return;
 
@@ -693,7 +694,7 @@ Object.assign(ui, {
         if (!order || order.status !== 'PENDIENTE_FINANZAS') return;
 
         order.status = 'RECHAZADO';
-        ui.pushNotification(state.user.coId, 'TECNICO', `Finanzas ha RECHAZADO la orden #${order.id}. Revisa justificación o presupuesto.`, 'error');
+        ui.pushNotification(state.user.coId, 'TECNICO', `Finanzas ha RECHAZADO la orden #${order.id}. Revisa justificación o presupuesto.`, 'error', { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' });
         
         telemetry.log("ORDEN RECHAZADA", `Finanzas rechazó orden #${order.id}`);
         co.updatedAt = Date.now();
@@ -703,7 +704,7 @@ Object.assign(ui, {
     },
 
     approveMktCamp(campId) {
-        if (!state.user || state.user.role !== 'FINANZAS') return;
+        if (!state.user || this.getEffectiveRole() !== 'FINANZAS') return;
         const co = state.data.companies[state.user.coId];
         if (!co || !co.marketingCampaigns) return;
 
@@ -716,7 +717,7 @@ Object.assign(ui, {
         camp.status = 'ACTIVO';
         state.addToLedger(state.user.coId, `[PUBLICIDAD] Contratación de ${camp.packageName}`, 'MARKETING', -price);
         
-        ui.pushNotification(state.user.coId, 'MARKETING', `Finanzas autorizó el paquete "${camp.packageName}". Ya puedes publicar tus ${camp.totalActions} acciones.`, 'success');
+        ui.pushNotification(state.user.coId, 'MARKETING', `Finanzas autorizó el paquete "${camp.packageName}". Ya puedes publicar tus ${camp.totalActions} acciones.`, 'success', { view: 'campaigns', anchorId: 'mkt-campaigns-section' });
         telemetry.log("MKT APROBADO", `Aprobado ${camp.packageName} (-${price}€v)`);
         co.updatedAt = Date.now();
         state.save(state.user.coId);
@@ -733,7 +734,7 @@ Object.assign(ui, {
     },
 
     rejectMktCamp(campId) {
-        if (!state.user || state.user.role !== 'FINANZAS') return;
+        if (!state.user || this.getEffectiveRole() !== 'FINANZAS') return;
         const co = state.data.companies[state.user.coId];
         if (!co || !co.marketingCampaigns) return;
 
@@ -741,7 +742,7 @@ Object.assign(ui, {
         if (!camp) return;
 
         camp.status = 'DENEGADO';
-        ui.pushNotification(state.user.coId, 'MARKETING', `Finanzas denegó la contratación del paquete "${camp.packageName}".`, 'error');
+        ui.pushNotification(state.user.coId, 'MARKETING', `Finanzas denegó la contratación del paquete "${camp.packageName}".`, 'error', { view: 'campaigns', anchorId: 'mkt-campaigns-section' });
         telemetry.log("MKT RECHAZADO", `Denegado ${camp.packageName}`);
         co.updatedAt = Date.now();
         state.save(state.user.coId);
@@ -750,7 +751,7 @@ Object.assign(ui, {
     },
 
     approveB2BSell(offerId) {
-        if (!state.user || (state.user.role !== 'FINANZAS' && !state.user.admin)) {
+        if (!state.user || (this.getEffectiveRole() !== 'FINANZAS' && !state.user.admin)) {
             return this.notify("Solo el Departamento de Finanzas puede aprobar ventas B2B.", "warning");
         }
         const co = state.data.companies[state.user.coId];
@@ -771,7 +772,7 @@ Object.assign(ui, {
             }
         }
 
-        ui.pushNotification(state.user.coId, 'TECNICO', `Finanzas ha aprobado y publicado en B2B: ${offer.itemName} por ${Number(offer.price).toFixed(2)} €v.`, 'success');
+        ui.pushNotification(state.user.coId, 'TECNICO', `Finanzas ha aprobado y publicado en B2B: ${offer.itemName} por ${Number(offer.price).toFixed(2)} €v.`, 'success', { view: 'market' });
         telemetry.log("OFERTA B2B APROBADA", `Finanzas aprobó venta B2B: ${offer.itemName} por ${offer.price}€v`);
         co.updatedAt = Date.now();
         state.save(state.user.coId);
@@ -780,7 +781,7 @@ Object.assign(ui, {
     },
 
     modalRejectB2BSell(offerId) {
-        if (!state.user || (state.user.role !== 'FINANZAS' && !state.user.admin)) {
+        if (!state.user || (this.getEffectiveRole() !== 'FINANZAS' && !state.user.admin)) {
             return this.notify("Solo el Departamento de Finanzas puede gestionar ofertas B2B.", "warning");
         }
         const offer = (state.data.b2bMarket || []).find(o => o.id === offerId && o.sellerCoId === state.user.coId);
@@ -814,7 +815,7 @@ Object.assign(ui, {
     },
 
     confirmRejectB2BSell(offerId) {
-        if (!state.user || (state.user.role !== 'FINANZAS' && !state.user.admin)) return;
+        if (!state.user || (this.getEffectiveRole() !== 'FINANZAS' && !state.user.admin)) return;
         const elReason = document.getElementById('b2b-reject-reason');
         const elPrice = document.getElementById('b2b-counter-price');
         if (!elReason || !elPrice) return;
@@ -846,7 +847,7 @@ Object.assign(ui, {
             }
         }
 
-        ui.pushNotification(state.user.coId, 'TECNICO', `Finanzas ha devuelto la propuesta B2B de "${offer.itemName}". Precio sugerido: ${counterPrice.toFixed(2)} €v.`, 'warning');
+        ui.pushNotification(state.user.coId, 'TECNICO', `Finanzas ha devuelto la propuesta B2B de "${offer.itemName}". Precio sugerido: ${counterPrice.toFixed(2)} €v.`, 'warning', { view: 'tech_workshop' });
         telemetry.log("PROPUESTA B2B RECHAZADA", `Finanzas devolvió venta B2B: ${offer.itemName}. Motivo: ${reason}. Sugerido: ${counterPrice}€v`);
         co.updatedAt = Date.now();
         state.save(state.user.coId);
@@ -856,7 +857,7 @@ Object.assign(ui, {
     },
 
     withdrawB2BOffer(offerId) {
-        if (!state.user || (state.user.role !== 'FINANZAS' && !state.user.admin)) {
+        if (!state.user || (this.getEffectiveRole() !== 'FINANZAS' && !state.user.admin)) {
             return this.notify("Solo el Departamento de Finanzas puede retirar ofertas del mercado B2B.", "warning");
         }
         const co = state.data.companies[state.user.coId];
@@ -889,7 +890,7 @@ Object.assign(ui, {
             }
         }
 
-        ui.pushNotification(state.user.coId, 'TECNICO', `Finanzas ha retirado del mercado B2B: ${offer.itemName}. Devuelto al inventario de taller.`, 'info');
+        ui.pushNotification(state.user.coId, 'TECNICO', `Finanzas ha retirado del mercado B2B: ${offer.itemName}. Devuelto al inventario de taller.`, 'info', { view: 'tech_workshop' });
         telemetry.log("OFERTA B2B RETIRADA", `Finanzas retiró del mercado B2B: ${offer.itemName}`);
         co.updatedAt = Date.now();
         state.save(state.user.coId);
@@ -898,7 +899,7 @@ Object.assign(ui, {
     },
 
     modalCrisisAction(crisisId) {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const co = state.data.companies[state.user.coId];
         if (!co) return;
         const crisis = (co.crisisAlerts || []).find(a => String(a.id) === String(crisisId)) || (co.crisisAlerts || [])[0] || {};
@@ -943,7 +944,7 @@ Object.assign(ui, {
     },
 
     notifyDepartmentsCrisis(expId) {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
 
@@ -1014,8 +1015,9 @@ Object.assign(ui, {
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
 
-        const isCEO = state.user.role === 'CEO';
-        const isFinanzas = state.user.role === 'FINANZAS';
+        const effectiveRole = this.getEffectiveRole(co);
+        const isCEO = effectiveRole === 'CEO';
+        const isFinanzas = effectiveRole === 'FINANZAS';
         co.ledger = co.ledger || [];
         co.realCosts = co.realCosts || [];
         const docs = co.deliverables || {};
@@ -1085,6 +1087,11 @@ Object.assign(ui, {
                         <a href="${encodeURI(b.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[36px] inline-flex items-center px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-300 border border-cyan-500/40 rounded font-mono hover:bg-cyan-900/60 transition-colors">
                             <span>DOC_17 ↗</span>
                         </a>
+                        ${(bStatus === 'RETURNED_BY_CEO' && b.returnDriveUrl) ? `
+                            <a href="${encodeURI(b.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[36px] inline-flex items-center px-2.5 py-1 text-xs bg-red-950/60 text-red-200 border border-red-400 rounded font-mono hover:bg-red-900/60 transition-colors font-bold">
+                                <span>📄 Ver Informe Devolución CEO ↗</span>
+                            </a>
+                        ` : ''}
                         ${(isCEO && bStatus === 'PENDIENTE_CEO') ? `
                             <button type="button" onclick="ui.approvePhaseBalanceByCEO('${this.escapeHTML(p.phase)}')" class="min-h-[36px] bg-mars-green text-black font-black uppercase text-[11px] px-3 py-1 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">
                                 [ ✓ Visar ]
@@ -1415,7 +1422,8 @@ Object.assign(ui, {
         const co = state.data.companies[coId];
         if (!co) return;
 
-        const isCEO = state.user?.role === 'CEO';
+        const effectiveRole = this.getEffectiveRole(co);
+        const isCEO = effectiveRole === 'CEO';
         const grossCosts = state.getCompanyGrossOperatingCosts ? state.getCompanyGrossOperatingCosts(co) : 0;
         const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
         const virtualSpend = (co.ledger || []).filter(l => l.delta < 0).reduce((acc, l) => acc + Math.abs(Number(l.delta) || 0), 0);
@@ -1433,7 +1441,7 @@ Object.assign(ui, {
                 sponsorReduction: Number(sponsorAmt) || 0,
                 virtualSpend: Number(virtualSpend) || 0
             },
-            authorRole: state.user.role,
+            authorRole: (effectiveRole !== state.user.role) ? `${state.user.role} (${effectiveRole})` : state.user.role,
             authorName: state.user.name || 'Finanzas',
             date: new Date().toLocaleDateString(),
             timestamp: Date.now()
@@ -1449,7 +1457,7 @@ Object.assign(ui, {
             ui.pushNotification(coId, 'ALL', `📊 Balance de Cierre de Fase ${phaseKey} formalizado y elevado al Claustro para Economía.`, 'success');
             this.notify(`✅ Balance Contable de Cierre de Fase ${phaseKey} visado y entregado.`, "success");
         } else {
-            ui.pushNotification(coId, 'CEO', `📊 Finanzas ha formalizado el Balance de Cierre de Fase ${phaseKey} (DOC_17). Pendiente de tu visado para Economía.`, 'warning', { view: 'dashboard' });
+            ui.pushNotification(coId, 'CEO', `📊 Finanzas ha formalizado el Balance de Cierre de Fase ${phaseKey} (DOC_17). Pendiente de tu visado para Economía.`, 'warning', { view: 'dashboard', anchorId: 'ceo-balance-approval-panel' });
             this.notify(`✅ Balance registrado y enviado a Dirección General (CEO) para visado.`, "success");
         }
 
@@ -1458,7 +1466,7 @@ Object.assign(ui, {
     },
 
     approvePhaseBalanceByCEO(phaseKey) {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const coId = state.user.coId;
         const co = state.data.companies[coId];
         if (!co || !co.phaseBalances || !co.phaseBalances[phaseKey]) return;
@@ -1476,7 +1484,7 @@ Object.assign(ui, {
     },
 
     modalCeoReturnPhaseBalance(phaseKey) {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const reasons = [
             "Descuadre contable o divergencia en el saldo registrado",
             "Falta comprobación de partidas de I+D o compras de taller",
@@ -1505,7 +1513,7 @@ Object.assign(ui, {
     },
 
     confirmCeoReturnPhaseBalance(phaseKey) {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const coId = state.user.coId;
         const co = state.data.companies[coId];
         if (!co || !co.phaseBalances || !co.phaseBalances[phaseKey]) return;
@@ -1534,7 +1542,7 @@ Object.assign(ui, {
     },
 
     modalReviewOrderFinanzas(orderId) {
-        if (!state.user || state.user.role !== 'FINANZAS') return;
+        if (!state.user || this.getEffectiveRole() !== 'FINANZAS') return;
         const co = state.data.companies[state.user.coId];
         if (!co || !co.orders) return;
         const order = co.orders.find(o => String(o.id) === String(orderId));
@@ -1608,7 +1616,7 @@ Object.assign(ui, {
     },
 
     confirmReviewOrderFinanzas(orderId) {
-        if (!state.user || state.user.role !== 'FINANZAS') return;
+        if (!state.user || this.getEffectiveRole() !== 'FINANZAS') return;
         const coId = state.user.coId;
         const co = state.data.companies[coId];
         if (!co || !co.orders) return;
@@ -1664,11 +1672,11 @@ Object.assign(ui, {
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
         if (rejectedItems.length > 0) {
-            ui.pushNotification(coId, 'TECNICO', `⚠️ Finanzas ha APROBADO PARCIALMENTE la orden #${order.id} (${newTotal.toFixed(2)} €v). Partidas denegadas justificadas en Docs.`, 'warning', { view: 'orders' });
+            ui.pushNotification(coId, 'TECNICO', `⚠️ Finanzas ha APROBADO PARCIALMENTE la orden #${order.id} (${newTotal.toFixed(2)} €v). Partidas denegadas justificadas en Docs.`, 'warning', { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' });
         } else {
-            ui.pushNotification(coId, 'TECNICO', `✅ Finanzas ha APROBADO la orden #${order.id} (${newTotal.toFixed(2)} €v). Ya está en Logística.`, 'success', { view: 'orders' });
+            ui.pushNotification(coId, 'TECNICO', `✅ Finanzas ha APROBADO la orden #${order.id} (${newTotal.toFixed(2)} €v). Ya está en Logística.`, 'success', { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' });
         }
-        ui.pushNotification(coId, 'OPERACIONES_IA', `📦 Orden #${order.id} autorizada por Finanzas (${newTotal.toFixed(2)} €v) lista para compra física y ensamble.`, 'info', { view: 'cart' });
+        ui.pushNotification(coId, 'OPERACIONES_IA', `📦 Orden #${order.id} autorizada por Finanzas (${newTotal.toFixed(2)} €v) lista para compra física y ensamble.`, 'info', { view: 'cart', anchorId: 'ops-orders-tracking-panel' });
 
         this.closeModal();
         this.notify(`✅ Orden #${order.id} autorizada (${newTotal.toFixed(2)} €v). Pasa a Operaciones.`, "success");
@@ -1676,7 +1684,7 @@ Object.assign(ui, {
     },
 
     modalRejectOrderWithDoc(orderId) {
-        if (!state.user || state.user.role !== 'FINANZAS') return;
+        if (!state.user || this.getEffectiveRole() !== 'FINANZAS') return;
         const co = state.data.companies[state.user.coId];
         if (!co || !co.orders) return;
         const order = co.orders.find(o => String(o.id) === String(orderId));
@@ -1698,7 +1706,7 @@ Object.assign(ui, {
     },
 
     confirmRejectOrderWithDoc(orderId) {
-        if (!state.user || state.user.role !== 'FINANZAS') return;
+        if (!state.user || this.getEffectiveRole() !== 'FINANZAS') return;
         const co = state.data.companies[state.user.coId];
         if (!co || !co.orders) return;
         const order = co.orders.find(o => String(o.id) === String(orderId));
@@ -1719,14 +1727,14 @@ Object.assign(ui, {
         state.save(state.user.coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
-        ui.pushNotification(state.user.coId, 'TECNICO', `❌ Finanzas ha DENEGADO la orden #${order.id}. Consulta el informe justificativo en Google Docs.`, 'error', { view: 'orders' });
+        ui.pushNotification(state.user.coId, 'TECNICO', `❌ Finanzas ha DENEGADO la orden #${order.id}. Consulta el informe justificativo en Google Docs.`, 'error', { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' });
         this.closeModal();
         this.notify(`❌ Orden #${order.id} denegada.`, "info");
         this.render();
     },
 
     approveB2BBuyByFinanzas(orderId) {
-        if (!state.user || state.user.role !== 'FINANZAS') return;
+        if (!state.user || this.getEffectiveRole() !== 'FINANZAS') return;
         const coId = state.user.coId;
         const co = state.data.companies[coId];
         if (!co || !co.orders) return;
@@ -1793,15 +1801,15 @@ Object.assign(ui, {
                 (otherCo?.orders || []).forEach(otherOrd => {
                     if (otherOrd.offerId === offerId && otherOrd.status === 'PENDIENTE_FINANZAS') {
                         otherOrd.status = 'CANCELADO_OTRA_EMPRESA';
-                        ui.pushNotification(otherCoId, 'TECNICO', `⚠️ La pieza B2B "${offer.itemName}" ha sido adquirida por otra empresa. Tu solicitud se ha cancelado.`, 'warning');
-                        ui.pushNotification(otherCoId, 'FINANZAS', `⚠️ La pieza B2B "${offer.itemName}" ha sido adquirida por otra empresa. Solicitud cancelada.`, 'info');
+                        ui.pushNotification(otherCoId, 'TECNICO', `⚠️ La pieza B2B "${offer.itemName}" ha sido adquirida por otra empresa. Tu solicitud se ha cancelado.`, 'warning', { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' });
+                        ui.pushNotification(otherCoId, 'FINANZAS', `⚠️ La pieza B2B "${offer.itemName}" ha sido adquirida por otra empresa. Solicitud cancelada.`, 'info', { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' });
                     }
                 });
             }
         });
 
-        ui.pushNotification(coId, 'TECNICO', `🎉 ¡Conseguido! Finanzas autorizó la compra B2B de "${offer.itemName}". Bloqueado en Aduana Docente.`, 'success', { view: 'orders' });
-        ui.pushNotification(offer.sellerCoId, 'TECNICO', `🤝 ${co.name} ha formalizado la compra B2B de tu pieza "${offer.itemName}". Esperando validación en Aduana.`, 'info');
+        ui.pushNotification(coId, 'TECNICO', `🎉 ¡Conseguido! Finanzas autorizó la compra B2B de "${offer.itemName}". Bloqueado en Aduana Docente.`, 'success', { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' });
+        ui.pushNotification(offer.sellerCoId, 'TECNICO', `🤝 ${co.name} ha formalizado la compra B2B de tu pieza "${offer.itemName}". Esperando validación en Aduana.`, 'info', { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' });
 
         state.save();
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);

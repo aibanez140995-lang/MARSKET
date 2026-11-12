@@ -337,13 +337,12 @@ Object.assign(ui, {
         try {
             switch(currentTab) {
                 case 'dash': {
-                    const isFyqOrCoord = state.user.role === 'FYQ' || (state.user.role && state.user.role.startsWith('COORD')) || state.user.admin;
-                    const isLyeOrCoord = state.user.role === 'LYE' || (state.user.role && state.user.role.startsWith('COORD')) || state.user.admin;
+                    const isFyqOrCoord = state.user.role === 'FYQ' || isCoord || Boolean(state.user.isCoordinator) || (state.user.role && String(state.user.role).startsWith('COORD'));
+                    const isLyeOrCoord = state.user.role === 'LYE' || isCoord || Boolean(state.user.isCoordinator) || (state.user.role && String(state.user.role).startsWith('COORD'));
                     const launchLicensePanel = isFyqOrCoord ? this.renderAdminLaunchLicensePanel() : '';
                     const fyqPanel = isFyqOrCoord ? this.renderFyqReceptionPanel() : '';
                     const mktActionPanel = isLyeOrCoord ? this.renderMktActionReceptionPanel() : '';
-                    const brandPanel = isCoord ? this.renderAdminBrandReview() : '';
-                    subContainer.innerHTML = launchLicensePanel + brandPanel + fyqPanel + mktActionPanel + this.renderAdminDash();
+                    subContainer.innerHTML = launchLicensePanel + fyqPanel + mktActionPanel + this.renderAdminDash();
                     break;
                 }
                 case 'contracts': subContainer.innerHTML = this.renderAdminContracts(); break;
@@ -484,8 +483,8 @@ Object.assign(ui, {
                 delete co.brandApproval.pendingLogo;
             }
             this.notify(`✅ Slogan de ${co.name || cid} aprobado y registrado con éxito.`, "success");
-            ui.pushNotification(cid, 'MARKETING', `La Coordinación ha APROBADO el slogan oficial: "${co.slogan}".`, 'success');
-            ui.pushNotification(cid, 'CEO', `Slogan oficial registrado en el expediente: "${co.slogan}".`, 'success');
+            ui.pushNotification(cid, 'MARKETING', `La Coordinación ha APROBADO el slogan oficial: "${co.slogan}".`, 'success', { view: 'brand', anchorId: 'brand-slogan-section' });
+            ui.pushNotification(cid, 'CEO', `Slogan oficial registrado en el expediente: "${co.slogan}".`, 'success', { view: 'dashboard' });
         } else {
             const reason = customReason || "Incumplimiento de criterios oficiales.";
             if (co.brandApproval) {
@@ -494,7 +493,7 @@ Object.assign(ui, {
             }
             co.brandStatus = 'REJECTED';
             this.notify(`❌ Propuesta de slogan de ${co.name || cid} rechazada.`, "info");
-            ui.pushNotification(cid, 'MARKETING', `La Coordinación ha rechazado la propuesta de slogan. Motivo: ${reason}`, 'error');
+            ui.pushNotification(cid, 'MARKETING', `La Coordinación ha rechazado la propuesta de slogan. Motivo: ${reason}`, 'error', { view: 'brand', anchorId: 'brand-slogan-section' });
             if (typeof telemetry !== 'undefined' && telemetry.log) {
                 telemetry.log("PROPUESTA_DESCARTADA", `Propuesta de slogan de ${cid} descartada por Coordinación.`);
             }

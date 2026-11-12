@@ -97,7 +97,7 @@ Object.assign(ui, {
         if (!co) return auth.logout();
         
         co.votingMotions = co.votingMotions || [];
-        const isCEO = state.user.role === 'CEO';
+        const isCEO = this.getEffectiveRole(co) === 'CEO';
         
         const wrapper = document.createElement('div');
         
@@ -109,6 +109,7 @@ Object.assign(ui, {
         let nameChangeHtml = '';
         if (isCEO) {
             const hasPendingName = co.nameChangeRequest && co.nameChangeRequest.status === 'PENDIENTE';
+            const hasRejectedName = co.nameChangeRequest && (co.nameChangeRequest.status === 'RECHAZADO' || co.nameChangeRequest.status === 'DENEGADO');
             nameChangeHtml = `
             <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-amber-400 mb-6">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -137,6 +138,18 @@ Object.assign(ui, {
                             <p class="text-[11px] text-slate-300 font-sans mt-0.5">Motivo: <em>${this.escapeHTML(co.nameChangeRequest.reason || 'Rebranding')}</em>. Tasa de 50 €v abonada. Pendiente de dictamen y asignación de nombre oficial por Coordinación Docente.</p>
                         </div>
                         ${co.nameChangeRequest.driveUrl ? `<a href="${encodeURI(co.nameChangeRequest.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors shrink-0"><span>📄 Ver Solicitud DOC_1 en Docs ↗</span></a>` : ''}
+                    </div>
+                ` : ''}
+                ${hasRejectedName ? `
+                    <div class="mt-3 p-3 bg-red-950/40 border border-red-500/50 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <div class="min-w-0 flex-1">
+                            <span class="text-xs font-bold text-red-400 uppercase tracking-wide block">❌ Modificación Estatutaria Denegada por Coordinación</span>
+                            <p class="text-[11px] text-slate-200 font-sans mt-0.5">Dictamen: <em>${this.escapeHTML(co.nameChangeRequest.rejectReason || co.nameChangeRequest.feedback || 'La solicitud no cumple con los criterios del Registro Mercantil.')}</em></p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 shrink-0">
+                            ${(co.nameChangeRequest.returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(co.nameChangeRequest.returnDriveUrl)) ? `<a href="${encodeURI(co.nameChangeRequest.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors"><span>📄 Ver Dictamen ↗</span></a>` : ''}
+                            <button type="button" onclick="ui.dismissNameChangeRejection()" class="min-h-[40px] px-3 py-1.5 text-xs bg-slate-900 border border-red-400/50 text-red-200 hover:bg-red-800 font-bold uppercase rounded">🏛️ Archivar / Enterado</button>
+                        </div>
                     </div>
                 ` : ''}
                 ${Array.isArray(co.previousNames) && co.previousNames.length > 0 ? `
@@ -367,9 +380,9 @@ Object.assign(ui, {
                                     actions = `<p class="text-xs text-mars-cyan mt-3 uppercase font-bold">Tu voto: ${this.escapeHTML(String(myVote).replace(/_/g, ' '))}</p>`;
                                 }
 
-                                if(state.user.role === 'CEO' && total >= totalRoles) {
+                                if(isCEO && total >= totalRoles) {
                                     actions += `<button type="button" onclick="ui.resolveMotion('${this.escapeHTML(m.id)}')" class="mt-3 min-h-[44px] bg-mars-yellow text-black px-4 py-2.5 text-xs font-bold uppercase w-full hover:bg-white transition-colors">Cerrar Votación</button>`;
-                                } else if (state.user.role === 'CEO') {
+                                } else if (isCEO) {
                                     actions += `<button type="button" onclick="ui.resolveMotion('${this.escapeHTML(m.id)}')" class="mt-3 min-h-[44px] bg-mars-yellow/20 border border-mars-yellow text-mars-yellow px-4 py-2.5 text-xs font-bold uppercase w-full hover:bg-mars-yellow hover:text-black transition-colors">Forzar Cierre de Votación</button>`;
                                 }
                             } else {
@@ -454,7 +467,7 @@ Object.assign(ui, {
     },
 
     modalStatutoryNameChange() {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const co = state.data.companies[state.user.coId];
         if (!co) return;
 
@@ -505,7 +518,7 @@ Object.assign(ui, {
     },
 
     executeStatutoryNameChange() {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const elReason = document.getElementById('statutory-name-reason');
         const elUrl = document.getElementById('statutory-drive-url');
         if (!elReason || !elUrl) return;
@@ -547,7 +560,7 @@ Object.assign(ui, {
         state.save(coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
-        ui.pushNotification(coId, 'ALL', `🏛️ Modificación Estatutaria: El CEO ha tramitado solicitud de renombramiento en el Registro Mercantil. Tasa de 50 €v abonada.`, 'info');
+        ui.pushNotification(coId, 'ALL', `🏛️ Modificación Estatutaria: El CEO ha tramitado solicitud de renombramiento en el Registro Mercantil. Tasa de 50 €v abonada.`, 'info', { view: 'resolutions' });
         ui.pushNotification('ADMIN', 'ALL', `🏛️ [Modificación Estatutaria] "${co.name}" ha abonado tasa de 50 €v y solicitado cambio de denominación social. Pendiente de resolución.`, 'info');
 
         this.closeModal();
@@ -633,13 +646,15 @@ Object.assign(ui, {
         const co = state.data.companies[coId];
         if (!co) return;
 
+        const effRole = this.getEffectiveRole(co);
+        const authorLabel = (state.user.role !== effRole) ? `${state.user.role} (${effRole})` : effRole;
         co.meetingMinutes = co.meetingMinutes || [];
         co.meetingMinutes.unshift({
             id: 'ACTA-' + Date.now(),
             session: session,
             topic: topic,
             driveUrl: driveUrl,
-            authorRole: state.user.role,
+            authorRole: authorLabel,
             date: new Date().toLocaleDateString(),
             timestamp: Date.now()
         });
@@ -648,7 +663,7 @@ Object.assign(ui, {
         state.save(coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
-        ui.pushNotification(coId, 'ALL', `📓 Nueva Acta de Comité de Dirección registrada por ${state.user.role}: "${session}".`, 'info');
+        ui.pushNotification(coId, 'ALL', `📓 Nueva Acta de Comité de Dirección registrada por ${authorLabel}: "${session}".`, 'info', { view: 'resolutions' });
         this.closeModal();
         this.notify("✅ Acta de Comité de Dirección registrada en el Diario Oficial.", "success");
         this.render();
@@ -663,7 +678,7 @@ Object.assign(ui, {
     },
 
     cancelNameChangeRequest() {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const co = state.data.companies[state.user.coId];
         if (!co || !co.nameChangeRequest || co.nameChangeRequest.status !== 'PENDIENTE') return;
 
@@ -685,7 +700,7 @@ Object.assign(ui, {
     },
 
     dismissNameChangeRejection() {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const co = state.data.companies[state.user.coId];
         if (!co || !co.nameChangeRequest) return;
         co.nameChangeRequest.status = 'ARCHIVADO';
@@ -744,8 +759,10 @@ Object.assign(ui, {
         const reason = this.cleanInput(elReason.value);
         const driveUrl = this.cleanInput(elUrl.value);
         
+        const effRole = this.getEffectiveRole();
+        const roleLabel = (state.user.role !== effRole) ? `${state.user.role} (${effRole})` : effRole;
         if(!dept || !reason) return this.notify("Debes seleccionar un departamento y el motivo tipificado.", "warning");
-        if(dept === state.user.role) return this.notify("No puedes reportarte a ti mismo.", "warning");
+        if(dept === state.user.role || dept === effRole) return this.notify("No puedes reportarte a ti mismo.", "warning");
         if(!driveUrl) return this.notify("Debes adjuntar el enlace Drive al expediente oficial de HR.", "warning");
         if(typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
             return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
@@ -758,15 +775,15 @@ Object.assign(ui, {
         co.inactivityReports.unshift({
             id: 'REP-' + Date.now(),
             reportedDept: dept,
-            reportingRole: state.user.role,
+            reportingRole: roleLabel,
             reason: reason,
             driveUrl: driveUrl,
             date: new Date().toLocaleString(),
             status: 'PENDIENTE'
         });
         
-        if (state.user.role !== 'CEO') {
-            ui.pushNotification(state.user.coId, 'CEO', `⚠️ ALERTA HR: ${state.user.role} ha reportado inactividad en el departamento ${dept}.`, 'error');
+        if (effRole !== 'CEO') {
+            ui.pushNotification(state.user.coId, 'CEO', `⚠️ ALERTA HR: ${roleLabel} ha reportado inactividad en el departamento ${dept}.`, 'error', { view: 'resolutions' });
         }
         
         state.save();
@@ -829,17 +846,20 @@ Object.assign(ui, {
         if (!co) return auth.logout();
         co.votingMotions = co.votingMotions || [];
         
+        const effRole = this.getEffectiveRole(co);
+        const authorLabel = (state.user.role !== effRole) ? `${state.user.role} (${effRole})` : effRole;
         co.votingMotions.unshift({ 
             id: 'MOT-'+Date.now(), 
             title, 
             motionTypeId,
             driveUrl, 
-            authorRole: state.user.role, 
+            authorRole: effRole,
+            submittedBy: state.user.role,
             date: new Date().toLocaleString(), 
             status: 'ABIERTA', 
             votes: {} 
         });
-        ui.pushNotification(state.user.coId, 'CEO', `Nueva moción propuesta por ${state.user.role}.`, 'info');
+        ui.pushNotification(state.user.coId, 'CEO', `Nueva moción propuesta por ${authorLabel}.`, 'info', { view: 'resolutions' });
         state.save(); 
         this.closeModal(); 
         this.notify("Moción registrada en la Asamblea.", "success");
@@ -868,7 +888,7 @@ Object.assign(ui, {
     },
 
     resolveMotion(id) {
-        if (!state.user || state.user.role !== 'CEO') return this.notify("Solo el CEO puede cerrar votaciones.", "warning");
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return this.notify("Solo el CEO puede cerrar votaciones.", "warning");
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
         co.votingMotions = co.votingMotions || [];
@@ -884,7 +904,7 @@ Object.assign(ui, {
                 return this.promptTieBreaker(id);
             }
             
-            ui.pushNotification(state.user.coId, m.authorRole, `Tu moción ha sido ${m.result}.`, m.result === 'APROBADA' ? 'success' : 'error');
+            ui.pushNotification(state.user.coId, m.authorRole, `Tu moción ha sido ${m.result}.`, m.result === 'APROBADA' ? 'success' : 'error', { view: 'resolutions' });
             co.updatedAt = Date.now();
             state.save(state.user.coId); 
             this.render();
@@ -892,7 +912,7 @@ Object.assign(ui, {
     },
 
     promptTieBreaker(id) {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const html = `
             <p class="text-xs text-slate-200 mb-4">La votación ha resultado en empate. Como CEO, debes ejercer tu voto de calidad para desempatar.</p>
             <div class="flex gap-4">
@@ -904,7 +924,7 @@ Object.assign(ui, {
     },
 
     executeTieBreaker(id, result) {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
         co.votingMotions = co.votingMotions || [];
@@ -913,7 +933,7 @@ Object.assign(ui, {
         if(m) {
             m.result = result;
             m.status = 'CERRADA';
-            ui.pushNotification(state.user.coId, m.authorRole, `Tu moción ha sido ${m.result} (Voto de Calidad).`, m.result === 'APROBADA' ? 'success' : 'error');
+            ui.pushNotification(state.user.coId, m.authorRole, `Tu moción ha sido ${m.result} (Voto de Calidad).`, m.result === 'APROBADA' ? 'success' : 'error', { view: 'resolutions' });
             co.updatedAt = Date.now();
             state.save(state.user.coId);
             this.closeModal();
@@ -928,7 +948,8 @@ Object.assign(ui, {
 
         co.marketingCampaigns = co.marketingCampaigns || [];
         const mktPackages = typeof MARKETING_PACKAGES !== 'undefined' ? MARKETING_PACKAGES : [];
-        const isMktUser = Boolean(state.user && (state.user.role === 'MARKETING' || state.user.admin || state.user.isCoordinator || (state.user.role && String(state.user.role).startsWith('COORD'))));
+        const effRole = this.getEffectiveRole(co);
+        const isMktUser = Boolean(state.user && (effRole === 'MARKETING' || state.user.admin || state.user.isCoordinator || (state.user.role && String(state.user.role).startsWith('COORD'))));
 
         const packagesGridHtml = mktPackages.map(pkg => `
             <div class="bg-black/80 border border-mars-border p-3.5 flex flex-col justify-between hover:border-mars-yellow transition-all">
@@ -978,8 +999,8 @@ Object.assign(ui, {
                 ? 'bg-mars-green/20 text-mars-green border-mars-green' 
                 : (status === 'DENEGADO' ? 'bg-mars-magenta/20 text-mars-magenta border-mars-magenta' : 'bg-mars-yellow/20 text-mars-yellow border-mars-yellow animate-pulse');
 
-            const isCEO = Boolean(state.user && (state.user.role === 'CEO' || state.user.admin || state.user.isCoordinator));
-            const isMarketing = Boolean(state.user && (state.user.role === 'MARKETING' || state.user.admin || state.user.isCoordinator));
+            const isCEO = Boolean(state.user && (effRole === 'CEO' || state.user.admin || state.user.isCoordinator));
+            const isMarketing = Boolean(state.user && (effRole === 'MARKETING' || state.user.admin || state.user.isCoordinator));
 
             const executedListHtml = (c.executedActions || []).map((act, idx) => {
                 const actId = act.id || ('ACT-' + idx);
@@ -1185,7 +1206,7 @@ Object.assign(ui, {
 
         let step2CeoControls = '';
         if (estadoActual === 'PENDIENTE_CEO') {
-            if (state.user.role === 'CEO') {
+            if (this.getEffectiveRole(co) === 'CEO') {
                 step2CeoControls = `
                 <div class="bg-mars-yellow/15 border-2 border-mars-yellow p-4 mb-4 rounded">
                     <span class="text-xs bg-mars-yellow text-black font-black px-2 py-0.5 uppercase block mb-2 w-fit">Paso 2: Aval de Dirección General Requerido</span>
@@ -1216,12 +1237,14 @@ Object.assign(ui, {
             <div class="bg-mars-magenta/15 border border-mars-magenta p-3 mb-4 text-xs">
                 <span class="text-mars-magenta font-black uppercase block mb-1">↩️ Propuesta Devuelta por el CEO</span>
                 <p class="text-slate-300">Feedback: "${this.escapeHTML(co.brandApproval.feedback || 'Revisar propuesta en Google Docs.')}". Marketing puede realizar correcciones y volver a presentarla.</p>
+                ${(co.brandApproval.returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(co.brandApproval.returnDriveUrl)) ? `<a href="${encodeURI(co.brandApproval.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1 bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono text-xs hover:bg-cyan-900/60"><span>📄 Ver Dictamen / Correcciones en Drive ↗</span></a>` : ''}
             </div>`;
         } else if (estadoActual === 'RECHAZADO') {
             step2CeoControls = `
             <div class="bg-mars-magenta/15 border border-mars-magenta p-3 mb-4 text-xs">
                 <span class="text-mars-magenta font-black uppercase block mb-1">❌ Propuesta Rechazada por Coordinación</span>
                 <p class="text-slate-300">Motivo: "${this.escapeHTML(co.brandApproval.feedback || 'Incumplimiento de criterios oficiales.')}". Marketing debe generar una nueva propuesta.</p>
+                ${(co.brandApproval.returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(co.brandApproval.returnDriveUrl)) ? `<a href="${encodeURI(co.brandApproval.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1 bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono text-xs hover:bg-cyan-900/60"><span>📄 Ver Dictamen / Correcciones en Drive ↗</span></a>` : ''}
             </div>`;
         }
 
@@ -1427,7 +1450,7 @@ Object.assign(ui, {
         };
 
         co.marketingCampaigns.unshift(newCamp);
-        ui.pushNotification(state.user.coId, 'FINANZAS', `Marketing solicita aprobar el paquete "${pkg.name}" por ${budget} €v.`, 'warning');
+        ui.pushNotification(state.user.coId, 'FINANZAS', `Marketing solicita aprobar el paquete "${pkg.name}" por ${budget} €v.`, 'warning', { view: 'finance' });
         state.save();
         this.closeModal();
         this.notify(`✅ Solicitud del ${pkg.name} enviada a Finanzas para su aprobación.`, "success");
@@ -1565,7 +1588,7 @@ Object.assign(ui, {
         camp.executedActions = camp.executedActions || [];
         camp.executedActions.push(newAction);
 
-        ui.pushNotification(state.user.coId, 'CEO', `Marketing ha presentado la acción "${actionType}" para su revisión y validación.`, 'info');
+        ui.pushNotification(state.user.coId, 'CEO', `Marketing ha presentado la acción "${actionType}" para su revisión y validación.`, 'info', { view: 'dashboard' });
 
         state.save();
         this.closeModal();
@@ -1778,7 +1801,7 @@ Object.assign(ui, {
             feedback: ''
         };
 
-        ui.pushNotification(state.user.coId, 'CEO', `Marketing ha presentado la propuesta de Slogan Corporativo (${expId}) para aval y elevación a Coordinación.`, 'info');
+        ui.pushNotification(state.user.coId, 'CEO', `Marketing ha presentado la propuesta de Slogan Corporativo (${expId}) para aval y elevación a Coordinación.`, 'info', { view: 'resolutions', anchorId: 'ceo-slogan-approval-panel' });
 
         state.save();
         this.render();
@@ -1786,14 +1809,14 @@ Object.assign(ui, {
     },
 
     endorseBrandProposal(cid) {
-        if (!state.user || state.user.role !== 'CEO') return this.notify("Solo Dirección General (CEO) puede avalar esta propuesta.", "warning");
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return this.notify("Solo Dirección General (CEO) puede avalar esta propuesta.", "warning");
         const co = state.data.companies[cid || state.user.coId];
         if (!co || !co.brandApproval) return;
 
         co.brandApproval.status = 'PENDIENTE';
         co.brandApproval.endorsedAt = Date.now();
         
-        ui.pushNotification(state.user.coId, 'MARKETING', `El CEO ha avalado la propuesta de Slogan (${co.brandApproval.expId || ''}) y la ha elevado a Coordinación Docente.`, 'success');
+        ui.pushNotification(state.user.coId, 'MARKETING', `El CEO ha avalado la propuesta de Slogan (${co.brandApproval.expId || ''}) y la ha elevado a Coordinación Docente.`, 'success', { view: 'brand', anchorId: 'brand-slogan-section' });
 
         state.save();
         this.render();
@@ -1801,7 +1824,7 @@ Object.assign(ui, {
     },
 
     returnBrandProposalToMkt(cid) {
-        if (!state.user || state.user.role !== 'CEO') return this.notify("Solo Dirección General (CEO) puede devolver esta propuesta.", "warning");
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return this.notify("Solo Dirección General (CEO) puede devolver esta propuesta.", "warning");
         const targetCid = cid || state.user.coId;
         const co = state.data.companies[targetCid];
         if (!co || !co.brandApproval) return;
@@ -1825,6 +1848,10 @@ Object.assign(ui, {
                         ${optionsHtml}
                     </select>
                 </div>
+                <div>
+                    <label for="ceo-brand-return-drive-url" class="text-xs text-mars-cyan font-bold uppercase block mb-1">Enlace a Google Drive con observaciones (Opcional)</label>
+                    <input type="url" id="ceo-brand-return-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan/60 p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-white">
+                </div>
             </div>
         `;
         const actions = `<button type="button" onclick="ui.confirmReturnBrandProposalToMkt('${this.escapeHTML(targetCid)}')" class="min-h-[44px] bg-red-700 text-white font-black px-5 py-2.5 text-xs uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">Confirmar Devolución</button>`;
@@ -1832,17 +1859,23 @@ Object.assign(ui, {
     },
 
     confirmReturnBrandProposalToMkt(cid) {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const co = state.data.companies[cid || state.user.coId];
         if (!co || !co.brandApproval) return;
         const sel = document.getElementById('ceo-brand-return-reason');
         const feedback = sel ? sel.value : "Revisar propuesta en Google Docs.";
+        const elUrl = document.getElementById('ceo-brand-return-drive-url');
+        const returnDriveUrl = elUrl ? this.cleanInput(elUrl.value) : '';
+        if (returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(returnDriveUrl)) {
+            return this.notify("Si introduces enlace de observaciones, debe ser una URL válida de Google Drive / Docs.", "error");
+        }
         this.closeModal();
 
         co.brandApproval.status = 'DEVUELTO_CEO';
         co.brandApproval.feedback = feedback;
+        co.brandApproval.returnDriveUrl = returnDriveUrl || '';
 
-        ui.pushNotification(state.user.coId, 'MARKETING', `El CEO ha devuelto la propuesta de Slogan: "${feedback}".`, 'warning', { view: 'brand', subTab: 'slogan' });
+        ui.pushNotification(state.user.coId, 'MARKETING', `El CEO ha devuelto la propuesta de Slogan: "${feedback}".`, 'warning', { view: 'brand', anchorId: 'brand-slogan-section' });
 
         state.save();
         this.render();

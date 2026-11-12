@@ -294,7 +294,7 @@ Object.assign(ui, {
                                         }
                                     }
 
-                                    const aesaBadge = (c.launchLicense && c.launchLicense.status === 'APROBADA_DOCENTE')
+                                    const aesaBadge = (c.launchLicense && (c.launchLicense.status === 'APROBADA' || c.launchLicense.status === 'APROBADA_DOCENTE'))
                                         ? `<span class="bg-emerald-950 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded text-[10px] font-mono whitespace-nowrap">🚀 AESA OK</span>`
                                         : ((c.launchLicense && c.launchLicense.status === 'PENDIENTE_DOCENTE')
                                             ? `<span class="bg-amber-950 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded text-[10px] font-mono animate-pulse whitespace-nowrap">⏳ AESA Pend.</span>`
@@ -1241,12 +1241,12 @@ Object.assign(ui, {
             co.auxRoleRequest.status = 'APROBADO';
             co.auxRoleRequest.pin = finalPin;
 
-            ui.pushNotification(cid, 'CEO', `Coordinación ha APROBADO el Rol Auxiliar vinculado a ${co.auxRoleDept}. PIN de acceso activado: ${finalPin}`, 'success');
+            ui.pushNotification(cid, 'CEO', `Coordinación ha APROBADO el Rol Auxiliar vinculado a ${co.auxRoleDept}. PIN de acceso activado: ${finalPin}`, 'success', { view: 'resolutions' });
             await state.updatePin(cid, 'AUXILIAR', finalPin);
             this.notify(`✅ Rol Auxiliar activado en ${co.name} con PIN ${finalPin}.`, "success");
         } else {
             co.auxRoleRequest.status = 'RECHAZADO';
-            ui.pushNotification(cid, 'CEO', `Tu solicitud de alta para el Rol Auxiliar ha sido DENEGADA por Coordinación.`, 'error');
+            ui.pushNotification(cid, 'CEO', `Tu solicitud de alta para el Rol Auxiliar ha sido DENEGADA por Coordinación.`, 'error', { view: 'resolutions' });
             await state.updatePin(cid, 'AUXILIAR', '');
             this.notify(`Solicitud de Rol Auxiliar denegada para ${co.name}.`, "warning");
         }
@@ -1794,7 +1794,9 @@ Object.assign(ui, {
 
         if (state.data.companies && state.data.companies[coId]) {
             state.data.companies[coId].specialItemRequests = state.data.companies[coId].specialItemRequests || [];
-            state.data.companies[coId].specialItemRequests.unshift({
+            const specList = state.data.companies[coId].specialItemRequests;
+            const existingIdx = specList.findIndex(x => String(x.id) === String(req.id));
+            const updatedReq = {
                 id: req.id,
                 name: req.name || 'Componente Especial I+D',
                 driveUrl: req.driveUrl || '',
@@ -1802,11 +1804,13 @@ Object.assign(ui, {
                 status: 'DENEGADA',
                 responseDriveUrl: responseUrl,
                 resolvedAt: Date.now()
-            });
+            };
+            if (existingIdx >= 0) specList[existingIdx] = Object.assign({}, specList[existingIdx], updatedReq);
+            else specList.unshift(updatedReq);
             state.data.companies[coId].updatedAt = Date.now();
         }
 
-        ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial "${req.name || 'Componente'}" ha sido DENEGADA. Puedes revisar el dictamen técnico adjunto en tu Banco de I+D.`, 'error');
+        ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial "${req.name || 'Componente'}" ha sido DENEGADA. Puedes revisar el dictamen técnico adjunto en tu Banco de I+D.`, 'error', { view: 'tech', anchorId: 'tech-special-items-panel' });
 
         state.data.pendingCustom.splice(reqIdx, 1);
         this.closeModal();
@@ -1847,19 +1851,24 @@ Object.assign(ui, {
 
         if (state.data.companies && state.data.companies[coId]) {
             state.data.companies[coId].specialItemRequests = state.data.companies[coId].specialItemRequests || [];
-            state.data.companies[coId].specialItemRequests.unshift({
+            const specList = state.data.companies[coId].specialItemRequests;
+            const existingIdx = specList.findIndex(x => String(x.id) === String(req.id));
+            const updatedReq = {
                 id: req.id,
                 name: cleanOfficialName,
                 driveUrl: req.driveUrl || '',
                 date: req.date || new Date().toLocaleDateString('es-ES'),
                 status: 'APROBADA',
                 price: price,
+                responseDriveUrl: '',
                 resolvedAt: Date.now()
-            });
+            };
+            if (existingIdx >= 0) specList[existingIdx] = Object.assign({}, specList[existingIdx], updatedReq);
+            else specList.unshift(updatedReq);
             state.data.companies[coId].updatedAt = Date.now();
         }
         
-        ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial "${cleanOfficialName}" ha sido APROBADA e integrada al catálogo por ${price} €v.`, 'success');
+        ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial "${cleanOfficialName}" ha sido APROBADA e integrada al catálogo por ${price} €v.`, 'success', { view: 'tech', anchorId: 'tech-special-items-panel' });
         
         if (state.data.companies && state.data.companies[coId]) {
             state.data.companies[coId].updatedAt = Date.now();
@@ -1959,7 +1968,7 @@ Object.assign(ui, {
                         state.addToLedger(c.buyerCoId, `[REEMBOLSO B2B] Cancelación por baja de empresa vendedora (${coName}): ${c.itemName}`, 'ADUANA_B2B', price);
                         const buyerOrd = (buyerCo.orders || []).find(o => (o.b2bContractId && o.b2bContractId === c.id) || (o.offerId && o.offerId === c.offerId));
                         if (buyerOrd) buyerOrd.status = 'CANCELADO_DOCENTE';
-                        ui.pushNotification(c.buyerCoId, 'FINANZAS', `La compra B2B de "${c.itemName}" ha sido cancelada por baja de la startup vendedora. Fondos reembolsados (+${price.toFixed(2)} €v).`, 'warning');
+                        ui.pushNotification(c.buyerCoId, 'FINANZAS', `La compra B2B de "${c.itemName}" ha sido cancelada por baja de la startup vendedora. Fondos reembolsados (+${price.toFixed(2)} €v).`, 'warning', { view: 'finance' });
                     }
                 }
             });
@@ -2026,7 +2035,7 @@ Object.assign(ui, {
                         state.addToLedger(c.buyerCoId, `[REEMBOLSO B2B] Cancelación por reseteo de sandbox de pruebas: ${c.itemName}`, 'ADUANA_B2B', price);
                         const buyerOrd = (buyerCo.orders || []).find(o => (o.b2bContractId && o.b2bContractId === c.id) || (o.offerId && o.offerId === c.offerId));
                         if (buyerOrd) buyerOrd.status = 'CANCELADO_DOCENTE';
-                        ui.pushNotification(c.buyerCoId, 'FINANZAS', `La compra B2B de "${c.itemName}" ha sido cancelada por reseteo del sandbox de pruebas. Fondos reembolsados (+${price.toFixed(2)} €v).`, 'warning');
+                        ui.pushNotification(c.buyerCoId, 'FINANZAS', `La compra B2B de "${c.itemName}" ha sido cancelada por reseteo del sandbox de pruebas. Fondos reembolsados (+${price.toFixed(2)} €v).`, 'warning', { view: 'finance' });
                     }
                 }
             });
@@ -2223,8 +2232,8 @@ Object.assign(ui, {
         co.updatedAt = Date.now();
 
         const notifMsg = driveUrl ? `Tu propuesta de marca (Logo/Eslogan) ha sido RECHAZADA por Coordinación. Motivo: ${reason}. Consulta el documento de Drive adjunto.` : `Tu propuesta de marca (Logo/Eslogan) ha sido RECHAZADA por Coordinación. Motivo: ${reason}`;
-        ui.pushNotification(cid, 'MARKETING', notifMsg, 'error');
-        ui.pushNotification(cid, 'CEO', `Propuesta de identidad corporativa rechazada por Coordinación. Revisa el panel de Marketing.`, 'error');
+        ui.pushNotification(cid, 'MARKETING', notifMsg, 'error', { view: 'brand', anchorId: 'brand-slogan-section' });
+        ui.pushNotification(cid, 'CEO', `Propuesta de identidad corporativa rechazada por Coordinación. Revisa el estado con Marketing.`, 'error', { view: 'dashboard' });
 
         state.save(cid);
         this.closeModal();
@@ -2252,8 +2261,8 @@ Object.assign(ui, {
         co.brandApproval.updatedAt = Date.now();
         co.updatedAt = Date.now();
 
-        ui.pushNotification(cid, 'MARKETING', `¡Enhorabuena! El logotipo y el eslogan oficial ("${co.slogan}") han sido APROBADOS por Coordinación y ya son públicos en el HUD.`, 'success');
-        ui.pushNotification(cid, 'CEO', `Identidad corporativa aprobada y visible para toda la flota. Slogan: "${co.slogan}".`, 'success');
+        ui.pushNotification(cid, 'MARKETING', `¡Enhorabuena! El logotipo y el eslogan oficial ("${co.slogan}") han sido APROBADOS por Coordinación y ya son públicos en el HUD.`, 'success', { view: 'brand', anchorId: 'brand-slogan-section' });
+        ui.pushNotification(cid, 'CEO', `Identidad corporativa aprobada y visible para toda la flota. Slogan: "${co.slogan}".`, 'success', { view: 'dashboard' });
 
         state.save(cid);
         this.notify(`Identidad corporativa de ${co.name} aprobada y registrada.`, "success");
@@ -2294,7 +2303,7 @@ Object.assign(ui, {
                         ord.items[Number(itemIdx)].b2bStatus = 'VENDIDO';
                     }
                 }
-                ui.pushNotification(c.sellerCoId, 'TECNICO', `Aduana B2B aprobó la venta de "${c.itemName}". Ingreso: +${price.toFixed(2)} €v.`, 'success');
+                ui.pushNotification(c.sellerCoId, 'TECNICO', `Aduana B2B aprobó la venta de "${c.itemName}". Ingreso: +${price.toFixed(2)} €v.`, 'success', { view: 'tech_workshop' });
             }
 
             if (buyerCo) {
@@ -2361,8 +2370,8 @@ Object.assign(ui, {
                         dupOrder.cancelledAt = now;
                         dupBuyerCo.updatedAt = now;
                     }
-                    ui.pushNotification(dup.buyerCoId, 'FINANZAS', `Aduana B2B: El lote único de "${dup.itemName}" ya fue adjudicado a ${c.buyerName}. Importe de ${dupPrice.toFixed(2)} €v reembolsado íntegramente.`, 'warning');
-                    ui.pushNotification(dup.buyerCoId, 'TECNICO', `Aduana B2B: El lote de "${dup.itemName}" fue adjudicado a ${c.buyerName}. Orden cancelada y reembolsada.`, 'warning');
+                    ui.pushNotification(dup.buyerCoId, 'FINANZAS', `Aduana B2B: El lote único de "${dup.itemName}" ya fue adjudicado a ${c.buyerName}. Importe de ${dupPrice.toFixed(2)} €v reembolsado íntegramente.`, 'warning', { view: 'finance' });
+                    ui.pushNotification(dup.buyerCoId, 'TECNICO', `Aduana B2B: El lote de "${dup.itemName}" fue adjudicado a ${c.buyerName}. Orden cancelada y reembolsada.`, 'warning', { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' });
                 }
             });
 
@@ -2386,7 +2395,7 @@ Object.assign(ui, {
                     existingBuyerOrder.rejectedByDocenteAt = now;
                     buyerCo.updatedAt = now;
                 }
-                ui.pushNotification(c.buyerCoId, 'FINANZAS', `Aduana B2B rechazó el contrato #${c.id}. Reembolso: +${price.toFixed(2)} €v.`, 'warning');
+                ui.pushNotification(c.buyerCoId, 'FINANZAS', `Aduana B2B rechazó el contrato #${c.id}. Reembolso: +${price.toFixed(2)} €v.`, 'warning', { view: 'finance' });
                 ui.pushNotification(c.buyerCoId, 'TECNICO', `Aduana B2B rechazó el contrato #${c.id}. Reembolso tramitado.`, 'warning', { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' });
             }
 
@@ -2410,7 +2419,7 @@ Object.assign(ui, {
                     off.updatedAt = now;
                 }
                 if (sellerCo) {
-                    ui.pushNotification(c.sellerCoId, 'TECNICO', `Aduana B2B denegó la venta de "${c.itemName}". El componente ha vuelto a tu inventario.`, 'warning');
+                    ui.pushNotification(c.sellerCoId, 'TECNICO', `Aduana B2B denegó la venta de "${c.itemName}". El componente ha vuelto a tu inventario.`, 'warning', { view: 'tech_workshop' });
                 }
             }
 
@@ -2603,7 +2612,7 @@ Object.assign(ui, {
             if (co.ledger[0]) co.ledger[0].final = co.balance;
             co.updatedAt = now;
 
-            ui.pushNotification(cid, 'CEO', `¡Habéis obtenido el Patrocinio ${tier} de ${spName} (+${amount} €v)!`, 'success');
+            ui.pushNotification(cid, 'CEO', `¡Habéis obtenido el Patrocinio ${tier} de ${spName} (+${amount} €v)!`, 'success', { view: 'contracts' });
             state.save(cid);
             this.closeModal();
             this.render();
@@ -2641,9 +2650,12 @@ Object.assign(ui, {
 
         const co = state.data.companies[cid];
         if (!co) return;
+        const oldName = co.name;
         co.name = newName;
+        co.previousNames = Array.isArray(co.previousNames) ? co.previousNames : [];
+        co.previousNames.unshift({ oldName, newName, date: new Date().toLocaleDateString('es-ES') });
         
-        ui.pushNotification(cid, 'CEO', `Coordinación ha forzado el cambio de denominación social a "${newName}".`, 'warning');
+        ui.pushNotification(cid, 'CEO', `Coordinación ha forzado el cambio de denominación social a "${newName}".`, 'warning', { view: 'resolutions' });
         co.updatedAt = Date.now();
         state.save(cid);
         this.closeModal();
@@ -2666,10 +2678,12 @@ Object.assign(ui, {
             const oldName = co.name;
             co.name = officialName;
             co.nameChangeRequest.proposedName = officialName;
-            ui.pushNotification(cid, 'CEO', `¡El Registro Mercantil ha aprobado vuestra nueva denominación social: "${co.name}"!`, 'success');
+            co.previousNames = Array.isArray(co.previousNames) ? co.previousNames : [];
+            co.previousNames.unshift({ oldName, newName: officialName, date: new Date().toLocaleDateString('es-ES') });
+            ui.pushNotification(cid, 'CEO', `¡El Registro Mercantil ha aprobado vuestra nueva denominación social: "${co.name}"!`, 'success', { view: 'resolutions' });
             this.notify(`La empresa ${oldName} ahora se llama ${co.name}.`, "success");
         } else {
-            ui.pushNotification(cid, 'CEO', `El Registro Mercantil ha RECHAZADO la solicitud de cambio de denominación social.`, 'error');
+            ui.pushNotification(cid, 'CEO', `El Registro Mercantil ha RECHAZADO la solicitud de cambio de denominación social.`, 'error', { view: 'resolutions' });
             this.notify(`Solicitud de renombramiento denegada.`, "warning");
         }
         

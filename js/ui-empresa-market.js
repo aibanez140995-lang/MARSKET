@@ -24,7 +24,7 @@ Object.assign(ui, {
     viewMarket(el) {
         if (!el || !state.user) return;
         const wrapper = document.createElement('div');
-        const canBuy = state.user?.role === 'TECNICO' && !state.user?.admin;
+        const canBuy = this.getEffectiveRole() === 'TECNICO' && !state.user?.admin;
         
         let tabsHtml = `
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 border-b border-mars-border pb-3">
@@ -49,7 +49,7 @@ Object.assign(ui, {
     },
 
     renderCatalog() {
-        const canBuy = state.user.role === 'TECNICO';
+        const canBuy = this.getEffectiveRole() === 'TECNICO' && !state.user?.admin;
         const isDocente = state.user.admin;
         const catalog = state.data.catalog || [];
         const visibleItems = catalog.filter(item => {
@@ -188,9 +188,10 @@ Object.assign(ui, {
     },
 
     renderB2BMarket() {
-        const canSell = state.user.role === 'TECNICO' && !state.user.admin;
-        const canBuy = canSell;
         const myCo = !state.user.admin ? state.data.companies[state.user.coId] : null;
+        const effRole = this.getEffectiveRole(myCo);
+        const canSell = effRole === 'TECNICO' && !state.user.admin;
+        const canBuy = canSell;
         const b2b = (state.data.b2bMarket || []).filter(i => i && (!i.status || i.status === 'EN_VENTA'));
 
         let offersHtml = '';
@@ -199,7 +200,7 @@ Object.assign(ui, {
         } else {
             offersHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">` + b2b.map(item => {
                 const isMine = !state.user.admin && item.sellerCoId === state.user.coId;
-                const isFinanzas = state.user.role === 'FINANZAS' || state.user.admin;
+                const isFinanzas = effRole === 'FINANZAS' || state.user.admin;
                 const pendingBuyOrder = myCo ? (myCo.orders || []).find(o => o.offerId === item.id && (o.status === 'PENDIENTE_FINANZAS' || o.status === 'PENDIENTE_DOCENTE')) : null;
                 let btn = '';
                 if (isMine) {
@@ -217,14 +218,14 @@ Object.assign(ui, {
                 } else if (pendingBuyOrder) {
                     if (pendingBuyOrder.status === 'PENDIENTE_DOCENTE') {
                         btn = `<span class="w-full min-h-[44px] flex items-center justify-center bg-purple-950/60 border border-purple-500/60 text-purple-300 font-bold text-xs uppercase px-2 text-center rounded">⏳ Retenido en Aduana Docente</span>`;
-                    } else if (state.user.role === 'FINANZAS') {
+                    } else if (effRole === 'FINANZAS') {
                         btn = `<button type="button" onclick="ui.approveB2BBuyByFinanzas('${this.escapeHTML(pendingBuyOrder.id)}')" class="w-full min-h-[44px] bg-mars-yellow text-black font-black py-2.5 px-3 text-xs uppercase shadow-[0_0_12px_rgba(255,204,0,0.4)] hover:bg-white transition-all">[ 🤝 Autorizar Compra B2B (${Number(item.price).toFixed(2)} €v) ]</button>`;
                     } else {
                         btn = `<span class="w-full min-h-[44px] flex items-center justify-center bg-amber-950/60 border border-amber-500/60 text-amber-300 font-bold text-xs uppercase px-2 text-center rounded">⏳ Solicitado a Finanzas</span>`;
                     }
                 } else if (canBuy) {
                     btn = `<button type="button" onclick="ui.modalBuyB2B('${this.escapeHTML(item.id)}')" class="w-full min-h-[44px] bg-mars-yellow/20 text-mars-yellow border border-mars-yellow hover:bg-mars-yellow hover:text-black font-black py-2.5 px-3 text-xs uppercase tracking-wider transition-all">Adquirir B2B</button>`;
-                } else if (state.user.role === 'FINANZAS') {
+                } else if (effRole === 'FINANZAS') {
                     btn = `<span class="block text-center text-slate-400 text-xs uppercase font-bold border border-slate-800 p-2.5 bg-black/40 min-h-[44px] flex items-center justify-center">I+D debe solicitar la compra</span>`;
                 } else {
                     btn = `<span class="block text-center text-slate-300 text-xs uppercase font-bold border border-slate-700 p-2.5 bg-black/40 min-h-[44px] flex items-center justify-center">Solo Dpto. Técnico</span>`;
@@ -260,7 +261,7 @@ Object.assign(ui, {
     },
 
     addToCart(itemId) {
-        if (!state.user || state.user.role !== 'TECNICO') return;
+        if (!state.user || this.getEffectiveRole() !== 'TECNICO') return;
         const co = state.data.companies[state.user.coId];
         if (!co) return;
 
@@ -341,7 +342,7 @@ Object.assign(ui, {
     },
 
     modalPublishB2B(orderId, itemIndex) {
-        if (!state.user || state.user.role !== 'TECNICO') return;
+        if (!state.user || this.getEffectiveRole() !== 'TECNICO') return;
         const co = state.data.companies[state.user.coId];
         const ord = (co.orders||[]).find(o => String(o.id) === String(orderId));
         if(!ord || !ord.items[itemIndex]) return;
@@ -410,7 +411,7 @@ Object.assign(ui, {
             updatedAt: Date.now()
         });
 
-        ui.pushNotification(state.user.coId, 'FINANZAS', `I+D propone venta B2B de "${item.name}" por ${price.toFixed(2)} €v. Revisa la propuesta en Órdenes.`, 'info');
+        ui.pushNotification(state.user.coId, 'FINANZAS', `I+D propone venta B2B de "${item.name}" por ${price.toFixed(2)} €v. Revisa la propuesta en Finanzas.`, 'info', { view: 'finance' });
         state.save();
         this.closeModal();
         this.render();
@@ -418,7 +419,7 @@ Object.assign(ui, {
     },
 
     modalBuyB2B(offerId) {
-        if (!state.user || state.user.role !== 'TECNICO') return;
+        if (!state.user || this.getEffectiveRole() !== 'TECNICO') return;
         const offer = state.data.b2bMarket.find(o => o.id === offerId);
         if(!offer || (offer.status && offer.status !== 'EN_VENTA')) return;
 
@@ -466,7 +467,7 @@ Object.assign(ui, {
     },
 
     confirmBuyB2B(offerId) {
-        if (!state.user || state.user.role !== 'TECNICO') return;
+        if (!state.user || this.getEffectiveRole() !== 'TECNICO') return;
         const offer = state.data.b2bMarket.find(o => o.id === offerId);
         if(!offer || (offer.status && offer.status !== 'EN_VENTA')) {
             this.closeModal();
@@ -524,7 +525,7 @@ Object.assign(ui, {
         co.orders.unshift(newOrder);
         co.updatedAt = now;
 
-        ui.pushNotification(state.user.coId, 'FINANZAS', `🤝 Técnico ha solicitado adquirir la pieza B2B "${offer.itemName}" (${Number(offer.price).toFixed(2)} €v, Orden #${orderNum}). Autoriza antes de que otra empresa la compre.`, 'warning', { view: 'orders' });
+        ui.pushNotification(state.user.coId, 'FINANZAS', `🤝 Técnico ha solicitado adquirir la pieza B2B "${offer.itemName}" (${Number(offer.price).toFixed(2)} €v, Orden #${orderNum}). Autoriza antes de que otra empresa la compre.`, 'warning', { view: 'finance' });
 
         state.save(state.user.coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);

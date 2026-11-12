@@ -155,7 +155,18 @@ Object.assign(ui, {
         if (!co) return '';
         
         co.notifications = co.notifications || [];
-        const myNotifs = co.notifications.filter(n => n.role === state.user.role && !n.read);
+        const rawRole = String(state.user.role || '').toUpperCase();
+        const effectiveRole = (typeof this.getEffectiveRole === 'function' ? this.getEffectiveRole(co) : rawRole) || rawRole;
+        const myNotifs = co.notifications.filter(n => {
+            if (!n) return false;
+            const nRole = String(n.role || '').toUpperCase();
+            const isForMe = (nRole === effectiveRole) || (nRole === rawRole) || (nRole === 'ALL') || (effectiveRole === 'OPERACIONES_IA' && nRole === 'OPERACIONES');
+            if (!isForMe) return false;
+            if (nRole === 'ALL') {
+                return !(n.readBy && n.readBy[effectiveRole]);
+            }
+            return !n.read;
+        });
         if (myNotifs.length === 0) return '';
         
         return `<div class="mb-6 space-y-2 animate-in fade-in slide-in-from-top-4" role="region" aria-label="Notificaciones operativas">
@@ -191,13 +202,19 @@ Object.assign(ui, {
         
         co.notifications = co.notifications || [];
         state.data.dismissedNotificationIds = state.data.dismissedNotificationIds || [];
+        const effectiveRole = (typeof this.getEffectiveRole === 'function' ? this.getEffectiveRole(co) : state.user.role) || state.user.role;
         const notif = co.notifications.find(n => n.id === id);
         if (notif) {
-            notif.read = true;
-            notif.updatedAt = Date.now();
-            if (id && !state.data.dismissedNotificationIds.includes(String(id))) {
-                state.data.dismissedNotificationIds.push(String(id));
+            if (String(notif.role || '').toUpperCase() === 'ALL') {
+                notif.readBy = notif.readBy || {};
+                notif.readBy[effectiveRole] = true;
+            } else {
+                notif.read = true;
+                if (id && !state.data.dismissedNotificationIds.includes(String(id))) {
+                    state.data.dismissedNotificationIds.push(String(id));
+                }
             }
+            notif.updatedAt = Date.now();
         }
         co.updatedAt = Date.now();
         state.save();
@@ -211,8 +228,20 @@ Object.assign(ui, {
         
         co.notifications = co.notifications || [];
         state.data.dismissedNotificationIds = state.data.dismissedNotificationIds || [];
+        const rawRole = String(state.user.role || '').toUpperCase();
+        const effectiveRole = (typeof this.getEffectiveRole === 'function' ? this.getEffectiveRole(co) : rawRole) || rawRole;
         (co.notifications || []).forEach(n => {
-            if (n && n.role === state.user.role && !n.read) {
+            if (!n) return;
+            const nRole = String(n.role || '').toUpperCase();
+            const isForMe = (nRole === effectiveRole) || (nRole === rawRole) || (nRole === 'ALL') || (effectiveRole === 'OPERACIONES_IA' && nRole === 'OPERACIONES');
+            if (!isForMe) return;
+            if (nRole === 'ALL') {
+                if (!(n.readBy && n.readBy[effectiveRole])) {
+                    n.readBy = n.readBy || {};
+                    n.readBy[effectiveRole] = true;
+                    n.updatedAt = Date.now();
+                }
+            } else if (!n.read) {
                 n.read = true;
                 if (n.id && !state.data.dismissedNotificationIds.includes(String(n.id))) {
                     state.data.dismissedNotificationIds.push(String(n.id));
@@ -389,7 +418,7 @@ Object.assign(ui, {
                 : defs;
             const deliveredCount = activeDefs.filter(d => docs[d.key] && docs[d.key].status === 'DELIVERED_TO_TEACHER').length;
             const activeGroup = this.activeMilestoneGroup || 'PHASE_I';
-            const isCEO = state.user && state.user.role === 'CEO';
+            const isCEO = state.user && this.getEffectiveRole(co) === 'CEO';
 
             const pDefs = typeof PROJECT_PHASES_DEF !== 'undefined' ? PROJECT_PHASES_DEF : {};
             const milestonePhases = [
@@ -577,8 +606,9 @@ Object.assign(ui, {
         if (!co) return auth.logout();
 
         const role = state.user.role;
-        const isCEO = role === 'CEO';
-        const isAux = role === 'AUXILIAR';
+        const effectiveRole = this.getEffectiveRole(co);
+        const isCEO = effectiveRole === 'CEO';
+        const isAux = role === 'AUXILIAR' && !co?.auxRoleDept;
 
         const grossCosts = state.getCompanyGrossOperatingCosts ? state.getCompanyGrossOperatingCosts(co) : 0;
         const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
@@ -594,16 +624,20 @@ Object.assign(ui, {
         const returnedDeliverables = Object.values(docs).filter(d => d && (d.status === 'CEO_REVISION' || d.status === 'DEVUELTO_A_TECNICO')).length;
         const deliveredCount = Object.values(docs).filter(d => d && d.status === 'DELIVERED_TO_TEACHER').length;
 
-        // Órdenes pendientes
+        // Órdenes pendientes y Marketing / Slogan para CEO
         const pendingOrders = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS' || o.status === 'APROBADO_FINANZAS').length;
-        let pendingMktActions = 0;
+        const pendingMktActionsList = [];
         (co.marketingCampaigns || []).forEach(c => {
             (c.executedActions || []).forEach(a => {
-                if (a.status === 'PENDIENTE_CEO') pendingMktActions++;
+                if (a && a.status === 'PENDIENTE_CEO') {
+                    pendingMktActionsList.push({ camp: c, act: a });
+                }
             });
         });
+        const pendingMktActions = pendingMktActionsList.length;
+        const pendingSlogan = (co.brandApproval && co.brandApproval.status === 'PENDIENTE_CEO') ? co.brandApproval : null;
 
-        const totalPendingCeoItems = submittedCeoDefs.length + pendingPhaseBalances.length;
+        const totalPendingCeoItems = submittedCeoDefs.length + pendingPhaseBalances.length + pendingMktActionsList.length + (pendingSlogan ? 1 : 0);
         let ceoTrayHtml = '';
         if (isCEO) {
             ceoTrayHtml = `
@@ -617,7 +651,7 @@ Object.assign(ui, {
                         <h3 class="text-base sm:text-lg font-orbitron font-black text-white uppercase tracking-tight">
                             📋 Bandeja de Visado Ejecutivo
                         </h3>
-                        <p class="text-xs text-slate-300 uppercase mt-0.5">Revisa, visa y eleva al claustro o devuelve con justificación técnica los entregables del equipo.</p>
+                        <p class="text-xs text-slate-300 uppercase mt-0.5">Revisa, visa y eleva al claustro o devuelve con justificación técnica los entregables y trámites del equipo.</p>
                     </div>
                     <button type="button" onclick="ui.navigate('role_deliverables')" class="shrink-0 w-full sm:w-auto justify-center min-h-[44px] bg-slate-900 border border-mars-yellow text-mars-yellow hover:bg-mars-yellow hover:text-black font-black uppercase text-xs px-4 py-2 transition-all whitespace-nowrap text-center">
                         Ver Mis Entregables ➔
@@ -625,13 +659,63 @@ Object.assign(ui, {
                 </div>
                 ${totalPendingCeoItems === 0 ? `
                     <div class="p-6 bg-slate-900/60 border border-slate-800 text-center rounded">
-                        <p class="text-xs font-mono text-emerald-400 uppercase font-bold">✨ Todos los entregables departamentales están al día o ya visados.</p>
-                        <p class="text-[11px] text-slate-400 mt-1">Cuando los departamentos (Técnico, Finanzas, Marketing, Operaciones) envíen sus borradores, aparecerán aquí para tu firma o devolución.</p>
+                        <p class="text-xs font-mono text-emerald-400 uppercase font-bold">✨ Todos los entregables y visados departamentales están al día.</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Cuando los departamentos (Técnico, Finanzas, Marketing, Operaciones) envíen sus borradores o propuestas, aparecerán aquí para tu firma o devolución.</p>
                     </div>
                 ` : `
                     <div class="space-y-3">
+                        ${pendingSlogan ? `
+                            <div id="ceo-slogan-approval-panel-dash" class="bg-slate-900/90 border border-mars-magenta/60 p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div class="min-w-0 flex-grow">
+                                    <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                                        <span class="text-xs font-black uppercase px-2 py-0.5 bg-black border border-mars-magenta text-mars-magenta">FASE I</span>
+                                        <span class="text-xs font-bold uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2 py-0.5">Resp: Marketing</span>
+                                        <span class="text-xs text-slate-400 font-mono">Identidad • DOC_11</span>
+                                    </div>
+                                    <h4 class="text-white font-bold text-sm uppercase leading-snug">Propuesta de Slogan Corporativo: "${this.escapeHTML(pendingSlogan.slogan || '')}"</h4>
+                                    ${pendingSlogan.valueProposition ? `<p class="text-[11px] text-slate-300 font-mono mt-1">Lema: "${this.escapeHTML(pendingSlogan.valueProposition)}"</p>` : ''}
+                                    <div class="mt-2.5 flex flex-wrap items-center gap-2">
+                                        ${pendingSlogan.driveUrl ? `
+                                            <a href="${encodeURI(pendingSlogan.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                                <span>📄 Ver DOC_11 en Docs ↗</span>
+                                            </a>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                                <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
+                                    <button type="button" onclick="ui.endorseBrandProposal('${this.escapeHTML(co.id)}')" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">[ ✓ AVALAR Y ELEVAR A COORDINACIÓN ]</button>
+                                    <button type="button" onclick="ui.returnBrandProposalToMkt('${this.escapeHTML(co.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-4 py-2 hover:bg-mars-magenta hover:text-white transition-all">[ ↩ DEVOLVER A MARKETING ]</button>
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${pendingMktActionsList.map(({ camp, act }) => {
+                            const actDrive = act.driveUrl || act.url || '';
+                            const actTitle = act.title || act.type || 'Acción Publicitaria';
+                            return `
+                            <div class="bg-slate-900/90 border border-mars-yellow/50 p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div class="min-w-0 flex-grow">
+                                    <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                                        <span class="text-xs font-black uppercase px-2 py-0.5 bg-purple-950 border border-mars-magenta text-mars-magenta">MARKETING</span>
+                                        <span class="text-xs font-bold uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2 py-0.5">Acción Publicitaria • DOC_12</span>
+                                    </div>
+                                    <h4 class="text-white font-bold text-sm uppercase leading-snug">${this.escapeHTML(actTitle)}</h4>
+                                    <p class="text-[11px] text-slate-300 font-mono mt-1">Pack: ${this.escapeHTML(camp.packageName || camp.type || '')}</p>
+                                    <div class="mt-2.5 flex flex-wrap items-center gap-2">
+                                        ${actDrive ? `
+                                            <a href="${encodeURI(actDrive).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                                <span>📄 Ver Creatividad DOC_12 en Docs ↗</span>
+                                            </a>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                                <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
+                                    <button type="button" onclick="ui.decideMktAction('${this.escapeHTML(camp.id)}', '${this.escapeHTML(act.id)}', true)" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">[ ✓ APROBAR ACCIÓN ]</button>
+                                    <button type="button" onclick="ui.modalRejectMktAction('${this.escapeHTML(camp.id)}', '${this.escapeHTML(act.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-4 py-2 hover:bg-mars-magenta hover:text-white transition-all">[ ↩ DEVOLVER A MKT ]</button>
+                                </div>
+                            </div>`;
+                        }).join('')}
                         ${pendingPhaseBalances.map(b => `
-                            <div class="bg-slate-900/90 border border-amber-500/50 p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div id="ceo-balance-approval-panel" class="bg-slate-900/90 border border-amber-500/50 p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                 <div class="min-w-0 flex-grow">
                                     <div class="flex items-center gap-2 mb-1.5 flex-wrap">
                                         <span class="text-xs font-black uppercase px-2 py-0.5 bg-black border border-amber-400 text-amber-400">FASE ${this.escapeHTML(b.phase)}</span>
@@ -691,7 +775,7 @@ Object.assign(ui, {
         let ceoSpecialItemsHtml = '';
         if (isCEO && pendingSpecialItems.length > 0) {
             ceoSpecialItemsHtml = `
-            <div class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-magenta shadow-[0_0_15px_rgba(255,0,85,0.15)]">
+            <div id="ceo-special-items-panel" class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-magenta shadow-[0_0_15px_rgba(255,0,85,0.15)]">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-mars-border pb-3 mb-4">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
@@ -786,24 +870,31 @@ Object.assign(ui, {
                         </div>`;
                     }
                 } else {
+                    const isAesaDenied = Boolean(license && license.status === 'DENEGADA');
+                    const feeAlreadyPaid = Boolean(isAesaDenied && Number(license.feePaid || 0) >= 50);
                     licenseCardHtml = `
-                    <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-yellow flex flex-col justify-between hover:border-mars-yellow transition-all">
+                    <div class="terminal-border bg-mars-card p-5 border-t-2 ${isAesaDenied ? 'border-t-red-500' : 'border-t-mars-yellow'} flex flex-col justify-between hover:border-mars-yellow transition-all">
                         <div>
                             <div class="flex justify-between items-center mb-2 flex-wrap gap-1">
-                                <span class="text-xs font-black uppercase text-mars-yellow bg-mars-yellow/10 border border-mars-yellow/40 px-2 py-0.5">SEGURIDAD AEROESPACIAL</span>
+                                <span class="text-xs font-black uppercase ${isAesaDenied ? 'text-red-300 bg-red-950/50 border-red-500/60' : 'text-mars-yellow bg-mars-yellow/10 border-mars-yellow/40'} border px-2 py-0.5">${isAesaDenied ? 'AESA // SUBSANACIÓN REQUERIDA' : 'SEGURIDAD AEROESPACIAL'}</span>
                                 <div class="flex items-center gap-1.5">
                                     ${(co.id === 'TEST-0000' || co.isTestCompany) ? `<span class="px-1.5 py-0.2 bg-amber-400 text-black text-[9px] font-mono font-bold uppercase rounded">🧪 Sandbox Desbloqueado</span>` : `<span style="color: #00ff66 !important;" class="text-[10px] font-mono">✓ Informe Preliminar Entregado</span>`}
-                                    <span class="text-xs font-mono text-amber-400">Tasa: 50 €v</span>
+                                    <span class="text-xs font-mono ${feeAlreadyPaid ? 'text-mars-green' : 'text-amber-400'}">${feeAlreadyPaid ? 'Tasa ya abonada (0 €v)' : 'Tasa: 50 €v'}</span>
                                 </div>
                             </div>
                             <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">🚀 Licencia de Lanzamiento AESA (Fase II)</h3>
                             <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
-                                Los lanzamientos en el banco de pruebas están bloqueados para Técnico y Operaciones. Tramita y firma la Solicitud AESA (DOC_14) con tasa de 50 €v para validación del Claustro.
+                                Los lanzamientos en el banco de pruebas están bloqueados para Técnico y Operaciones. Tramita y firma la Solicitud AESA (DOC_14) ${feeAlreadyPaid ? 'subsanada para nueva validación del Claustro.' : 'con tasa de 50 €v para validación del Claustro.'}
                             </p>
+                            ${isAesaDenied ? `
+                            <div class="mt-2.5 p-2.5 bg-red-950/50 border border-red-500/60 text-xs text-red-200 font-sans rounded">
+                                <strong class="uppercase text-red-400 block mb-0.5">❌ Denegada por Coordinación:</strong>
+                                <span>"${this.escapeHTML(license.rejectReason || 'Revisar documentación y permisos en Drive antes de reenviar.')}"</span>
+                            </div>` : ''}
                         </div>
-                        <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
+                        <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center flex-wrap gap-2">
                             <span class="text-[11px] text-slate-400 font-mono">DOC_14 AESA</span>
-                            <button type="button" onclick="ui.modalLaunchLicense()" class="min-h-[44px] bg-mars-yellow text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">[ 🚀 Tramitar Licencia AESA (50 €v) ]</button>
+                            <button type="button" onclick="ui.modalLaunchLicense()" class="min-h-[44px] ${isAesaDenied ? 'bg-red-600 text-white hover:bg-white hover:text-red-700' : 'bg-mars-yellow text-black hover:bg-white'} font-black uppercase text-xs px-4 py-2 transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">${feeAlreadyPaid ? '[ 🔄 Subsanar Licencia AESA (0 €v) ]' : '[ 🚀 Tramitar Licencia AESA (50 €v) ]'}</button>
                         </div>
                     </div>`;
                 }
@@ -1263,8 +1354,8 @@ Object.assign(ui, {
                     </div>
                     <div class="bg-black/50 p-3 sm:p-4 border border-slate-800">
                         <span class="text-[10px] sm:text-xs text-slate-400 font-bold uppercase block mb-1">Visados CEO Pendientes</span>
-                        <p class="text-base sm:text-xl font-orbitron font-black ${pendingCeoDeliverables + pendingMktActions > 0 ? 'text-mars-yellow animate-pulse' : 'text-slate-400'}">${pendingCeoDeliverables + pendingMktActions}</p>
-                        <span class="text-[10px] text-slate-500 font-mono">${pendingCeoDeliverables} entregables + ${pendingMktActions} mkt</span>
+                        <p class="text-base sm:text-xl font-orbitron font-black ${totalPendingCeoItems > 0 ? 'text-mars-yellow animate-pulse' : 'text-slate-400'}">${totalPendingCeoItems}</p>
+                        <span class="text-[10px] text-slate-500 font-mono">${pendingCeoDeliverables} entregables + ${pendingMktActions + (pendingSlogan ? 1 : 0)} mkt/identidad</span>
                     </div>
                 </div>
             </div>
@@ -1376,10 +1467,10 @@ Object.assign(ui, {
         const activeSection = this.roleDeliverablesSection || 'deliverables';
 
         const role = state.user.role;
-        const isCEO = role === 'CEO';
+        const effectiveRole = this.getEffectiveRole(co);
+        const isCEO = effectiveRole === 'CEO';
         const isAux = role === 'AUXILIAR';
         const auxDept = isAux ? co?.auxRoleDept : null;
-        const effectiveRole = (isAux && auxDept) ? auxDept : role;
 
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
         const docs = co.deliverables || {};
@@ -1414,7 +1505,7 @@ Object.assign(ui, {
 
         // 4. Filtrado por Rol / Ámbito
         let myRolePhaseDefs = phaseDefs;
-        if (role === 'CEO') {
+        if (effectiveRole === 'CEO') {
             myRolePhaseDefs = phaseDefs;
         } else if (effectiveRole === 'OPERACIONES_IA' || effectiveRole === 'OPERACIONES') {
             myRolePhaseDefs = phaseDefs.filter(d => d.role === 'OPERACIONES_IA' || d.role === 'OPERACIONES');
@@ -1955,13 +2046,14 @@ Object.assign(ui, {
 
         // Entregable general: remite al CEO o al Docente si quien lo envía es el CEO
         co.deliverables = co.deliverables || {};
-        const isCEO = state.user.role === 'CEO';
+        const effectiveRole = this.getEffectiveRole(co);
+        const isCEO = effectiveRole === 'CEO';
         const targetStatus = isCEO ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
         const newDoc = {
             driveUrl: url,
             url: url,
             status: targetStatus,
-            submittedBy: state.user.role,
+            submittedBy: (effectiveRole !== state.user.role) ? `${state.user.role} (${effectiveRole})` : state.user.role,
             updatedAt: new Date().toISOString()
         };
         // Limpieza de banderas de devolución anteriores
@@ -1984,7 +2076,8 @@ Object.assign(ui, {
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
         if (!isCEO) {
-            ui.pushNotification(state.user.coId, 'CEO', `📤 Entregable [${docKey}] remitido por ${state.user.role} para visado.`, 'info', { view: 'role_deliverables' });
+            const senderLabel = (effectiveRole !== state.user.role) ? `${state.user.role} (${effectiveRole})` : state.user.role;
+            ui.pushNotification(state.user.coId, 'CEO', `📤 Entregable [${docKey}] remitido por ${senderLabel} para visado.`, 'info', { view: 'role_deliverables', section: 'deliverables', docKey });
         }
 
         ui.closeModal();
@@ -1993,7 +2086,7 @@ Object.assign(ui, {
     },
 
     approveSpecialItemByCEO(reqId) {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const coId = state.user.coId;
         const co = state.data.companies[coId];
         if (!co || !co.specialItemRequests) return;
@@ -2030,14 +2123,14 @@ Object.assign(ui, {
         // Notificación al Coordinador docente ("Este último que reciba notificación de aviso")
         ui.pushNotification('ADMIN', 'ALL', `🔬 [${co.name}] Nueva solicitud de material I+D aprobada por el CEO y elevada a Coordinación.`, 'info', { view: 'coordination' });
         // Notificación al Técnico
-        ui.pushNotification(coId, 'TECNICO', `✓ Tu solicitud de material I+D ha sido visada por el CEO y elevada a Coordinación Docente.`, 'success');
+        ui.pushNotification(coId, 'TECNICO', `✓ Tu solicitud de material I+D ha sido visada por el CEO y elevada a Coordinación Docente.`, 'success', { view: 'tech' });
 
         this.notify("✅ Solicitud de material I+D visada y elevada a Coordinación Docente con notificación de aviso.", "success");
         this.render();
     },
 
     modalRejectSpecialItemByCEO(reqId) {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const reasons = [
             "Presupuesto de tesorería insuficiente para este componente",
             "La memoria técnica DOC_13 requiere mayor concreción de planos y tolerancias",
@@ -2066,7 +2159,7 @@ Object.assign(ui, {
     },
 
     rejectSpecialItemByCEO(reqId) {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const elReason = document.getElementById('reject-special-item-reason');
         if (!elReason) return;
         const reason = this.cleanInput(elReason.value).trim();
@@ -2093,13 +2186,21 @@ Object.assign(ui, {
     },
 
     modalLaunchLicense() {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const co = state.data.companies[state.user.coId];
         if (!co) return;
 
         if (!this.isLaunchLicenseUnlocked(co)) {
             return this.notify("⛔ Trámite bloqueado: Se requiere haber entregado formalmente el Informe Técnico Preliminar (DOC FYQ) al Claustro Docente antes de tramitar la Licencia AESA.", "error");
         }
+
+        const isResubmission = Boolean(co.launchLicense && co.launchLicense.status === 'DENEGADA' && Number(co.launchLicense.feePaid || 0) >= 50);
+        const existingReason = isResubmission && co.launchLicense.rejectReason
+            ? `<div class="p-3 bg-red-950/40 border border-red-500/50 text-red-200 text-xs">
+                   <strong class="uppercase text-red-400 block mb-0.5">❌ Motivo de Denegación Previa:</strong>
+                   <span>"${this.escapeHTML(co.launchLicense.rejectReason)}"</span>
+               </div>`
+            : '';
 
         const html = `
             <div class="space-y-4 font-mono text-xs">
@@ -2108,9 +2209,10 @@ Object.assign(ui, {
                         <span>🚀 Procedimiento de Seguridad AESA (DOC_14)</span>
                     </p>
                     <p class="font-sans text-[11px] leading-relaxed">
-                        Conforme a la normativa aeroespacial simulada de la Fase II, los lanzamientos en el banco de pruebas están bloqueados. Para desbloquearlos, el CEO debe cumplimentar y firmar digitalmente la solicitud oficial y remitirla a Coordinación Docente con abono de la tasa administrativa de <strong>50 €v</strong>.
+                        Conforme a la normativa aeroespacial simulada de la Fase II, los lanzamientos en el banco de pruebas están bloqueados. Para desbloquearlos, el CEO debe cumplimentar y firmar digitalmente la solicitud oficial y remitirla a Coordinación Docente ${isResubmission ? 'tras subsanar el requerimiento (la tasa administrativa de 50 €v ya fue abonada).' : 'con abono de la tasa administrativa de <strong>50 €v</strong>.'}
                     </p>
                 </div>
+                ${existingReason}
                 <div class="mb-2">
                     ${this.renderDocTemplateBtn('DOC_14_LICENCIA_AESA', '📄 Ver Plantilla Licencia AESA (DOC_14)')}
                 </div>
@@ -2118,7 +2220,7 @@ Object.assign(ui, {
                     <label for="launch-license-drive-url" class="text-mars-cyan uppercase font-bold block mb-1">
                         Enlace a Solicitud Formal AESA en Google Drive / Docs (URL)
                     </label>
-                    <input type="url" id="launch-license-drive-url" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                    <input type="url" id="launch-license-drive-url" value="${isResubmission && co.launchLicense?.driveUrl ? this.escapeHTML(co.launchLicense.driveUrl) : ''}" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
                     <p class="text-[10px] text-slate-400 mt-1 font-sans">Asegúrate de compartir el documento con permisos de lectura abiertos ("Cualquiera con el enlace puede ver").</p>
                 </div>
                 <div class="p-3 bg-black/60 border border-slate-800 space-y-2">
@@ -2129,16 +2231,16 @@ Object.assign(ui, {
                 </div>
                 <div class="p-2.5 bg-black/60 border border-slate-800 flex justify-between items-center text-xs">
                     <span class="text-slate-300">Tasa Administrativa AESA:</span>
-                    <span class="text-mars-yellow font-bold font-orbitron">-50.00 €v</span>
+                    <span class="${isResubmission ? 'text-mars-green' : 'text-mars-yellow'} font-bold font-orbitron">${isResubmission ? '0.00 €v (Ya abonada)' : '-50.00 €v'}</span>
                 </div>
             </div>
         `;
-        const actions = `<button type="button" onclick="ui.submitLaunchLicense()" class="min-h-[44px] bg-mars-yellow text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">[ ✍️ Firmar y Tramitar Licencia (-50 €v) ]</button>`;
+        const actions = `<button type="button" onclick="ui.submitLaunchLicense()" class="min-h-[44px] bg-mars-yellow text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">${isResubmission ? '[ 🔄 Firmar y Reenviar Subsanación (0 €v) ]' : '[ ✍️ Firmar y Tramitar Licencia (-50 €v) ]'}</button>`;
         this.showModal("Tramitación de Licencia de Lanzamiento AESA (DOC_14)", html, actions);
     },
 
     submitLaunchLicense() {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const elUrl = document.getElementById('launch-license-drive-url');
         const elCheck = document.getElementById('launch-license-sign-check');
         if (!elUrl || !elCheck) return;
@@ -2160,21 +2262,25 @@ Object.assign(ui, {
             return this.notify("⛔ Trámite bloqueado: Se requiere haber entregado formalmente el Informe Técnico Preliminar (DOC FYQ) al Claustro Docente antes de tramitar la Licencia AESA.", "error");
         }
 
-        if (Number(co.balance || 0) < 50) {
+        const feeAlreadyPaid = Boolean(co.launchLicense && co.launchLicense.status === 'DENEGADA' && Number(co.launchLicense.feePaid || 0) >= 50);
+
+        if (!feeAlreadyPaid && Number(co.balance || 0) < 50) {
             return this.notify("Saldo insuficiente: se requieren 50 €v de tesorería para la tasa administrativa de la licencia AESA.", "error");
         }
 
-        // Deducción de 50 €v y registro en Libro Mayor
-        co.balance -= 50;
-        state.addToLedger(coId, 'Tasa Administrativa AESA // Licencia de Lanzamiento (DOC_14)', 'TASAS_ADMINISTRATIVAS', -50);
+        if (!feeAlreadyPaid) {
+            // Deducción de 50 €v y registro en Libro Mayor
+            co.balance -= 50;
+            state.addToLedger(coId, 'Tasa Administrativa AESA // Licencia de Lanzamiento (DOC_14)', 'TASAS_ADMINISTRATIVAS', -50);
+        }
 
         co.launchLicense = {
-            id: 'AESA-' + Date.now(),
+            id: co.launchLicense?.id || ('AESA-' + Date.now()),
             driveUrl: driveUrl,
             status: 'PENDIENTE_DOCENTE',
             appliedAt: Date.now(),
             appliedDate: new Date().toLocaleDateString(),
-            feePaid: 50,
+            feePaid: feeAlreadyPaid ? Number(co.launchLicense.feePaid) : 50,
             signedBy: state.user.name || 'CEO'
         };
         co.updatedAt = Date.now();
@@ -2182,17 +2288,17 @@ Object.assign(ui, {
         state.save(coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
-        ui.pushNotification('ADMIN', 'ALL', `🚀 [${co.name}] El CEO ha tramitado y abonado la Licencia de Lanzamiento AESA (50 €v). Pendiente de validación.`, 'info', { view: 'coordination' });
+        ui.pushNotification('ADMIN', 'ALL', `🚀 [${co.name}] El CEO ha tramitado ${feeAlreadyPaid ? '(subsanación) ' : 'y abonado '}la Licencia de Lanzamiento AESA. Pendiente de validación.`, 'info', { view: 'coordination' });
         ui.pushNotification(coId, 'ALL', `🚀 El CEO ha tramitado la Licencia de Lanzamiento AESA. Pendiente de validación por Coordinación Docente.`, 'info');
 
         this.closeModal();
-        this.notify("✅ Licencia AESA tramitada exitosamente. Tasa de 50 €v abonada y remitida al claustro para su validación.", "success");
+        this.notify(feeAlreadyPaid ? "✅ Subsanación de Licencia AESA reenviada al claustro sin cargo adicional." : "✅ Licencia AESA tramitada exitosamente. Tasa de 50 €v abonada y remitida al claustro para su validación.", "success");
         this.updateHUD();
         this.render();
     },
 
     modalPublishPressRelease(phaseKey) {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const co = state.data.companies[state.user.coId];
         if (!co) return;
 
@@ -2256,7 +2362,7 @@ Object.assign(ui, {
     },
 
     submitPressRelease(phaseKey) {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const elUrl = document.getElementById('press-release-drive-url');
         if (!elUrl) return;
 
@@ -3218,7 +3324,7 @@ Object.assign(ui, {
         if (!co) return '';
         const curPhase = this.getCurrentPhaseKey();
         const signed = co.contracts?.[curPhase];
-        const isCEO = state.user && (state.user.role === 'CEO' || state.user.admin);
+        const isCEO = state.user && (this.getEffectiveRole(co) === 'CEO' || state.user.admin);
         const isMasterOrAdmin = Boolean(state.user && state.user.admin || co.unlockAllContracts === true || co.isTestCompany === true);
         const win = typeof CONTRACTS_PHASE_WINDOWS !== 'undefined' ? CONTRACTS_PHASE_WINDOWS[curPhase] : null;
         const isUnlocked = isMasterOrAdmin || (win && Date.now() >= new Date(win.selectionStart).getTime());
@@ -3296,9 +3402,7 @@ Object.assign(ui, {
         const curPhase = (typeof this.getCurrentPhaseKey === 'function') ? this.getCurrentPhaseKey() : 'I';
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
 
-        const isAux = role === 'AUXILIAR';
-        const auxDept = isAux ? co?.auxRoleDept : null;
-        const targetRole = (isAux && auxDept) ? auxDept : role;
+        const targetRole = this.getEffectiveRole(co) || role;
 
         const myActiveDeliverables = defs.filter(d => {
             const p = (typeof this.getDeliverablePhase === 'function') ? this.getDeliverablePhase(d.key) : (d.phase || 'I');
@@ -3460,7 +3564,7 @@ Object.assign(ui, {
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
 
-        const isCEO = state.user.role === 'CEO' || state.user.admin;
+        const isCEO = this.getEffectiveRole(co) === 'CEO' || state.user.admin;
         const allPhases = ['I', 'II', 'III', 'IV'];
         const unlockedPhases = allPhases.filter(ph => this.isContractPhaseUnlocked(ph, co));
         const hasAnyUnlocked = unlockedPhases.length > 0;

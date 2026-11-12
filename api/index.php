@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.01
+// Versión: v2.0.02
 
 declare(strict_types=1);
 
@@ -902,6 +902,11 @@ try {
             return round($initial + $deltaSum, 2);
         };
 
+        $rawRole = (string)($auth['role'] ?? '');
+        $auxDept = trim((string)($co['auxRoleDept'] ?? ''));
+        $effectiveRole = ($rawRole === 'AUXILIAR' && $auxDept !== '') ? $auxDept : $rawRole;
+        if ($effectiveRole === 'OPERACIONES') $effectiveRole = 'OPERACIONES_IA';
+
         switch ($action) {
             case 'EXECUTE_PURCHASE':
                 $items = !empty($payload['items']) && is_array($payload['items']) ? $payload['items'] : $co['cart'];
@@ -961,7 +966,7 @@ try {
 
             case 'RECORD_REAL_SPEND':
             case 'EXECUTE_PHYSICAL_ORDER':
-                if (($auth['role'] ?? '') !== 'OPERACIONES_IA' && ($auth['role'] ?? '') !== 'OPERACIONES' && empty($auth['isAdmin']) && empty($auth['isCoordinator'])) {
+                if ($effectiveRole !== 'OPERACIONES_IA' && empty($auth['isAdmin']) && empty($auth['isCoordinator'])) {
                     http_response_code(403);
                     echo json_encode(['error' => 'FORBIDDEN_ROLE', 'message' => 'Acceso restringido: Solo Operaciones o Administrador puede registrar compras físicas reales.']);
                     exit;
@@ -975,7 +980,7 @@ try {
                 if (!empty($payload['orderId'])) {
                     $co['orders'] = is_array($co['orders'] ?? null) ? $co['orders'] : [];
                     foreach ($co['orders'] as &$ord) {
-                        if (String($ord['id'] ?? '') === String($payload['orderId'])) {
+                        if ((string)($ord['id'] ?? '') === (string)($payload['orderId'])) {
                             $ord['status'] = 'EJECUTADO';
                         }
                     }
@@ -1000,7 +1005,7 @@ try {
                 }
                 if (!empty($payload['actionItem']) && !empty($payload['campaignId'])) {
                     foreach ($co['marketingCampaigns'] as &$c) {
-                        if (String($c['id'] ?? '') === String($payload['campaignId'])) {
+                        if ((string)($c['id'] ?? '') === (string)($payload['campaignId'])) {
                             $c['executedActions'] = is_array($c['executedActions'] ?? null) ? $c['executedActions'] : [];
                             $c['executedActions'][] = $payload['actionItem'];
                         }
@@ -1013,7 +1018,7 @@ try {
                 $rawKey = trim((string)($payload['key'] ?? $payload['docKey'] ?? $payload['docType'] ?? ''));
                 if ($rawKey !== '') {
                     $driveUrl = trim((string)($payload['driveUrl'] ?? $payload['url'] ?? ''));
-                    $isCEO = ($auth['role'] ?? '') === 'CEO' || !empty($auth['isCoordinator']);
+                    $isCEO = $effectiveRole === 'CEO' || !empty($auth['isCoordinator']);
                     $status = $isCEO ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
                     $returnReasonId = null;
                     $returnReason = null;
@@ -1045,7 +1050,7 @@ try {
                 break;
 
             case 'CEO_REVIEW_DELIVERABLE':
-                if (($auth['role'] ?? '') !== 'CEO' && empty($auth['isCoordinator'])) {
+                if ($effectiveRole !== 'CEO' && empty($auth['isCoordinator'])) {
                     http_response_code(403);
                     echo json_encode(['error' => 'UNAUTHORIZED_ROLE', 'message' => 'Solo el CEO o Coordinación puede supervisar entregables.']);
                     exit;

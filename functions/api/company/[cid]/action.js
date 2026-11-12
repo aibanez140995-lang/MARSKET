@@ -81,7 +81,7 @@ export async function onRequestPost(context) {
     if (!action) {
         return new Response(JSON.stringify({ error: 'MISSING_ACTION' }), { status: 400, headers: CORS_HEADERS });
     }
-    const p = (payload.payload && typeof payload.payload === 'object') ? Object.assign({}, payload.payload, payload) : payload;
+    const p = (payload.payload && typeof payload.payload === 'object') ? Object.assign({}, payload, payload.payload) : payload;
 
     try {
         // Asegurar que la tabla particionada company_state existe
@@ -195,6 +195,11 @@ export async function onRequestPost(context) {
             });
         }
 
+        const rawRole = String(auth.role || '');
+        const auxDept = co.auxRoleDept ? String(co.auxRoleDept).trim() : '';
+        let effectiveRole = ((rawRole === 'AUXILIAR' || rawRole === 'SECRETARIO') && auxDept) ? auxDept : rawRole;
+        if (effectiveRole === 'OPERACIONES') effectiveRole = 'OPERACIONES_IA';
+
         // 3. Ejecución de la acción atómica
         switch(action) {
             case 'EXECUTE_PURCHASE': {
@@ -223,9 +228,9 @@ export async function onRequestPost(context) {
                     }), { status: 400, headers: CORS_HEADERS });
                 }
 
-                const orderId = payload.orderId || ('ORD-' + now.toString().slice(-4));
+                const orderId = p.orderId || ('ORD-' + now.toString().slice(-4));
                 const txId = 'TX-' + now.toString(36).toUpperCase() + '-' + Math.random().toString(36).substr(2, 4).toUpperCase();
-                const concept = payload.concept || `Compra Catálogo (${items.length} ítems) - Pedido #${orderId}`;
+                const concept = p.concept || `Compra Catálogo (${items.length} ítems) - Pedido #${orderId}`;
 
                 // Registrar transacción en el libro mayor inmutable
                 co.ledger.unshift({
@@ -233,7 +238,7 @@ export async function onRequestPost(context) {
                     tx_id: txId,
                     date: new Date().toLocaleString(),
                     concept,
-                    dept: payload.dept || 'TECNICO',
+                    dept: p.dept || 'TECNICO',
                     delta: -totalPurchase,
                     timestamp: now,
                     orderId
@@ -256,7 +261,7 @@ export async function onRequestPost(context) {
 
             case 'RECORD_REAL_SPEND':
             case 'EXECUTE_PHYSICAL_ORDER': {
-                if (auth.role !== 'OPERACIONES_IA' && auth.role !== 'OPERACIONES' && !auth.admin && !auth.isCoordinator) {
+                if (effectiveRole !== 'OPERACIONES_IA' && !auth.admin && !auth.isCoordinator) {
                     return new Response(JSON.stringify({ 
                         error: 'FORBIDDEN_ROLE', 
                         message: 'Acceso restringido: Solo Operaciones/Operario o Administrador puede registrar compras físicas reales.' 
@@ -281,14 +286,14 @@ export async function onRequestPost(context) {
             }
 
             case 'ADD_LEDGER_TX': {
-                const deltaNum = Math.round((Number(payload.delta || 0) + Number.EPSILON) * 100) / 100;
-                const txId = payload.txId || ('TX-' + now.toString(36).toUpperCase() + '-' + Math.random().toString(36).substr(2, 4).toUpperCase());
+                const deltaNum = Math.round((Number(p.delta || 0) + Number.EPSILON) * 100) / 100;
+                const txId = p.txId || ('TX-' + now.toString(36).toUpperCase() + '-' + Math.random().toString(36).substr(2, 4).toUpperCase());
                 co.ledger.unshift({
                     id: txId,
                     tx_id: txId,
                     date: new Date().toLocaleString(),
-                    concept: payload.concept || 'Ajuste financiero',
-                    dept: payload.dept || 'FINANZAS',
+                    concept: p.concept || 'Ajuste financiero',
+                    dept: p.dept || 'FINANZAS',
                     delta: deltaNum,
                     timestamp: now
                 });
@@ -313,7 +318,7 @@ export async function onRequestPost(context) {
                 }
                 if (p.decideAction) {
                     const { campId, actId, approved, feedback, returnDriveUrl } = p.decideAction;
-                    if (auth.role !== 'CEO' && !auth.isCoordinator && !auth.admin) {
+                    if (effectiveRole !== 'CEO' && !auth.isCoordinator && !auth.admin) {
                         return new Response(JSON.stringify({ error: 'UNAUTHORIZED_ROLE', message: 'Solo el CEO o Coordinación puede validar acciones publicitarias.' }), { status: 403, headers: CORS_HEADERS });
                     }
                     if (!approved && (!returnDriveUrl || !GOOGLE_DRIVE_REGEX.test(returnDriveUrl))) {
@@ -335,7 +340,7 @@ export async function onRequestPost(context) {
                     if (!actUrl || !GOOGLE_DRIVE_REGEX.test(actUrl)) {
                         return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL', message: 'URL de Google Drive obligatoria para la acción de marketing.' }), { status: 400, headers: CORS_HEADERS });
                     }
-                    const isCeoOrCoord = auth.role === 'CEO' || auth.isCoordinator || auth.admin;
+                    const isCeoOrCoord = effectiveRole === 'CEO' || auth.isCoordinator || auth.admin;
                     if (!isCeoOrCoord || !p.actionItem.status) {
                         p.actionItem.status = 'PENDIENTE_CEO';
                     }
@@ -361,11 +366,11 @@ export async function onRequestPost(context) {
             }
 
             case 'SUBMIT_DELIVERABLE': {
-                const rawKey = String(payload.key || payload.docKey || payload.docType || '').trim();
+                const rawKey = String(p.key || p.docKey || p.docType || '').trim();
                 if (!/^[a-zA-Z0-9_-]{1,40}$/.test(rawKey)) {
                     return new Response(JSON.stringify({ error: 'INVALID_DELIVERABLE_KEY' }), { status: 400, headers: CORS_HEADERS });
                 }
-                const driveUrl = String(payload.driveUrl || payload.url || '').trim();
+                const driveUrl = String(p.driveUrl || p.url || '').trim();
                 if (!GOOGLE_DRIVE_REGEX.test(driveUrl)) {
                     return new Response(JSON.stringify({ 
                         error: 'INVALID_DRIVE_URL', 
@@ -376,14 +381,14 @@ export async function onRequestPost(context) {
                     });
                 }
                 co.deliverables = co.deliverables || {};
-                const isCEO = auth.role === 'CEO' || auth.isCoordinator;
+                const isCEO = effectiveRole === 'CEO' || auth.isCoordinator;
                 let status = isCEO ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
                 let returnReasonId = null;
                 let returnReason = null;
 
                 if (rawKey === 'hoja_taller_fyq') {
-                    const reqStatus = String(payload.status || p.status || '').trim();
-                    const validWorkshopStatuses = ['DRAFT_TECNICO', 'EN_TALLER_OPERARIO', 'DEVUELTO_A_TECNICO', 'SUBMITTED_TO_CEO', 'DELIVERED_TO_TEACHER'];
+                    const reqStatus = String(p.status || '').trim();
+                    const validWorkshopStatuses = ['DRAFT_TECNICO', 'EN_TALLER_OPERARIO', 'DEVUELTO_A_TECNICO', 'CEO_REVISION', 'SUBMITTED_TO_CEO', 'DELIVERED_TO_TEACHER'];
                     if (validWorkshopStatuses.includes(reqStatus)) {
                         status = reqStatus;
                     } else if (isCEO) {
@@ -391,8 +396,8 @@ export async function onRequestPost(context) {
                     } else {
                         status = 'EN_TALLER_OPERARIO';
                     }
-                    returnReasonId = payload.returnReasonId || p.returnReasonId || null;
-                    returnReason = payload.returnReason || p.returnReason || null;
+                    returnReasonId = p.returnReasonId || null;
+                    returnReason = p.returnReason || null;
                 }
 
                 co.deliverables[rawKey] = { 
@@ -406,10 +411,10 @@ export async function onRequestPost(context) {
             }
 
             case 'CEO_REVIEW_DELIVERABLE': {
-                if (auth.role !== 'CEO' && !auth.isCoordinator) {
+                if (effectiveRole !== 'CEO' && !auth.isCoordinator) {
                     return new Response(JSON.stringify({ error: 'UNAUTHORIZED_ROLE', message: 'Solo el CEO o Coordinación puede supervisar entregables.' }), { status: 403, headers: CORS_HEADERS });
                 }
-                const rawKey = String(payload.key || payload.docKey || payload.docType || '').trim();
+                const rawKey = String(p.key || p.docKey || p.docType || '').trim();
                 if (!/^[a-zA-Z0-9_-]{1,40}$/.test(rawKey)) {
                     return new Response(JSON.stringify({ error: 'INVALID_DELIVERABLE_KEY' }), { status: 400, headers: CORS_HEADERS });
                 }
@@ -419,7 +424,7 @@ export async function onRequestPost(context) {
                     return new Response(JSON.stringify({ error: 'DELIVERABLE_NOT_FOUND' }), { status: 404, headers: CORS_HEADERS });
                 }
 
-                const subAction = String(p.action || '').toUpperCase();
+                const subAction = String(p.subAction || (p.action && p.action !== action ? p.action : '')).toUpperCase();
                 if (subAction === 'APPROVE') {
                     if (typeof currentDoc === 'string') {
                         co.deliverables[rawKey] = { driveUrl: currentDoc, status: 'DELIVERED_TO_TEACHER', updatedAt: new Date().toISOString() };
@@ -468,14 +473,14 @@ export async function onRequestPost(context) {
                 if (!auth.admin && !auth.isCoordinator) {
                     return new Response(JSON.stringify({ error: 'UNAUTHORIZED_ROLE', message: 'Solo el profesorado o Coordinación puede devolver entregables.' }), { status: 403, headers: CORS_HEADERS });
                 }
-                const rawKey = String(payload.key || payload.docKey || payload.docType || '').trim();
+                const rawKey = String(p.key || p.docKey || p.docType || '').trim();
                 co.deliverables = co.deliverables || {};
                 const currentDoc = co.deliverables[rawKey];
                 const reasonId = String(p.reasonId || '').trim();
                 const reasonText = String(p.reasonText || p.reason || reasonId).trim();
                 const driveUrl = typeof currentDoc === 'string' ? currentDoc : (currentDoc?.driveUrl || '');
 
-                const returnDriveUrl = String(p.returnDriveUrl || payload.returnDriveUrl || '').trim();
+                const returnDriveUrl = String(p.returnDriveUrl || '').trim();
                 co.deliverables[rawKey] = {
                     driveUrl,
                     status: 'CEO_REVISION',

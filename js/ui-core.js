@@ -247,13 +247,23 @@ const ui = {
         }
     },
 
-    navigate(view) {
+    getEffectiveRole(co = null) {
+        if (typeof state !== 'undefined' && typeof state.getEffectiveRole === 'function') {
+            return state.getEffectiveRole(state.user, co);
+        }
+        return state.user?.role || '';
+    },
+
+    navigate(view, opts = null) {
         if (!state.user?.admin && view === 'dossier') {
             this.current = 'role_deliverables';
             this.currentSubView = null;
-            this.roleDeliverablesSection = 'grades';
+            this.roleDeliverablesSection = (opts && (opts.section || (opts.subTab === 'docs' ? 'deliverables' : (opts.subTab === 'eval' ? 'grades' : null)))) || 'grades';
             this.render();
             return;
+        }
+        if (view === 'role_deliverables' && opts && opts.section) {
+            this.roleDeliverablesSection = opts.section;
         }
         this.current = view;
         this.currentSubView = null;
@@ -1027,45 +1037,132 @@ const ui = {
         }
     },
 
-    pushNotification(coId, targetRole, message, type = 'info', targetMeta = null) {
-        const co = state.data.companies[coId];
+    _pushNotificationToCompany(co, targetRole, message, type = 'info', targetMeta = null) {
         if (!co) return;
-        
         co.notifications = co.notifications || [];
-        co.notifications.unshift({
-            id: 'NOTIF-' + Date.now() + '-' + Math.random().toString(36).substr(2, 3),
-            role: targetRole,
-            message: message,
-            type: type,
-            date: new Date().toLocaleString(),
-            read: false,
-            updatedAt: Date.now(),
-            target: targetMeta || null
+        const rawTarget = String(targetRole || 'ALL').toUpperCase();
+        const normalizedTarget = rawTarget === 'OPERACIONES' ? 'OPERACIONES_IA' : rawTarget;
+        let recipients = [normalizedTarget];
+        if (normalizedTarget === 'ALL') {
+            recipients = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA'];
+            if (!co.auxRoleDept) recipients.push('AUXILIAR');
+        }
+        const now = Date.now();
+        const dateStr = new Date().toLocaleString();
+        recipients.forEach((roleKey, idx) => {
+            co.notifications.unshift({
+                id: 'NOTIF-' + now + '-' + idx + '-' + Math.random().toString(36).substr(2, 4),
+                role: roleKey,
+                message: message,
+                type: type,
+                date: dateStr,
+                read: false,
+                updatedAt: now,
+                target: targetMeta || null
+            });
         });
-        
-        if (co.notifications.length > 50) co.notifications.pop();
-        co.updatedAt = Date.now();
+
+        while (co.notifications.length > 150) {
+            const lastReadIdx = co.notifications.map(n => !!n.read).lastIndexOf(true);
+            if (lastReadIdx !== -1) co.notifications.splice(lastReadIdx, 1);
+            else co.notifications.pop();
+        }
+        co.updatedAt = now;
+    },
+
+    pushNotification(coId, targetRole, message, type = 'info', targetMeta = null) {
+        if (coId === 'ALL') {
+            const companies = state.data?.companies || {};
+            let touched = false;
+            Object.entries(companies).forEach(([cid, co]) => {
+                if (!co || cid === 'ADMIN') return;
+                this._pushNotificationToCompany(co, targetRole, message, type, targetMeta);
+                touched = true;
+            });
+            if (touched) state.save();
+            return;
+        }
+
+        const co = state.data.companies?.[coId];
+        if (!co) return;
+        this._pushNotificationToCompany(co, targetRole, message, type, targetMeta);
         state.save(coId);
     },
 
     resolveNotificationTarget(notif) {
-        if (!notif) return { view: 'dossier' };
+        const isAdmin = Boolean(state.user?.admin);
+        const coId = state.user?.coId;
+        const co = coId ? state.data.companies?.[coId] : null;
+        const effectiveRole = this.getEffectiveRole(co) || '';
+
+        if (!notif) {
+            return isAdmin ? { view: 'admin' } : { view: 'role_deliverables', section: 'deliverables' };
+        }
+
+        const rawNotifRole = String(notif.role || '').toUpperCase();
+        let role = (!rawNotifRole || rawNotifRole === 'ALL') ? effectiveRole : rawNotifRole;
+        if (role === 'OPERACIONES') role = 'OPERACIONES_IA';
+        if (role === 'AUXILIAR' && co?.auxRoleDept) role = this.getEffectiveRole(co);
+
         if (notif.target && typeof notif.target === 'object' && notif.target.view) {
-            return notif.target;
+            const explicit = { ...notif.target };
+            if (!isAdmin && explicit.view === 'dossier') {
+                explicit.view = 'role_deliverables';
+                explicit.section = explicit.section || (explicit.subTab === 'eval' ? 'grades' : 'deliverables');
+            }
+            if (explicit.view === 'brand' && role === 'CEO') {
+                return { ...explicit, view: 'resolutions', anchorId: 'ceo-slogan-approval-panel' };
+            }
+            if (explicit.view === 'brand' && explicit.subTab === 'slogan') {
+                explicit.anchorId = explicit.anchorId || 'brand-slogan-section';
+                delete explicit.subTab;
+            }
+            if (explicit.view === 'mkt-campaigns-section') {
+                return { view: 'campaigns', anchorId: 'mkt-campaigns-section' };
+            }
+            if (explicit.view === 'tech' && !isAdmin && role && role !== 'TECNICO' && role !== 'AUXILIAR') {
+                return role === 'CEO' ? { ...explicit, view: 'dashboard' } : { view: 'role_deliverables', section: 'deliverables' };
+            }
+            return explicit;
         }
 
         const msg = String(notif.message || '').toLowerCase();
-        const role = String(notif.role || (state.user ? state.user.role : '')).toUpperCase();
-        const coId = state.user?.coId;
-        const co = coId ? state.data.companies?.[coId] : null;
+
+        // Prensa, Crónica AEE y Tablón de Noticias
+        if (msg.includes('nota de prensa') || msg.includes('crónica') || msg.includes('tablón de noticias') || msg.includes('aee prensa')) {
+            return { view: 'news' };
+        }
+
+        // Licencia de Lanzamiento AESA
+        if (msg.includes('licencia') || msg.includes('aesa')) {
+            if (msg.includes('aprobada') || msg.includes('desbloqueado')) {
+                if (role === 'TECNICO') return { view: 'tech' };
+                if (role === 'CEO') return { view: 'dashboard' };
+                return { view: 'role_deliverables', section: 'deliverables' };
+            }
+            return role === 'CEO' ? { view: 'dashboard' } : { view: 'role_deliverables', section: 'deliverables' };
+        }
+
+        // Balance de Cierre de Fase (DOC_17)
+        if (msg.includes('balance de cierre') || msg.includes('balance de fase') || msg.includes('doc_17')) {
+            if (role === 'CEO') return { view: 'dashboard', anchorId: 'ceo-balance-approval-panel' };
+            if (role === 'FINANZAS') return { view: 'finance' };
+            return { view: 'role_deliverables', section: 'deliverables' };
+        }
+
+        // Material I+D Especial fuera de catálogo
+        if (msg.includes('i+d especial') || msg.includes('material i+d') || msg.includes('fuera de catálogo')) {
+            if (role === 'CEO') return { view: 'dashboard', anchorId: 'ceo-special-items-panel' };
+            return { view: 'tech', anchorId: 'tech-special-items-panel' };
+        }
 
         // Bitácora IA
-        if (/\b(ia|ai|inteligencia artificial)\b|prompt|bitácora/i.test(msg)) {
+        if (!msg.includes('entregable') && /\b(ia|ai|inteligencia artificial)\b|prompt|bitácora/i.test(msg)) {
             return { view: 'ailog', anchorId: 'ailog-section' };
         }
 
-        // Sanciones y Crisis
-        if (msg.includes('sanción') || msg.includes('disciplin') || msg.includes('crisis') || msg.includes('expediente')) {
+        // Sanciones y Crisis (sin 'expediente' para no colisionar con Slogan/Identidad)
+        if (msg.includes('sanción') || msg.includes('disciplin') || msg.includes('crisis')) {
             const crisis = (co?.crisisAlerts || []).find(a => notif.crisisId && String(a.id) === String(notif.crisisId)) || (co?.crisisAlerts || []).find(a => !a.read || !a.notified);
             const isPending = Boolean(crisis && !crisis.notified);
             if (role === 'CEO' && isPending) {
@@ -1077,61 +1174,81 @@ const ui = {
         // Slogan e Identidad
         if (msg.includes('slogan') || msg.includes('eslogan') || msg.includes('logotipo') || msg.includes('identidad corporativa')) {
             if (role === 'MARKETING') return { view: 'brand', anchorId: 'brand-slogan-section' };
-            if (role === 'CEO') return { view: 'resolutions', anchorId: 'ceo-slogan-approval-panel' };
-            return { view: 'brand', anchorId: 'brand-slogan-section' };
+            return { view: 'resolutions', anchorId: 'ceo-slogan-approval-panel' };
+        }
+
+        // Patrocinios y Contratos Comerciales
+        if (msg.includes('patrocinio') || msg.includes('contrato comercial')) {
+            return role === 'FINANZAS' ? { view: 'finance' } : { view: 'contracts' };
+        }
+
+        // Ledger / Libro Mayor
+        if (msg.includes('ledger') || msg.includes('libro mayor')) {
+            return (role === 'FINANZAS' || role === 'CEO') ? { view: 'finance' } : { view: 'orders', filter: 'COMPLETADAS', dept: 'TECNICO' };
         }
 
         // Marketing y Campañas
         if (msg.includes('campaña') || msg.includes('publicit') || msg.includes('marketing') || msg.includes('acción') || msg.includes('paquete')) {
             if (role === 'MARKETING') return { view: 'campaigns', anchorId: 'mkt-campaigns-section' };
-            if (role === 'CEO' || role === 'FINANZAS') return { view: 'orders', filter: 'EN_PROCESO', dept: 'MARKETING' };
-            return { view: 'campaigns', anchorId: 'mkt-campaigns-section' };
-        }
-
-        // B2B, Aduanas e I+D Especial
-        if (msg.includes('b2b') || msg.includes('aduana') || msg.includes('i+d especial')) {
-            if (role === 'FINANZAS') return { view: 'finance' };
-            if (role === 'TECNICO') return { view: 'market' };
-            return { view: 'market' };
-        }
-
-        // Patrocinios / Libro Mayor
-        if (msg.includes('patrocinio') || msg.includes('ledger') || msg.includes('libro mayor')) {
-            return { view: 'finance' };
-        }
-
-        // Órdenes de compra y Logística / Taller
-        if (msg.includes('orden') || msg.includes('pedido') || msg.includes('compra') || msg.includes('presupuesto') || msg.includes('ensamblaje') || msg.includes('ensamble') || msg.includes('taller') || msg.includes('hoja de taller')) {
-            if (role === 'OPERACIONES_IA' || role === 'OPERACIONES') return { view: 'cart', anchorId: 'ops-orders-tracking-panel' };
-            if (role === 'FINANZAS' || role === 'CEO') {
-                const filter = msg.includes('rechaz') || msg.includes('denegad') ? 'DENEGADAS' : (msg.includes('completad') || msg.includes('ejecutad') ? 'COMPLETADAS' : 'EN_PROCESO');
-                return { view: 'orders', filter: filter, dept: 'TECNICO' };
+            if (role === 'CEO' || role === 'FINANZAS') {
+                const filter = (msg.includes('rechaz') || msg.includes('deneg')) ? 'DENEGADAS' : 'EN_PROCESO';
+                return { view: 'orders', filter, dept: 'MARKETING' };
             }
+            return { view: 'orders', filter: 'EN_PROCESO', dept: 'MARKETING' };
+        }
+
+        // B2B y Aduanas
+        if (msg.includes('b2b') || msg.includes('aduana')) {
+            if (role === 'FINANZAS') return { view: 'finance' };
+            if (role === 'OPERACIONES_IA') return { view: 'cart', anchorId: 'ops-orders-tracking-panel' };
             if (role === 'TECNICO') {
-                if (msg.includes('taller') || msg.includes('hoja de taller') || msg.includes('ensamble') || msg.includes('ensamblaje')) {
-                    return { view: 'tech_workshop', anchorId: 'tech-hoja-taller-panel' };
+                if (msg.includes('devuelto la propuesta') || msg.includes('retirado del mercado') || msg.includes('propuesta b2b')) {
+                    return { view: 'tech_workshop' };
                 }
-                return { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' };
+                if (msg.includes('publicado en b2b')) return { view: 'market' };
+                if (msg.includes('rechaz') || msg.includes('deneg') || msg.includes('cancelad')) {
+                    return { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' };
+                }
+                if (msg.includes('aprobó la venta')) return { view: 'orders', filter: 'COMPLETADAS', dept: 'TECNICO' };
+                if (msg.includes('autoriz') || msg.includes('conseguido') || msg.includes('formalizado') || msg.includes('compra')) {
+                    return { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' };
+                }
+                return { view: 'market' };
             }
             return { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' };
         }
 
-        // Gobernanza, Denominación, Rol Auxiliar, Inactividad HR, Mociones
-        if (msg.includes('denominación') || msg.includes('mercantil') || msg.includes('auxiliar') || msg.includes('inactividad') || msg.includes('moción') || msg.includes('voto')) {
+        // Hoja de Taller y Ensamble
+        if (msg.includes('hoja de taller') || msg.includes('taller') || msg.includes('ensambl')) {
+            if (role === 'OPERACIONES_IA') return { view: 'cart', anchorId: 'ops-orders-tracking-panel' };
+            if (role === 'TECNICO') return { view: 'tech_workshop', anchorId: 'tech-hoja-taller-panel' };
+            if (role === 'CEO') return { view: 'role_deliverables', section: 'deliverables', docKey: 'hoja_taller_fyq' };
+            return { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' };
+        }
+
+        // Órdenes de compra y pedidos
+        if (msg.includes('orden') || msg.includes('pedido') || msg.includes('compra') || msg.includes('presupuesto')) {
+            if (role === 'OPERACIONES_IA') return { view: 'cart', anchorId: 'ops-orders-tracking-panel' };
+            const filter = (msg.includes('rechaz') || msg.includes('denegad')) ? 'DENEGADAS' : ((msg.includes('completad') || msg.includes('ejecutad')) ? 'COMPLETADAS' : 'EN_PROCESO');
+            return { view: 'orders', filter: filter, dept: 'TECNICO' };
+        }
+
+        // Gobernanza, Denominación, Rol Auxiliar, Inactividad HR, Mociones, Actas
+        if (msg.includes('denominación') || msg.includes('mercantil') || msg.includes('auxiliar') || msg.includes('inactividad') || msg.includes('moción') || msg.includes('voto') || msg.includes('acta de comité') || msg.includes('estatutaria')) {
             return { view: 'resolutions' };
         }
 
         // Calificaciones y notas
         if (msg.includes('calific') || msg.includes('nota') || msg.includes('acta') || msg.includes('rúbrica')) {
-            return { view: 'dossier', subTab: 'eval' };
+            return isAdmin ? { view: 'dossier', subTab: 'eval' } : { view: 'role_deliverables', section: 'grades' };
         }
 
         // Entregables y visado
         if (msg.includes('entregable') || msg.includes('dossier') || msg.includes('visado') || msg.includes('subsan') || msg.includes('doc_')) {
-            return { view: 'dossier', subTab: 'docs' };
+            return isAdmin ? { view: 'dossier', subTab: 'docs' } : { view: 'role_deliverables', section: 'deliverables' };
         }
 
-        return { view: 'dossier' };
+        return isAdmin ? { view: 'admin' } : { view: 'role_deliverables', section: 'deliverables' };
     },
 
     openNotificationTarget(notifId) {
@@ -1142,8 +1259,14 @@ const ui = {
 
         co.notifications = co.notifications || [];
         const notif = co.notifications.find(n => n.id === notifId);
+        const effectiveRole = this.getEffectiveRole(co) || state.user.role;
         if (notif) {
-            notif.read = true;
+            if (String(notif.role).toUpperCase() === 'ALL') {
+                notif.readBy = notif.readBy || {};
+                notif.readBy[effectiveRole] = true;
+            } else {
+                notif.read = true;
+            }
             notif.updatedAt = Date.now();
             co.updatedAt = Date.now();
             state.save(coId);
@@ -1155,14 +1278,14 @@ const ui = {
 
         const target = this.resolveNotificationTarget(notif);
         if (target.dept || target.deptFilter) this.ordersDeptFilter = target.dept || target.deptFilter;
-        if (target.filter || target.subTab) this.ordersFilterTab = target.filter || target.subTab;
+        if (target.filter) this.ordersFilterTab = target.filter;
 
         if (target.view) {
-            this.navigate(target.view);
+            this.navigate(target.view, target);
         }
 
         if (target.subTab) {
-            if (target.view === 'dossier' && typeof this.showDossierTab === 'function') {
+            if (target.view === 'dossier' && typeof this.showDossierTab === 'function' && state.user?.admin) {
                 this.showDossierTab(target.subTab);
             } else if (target.view === 'company' && typeof this.setCompanySubTab === 'function') {
                 this.setCompanySubTab(target.subTab);
@@ -1249,7 +1372,7 @@ const ui = {
                 <div class="bg-mars-cyan/10 border-l-4 border-mars-cyan p-3.5 bg-slate-950">
                     <div class="flex items-center justify-between gap-2 flex-wrap mb-1.5">
                         <span class="text-xs font-black uppercase text-mars-cyan tracking-wider">🎓 PUESTO: CLAUSTRO DOCENTE // EVALUADOR INTERDISCIPLINAR</span>
-                        <span class="text-[10px] bg-black text-mars-green border border-mars-green/40 px-2 py-0.5 font-bold uppercase">v1.1.66 OFICIAL</span>
+                        <span class="text-[10px] bg-black text-mars-green border border-mars-green/40 px-2 py-0.5 font-bold uppercase">v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '2.0.02'} OFICIAL</span>
                     </div>
                     <p class="text-white text-xs font-semibold leading-relaxed mb-3">
                         Supervisar el aprendizaje competencial de las 6 materias LOMLOE, evaluar los <strong>18 entregables oficiales</strong> en Google Drive mediante rúbricas ponderadas (0-10), arbitrar trámites aduaneros y coordinar las startups del consorcio.
@@ -1592,7 +1715,7 @@ const ui = {
                 <details class="bg-black/60 border border-slate-800 p-2.5 rounded text-xs mt-3">
                     <summary class="cursor-pointer text-mars-cyan font-bold uppercase select-none">⚙️ Procedimientos Especiales (Rol Asignado)</summary>
                     <div class="mt-2 space-y-2 text-slate-300 border-t border-slate-800 pt-2 leading-relaxed">
-                        <p>• <strong>Vinculación Departamental:</strong> Coordinación puede asignarte a un departamento específico para reforzar su operativa.</p>
+                        <p>• <strong>Vinculación Departamental Plena:</strong> Cuando Coordinación te vincula a un departamento, heredas sus mismas herramientas operativas, envíos, autorizaciones y notificaciones (mostrando <code>AUXILIAR (DPTO)</code> en tu HUD) mientras conservas tu propio PIN y voto personal en Asamblea.</p>
                     </div>
                 </details>`;
                 roleButtons = `
@@ -1658,10 +1781,22 @@ const ui = {
         if (sessionStorage.getItem('hideWelcome')) return;
         this._lastFocusedElement = document.activeElement;
         let role = state.user ? state.user.role : '';
-        if(state.user && state.user.admin) role = 'DOCENTE';
+        if (state.user && state.user.admin) {
+            role = 'DOCENTE';
+        } else if (state.user) {
+            const co = state.data.companies?.[state.user.coId];
+            const eff = this.getEffectiveRole(co);
+            if (role === 'AUXILIAR' && eff && eff !== 'AUXILIAR') role = eff;
+        }
         
         const elTitle = document.getElementById('onboarding-title');
-        if(elTitle) elTitle.innerText = role === 'DOCENTE' ? 'CENTRO DE CONTROL DOCENTE 🎓' : `BIENVENIDA // ${role.replace('_',' ')} 🚀`;
+        if(elTitle) {
+            const rawRole = state.user?.role || '';
+            const titleLabel = (!state.user?.admin && rawRole === 'AUXILIAR' && role !== 'AUXILIAR')
+                ? `AUXILIAR (${role.replace('_',' ')})`
+                : role.replace('_',' ');
+            elTitle.innerText = role === 'DOCENTE' ? 'CENTRO DE CONTROL DOCENTE 🎓' : `BIENVENIDA // ${titleLabel} 🚀`;
+        }
         
         let content = '';
         if (role === 'DOCENTE') {
@@ -1888,7 +2023,12 @@ const ui = {
         let initialRole = defaultRole;
         if (!initialRole) {
             if (state.user) {
-                initialRole = state.user.admin ? 'DOCENTE' : state.user.role;
+                if (state.user.admin) {
+                    initialRole = 'DOCENTE';
+                } else {
+                    const co = state.data.companies?.[state.user.coId];
+                    initialRole = this.getEffectiveRole(co) || state.user.role;
+                }
             } else {
                 initialRole = 'CEO';
             }
@@ -2308,10 +2448,12 @@ const ui = {
         const co = state.data.companies[state.user.coId];
         if (!co) return;
 
+        const effectiveRole = this.getEffectiveRole(co) || state.user.role;
+
         const elRes = document.getElementById('badge-resolutions');
         if (elRes) {
             let pendingRes = (co.votingMotions || []).filter(m => m.status === 'ABIERTA' && (!m.votes || !m.votes[state.user.role])).length;
-            if (state.user.role === 'CEO' && co.brandApproval && co.brandApproval.status === 'PENDIENTE_CEO') {
+            if (effectiveRole === 'CEO' && co.brandApproval && co.brandApproval.status === 'PENDIENTE_CEO') {
                 pendingRes += 1;
             }
             if (pendingRes > 0) { elRes.innerText = pendingRes; elRes.classList.remove('hidden'); }
@@ -2321,23 +2463,22 @@ const ui = {
         const elOrders = document.getElementById('badge-orders');
         if (elOrders) {
             let pendingOrders = 0;
-            if (state.user.role === 'FINANZAS') {
+            if (effectiveRole === 'FINANZAS') {
                 const iDOrders = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS').length;
                 const mktOrders = (co.marketingCampaigns || []).filter(m => m.status === 'PENDIENTE_FINANZAS').length;
                 const b2bSales = (state.data.b2bMarket || []).filter(o => o && o.sellerCoId === state.user.coId && o.status === 'PENDIENTE_FINANZAS').length;
                 pendingOrders = iDOrders + mktOrders + b2bSales;
-            } else if (state.user.role === 'TECNICO') {
+            } else if (effectiveRole === 'TECNICO') {
                 pendingOrders = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS' || o.status === 'PENDIENTE_DOCENTE').length;
-            } else if (state.user.role === 'CEO') {
+            } else if (effectiveRole === 'CEO') {
                 let mktCeoActions = 0;
                 (co.marketingCampaigns || []).forEach(c => {
                     (c.executedActions || []).forEach(a => {
                         if (a.status === 'PENDIENTE_CEO') mktCeoActions++;
                     });
                 });
-                const hojaCeo = (co.hojaTaller && co.hojaTaller.status === 'CEO_REVISION') ? 1 : 0;
                 const crises = (co.crisisAlerts || []).filter(a => !a.read).length;
-                pendingOrders = mktCeoActions + hojaCeo + crises;
+                pendingOrders = mktCeoActions + crises;
             }
             if (pendingOrders > 0) { elOrders.innerText = pendingOrders; elOrders.classList.remove('hidden'); }
             else { elOrders.classList.add('hidden'); }
@@ -2346,11 +2487,12 @@ const ui = {
         const elFinance = document.getElementById('badge-finance');
         if (elFinance) {
             let pendingFin = 0;
-            if (state.user.role === 'FINANZAS') {
+            if (effectiveRole === 'FINANZAS') {
                 const pendingOrdersList = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS').length;
                 const pendingB2BSales = (state.data.b2bMarket || []).filter(o => o && o.sellerCoId === state.user.coId && o.status === 'PENDIENTE_FINANZAS').length;
                 const pendingMktPacks = (co.marketingCampaigns || []).filter(c => c.status === 'PENDIENTE_FINANZAS').length;
-                pendingFin = pendingOrdersList + pendingB2BSales + pendingMktPacks;
+                const returnedBalances = Object.values(co.phaseBalances || {}).filter(b => b && b.status === 'RETURNED_BY_CEO').length;
+                pendingFin = pendingOrdersList + pendingB2BSales + pendingMktPacks + returnedBalances;
             }
             if (pendingFin > 0) { elFinance.innerText = pendingFin; elFinance.classList.remove('hidden'); }
             else { elFinance.classList.add('hidden'); }
@@ -2360,10 +2502,12 @@ const ui = {
         if (elDossier) {
             let pendingDossier = 0;
             const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
-            if (state.user.role === 'CEO') {
+            if (effectiveRole === 'CEO') {
                 pendingDossier = Object.values(co.deliverables || {}).filter(d => d && d.status === 'SUBMITTED_TO_CEO').length;
             } else {
-                const myDefs = defs.filter(d => d.role === state.user.role).map(d => d.key);
+                const myDefs = (effectiveRole === 'OPERACIONES_IA')
+                    ? defs.filter(d => d.role === 'OPERACIONES_IA' || d.role === 'OPERACIONES').map(d => d.key)
+                    : defs.filter(d => d.role === effectiveRole).map(d => d.key);
                 pendingDossier = Object.entries(co.deliverables || {}).filter(([k, d]) => myDefs.includes(k) && d && d.status === 'CEO_REVISION').length;
             }
             if (pendingDossier > 0) { elDossier.innerText = pendingDossier; elDossier.classList.remove('hidden'); }
@@ -2375,12 +2519,13 @@ const ui = {
             let pendingDeliverables = 0;
             const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
             const role = state.user.role;
-            const effectiveRole = (role === 'OPERACIONES') ? 'OPERACIONES_IA' : ((role === 'AUXILIAR' && co?.auxRoleDept) ? co.auxRoleDept : role);
-            const myDefs = (effectiveRole === 'CEO' || (role === 'AUXILIAR' && !co?.auxRoleDept)) 
+            const myDefs = (effectiveRole === 'CEO' || (role === 'AUXILIAR' && !co?.auxRoleDept))
                 ? defs.map(d => d.key)
-                : defs.filter(d => d.role === effectiveRole).map(d => d.key);
+                : (effectiveRole === 'OPERACIONES_IA'
+                    ? defs.filter(d => d.role === 'OPERACIONES_IA' || d.role === 'OPERACIONES').map(d => d.key)
+                    : defs.filter(d => d.role === effectiveRole).map(d => d.key));
 
-            if (role === 'CEO') {
+            if (effectiveRole === 'CEO') {
                 pendingDeliverables = Object.values(co.deliverables || {}).filter(d => d && d.status === 'SUBMITTED_TO_CEO').length;
             } else {
                 pendingDeliverables = Object.entries(co.deliverables || {}).filter(([k, d]) => myDefs.includes(k) && d && (d.status === 'CEO_REVISION' || d.status === 'DEVUELTO_A_TECNICO')).length;
@@ -2397,9 +2542,9 @@ const ui = {
         if (elWorkshop) {
             let workshopAlerts = 0;
             const hoja = co.deliverables?.hoja_taller_fyq;
-            if (state.user.role === 'TECNICO' && hoja && (hoja.status === 'DEVUELTO_A_TECNICO' || hoja.status === 'CEO_REVISION')) {
+            if (effectiveRole === 'TECNICO' && hoja && (hoja.status === 'DEVUELTO_A_TECNICO' || hoja.status === 'CEO_REVISION')) {
                 workshopAlerts++;
-            } else if ((state.user.role === 'OPERACIONES_IA' || state.user.role === 'OPERACIONES') && hoja && (hoja.status === 'EN_TALLER_OPERARIO' || hoja.status === 'CEO_REVISION')) {
+            } else if (effectiveRole === 'OPERACIONES_IA' && hoja && (hoja.status === 'EN_TALLER_OPERARIO' || hoja.status === 'CEO_REVISION')) {
                 workshopAlerts++;
             }
             if (workshopAlerts > 0) {
@@ -2413,8 +2558,24 @@ const ui = {
         const elCart = document.getElementById('badge-cart');
         if (elCart) {
             const pendingLogistics = (co.orders || []).filter(o => (o.status === 'APROBADO_FINANZAS' || o.status === 'APROBADO_DOCENTE') && o.type !== 'MARKETING').length;
-            if (pendingLogistics > 0) { elCart.innerText = pendingLogistics; elCart.classList.remove('hidden'); }
+            const pendingHojaTaller = (co.deliverables?.hoja_taller_fyq?.status === 'EN_TALLER_OPERARIO') ? 1 : 0;
+            const totalCartAlerts = pendingLogistics + pendingHojaTaller;
+            if (totalCartAlerts > 0) { elCart.innerText = totalCartAlerts; elCart.classList.remove('hidden'); }
             else { elCart.classList.add('hidden'); }
+        }
+
+        const elCampaigns = document.getElementById('badge-campaigns');
+        if (elCampaigns) {
+            let pendingCampaigns = 0;
+            if (effectiveRole === 'MARKETING') {
+                (co.marketingCampaigns || []).forEach(c => {
+                    (c.executedActions || []).forEach(a => {
+                        if (a && a.status === 'RECHAZADO_CEO') pendingCampaigns++;
+                    });
+                });
+            }
+            if (pendingCampaigns > 0) { elCampaigns.innerText = pendingCampaigns; elCampaigns.classList.remove('hidden'); }
+            else { elCampaigns.classList.add('hidden'); }
         }
 
         const elAILog = document.getElementById('badge-ailog');
@@ -2486,7 +2647,11 @@ const ui = {
                 }
             }
             if(co && infoEl) {
-                const entityInfo = `ENTITY: ${co.name.toUpperCase()} | ROLE: ${state.user.role.replace('_',' ')}`;
+                const effRole = this.getEffectiveRole(co);
+                const roleHudLabel = (state.user.role === 'AUXILIAR' && co.auxRoleDept)
+                    ? `AUXILIAR (${effRole.replace('_',' ')})`
+                    : state.user.role.replace('_',' ');
+                const entityInfo = `ENTITY: ${co.name.toUpperCase()} | ROLE: ${roleHudLabel}`;
                 infoEl.innerText = entityInfo;
                 infoEl.title = entityInfo;
             }
@@ -2633,10 +2798,10 @@ const ui = {
         const co = !state.user.admin ? state.data.companies[state.user.coId] : null;
 
         const roleAllowedMap = {
-            'CEO': ['dashboard', 'contracts', 'orders', 'resolutions', 'finance', 'dossier', 'role_deliverables', 'news', 'market'],
-            'TECNICO': ['tech', 'tech_workshop', 'contracts', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'market', 'cart'],
-            'FINANZAS': ['finance', 'contracts', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'market'],
-            'MARKETING': ['brand', 'campaigns', 'contracts', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news'],
+            'CEO': ['dashboard', 'contracts', 'orders', 'resolutions', 'finance', 'dossier', 'role_deliverables', 'news', 'market', 'ailog'],
+            'TECNICO': ['tech', 'tech_workshop', 'contracts', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'market', 'cart', 'ailog'],
+            'FINANZAS': ['finance', 'contracts', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'market', 'ailog'],
+            'MARKETING': ['brand', 'campaigns', 'contracts', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'ailog'],
             'OPERACIONES_IA': ['cart', 'ailog', 'contracts', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'market'],
             'OPERACIONES': ['cart', 'ailog', 'contracts', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'market'],
             'AUXILIAR': ['dashboard', 'contracts', 'dossier', 'orders', 'resolutions', 'role_deliverables', 'news', 'finance', 'tech', 'tech_workshop', 'brand', 'campaigns', 'cart', 'ailog', 'market']
@@ -2865,7 +3030,7 @@ const ui = {
                     <button type="button" onclick="ui.toggleDossierShowAll()" class="min-h-[44px] px-3.5 py-2 text-xs font-black uppercase tracking-wider border transition-all ${showAll ? 'bg-mars-yellow text-black border-mars-yellow' : 'bg-slate-900 text-mars-cyan border-mars-cyan hover:bg-mars-cyan hover:text-black'}">
                         ${showAll ? '🎯 ENFOCAR PRÓXIMOS 15 DÍAS' : `🌐 VER LAS 5 FASES (${visibleDefs.length})`}
                     </button>
-                    ${(state.user && state.user.role === 'CEO') ? `<button type="button" onclick="ui.modalCreateAuxRole()" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase tracking-wider hover:bg-mars-cyan hover:text-black transition-all shrink-0 w-full sm:w-auto">Gestionar Rol Observador</button>` : ''}
+                    ${(state.user && this.getEffectiveRole() === 'CEO') ? `<button type="button" onclick="ui.modalCreateAuxRole()" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase tracking-wider hover:bg-mars-cyan hover:text-black transition-all shrink-0 w-full sm:w-auto">Gestionar Rol Observador</button>` : ''}
                 </div>
             </div>
 
@@ -3013,7 +3178,7 @@ const ui = {
         if (!state.user?.admin && this.isDeliverableLocked(docKey, co)) {
             return '';
         }
-        const isCEO = (typeof state !== 'undefined' && state.user && state.user.role === 'CEO');
+        const isCEO = (typeof state !== 'undefined' && state.user && this.getEffectiveRole(co) === 'CEO');
         const item = (typeof currentDoc === 'object' && currentDoc !== null) ? currentDoc : null;
         const status = item?.status;
 
@@ -3041,9 +3206,10 @@ const ui = {
             `;
         }
 
-        const userRole = state.user ? state.user.role : '';
+        const userRole = this.getEffectiveRole(co);
         const isAdmin = state.user ? !!state.user.admin : false;
-        const canUpload = (userRole === def.role) || isAdmin || (isCEO && def.role === 'CEO');
+        const normalizedDefRole = def.role === 'OPERACIONES' ? 'OPERACIONES_IA' : def.role;
+        const canUpload = (userRole === normalizedDefRole) || isAdmin || (isCEO && def.role === 'CEO');
 
         let uploadSectionHtml = '';
         if (canUpload) {
@@ -3088,7 +3254,7 @@ const ui = {
     },
 
     modalCeoReturnDeliverable(docKey) {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const reasons = (typeof CEO_RETURN_REASONS !== 'undefined' ? CEO_RETURN_REASONS : [
             { id: "ENLACE_INVALIDO", label: "Enlace a Google Drive inexistente o con formato incorrecto" },
             { id: "PERMISOS_BLOQUEADOS", label: "Documento sin permisos de acceso/lectura para el equipo docente" },
@@ -3123,7 +3289,7 @@ const ui = {
     },
 
     confirmCeoReturnDeliverable(docKey) {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const el = document.getElementById('ceo-return-reason');
         if (!el) return;
         const reasonId = el.value;
@@ -3192,7 +3358,7 @@ const ui = {
     },
 
     approveDeliverableByCEO(docKey) {
-        if (!state.user || state.user.role !== 'CEO') return;
+        if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         state.approveDeliverableByCEO(docKey);
     },
 
@@ -3283,7 +3449,7 @@ const ui = {
                         <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors">
                             <span>Abrir ${tipoDoc} ↗</span>
                         </a>
-                        ${(state.user && state.user.role === 'CEO' && (status === 'SUBMITTED_TO_CEO' || status === 'CEO_REVISION')) ? `
+                        ${(state.user && this.getEffectiveRole(co) === 'CEO' && (status === 'SUBMITTED_TO_CEO' || status === 'CEO_REVISION')) ? `
                             <button type="button" onclick="ui.approveDeliverableByCEO('${docKey}'); ui.closeDrawer()" class="min-h-[44px] px-4 py-2 text-xs bg-mars-green text-black font-black uppercase hover:bg-white transition-all">Aprobar CEO</button>
                             <button type="button" onclick="ui.modalCeoReturnDeliverable('${docKey}'); ui.closeDrawer()" class="min-h-[44px] px-4 py-2 text-xs bg-red-700 text-white font-black uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">Devolver para Subsanación</button>
                         ` : ''}
