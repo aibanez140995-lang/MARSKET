@@ -21,6 +21,14 @@
   .company-header-title {
     white-space: nowrap !important;
   }
+
+  .fade-in {
+    animation: marsFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .slide-in-from-top-4 {
+    animation: marsFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
 }
 
 @media (max-width: 480px) {

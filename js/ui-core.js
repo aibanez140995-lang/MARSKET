@@ -1384,7 +1384,7 @@ const ui = {
                             <span>⚡ TU RUTINA DE AULA EN 3 MINUTOS (CHECKLIST DE ENTRADA):</span>
                         </p>
                         <ul class="space-y-2 text-xs text-slate-300 pl-1">
-                            <li>[ ] <strong>1. Filtra por clases con entregas pendientes (🟡 N):</strong> En la barra superior de <strong>Rúbricas</strong>, pulsa sobre las clases que muestren un badge amarillo pulsante (ej. <span class="text-amber-300 font-bold bg-amber-950/80 px-1 py-0.2 rounded border border-amber-500/40">🟡 2</span>). Esas clases tienen startups con entregas esperando tu calificación.</li>
+                            <li>[ ] <strong>1. Filtra por clases con entregas pendientes (🟡 N):</strong> En la barra superior de <strong>Rúbricas</strong>, pulsa sobre las clases que muestren un badge amarillo pulsante (ej. <span class="text-amber-300 font-bold bg-amber-950/80 px-1 py-0.5 rounded border border-amber-500/40">🟡 2</span>). Esas clases tienen startups con entregas esperando tu calificación.</li>
                             <li>[ ] <strong>2. Consulta el Asistente Contextual:</strong> El monitor <em>"¿Qué me toca hacer hoy?"</em> identifica tu materia y fase activa. Pulsa <strong class="text-mars-cyan">[⚡ Evaluar siguiente pendiente ➔]</strong> para saltar en 1 clic a la empresa que te toca revisar.</li>
                             <li>[ ] <strong>3. Califica o Devuelve en 1 Clic:</strong> Abre el Google Doc del alumno en la columna derecha de evidencias. Califica con notas de <strong>0 a 10</strong> (la ponderación oficial se calcula sola al 100%). Si el enlace está privado o incompleto, pulsa <strong class="text-red-400">[↩ Subsanar]</strong> seleccionando el motivo tipificado.</li>
                             <li>[ ] <strong>4. Resuelve la Aduana:</strong> En <strong>🛃 Validaciones y Aduana</strong> autoriza licencias de vuelo AESA (FYQ), creatividades publicitarias (LYE) o compraventas de piezas B2B entre startups.</li>
@@ -2287,7 +2287,7 @@ const ui = {
                 <p class="text-slate-200 italic mb-2 bg-black/60 p-2.5 border border-slate-800 break-words font-mono">"${this.escapeHTML(sugg.text)}"</p>
                 ${sugg.driveUrl ? `
                 <div class="mb-2">
-                    <a href="${this.escapeHTML(sugg.driveUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-mars-cyan hover:underline font-mono bg-mars-cyan/10 px-2.5 py-1.5 border border-mars-cyan/40 min-h-[36px]">
+                    <a href="${this.escapeHTML(sugg.driveUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-mars-cyan hover:underline font-mono bg-mars-cyan/10 px-2.5 py-1.5 border border-mars-cyan/40 min-h-[44px]">
                         <span>📄 Abrir Evidencia / Detalle en Google Drive ↗</span>
                     </a>
                 </div>` : ''}
@@ -2364,12 +2364,19 @@ const ui = {
         const isBrandPending = co.brandApproval && co.brandApproval.status === 'PENDIENTE';
         const hasApprovedLogo = co.logo && (!co.brandApproval || co.brandApproval.status === 'APROBADO');
         const activeLogoSrc = hasApprovedLogo ? this.escapeHTML(co.logo) : 'logo.png';
-        const roleLabel = this.escapeHTML(state.user.role.replace('_', ' '));
+        const rawRole = state.user.role || '';
+        const effRole = this.getEffectiveRole ? this.getEffectiveRole(co) : rawRole;
+        let roleLabel = this.escapeHTML(rawRole.replace('_', ' '));
+        if (rawRole === 'AUXILIAR' && effRole && effRole !== 'AUXILIAR') {
+            roleLabel = `AUXILIAR (${this.escapeHTML(effRole.replace('_', ' '))})`;
+        }
         const coName = this.escapeHTML(co.name);
-        const balanceStr = Number(co.balance || 0).toFixed(2);
+        const numBalance = Number(co.balance || 0);
+        const balanceStr = numBalance.toFixed(2);
+        const isDebt = numBalance < 0;
 
         return `
-        <div class="h-16 max-h-16 flex items-center justify-between px-2 sm:px-4 bg-[#07090E]/90 border-b border-cyan-500/20 backdrop-blur sm:sticky sm:top-0 sm:z-30 relative z-10 w-full mb-4 terminal-border overflow-hidden">
+        <div class="h-16 max-h-16 flex items-center justify-between px-2 sm:px-4 bg-[#07090E]/90 border-b border-cyan-500/20 backdrop-blur relative z-10 w-full mb-4 terminal-border overflow-hidden">
             <!-- Izquierda: Miniatura del logotipo (40x40px) + Nombre Orbitron + Badge Rol Activo -->
             <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
                 <div class="relative w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 p-0.5 hex-clip bg-mars-bg ${isBrandPending ? 'border border-mars-magenta shadow-[0_0_10px_rgba(255,0,85,0.4)]' : 'border border-mars-cyan shadow-neon-cyan'}">
@@ -2383,9 +2390,9 @@ const ui = {
                 </div>
             </div>
 
-            <!-- Centro: Saldo corporativo disponible en verde neón font-mono -->
+            <!-- Centro: Saldo corporativo disponible en verde neón (o rojo en deuda) font-mono -->
             <div class="flex items-center justify-center px-1 sm:px-2 shrink-0">
-                <span id="hud-balance" class="text-mars-green font-mono font-bold text-xs sm:text-sm md:text-base tracking-wider whitespace-nowrap bg-mars-green/10 border border-mars-green/30 px-2 sm:px-3 py-1 rounded-sm shadow-[0_0_10px_rgba(0,255,150,0.2)] shrink-0">
+                <span id="hud-balance" class="${isDebt ? 'text-mars-red bg-mars-red/10 border-mars-red/30 shadow-[0_0_10px_rgba(255,0,85,0.2)]' : 'text-mars-green bg-mars-green/10 border-mars-green/30 shadow-[0_0_10px_rgba(0,255,150,0.2)]'} font-mono font-bold text-xs sm:text-sm md:text-base tracking-wider whitespace-nowrap border px-2 sm:px-3 py-1 rounded-sm shrink-0">
                     ${balanceStr} €v
                 </span>
             </div>
@@ -2450,6 +2457,27 @@ const ui = {
 
         const effectiveRole = this.getEffectiveRole(co) || state.user.role;
 
+        const elDash = document.getElementById('badge-dashboard');
+        if (elDash) {
+            let pendingDash = 0;
+            if (effectiveRole === 'CEO') {
+                const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+                const docs = co.deliverables || {};
+                const submittedCeoDefs = defs.filter(d => docs[d.key] && docs[d.key].status === 'SUBMITTED_TO_CEO').length;
+                const pendingPhaseBalances = Object.values(co.phaseBalances || {}).filter(b => b && b.status === 'PENDIENTE_CEO').length;
+                let pendingMktActions = 0;
+                (co.marketingCampaigns || []).forEach(c => {
+                    (c.executedActions || []).forEach(a => {
+                        if (a && a.status === 'PENDIENTE_CEO') pendingMktActions++;
+                    });
+                });
+                const pendingSlogan = (co.brandApproval && co.brandApproval.status === 'PENDIENTE_CEO') ? 1 : 0;
+                pendingDash = submittedCeoDefs + pendingPhaseBalances + pendingMktActions + pendingSlogan;
+            }
+            if (pendingDash > 0) { elDash.innerText = pendingDash; elDash.classList.remove('hidden'); }
+            else { elDash.classList.add('hidden'); }
+        }
+
         const elRes = document.getElementById('badge-resolutions');
         if (elRes) {
             let pendingRes = (co.votingMotions || []).filter(m => m.status === 'ABIERTA' && (!m.votes || !m.votes[state.user.role])).length;
@@ -2471,14 +2499,7 @@ const ui = {
             } else if (effectiveRole === 'TECNICO') {
                 pendingOrders = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS' || o.status === 'PENDIENTE_DOCENTE').length;
             } else if (effectiveRole === 'CEO') {
-                let mktCeoActions = 0;
-                (co.marketingCampaigns || []).forEach(c => {
-                    (c.executedActions || []).forEach(a => {
-                        if (a.status === 'PENDIENTE_CEO') mktCeoActions++;
-                    });
-                });
-                const crises = (co.crisisAlerts || []).filter(a => !a.read).length;
-                pendingOrders = mktCeoActions + crises;
+                pendingOrders = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS' || o.status === 'APROBADO_FINANZAS').length;
             }
             if (pendingOrders > 0) { elOrders.innerText = pendingOrders; elOrders.classList.remove('hidden'); }
             else { elOrders.classList.add('hidden'); }
@@ -2558,7 +2579,7 @@ const ui = {
         const elCart = document.getElementById('badge-cart');
         if (elCart) {
             const pendingLogistics = (co.orders || []).filter(o => (o.status === 'APROBADO_FINANZAS' || o.status === 'APROBADO_DOCENTE') && o.type !== 'MARKETING').length;
-            const pendingHojaTaller = (co.deliverables?.hoja_taller_fyq?.status === 'EN_TALLER_OPERARIO') ? 1 : 0;
+            const pendingHojaTaller = (co.deliverables?.hoja_taller_fyq?.status === 'EN_TALLER_OPERARIO' || co.deliverables?.hoja_taller_fyq?.status === 'CEO_REVISION') ? 1 : 0;
             const totalCartAlerts = pendingLogistics + pendingHojaTaller;
             if (totalCartAlerts > 0) { elCart.innerText = totalCartAlerts; elCart.classList.remove('hidden'); }
             else { elCart.classList.add('hidden'); }

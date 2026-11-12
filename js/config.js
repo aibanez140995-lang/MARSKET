@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.02) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.03) ---
 
-const APP_VERSION = "2.0.02";
+const APP_VERSION = "2.0.03";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1097,8 +1097,25 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.02
+// Changelog Oficial de Producción v2.0.03
 const APP_CHANGELOG = [
+    {
+      version: "2.0.03",
+      date: new Date().toISOString().split('T')[0],
+      title: "Auditoría Integral de Interfaz, Ergonomía Táctil 44px, Reequilibrio de Vistas y Depuración Visual",
+      items: [
+        "Compilación Exhaustiva de Tailwind CSS: Detección y erradicación de 222 clases sin compilar (colores magenta puros, animaciones fade-in, resplandores cósmicos e interlineados), recompilando el bundle css/tailwind.css al 100% limpio.",
+        "Ergonomía Táctil y Estándar BYOD 44px: Actualización masiva de más de 50 botones de acción, selectores desplegables y enlaces a Drive sub-44px al estándar mínimo min-h-[44px] en todas las pantallas de alumnos y docentes.",
+        "Sala de Mando Ejecutiva del CEO Rebalanceada: Nueva distribución lógica en 6 bloques (Crisis ➔ Cabecera y KPIs Rápidos ➔ Bandeja de Visado ➔ Radar de Misión ➔ Licencia AESA/Contrato/Prensa ➔ Cuadro táctico en 4 columnas compactas con acceso directo al Dossier Académico y Calificaciones).",
+        "Reequilibrio de Columnas en I+D, Marca y Trámites: Integración del panel de Solicitudes Especiales de I+D en la columna derecha del Banco Técnico, recolocación de Inteligencia de Mercado bajo Campañas Publicitarias en Marca, y reparto armónico en Trámites (Asamblea y Actas DOC_16 a la izquierda; Modificación Estatutaria, Régimen AEE y Buzón HR a la derecha).",
+        "Control Financiero Docente y Badges Reactivos: Contenedor con scroll vertical contenido y cabecera fija (max-h-[600px] overflow-y-auto) en la tabla financiera docente, sincronización del badge de Aduana con el filtro de clase activo, badge reactivo en Sala de Mando del CEO e indicador de saldo deudor en rojo neón."
+      ],
+      highlights: [
+        { type: "DISEÑO", text: "Compilación 100% limpia de Tailwind CSS y depuración de clases residuales." },
+        { type: "ERGONOMÍA", text: "Cumplimiento estricto del estándar táctil min-h-[44px] en todos los elementos interactivos." },
+        { type: "EQUILIBRIO", text: "Reestructuración visual y armónica de columnas en Sala de Mando, I+D, Marca y Trámites." }
+      ]
+    },
     {
       version: "2.0.02",
       date: new Date().toISOString().split('T')[0],

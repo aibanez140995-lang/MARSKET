@@ -1084,24 +1084,24 @@ Object.assign(ui, {
                 </div>
                 <div class="shrink-0 flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
                     ${b ? `
-                        <a href="${encodeURI(b.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[36px] inline-flex items-center px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-300 border border-cyan-500/40 rounded font-mono hover:bg-cyan-900/60 transition-colors">
+                        <a href="${encodeURI(b.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-300 border border-cyan-500/40 rounded font-mono hover:bg-cyan-900/60 transition-colors">
                             <span>DOC_17 ↗</span>
                         </a>
                         ${(bStatus === 'RETURNED_BY_CEO' && b.returnDriveUrl) ? `
-                            <a href="${encodeURI(b.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[36px] inline-flex items-center px-2.5 py-1 text-xs bg-red-950/60 text-red-200 border border-red-400 rounded font-mono hover:bg-red-900/60 transition-colors font-bold">
+                            <a href="${encodeURI(b.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-2.5 py-1 text-xs bg-red-950/60 text-red-200 border border-red-400 rounded font-mono hover:bg-red-900/60 transition-colors font-bold">
                                 <span>📄 Ver Informe Devolución CEO ↗</span>
                             </a>
                         ` : ''}
                         ${(isCEO && bStatus === 'PENDIENTE_CEO') ? `
-                            <button type="button" onclick="ui.approvePhaseBalanceByCEO('${this.escapeHTML(p.phase)}')" class="min-h-[36px] bg-mars-green text-black font-black uppercase text-[11px] px-3 py-1 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">
+                            <button type="button" onclick="ui.approvePhaseBalanceByCEO('${this.escapeHTML(p.phase)}')" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-[11px] px-3 py-1 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">
                                 [ ✓ Visar ]
                             </button>
-                            <button type="button" onclick="ui.modalCeoReturnPhaseBalance('${this.escapeHTML(p.phase)}')" class="min-h-[36px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-[11px] px-3 py-1 hover:bg-mars-magenta hover:text-white transition-all">
+                            <button type="button" onclick="ui.modalCeoReturnPhaseBalance('${this.escapeHTML(p.phase)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-[11px] px-3 py-1 hover:bg-mars-magenta hover:text-white transition-all">
                                 [ ↩ Devolver ]
                             </button>
                         ` : ''}
                         ${(isFinanzas && (bStatus === 'PENDIENTE_CEO' || bStatus === 'RETURNED_BY_CEO')) ? `
-                            <button type="button" onclick="ui.modalRegisterPhaseBalance('${this.escapeHTML(p.phase)}')" class="min-h-[36px] bg-slate-800 border border-slate-700 text-slate-200 hover:text-white px-2 py-1 text-[11px] uppercase font-bold transition-all">
+                            <button type="button" onclick="ui.modalRegisterPhaseBalance('${this.escapeHTML(p.phase)}')" class="min-h-[44px] bg-slate-800 border border-slate-700 text-slate-200 hover:text-white px-2 py-1 text-[11px] uppercase font-bold transition-all">
                                 ✏️ Modificar
                             </button>
                         ` : ''}
@@ -1109,12 +1109,12 @@ Object.assign(ui, {
                         ${canRegister ? `
                             <div class="flex items-center gap-1 w-full sm:w-auto">
                                 ${isMasterOrAdmin && !isPhaseUnlocked ? `<span class="px-1.5 py-0.5 bg-amber-400 text-black text-[9px] font-mono font-bold uppercase rounded">🧪 Sandbox</span>` : ''}
-                                <button type="button" onclick="ui.modalRegisterPhaseBalance('${this.escapeHTML(p.phase)}')" class="min-h-[36px] bg-amber-400 text-black font-black uppercase text-[11px] px-3 py-1 hover:bg-white transition-all shadow-sm w-full sm:w-auto">
+                                <button type="button" onclick="ui.modalRegisterPhaseBalance('${this.escapeHTML(p.phase)}')" class="min-h-[44px] bg-amber-400 text-black font-black uppercase text-[11px] px-3 py-1 hover:bg-white transition-all shadow-sm w-full sm:w-auto">
                                     [ + Registrar Balance Fase ${this.escapeHTML(p.phase)} ]
                                 </button>
                             </div>
                         ` : (!isPhaseUnlocked ? `
-                            <button type="button" disabled class="min-h-[36px] bg-slate-900 border border-slate-800 text-slate-500 font-bold uppercase text-[11px] px-2.5 py-1 cursor-not-allowed" title="Se abrirá al cerrar la fase (${p.cutoffLabel})">
+                            <button type="button" disabled class="min-h-[44px] bg-slate-900 border border-slate-800 text-slate-500 font-bold uppercase text-[11px] px-2.5 py-1 cursor-not-allowed" title="Se abrirá al cerrar la fase (${p.cutoffLabel})">
                                 🔒 Bloqueado hasta cierre (${this.escapeHTML(p.cutoffLabel)})
                             </button>
                         ` : `

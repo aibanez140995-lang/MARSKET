@@ -111,7 +111,7 @@ Object.assign(ui, {
             const hasPendingName = co.nameChangeRequest && co.nameChangeRequest.status === 'PENDIENTE';
             const hasRejectedName = co.nameChangeRequest && (co.nameChangeRequest.status === 'RECHAZADO' || co.nameChangeRequest.status === 'DENEGADO');
             nameChangeHtml = `
-            <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-amber-400 mb-6">
+            <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-amber-400">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2 mb-1 flex-wrap">
@@ -137,7 +137,7 @@ Object.assign(ui, {
                             <span class="text-xs font-bold text-amber-400 uppercase tracking-wide block">⏳ Solicitud de Modificación Estatutaria en Tramitación</span>
                             <p class="text-[11px] text-slate-300 font-sans mt-0.5">Motivo: <em>${this.escapeHTML(co.nameChangeRequest.reason || 'Rebranding')}</em>. Tasa de 50 €v abonada. Pendiente de dictamen y asignación de nombre oficial por Coordinación Docente.</p>
                         </div>
-                        ${co.nameChangeRequest.driveUrl ? `<a href="${encodeURI(co.nameChangeRequest.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors shrink-0"><span>📄 Ver Solicitud DOC_1 en Docs ↗</span></a>` : ''}
+                        ${co.nameChangeRequest.driveUrl ? `<a href="${encodeURI(co.nameChangeRequest.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors shrink-0"><span>📄 Ver Solicitud DOC_1 en Docs ↗</span></a>` : ''}
                     </div>
                 ` : ''}
                 ${hasRejectedName ? `
@@ -147,8 +147,8 @@ Object.assign(ui, {
                             <p class="text-[11px] text-slate-200 font-sans mt-0.5">Dictamen: <em>${this.escapeHTML(co.nameChangeRequest.rejectReason || co.nameChangeRequest.feedback || 'La solicitud no cumple con los criterios del Registro Mercantil.')}</em></p>
                         </div>
                         <div class="flex flex-wrap gap-2 shrink-0">
-                            ${(co.nameChangeRequest.returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(co.nameChangeRequest.returnDriveUrl)) ? `<a href="${encodeURI(co.nameChangeRequest.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors"><span>📄 Ver Dictamen ↗</span></a>` : ''}
-                            <button type="button" onclick="ui.dismissNameChangeRejection()" class="min-h-[40px] px-3 py-1.5 text-xs bg-slate-900 border border-red-400/50 text-red-200 hover:bg-red-800 font-bold uppercase rounded">🏛️ Archivar / Enterado</button>
+                            ${(co.nameChangeRequest.returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(co.nameChangeRequest.returnDriveUrl)) ? `<a href="${encodeURI(co.nameChangeRequest.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors"><span>📄 Ver Dictamen ↗</span></a>` : ''}
+                            <button type="button" onclick="ui.dismissNameChangeRejection()" class="min-h-[44px] px-3 py-1.5 text-xs bg-slate-900 border border-red-400/50 text-red-200 hover:bg-red-800 font-bold uppercase rounded">🏛️ Archivar / Enterado</button>
                         </div>
                     </div>
                 ` : ''}
@@ -300,11 +300,11 @@ Object.assign(ui, {
         `;
 
         const crisisResolutionsHtml = `
-        <div id="crisis-resolutions-panel" class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-magenta mb-6">
+        <div id="crisis-resolutions-panel" class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-magenta">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 border-b border-mars-border pb-2.5">
                 <div>
                     <div class="flex items-center gap-2">
-                        <span class="px-2 py-0.5 text-[10px] font-mono uppercase bg-magenta-950/60 border border-mars-magenta text-magenta-300">Marco Legal & Compliance</span>
+                        <span class="px-2 py-0.5 text-[10px] font-mono uppercase bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-bold">Marco Legal & Compliance</span>
                         <span class="text-xs text-slate-400 font-mono">[EXPEDIENTES ACTIVOS: ${co.sanctions.length}]</span>
                     </div>
                     <h3 class="font-orbitron text-mars-magenta text-sm sm:text-base uppercase tracking-tighter mt-1">⚖️ Régimen Disciplinario y Sanciones AEE</h3>
@@ -349,10 +349,8 @@ Object.assign(ui, {
         <div class="space-y-6">
             ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div class="lg:col-span-8 space-y-6">
-                ${nameChangeHtml}
-                ${ceoSloganApprovalHtml}
-                ${crisisResolutionsHtml}
+            <!-- Columna Izquierda: Asamblea, Votaciones y Actas DOC_16 -->
+            <div class="lg:col-span-7 space-y-6">
                 <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-cyan">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-mars-border pb-3">
                         <h2 class="font-orbitron text-mars-cyan text-base sm:text-lg uppercase tracking-tighter">Asamblea y Votaciones</h2>
@@ -444,7 +442,7 @@ Object.assign(ui, {
                                 </div>
                                 <div class="shrink-0">
                                     ${m.driveUrl ? `
-                                        <a href="${encodeURI(m.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors">
+                                        <a href="${encodeURI(m.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors">
                                             <span>📄 Abrir Acta en Google Docs ↗</span>
                                         </a>
                                     ` : ''}
@@ -454,7 +452,11 @@ Object.assign(ui, {
                     </div>
                 </div>
             </div>
-            <div class="lg:col-span-4 space-y-6">
+            <!-- Columna Derecha: Modificación Estatutaria, Régimen Disciplinario y Conflictos HR -->
+            <div class="lg:col-span-5 space-y-6">
+                ${ceoSloganApprovalHtml}
+                ${nameChangeHtml}
+                ${crisisResolutionsHtml}
                 <div class="terminal-border bg-mars-card p-5 border-t-4 border-t-mars-magenta">
                     <h3 class="font-orbitron text-mars-magenta text-sm sm:text-base uppercase tracking-tighter mb-3 border-b border-mars-border pb-2">Buzón de Conflictos (HR)</h3>
                     <p class="text-xs text-slate-300 uppercase mb-4 leading-relaxed">Reporta a un departamento inactivo que esté bloqueando el avance del proyecto.</p>
@@ -1237,14 +1239,14 @@ Object.assign(ui, {
             <div class="bg-mars-magenta/15 border border-mars-magenta p-3 mb-4 text-xs">
                 <span class="text-mars-magenta font-black uppercase block mb-1">↩️ Propuesta Devuelta por el CEO</span>
                 <p class="text-slate-300">Feedback: "${this.escapeHTML(co.brandApproval.feedback || 'Revisar propuesta en Google Docs.')}". Marketing puede realizar correcciones y volver a presentarla.</p>
-                ${(co.brandApproval.returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(co.brandApproval.returnDriveUrl)) ? `<a href="${encodeURI(co.brandApproval.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1 bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono text-xs hover:bg-cyan-900/60"><span>📄 Ver Dictamen / Correcciones en Drive ↗</span></a>` : ''}
+                ${(co.brandApproval.returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(co.brandApproval.returnDriveUrl)) ? `<a href="${encodeURI(co.brandApproval.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center gap-1.5 min-h-[44px] px-3 py-1 bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono text-xs hover:bg-cyan-900/60"><span>📄 Ver Dictamen / Correcciones en Drive ↗</span></a>` : ''}
             </div>`;
         } else if (estadoActual === 'RECHAZADO') {
             step2CeoControls = `
             <div class="bg-mars-magenta/15 border border-mars-magenta p-3 mb-4 text-xs">
                 <span class="text-mars-magenta font-black uppercase block mb-1">❌ Propuesta Rechazada por Coordinación</span>
                 <p class="text-slate-300">Motivo: "${this.escapeHTML(co.brandApproval.feedback || 'Incumplimiento de criterios oficiales.')}". Marketing debe generar una nueva propuesta.</p>
-                ${(co.brandApproval.returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(co.brandApproval.returnDriveUrl)) ? `<a href="${encodeURI(co.brandApproval.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1 bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono text-xs hover:bg-cyan-900/60"><span>📄 Ver Dictamen / Correcciones en Drive ↗</span></a>` : ''}
+                ${(co.brandApproval.returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(co.brandApproval.returnDriveUrl)) ? `<a href="${encodeURI(co.brandApproval.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center gap-1.5 min-h-[44px] px-3 py-1 bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono text-xs hover:bg-cyan-900/60"><span>📄 Ver Dictamen / Correcciones en Drive ↗</span></a>` : ''}
             </div>`;
         }
 
@@ -1300,35 +1302,9 @@ Object.assign(ui, {
                         <button type="button" onclick="ui.submitBrandProposalToCEO()" class="w-full min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)]">[ 📤 1. Presentar Propuesta al CEO ]</button>
                     </div>
                 </div>
-
-                <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-green w-full">
-                    <h2 class="font-orbitron text-mars-green text-sm sm:text-base mb-3 uppercase tracking-tighter">Inteligencia de Mercado y KPIs Técnicos</h2>
-                    <div class="space-y-3">
-                        <div class="bg-black p-3 border border-mars-border flex justify-between items-center gap-2">
-                            <span class="text-xs text-mars-cyan uppercase font-bold">Inversión Total I+D Ejecutada</span>
-                            <span class="text-mars-cyan font-mono font-bold text-base">${totalDevCost.toFixed(2)} €v</span>
-                        </div>
-                        <div class="bg-black p-3 border border-slate-800 space-y-1.5">
-                            <div class="flex justify-between items-center text-xs">
-                                <span class="text-slate-300 uppercase">Coste Operativo Bruto:</span>
-                                <span class="text-white font-mono font-bold">${grossCosts.toFixed(2)} €v</span>
-                            </div>
-                            ${(sponsorAmt > 0 && sponsorTierLabel) ? `
-                            <div class="flex justify-between items-center text-xs">
-                                <span class="text-mars-yellow uppercase font-bold">Reducción Patrocinio ${this.getSponsorTierBadge ? this.getSponsorTierBadge(sponsorTierLabel) : `(${this.escapeHTML(sponsorTierLabel)})`}:</span>
-                                <span class="text-mars-yellow font-mono font-bold">-${sponsorAmt.toFixed(2)} €v</span>
-                            </div>` : ''}
-                            <div class="flex justify-between items-center text-xs border-t border-slate-800 pt-1.5">
-                                <span class="text-mars-green font-bold uppercase">Coste Operativo Neto:</span>
-                                <span class="text-mars-green font-mono font-bold text-sm">${netOpCosts.toFixed(2)} €v</span>
-                            </div>
-                        </div>
-                        ${bestFlightHtml}
-                    </div>
-                </div>
             </div>
 
-            <!-- Columna Derecha: Campañas Publicitarias y Difusión B2C -->
+            <!-- Columna Derecha: Campañas Publicitarias y Difusión B2C + KPIs Técnicos -->
             <div class="lg:col-span-6 space-y-6 w-full">
                 <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-yellow w-full">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-2">
@@ -1358,6 +1334,32 @@ Object.assign(ui, {
                         <button type="button" onclick="ui.navigate('campaigns')" class="min-h-[44px] bg-slate-900 text-mars-yellow border border-mars-yellow/60 px-4 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-mars-yellow hover:text-black transition-all flex items-center justify-center gap-1.5">
                             <span>📡 Ver Mis Campañas ➔</span>
                         </button>
+                    </div>
+                </div>
+
+                <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-green w-full">
+                    <h2 class="font-orbitron text-mars-green text-sm sm:text-base mb-3 uppercase tracking-tighter">Inteligencia de Mercado y KPIs Técnicos</h2>
+                    <div class="space-y-3">
+                        <div class="bg-black p-3 border border-mars-border flex justify-between items-center gap-2">
+                            <span class="text-xs text-mars-cyan uppercase font-bold">Inversión Total I+D Ejecutada</span>
+                            <span class="text-mars-cyan font-mono font-bold text-base">${totalDevCost.toFixed(2)} €v</span>
+                        </div>
+                        <div class="bg-black p-3 border border-slate-800 space-y-1.5">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-300 uppercase">Coste Operativo Bruto:</span>
+                                <span class="text-white font-mono font-bold">${grossCosts.toFixed(2)} €v</span>
+                            </div>
+                            ${(sponsorAmt > 0 && sponsorTierLabel) ? `
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-mars-yellow uppercase font-bold">Reducción Patrocinio ${this.getSponsorTierBadge ? this.getSponsorTierBadge(sponsorTierLabel) : `(${this.escapeHTML(sponsorTierLabel)})`}:</span>
+                                <span class="text-mars-yellow font-mono font-bold">-${sponsorAmt.toFixed(2)} €v</span>
+                            </div>` : ''}
+                            <div class="flex justify-between items-center text-xs border-t border-slate-800 pt-1.5">
+                                <span class="text-mars-green font-bold uppercase">Coste Operativo Neto:</span>
+                                <span class="text-mars-green font-mono font-bold text-sm">${netOpCosts.toFixed(2)} €v</span>
+                            </div>
+                        </div>
+                        ${bestFlightHtml}
                     </div>
                 </div>
             </div>

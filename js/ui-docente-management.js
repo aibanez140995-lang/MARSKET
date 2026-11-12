@@ -241,7 +241,7 @@ Object.assign(ui, {
                     <h3 class="font-orbitron text-mars-cyan text-xs uppercase tracking-widest">Control Financiero, Patrocinios & Sanciones AEE</h3>
                     <span class="text-xs text-slate-300 uppercase sm:hidden">Desliza ➔</span>
                 </div>
-                <div class="overflow-x-auto w-full pb-1">
+                <div class="overflow-x-auto max-h-[600px] overflow-y-auto w-full pb-1">
                     <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
                         <thead class="text-slate-300 uppercase border-b border-mars-border sticky top-0 bg-slate-950 z-10 shadow-sm">
                             <tr>
@@ -341,7 +341,7 @@ Object.assign(ui, {
                                             </div>
                                         </td>
                                         <td class="py-3 pr-2.5 sm:pr-4">
-                                            <button onclick="ui.goToCompanyEval('${this.escapeHTML(cid)}')" class="min-h-[38px] px-2.5 py-1 bg-mars-cyan text-black font-bold uppercase text-[11px] hover:bg-white transition-colors flex items-center gap-1 shadow-sm whitespace-nowrap" title="Ir a calificar y revisar entregables de ${this.escapeHTML(c.name)}">
+                                            <button onclick="ui.goToCompanyEval('${this.escapeHTML(cid)}')" class="min-h-[44px] px-2.5 py-1 bg-mars-cyan text-black font-bold uppercase text-[11px] hover:bg-white transition-colors flex items-center gap-1 shadow-sm whitespace-nowrap" title="Ir a calificar y revisar entregables de ${this.escapeHTML(c.name)}">
                                                 <span>📝</span> Evaluar
                                             </button>
                                         </td>
@@ -478,7 +478,7 @@ Object.assign(ui, {
                 <div class="flex flex-wrap items-center gap-2 mb-3">
                     <span class="text-xs text-slate-300 font-bold uppercase shrink-0">Filtrar por Clase:</span>
                     ${uniqueClasses.map(cls => `
-                        <button type="button" onclick="ui.filterKeychainClass('${this.escapeHTML(cls)}')" class="min-h-[40px] px-3.5 py-1.5 text-xs font-bold uppercase transition-colors ${currentKeychainClass === cls ? 'bg-mars-yellow text-black font-black shadow-sm' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-700'}">
+                        <button type="button" onclick="ui.filterKeychainClass('${this.escapeHTML(cls)}')" class="min-h-[44px] px-3.5 py-1.5 text-xs font-bold uppercase transition-colors ${currentKeychainClass === cls ? 'bg-mars-yellow text-black font-black shadow-sm' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-700'}">
                             Clase ${this.escapeHTML(cls)}
                         </button>
                     `).join('')}
@@ -816,10 +816,10 @@ Object.assign(ui, {
                         <span class="text-[10px] text-slate-400 font-mono">${pDefs.length} Entregables • ${openCount}/${pDefs.length} Desbloqueados</span>
                     </div>
                     <div class="flex gap-2 w-full sm:w-auto">
-                        <button type="button" onclick="ui.batchSetPhaseState('${p.id}', true)" class="min-h-[40px] flex-1 sm:flex-none px-3.5 py-1.5 bg-mars-green text-black font-black uppercase text-xs hover:bg-white transition-colors">
+                        <button type="button" onclick="ui.batchSetPhaseState('${p.id}', true)" class="min-h-[44px] flex-1 sm:flex-none px-3.5 py-1.5 bg-mars-green text-black font-black uppercase text-xs hover:bg-white transition-colors">
                             🔓 Abrir Fase
                         </button>
-                        <button type="button" onclick="ui.batchSetPhaseState('${p.id}', false)" class="min-h-[40px] flex-1 sm:flex-none px-3.5 py-1.5 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs hover:bg-mars-magenta hover:text-white transition-colors">
+                        <button type="button" onclick="ui.batchSetPhaseState('${p.id}', false)" class="min-h-[44px] flex-1 sm:flex-none px-3.5 py-1.5 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs hover:bg-mars-magenta hover:text-white transition-colors">
                             🔒 Bloquear Fase
                         </button>
                     </div>
@@ -833,7 +833,7 @@ Object.assign(ui, {
                         <div class="bg-black/60 border border-slate-800 p-2 text-xs rounded">
                             <div class="flex justify-between items-center mb-1">
                                 <span class="font-bold text-slate-200 truncate pr-1" title="${this.escapeHTML(d.name)}">${this.escapeHTML(d.name)}</span>
-                                <span class="text-[9px] font-mono px-1 py-0.2 rounded font-bold ${isOpen ? 'bg-emerald-950 text-emerald-400 border border-emerald-500' : 'bg-rose-950 text-rose-400 border border-rose-500'}">${isOpen ? 'ABIERTO' : 'BLOQUEADO'}</span>
+                                <span class="text-[9px] font-mono px-1 py-0.5 rounded font-bold ${isOpen ? 'bg-emerald-950 text-emerald-400 border border-emerald-500' : 'bg-rose-950 text-rose-400 border border-rose-500'}">${isOpen ? 'ABIERTO' : 'BLOQUEADO'}</span>
                             </div>
                             <div class="flex justify-between text-[10px] text-slate-400 font-mono">
                                 <span>${this.escapeHTML(d.subject)}</span>
@@ -941,7 +941,7 @@ Object.assign(ui, {
                 <p class="text-slate-200 italic mb-2 bg-black/50 p-2 border border-slate-800 break-words">"${this.escapeHTML(sugg.text)}"</p>
                 ${sugg.driveUrl ? `
                 <div class="mb-2">
-                    <a href="${this.escapeHTML(sugg.driveUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-mars-cyan hover:underline font-mono bg-mars-cyan/10 px-2.5 py-1.5 border border-mars-cyan/40 min-h-[36px]">
+                    <a href="${this.escapeHTML(sugg.driveUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-mars-cyan hover:underline font-mono bg-mars-cyan/10 px-2.5 py-1.5 border border-mars-cyan/40 min-h-[44px]">
                         <span>📄 Abrir Evidencia / Detalle en Google Drive ↗</span>
                     </a>
                 </div>` : ''}
@@ -1511,7 +1511,7 @@ Object.assign(ui, {
                         </div>
                         <p class="text-white font-bold text-xs uppercase mb-1.5">${this.escapeHTML(p.name || 'Componente Especial I+D')}</p>
                         ${p.driveUrl ? `
-                            <a href="${this.escapeHTML(p.driveUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-mars-cyan hover:underline font-mono bg-mars-cyan/10 px-2.5 py-1.5 border border-mars-cyan/40 min-h-[36px]">
+                            <a href="${this.escapeHTML(p.driveUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-mars-cyan hover:underline font-mono bg-mars-cyan/10 px-2.5 py-1.5 border border-mars-cyan/40 min-h-[44px]">
                                 <span>📄 Abrir Memoria Técnica en Google Drive ↗</span>
                             </a>
                         ` : '<span class="text-slate-400 italic text-[11px]">Sin enlace de Drive adjunto</span>'}
@@ -1753,7 +1753,7 @@ Object.assign(ui, {
                     <p class="text-xs text-slate-300">Material solicitado: <span class="text-white font-mono">${this.escapeHTML(req.name || 'Componente Especial')}</span></p>
                     ${req.driveUrl ? `
                     <div class="mt-2">
-                        <a href="${this.escapeHTML(req.driveUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-mars-cyan hover:underline font-mono bg-mars-cyan/10 px-2.5 py-1.5 border border-mars-cyan/40 min-h-[36px]">
+                        <a href="${this.escapeHTML(req.driveUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-mars-cyan hover:underline font-mono bg-mars-cyan/10 px-2.5 py-1.5 border border-mars-cyan/40 min-h-[44px]">
                             <span>📄 Abrir Solicitud del Alumno en Google Drive ↗</span>
                         </a>
                     </div>` : ''}
@@ -2960,7 +2960,7 @@ Object.assign(ui, {
                     </h3>
                     <div class="flex justify-between items-baseline mt-0.5">
                         <span class="text-xs font-bold font-orbitron uppercase text-[#FF007F] tracking-wide">${this.escapeHTML(meta.name)}</span>
-                        <span class="text-[9px] bg-mars-yellow text-black px-1.5 py-0.2 font-black uppercase">CLASE ${this.escapeHTML(co.classGroup || 'A')}</span>
+                        <span class="text-[9px] bg-mars-yellow text-black px-1.5 py-0.5 font-black uppercase">CLASE ${this.escapeHTML(co.classGroup || 'A')}</span>
                     </div>
                     <p class="text-[9px] text-slate-400 font-mono uppercase truncate mt-0.5">${this.escapeHTML(deptName)}</p>
                 </div>
@@ -3264,7 +3264,7 @@ Object.assign(ui, {
                     </h3>
                     <div class="flex justify-between items-baseline mt-0.5">
                         <span class="text-xs font-bold font-orbitron uppercase text-[#FF007F] tracking-wide">CLAUSTRO EVALUADOR</span>
-                        <span class="text-[9px] bg-mars-yellow text-black px-1.5 py-0.2 font-black uppercase">DOCENTE</span>
+                        <span class="text-[9px] bg-mars-yellow text-black px-1.5 py-0.5 font-black uppercase">DOCENTE</span>
                     </div>
                     <p class="text-[9px] text-slate-400 font-mono uppercase truncate mt-0.5">ESTADO: ACTIVO // AEE-AUTORIZADO</p>
                 </div>

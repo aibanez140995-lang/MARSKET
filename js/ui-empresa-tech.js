@@ -211,12 +211,12 @@ Object.assign(ui, {
                             ${item.returnReason ? `<p class="text-xs text-rose-300 font-mono mt-1"><strong>Observación CEO:</strong> ${this.escapeHTML(item.returnReason)}</p>` : ''}
                             <div class="mt-2 flex flex-wrap items-center gap-2">
                                 ${item.driveUrl ? `
-                                    <a href="${encodeURI(item.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[36px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-300 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50 transition-colors">
+                                    <a href="${encodeURI(item.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-300 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50 transition-colors">
                                         <span>📄 Abrir Mi Solicitud en Docs ↗</span>
                                     </a>
                                 ` : ''}
                                 ${(item.responseDriveUrl && (item.status === 'DENEGADA' || item.status === 'DEVUELTO_CEO' || item.status === 'RECHAZADO_CEO')) ? `
-                                    <a href="${encodeURI(item.responseDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[36px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/50 text-red-200 border border-red-400 rounded font-mono hover:bg-red-900/60 transition-colors font-bold">
+                                    <a href="${encodeURI(item.responseDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/50 text-red-200 border border-red-400 rounded font-mono hover:bg-red-900/60 transition-colors font-bold">
                                         <span>📄 Ver Dictamen / Respuesta de Coordinación ↗</span>
                                     </a>
                                 ` : ''}
@@ -346,7 +346,7 @@ Object.assign(ui, {
                     </div>
                 </div>
 
-                <!-- Columna Derecha: Acceso a Entregables Científicos y Órdenes -->
+                <!-- Columna Derecha: Acceso a Órdenes y Solicitudes Especiales de Material I+D -->
                 <div class="lg:col-span-5 space-y-6">
                     <!-- Acceso a Seguimiento de Órdenes -->
                     <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-amber-400">
@@ -359,29 +359,29 @@ Object.assign(ui, {
                             <span>📡 VER SEGUIMIENTO DE ÓRDENES</span> ➔
                         </button>
                     </div>
-                </div>
-            </div>
 
-            <!-- Panel de Solicitudes de Material I+D a Coordinación -->
-            <div id="tech-special-items-panel" class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-magenta shadow-sm">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-mars-border pb-3 mb-4">
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-2 mb-1">
-                            <span class="px-2 py-0.5 text-xs font-black uppercase bg-mars-magenta/20 border border-mars-magenta text-mars-magenta">I+D ESPECIAL // FUERA DE CATÁLOGO</span>
-                            <span class="text-xs text-slate-400 font-mono">TÉCNICO ➔ COORDINACIÓN</span>
+                    <!-- Panel de Solicitudes de Material I+D a Coordinación -->
+                    <div id="tech-special-items-panel" class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-magenta shadow-sm">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-mars-border pb-3 mb-4">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="px-2 py-0.5 text-xs font-black uppercase bg-mars-magenta/20 border border-mars-magenta text-mars-magenta">I+D ESPECIAL // FUERA DE CATÁLOGO</span>
+                                    <span class="text-xs text-slate-400 font-mono">TÉCNICO ➔ COORDINACIÓN</span>
+                                </div>
+                                <h3 class="font-orbitron text-mars-magenta text-sm sm:text-base uppercase tracking-tight font-black">
+                                    📡 Solicitudes Especiales I+D
+                                </h3>
+                                <p class="text-xs text-slate-300 uppercase mt-0.5">
+                                    Solicita al claustro piezas o reactivos especiales no listados en catálogo con memoria oficial en Drive.
+                                </p>
+                            </div>
+                            <button type="button" onclick="ui.modalSpecialItem()" class="shrink-0 w-full sm:w-auto justify-center min-h-[44px] bg-mars-magenta text-white font-black px-4 py-2 text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all whitespace-nowrap shadow-[0_0_10px_rgba(255,0,85,0.3)] text-center">
+                                + Solicitar Material I+D
+                            </button>
                         </div>
-                        <h3 class="font-orbitron text-mars-magenta text-sm sm:text-base uppercase tracking-tight font-black">
-                            📡 Solicitudes de Material I+D a Coordinación
-                        </h3>
-                        <p class="text-xs text-slate-300 uppercase mt-0.5">
-                            Solicita al claustro la autorización de piezas o reactivos especiales no listados en el catálogo mediante memoria técnica oficial en Google Drive.
-                        </p>
+                        ${specialItemsListHtml}
                     </div>
-                    <button type="button" onclick="ui.modalSpecialItem()" class="shrink-0 w-full sm:w-auto justify-center min-h-[44px] bg-mars-magenta text-white font-black px-4 py-2 text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all whitespace-nowrap shadow-[0_0_10px_rgba(255,0,85,0.3)] text-center">
-                        + Solicitar Material I+D
-                    </button>
                 </div>
-                ${specialItemsListHtml}
             </div>
         </div>`;
         el.appendChild(wrapper);
@@ -637,7 +637,7 @@ Object.assign(ui, {
                                 </div>
                             </div>
                             <div class="flex flex-wrap items-center gap-2 w-full pt-1">
-                                <button type="button" onclick="ui.navigate('dossier')" class="min-h-[44px] bg-mars-cyan/10 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-3 py-2 text-xs font-bold uppercase transition-all whitespace-nowrap">[ 📄 Ver Dossier Inversores ↗ ]</button>
+                                <button type="button" onclick="ui.roleDeliverablesSection = 'grades'; ui.navigate('role_deliverables');" class="min-h-[44px] bg-mars-cyan/10 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black px-3 py-2 text-xs font-bold uppercase transition-all whitespace-nowrap">[ 📄 Ver Dossier Inversores ↗ ]</button>
                                 <button type="button" onclick="ui.setMarketTab('b2b'); ui.navigate('market')" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-4 py-2 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-all whitespace-nowrap">[ 🤝 Ver Mercado B2B ]</button>
                             </div>
                         </div>

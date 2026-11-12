@@ -374,7 +374,7 @@ Object.assign(ui, {
                 <p class="font-bold text-rose-300 uppercase mb-1">⚠️ Bitácora devuelta para subsanar:</p>
                 <p class="text-slate-200">${this.escapeHTML(bitacoraDoc.returnReason || 'Revisar las observaciones antes de reenviar.')}</p>
                 ${(bitacoraDoc.returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(bitacoraDoc.returnDriveUrl)) ? `
-                    <a href="${encodeURI(bitacoraDoc.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-slate-900 border border-rose-400/40 text-rose-200 hover:border-rose-300 rounded font-mono text-xs">
+                    <a href="${encodeURI(bitacoraDoc.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 bg-slate-900 border border-rose-400/40 text-rose-200 hover:border-rose-300 rounded font-mono text-xs">
                         <span>📄 Ver Informe de Devolución ↗</span>
                     </a>
                 ` : ''}

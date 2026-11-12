@@ -133,9 +133,9 @@ Object.assign(ui, {
                     <span class="font-mono text-[10px] text-slate-400 font-bold">${s.companyCount} emp</span>
                 </div>
                 <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                    ${s.totalPending > 0 ? `<span class="bg-amber-500 text-black px-1.5 py-0.2 rounded text-[10px] font-black font-mono animate-pulse" title="${s.totalPending} trámite(s) pendiente(s) de aduana/validación">⚠️ ${s.totalPending}</span>` : ''}
+                    ${s.totalPending > 0 ? `<span class="bg-amber-500 text-black px-1.5 py-0.5 rounded text-[10px] font-black font-mono animate-pulse" title="${s.totalPending} trámite(s) pendiente(s) de aduana/validación">⚠️ ${s.totalPending}</span>` : ''}
                     <span class="text-[10px] text-cyan-300 font-mono" title="${s.deliveredDeliverables} entregas realizadas">📄 ${s.deliveredDeliverables}</span>
-                    ${s.criticalBalanceCount > 0 ? `<span class="bg-red-950/80 text-red-400 border border-red-500/50 px-1 py-0.2 rounded text-[10px] font-mono font-bold" title="${s.criticalBalanceCount} empresa(s) con saldo crítico <300€v">💸 ${s.criticalBalanceCount}</span>` : ''}
+                    ${s.criticalBalanceCount > 0 ? `<span class="bg-red-950/80 text-red-400 border border-red-500/50 px-1 py-0.5 rounded text-[10px] font-mono font-bold" title="${s.criticalBalanceCount} empresa(s) con saldo crítico <300€v">💸 ${s.criticalBalanceCount}</span>` : ''}
                 </div>
             </button>`;
         }).join('');
@@ -194,6 +194,7 @@ Object.assign(ui, {
         const radarBarHtml = this.renderClassRadarBar(stats);
 
         let deliveredCount = stats[this.currentClassFilter]?.deliveredDeliverables ?? stats.ALL.deliveredDeliverables;
+        let customsPendingCount = stats[this.currentClassFilter]?.totalPending ?? stats.ALL.totalPending;
 
         let modeSwitchHtml = '';
         if (isCoord) {
@@ -246,7 +247,7 @@ Object.assign(ui, {
                             : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
                     }">
                     <span>🛃 Validaciones y Aduana</span>
-                    ${stats.ALL.totalPending > 0 ? `<span class="bg-amber-400 text-black px-1.5 py-0.5 rounded text-[10px] font-mono font-black animate-pulse">${stats.ALL.totalPending}</span>` : ''}
+                    ${customsPendingCount > 0 ? `<span class="bg-amber-400 text-black px-1.5 py-0.5 rounded text-[10px] font-mono font-black animate-pulse">${customsPendingCount}</span>` : ''}
                 </button>
                 <button type="button" role="tab" aria-selected="${currentTab === 'contracts'}"
                     onclick="ui.adminTab = 'contracts'; ui.render();"
@@ -1163,7 +1164,7 @@ Object.assign(ui, {
                             <p class="text-xs text-slate-300 font-mono">Firmado por: <strong>${this.escapeHTML(lic.signedBy || 'CEO')}</strong> • Fecha: ${this.escapeHTML(lic.appliedDate || '--')}</p>
                             <div class="mt-2.5">
                                 ${lic.driveUrl ? `
-                                    <a href="${encodeURI(lic.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                    <a href="${encodeURI(lic.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
                                         <span>📄 Abrir Solicitud Oficial DOC_14 en Google Docs ↗</span>
                                     </a>
                                 ` : ''}

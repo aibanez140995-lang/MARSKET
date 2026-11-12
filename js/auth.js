@@ -476,7 +476,7 @@ const auth = (function() {
             }
 
             const tabDefs = {
-                'dashboard': { id: 'dashboard', label: '🎖️ Sala de Mando' },
+                'dashboard': { id: 'dashboard', label: '🎖️ Sala de Mando', badge: 'badge-dashboard' },
                 'contracts': { id: 'contracts', label: '🤝 Contratos & Patrocinios' },
                 'orders': { id: 'orders', label: '📡 Seguimiento de Órdenes', badge: 'badge-orders' },
                 'role_deliverables': { id: 'role_deliverables', label: '📤 Entregables & Dossier', badge: 'badge-deliverables' },

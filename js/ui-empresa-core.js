@@ -93,7 +93,7 @@ Object.assign(ui, {
                     <span class="w-2 h-2 rounded-full bg-mars-cyan animate-pulse" aria-hidden="true"></span>
                     Paso 2/2 // Terminal PIN
                 </span>
-                <button type="button" onclick="auth.resetCompanyStep()" class="min-h-[36px] text-xs text-mars-magenta hover:text-white uppercase font-bold tracking-normal border border-mars-magenta/50 px-2.5 py-1 hover:bg-mars-magenta/20 transition-all whitespace-nowrap">
+                <button type="button" onclick="auth.resetCompanyStep()" class="min-h-[44px] text-xs text-mars-magenta hover:text-white uppercase font-bold tracking-normal border border-mars-magenta/50 px-2.5 py-1 hover:bg-mars-magenta/20 transition-all whitespace-nowrap">
                     [⬅ Cambiar]
                 </button>
             </div>
@@ -172,7 +172,7 @@ Object.assign(ui, {
         return `<div class="mb-6 space-y-2 animate-in fade-in slide-in-from-top-4" role="region" aria-label="Notificaciones operativas">
             <div class="flex justify-between items-center mb-1">
                 <span class="text-xs font-mono uppercase text-slate-400">Avisos y Notificaciones (${myNotifs.length})</span>
-                <button type="button" onclick="ui.dismissAllRoleNotifications()" class="min-h-[36px] bg-slate-900 border border-slate-700 text-slate-300 hover:text-white px-2.5 py-1 text-xs font-bold uppercase transition-all">[ 🧹 Borrar Todos los Avisos ]</button>
+                <button type="button" onclick="ui.dismissAllRoleNotifications()" class="min-h-[44px] bg-slate-900 border border-slate-700 text-slate-300 hover:text-white px-2.5 py-1 text-xs font-bold uppercase transition-all">[ 🧹 Borrar Todos los Avisos ]</button>
             </div>
             ${myNotifs.map(n => {
                 let colors = 'border-mars-cyan bg-mars-cyan/10 text-mars-cyan';
@@ -188,7 +188,7 @@ Object.assign(ui, {
                     </div>
                     <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
                         <button type="button" onclick="ui.openNotificationTarget('${this.escapeHTML(n.id)}')" class="min-h-[44px] bg-black/70 border border-current text-white font-black px-3.5 py-1.5 text-xs uppercase hover:bg-white hover:text-black transition-all flex items-center gap-1.5 shadow-sm">[ 👁️ Ver Notificación ➔ ]</button>
-                        <button type="button" aria-label="Descartar notificación" onclick="ui.dismissNotification('${this.escapeHTML(n.id)}')" class="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center font-black hover:text-white transition-colors text-xs border border-current/40 shrink-0" title="Descartar">✕</button>
+                        <button type="button" aria-label="Descartar notificación" onclick="ui.dismissNotification('${this.escapeHTML(n.id)}')" class="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center font-black hover:text-white transition-colors text-xs border border-current border-opacity-40 shrink-0" title="Descartar">✕</button>
                     </div>
                 </div>`;
             }).join('')}
@@ -676,7 +676,7 @@ Object.assign(ui, {
                                     ${pendingSlogan.valueProposition ? `<p class="text-[11px] text-slate-300 font-mono mt-1">Lema: "${this.escapeHTML(pendingSlogan.valueProposition)}"</p>` : ''}
                                     <div class="mt-2.5 flex flex-wrap items-center gap-2">
                                         ${pendingSlogan.driveUrl ? `
-                                            <a href="${encodeURI(pendingSlogan.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                            <a href="${encodeURI(pendingSlogan.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
                                                 <span>📄 Ver DOC_11 en Docs ↗</span>
                                             </a>
                                         ` : ''}
@@ -702,7 +702,7 @@ Object.assign(ui, {
                                     <p class="text-[11px] text-slate-300 font-mono mt-1">Pack: ${this.escapeHTML(camp.packageName || camp.type || '')}</p>
                                     <div class="mt-2.5 flex flex-wrap items-center gap-2">
                                         ${actDrive ? `
-                                            <a href="${encodeURI(actDrive).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                            <a href="${encodeURI(actDrive).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
                                                 <span>📄 Ver Creatividad DOC_12 en Docs ↗</span>
                                             </a>
                                         ` : ''}
@@ -728,7 +728,7 @@ Object.assign(ui, {
                                     </div>
                                     <div class="mt-2.5 flex flex-wrap items-center gap-2">
                                         ${b.driveUrl ? `
-                                            <a href="${encodeURI(b.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                            <a href="${encodeURI(b.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
                                                 <span>📄 Ver DOC_17 en Docs ↗</span>
                                             </a>
                                         ` : ''}
@@ -754,7 +754,7 @@ Object.assign(ui, {
                                     <div class="mt-2.5 flex flex-wrap items-center gap-2">
                                         ${this.renderDocTemplateBtn(d.key)}
                                         ${doc?.driveUrl ? `
-                                            <a href="${encodeURI(doc.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                            <a href="${encodeURI(doc.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
                                                 <span>📄 Abrir Documento en Docs ↗</span>
                                             </a>
                                         ` : ''}
@@ -798,7 +798,7 @@ Object.assign(ui, {
                                 </div>
                                 <h4 class="text-white font-bold text-sm uppercase leading-snug">${this.escapeHTML(item.name || 'Componente Especial I+D')}</h4>
                                 <div class="mt-2.5 flex flex-wrap items-center gap-2">
-                                    <a href="${encodeURI(item.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                    <a href="${encodeURI(item.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
                                         <span>📄 Ver Memoria Técnica DOC_13 ↗</span>
                                     </a>
                                 </div>
@@ -878,7 +878,7 @@ Object.assign(ui, {
                             <div class="flex justify-between items-center mb-2 flex-wrap gap-1">
                                 <span class="text-xs font-black uppercase ${isAesaDenied ? 'text-red-300 bg-red-950/50 border-red-500/60' : 'text-mars-yellow bg-mars-yellow/10 border-mars-yellow/40'} border px-2 py-0.5">${isAesaDenied ? 'AESA // SUBSANACIÓN REQUERIDA' : 'SEGURIDAD AEROESPACIAL'}</span>
                                 <div class="flex items-center gap-1.5">
-                                    ${(co.id === 'TEST-0000' || co.isTestCompany) ? `<span class="px-1.5 py-0.2 bg-amber-400 text-black text-[9px] font-mono font-bold uppercase rounded">🧪 Sandbox Desbloqueado</span>` : `<span style="color: #00ff66 !important;" class="text-[10px] font-mono">✓ Informe Preliminar Entregado</span>`}
+                                    ${(co.id === 'TEST-0000' || co.isTestCompany) ? `<span class="px-1.5 py-0.5 bg-amber-400 text-black text-[9px] font-mono font-bold uppercase rounded">🧪 Sandbox Desbloqueado</span>` : `<span style="color: #00ff66 !important;" class="text-[10px] font-mono">✓ Informe Preliminar Entregado</span>`}
                                     <span class="text-xs font-mono ${feeAlreadyPaid ? 'text-mars-green' : 'text-amber-400'}">${feeAlreadyPaid ? 'Tasa ya abonada (0 €v)' : 'Tasa: 50 €v'}</span>
                                 </div>
                             </div>
@@ -992,7 +992,7 @@ Object.assign(ui, {
                             <span class="text-slate-600">|</span>
                             <span style="color: #ff0055 !important;" class="font-bold">-${signedActiveContract.penalty} €v</span>
                         </div>
-                        <button type="button" onclick="ui.navigate('contracts')" class="min-h-[38px] px-3 py-1 bg-slate-900 hover:bg-white text-slate-300 hover:text-black border border-slate-700 font-bold uppercase text-[11px] rounded transition-all">
+                        <button type="button" onclick="ui.navigate('contracts')" class="min-h-[44px] px-3 py-1 bg-slate-900 hover:bg-white text-slate-300 hover:text-black border border-slate-700 font-bold uppercase text-[11px] rounded transition-all">
                             Ver Contratos ➔
                         </button>
                     </div>
@@ -1015,7 +1015,7 @@ Object.assign(ui, {
                         </p>
                     </div>
                     <div class="mt-3 pt-2.5 border-t border-slate-800 flex justify-end">
-                        <button type="button" onclick="ui.navigate('contracts')" class="min-h-[38px] px-3.5 py-1.5 bg-mars-cyan text-black hover:bg-white font-black uppercase text-xs rounded transition-all shadow-sm">
+                        <button type="button" onclick="ui.navigate('contracts')" class="min-h-[44px] px-3.5 py-1.5 bg-mars-cyan text-black hover:bg-white font-black uppercase text-xs rounded transition-all shadow-sm">
                             ✍️ Elegir Contrato ➔
                         </button>
                     </div>
@@ -1052,7 +1052,7 @@ Object.assign(ui, {
                                 <div class="min-w-0 flex-1">
                                     <div class="flex items-center gap-1.5 flex-wrap">
                                         <span class="text-white font-bold block uppercase">${this.escapeHTML(p.title)}</span>
-                                        ${!isPrUnlocked ? `<span class="px-1.5 py-0.2 bg-slate-900 border border-slate-700 text-slate-400 text-[9px] font-mono uppercase font-bold">🔒 Bloqueada hasta Cierre</span>` : ''}
+                                        ${!isPrUnlocked ? `<span class="px-1.5 py-0.5 bg-slate-900 border border-slate-700 text-slate-400 text-[9px] font-mono uppercase font-bold">🔒 Bloqueada hasta Cierre</span>` : ''}
                                     </div>
                                     <span class="text-[10px] text-slate-400 font-mono">Plazo Máximo: ${this.escapeHTML(p.deadlineLabel)}</span>
                                     ${phaseBalance ? `
@@ -1074,13 +1074,13 @@ Object.assign(ui, {
                                             <a href="${encodeURI(published.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-[11px] text-cyan-300 underline font-mono">Ver DOC_15 ↗</a>
                                         </div>
                                     ` : (!isPrUnlocked ? `
-                                        <button type="button" disabled class="min-h-[36px] bg-slate-900 border border-slate-800 text-slate-500 font-bold uppercase text-[11px] px-2.5 py-1 cursor-not-allowed" title="Disponible a partir del ${this.escapeHTML(p.phaseCutoffLabel || '')}">
+                                        <button type="button" disabled class="min-h-[44px] bg-slate-900 border border-slate-800 text-slate-500 font-bold uppercase text-[11px] px-2.5 py-1 cursor-not-allowed" title="Disponible a partir del ${this.escapeHTML(p.phaseCutoffLabel || '')}">
                                             🔒 Bloqueada hasta ${this.escapeHTML(p.phaseCutoffLabel || '')}
                                         </button>
                                     ` : `
                                         <div class="flex items-center gap-1">
                                             ${isMasterOrAdmin && p.phaseCutoff && Date.now() < new Date(p.phaseCutoff).getTime() ? `<span class="px-1.5 py-0.5 bg-amber-400 text-black text-[9px] font-mono font-bold uppercase rounded">🧪 Sandbox</span>` : ''}
-                                            <button type="button" onclick="ui.modalPublishPressRelease('${this.escapeHTML(p.phase)}')" class="min-h-[36px] bg-cyan-950/60 border border-cyan-400 text-cyan-300 hover:bg-cyan-400 hover:text-black font-bold uppercase text-[11px] px-2.5 py-1 transition-all">
+                                            <button type="button" onclick="ui.modalPublishPressRelease('${this.escapeHTML(p.phase)}')" class="min-h-[44px] bg-cyan-950/60 border border-cyan-400 text-cyan-300 hover:bg-cyan-400 hover:text-black font-bold uppercase text-[11px] px-2.5 py-1 transition-all">
                                                 + Redactar y Publicar
                                             </button>
                                         </div>
@@ -1312,7 +1312,6 @@ Object.assign(ui, {
         wrapper.className = 'space-y-6';
         wrapper.innerHTML = `
             ${crisisHtml}
-            ${compassCardHtml}
 
             <!-- CABECERA DE SALA DE MANDO -->
             <div class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-cyan">
@@ -1362,71 +1361,72 @@ Object.assign(ui, {
 
             ${ceoTrayHtml}
             ${ceoSpecialItemsHtml}
+            ${compassCardHtml}
             ${ceoGovernanceModulesHtml}
 
-            <!-- CUADRO DE MANDOS DE ACCESOS TÁCTICOS -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                <!-- Tarjeta 1: Dossier Oficial -->
-                <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-cyan flex flex-col justify-between hover:border-mars-cyan transition-all">
+            <!-- CUADRO DE MANDOS DE ACCESOS TÁCTICOS (4 COLUMNAS COMPACTAS) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <!-- Tarjeta 1: Dossier Oficial & Calificaciones -->
+                <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-cyan flex flex-col justify-between hover:border-mars-cyan transition-all">
                     <div>
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs font-black uppercase text-mars-cyan bg-mars-cyan/10 border border-mars-cyan/40 px-2 py-0.5">ACADÉMICO</span>
-                            <span class="text-xs font-mono text-slate-400">${phaseDeliveredCount}/${phaseTotalCount} Hitos (Fase ${this.escapeHTML(phaseInfo.key)})</span>
+                        <div class="flex justify-between items-center mb-1.5">
+                            <span class="text-[10px] font-black uppercase text-mars-cyan bg-mars-cyan/10 border border-mars-cyan/40 px-1.5 py-0.5">ACADÉMICO</span>
+                            <span class="text-[10px] font-mono text-slate-400">${phaseDeliveredCount}/${phaseTotalCount} Hitos (Fase ${this.escapeHTML(phaseInfo.key)})</span>
                         </div>
-                        <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">📋 Dossier Académico Oficial</h3>
-                        <p class="text-xs text-slate-300 mt-1 leading-relaxed">Supervisa la Bóveda de Entregables dividida en 4 Fases y las calificaciones ponderadas de los 6 docentes.</p>
+                        <h3 class="font-orbitron font-black text-xs sm:text-sm text-white uppercase">📋 Dossier Académico</h3>
+                        <p class="text-[11px] text-slate-300 mt-1 line-clamp-2 leading-relaxed">Supervisa el acta y calificaciones ponderadas de los 6 docentes.</p>
                     </div>
-                    <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
-                        <span class="text-[11px] text-slate-400 font-mono">6 Materias evaluadas</span>
-                        <button type="button" onclick="ui.navigate('dossier')" class="min-h-[44px] bg-slate-900 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-black uppercase text-xs px-4 py-2 transition-all">Acceder ➔</button>
+                    <div class="mt-3 pt-2.5 border-t border-slate-800 flex justify-between items-center">
+                        <span class="text-[10px] text-slate-400 font-mono">6 Materias</span>
+                        <button type="button" onclick="ui.roleDeliverablesSection = 'grades'; ui.navigate('role_deliverables');" class="min-h-[44px] bg-slate-900 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-black uppercase text-xs px-3 py-1.5 transition-all">Acceder ➔</button>
                     </div>
                 </div>
 
                 <!-- Tarjeta 2: Seguimiento de Órdenes -->
-                <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-amber-400 flex flex-col justify-between hover:border-amber-400 transition-all">
+                <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-amber-400 flex flex-col justify-between hover:border-amber-400 transition-all">
                     <div>
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs font-black uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2 py-0.5">LOGÍSTICA</span>
-                            <span class="text-xs font-mono text-amber-400">${pendingOrders} en Proceso</span>
+                        <div class="flex justify-between items-center mb-1.5">
+                            <span class="text-[10px] font-black uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-1.5 py-0.5">LOGÍSTICA</span>
+                            <span class="text-[10px] font-mono text-amber-400">${pendingOrders} en Proceso</span>
                         </div>
-                        <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">📡 Seguimiento de Órdenes</h3>
-                        <p class="text-xs text-slate-300 mt-1 leading-relaxed">Supervisa todas las compras de I+D, campañas de Marketing y fichas de montaje en taller físico.</p>
+                        <h3 class="font-orbitron font-black text-xs sm:text-sm text-white uppercase">📡 Órdenes de Compra</h3>
+                        <p class="text-[11px] text-slate-300 mt-1 line-clamp-2 leading-relaxed">Compras de I+D, campañas MKT y fichas de taller físico.</p>
                     </div>
-                    <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
-                        <span class="text-[11px] text-slate-400 font-mono">${(co.orders || []).length} Órdenes totales</span>
-                        <button type="button" onclick="ui.navigate('orders')" class="min-h-[44px] bg-slate-900 border border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-black font-black uppercase text-xs px-4 py-2 transition-all">Supervisar ➔</button>
+                    <div class="mt-3 pt-2.5 border-t border-slate-800 flex justify-between items-center">
+                        <span class="text-[10px] text-slate-400 font-mono">${(co.orders || []).length} Órdenes</span>
+                        <button type="button" onclick="ui.navigate('orders')" class="min-h-[44px] bg-slate-900 border border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-black font-black uppercase text-xs px-3 py-1.5 transition-all">Supervisar ➔</button>
                     </div>
                 </div>
 
                 <!-- Tarjeta 3: Gobernanza y Trámites -->
-                <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-magenta flex flex-col justify-between hover:border-mars-magenta transition-all">
+                <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-magenta flex flex-col justify-between hover:border-mars-magenta transition-all">
                     <div>
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs font-black uppercase text-mars-magenta bg-mars-magenta/10 border border-mars-magenta/40 px-2 py-0.5">LEGAL / AEE</span>
-                            <span class="text-xs font-mono text-slate-400">${(co.votingMotions || []).length} Mociones</span>
+                        <div class="flex justify-between items-center mb-1.5">
+                            <span class="text-[10px] font-black uppercase text-mars-magenta bg-mars-magenta/10 border border-mars-magenta/40 px-1.5 py-0.5">LEGAL / AEE</span>
+                            <span class="text-[10px] font-mono text-slate-400">${(co.votingMotions || []).length} Mociones</span>
                         </div>
-                        <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">⚖️ Trámites y Gobernanza</h3>
-                        <p class="text-xs text-slate-300 mt-1 leading-relaxed">Asambleas de socios, votaciones democráticas, validación de marca y recursos ante la AEE.</p>
+                        <h3 class="font-orbitron font-black text-xs sm:text-sm text-white uppercase">⚖️ Trámites y Socios</h3>
+                        <p class="text-[11px] text-slate-300 mt-1 line-clamp-2 leading-relaxed">Asambleas de socios, mociones, marca y recursos AEE.</p>
                     </div>
-                    <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
-                        <span class="text-[11px] text-slate-400 font-mono">Regulación AEE</span>
-                        <button type="button" onclick="ui.navigate('resolutions')" class="min-h-[44px] bg-slate-900 border border-mars-magenta text-mars-magenta hover:bg-mars-magenta hover:text-white font-black uppercase text-xs px-4 py-2 transition-all">Gestionar ➔</button>
+                    <div class="mt-3 pt-2.5 border-t border-slate-800 flex justify-between items-center">
+                        <span class="text-[10px] text-slate-400 font-mono">Gobernanza</span>
+                        <button type="button" onclick="ui.navigate('resolutions')" class="min-h-[44px] bg-slate-900 border border-mars-magenta text-mars-magenta hover:bg-mars-magenta hover:text-white font-black uppercase text-xs px-3 py-1.5 transition-all">Gestionar ➔</button>
                     </div>
                 </div>
 
                 <!-- Tarjeta 4: Mis Entregables -->
-                <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-green flex flex-col justify-between hover:border-mars-green transition-all">
+                <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-green flex flex-col justify-between hover:border-mars-green transition-all">
                     <div>
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs font-black uppercase text-mars-green bg-mars-green/10 border border-mars-green/40 px-2 py-0.5">MISIÓN</span>
-                            <span class="text-xs font-mono ${returnedDeliverables > 0 ? 'text-red-400 font-bold' : 'text-slate-400'}">${returnedDeliverables > 0 ? `⚠️ ${returnedDeliverables} Requieren Acción` : 'Todo al día'}</span>
+                        <div class="flex justify-between items-center mb-1.5">
+                            <span class="text-[10px] font-black uppercase text-mars-green bg-mars-green/10 border border-mars-green/40 px-1.5 py-0.5">MISIÓN</span>
+                            <span class="text-[10px] font-mono ${returnedDeliverables > 0 ? 'text-red-400 font-bold' : 'text-slate-400'}">${returnedDeliverables > 0 ? `⚠️ ${returnedDeliverables} Acción` : 'Al día'}</span>
                         </div>
-                        <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">📤 Mis Entregables & Visados</h3>
-                        <p class="text-xs text-slate-300 mt-1 leading-relaxed">Gestión guiada paso a paso de memorias en Google Docs, visado formal del CEO y remisión al docente.</p>
+                        <h3 class="font-orbitron font-black text-xs sm:text-sm text-white uppercase">📤 Mis Entregables</h3>
+                        <p class="text-[11px] text-slate-300 mt-1 line-clamp-2 leading-relaxed">Gestión guiada en Docs, visado formal y envío al claustro.</p>
                     </div>
-                    <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
-                        <span class="text-[11px] text-slate-400 font-mono">Flujo guiado 4 pasos</span>
-                        <button type="button" onclick="ui.navigate('role_deliverables')" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">Acceder ➔</button>
+                    <div class="mt-3 pt-2.5 border-t border-slate-800 flex justify-between items-center">
+                        <span class="text-[10px] text-slate-400 font-mono">4 Pasos</span>
+                        <button type="button" onclick="ui.navigate('role_deliverables')" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-3 py-1.5 hover:bg-white transition-all">Acceder ➔</button>
                     </div>
                 </div>
             </div>
@@ -1604,7 +1604,7 @@ Object.assign(ui, {
                         <strong>Atención:</strong> Tu Startup tiene <strong>${firstDebt.count} entregable(s) pendiente(s)${firstDebt.hasReturned ? ' o devueltos para subsanar' : ''}</strong> de la <strong>Fase ${firstDebt.phaseId}</strong>.
                     </span>
                 </div>
-                <button type="button" onclick="ui.setRoleDeliverablesPhaseFilter('${firstDebt.phaseId}')" class="min-h-[36px] px-3.5 py-1.5 bg-red-600 hover:bg-white text-white hover:text-black font-bold uppercase transition-all shrink-0 shadow-sm active:scale-95">
+                <button type="button" onclick="ui.setRoleDeliverablesPhaseFilter('${firstDebt.phaseId}')" class="min-h-[44px] px-3.5 py-1.5 bg-red-600 hover:bg-white text-white hover:text-black font-bold uppercase transition-all shrink-0 shadow-sm active:scale-95">
                     [ Ir a Fase ${firstDebt.phaseId} ➔ ]
                 </button>
             </div>`;
@@ -1687,10 +1687,10 @@ Object.assign(ui, {
 
         const scopeSwitchHtml = `
             <div class="flex items-center gap-2 bg-black p-1 border border-mars-border">
-                <button type="button" onclick="ui.setRoleDeliverablesScopeFilter('MY_ROLE')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${scope === 'MY_ROLE' ? 'bg-mars-cyan text-black font-bold' : 'text-slate-400 hover:text-white'}">
+                <button type="button" onclick="ui.setRoleDeliverablesScopeFilter('MY_ROLE')" class="min-h-[44px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${scope === 'MY_ROLE' ? 'bg-mars-cyan text-black font-bold' : 'text-slate-400 hover:text-white'}">
                     🎯 Mis Entregables (${myRolePhaseDefs.length})
                 </button>
-                <button type="button" onclick="ui.setRoleDeliverablesScopeFilter('ALL')" class="min-h-[40px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${scope === 'ALL' ? 'bg-mars-cyan text-black font-bold' : 'text-slate-400 hover:text-white'}">
+                <button type="button" onclick="ui.setRoleDeliverablesScopeFilter('ALL')" class="min-h-[44px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${scope === 'ALL' ? 'bg-mars-cyan text-black font-bold' : 'text-slate-400 hover:text-white'}">
                     🏢 Toda la Startup (${allStartupPhaseDefs.length})
                 </button>
             </div>
@@ -1864,7 +1864,7 @@ Object.assign(ui, {
                     <div class="flex flex-wrap items-center gap-2 pt-1">
                         ${this.renderDocTemplateBtn(def.key)}
                         ${docObj?.driveUrl ? `
-                            <a href="${encodeURI(docObj.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/50 text-cyan-300 border border-cyan-500/40 rounded font-mono hover:bg-cyan-900/60 transition-colors">
+                            <a href="${encodeURI(docObj.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/50 text-cyan-300 border border-cyan-500/40 rounded font-mono hover:bg-cyan-900/60 transition-colors">
                                 <span>📄 Abrir Mi Documento en Google Docs ↗</span>
                             </a>
                         ` : ''}
@@ -1897,7 +1897,7 @@ Object.assign(ui, {
                 <div role="tablist" aria-label="Secciones de Entregables y Dossier" class="flex flex-wrap gap-2 pt-3 border-t border-slate-800">
                     <button type="button" role="tab" aria-selected="${activeSection === 'deliverables'}" onclick="ui.setRoleDeliverablesSection('deliverables')" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase transition-all flex items-center gap-1.5 ${activeSection === 'deliverables' ? 'bg-mars-cyan text-black font-black shadow-sm' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-700'}">
                         <span>📤 Gestión de Entregables</span>
-                        ${(actionRequiredCount > 0) ? `<span class="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse">${actionRequiredCount}</span>` : ''}
+                        ${(actionRequiredCount > 0) ? `<span class="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-pulse">${actionRequiredCount}</span>` : ''}
                     </button>
                     <button type="button" role="tab" aria-selected="${activeSection === 'grades'}" onclick="ui.setRoleDeliverablesSection('grades')" class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase transition-all flex items-center gap-1.5 ${activeSection === 'grades' ? 'bg-mars-cyan text-black font-black shadow-sm' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-700'}">
                         <span>📊 Calificaciones & Rúbricas (100%)</span>
@@ -2851,7 +2851,7 @@ Object.assign(ui, {
                                     <span class="text-[10px] text-slate-400">Puedes conservarla o sustituirla a continuación.</span>
                                 </div>
                             </div>
-                            <button type="button" onclick="document.getElementById('offnews-edit-img-data').value = ''; document.getElementById('offnews-edit-url').value = ''; document.getElementById('offnews-edit-current-img').classList.add('hidden'); ui.notify('Portada marcada para eliminar al guardar.', 'info');" class="min-h-[36px] px-3 py-1 bg-red-950/60 border border-red-500 text-red-300 hover:bg-red-800 hover:text-white text-xs font-bold uppercase transition-colors">
+                            <button type="button" onclick="document.getElementById('offnews-edit-img-data').value = ''; document.getElementById('offnews-edit-url').value = ''; document.getElementById('offnews-edit-current-img').classList.add('hidden'); ui.notify('Portada marcada para eliminar al guardar.', 'info');" class="min-h-[44px] px-3 py-1 bg-red-950/60 border border-red-500 text-red-300 hover:bg-red-800 hover:text-white text-xs font-bold uppercase transition-colors">
                                 🗑️ Quitar Portada
                             </button>
                         </div>
@@ -3450,7 +3450,7 @@ Object.assign(ui, {
                     </div>
                     <h5 class="font-orbitron font-bold text-white text-xs uppercase tracking-tight break-words">${this.escapeHTML(d.name || d.title || d.key)}</h5>
                 </div>
-                <button type="button" onclick="ui.current = 'role_deliverables'; ui.roleDeliverablesPhase = '${curPhase}'; ui.roleDeliverablesScope = 'MY_ROLE'; ui.render();" class="shrink-0 min-h-[38px] px-3.5 py-1.5 bg-slate-900 hover:bg-mars-cyan hover:text-black text-mars-cyan border border-mars-cyan/60 font-bold uppercase text-[11px] rounded transition-all flex items-center gap-1.5 shadow-sm">
+                <button type="button" onclick="ui.current = 'role_deliverables'; ui.roleDeliverablesPhase = '${curPhase}'; ui.roleDeliverablesScope = 'MY_ROLE'; ui.render();" class="shrink-0 min-h-[44px] px-3.5 py-1.5 bg-slate-900 hover:bg-mars-cyan hover:text-black text-mars-cyan border border-mars-cyan/60 font-bold uppercase text-[11px] rounded transition-all flex items-center gap-1.5 shadow-sm">
                     <span>📤 Gestionar en Mis Entregables ➔</span>
                 </button>
             </div>`;

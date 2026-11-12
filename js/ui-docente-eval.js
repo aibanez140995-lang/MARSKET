@@ -150,7 +150,7 @@ Object.assign(ui, {
                         <span class="text-xs bg-black border border-mars-cyan/60 px-3 py-1.5 text-mars-cyan font-mono font-bold">
                             Recibidos: <strong class="text-white">${totalDelivered}/${totalPossible}</strong> (${pctGlobal}%)
                         </span>
-                        <button type="button" onclick="ui.toggleArchiveFilterPending()" class="min-h-[36px] px-3 py-1.5 text-xs font-bold uppercase transition-all rounded-sm ${this.archiveFilterPending ? 'bg-mars-yellow text-black shadow-sm font-black' : 'bg-slate-900 text-slate-300 border border-slate-700 hover:text-white'}">
+                        <button type="button" onclick="ui.toggleArchiveFilterPending()" class="min-h-[44px] px-3 py-1.5 text-xs font-bold uppercase transition-all rounded-sm ${this.archiveFilterPending ? 'bg-mars-yellow text-black shadow-sm font-black' : 'bg-slate-900 text-slate-300 border border-slate-700 hover:text-white'}">
                             ${this.archiveFilterPending ? '⚡ Mostrando: Solo Incompletos' : '🔍 Filtrar: Solo Incompletos'}
                         </button>
                     </div>
@@ -242,7 +242,7 @@ Object.assign(ui, {
                     </div>
                     <div class="flex items-center gap-2 w-full sm:w-auto">
                         <label for="eval-co-select" class="sr-only">Buscador Rápido de Startup</label>
-                        <select id="eval-co-select" onchange="ui.selectEvalCo(this.value)" class="min-h-[40px] w-full sm:w-auto bg-slate-900 border border-mars-border text-white text-xs p-2 uppercase font-bold outline-none focus:border-mars-cyan">
+                        <select id="eval-co-select" onchange="ui.selectEvalCo(this.value)" class="min-h-[44px] w-full sm:w-auto bg-slate-900 border border-mars-border text-white text-xs p-2 uppercase font-bold outline-none focus:border-mars-cyan">
                             <option value="">-- Buscar por Nombre --</option>
                             ${Object.keys(state.data.companies)
                                 .filter(cid => this.evalClassFilter === 'ALL' || state.data.companies[cid].classGroup === this.evalClassFilter)
@@ -361,7 +361,7 @@ Object.assign(ui, {
                                         <p id="realtime-grade" class="text-5xl font-orbitron text-mars-green tracking-tighter">${pastGrade.final !== undefined && pastGrade.final !== null ? Number(pastGrade.final).toFixed(2) : '0.00'}</p>
                                         <p id="realtime-grade-pct" class="text-[11px] text-slate-400 font-mono mt-1">${pastGrade.final !== undefined && pastGrade.final !== null ? '(Nota Registrada)' : '(0% Evaluado)'}</p>
                                     </div>
-                                    <button onclick="ui.saveGrade('${activeSubject}')" class="min-h-[44px] bg-mars-cyan text-black font-black py-4 text-xs uppercase tracking-widest hover:glow-cyan transition-all">[ REGISTRAR CALIFICACIÓN ]</button>
+                                    <button onclick="ui.saveGrade('${activeSubject}')" class="min-h-[44px] bg-mars-cyan text-black font-black py-4 text-xs uppercase tracking-widest hover:shadow-neon-cyan hover:bg-white transition-all">[ REGISTRAR CALIFICACIÓN ]</button>
                                 </div>
                             </div>
                         </div>
@@ -408,14 +408,14 @@ Object.assign(ui, {
                 <div class="bg-black/70 border border-slate-800 p-2.5 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
                     <div>
                         <div class="flex items-center gap-1.5 flex-wrap">
-                            <span class="text-[10px] font-mono bg-mars-cyan/20 text-mars-cyan border border-mars-cyan/40 px-1.5 py-0.2 rounded font-bold">FASE ${ph}</span>
+                            <span class="text-[10px] font-mono bg-mars-cyan/20 text-mars-cyan border border-mars-cyan/40 px-1.5 py-0.5 rounded font-bold">FASE ${ph}</span>
                             <span class="text-white font-bold">${this.escapeHTML(item.title || 'Nota de Prensa')}</span>
                         </div>
                         <p class="text-[10px] text-slate-400 mt-0.5">Publicada: ${this.escapeHTML(item.publishedDate || item.publishedAt || '')}</p>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                         <span class="text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-mono font-bold">[✓ PUBLICADA]</span>
-                        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors min-h-[36px]">
+                        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors min-h-[44px]">
                             <span>Abrir Doc ↗</span>
                         </a>
                     </div>
@@ -424,7 +424,7 @@ Object.assign(ui, {
                 return `
                 <div class="bg-black/40 border border-slate-800/80 border-dashed p-2 rounded flex justify-between items-center text-xs text-slate-400">
                     <span class="flex items-center gap-1.5">
-                        <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.2 rounded">FASE ${ph}</span>
+                        <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">FASE ${ph}</span>
                         <span>Nota de Prensa (DOC_15)</span>
                     </span>
                     <span class="text-[10px] text-amber-400/80 font-mono">[PENDIENTE CIERRE FASE ${ph}]</span>
@@ -556,7 +556,7 @@ Object.assign(ui, {
                     </span>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                    <button type="button" onclick="ui.toggleTeacherPhaseGuide()" class="min-h-[36px] px-3 py-1 text-xs font-bold uppercase transition-all rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5">
+                    <button type="button" onclick="ui.toggleTeacherPhaseGuide()" class="min-h-[44px] px-3 py-1 text-xs font-bold uppercase transition-all rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5">
                         <span>📅 ${this.teacherPhaseGuideExpanded ? 'Ocultar Guía de Fases ▲' : 'Guía de Fases y Criterios ▼'}</span>
                     </button>
                 </div>
@@ -577,7 +577,7 @@ Object.assign(ui, {
                         <span class="text-slate-400">⚪ ${unsubmittedCount} sin entregar</span>
                     </div>
                     ${firstPendingCo ? `
-                        <button type="button" onclick="ui.selectEvalCo('${firstPendingCid}')" class="w-full min-h-[38px] bg-mars-cyan hover:bg-white text-black font-black text-xs uppercase tracking-wider px-3 py-1.5 rounded transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                        <button type="button" onclick="ui.selectEvalCo('${firstPendingCid}')" class="w-full min-h-[44px] bg-mars-cyan hover:bg-white text-black font-black text-xs uppercase tracking-wider px-3 py-1.5 rounded transition-colors flex items-center justify-center gap-1.5 shadow-sm">
                             <span>👉 Calificar: ${this.escapeHTML(firstPendingCo.name)} ➔</span>
                         </button>
                     ` : `
@@ -628,7 +628,7 @@ Object.assign(ui, {
                 <div>
                     <div class="flex justify-between items-start gap-1 mb-1">
                         <span class="text-xs font-orbitron font-bold ${isCurrent ? 'text-mars-cyan' : 'text-white'}">${phaseNames[ph]}</span>
-                        ${isCurrent ? '<span class="text-[9px] bg-mars-cyan text-black px-1.5 py-0.2 font-black font-mono uppercase rounded">ACTUAL</span>' : ''}
+                        ${isCurrent ? '<span class="text-[9px] bg-mars-cyan text-black px-1.5 py-0.5 font-black font-mono uppercase rounded">ACTUAL</span>' : ''}
                     </div>
                     <span class="text-[10px] font-mono text-slate-400 block mb-2">${phaseDates[ph]}</span>
                     
@@ -711,10 +711,10 @@ Object.assign(ui, {
                 const isCur = (currentCls === cls);
                 const count = pendingCounts[cls] || 0;
                 const badge = count > 0 
-                    ? `<span class="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${isCur ? 'bg-black text-amber-300' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'} animate-pulse">🟡 ${count}</span>` 
+                    ? `<span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${isCur ? 'bg-black text-amber-300' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'} animate-pulse">🟡 ${count}</span>` 
                     : '';
                 return `
-                <button type="button" onclick="ui.setClassFilter('${cls}'); ui.evalSelectedCo='';" class="min-h-[36px] inline-flex items-center px-2.5 py-1 text-xs font-mono font-bold uppercase transition-all rounded ${
+                <button type="button" onclick="ui.setClassFilter('${cls}'); ui.evalSelectedCo='';" class="min-h-[44px] inline-flex items-center px-2.5 py-1 text-xs font-mono font-bold uppercase transition-all rounded ${
                     isCur 
                         ? 'bg-mars-yellow text-black shadow-sm font-black' 
                         : 'bg-black text-slate-300 border border-slate-800 hover:text-white hover:border-slate-700'
@@ -767,7 +767,7 @@ Object.assign(ui, {
                     <span class="font-orbitron font-bold text-xs ${isSelected ? 'text-mars-cyan' : 'text-white'} truncate" title="${this.escapeHTML(co.name)}">
                         ${this.escapeHTML(co.name)}
                     </span>
-                    <span class="text-[10px] font-mono px-1.5 py-0.2 bg-slate-800 text-slate-300 rounded shrink-0">
+                    <span class="text-[10px] font-mono px-1.5 py-0.5 bg-slate-800 text-slate-300 rounded shrink-0">
                         ${this.escapeHTML((co.classGroup || 'A').toUpperCase())}
                     </span>
                 </div>
@@ -976,7 +976,7 @@ Object.assign(ui, {
                     <!-- Selector de Clase -->
                     <div class="flex items-center gap-1.5 bg-black border border-slate-700 p-1">
                         <span class="text-[10px] text-slate-400 font-mono uppercase px-1">Clase:</span>
-                        <select onchange="ui.setClassFilter(this.value);" class="bg-black text-amber-400 font-bold text-xs p-1 outline-none uppercase min-h-[36px]">
+                        <select onchange="ui.setClassFilter(this.value);" class="bg-black text-amber-400 font-bold text-xs p-1 outline-none uppercase min-h-[44px]">
                             ${allClasses.map(cls => `<option value="${cls}" ${classFilter === cls ? 'selected' : ''}>${cls === 'ALL' ? 'Todas (A-F, TEST)' : `Clase ${cls}`}</option>`).join('')}
                         </select>
                     </div>
@@ -984,7 +984,7 @@ Object.assign(ui, {
                     <!-- Selector de Fase -->
                     <div class="flex items-center gap-1.5 bg-black border border-slate-700 p-1">
                         <span class="text-[10px] text-slate-400 font-mono uppercase px-1">Fase:</span>
-                        <select onchange="ui.adminContractsPhaseFilter=this.value; ui.render();" class="bg-black text-mars-cyan font-bold text-xs p-1 outline-none uppercase min-h-[36px]">
+                        <select onchange="ui.adminContractsPhaseFilter=this.value; ui.render();" class="bg-black text-mars-cyan font-bold text-xs p-1 outline-none uppercase min-h-[44px]">
                             ${allPhases.map(ph => `<option value="${ph}" ${phaseFilter === ph ? 'selected' : ''}>${ph === 'ALL' ? 'Todas las Fases' : `Fase ${ph}`}</option>`).join('')}
                         </select>
                     </div>
