@@ -513,17 +513,65 @@ export async function onRequest(context) {
                 payload.config = currentState.config;
             }
 
-            // Proteger config.deliverableSchedule, config.deadlines y config.guidelines con Last-Write-Wins
+            // Protección granular LWW de config.deliverableSchedule, config.deadlines, config.scheduleBaselineVersion y config.guidelines
             if (currentState && currentState.config) {
                 payload.config = payload.config || {};
-                const currentConfigUpdated = Number(currentState.config.updatedAt) || 0;
-                const incomingConfigUpdated = Number(payload.config.updatedAt) || 0;
-                if (currentConfigUpdated > incomingConfigUpdated) {
-                    payload.config.deliverableSchedule = currentState.config.deliverableSchedule || payload.config.deliverableSchedule || {};
-                    payload.config.deadlines = currentState.config.deadlines || payload.config.deadlines || {};
-                    payload.config.guidelines = currentState.config.guidelines || payload.config.guidelines || {};
-                    payload.config.updatedAt = currentConfigUpdated;
+                const currCfg = currentState.config;
+                const incCfg = payload.config;
+                const currentConfigUpdated = Number(currCfg.updatedAt) || 0;
+                const incomingConfigUpdated = Number(incCfg.updatedAt) || 0;
+
+                incCfg.scheduleBaselineVersion = Math.max(
+                    Number(currCfg.scheduleBaselineVersion) || 0,
+                    Number(incCfg.scheduleBaselineVersion) || 0
+                );
+
+                const currSched = (currCfg.deliverableSchedule && typeof currCfg.deliverableSchedule === 'object') ? currCfg.deliverableSchedule : {};
+                const incSched = (incCfg.deliverableSchedule && typeof incCfg.deliverableSchedule === 'object') ? incCfg.deliverableSchedule : {};
+                const mergedSched = {};
+                const allKeys = new Set([...Object.keys(currSched), ...Object.keys(incSched)]);
+
+                for (const dKey of allKeys) {
+                    const cItem = currSched[dKey] && typeof currSched[dKey] === 'object' ? currSched[dKey] : null;
+                    const iItem = incSched[dKey] && typeof incSched[dKey] === 'object' ? incSched[dKey] : null;
+                    if (cItem && !iItem) {
+                        mergedSched[dKey] = cItem;
+                    } else if (!cItem && iItem) {
+                        mergedSched[dKey] = iItem;
+                    } else if (cItem && iItem) {
+                        const cUpd = Number(cItem.updatedAt) || 0;
+                        const iUpd = Number(iItem.updatedAt) || 0;
+                        if (cUpd > iUpd) {
+                            mergedSched[dKey] = cItem;
+                        } else if (iUpd > cUpd) {
+                            mergedSched[dKey] = iItem;
+                        } else {
+                            const cHasExplicit = Boolean((cItem.guideDocUrl && String(cItem.guideDocUrl).trim()) || cItem.clearedGuide);
+                            const iHasExplicit = Boolean((iItem.guideDocUrl && String(iItem.guideDocUrl).trim()) || iItem.clearedGuide);
+                            mergedSched[dKey] = (cHasExplicit && !iHasExplicit) ? cItem : iItem;
+                        }
+                    }
                 }
+                if (Object.keys(mergedSched).length > 0) {
+                    incCfg.deliverableSchedule = mergedSched;
+                }
+
+                const currDeadlines = (currCfg.deadlines && typeof currCfg.deadlines === 'object') ? currCfg.deadlines : {};
+                const incDeadlines = (incCfg.deadlines && typeof incCfg.deadlines === 'object') ? incCfg.deadlines : {};
+                const mergedDeadlines = (currentConfigUpdated > incomingConfigUpdated)
+                    ? { ...incDeadlines, ...currDeadlines }
+                    : { ...currDeadlines, ...incDeadlines };
+                for (const [dKey, sItem] of Object.entries(mergedSched)) {
+                    if (sItem && sItem.deadline) {
+                        mergedDeadlines[dKey] = sItem.deadline;
+                    }
+                }
+                incCfg.deadlines = mergedDeadlines;
+
+                if (currentConfigUpdated > incomingConfigUpdated && currCfg.guidelines) {
+                    incCfg.guidelines = currCfg.guidelines;
+                }
+                incCfg.updatedAt = Math.max(currentConfigUpdated, incomingConfigUpdated);
             }
 
             // Manejo de deletedCompanyIds (Lista negra persistente de startups eliminadas en Cloudflare D1)
@@ -614,7 +662,14 @@ export async function onRequest(context) {
                 } catch(e) {}
             }
             
-            return new Response(JSON.stringify({ success: true, version: payload.version }), { headers });
+            const savedCfgUpdated = Number(payload.config?.updatedAt) || 0;
+            const savedETag = `W/"v-${payload.version}-${savedCfgUpdated}"`;
+            return new Response(JSON.stringify({
+                success: true,
+                version: payload.version,
+                configUpdatedAt: savedCfgUpdated,
+                etag: savedETag
+            }), { headers: { ...headers, 'ETag': savedETag } });
         }
         
         return new Response('Method Not Allowed', { status: 405, headers });

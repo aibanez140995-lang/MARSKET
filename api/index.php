@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.05
+// Versión: v2.0.06
 
 declare(strict_types=1);
 
@@ -201,11 +201,24 @@ try {
                 exit;
             }
 
-            // Mitigación de Ancho de Banda con ETag y HTTP 304 (0 bytes si la versión coincide)
-            $stmt = $pdo->query("SELECT json_extract(data, '$.version') as v FROM state WHERE id = 'current'");
+            if ($action === 'fast_version') {
+                $stmtFast = $pdo->query("SELECT json_extract(data, '$.version') as v, json_extract(data, '$.lastUpdated') as lu, json_extract(data, '$.config.updatedAt') as cu FROM state WHERE id = 'current'");
+                $rowFast = $stmtFast ? $stmtFast->fetch() : null;
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'version' => (int)($rowFast['v'] ?? 1),
+                    'updatedAt' => (int)($rowFast['lu'] ?? 0),
+                    'configUpdatedAt' => (int)($rowFast['cu'] ?? 0)
+                ]);
+                exit;
+            }
+
+            // Mitigación de Ancho de Banda con ETag y HTTP 304 (0 bytes si versión y config.updatedAt coinciden)
+            $stmt = $pdo->query("SELECT json_extract(data, '$.version') as v, json_extract(data, '$.config.updatedAt') as cu FROM state WHERE id = 'current'");
             $row = $stmt->fetch();
             $version = (string)($row['v'] ?? '1');
-            $serverETag = 'W/"v-' . $version . '"';
+            $cu = (string)((int)($row['cu'] ?? 0));
+            $serverETag = 'W/"v-' . $version . '-' . $cu . '"';
             $clientETag = $_SERVER['HTTP_IF_NONE_MATCH'] ?? '';
 
             if ($clientETag === $serverETag) {
@@ -607,8 +620,75 @@ try {
                         $t['pin'] = $defaultTeacherPins[$tk] ?? '1234';
                     }
                 }
+                if (isset($currentState['config']['teachers']) && is_array($currentState['config']['teachers'])) {
+                    foreach ($currentState['config']['teachers'] as $tk => $ct) {
+                        if (!isset($payload['config']['teachers'][$tk])) {
+                            $payload['config']['teachers'][$tk] = $ct;
+                        }
+                    }
+                }
             } elseif (isset($currentState['config'])) {
                 $payload['config'] = $currentState['config'];
+            }
+
+            // Protección granular LWW de config.deliverableSchedule, config.deadlines, config.scheduleBaselineVersion y config.guidelines
+            if ($isTeacher && isset($currentState['config']) && is_array($currentState['config'])) {
+                $currCfg = $currentState['config'];
+                $incCfg = is_array($payload['config'] ?? null) ? $payload['config'] : [];
+                $currCfgUpdated = (int)($currCfg['updatedAt'] ?? 0);
+                $incCfgUpdated = (int)($incCfg['updatedAt'] ?? 0);
+
+                $currBaseline = (int)($currCfg['scheduleBaselineVersion'] ?? 0);
+                $incBaseline = (int)($incCfg['scheduleBaselineVersion'] ?? 0);
+                $incCfg['scheduleBaselineVersion'] = max($currBaseline, $incBaseline);
+
+                $currSched = is_array($currCfg['deliverableSchedule'] ?? null) ? $currCfg['deliverableSchedule'] : [];
+                $incSched = is_array($incCfg['deliverableSchedule'] ?? null) ? $incCfg['deliverableSchedule'] : [];
+                $mergedSched = [];
+                $allSchedKeys = array_unique(array_merge(array_keys($currSched), array_keys($incSched)));
+
+                foreach ($allSchedKeys as $dKey) {
+                    $cItem = is_array($currSched[$dKey] ?? null) ? $currSched[$dKey] : null;
+                    $iItem = is_array($incSched[$dKey] ?? null) ? $incSched[$dKey] : null;
+                    if ($cItem && !$iItem) {
+                        $mergedSched[$dKey] = $cItem;
+                    } elseif (!$cItem && $iItem) {
+                        $mergedSched[$dKey] = $iItem;
+                    } elseif ($cItem && $iItem) {
+                        $cUpd = (int)($cItem['updatedAt'] ?? 0);
+                        $iUpd = (int)($iItem['updatedAt'] ?? 0);
+                        if ($cUpd > $iUpd) {
+                            $mergedSched[$dKey] = $cItem;
+                        } elseif ($iUpd > $cUpd) {
+                            $mergedSched[$dKey] = $iItem;
+                        } else {
+                            $cHasExplicit = !empty($cItem['guideDocUrl']) || !empty($cItem['clearedGuide']);
+                            $iHasExplicit = !empty($iItem['guideDocUrl']) || !empty($iItem['clearedGuide']);
+                            $mergedSched[$dKey] = ($cHasExplicit && !$iHasExplicit) ? $cItem : $iItem;
+                        }
+                    }
+                }
+                if (!empty($mergedSched)) {
+                    $incCfg['deliverableSchedule'] = $mergedSched;
+                }
+
+                $currDeadlines = is_array($currCfg['deadlines'] ?? null) ? $currCfg['deadlines'] : [];
+                $incDeadlines = is_array($incCfg['deadlines'] ?? null) ? $incCfg['deadlines'] : [];
+                $mergedDeadlines = ($currCfgUpdated > $incCfgUpdated)
+                    ? array_merge($incDeadlines, $currDeadlines)
+                    : array_merge($currDeadlines, $incDeadlines);
+                foreach ($mergedSched as $dKey => $sItem) {
+                    if (!empty($sItem['deadline'])) {
+                        $mergedDeadlines[$dKey] = $sItem['deadline'];
+                    }
+                }
+                $incCfg['deadlines'] = $mergedDeadlines;
+
+                if ($currCfgUpdated > $incCfgUpdated && isset($currCfg['guidelines'])) {
+                    $incCfg['guidelines'] = $currCfg['guidelines'];
+                }
+                $incCfg['updatedAt'] = max($currCfgUpdated, $incCfgUpdated);
+                $payload['config'] = $incCfg;
             }
 
             // Manejo de deletedCompanyIds (Lista negra persistente de startups eliminadas)
@@ -698,7 +778,15 @@ try {
                 } catch (\Exception $e) {}
             }
 
-            echo json_encode(['success' => true, 'version' => $payload['version']]);
+            $savedCfgUpdated = (int)($payload['config']['updatedAt'] ?? 0);
+            $savedETag = 'W/"v-' . $payload['version'] . '-' . $savedCfgUpdated . '"';
+            header('ETag: ' . $savedETag);
+            echo json_encode([
+                'success' => true,
+                'version' => $payload['version'],
+                'configUpdatedAt' => $savedCfgUpdated,
+                'etag' => $savedETag
+            ]);
             exit;
         }
 
@@ -743,7 +831,16 @@ try {
             }
         }
 
-        $serverETag = 'W/"co-' . $cid . '-' . $version . '-' . $updatedAt . '"';
+        $configUpdatedAt = 0;
+        try {
+            $stmtCfg = $pdo->query("SELECT json_extract(data, '$.config.updatedAt') AS cu FROM state WHERE id = 'current'");
+            $cRow = $stmtCfg ? $stmtCfg->fetch() : null;
+            if ($cRow && isset($cRow['cu'])) {
+                $configUpdatedAt = (int)$cRow['cu'];
+            }
+        } catch (\Exception $e) {}
+
+        $serverETag = 'W/"co-' . $cid . '-' . $version . '-' . $updatedAt . '-' . $configUpdatedAt . '"';
         $clientETag = $_SERVER['HTTP_IF_NONE_MATCH'] ?? '';
 
         if ($clientETag === $serverETag) {
@@ -762,6 +859,7 @@ try {
             'companyId' => $cid,
             'version' => $version,
             'updatedAt' => $updatedAt,
+            'configUpdatedAt' => $configUpdatedAt,
             'etag' => $serverETag
         ], JSON_UNESCAPED_UNICODE);
         exit;

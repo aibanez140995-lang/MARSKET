@@ -55,6 +55,7 @@ const DEFAULT_STATE = {
     ],
     config: {
         nextOrderId: 1000,
+        scheduleBaselineVersion: 1168,
         deadlines: typeof DEFAULT_DEADLINES !== 'undefined' ? DEFAULT_DEADLINES : {},
         deliverableSchedule: {},
         guidelines: { techReportDocUrl: "", techReportNotes: "Guía oficial redactada por FYQ." },
@@ -385,20 +386,26 @@ const state = {
         }
         d.dismissedNotificationIds = Array.isArray(d.dismissedNotificationIds) ? d.dismissedNotificationIds : [];
         d.config.deadlines = d.config.deadlines || {};
+        const hasOwn = Object.prototype.hasOwnProperty;
         if (!d.config.scheduleBaselineVersion || d.config.scheduleBaselineVersion < 1168) {
             d.config.scheduleBaselineVersion = 1168;
             d.config.deliverableSchedule = d.config.deliverableSchedule || {};
             if (typeof DELIVERABLES_DEF !== 'undefined') {
                 DELIVERABLES_DEF.forEach(def => {
-                    d.config.deadlines[def.key] = def.defaultDate;
+                    if (!d.config.deadlines[def.key]) {
+                        d.config.deadlines[def.key] = def.defaultDate;
+                    }
                     const prevSched = d.config.deliverableSchedule[def.key] || {};
+                    const hasExplicitGuide = hasOwn.call(prevSched, 'guideDocUrl');
+                    const hasExplicitOpen = hasOwn.call(prevSched, 'openDate');
                     d.config.deliverableSchedule[def.key] = {
                         ...prevSched,
-                        phase: def.phase || "I",
-                        openDate: def.defaultOpenDate,
-                        deadline: def.defaultDate,
-                        guideDocUrl: prevSched.guideDocUrl || def.defaultGuideDocUrl || "",
-                        updatedAt: Date.now()
+                        phase: prevSched.phase || def.phase || "I",
+                        openDate: hasExplicitOpen ? prevSched.openDate : def.defaultOpenDate,
+                        deadline: prevSched.deadline || d.config.deadlines[def.key] || def.defaultDate,
+                        guideDocUrl: hasExplicitGuide ? prevSched.guideDocUrl : (def.defaultGuideDocUrl || ""),
+                        // No sellar Date.now() en datos recibidos o heredados para no derrotar cambios recientes en LWW
+                        updatedAt: Number(prevSched.updatedAt) || 0
                     };
                 });
             }
@@ -794,31 +801,44 @@ const state = {
         // Resolución LWW para configuración y PINs docentes (evita rebote de PIN en el Claustro)
         if (localData.config) {
             merged.config = merged.config || {};
-            const localCfgTime = localData.config.updatedAt || 0;
-            const serverCfgTime = serverData.config?.updatedAt || 0;
+            const localCfgTime = Number(localData.config.updatedAt) || 0;
+            const serverCfgTime = Number(serverData.config?.updatedAt) || 0;
+            const maxBaseline = Math.max(
+                Number(localData.config.scheduleBaselineVersion) || 0,
+                Number(serverData.config?.scheduleBaselineVersion) || 0
+            );
+            if (maxBaseline > 0) {
+                merged.config.scheduleBaselineVersion = maxBaseline;
+            }
 
             if (localCfgTime > serverCfgTime) {
                 merged.config.deadlines = JSON.parse(JSON.stringify(localData.config.deadlines || merged.config.deadlines || {}));
                 merged.config.guidelines = JSON.parse(JSON.stringify(localData.config.guidelines || merged.config.guidelines || {}));
-                merged.config.updatedAt = localCfgTime;
             }
 
             // Fusión granular de deliverableSchedule conservando siempre los datos más recientes por entregable
             merged.config.deliverableSchedule = merged.config.deliverableSchedule || {};
+            merged.config.deadlines = merged.config.deadlines || {};
             const localSched = localData.config.deliverableSchedule || {};
             for (const dKey in localSched) {
                 const lItem = localSched[dKey];
                 const sItem = merged.config.deliverableSchedule[dKey];
                 if (!sItem) {
                     merged.config.deliverableSchedule[dKey] = JSON.parse(JSON.stringify(lItem));
+                    if (lItem?.deadline) merged.config.deadlines[dKey] = lItem.deadline;
                 } else {
-                    const lItemTime = lItem.updatedAt || localCfgTime;
-                    const sItemTime = sItem.updatedAt || serverCfgTime;
-                    if (lItemTime > sItemTime) {
+                    const lItemTime = Number(lItem?.updatedAt) || 0;
+                    const sItemTime = Number(sItem?.updatedAt) || 0;
+                    const useLocal = (lItemTime > sItemTime) || (lItemTime === 0 && sItemTime === 0 && localCfgTime > serverCfgTime);
+                    if (useLocal) {
                         merged.config.deliverableSchedule[dKey] = JSON.parse(JSON.stringify(lItem));
+                        if (lItem?.deadline) merged.config.deadlines[dKey] = lItem.deadline;
+                    } else if (sItem?.deadline) {
+                        merged.config.deadlines[dKey] = sItem.deadline;
                     }
                 }
             }
+            merged.config.updatedAt = Math.max(localCfgTime, serverCfgTime);
             if (localData.config.teachers) {
                 merged.config.teachers = merged.config.teachers || {};
                 for (let tk in localData.config.teachers) {
@@ -2723,11 +2743,12 @@ const state = {
                     this.data.version = json.version; 
                     this.saveLocalOnly();
                 }
-                const etag = res.headers.get('ETag');
+                const etag = res.headers.get('ETag') || (json && json.etag);
                 if (etag) {
                     this.lastETag = etag;
                 } else if (json && json.version) {
-                    this.lastETag = 'W/"v-' + json.version + '"';
+                    const cfgUpd = this.data?.config?.updatedAt || 0;
+                    this.lastETag = 'W/"v-' + json.version + '-' + cfgUpd + '"';
                 }
                 this.isCloudOnline = true;
                 this.consecutiveNetworkFailures = 0;

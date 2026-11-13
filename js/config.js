@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.05) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.06) ---
 
-const APP_VERSION = "2.0.05";
+const APP_VERSION = "2.0.06";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -74,7 +74,7 @@ const COMMERCIAL_SHOPS_DEF = [
 ];
 const ROLES_EXTRA = { AUXILIAR: 'AUXILIAR' };
 
-const GOOGLE_DRIVE_REGEX = /^https:\/\/(docs|drive)\.google\.com\/(document|spreadsheets|presentation|file|drive\/folders)\/(d\/)?[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_.-]+)*(\?[^"'\s<>]*)?(#[^"'\s<>]*)?$/;
+const GOOGLE_DRIVE_REGEX = /^https:\/\/(docs|drive)\.google\.com\/((document|spreadsheets|presentation|file)\/(u\/\d+\/)?(d\/)?[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_.-]*)*|drive\/(u\/\d+\/)?folders\/[a-zA-Z0-9_-]+|open\?id=[a-zA-Z0-9_-]+)(\?[^"'\s<>]*)?(#[^"'\s<>]*)?$/;
 
 // Diccionario Oficial Inmutable de los 12 Modelos de Google Docs (/copy)
 const OFFICIAL_DOC_TEMPLATES = Object.freeze({
@@ -1097,8 +1097,25 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.05
+// Changelog Oficial de Producción v2.0.06
 const APP_CHANGELOG = [
+    {
+      version: "2.0.06",
+      date: new Date().toISOString().split('T')[0],
+      title: "Persistencia Blindada de Plantillas Drive, Propagación Instantánea al Aula y Botones Duales Oficiales",
+      items: [
+        "Eliminación de Colisión HTTP 409 al Guardar Plantillas: Retirado el autoguardado duplicado (onchange) de los campos de Cronograma Maestro para que pulsar [💾 Guardar Plantilla y Fechas] ejecute una única transacción limpia con confirmación real de nube.",
+        "Inmunidad Frente a Borrados en Sincronización (migrate + LWW Granular): Eliminado el sellado con hora actual sobre esquemas del servidor en state.migrate() y blindado el merge Last-Write-Wins entregable por entregable tanto en cliente como en ambos backends (PHP/SQLite y Cloudflare D1).",
+        "Propagación Automática a Alumnos (configUpdatedAt en CDMON): Incorporado configUpdatedAt al endpoint de sondeo rápido (/api/company/:cid/version) y al ETag global en PHP para que los equipos reciban en segundos cada nueva plantilla o plazo configurado por Coordinación.",
+        "Botones Duales Oficiales y Visibilidad Total: Todos los entregables con plantilla muestran acciones duales [📄 Ver Plantilla Oficial ↗] y [📋 Hacer Copia en Drive ↗] en Mis Entregables (incluyendo Paso 1 interactivo), Banners de Fase de cada departamento, modal de entrega y Manual de Rol.",
+        "Herramientas Extra para Coordinación: Insignia de estado [📄 Plantilla Activa], botón [🔗 Probar Plantilla ↗], opción [🗑️ Quitar] con confirmación y contador global [📄 X/18 con Plantilla] en la cabecera del Cronograma Maestro."
+      ],
+      highlights: [
+        { type: "PERSISTENCIA", text: "Guardado fiable de plantillas Google Drive sin colisiones ni auto-borrados." },
+        { type: "SINCRONIZACIÓN", text: "Propagación en tiempo real de plantillas y fechas al aula en CDMON y D1." },
+        { type: "ALUMNOS", text: "Doble acción oficial (Ver + Hacer Copia) y Paso 1 clicable en Mis Entregables." }
+      ]
+    },
     {
       version: "2.0.05",
       date: new Date().toISOString().split('T')[0],

@@ -20,39 +20,114 @@ const ui = {
     _delegationAttached: false,
     _playedPhaseDangerKey: null,
 
+    isDocsEditorUrl(url) {
+        if (!url || typeof url !== 'string') return false;
+        return /^https:\/\/docs\.google\.com\/(document|spreadsheets|presentation)\//i.test(url.trim());
+    },
+
+    getGoogleViewUrl(url) {
+        if (!url || typeof url !== 'string') return '';
+        const trimmed = url.trim();
+        if (!this.isDocsEditorUrl(trimmed)) return trimmed;
+        if (/\/(view|preview)([\?#].*)?$/i.test(trimmed) && !/\/template\/preview/i.test(trimmed)) {
+            return trimmed;
+        }
+        if (/\/(edit|copy|template\/preview)([\?#].*)?$/i.test(trimmed)) {
+            return trimmed.replace(/\/(edit|copy|template\/preview)([\?#].*)?$/i, '/preview');
+        }
+        if (/\/d\/[a-zA-Z0-9_-]+\/?$/i.test(trimmed)) {
+            return trimmed.replace(/\/?$/, '/preview');
+        }
+        return trimmed;
+    },
+
     getGoogleCopyUrl(url) {
         if (!url || typeof url !== 'string') return '';
-        let trimmed = url.trim();
-        if (trimmed.includes('/copy')) return trimmed;
-        if (/\/(edit|view|preview)([\?#].*)?$/.test(trimmed)) {
-            return trimmed.replace(/\/(edit|view|preview)([\?#].*)?$/, '/copy');
+        const trimmed = url.trim();
+        if (!this.isDocsEditorUrl(trimmed)) return trimmed;
+        if (/\/copy([\?#].*)?$/i.test(trimmed)) return trimmed;
+        if (/\/(edit|view|preview|template\/preview)([\?#].*)?$/i.test(trimmed)) {
+            return trimmed.replace(/\/(edit|view|preview|template\/preview)([\?#].*)?$/i, '/copy');
         }
-        if (/\/d\/[a-zA-Z0-9_-]+\/?$/.test(trimmed)) {
+        if (/\/d\/[a-zA-Z0-9_-]+\/?$/i.test(trimmed)) {
             return trimmed.replace(/\/?$/, '/copy');
         }
         return trimmed;
     },
 
-    renderDocTemplateBtn(docKey, customLabel = null) {
-        let tplUrl = '';
-        if (typeof state !== 'undefined' && state.data?.config?.deliverableSchedule?.[docKey]?.guideDocUrl) {
-            tplUrl = state.data.config.deliverableSchedule[docKey].guideDocUrl.trim();
-        } else if (typeof OFFICIAL_DOC_TEMPLATES !== 'undefined' && OFFICIAL_DOC_TEMPLATES[docKey]) {
-            tplUrl = OFFICIAL_DOC_TEMPLATES[docKey].copyUrl || '';
-        } else if (typeof DELIVERABLES_DEF !== 'undefined') {
-            const def = DELIVERABLES_DEF.find(d => d.key === docKey);
-            if (def && def.defaultGuideDocUrl) tplUrl = def.defaultGuideDocUrl.trim();
+    getDeliverableTemplateUrl(docKey) {
+        if (!docKey) return '';
+        const schedMap = (typeof state !== 'undefined' && state.data?.config?.deliverableSchedule) ? state.data.config.deliverableSchedule : {};
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const templates = typeof OFFICIAL_DOC_TEMPLATES !== 'undefined' ? OFFICIAL_DOC_TEMPLATES : {};
+
+        const curPhase = this.getCurrentPhaseKey ? this.getCurrentPhaseKey() : 'I';
+        const preferredDiary = curPhase === 'IV' ? 'decisionDiary_apr' : 'decisionDiary_dec';
+        const secondaryDiary = preferredDiary === 'decisionDiary_apr' ? 'decisionDiary_dec' : 'decisionDiary_apr';
+
+        let candidateKeys = [docKey];
+        if (docKey === 'DOC_10_HOJA_TALLER') candidateKeys = ['DOC_10_HOJA_TALLER', 'hoja_taller_fyq'];
+        else if (docKey === 'hoja_taller_fyq') candidateKeys = ['hoja_taller_fyq', 'DOC_10_HOJA_TALLER'];
+        else if (docKey === 'DOC_4_BITACORA_IA') candidateKeys = ['DOC_4_BITACORA_IA', preferredDiary, secondaryDiary];
+        else if (docKey === 'decisionDiary_dec' || docKey === 'decisionDiary_apr') candidateKeys = [docKey, 'DOC_4_BITACORA_IA'];
+
+        // 1. Revisar si el entregable o su alias tiene override explícito o fue limpiado (clearedGuide)
+        for (const k of candidateKeys) {
+            const s = schedMap[k];
+            if (s && s.guideDocUrl && String(s.guideDocUrl).trim()) {
+                return String(s.guideDocUrl).trim();
+            }
+            if (s && s.clearedGuide === true && (k === docKey || k === 'hoja_taller_fyq' || k === preferredDiary)) {
+                return '';
+            }
         }
 
+        // 2. Fallback a defaultGuideDocUrl en DELIVERABLES_DEF
+        for (const k of candidateKeys) {
+            const def = defs.find(d => d.key === k);
+            if (def && def.defaultGuideDocUrl && String(def.defaultGuideDocUrl).trim()) {
+                return String(def.defaultGuideDocUrl).trim();
+            }
+        }
+
+        // 3. Fallback a OFFICIAL_DOC_TEMPLATES
+        for (const k of candidateKeys) {
+            if (templates[k] && templates[k].copyUrl && String(templates[k].copyUrl).trim()) {
+                return String(templates[k].copyUrl).trim();
+            }
+        }
+
+        return '';
+    },
+
+    renderDocTemplateBtn(docKey, customLabel = null) {
+        const tplUrl = this.getDeliverableTemplateUrl(docKey);
         if (!tplUrl) return '';
 
-        const targetUrl = this.getGoogleCopyUrl(tplUrl);
-        const label = customLabel || '📄 Ver Plantilla Oficial';
+        if (this.isDocsEditorUrl(tplUrl)) {
+            const viewUrl = this.getGoogleViewUrl(tplUrl);
+            const copyUrl = this.getGoogleCopyUrl(tplUrl);
+            const viewLabel = customLabel || '📄 Ver Plantilla Oficial';
 
+            return `
+            <div class="inline-flex flex-wrap items-center gap-2">
+                <a href="${encodeURI(viewUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-1.5 min-h-[44px] bg-slate-900 border border-blue-500/70 hover:border-cyan-400 text-blue-300 hover:text-white px-3.5 py-2 text-xs font-bold uppercase transition-all shadow-sm group rounded">
+                    <span>${viewLabel}</span>
+                    <span class="text-xs text-cyan-400 font-mono group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">↗</span>
+                </a>
+                <a href="${encodeURI(copyUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-1.5 min-h-[44px] bg-cyan-950/60 border border-mars-cyan/70 hover:bg-mars-cyan hover:text-black text-mars-cyan px-3.5 py-2 text-xs font-black uppercase transition-all shadow-sm group rounded">
+                    <span>📋 Hacer Copia en Drive</span>
+                    <span class="text-xs font-mono group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">↗</span>
+                </a>
+            </div>
+            `;
+        }
+
+        const singleLabel = customLabel || '📄 Abrir Plantilla en Drive';
         return `
             <div class="inline-flex items-center">
-                <a href="${encodeURI(targetUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 min-h-[44px] bg-slate-900 border border-blue-500/70 hover:border-cyan-400 text-blue-300 hover:text-white px-4 py-2 text-xs font-bold uppercase transition-all shadow-sm group">
-                    <span>${label}</span>
+                <a href="${encodeURI(tplUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 min-h-[44px] bg-slate-900 border border-blue-500/70 hover:border-cyan-400 text-blue-300 hover:text-white px-4 py-2 text-xs font-bold uppercase transition-all shadow-sm group rounded">
+                    <span>${singleLabel}</span>
                     <span class="text-xs text-cyan-400 font-mono group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">↗</span>
                 </a>
             </div>
@@ -1712,9 +1787,18 @@ const ui = {
             const isLocked = this.isDeliverableLocked(d.key, co);
             const lockLabel = isLocked ? '<span class="text-amber-400 font-bold">[🔒 BLOQUEADO]</span>' : '<span class="text-mars-green font-bold">[🟢 ACTIVO]</span>';
             const statusLabel = docObj ? '<span class="text-mars-green font-bold">✓ Entregado</span>' : '<span class="text-mars-magenta font-bold">⏳ Pendiente</span>';
-            const tplUrl = sched.guideDocUrl || d.defaultGuideDocUrl || '';
-            const tplBadge = tplUrl ? `<a href="${encodeURI(tplUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-[10px] text-mars-cyan hover:underline font-mono ml-1.5 inline-flex items-center gap-0.5">📄 Plantilla Drive ↗</a>` : '';
-            return `<li class="border-b border-slate-800/80 pb-1.5 flex justify-between items-center gap-2 flex-wrap"><span><strong class="text-white">${this.escapeHTML(d.shortName || d.name)}</strong> (${this.escapeHTML(d.subject)}): ${statusLabel}${tplBadge}</span>${lockLabel}</li>`;
+            const tplUrl = this.getDeliverableTemplateUrl(d.key);
+            let tplBadge = '';
+            if (tplUrl) {
+                if (this.isDocsEditorUrl(tplUrl)) {
+                    const viewUrl = this.getGoogleViewUrl(tplUrl);
+                    const copyUrl = this.getGoogleCopyUrl(tplUrl);
+                    tplBadge = `<span class="inline-flex flex-wrap items-center gap-1.5 mt-1 sm:mt-0 sm:ml-2"><a href="${encodeURI(viewUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-2.5 py-1.5 bg-slate-900 border border-blue-500/50 rounded text-[11px] text-blue-300 hover:border-cyan-400 hover:text-white font-mono transition-colors">📄 Ver Plantilla ↗</a><a href="${encodeURI(copyUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-2.5 py-1.5 bg-cyan-950/60 border border-mars-cyan/50 rounded text-[11px] text-mars-cyan hover:bg-mars-cyan hover:text-black font-mono font-bold transition-colors">📋 Clonar en Drive ↗</a></span>`;
+                } else {
+                    tplBadge = `<a href="${encodeURI(tplUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-2.5 py-1.5 bg-slate-900 border border-blue-500/50 rounded text-[11px] text-blue-300 hover:border-cyan-400 hover:text-white font-mono ml-1.5 transition-colors">📄 Plantilla Drive ↗</a>`;
+                }
+            }
+            return `<li class="border-b border-slate-800/80 py-2 flex justify-between items-center gap-2 flex-wrap"><span class="flex flex-wrap items-center gap-1.5"><strong class="text-white">${this.escapeHTML(d.shortName || d.name)}</strong> <span class="text-slate-400">(${this.escapeHTML(d.subject)})</span>: ${statusLabel}${tplBadge}</span>${lockLabel}</li>`;
         }).join('') : '<li class="text-slate-400 italic">No tienes entregables curriculares activos asignados directamente a tu rol en esta fase. Supervisa o asiste al equipo en el Dossier.</li>';
 
         let roleTitle = '';
@@ -3409,9 +3493,8 @@ const ui = {
             ? `<span class="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded">🔒 BLOQUEADO HASTA ${new Date(openDate).toLocaleString()}</span>`
             : `<span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">🟢 ACTIVO / EN PLAZO</span>`;
 
-        const templateBtn = sched.guideDocUrl
-            ? `<div class="mb-2"><a href="${encodeURI(sched.guideDocUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-mars-cyan border border-mars-cyan/30 rounded hover:bg-cyan-900/50 transition-colors font-mono min-h-[44px]"><span>📄 VER PLANTILLA DOCENTE ↗</span></a></div>`
-            : '';
+        const tplHtml = this.renderDocTemplateBtn(docKey, '📄 Ver Plantilla Docente');
+        const templateBtn = tplHtml ? `<div class="mb-2">${tplHtml}</div>` : '';
 
         let ceoControlsHtml = '';
         if (isCEO && item && status === 'SUBMITTED_TO_CEO') {
@@ -3622,9 +3705,7 @@ const ui = {
         const lockBadge = isLocked
             ? `<span class="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded">🔒 BLOQUEADO HASTA ${new Date(openDate).toLocaleString()}</span>`
             : `<span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">🟢 ACTIVO / EN PLAZO</span>`;
-        const templateBtn = sched.guideDocUrl
-            ? `<a href="${encodeURI(sched.guideDocUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-mars-cyan border border-mars-cyan/30 rounded hover:bg-cyan-900/50 transition-colors font-mono min-h-[44px]"><span>📄 VER PLANTILLA DOCENTE ↗</span></a>`
-            : '';
+        const templateBtn = this.renderDocTemplateBtn(docKey, '📄 Ver Plantilla Docente');
         const rubric = (typeof RUBRIC_CONFIG !== 'undefined' && RUBRIC_CONFIG[def.subject]) ? RUBRIC_CONFIG[def.subject] : null;
         const criteriaHtml = rubric && rubric.criteria ? rubric.criteria.map(c => `
             <li class="flex justify-between items-center py-1 border-b border-slate-800/80 last:border-0">

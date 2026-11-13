@@ -398,7 +398,7 @@ Object.assign(ui, {
             ${bitacoraReturnHtml}
             <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
                 <div class="flex flex-wrap items-center gap-2">
-                    ${this.renderDocTemplateBtn('DOC_4_BITACORA_IA', '📄 Modelo Oficial Bitácora (Clonar Drive)')}
+                    ${this.renderDocTemplateBtn(bitacoraDocKey, '📄 Ver Modelo Bitácora')}
                     ${bitacoraDoc?.driveUrl ? `
                         <a href="${encodeURI(bitacoraDoc.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 bg-slate-900 border border-slate-700 text-cyan-400 hover:border-cyan-400 font-mono text-xs rounded transition-colors">
                             <span>📄 Abrir Mi Bitácora Entregada ↗</span>

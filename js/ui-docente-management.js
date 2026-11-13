@@ -598,7 +598,7 @@ Object.assign(ui, {
         if (!state.user || !state.user.admin) return;
         const def = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).find(x => x.key === docKey);
         const isCoord = state.user.role && (state.user.role === 'COORD' || state.user.role.startsWith('COORD'));
-        const isOwnerTeacher = def && state.user.role === def.subject;
+        const isOwnerTeacher = def && (state.user.role === def.subject || state.user.role === 'DOCENTE');
         if (!isCoord && !isOwnerTeacher) {
             return this.notify("Solo el docente de la materia o Coordinación pueden editar este entregable.", "error");
         }
@@ -615,34 +615,117 @@ Object.assign(ui, {
             return this.notify("El enlace a la plantilla docente debe ser una URL válida de Google Drive / Docs.", "error");
         }
 
+        const gridEl = document.getElementById('cronograma-cards-grid');
+        const prevScrollTop = gridEl ? gridEl.scrollTop : null;
+
         state.pausePolling = true;
         const now = Date.now();
         state.data.config = state.data.config || {};
         state.data.config.deliverableSchedule = state.data.config.deliverableSchedule || {};
         const prevSched = state.data.config.deliverableSchedule[docKey] || {};
+        const hasDefaultTpl = Boolean(
+            def?.defaultGuideDocUrl ||
+            (typeof OFFICIAL_DOC_TEMPLATES !== 'undefined' && OFFICIAL_DOC_TEMPLATES[docKey]?.copyUrl)
+        );
+        const clearedGuide = !guideDocUrl && Boolean(prevSched.guideDocUrl || prevSched.clearedGuide || hasDefaultTpl);
+
         state.data.config.deliverableSchedule[docKey] = {
             ...prevSched,
             phase: prevSched.phase || (this.getDeliverablePhase ? this.getDeliverablePhase(docKey) : (def?.phase || 'I')),
             openDate,
             deadline,
             guideDocUrl: guideDocUrl || "",
+            clearedGuide,
             updatedAt: now
         };
 
+        state.data.config.deadlines = state.data.config.deadlines || {};
         if (deadline) {
-            state.data.config.deadlines = state.data.config.deadlines || {};
             state.data.config.deadlines[docKey] = deadline;
+        } else {
+            delete state.data.config.deadlines[docKey];
         }
 
         state.data.config.updatedAt = now;
         state.saveLocalOnly();
         try {
-            await state.pushToCloud(false);
-            this.notify(`✅ Cronograma y plantilla actualizados para ${docKey}.`, "success");
-        } catch(e) {
+            const pushed = await state.pushToCloud(false);
+            if (pushed) {
+                this.notify(`✅ Cronograma y plantilla guardados para ${def?.shortName || docKey}.`, "success");
+            } else {
+                this.notify(`⚠️ Guardado localmente para ${def?.shortName || docKey}, pero falló la sincronización con la nube. Reintenta en unos segundos.`, "warning");
+            }
+        } catch (e) {
             console.error("Error al persistir cronograma:", e);
+            this.notify("❌ Error al guardar el cronograma en la nube.", "error");
         } finally {
             state.pausePolling = false;
+            this.render();
+            if (prevScrollTop !== null) {
+                const newGridEl = document.getElementById('cronograma-cards-grid');
+                if (newGridEl) newGridEl.scrollTop = prevScrollTop;
+            }
+        }
+    },
+
+    promptClearDeliverableTemplate(docKey) {
+        if (!state.user || !state.user.admin) return;
+        const def = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).find(x => x.key === docKey);
+        const label = def?.shortName || def?.name || docKey;
+        this.confirmAction(
+            'Quitar Plantilla Oficial',
+            `¿Deseas retirar el enlace de plantilla oficial vinculado a «${this.escapeHTML(label)}»? El alumnado dejará de ver la plantilla hasta que guardes un nuevo enlace.`,
+            () => this.clearDeliverableTemplate(docKey),
+            'Quitar Plantilla',
+            true
+        );
+    },
+
+    async clearDeliverableTemplate(docKey) {
+        if (!state.user || !state.user.admin) return;
+        const def = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).find(x => x.key === docKey);
+        const isCoord = state.user.role && (state.user.role === 'COORD' || state.user.role.startsWith('COORD'));
+        const isOwnerTeacher = def && (state.user.role === def.subject || state.user.role === 'DOCENTE');
+        if (!isCoord && !isOwnerTeacher) {
+            return this.notify("Solo el docente de la materia o Coordinación pueden modificar este entregable.", "error");
+        }
+
+        const gridEl = document.getElementById('cronograma-cards-grid');
+        const prevScrollTop = gridEl ? gridEl.scrollTop : null;
+
+        state.pausePolling = true;
+        const now = Date.now();
+        state.data.config = state.data.config || {};
+        state.data.config.deliverableSchedule = state.data.config.deliverableSchedule || {};
+        const prevSched = state.data.config.deliverableSchedule[docKey] || {};
+
+        state.data.config.deliverableSchedule[docKey] = {
+            ...prevSched,
+            phase: prevSched.phase || (this.getDeliverablePhase ? this.getDeliverablePhase(docKey) : (def?.phase || 'I')),
+            guideDocUrl: "",
+            clearedGuide: true,
+            updatedAt: now
+        };
+        state.data.config.updatedAt = now;
+        state.saveLocalOnly();
+
+        try {
+            const pushed = await state.pushToCloud(false);
+            if (pushed) {
+                this.notify(`🗑️ Plantilla oficial retirada de ${def?.shortName || docKey}.`, "info");
+            } else {
+                this.notify(`⚠️ Plantilla retirada localmente, pero no se pudo confirmar en la nube.`, "warning");
+            }
+        } catch (e) {
+            console.error("Error al retirar plantilla:", e);
+            this.notify("❌ Error al retirar plantilla de la nube.", "error");
+        } finally {
+            state.pausePolling = false;
+            this.render();
+            if (prevScrollTop !== null) {
+                const newGridEl = document.getElementById('cronograma-cards-grid');
+                if (newGridEl) newGridEl.scrollTop = prevScrollTop;
+            }
         }
     },
 
@@ -651,6 +734,22 @@ Object.assign(ui, {
         const isCoord = state.user.role && (state.user.role === 'COORD' || state.user.role.startsWith('COORD'));
         const teacherRole = state.user.role;
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+
+        // Validar URLs antes de aplicar cambios masivos
+        for (const d of defs) {
+            const canEdit = isCoord || (d.subject === teacherRole) || teacherRole === 'DOCENTE';
+            if (!canEdit) continue;
+            const elGuide = document.getElementById(`sched-guide-${d.key}`);
+            const guideDocUrl = elGuide ? elGuide.value.trim() : '';
+            if (guideDocUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(guideDocUrl)) {
+                if (elGuide) elGuide.focus();
+                return this.notify(`La URL de plantilla de «${d.shortName || d.key}» no es válida de Google Drive / Docs.`, "error");
+            }
+        }
+
+        const gridEl = document.getElementById('cronograma-cards-grid');
+        const prevScrollTop = gridEl ? gridEl.scrollTop : null;
+
         state.pausePolling = true;
         const now = Date.now();
         state.data.config = state.data.config || {};
@@ -659,7 +758,7 @@ Object.assign(ui, {
 
         let savedCount = 0;
         defs.forEach(d => {
-            const canEdit = isCoord || (d.subject === teacherRole);
+            const canEdit = isCoord || (d.subject === teacherRole) || teacherRole === 'DOCENTE';
             if (!canEdit) return;
             const elOpen = document.getElementById(`sched-open-${d.key}`);
             const elDead = document.getElementById(`sched-dead-${d.key}`);
@@ -669,16 +768,24 @@ Object.assign(ui, {
                 const deadline = elDead.value.trim() || null;
                 const guideDocUrl = elGuide.value.trim();
                 const prevSched = state.data.config.deliverableSchedule[d.key] || {};
+                const hasDefaultTpl = Boolean(
+                    d.defaultGuideDocUrl ||
+                    (typeof OFFICIAL_DOC_TEMPLATES !== 'undefined' && OFFICIAL_DOC_TEMPLATES[d.key]?.copyUrl)
+                );
+                const clearedGuide = !guideDocUrl && Boolean(prevSched.guideDocUrl || prevSched.clearedGuide || hasDefaultTpl);
                 state.data.config.deliverableSchedule[d.key] = {
                     ...prevSched,
                     phase: prevSched.phase || (this.getDeliverablePhase ? this.getDeliverablePhase(d.key) : (d.phase || 'I')),
                     openDate,
                     deadline,
                     guideDocUrl: guideDocUrl || "",
+                    clearedGuide,
                     updatedAt: now
                 };
                 if (deadline) {
                     state.data.config.deadlines[d.key] = deadline;
+                } else {
+                    delete state.data.config.deadlines[d.key];
                 }
                 savedCount++;
             }
@@ -687,12 +794,22 @@ Object.assign(ui, {
         state.data.config.updatedAt = now;
         state.saveLocalOnly();
         try {
-            await state.pushToCloud(false);
-            this.notify(`✅ Sincronizados ${savedCount} cronogramas y plantillas en la nube.`, "success");
-        } catch(e) {
+            const pushed = await state.pushToCloud(false);
+            if (pushed) {
+                this.notify(`✅ Sincronizados ${savedCount} cronogramas y plantillas en la nube.`, "success");
+            } else {
+                this.notify(`⚠️ Guardados ${savedCount} cronogramas localmente, pero falló la sincronización con la nube.`, "warning");
+            }
+        } catch (e) {
             console.error("Error al persistir todos los cronogramas:", e);
+            this.notify("❌ Error al guardar el cronograma completo en la nube.", "error");
         } finally {
             state.pausePolling = false;
+            this.render();
+            if (prevScrollTop !== null) {
+                const newGridEl = document.getElementById('cronograma-cards-grid');
+                if (newGridEl) newGridEl.scrollTop = prevScrollTop;
+            }
         }
     },
 
@@ -972,40 +1089,58 @@ Object.assign(ui, {
             return pA - pB;
         });
 
+        const templatesCount = sortedDefs.filter(d => Boolean(this.getDeliverableTemplateUrl ? this.getDeliverableTemplateUrl(d.key) : (schedule[d.key]?.guideDocUrl || d.defaultGuideDocUrl))).length;
+
         const scheduleCards = sortedDefs.map(d => {
             const currPhase = this.getDeliverablePhase ? this.getDeliverablePhase(d.key) : (d.phase || 'I');
             const sched = schedule[d.key] || {};
             const openVal = sched.openDate || d.defaultOpenDate || '';
             const deadVal = sched.deadline || dl[d.key] || d.defaultDate || '';
-            const guideVal = sched.guideDocUrl || d.defaultGuideDocUrl || '';
+            const guideVal = (this.getDeliverableTemplateUrl ? this.getDeliverableTemplateUrl(d.key) : (sched.guideDocUrl || d.defaultGuideDocUrl || '')) || '';
+            const guideTestHref = guideVal ? (this.isDocsEditorUrl && this.isDocsEditorUrl(guideVal) ? this.getGoogleViewUrl(guideVal) : guideVal) : '';
             const canEdit = isCoord || (state.user && state.user.admin && (d.subject === (state.user.role || '') || state.user.role === 'DOCENTE'));
 
             return `
             <div class="bg-slate-900 border ${canEdit ? 'border-mars-cyan/40 bg-slate-900/90' : 'border-slate-800 opacity-90'} p-3.5 flex flex-col justify-between space-y-2.5 rounded">
                 <div>
-                    <div class="flex justify-between items-center mb-1">
+                    <div class="flex justify-between items-center gap-1.5 flex-wrap mb-1">
                         <span class="text-xs font-black uppercase px-2 py-0.5 bg-mars-cyan/10 text-mars-cyan border border-mars-cyan/40">${this.escapeHTML(d.subject)} • ${this.escapeHTML(d.weight)}</span>
-                        <span class="text-[10px] text-slate-400 font-mono uppercase">${this.escapeHTML(d.key)}</span>
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            ${guideVal ? `<span class="text-[10px] font-black uppercase px-2 py-0.5 bg-mars-green/15 text-mars-green border border-mars-green/50 rounded">📄 Plantilla Activa</span>` : `<span class="text-[10px] font-mono uppercase px-2 py-0.5 bg-slate-800 text-slate-400 border border-slate-700 rounded">Sin plantilla</span>`}
+                            <span class="text-[10px] text-slate-400 font-mono uppercase">${this.escapeHTML(d.key)}</span>
+                        </div>
                     </div>
                     <h4 class="text-xs text-white font-bold uppercase leading-snug">${this.escapeHTML(d.name)}</h4>
                 </div>
                 <div class="space-y-1">
                     <label for="sched-open-${this.escapeHTML(d.key)}" class="text-[10px] text-mars-cyan uppercase font-bold block">1. Apertura (Desbloqueo)</label>
-                    <input type="datetime-local" id="sched-open-${this.escapeHTML(d.key)}" value="${this.escapeHTML(openVal)}" ${canEdit ? `onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')"` : 'disabled'} class="input-open-date min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-cyan disabled:opacity-50">
+                    <input type="datetime-local" id="sched-open-${this.escapeHTML(d.key)}" value="${this.escapeHTML(openVal)}" ${canEdit ? '' : 'disabled'} class="input-open-date min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-cyan disabled:opacity-50">
                 </div>
                 <div class="space-y-1">
                     <label for="sched-dead-${this.escapeHTML(d.key)}" class="text-[10px] text-mars-yellow uppercase font-bold block">2. Cierre (Límite Entrega)</label>
-                    <input type="datetime-local" id="sched-dead-${this.escapeHTML(d.key)}" value="${this.escapeHTML(deadVal)}" ${canEdit ? `onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')"` : 'disabled'} class="input-deadline min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-mars-yellow font-mono outline-none focus:border-mars-yellow disabled:opacity-50">
+                    <input type="datetime-local" id="sched-dead-${this.escapeHTML(d.key)}" value="${this.escapeHTML(deadVal)}" ${canEdit ? '' : 'disabled'} class="input-deadline min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-mars-yellow font-mono outline-none focus:border-mars-yellow disabled:opacity-50">
                 </div>
                 <div class="space-y-1">
                     <label for="sched-guide-${this.escapeHTML(d.key)}" class="text-[10px] text-mars-green uppercase font-bold block">3. Plantilla Oficial Drive (Opcional)</label>
-                    <input type="url" id="sched-guide-${this.escapeHTML(d.key)}" value="${this.escapeAttr(guideVal)}" placeholder="https://docs.google.com/document/d/..." ${canEdit ? `onchange="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')"` : 'disabled'} class="input-guide-url min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-mars-green font-mono outline-none focus:border-mars-green disabled:opacity-50">
+                    <input type="url" id="sched-guide-${this.escapeHTML(d.key)}" value="${this.escapeAttr(guideVal)}" placeholder="https://docs.google.com/document/d/..." ${canEdit ? `onkeydown="if(event.key==='Enter'){event.preventDefault();ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}');}"` : 'disabled'} class="input-guide-url min-h-[44px] w-full bg-black border border-slate-700 p-2 text-base sm:text-xs text-mars-green font-mono outline-none focus:border-mars-green disabled:opacity-50">
                 </div>
                 <div class="pt-1.5 border-t border-slate-800 space-y-2">
                     <button type="button" ${isCoord ? `onclick="ui.modalSelectDeliverablePhase('${this.escapeHTML(d.key)}')"` : 'disabled'} class="min-h-[44px] w-full bg-slate-800/90 hover:bg-slate-800 border border-mars-cyan/40 hover:border-mars-cyan text-mars-cyan font-bold text-xs uppercase px-2.5 py-2 flex items-center justify-between transition-colors disabled:opacity-50">
                         <span>🗂️ Fase Actual: FASE ${this.escapeHTML(currPhase)}</span>
                         ${isCoord ? `<span class="text-[10px] text-amber-400 font-mono">[ Cambiar Fase ➔ ]</span>` : ''}
                     </button>
+                    ${guideTestHref ? `
+                    <div class="flex items-center gap-2">
+                        <a href="${encodeURI(guideTestHref).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] flex-1 bg-cyan-950/50 hover:bg-cyan-900/60 border border-mars-cyan/60 text-mars-cyan font-bold text-xs uppercase px-2.5 py-2 flex items-center justify-center gap-1 transition-colors rounded">
+                            <span>🔗 Probar Plantilla ↗</span>
+                        </a>
+                        ${canEdit ? `
+                        <button type="button" onclick="ui.promptClearDeliverableTemplate('${this.escapeHTML(d.key)}')" class="min-h-[44px] shrink-0 bg-red-950/40 hover:bg-red-900/60 border border-red-500/60 text-red-300 font-bold text-xs uppercase px-3 py-2 flex items-center justify-center gap-1 transition-colors rounded">
+                            <span>🗑️ Quitar</span>
+                        </button>
+                        ` : ''}
+                    </div>
+                    ` : ''}
                     ${canEdit ? `
                     <button type="button" onclick="ui.saveDeliverableSchedule('${this.escapeHTML(d.key)}')" class="min-h-[44px] w-full bg-mars-green/20 hover:bg-mars-green/30 border border-mars-green text-mars-green font-bold text-xs uppercase px-2 py-1.5 flex items-center justify-center gap-1.5 transition-colors">
                         <span>💾 Guardar Plantilla y Fechas</span>
@@ -1023,13 +1158,14 @@ Object.assign(ui, {
                         <h3 class="font-orbitron text-mars-cyan text-sm uppercase tracking-widest font-bold">⏳ Cronograma Maestro: Entregables Curriculares y Candados</h3>
                         <p class="text-xs text-slate-300 uppercase mt-0.5">Control centralizado de aperturas automáticas, plazos de entrega y plantillas Google Docs (${defs.length} Hitos).</p>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         ${isCoord ? `<button type="button" onclick="ui.modalManagePhases()" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">[ 🎛️ Control Rápido de Fases (I-IV) ]</button>` : ''}
                         <button type="button" onclick="ui.saveAllDeliverableSchedules()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)]">[ 💾 Guardar Cronograma ]</button>
-                        <span class="bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-3 py-1 text-xs font-black uppercase font-mono">${defs.length} Entregables</span>
+                        <span class="min-h-[44px] inline-flex items-center bg-mars-green/10 border border-mars-green text-mars-green px-3 py-1 text-xs font-black uppercase font-mono">📄 ${templatesCount}/${defs.length} con Plantilla</span>
+                        <span class="min-h-[44px] inline-flex items-center bg-mars-cyan/10 border border-mars-cyan text-mars-cyan px-3 py-1 text-xs font-black uppercase font-mono">${defs.length} Entregables</span>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[700px] overflow-y-auto pr-2">
+                <div id="cronograma-cards-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[700px] overflow-y-auto pr-2">
                     ${scheduleCards}
                 </div>
             </div>

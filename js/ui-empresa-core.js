@@ -1805,6 +1805,9 @@ Object.assign(ui, {
                 else if (docObj && docObj.driveUrl && !isReturned) stepIdx = 1;
                 else if (isReturned) stepIdx = 1;
 
+                const cardTplUrl = this.getDeliverableTemplateUrl ? this.getDeliverableTemplateUrl(def.key) : '';
+                const cardTplHref = cardTplUrl ? (this.isDocsEditorUrl(cardTplUrl) ? this.getGoogleViewUrl(cardTplUrl) : cardTplUrl) : '';
+
                 // Stepper Visual de 4 Pasos
                 const steps = [
                     { num: '1', title: 'Plantilla Docs', desc: 'Guía oficial' },
@@ -1833,8 +1836,16 @@ Object.assign(ui, {
                                 dot = '●';
                             }
                         }
+                        if (idx === 0 && cardTplHref) {
+                            return `
+                            <a href="${encodeURI(cardTplHref).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" title="Abrir Plantilla Oficial del Entregable" class="min-h-[44px] flex flex-col items-center justify-center text-center p-1 sm:p-1.5 border ${stepColor} hover:border-mars-cyan hover:bg-mars-cyan/20 rounded min-w-0 transition-all group">
+                                <span class="text-[10px] sm:text-xs font-mono font-black">${dot} PASO ${s.num}</span>
+                                <span class="text-[9px] sm:text-[11px] font-bold uppercase truncate w-full mt-0.5">${s.title}</span>
+                                <span class="text-[9px] font-mono font-bold text-mars-green group-hover:underline mt-0.5">✓ DISPONIBLE ↗</span>
+                            </a>`;
+                        }
                         return `
-                        <div class="flex flex-col items-center text-center p-1 sm:p-1.5 border ${stepColor} rounded min-w-0">
+                        <div class="min-h-[44px] flex flex-col items-center justify-center text-center p-1 sm:p-1.5 border ${stepColor} rounded min-w-0">
                             <span class="text-[10px] sm:text-xs font-mono font-black">${dot} PASO ${s.num}</span>
                             <span class="text-[9px] sm:text-[11px] font-bold uppercase truncate w-full mt-0.5">${s.title}</span>
                             <span class="hidden sm:block text-[8px] sm:text-[9px] opacity-75 font-mono">${s.desc}</span>
@@ -1945,7 +1956,7 @@ Object.assign(ui, {
 
                     <!-- Enlaces Docs activos -->
                     <div class="flex flex-wrap items-center gap-2 pt-1">
-                        ${this.renderDocTemplateBtn(def.key)}
+                        ${this.renderDocTemplateBtn(def.key) || `<span class="min-h-[44px] inline-flex items-center px-3 py-1.5 text-[11px] bg-slate-900/70 text-slate-400 border border-slate-800 rounded font-mono">📄 Plantilla Google Docs aún no adjuntada por Coordinación</span>`}
                         ${docObj?.driveUrl ? `
                             <a href="${encodeURI(docObj.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/50 text-cyan-300 border border-cyan-500/40 rounded font-mono hover:bg-cyan-900/60 transition-colors">
                                 <span>📄 Abrir Mi Documento en Google Docs ↗</span>
@@ -2057,6 +2068,7 @@ Object.assign(ui, {
         const existingUrl = docObj?.driveUrl || '';
         const isReturned = (docObj?.status === 'CEO_REVISION' || docObj?.status === 'DEVUELTO_A_TECNICO');
 
+        const tplBtnHtml = this.renderDocTemplateBtn(docKey);
         const bodyHtml = `
         <div class="space-y-4 font-mono text-xs">
             <div class="bg-slate-900 border border-mars-cyan/40 p-3 text-slate-200">
@@ -2064,6 +2076,12 @@ Object.assign(ui, {
                 <p class="font-bold text-white uppercase text-sm">${this.escapeHTML(def.name)}</p>
                 <p class="text-slate-400 mt-1">${this.escapeHTML(def.desc)}</p>
             </div>
+            ${tplBtnHtml ? `
+            <div class="bg-black/60 border border-slate-800 p-3 rounded space-y-2">
+                <span class="text-[10px] text-mars-cyan font-bold uppercase block">Paso 1 — Plantilla Oficial del Entregable:</span>
+                ${tplBtnHtml}
+            </div>
+            ` : ''}
 
             ${isReturned ? `
                 <div class="bg-red-950/60 border border-red-500 p-3 text-red-300">
@@ -3548,7 +3566,7 @@ Object.assign(ui, {
             const deadlineLabel = d.defaultDate ? d.defaultDate.replace('T', ' ') : 'Fin de Fase';
 
             return `
-            <div style="${borderStyle}" class="bg-black/60 p-3 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5">
+            <div style="${borderStyle}" class="bg-black/60 p-3 rounded flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2.5">
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2 flex-wrap mb-1">
                         <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-mars-cyan">[${this.escapeHTML(d.subject || 'LOMLOE')} • ${this.escapeHTML(d.weight || '')}]</span>
@@ -3557,9 +3575,12 @@ Object.assign(ui, {
                     </div>
                     <h5 class="font-orbitron font-bold text-white text-xs uppercase tracking-tight break-words">${this.escapeHTML(d.name || d.title || d.key)}</h5>
                 </div>
-                <button type="button" onclick="ui.current = 'role_deliverables'; ui.roleDeliverablesPhase = '${curPhase}'; ui.roleDeliverablesScope = 'MY_ROLE'; ui.render();" class="shrink-0 min-h-[44px] px-3.5 py-1.5 bg-slate-900 hover:bg-mars-cyan hover:text-black text-mars-cyan border border-mars-cyan/60 font-bold uppercase text-[11px] rounded transition-all flex items-center gap-1.5 shadow-sm">
-                    <span>📤 Gestionar en Mis Entregables ➔</span>
-                </button>
+                <div class="flex flex-wrap items-center gap-2 shrink-0">
+                    ${this.renderDocTemplateBtn(d.key)}
+                    <button type="button" onclick="ui.current = 'role_deliverables'; ui.roleDeliverablesPhase = '${curPhase}'; ui.roleDeliverablesScope = 'MY_ROLE'; ui.render();" class="shrink-0 min-h-[44px] px-3.5 py-1.5 bg-slate-900 hover:bg-mars-cyan hover:text-black text-mars-cyan border border-mars-cyan/60 font-bold uppercase text-[11px] rounded transition-all flex items-center gap-1.5 shadow-sm">
+                        <span>📤 Gestionar en Mis Entregables ➔</span>
+                    </button>
+                </div>
             </div>`;
         }).join('');
 
