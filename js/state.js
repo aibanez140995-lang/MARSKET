@@ -66,7 +66,6 @@ const DEFAULT_STATE = {
             LEN: { name: "Lengua Castellana", canSponsor: false },
             MAT: { name: "Matemáticas", canSponsor: false },
             ING: { name: "Inglés", canSponsor: false },
-            BIO: { name: "Biología y Geología", canSponsor: false },
             COORD_MARIO: { name: "Coordinación - Mario", canSponsor: true },
             COORD_ALEX: { name: "Coordinación - Alex", canSponsor: true }
         }
@@ -79,12 +78,10 @@ const DEFAULT_STATE = {
             deliverables: {}, contracts: {}
         },
         sandbox_master: {
-            name: "MARS-X SANDBOX (PRUEBAS)", balance: 1000, classGroup: 'TEST', isTestCompany: true, unlockAllContracts: true, logo: null, slogan: "BANCO MAESTRO DE PRUEBAS", valueProposition: "Entorno de evaluación y pruebas",
+            name: "MARS-X SANDBOX (PRUEBAS)", balance: 2400, classGroup: 'TEST', isTestCompany: true, unlockAllContracts: true, logo: null, slogan: "BANCO MAESTRO DE PRUEBAS", valueProposition: "Entorno de evaluación y pruebas",
             brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "" }, sponsorAwarded: null, sponsorData: { name: null, logo: null },
             aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [],
-            ledger: [
-                { id: 'LEDGER_INIT_TEST', desc: 'Dotación inicial Sandbox de Pruebas', amount: 1000, date: '02/11/2026', delta: 1000, dept: 'GENERAL', final: 1000 }
-            ],
+            ledger: [],
             realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
             deliverables: {}, contracts: {}
         },
@@ -465,6 +462,9 @@ const state = {
             d.config.teachers.COORD_MARIO = { name: "Coordinación - Mario", canSponsor: true };
             d.config.teachers.COORD_ALEX = { name: "Coordinación - Alex", canSponsor: true };
         }
+        if (d.config.teachers && 'BIO' in d.config.teachers) {
+            delete d.config.teachers.BIO;
+        }
 
         const countries = ['China', 'Alemania', 'España', 'Turquía', 'Marruecos', 'ESA / Francia', 'Polonia', 'Italia', 'Portugal', 'India', 'República Checa', 'Japón'];
         d.catalog.forEach(item => {
@@ -501,7 +501,7 @@ const state = {
             d.companies['sandbox_master'] = {
                 name: "MARS-X SANDBOX (PRUEBAS)",
                 classGroup: "TEST",
-                balance: 1000,
+                balance: 2400,
                 isTestCompany: true,
                 unlockAllContracts: true,
                 roles: {
@@ -524,15 +524,16 @@ const state = {
                     }
                 },
                 contracts: {},
-                ledger: [
-                    { id: 'LEDGER_INIT_TEST', desc: 'Dotación inicial Sandbox de Pruebas', amount: 1000, date: '02/11/2026', delta: 1000, dept: 'GENERAL', final: 1000 }
-                ]
+                ledger: []
             };
         } else {
             d.companies['sandbox_master'].unlockAllContracts = true;
             d.companies['sandbox_master'].classGroup = 'TEST';
             d.companies['sandbox_master'].isTestCompany = true;
             d.companies['sandbox_master'].contracts = d.companies['sandbox_master'].contracts || {};
+            if (Array.isArray(d.companies['sandbox_master'].ledger)) {
+                d.companies['sandbox_master'].ledger = d.companies['sandbox_master'].ledger.filter(tx => tx && tx.id !== 'LEDGER_INIT_TEST');
+            }
             if (!this.getCompanyCode(d.companies['sandbox_master'])) {
                 this.setCompanyCode(d.companies['sandbox_master'], 'TEST-0000', false);
             }
@@ -664,7 +665,8 @@ const state = {
                 vinegar: !isNaN(Number(f?.vinegar)) ? Number(f.vinegar) : (!isNaN(Number(f?.waterMl)) ? Number(f.waterMl) : 0),
                 costEurV: !isNaN(Number(f?.costEurV)) ? Number(f.costEurV) : 0,
                 heightMm: !isNaN(Number(f?.heightMm)) ? Number(f.heightMm) : (!isNaN(Number(f?.heightM)) ? Number(f.heightM) * 1000 : 0),
-                efficiency: !isNaN(Number(f?.efficiency)) ? Number(f.efficiency) : 0
+                efficiency: !isNaN(Number(f?.efficiency)) ? Number(f.efficiency) : 0,
+                videoUrl: typeof f?.videoUrl === 'string' ? f.videoUrl.trim() : ''
             }));
             co.votingMotions = Array.isArray(co.votingMotions) ? co.votingMotions : [];
             co.aiPrompts = Array.isArray(co.aiPrompts) ? co.aiPrompts : [];
@@ -1326,7 +1328,7 @@ const state = {
         }
 
         // 2. Comprobar que la entidad siga existiendo en el estado del servidor
-        const teacherRoles = ['FYQ', 'ECO', 'BIO', 'MAT', 'LEN', 'ING', 'LYE'];
+        const teacherRoles = ['FYQ', 'ECO', 'MAT', 'LEN', 'ING', 'LYE'];
         const isDocente = Boolean(this.user.admin || (this.user.role && (teacherRoles.includes(this.user.role) || this.user.role.startsWith('COORD_'))));
         const isEntityValid = isDocente
             ? !!(serverOrMergedData?.config?.teachers?.[this.user.role] || this.user.admin)
@@ -3003,6 +3005,12 @@ const state = {
         }
 
         return { ok: true, contract: cRecord, delta };
+    },
+
+    isCompanyBankrupt(coOrId) {
+        const co = (typeof coOrId === 'string') ? this.data?.companies?.[coOrId] : coOrId;
+        if (!co) return false;
+        return Number(co.balance) <= 0;
     },
 
     addToLedger(coId, concept, dept, delta) {

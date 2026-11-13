@@ -637,6 +637,9 @@ Object.assign(ui, {
 
         const co = state.data.companies[state.user.coId];
         if (!co) return;
+        if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
+            return this.notifyBankruptcyLock();
+        }
 
         co.orders = co.orders || [];
         const orderNum = ui.getNextOrderNumber ? ui.getNextOrderNumber(co) : String(Date.now()).slice(-3);
@@ -666,6 +669,10 @@ Object.assign(ui, {
         if (!state.user || this.getEffectiveRole() !== 'FINANZAS') return this.notify("Solo Finanzas puede aprobar órdenes.", "warning");
         const co = state.data.companies[state.user.coId];
         if (!co || !co.orders) return;
+
+        if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
+            return this.notifyBankruptcyLock();
+        }
 
         const order = co.orders.find(o => String(o.id) === String(oid));
         if (!order || order.status !== 'PENDIENTE_FINANZAS') return;
@@ -707,6 +714,10 @@ Object.assign(ui, {
         if (!state.user || this.getEffectiveRole() !== 'FINANZAS') return;
         const co = state.data.companies[state.user.coId];
         if (!co || !co.marketingCampaigns) return;
+
+        if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
+            return this.notifyBankruptcyLock();
+        }
 
         const camp = co.marketingCampaigns.find(c => String(c.id) === String(campId));
         if (!camp || camp.status !== 'PENDIENTE_FINANZAS') return;
@@ -1636,6 +1647,9 @@ Object.assign(ui, {
         const coId = state.user.coId;
         const co = state.data.companies[coId];
         if (!co || !co.orders) return;
+        if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
+            return this.notifyBankruptcyLock();
+        }
         const order = co.orders.find(o => String(o.id) === String(orderId));
         if (!order || order.status !== 'PENDIENTE_FINANZAS') return;
 
@@ -1754,6 +1768,9 @@ Object.assign(ui, {
         const coId = state.user.coId;
         const co = state.data.companies[coId];
         if (!co || !co.orders) return;
+        if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
+            return this.notifyBankruptcyLock();
+        }
         const order = co.orders.find(o => String(o.id) === String(orderId));
         if (!order || order.status !== 'PENDIENTE_FINANZAS') return;
 

@@ -2215,6 +2215,9 @@ Object.assign(ui, {
         const coId = state.user.coId;
         const co = state.data.companies[coId];
         if (!co || !co.specialItemRequests) return;
+        if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
+            return this.notifyBankruptcyLock();
+        }
 
         const req = co.specialItemRequests.find(r => r.id === reqId);
         if (!req) return this.notify("Solicitud de material I+D no localizada.", "error");
@@ -2389,6 +2392,9 @@ Object.assign(ui, {
 
         const feeAlreadyPaid = Boolean(co.launchLicense && co.launchLicense.status === 'DENEGADA' && Number(co.launchLicense.feePaid || 0) >= 50);
 
+        if (!feeAlreadyPaid && this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
+            return this.notifyBankruptcyLock();
+        }
         if (!feeAlreadyPaid && Number(co.balance || 0) < 50) {
             return this.notify("Saldo insuficiente: se requieren 50 €v de tesorería para la tasa administrativa de la licencia AESA.", "error");
         }

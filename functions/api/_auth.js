@@ -164,7 +164,7 @@ export async function verifySession(request, env) {
 
     // 6. Contrato compatible con MARS-KET (v1.1.25)
     const isCoord = Boolean(payload.admin && (payload.role?.startsWith('COORD') || payload.role === 'COORDINADOR'));
-    const teacherRoles = ['FYQ', 'ECO', 'BIO', 'MAT', 'LEN', 'ING', 'LYE'];
+    const teacherRoles = ['FYQ', 'ECO', 'MAT', 'LEN', 'ING', 'LYE'];
     const isTeacherRole = Boolean(payload.role && (teacherRoles.includes(payload.role) || payload.role.startsWith('COORD')));
     const isAdmin = Boolean(payload.admin || isTeacherRole);
     return {

@@ -325,7 +325,7 @@ export async function onRequest(context) {
             // Verificación de PIN docente atómica quirúrgica con json_extract (< 1 KB)
             if (payload.action === 'verify_teacher_login') {
                 const { role, pin } = payload;
-                if (!role || pin === undefined || !/^(COORD_[A-Z0-9_]{2,20}|FYQ|ECO|LYE|LEN|MAT|ING|BIO)$/.test(role) || !/^\d{4,6}$/.test(String(pin).trim())) {
+                if (!role || pin === undefined || !/^(COORD_[A-Z0-9_]{2,20}|FYQ|ECO|LYE|LEN|MAT|ING)$/.test(role) || !/^\d{4,6}$/.test(String(pin).trim())) {
                     return new Response(JSON.stringify({ verified: false, error: 'INVALID_PARAMETERS' }), { status: 400, headers });
                 }
 
@@ -337,8 +337,7 @@ export async function onRequest(context) {
                     'LYE': '0303',
                     'LEN': '0404',
                     'MAT': '0505',
-                    'ING': '0606',
-                    'BIO': '0707'
+                    'ING': '0606'
                 };
 
                 try {
@@ -411,14 +410,14 @@ export async function onRequest(context) {
             // Control de Autorización y Particionado Zero-Trust (v1.1.25)
             const auth = await verifySession(request, env);
             const isCoord = Boolean(auth.isCoordinator || (auth.role && (auth.role.startsWith('COORD') || auth.role === 'COORDINADOR')));
-            const teacherRoles = ['FYQ', 'ECO', 'BIO', 'MAT', 'LEN', 'ING', 'LYE'];
+            const teacherRoles = ['FYQ', 'ECO', 'MAT', 'LEN', 'ING', 'LYE'];
             const isTeacher = Boolean(auth.isAdmin === true || (auth.role && (teacherRoles.includes(auth.role) || isCoord)));
 
             if (auth.isStudent && !payload.coId) {
                 payload.coId = auth.coId;
             }
 
-            // Permite la mutación de estado a cualquier usuario docente autenticado (auth.isAdmin === true o rol docente en ['FYQ','ECO','BIO','MAT','LEN','ING','COORD_*']), reservando únicamente el reseteo destructivo o backups a roles COORD_*.
+            // Permite la mutación de estado a cualquier usuario docente autenticado (auth.isAdmin === true o rol docente en ['FYQ','ECO','LYE','MAT','LEN','ING','COORD_*']), reservando únicamente el reseteo destructivo o backups a roles COORD_*.
             if (!auth.valid || (!isTeacher && (!auth.isStudent || auth.coId !== payload.coId))) {
                 return new Response(JSON.stringify({
                     error: 'UNAUTHORIZED_MUTATION',
@@ -491,10 +490,10 @@ export async function onRequest(context) {
                 'LYE': '0303',
                 'LEN': '0404',
                 'MAT': '0505',
-                'ING': '0606',
-                'BIO': '0707'
+                'ING': '0606'
             };
             if (payload.config && payload.config.teachers) {
+                delete payload.config.teachers.BIO;
                 for (const key in payload.config.teachers) {
                     if (currentState.config?.teachers?.[key] && currentState.config.teachers[key].pin) {
                         payload.config.teachers[key].pin = currentState.config.teachers[key].pin;
@@ -504,6 +503,7 @@ export async function onRequest(context) {
                 }
                 if (currentState.config?.teachers) {
                     for (const key in currentState.config.teachers) {
+                        if (key === 'BIO') continue;
                         if (!payload.config.teachers[key]) {
                             payload.config.teachers[key] = currentState.config.teachers[key];
                         }
@@ -511,6 +511,7 @@ export async function onRequest(context) {
                 }
             } else if (currentState.config) {
                 payload.config = currentState.config;
+                if (payload.config.teachers && 'BIO' in payload.config.teachers) delete payload.config.teachers.BIO;
             }
 
             // Protección granular LWW de config.deliverableSchedule, config.deadlines, config.scheduleBaselineVersion y config.guidelines

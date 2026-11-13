@@ -278,10 +278,15 @@ Object.assign(ui, {
                     evidenceHtml += this.renderDocBadge('2. Hoja Oficial de Taller, BOM y Calidad', docs.hoja_taller_fyq, false, this.evalSelectedCo, 'hoja_taller_fyq');
                     evidenceHtml += this.renderDocBadge('3. Informe Técnico Final (Abr)', docs.technicalReport, false, this.evalSelectedCo, 'technicalReport');
                     if(co.flightTests && co.flightTests.length > 0) {
-                        evidenceHtml += `<div class="mt-4 bg-black p-3 border border-slate-800"><span class="text-mars-yellow text-xs font-bold uppercase block mb-2">Ensayos en Banco de Pruebas:</span><div class="text-xs space-y-1 max-h-40 overflow-y-auto">`;
+                        evidenceHtml += `<div class="mt-4 bg-black p-3 border border-slate-800"><span class="text-mars-yellow text-xs font-bold uppercase block mb-2">Ensayos en Banco de Pruebas:</span><div class="text-xs space-y-2 max-h-56 overflow-y-auto">`;
                         co.flightTests.forEach(f => {
                             const h_mm = f.heightMm !== undefined ? f.heightMm : (f.heightM * 1000);
-                            evidenceHtml += `<p class="text-slate-200 border-b border-slate-900 pb-1 break-words">${this.escapeHTML(f.bottle)} | H: <strong class="text-mars-green">${Number(h_mm).toFixed(0)} mm</strong> | C: ${f.costEurV}€v | E: <strong class="text-mars-yellow">${Number(f.efficiency).toFixed(2)}</strong></p>`;
+                            const vUrl = typeof f.videoUrl === 'string' ? f.videoUrl.trim() : '';
+                            const hasValidVideo = vUrl && (typeof GOOGLE_DRIVE_REGEX !== 'undefined' ? GOOGLE_DRIVE_REGEX.test(vUrl) : /^https:\/\/(docs|drive)\.google\.com\//i.test(vUrl));
+                            const videoBadgeHtml = hasValidVideo
+                                ? `<a href="${encodeURI(vUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 bg-cyan-950/70 border border-mars-cyan/60 text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold text-xs uppercase rounded transition-colors shrink-0">🎥 Ver Vídeo E ↗</a>`
+                                : `<span class="text-[11px] font-mono text-slate-500 uppercase">Sin vídeo de cálculo</span>`;
+                            evidenceHtml += `<div class="text-slate-200 border-b border-slate-900 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 break-words"><div>${this.escapeHTML(f.bottle)} | H: <strong class="text-mars-green">${Number(h_mm).toFixed(0)} mm</strong> | C: ${f.costEurV}€v | E: <strong class="text-mars-yellow">${Number(f.efficiency).toFixed(2)}</strong></div>${videoBadgeHtml}</div>`;
                         });
                         evidenceHtml += `</div></div>`;
                     }

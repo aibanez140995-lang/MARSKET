@@ -220,9 +220,10 @@ export async function onRequestPost(context) {
                 totalPurchase = Math.round((totalPurchase + Number.EPSILON) * 100) / 100;
 
                 const currentBal = calculateBalance(co.ledger);
-                if (currentBal < totalPurchase) {
+                if (currentBal <= 0 || currentBal < totalPurchase) {
                     return new Response(JSON.stringify({ 
                         error: 'INSUFFICIENT_FUNDS', 
+                        message: currentBal <= 0 ? 'Empresa bloqueada en números rojos (saldo <= 0 €v).' : 'Saldo insuficiente para completar la compra.',
                         currentBalance: currentBal, 
                         required: totalPurchase 
                     }), { status: 400, headers: CORS_HEADERS });
@@ -287,6 +288,16 @@ export async function onRequestPost(context) {
 
             case 'ADD_LEDGER_TX': {
                 const deltaNum = Math.round((Number(p.delta || 0) + Number.EPSILON) * 100) / 100;
+                if (!auth.isCoordinator && !auth.admin && deltaNum < 0) {
+                    const currentBal = calculateBalance(co.ledger);
+                    if (currentBal <= 0) {
+                        return new Response(JSON.stringify({
+                            error: 'INSUFFICIENT_FUNDS',
+                            message: 'Empresa bloqueada en números rojos (saldo <= 0 €v).',
+                            currentBalance: currentBal
+                        }), { status: 400, headers: CORS_HEADERS });
+                    }
+                }
                 const txId = p.txId || ('TX-' + now.toString(36).toUpperCase() + '-' + Math.random().toString(36).substr(2, 4).toUpperCase());
                 co.ledger.unshift({
                     id: txId,
@@ -306,6 +317,14 @@ export async function onRequestPost(context) {
                     return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL' }), { status: 400, headers: CORS_HEADERS });
                 }
                 if (p.campaign) {
+                    const currentBal = calculateBalance(co.ledger);
+                    if (currentBal <= 0) {
+                        return new Response(JSON.stringify({
+                            error: 'INSUFFICIENT_FUNDS',
+                            message: 'Empresa bloqueada en números rojos (saldo <= 0 €v).',
+                            currentBalance: currentBal
+                        }), { status: 400, headers: CORS_HEADERS });
+                    }
                     if (!p.campaign.driveUrl || !GOOGLE_DRIVE_REGEX.test(p.campaign.driveUrl)) {
                         return new Response(JSON.stringify({ error: 'INVALID_DRIVE_URL', message: 'URL de Google Drive obligatoria para campaña de marketing.' }), { status: 400, headers: CORS_HEADERS });
                     }

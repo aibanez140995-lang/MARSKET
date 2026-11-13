@@ -24,6 +24,8 @@ Object.assign(ui, {
     viewMarket(el) {
         if (!el || !state.user) return;
         const wrapper = document.createElement('div');
+        const co = (!state.user?.admin && state.user?.coId) ? state.data?.companies?.[state.user.coId] : null;
+        const isBankrupt = Boolean(this.isCompanyBankrupt && this.isCompanyBankrupt(co));
         const canBuy = this.getEffectiveRole() === 'TECNICO' && !state.user?.admin;
         
         let tabsHtml = `
@@ -32,11 +34,15 @@ Object.assign(ui, {
                 <button type="button" role="tab" aria-selected="${this.marketTab==='B2C'}" onclick="ui.setMarketTab('B2C')" class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase transition-colors whitespace-nowrap ${this.marketTab==='B2C'?'bg-mars-cyan text-black font-black shadow-[0_0_10px_rgba(0,240,255,0.4)]':'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'}">🚀 Catálogo Oficial (B2C)</button>
                 <button type="button" role="tab" aria-selected="${this.marketTab==='B2B'}" onclick="ui.setMarketTab('B2B')" class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase transition-colors whitespace-nowrap ${this.marketTab==='B2B'?'bg-mars-yellow text-black font-black shadow-[0_0_10px_rgba(255,204,0,0.4)]':'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'}">🤝 Mercado Secundario (B2B)</button>
             </div>
-            ${canBuy ? `
+            ${canBuy ? (isBankrupt ? `
+                <button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] bg-slate-800 border border-red-500/40 text-slate-400 px-4 py-2 font-black uppercase text-xs tracking-wider cursor-not-allowed whitespace-nowrap flex items-center justify-center gap-1.5 w-full sm:w-auto">
+                    <span>🔒 I+D Bloqueado (Saldo ≤ 0 €v)</span>
+                </button>
+            ` : `
                 <button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] bg-mars-magenta text-white hover:bg-white hover:text-mars-magenta px-4 py-2 font-black uppercase text-xs tracking-wider transition-all whitespace-nowrap shadow-[0_0_12px_rgba(255,0,85,0.4)] flex items-center justify-center gap-1.5 w-full sm:w-auto">
                     <span>📡 + Solicitar Material I+D</span>
                 </button>
-            ` : ''}
+            `) : ''}
         </div>`;
         wrapper.innerHTML = tabsHtml;
 
@@ -49,6 +55,8 @@ Object.assign(ui, {
     },
 
     renderCatalog() {
+        const co = (!state.user?.admin && state.user?.coId) ? state.data?.companies?.[state.user.coId] : null;
+        const isBankrupt = Boolean(this.isCompanyBankrupt && this.isCompanyBankrupt(co));
         const canBuy = this.getEffectiveRole() === 'TECNICO' && !state.user?.admin;
         const isDocente = state.user.admin;
         const catalog = state.data.catalog || [];
@@ -85,14 +93,18 @@ Object.assign(ui, {
                 <p class="text-[11px] text-slate-400 mt-1">¿No encuentras lo que buscas? Puedes solicitar materiales especiales de I+D fuera de catálogo.</p>
                 <div class="flex justify-center gap-2 mt-3 flex-wrap">
                     <button type="button" onclick="ui.setCatalogCategory('ALL')" class="min-h-[44px] px-4 py-2 bg-mars-cyan text-black font-bold text-xs uppercase">Ver Todas las Categorías</button>
-                    ${canBuy ? `<button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] px-4 py-2 bg-mars-magenta text-white font-bold text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all shadow-[0_0_10px_rgba(255,0,85,0.3)]">+ Solicitar Material I+D</button>` : ''}
+                    ${canBuy ? (isBankrupt
+                        ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] px-4 py-2 bg-slate-800 border border-red-500/40 text-slate-400 font-bold text-xs uppercase cursor-not-allowed">🔒 I+D Bloqueado (Saldo ≤ 0 €v)</button>`
+                        : `<button type="button" onclick="ui.modalSpecialItem()" class="min-h-[44px] px-4 py-2 bg-mars-magenta text-white font-bold text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all shadow-[0_0_10px_rgba(255,0,85,0.3)]">+ Solicitar Material I+D</button>`) : ''}
                 </div>
                </div>`
             : filteredCategories.map(cat => {
             const items = visibleItems.filter(i => i.category === cat);
             const itemsHtml = items.map(item => {
                 let actionBtn = canBuy 
-                    ? `<button type="button" onclick="ui.addToCart('${this.escapeHTML(item.id)}')" class="w-full min-h-[44px] bg-slate-800 text-mars-cyan border border-mars-cyan hover:bg-mars-cyan hover:text-black font-black py-2 px-3 text-xs uppercase tracking-wider transition-all">🛒 Añadir al Carrito</button>` 
+                    ? (isBankrupt
+                        ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="w-full min-h-[44px] bg-slate-800 text-slate-400 border border-red-500/40 cursor-not-allowed font-black py-2 px-3 text-xs uppercase tracking-wider">🔒 Bloqueado Saldo ≤ 0</button>`
+                        : `<button type="button" onclick="ui.addToCart('${this.escapeHTML(item.id)}')" class="w-full min-h-[44px] bg-slate-800 text-mars-cyan border border-mars-cyan hover:bg-mars-cyan hover:text-black font-black py-2 px-3 text-xs uppercase tracking-wider transition-all">🛒 Añadir al Carrito</button>`) 
                     : (isDocente ? `<span class="block text-center text-slate-300 text-xs uppercase font-bold py-2 border border-slate-800 bg-black/40">Modo Supervisión</span>` : `<span class="block text-center text-slate-300 text-xs uppercase font-bold border border-slate-700 p-2.5 bg-black/40">Solo Dpto. Técnico</span>`);
 
                 return `
@@ -189,6 +201,7 @@ Object.assign(ui, {
 
     renderB2BMarket() {
         const myCo = !state.user.admin ? state.data.companies[state.user.coId] : null;
+        const isBankrupt = Boolean(this.isCompanyBankrupt && this.isCompanyBankrupt(myCo));
         const effRole = this.getEffectiveRole(myCo);
         const canSell = effRole === 'TECNICO' && !state.user.admin;
         const canBuy = canSell;
@@ -219,12 +232,16 @@ Object.assign(ui, {
                     if (pendingBuyOrder.status === 'PENDIENTE_DOCENTE') {
                         btn = `<span class="w-full min-h-[44px] flex items-center justify-center bg-purple-950/60 border border-purple-500/60 text-purple-300 font-bold text-xs uppercase px-2 text-center rounded">⏳ Retenido en Aduana Docente</span>`;
                     } else if (effRole === 'FINANZAS') {
-                        btn = `<button type="button" onclick="ui.approveB2BBuyByFinanzas('${this.escapeHTML(pendingBuyOrder.id)}')" class="w-full min-h-[44px] bg-mars-yellow text-black font-black py-2.5 px-3 text-xs uppercase shadow-[0_0_12px_rgba(255,204,0,0.4)] hover:bg-white transition-all">[ 🤝 Autorizar Compra B2B (${Number(item.price).toFixed(2)} €v) ]</button>`;
+                        btn = isBankrupt
+                            ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="w-full min-h-[44px] bg-slate-800 text-slate-400 border border-red-500/40 font-black py-2.5 px-3 text-xs uppercase cursor-not-allowed">🔒 Autorización Bloqueada (Saldo ≤ 0)</button>`
+                            : `<button type="button" onclick="ui.approveB2BBuyByFinanzas('${this.escapeHTML(pendingBuyOrder.id)}')" class="w-full min-h-[44px] bg-mars-yellow text-black font-black py-2.5 px-3 text-xs uppercase shadow-[0_0_12px_rgba(255,204,0,0.4)] hover:bg-white transition-all">[ 🤝 Autorizar Compra B2B (${Number(item.price).toFixed(2)} €v) ]</button>`;
                     } else {
                         btn = `<span class="w-full min-h-[44px] flex items-center justify-center bg-amber-950/60 border border-amber-500/60 text-amber-300 font-bold text-xs uppercase px-2 text-center rounded">⏳ Solicitado a Finanzas</span>`;
                     }
                 } else if (canBuy) {
-                    btn = `<button type="button" onclick="ui.modalBuyB2B('${this.escapeHTML(item.id)}')" class="w-full min-h-[44px] bg-mars-yellow/20 text-mars-yellow border border-mars-yellow hover:bg-mars-yellow hover:text-black font-black py-2.5 px-3 text-xs uppercase tracking-wider transition-all">Adquirir B2B</button>`;
+                    btn = isBankrupt
+                        ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="w-full min-h-[44px] bg-slate-800 text-slate-400 border border-red-500/40 font-black py-2.5 px-3 text-xs uppercase tracking-wider cursor-not-allowed">🔒 Compra B2B Bloqueada (Saldo ≤ 0)</button>`
+                        : `<button type="button" onclick="ui.modalBuyB2B('${this.escapeHTML(item.id)}')" class="w-full min-h-[44px] bg-mars-yellow/20 text-mars-yellow border border-mars-yellow hover:bg-mars-yellow hover:text-black font-black py-2.5 px-3 text-xs uppercase tracking-wider transition-all">Adquirir B2B</button>`;
                 } else if (effRole === 'FINANZAS') {
                     btn = `<span class="block text-center text-slate-400 text-xs uppercase font-bold border border-slate-800 p-2.5 bg-black/40 min-h-[44px] flex items-center justify-center">I+D debe solicitar la compra</span>`;
                 } else {
@@ -264,6 +281,9 @@ Object.assign(ui, {
         if (!state.user || this.getEffectiveRole() !== 'TECNICO') return;
         const co = state.data.companies[state.user.coId];
         if (!co) return;
+        if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
+            return this.notifyBankruptcyLock();
+        }
 
         const itemDef = state.data.catalog.find(i => i.id === itemId);
         if(!itemDef) return;
@@ -491,6 +511,9 @@ Object.assign(ui, {
 
         const co = state.data.companies[state.user.coId];
         if (!co) return;
+        if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
+            return this.notifyBankruptcyLock();
+        }
 
         // Comprobar si ya hay una solicitud pendiente de Finanzas para esta misma oferta
         co.orders = co.orders || [];

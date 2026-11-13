@@ -1843,7 +1843,7 @@ const ui = {
                 checklist3Min = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
                     <li>[ ] <strong>1. Selecciona material:</strong> Entra en <strong>[🛒 SUPER-MARSKET]</strong>, añade componentes al carrito y remite el pedido a Finanzas.</li>
-                    <li>[ ] <strong>2. Registra vuelos:</strong> En <strong>[🧪 Banco I+D]</strong>, introduce vinagre (ml), bicarbonato (g) y la altura en <strong>milímetros (mm)</strong>.</li>
+                    <li>[ ] <strong>2. Registra vuelos:</strong> En <strong>[🧪 Banco I+D]</strong>, introduce vinagre (ml), bicarbonato (g) y la altura en <strong>milímetros (mm)</strong> (puedes adjuntar el enlace opcional a tu vídeo calculando E en Drive).</li>
                     <li>[ ] <strong>3. Comunica al taller:</strong> Coordina con Operaciones e IA para asegurar que las piezas recepcionadas se montan en el cohete.</li>
                 </ul>`;
                 teamChain = `Tú solicitas componentes en SUPER-MARSKET ➔ Finanzas autoriza el presupuesto ➔ Operaciones recepciona y monta en taller.`;
@@ -1851,7 +1851,7 @@ const ui = {
                 <details class="bg-black/60 border border-slate-800 p-2.5 rounded text-xs mt-3">
                     <summary class="cursor-pointer text-mars-cyan font-bold uppercase select-none">⚙️ Procedimientos Especiales (Aduana B2B y Pedidos)</summary>
                     <div class="mt-2 space-y-2 text-slate-300 border-t border-slate-800 pt-2 leading-relaxed">
-                        <p>• <strong>Mercado Secundario B2B:</strong> Si necesitas vender componentes sobrantes a otra startup, tramita el contrato ante la Aduana Docente.</p>
+                        <p>• <strong>Mercado Secundario B2B:</strong> Si necesitas vender componentes sobrantes a otra startup (o recuperar capital si bajáis a ≤ 0 €v), tramita la oferta ante la Aduana Docente.</p>
                         <p>• <strong>Órdenes Rechazadas:</strong> Si Finanzas rechaza un pedido por falta de fondos, ajusta las cantidades en el carrito y reenvía.</p>
                     </div>
                 </details>`;
@@ -1860,7 +1860,7 @@ const ui = {
                     <button type="button" onclick="ui.navigate('tech'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Banco I+D</button>
                     <button type="button" onclick="ui.navigate('tech_workshop'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Taller</button>
                 `;
-                roleWarning = 'La altura del lanzamiento se registra siempre en milímetros (mm) y toda justificación técnica o de aduana requiere enlace oficial de Google Drive.';
+                roleWarning = 'La altura del lanzamiento se registra siempre en milímetros (mm) y toda justificación técnica o de aduana requiere enlace oficial de Google Drive (el vídeo de cálculo de E es opcional).';
                 break;
 
             case 'FINANZAS':
@@ -1875,9 +1875,10 @@ const ui = {
                 teamChain = `Técnico o Marketing te envían peticiones de compra ➔ Tú autorizas los fondos en la Bóveda ➔ Se descuenta del saldo líquido.`;
                 contingencyHtml = `
                 <details class="bg-black/60 border border-slate-800 p-2.5 rounded text-xs mt-3">
-                    <summary class="cursor-pointer text-mars-cyan font-bold uppercase select-none">⚙️ Procedimientos Especiales (Patrocinios y Costes Fijos)</summary>
+                    <summary class="cursor-pointer text-mars-cyan font-bold uppercase select-none">⚙️ Procedimientos Especiales (Patrocinios y Números Rojos)</summary>
                     <div class="mt-2 space-y-2 text-slate-300 border-t border-slate-800 pt-2 leading-relaxed">
                         <p>• <strong>Patrocinios:</strong> Si la empresa obtiene un patrocinador (Oro, Plata, Bronce), el descuento se aplica automáticamente a los costes operativos.</p>
+                        <p>• <strong>Bloqueo en Números Rojos (≤ 0 €v):</strong> Si el saldo cae a 0 €v o entra en negativo por tasas o sanciones, todas las compras, pedidos y tasas quedan congelados hasta recuperar saldo positivo con Contratos, Patrocinios o ventas B2B.</p>
                         <p>• <strong>Balances de Economía:</strong> En <strong>[📋 Dossier]</strong> entrega los balances y cuentas de resultados en Google Sheets cuando se abra la fase.</p>
                     </div>
                 </details>`;
@@ -1886,7 +1887,7 @@ const ui = {
                     <button type="button" onclick="ui.navigate('finance'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Finanzas & ECO</button>
                     <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
                 `;
-                roleWarning = 'No apruebes pedidos que dejen la cuenta en saldo negativo; la terminal bloqueará operaciones corporativas por insolvencia.';
+                roleWarning = 'No apruebes pedidos que dejen la cuenta en 0 €v o negativo: entrar en «números rojos» (≤ 0 €v) bloquea gastos, pedidos, I+D y campañas hasta recuperar liquidez.';
                 break;
 
             case 'MARKETING':
@@ -2858,6 +2859,63 @@ const ui = {
         }
     },
 
+    isValidDriveUrl(url) {
+        const clean = String(url || '').trim();
+        if (!clean) return false;
+        return typeof GOOGLE_DRIVE_REGEX !== 'undefined'
+            ? GOOGLE_DRIVE_REGEX.test(clean)
+            : /^https:\/\/(docs|drive)\.google\.com\//i.test(clean);
+    },
+
+    sanitizeDriveUrl(url) {
+        const clean = String(url || '').trim();
+        if (!this.isValidDriveUrl(clean)) return '';
+        return encodeURI(clean).replace(/"/g, '&quot;');
+    },
+
+    isCompanyBankrupt(coOrId = null) {
+        if (state.user?.admin) return false;
+        const targetCo = coOrId || (state.user?.coId ? state.data?.companies?.[state.user.coId] : null);
+        return typeof state.isCompanyBankrupt === 'function' ? state.isCompanyBankrupt(targetCo) : (Boolean(targetCo) && Number(targetCo.balance) <= 0);
+    },
+
+    notifyBankruptcyLock() {
+        const co = state.user?.coId ? state.data?.companies?.[state.user.coId] : null;
+        const bal = co ? Number(co.balance).toFixed(2) : '0.00';
+        return this.notify(`🚨 CUENTA BLOQUEADA EN NÚMEROS ROJOS (${bal} €v ≤ 0 €v): No puedes comprar, autorizar gastos ni tramitar pagos hasta recuperar liquidez (> 0 €v) con Contratos, Patrocinios o ventas B2B.`, 'error');
+    },
+
+    renderBankruptcyAlertBanner(co) {
+        if (!co || state.user?.admin || Number(co.balance) > 0) return '';
+        const effRole = this.getEffectiveRole ? this.getEffectiveRole(co) : (state.user?.role || '');
+        const balNum = Number(co.balance || 0);
+        const balStr = balNum.toFixed(2);
+        const statusWord = balNum < 0 ? 'SALDO NEGATIVO (DEUDA)' : 'SALDO AGOTADO (0.00 €v)';
+        const showTechSellBtn = effRole === 'TECNICO';
+        return `
+        <div id="bankruptcy-lock-banner" class="terminal-border bg-red-950/75 border-2 border-red-500 p-4 sm:p-5 mb-6 shadow-[0_0_24px_rgba(239,68,68,0.28)]" role="alert">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div class="space-y-1.5 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="px-2.5 py-0.5 text-xs font-black uppercase bg-red-500 text-black font-mono">🚨 BLOQUEO POR NÚMEROS ROJOS</span>
+                        <span class="px-2 py-0.5 text-xs font-mono font-bold uppercase bg-black/70 border border-red-400 text-red-300">${statusWord}: ${balStr} €v</span>
+                    </div>
+                    <h3 class="font-orbitron text-sm sm:text-base font-black text-white uppercase">Operaciones de Gasto Congeladas Hasta Recuperar Liquidez (&gt; 0 €v)</h3>
+                    <p class="text-xs text-slate-200 leading-relaxed font-sans">
+                        Con saldo menor o igual a <strong>0 €v</strong> no se pueden realizar compras B2C/B2B, enviar o autorizar pedidos, solicitar material I+D, contratar campañas de Marketing ni abonar tasas administrativas.
+                    </p>
+                    <p class="text-xs text-amber-300 font-sans">
+                        💡 <strong>Cómo salir de números rojos:</strong> Completa y cobra <strong>Contratos Comerciales</strong>, consigue un <strong>Patrocinio</strong> docente o vende componentes excedentes en el <strong>Mercado B2B</strong>.
+                    </p>
+                </div>
+                <div class="flex flex-wrap gap-2 w-full lg:w-auto shrink-0">
+                    <button type="button" onclick="ui.navigate('contracts')" class="min-h-[44px] flex-1 sm:flex-initial bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all whitespace-nowrap">🤝 Ir a Contratos</button>
+                    ${showTechSellBtn ? `<button type="button" onclick="ui.navigate('tech_workshop')" class="min-h-[44px] flex-1 sm:flex-initial bg-mars-yellow text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all whitespace-nowrap">🔧 Vender Excedentes</button>` : ''}
+                </div>
+            </div>
+        </div>`;
+    },
+
     updateHUD() {
         if(!state.user) return;
         const verEl = document.getElementById('hud-version');
@@ -2921,12 +2979,13 @@ const ui = {
             const co = state.data.companies[state.user.coId];
             if(tacticalRow) tacticalRow.classList.remove('hidden');
             if(co && balEl) {
-                if (co.balance < 0) {
-                    balEl.className = 'text-red-400 font-mono font-bold text-xs sm:text-sm md:text-base tracking-wider whitespace-nowrap bg-red-950/60 border border-red-500/50 px-2 sm:px-3 py-1 rounded-sm shadow-[0_0_10px_rgba(255,0,0,0.3)] shrink-0 animate-pulse';
-                    balEl.innerText = `${co.balance.toFixed(2)} €v (DEUDA)`;
+                const balVal = Number(co.balance) || 0;
+                if (balVal <= 0) {
+                    balEl.className = 'text-red-300 font-mono font-bold text-xs sm:text-sm md:text-base tracking-wider whitespace-nowrap bg-red-950/80 border border-red-500 px-2 sm:px-3 py-1 rounded-sm shadow-[0_0_12px_rgba(255,0,0,0.4)] shrink-0 animate-pulse';
+                    balEl.innerText = `${balVal.toFixed(2)} €v (BLOQUEADO)`;
                 } else {
                     balEl.className = 'text-mars-green font-mono font-bold text-xs sm:text-sm md:text-base tracking-wider whitespace-nowrap bg-mars-green/10 border border-mars-green/30 px-2 sm:px-3 py-1 rounded-sm shadow-[0_0_10px_rgba(0,255,150,0.2)] shrink-0';
-                    balEl.innerText = `${co.balance.toFixed(2)} €v`;
+                    balEl.innerText = `${balVal.toFixed(2)} €v`;
                 }
             }
             if(co && infoEl) {
@@ -3132,27 +3191,31 @@ const ui = {
         this.updateHUD();
         const hero = this.generateHeroBanner();
         const notifs = state.user.admin ? '' : (this.renderNotifications ? this.renderNotifications() : '');
+        const bankruptBanner = (!state.user.admin && co && typeof this.renderBankruptcyAlertBanner === 'function')
+            ? this.renderBankruptcyAlertBanner(co)
+            : '';
+        const topContext = hero + notifs + bankruptBanner;
         
         switch(this.current) {
-            case 'dashboard': vp.innerHTML = hero + notifs; this.viewDashboard(vp); break;
-            case 'contracts': vp.innerHTML = hero + notifs; this.viewContracts(vp); break;
-            case 'role_deliverables': vp.innerHTML = hero + notifs; this.viewRoleDeliverables(vp); break;
-            case 'news': vp.innerHTML = hero + notifs; this.viewNewsBoard(vp); break;
-            case 'market': vp.innerHTML = hero + notifs; this.viewMarket(vp); break;
-            case 'cart': vp.innerHTML = hero + notifs; this.viewCart(vp); break;
-            case 'orders': vp.innerHTML = hero + notifs; this.viewOrders(vp); break;
-            case 'finance': vp.innerHTML = hero + notifs; this.viewFinance(vp); break;
+            case 'dashboard': vp.innerHTML = topContext; this.viewDashboard(vp); break;
+            case 'contracts': vp.innerHTML = topContext; this.viewContracts(vp); break;
+            case 'role_deliverables': vp.innerHTML = topContext; this.viewRoleDeliverables(vp); break;
+            case 'news': vp.innerHTML = topContext; this.viewNewsBoard(vp); break;
+            case 'market': vp.innerHTML = topContext; this.viewMarket(vp); break;
+            case 'cart': vp.innerHTML = topContext; this.viewCart(vp); break;
+            case 'orders': vp.innerHTML = topContext; this.viewOrders(vp); break;
+            case 'finance': vp.innerHTML = topContext; this.viewFinance(vp); break;
             case 'admin': this.viewAdmin(vp); break;
-            case 'dossier': vp.innerHTML = hero + notifs; this.viewDossier(vp); break;
-            case 'brand': vp.innerHTML = hero + notifs; this.viewBrand(vp); break;
-            case 'campaigns': vp.innerHTML = hero + notifs; this.viewCampaigns(vp); break;
-            case 'tech_workshop': vp.innerHTML = hero + notifs; this.viewTechWorkshop(vp); break;
-            case 'ailog': vp.innerHTML = hero + notifs; this.viewAILog(vp); break;
-            case 'tech': vp.innerHTML = hero + notifs; this.viewTech(vp); break;
-            case 'resolutions': vp.innerHTML = hero + notifs; this.viewResolutions(vp); break;
-            case 'company': vp.innerHTML = hero + notifs; this.viewCompany(vp); break;
+            case 'dossier': vp.innerHTML = topContext; this.viewDossier(vp); break;
+            case 'brand': vp.innerHTML = topContext; this.viewBrand(vp); break;
+            case 'campaigns': vp.innerHTML = topContext; this.viewCampaigns(vp); break;
+            case 'tech_workshop': vp.innerHTML = topContext; this.viewTechWorkshop(vp); break;
+            case 'ailog': vp.innerHTML = topContext; this.viewAILog(vp); break;
+            case 'tech': vp.innerHTML = topContext; this.viewTech(vp); break;
+            case 'resolutions': vp.innerHTML = topContext; this.viewResolutions(vp); break;
+            case 'company': vp.innerHTML = topContext; this.viewCompany(vp); break;
             default: {
-                vp.innerHTML = hero + notifs;
+                vp.innerHTML = topContext;
                 this.viewDashboard(vp);
                 break;
             }

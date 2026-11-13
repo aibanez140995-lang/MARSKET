@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.06
+// Versión: v2.0.07
 
 declare(strict_types=1);
 
@@ -97,7 +97,7 @@ function verifySession(): array {
         $role = $parts[1] ?? '';
         $rLower = strtolower($role);
         $isCoord = strpos($rLower, 'coord') !== false || $rLower === 'coordinador';
-        $teacherRoles = ['FYQ', 'ECO', 'BIO', 'MAT', 'LEN', 'ING', 'LYE'];
+        $teacherRoles = ['FYQ', 'ECO', 'MAT', 'LEN', 'ING', 'LYE'];
         $isTeacherRole = in_array(strtoupper($role), $teacherRoles, true) || $isCoord;
         return [
             'authorized' => true,
@@ -495,6 +495,13 @@ try {
                 $role = (string)($payload['role'] ?? '');
                 $pinAttempt = trim((string)($payload['pin'] ?? ''));
 
+                $allowedLoginTeachers = ['COORD_MARIO', 'COORD_ALEX', 'FYQ', 'ECO', 'LYE', 'LEN', 'MAT', 'ING'];
+                if (!in_array($role, $allowedLoginTeachers, true) && strpos($role, 'COORD_') !== 0) {
+                    http_response_code(401);
+                    echo json_encode(['verified' => false, 'error' => 'INVALID_TEACHER_ROLE'], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
+
                 $stmt = $pdo->prepare("
                     SELECT 
                         json_extract(data, '$.config.teachers.' || :role || '.pin') AS pin,
@@ -512,8 +519,7 @@ try {
                     'LYE' => '0303',
                     'LEN' => '0404',
                     'MAT' => '0505',
-                    'ING' => '0606',
-                    'BIO' => '0707'
+                    'ING' => '0606'
                 ];
 
                 $dbPin = $row ? $row['pin'] : null;
@@ -609,10 +615,10 @@ try {
                 'LYE' => '0303',
                 'LEN' => '0404',
                 'MAT' => '0505',
-                'ING' => '0606',
-                'BIO' => '0707'
+                'ING' => '0606'
             ];
             if (isset($payload['config']['teachers']) && is_array($payload['config']['teachers'])) {
+                unset($payload['config']['teachers']['BIO']);
                 foreach ($payload['config']['teachers'] as $tk => &$t) {
                     if (!empty($currentState['config']['teachers'][$tk]['pin'])) {
                         $t['pin'] = $currentState['config']['teachers'][$tk]['pin'];
@@ -622,6 +628,7 @@ try {
                 }
                 if (isset($currentState['config']['teachers']) && is_array($currentState['config']['teachers'])) {
                     foreach ($currentState['config']['teachers'] as $tk => $ct) {
+                        if ($tk === 'BIO') continue;
                         if (!isset($payload['config']['teachers'][$tk])) {
                             $payload['config']['teachers'][$tk] = $ct;
                         }
@@ -629,6 +636,9 @@ try {
                 }
             } elseif (isset($currentState['config'])) {
                 $payload['config'] = $currentState['config'];
+                if (isset($payload['config']['teachers']) && is_array($payload['config']['teachers'])) {
+                    unset($payload['config']['teachers']['BIO']);
+                }
             }
 
             // Protección granular LWW de config.deliverableSchedule, config.deadlines, config.scheduleBaselineVersion y config.guidelines
@@ -1039,9 +1049,14 @@ try {
                     $totalPurchase += round($p * $q, 2);
                 }
                 $curBal = $calcBalance($co['ledger']);
-                if ($curBal < $totalPurchase) {
+                if ($curBal <= 0 || $curBal < $totalPurchase) {
                     http_response_code(400);
-                    echo json_encode(['error' => 'INSUFFICIENT_FUNDS', 'currentBalance' => $curBal, 'required' => $totalPurchase]);
+                    echo json_encode([
+                        'error' => 'INSUFFICIENT_FUNDS',
+                        'message' => $curBal <= 0 ? 'Empresa bloqueada en números rojos (saldo <= 0 €v).' : 'Saldo insuficiente para completar la compra.',
+                        'currentBalance' => $curBal,
+                        'required' => $totalPurchase
+                    ]);
                     exit;
                 }
                 $orderId = (string)($payload['orderId'] ?? ('ORD-' . substr((string)$now, -4)));
@@ -1069,6 +1084,18 @@ try {
 
             case 'ADD_LEDGER_TX':
                 $delta = round((float)($payload['delta'] ?? 0), 2);
+                if (empty($auth['isCoordinator']) && empty($auth['isAdmin']) && $delta < 0) {
+                    $curBal = $calcBalance($co['ledger']);
+                    if ($curBal <= 0) {
+                        http_response_code(400);
+                        echo json_encode([
+                            'error' => 'INSUFFICIENT_FUNDS',
+                            'message' => 'Empresa bloqueada en números rojos (saldo <= 0 €v).',
+                            'currentBalance' => $curBal
+                        ]);
+                        exit;
+                    }
+                }
                 $txId = (string)($payload['txId'] ?? ('TX-' . strtoupper(base_convert((string)$now, 10, 36)) . '-' . strtoupper(substr(md5(uniqid()), 0, 4))));
                 array_unshift($co['ledger'], [
                     'id' => $txId,
@@ -1113,6 +1140,16 @@ try {
                     'MK-SUP' => ['price' => 750, 'actions' => 6]
                 ];
                 if (!empty($payload['campaign'])) {
+                    $curBal = $calcBalance($co['ledger']);
+                    if ($curBal <= 0) {
+                        http_response_code(400);
+                        echo json_encode([
+                            'error' => 'INSUFFICIENT_FUNDS',
+                            'message' => 'Empresa bloqueada en números rojos (saldo <= 0 €v).',
+                            'currentBalance' => $curBal
+                        ]);
+                        exit;
+                    }
                     $camp = $payload['campaign'];
                     if (isset($camp['packageId'], $mktPackages[$camp['packageId']])) {
                         $camp['price'] = $mktPackages[$camp['packageId']]['price'];

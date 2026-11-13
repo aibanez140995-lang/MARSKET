@@ -34,6 +34,14 @@ Object.assign(ui, {
             const vinVal = !isNaN(Number(f.vinegar)) ? Number(f.vinegar) : (!isNaN(Number(f.waterMl)) ? Number(f.waterMl) : 0);
             const costVal = !isNaN(Number(f.costEurV)) ? Number(f.costEurV) : 0;
             const effVal = !isNaN(Number(f.efficiency)) ? Number(f.efficiency) : (costVal > 0 ? h_mm / costVal : 0);
+            const safeVideoUrl = this.sanitizeDriveUrl ? this.sanitizeDriveUrl(f.videoUrl) : '';
+            const fid = String(f.id || '');
+            const videoCellHtml = safeVideoUrl
+                ? `<div class="flex items-center gap-1.5">
+                        <a href="${safeVideoUrl}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1.5 bg-cyan-950/70 border border-mars-cyan/60 text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold text-xs uppercase rounded transition-colors">🎥 Ver Vídeo E ↗</a>
+                        ${fid ? `<button type="button" onclick="ui.modalAttachFlightVideo('${this.escapeHTML(fid)}')" aria-label="Cambiar vídeo del ensayo" title="Cambiar enlace de vídeo en Drive" class="min-h-[44px] min-w-[44px] inline-flex items-center justify-center bg-slate-900 border border-slate-700 text-slate-300 hover:border-mars-yellow hover:text-mars-yellow px-2 rounded transition-colors">✏️</button>` : ''}
+                   </div>`
+                : (fid ? `<button type="button" onclick="ui.modalAttachFlightVideo('${this.escapeHTML(fid)}')" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-900 border border-slate-700 text-slate-300 hover:border-mars-cyan hover:text-mars-cyan font-bold text-xs uppercase rounded transition-colors">📹 + Vídeo E</button>` : `<span class="text-slate-500 text-[11px]">Opcional</span>`);
             return `
             <tr class="border-b border-mars-border/40 hover:bg-slate-900/50">
                 <td class="py-2.5 text-slate-300 pr-3">${this.escapeHTML(f.date || '--')}</td>
@@ -41,9 +49,10 @@ Object.assign(ui, {
                 <td class="py-2.5 text-mars-cyan pr-3">${naVal}g / ${vinVal}ml</td>
                 <td class="py-2.5 font-mono text-mars-magenta pr-3">${costVal.toFixed(2)}</td>
                 <td class="py-2.5 font-mono text-mars-green font-bold text-sm sm:text-base pr-3">${h_mm.toFixed(0)}</td>
-                <td class="py-2.5 font-orbitron font-mono tabular-nums text-mars-yellow font-black">${effVal.toFixed(2)}</td>
+                <td class="py-2.5 font-orbitron font-mono tabular-nums text-mars-yellow font-black pr-3">${effVal.toFixed(2)}</td>
+                <td class="py-2.5">${videoCellHtml}</td>
             </tr>`;
-        }).join('') || `<tr><td colspan="6" class="p-4"><div class="terminal-border bg-slate-950 p-4 text-center border-dashed border-mars-yellow/40"><p class="text-xs text-mars-yellow font-bold uppercase mb-1">🚀 Banco de Pruebas sin Ensayos</p><p class="text-[11px] text-slate-400">Introduce los reactivos y la altura arriba para registrar el primer vuelo de tu prototipo.</p></div></td></tr>`;
+        }).join('') || `<tr><td colspan="7" class="p-4"><div class="terminal-border bg-slate-950 p-4 text-center border-dashed border-mars-yellow/40"><p class="text-xs text-mars-yellow font-bold uppercase mb-1">🚀 Banco de Pruebas sin Ensayos</p><p class="text-[11px] text-slate-400">Introduce los reactivos y la altura arriba para registrar el primer vuelo de tu prototipo.</p></div></td></tr>`;
 
         // --- Panel de Seguimiento de Órdenes I+D (Técnico) ---
         const techFilter = this.techOrdersFilter || 'EN_PROCESO';
@@ -327,6 +336,10 @@ Object.assign(ui, {
                                 <label for="ft-height-mm" class="text-xs text-slate-300 uppercase block mb-1">Altura H (mm)</label>
                                 <input type="number" id="ft-height-mm" placeholder="Altura H (mm)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-green font-bold w-full" step="1">
                             </div>
+                            <div class="sm:col-span-2 md:col-span-2">
+                                <label for="ft-video-url" class="text-xs text-slate-300 uppercase block mb-1">Vídeo Cálculo E (Opcional // Drive)</label>
+                                <input type="url" id="ft-video-url" placeholder="Opcional: https://drive.google.com/... (explicación de E = H/C)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-cyan w-full">
+                            </div>
                             <div class="flex items-end">
                                 ${Boolean(state.user?.admin || (co.launchLicense && co.launchLicense.status === 'APROBADA')) ? `
                                     <button type="button" onclick="ui.submitFlightTest()" class="min-h-[44px] bg-mars-yellow text-black font-black uppercase tracking-wider hover:bg-white transition-all py-2.5 px-3 w-full">Registrar Vuelo</button>
@@ -338,7 +351,7 @@ Object.assign(ui, {
                         <div class="overflow-x-auto w-full max-h-60 overflow-y-auto">
                             <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
                                 <thead class="text-slate-300 uppercase border-b border-mars-border sticky top-0 bg-mars-card">
-                                    <tr><th class="py-2 pr-3">Fecha</th><th class="pr-3">Fuselaje</th><th class="pr-3">Mix (Sól/Líq)</th><th class="pr-3">Coste (€v)</th><th class="pr-3">H (mm)</th><th class="text-mars-yellow">E = H/C</th></tr>
+                                    <tr><th class="py-2 pr-3">Fecha</th><th class="pr-3">Fuselaje</th><th class="pr-3">Mix (Sól/Líq)</th><th class="pr-3">Coste (€v)</th><th class="pr-3">H (mm)</th><th class="pr-3 text-mars-yellow">E = H/C</th><th>Vídeo Cálculo E</th></tr>
                                 </thead>
                                 <tbody>${ftHtml}</tbody>
                             </table>
@@ -375,9 +388,15 @@ Object.assign(ui, {
                                     Solicita al claustro piezas o reactivos especiales no listados en catálogo con memoria oficial en Drive.
                                 </p>
                             </div>
-                            <button type="button" onclick="ui.modalSpecialItem()" class="w-full justify-center min-h-[44px] bg-mars-magenta text-white font-black px-4 py-2 text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all whitespace-nowrap shadow-[0_0_10px_rgba(255,0,85,0.3)] text-center">
-                                + Solicitar Material I+D
-                            </button>
+                            ${(this.isCompanyBankrupt && this.isCompanyBankrupt(co)) ? `
+                                <button type="button" onclick="ui.notifyBankruptcyLock()" class="w-full justify-center min-h-[44px] bg-slate-800 border border-red-500/40 text-slate-400 font-black px-4 py-2 text-xs uppercase cursor-not-allowed whitespace-nowrap text-center">
+                                    🔒 I+D Bloqueado (Saldo ≤ 0 €v)
+                                </button>
+                            ` : `
+                                <button type="button" onclick="ui.modalSpecialItem()" class="w-full justify-center min-h-[44px] bg-mars-magenta text-white font-black px-4 py-2 text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all whitespace-nowrap shadow-[0_0_10px_rgba(255,0,85,0.3)] text-center">
+                                    + Solicitar Material I+D
+                                </button>
+                            `}
                         </div>
                         ${specialItemsListHtml}
                     </div>
@@ -841,12 +860,14 @@ Object.assign(ui, {
         const elVinegar = document.getElementById('ft-vinegar');
         const elCost = document.getElementById('ft-cost');
         const elHeightMm = document.getElementById('ft-height-mm');
+        const elVideoUrl = document.getElementById('ft-video-url');
         
         if (!elBottle || !elNahco3 || !elVinegar || !elCost || !elHeightMm) return; 
 
         const bottle = this.cleanInput(elBottle.value);
         const rawNahco3 = String(elNahco3.value || '').trim();
         const rawVinegar = String(elVinegar.value || '').trim();
+        const rawVideoUrl = elVideoUrl ? this.cleanInput(elVideoUrl.value).trim() : '';
 
         // Controlar que las entradas de masa (NaHCO3) y volumen (CH3COOH) rechacen números negativos o cadenas con caracteres alfanuméricos no numéricos
         const strictNumPattern = /^[0-9]+(\.[0-9]+)?$/;
@@ -868,15 +889,82 @@ Object.assign(ui, {
         if(costEurV <= 0) return this.notify("El coste no puede ser cero.", "warning");
         if(heightMm < 0) return this.notify("La altura no puede ser un número negativo.", "warning");
 
+        if (rawVideoUrl && !(this.isValidDriveUrl ? this.isValidDriveUrl(rawVideoUrl) : (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(rawVideoUrl)))) {
+            return this.notify("El vídeo opcional debe ser un enlace válido de Google Drive.", "error");
+        }
+
         // Eficiencia: Milímetros por cada € virtual gastado
         const efficiency = heightMm / costEurV;
         
         co.flightTests = co.flightTests || [];
-        co.flightTests.unshift({ id: 'FLT-'+Date.now(), date: new Date().toLocaleDateString(), bottle, naHCO3, vinegar, costEurV, heightMm, efficiency });
+        co.flightTests.unshift({
+            id: 'FLT-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+            date: new Date().toLocaleDateString(),
+            bottle,
+            naHCO3,
+            vinegar,
+            costEurV,
+            heightMm,
+            efficiency,
+            videoUrl: rawVideoUrl || ''
+        });
         
-        telemetry.log("PRUEBA VUELO", `Registrado H=${heightMm}mm, E=${efficiency.toFixed(2)}`);
+        telemetry.log("PRUEBA VUELO", `Registrado H=${heightMm}mm, E=${efficiency.toFixed(2)}${rawVideoUrl ? ' (+Vídeo E)' : ''}`);
         state.save();
         this.notify("✅ Ensayo de vuelo registrado en el banco de pruebas.", "success");
+        this.render();
+    },
+
+    modalAttachFlightVideo(flightId) {
+        if (!state.user) return;
+        const co = state.data.companies?.[state.user.coId];
+        if (!co || !Array.isArray(co.flightTests)) return;
+        const f = co.flightTests.find(x => String(x.id) === String(flightId));
+        if (!f) return this.notify("Ensayo de vuelo no localizado.", "error");
+
+        const h_mm = !isNaN(Number(f.heightMm)) ? Number(f.heightMm) : (!isNaN(Number(f.heightM)) ? Number(f.heightM) * 1000 : 0);
+        const effVal = !isNaN(Number(f.efficiency)) ? Number(f.efficiency) : 0;
+        const curVideo = typeof f.videoUrl === 'string' ? f.videoUrl : '';
+
+        const html = `
+            <div class="space-y-4 font-mono">
+                <div class="bg-slate-900 border border-slate-700 p-3 text-xs space-y-1">
+                    <p class="text-white font-bold uppercase">${this.escapeHTML(f.bottle || 'Prototipo')} (${this.escapeHTML(f.date || '--')})</p>
+                    <p class="text-slate-300">Altura: <strong class="text-mars-green">${h_mm.toFixed(0)} mm</strong> | Coste: <strong class="text-mars-magenta">${Number(f.costEurV || 0).toFixed(2)} €v</strong> | Eficiencia E = <strong class="text-mars-yellow">${effVal.toFixed(2)}</strong></p>
+                </div>
+                <div>
+                    <label for="attach-flight-video-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">
+                        🎥 Enlace al Vídeo en Google Drive demostrando E = Altura / Coste (Opcional)
+                    </label>
+                    <input type="url" id="attach-flight-video-url" value="${this.escapeHTML(curVideo)}" placeholder="https://drive.google.com/file/d/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow">
+                    <p class="text-[10px] text-slate-400 mt-1 font-sans">Asegúrate de configurar el acceso compartido como <em>"Cualquiera con el enlace puede ver"</em>. Déjalo vacío si deseas quitar el vídeo.</p>
+                </div>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.saveFlightVideo('${this.escapeHTML(String(f.id))}')" class="min-h-[44px] bg-mars-cyan text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-colors tracking-wider">💾 Guardar Enlace de Vídeo</button>`;
+        this.showModal("Vídeo Demostrativo del Cálculo de E", html, actions);
+    },
+
+    saveFlightVideo(flightId) {
+        if (!state.user) return;
+        const co = state.data.companies?.[state.user.coId];
+        if (!co || !Array.isArray(co.flightTests)) return;
+        const f = co.flightTests.find(x => String(x.id) === String(flightId));
+        if (!f) return this.notify("Ensayo de vuelo no localizado.", "error");
+
+        const elUrl = document.getElementById('attach-flight-video-url');
+        if (!elUrl) return;
+        const videoUrl = this.cleanInput(elUrl.value).trim();
+
+        if (videoUrl && !(this.isValidDriveUrl ? this.isValidDriveUrl(videoUrl) : (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(videoUrl)))) {
+            return this.notify("El enlace de vídeo debe ser una URL válida de Google Drive.", "error");
+        }
+
+        f.videoUrl = videoUrl;
+        co.updatedAt = Date.now();
+        state.save(state.user.coId);
+        this.closeModal();
+        this.notify(videoUrl ? "✅ Enlace al vídeo de cálculo de E adjuntado al ensayo." : "🗑️ Enlace de vídeo retirado del ensayo.", "success");
         this.render();
     },
 
@@ -924,6 +1012,9 @@ Object.assign(ui, {
         const coId = state.user.coId;
         const co = state.data.companies?.[coId];
         if (!co) return auth.logout();
+        if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
+            return this.notifyBankruptcyLock();
+        }
         const coName = co.name || 'STARTUP';
         const defaultName = `Componente Especial I+D (${coName})`;
         
@@ -991,6 +1082,9 @@ Object.assign(ui, {
         const coId = state.user.coId;
         const co = state.data.companies?.[coId];
         if (!co || !Array.isArray(co.specialItemRequests)) return;
+        if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
+            return this.notifyBankruptcyLock();
+        }
         const req = co.specialItemRequests.find(r => r.id === reqId);
         if (!req) return;
 

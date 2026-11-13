@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.06) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.07) ---
 
-const APP_VERSION = "2.0.06";
+const APP_VERSION = "2.0.07";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1097,8 +1097,24 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.06
+// Changelog Oficial de Producción v2.0.07
 const APP_CHANGELOG = [
+    {
+      version: "2.0.07",
+      date: "2026-11-13",
+      title: "Claustro Real sin BIO, Bloqueo por Números Rojos (<= 0 €v) y Vídeo Opcional del Cálculo de E",
+      items: [
+        "Claustro Oficial en 6 Materias Reales (Retirada de BIO): Eliminado por completo el perfil docente inactivo de Biología (BIO) del acceso de claustro, frontend y APIs (CDMON y D1), dejando activas exclusivamente FYQ, ECO, LYE, LEN, MAT e ING.",
+        "Bloqueo Automático en «Números Rojos» (Saldo <= 0 €v): Si una startup alcanza saldo nulo o negativo por tasas o sanciones, se muestra alerta crítica permanente en su terminal y se congelan compras B2C/B2B, pedidos a Finanzas, material I+D, campañas publicitarias y tasas administrativas hasta recuperar liquidez positiva (> 0 €v) mediante Contratos, Patrocinios o ventas B2B.",
+        "Vídeo Opcional en Google Drive para E = Altura / Coste: El Banco de Pruebas permite adjuntar un enlace opcional en Drive demostrando el cálculo de eficiencia tanto al registrar un vuelo como posteriormente, con acceso directo en Marca y Evaluación de Física y Química.",
+        "Paridad Inicial de Fábrica TEST-0000 y TEST-1111 (2.400 €v): Unificado el capital inicial por defecto de TEST-0000 a 2.400 €v en paridad con TEST-1111 y con botón de reseteo limpio de fábrica en Coordinación."
+      ],
+      highlights: [
+        { type: "TESORERÍA", text: "Bloqueo global en números rojos (<= 0 €v) con vías claras de recuperación." },
+        { type: "BANCO I+D", text: "Enlace opcional a Drive demostrando en vídeo cómo se calcula E = H / C." },
+        { type: "CLAUSTRO", text: "6 materias evaluadoras oficiales tras retirar el perfil residual BIO." }
+      ]
+    },
     {
       version: "2.0.06",
       date: new Date().toISOString().split('T')[0],

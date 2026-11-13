@@ -286,6 +286,9 @@ Object.assign(ui, {
 
         const isB2B = order.type === 'B2B_BUY_REQUEST' || !!order.offerId;
         if(finalItems.length === 0) return this.notify("Debes marcar al menos un componente como comprado/ensamblado.", "warning");
+        if (!isB2B && this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
+            return this.notifyBankruptcyLock();
+        }
         if(!isB2B && co.balance < finalTotalEurV) return this.notify("Fondos virtuales insuficientes en la cuenta de la empresa.", "error");
 
         order.items = finalItems;

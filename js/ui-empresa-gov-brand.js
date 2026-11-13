@@ -538,6 +538,9 @@ Object.assign(ui, {
         const co = state.data.companies[coId];
         if (!co) return;
 
+        if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
+            return this.notifyBankruptcyLock();
+        }
         if (Number(co.balance || 0) < 50) {
             return this.notify("Saldo insuficiente: se requieren 50 €v de tesorería para abonar la tasa mercantil de modificación estatutaria.", "error");
         }
@@ -952,6 +955,7 @@ Object.assign(ui, {
         const mktPackages = typeof MARKETING_PACKAGES !== 'undefined' ? MARKETING_PACKAGES : [];
         const effRole = this.getEffectiveRole(co);
         const isMktUser = Boolean(state.user && (effRole === 'MARKETING' || state.user.admin || state.user.isCoordinator || (state.user.role && String(state.user.role).startsWith('COORD'))));
+        const isBankrupt = Boolean(this.isCompanyBankrupt && this.isCompanyBankrupt(co));
 
         const packagesGridHtml = mktPackages.map(pkg => `
             <div class="bg-black/80 border border-mars-border p-3.5 flex flex-col justify-between hover:border-mars-yellow transition-all">
@@ -966,7 +970,9 @@ Object.assign(ui, {
                 <div class="flex justify-between items-center border-t border-slate-800 pt-2.5 gap-2">
                     <span class="text-mars-green font-mono font-black text-sm">${Number(pkg.price)} €v</span>
                     ${isMktUser 
-                        ? `<button type="button" onclick="ui.modalRequestMktPackage('${this.escapeHTML(pkg.id)}')" class="min-h-[44px] bg-mars-yellow text-black px-3.5 py-2 text-xs font-black uppercase hover:bg-white transition-colors">Contratar</button>`
+                        ? (isBankrupt
+                            ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] bg-slate-800 border border-red-500/40 text-slate-400 px-3.5 py-2 text-xs font-black uppercase cursor-not-allowed">🔒 Bloqueado (≤ 0 €v)</button>`
+                            : `<button type="button" onclick="ui.modalRequestMktPackage('${this.escapeHTML(pkg.id)}')" class="min-h-[44px] bg-mars-yellow text-black px-3.5 py-2 text-xs font-black uppercase hover:bg-white transition-colors">Contratar</button>`)
                         : `<span class="min-h-[44px] inline-flex items-center justify-center bg-slate-900 text-slate-400 px-3.5 py-2 text-xs font-bold uppercase border border-slate-700 cursor-not-allowed">Solo Marketing</span>`
                     }
                 </div>
@@ -1175,6 +1181,7 @@ Object.assign(ui, {
         if (co.flightTests.length > 0) {
             const bestFlight = [...co.flightTests].sort((a, b) => b.efficiency - a.efficiency)[0];
             const h_mm = bestFlight.heightMm !== undefined ? bestFlight.heightMm : (bestFlight.heightM * 1000);
+            const safeBestVideo = this.sanitizeDriveUrl ? this.sanitizeDriveUrl(bestFlight.videoUrl) : '';
             
             bestFlightHtml = `
                 <div class="bg-black p-3 border border-mars-border">
@@ -1189,6 +1196,7 @@ Object.assign(ui, {
                             <p class="text-mars-green font-mono font-bold text-lg">${Number(bestFlight.efficiency).toFixed(2)}</p>
                         </div>
                     </div>
+                    ${safeBestVideo ? `<div class="mt-2 pt-2 border-t border-slate-800"><a href="${safeBestVideo}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-cyan-950/70 border border-mars-cyan/60 text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold text-xs uppercase rounded transition-colors">🎥 Ver Vídeo Cálculo E en Drive ↗</a></div>` : ''}
                 </div>
             `;
         }
@@ -1435,6 +1443,9 @@ Object.assign(ui, {
 
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
+        if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
+            return this.notifyBankruptcyLock();
+        }
         co.marketingCampaigns = co.marketingCampaigns || [];
 
         const newCamp = {
