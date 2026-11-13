@@ -53,7 +53,7 @@ export async function handleCredentials(context) {
             // Desencriptar códigos y roles de las empresas con auto-reparación determinista
             const companies = {};
             const allRoles = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'];
-            const defaultCodes = { astra: 'AST-1010', orion: 'ORI-2020', stellar: 'STL-3030' };
+            const defaultCodes = { sandbox_master: 'TEST-0000', sandbox_student: 'TEST-1111', astra: 'AST-1010', orion: 'ORI-2020', stellar: 'STL-3030' };
             let shouldPersistHealing = false;
 
             for (const cid in currentState.companies || {}) {

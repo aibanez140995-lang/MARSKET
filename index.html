@@ -9,11 +9,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MARS-KET 2.0">
-    <link rel="manifest" href="manifest.json?v=2.0.04">
-    <link rel="icon" type="image/jpeg" href="logo.jpg?v=2.0.04">
-    <link rel="shortcut icon" href="logo.jpg?v=2.0.04">
-    <link rel="apple-touch-icon" href="logo.jpg?v=2.0.04">
-    <link rel="apple-touch-icon-precomposed" href="logo.jpg?v=2.0.04">
+    <link rel="manifest" href="manifest.json?v=2.0.05">
+    <link rel="icon" type="image/jpeg" href="logo.jpg?v=2.0.05">
+    <link rel="shortcut icon" href="logo.jpg?v=2.0.05">
+    <link rel="apple-touch-icon" href="logo.jpg?v=2.0.05">
+    <link rel="apple-touch-icon-precomposed" href="logo.jpg?v=2.0.05">
     
     <!-- Script de Precarga de Zoom Accesible (Zero-Shift / Cero Parpadeo) -->
     <script>
@@ -28,7 +28,7 @@
     </script>
 
     <!-- Tailwind CSS (Compilado localmente v1.1.03 - Bloque T) -->
-    <link rel="stylesheet" href="css/tailwind.css?v=2.0.04">
+    <link rel="stylesheet" href="css/tailwind.css?v=2.0.05">
     <style>
         :root {
             color-scheme: dark;
@@ -496,7 +496,7 @@
                         <h1 class="font-orbitron font-black text-xs sm:text-lg text-white tracking-wider sm:tracking-widest leading-none flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
                             MARS-KET <span class="text-mars-cyan">2.0</span>
                         </h1>
-                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v2.0.04</span>
+                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v2.0.05</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -526,9 +526,10 @@
 
             <!-- Fila 3: Información Táctica (Entidad, Rol y Reloj) -->
             <div id="hud-tactical-row" class="flex flex-wrap justify-between items-center gap-2 text-xs text-slate-300 border-t border-mars-border/60 mt-3 pt-2 uppercase font-mono">
-                <div class="flex items-center gap-2 truncate max-w-full sm:max-w-[70%] min-w-0">
+                <div class="flex flex-wrap items-center gap-2 max-w-full sm:max-w-[75%] min-w-0">
                     <span id="hud-info" class="font-bold text-slate-200 truncate min-w-0" title="ENTITY: -- | ROLE: --">ENTITY: -- | ROLE: --</span>
-                    <span id="hud-phase-badge" class="hidden font-mono font-bold text-[10px] sm:text-[11px] px-2 py-0.5 rounded bg-mars-cyan/15 border border-mars-cyan text-mars-cyan whitespace-nowrap shadow-[0_0_8px_rgba(0,240,255,0.25)]">FASE I</span>
+                    <span id="hud-phase-badge" class="hidden font-mono font-bold text-[10px] sm:text-[11px] px-2 py-0.5 rounded bg-mars-cyan/15 border border-mars-cyan text-mars-cyan whitespace-nowrap shrink-0 shadow-[0_0_8px_rgba(0,240,255,0.25)]">FASE I</span>
+                    <span id="hud-sandbox-badge" class="hidden font-mono font-bold text-[10px] sm:text-[11px] px-2 py-0.5 rounded whitespace-nowrap shrink-0"></span>
                 </div>
                 <span id="hud-clock" class="shrink-0 text-mars-cyan font-bold">TIME: --:--:--</span>
             </div>
@@ -557,7 +558,7 @@
             <div class="font-orbitron font-black text-xs sm:text-sm tracking-[0.2em] text-white uppercase mb-1.5 flex items-center justify-center gap-2">
                 <span>MARS-KET <span class="text-mars-cyan">2.0</span></span>
                 <span class="text-slate-600 font-mono">|</span>
-                <span id="footer-version" class="text-slate-400 font-mono text-[11px] sm:text-xs tracking-widest font-normal">v2.0.04</span>
+                <span id="footer-version" class="text-slate-400 font-mono text-[11px] sm:text-xs tracking-widest font-normal">v2.0.05</span>
             </div>
 
             <!-- Capa 2: Descriptor Institucional y Académico -->
@@ -638,20 +639,20 @@
     <div id="credentials-print-area" class="hidden"></div>
 
     <!-- SCRIPTS ORDENADOS DEL SISTEMA -->
-    <script src="js/lexicon-data.js?v=2.0.04"></script>
-    <script src="js/config.js?v=2.0.04"></script>
-    <script src="js/state.js?v=2.0.04"></script>
-    <script src="js/auth.js?v=2.0.04"></script>
-    <script src="js/ui-core.js?v=2.0.04"></script>
-    <script src="js/ui-empresa-core.js?v=2.0.04"></script>
-    <script src="js/ui-empresa-market.js?v=2.0.04"></script>
-    <script src="js/ui-empresa-tech.js?v=2.0.04"></script>
-    <script src="js/ui-empresa-finance.js?v=2.0.04"></script>
-    <script src="js/ui-empresa-ops.js?v=2.0.04"></script>
-    <script src="js/ui-empresa-gov-brand.js?v=2.0.04"></script>
-    <script src="js/ui-docente-core.js?v=2.0.04"></script>
-    <script src="js/ui-docente-eval.js?v=2.0.04"></script>
-    <script src="js/ui-docente-management.js?v=2.0.04"></script>
+    <script src="js/lexicon-data.js?v=2.0.05"></script>
+    <script src="js/config.js?v=2.0.05"></script>
+    <script src="js/state.js?v=2.0.05"></script>
+    <script src="js/auth.js?v=2.0.05"></script>
+    <script src="js/ui-core.js?v=2.0.05"></script>
+    <script src="js/ui-empresa-core.js?v=2.0.05"></script>
+    <script src="js/ui-empresa-market.js?v=2.0.05"></script>
+    <script src="js/ui-empresa-tech.js?v=2.0.05"></script>
+    <script src="js/ui-empresa-finance.js?v=2.0.05"></script>
+    <script src="js/ui-empresa-ops.js?v=2.0.05"></script>
+    <script src="js/ui-empresa-gov-brand.js?v=2.0.05"></script>
+    <script src="js/ui-docente-core.js?v=2.0.05"></script>
+    <script src="js/ui-docente-eval.js?v=2.0.05"></script>
+    <script src="js/ui-docente-management.js?v=2.0.05"></script>
 
     <script>
         window.addEventListener('DOMContentLoaded', () => {
@@ -686,7 +687,7 @@
                 }).observe(loginScreenEl, { childList: true, subtree: true });
             }
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-                navigator.serviceWorker.register('sw.js?v=2.0.04').then(reg => {
+                navigator.serviceWorker.register('sw.js?v=2.0.05').then(reg => {
                     reg.update().catch(() => {});
                 }).catch(() => {});
                 navigator.serviceWorker.addEventListener('controllerchange', () => {

@@ -319,7 +319,7 @@ Object.assign(ui, {
         const docs = co.deliverables || {};
         co.aiPrompts = co.aiPrompts || [];
         
-        const isOps = this.getEffectiveRole(co) === 'OPERACIONES_IA';
+        const isOps = ['OPERACIONES_IA', 'OPERACIONES'].includes(this.getEffectiveRole(co));
         const wrapper = document.createElement('div');
         wrapper.id = 'ailog-section';
         
@@ -359,17 +359,17 @@ Object.assign(ui, {
         const bitacoraStatus = (typeof bitacoraDoc === 'object' && bitacoraDoc) ? bitacoraDoc.status : (typeof bitacoraDoc === 'string' && bitacoraDoc ? 'DELIVERED_TO_TEACHER' : 'PENDING');
         
         let bitacoraBadge = '<span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-amber-400 border border-amber-500/40">⏳ PENDIENTE</span>';
-        if (bitacoraStatus === 'CEO_REVISION' || bitacoraStatus === 'SUBMITTED_TO_CEO') {
+        if (bitacoraStatus === 'SUBMITTED_TO_CEO') {
             bitacoraBadge = '<span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-400 animate-pulse">🟡 EN REVISIÓN CEO</span>';
         } else if (bitacoraStatus === 'DELIVERED_TO_TEACHER') {
             bitacoraBadge = '<span style="background-color: rgba(0, 255, 102, 0.15); border: 1px solid #00ff66; color: #00ff66;" class="text-xs font-mono font-bold px-2 py-0.5 rounded">🟢 ENTREGADO A DOCENTE</span>';
-        } else if (bitacoraStatus === 'RETURNED_BY_CEO' || bitacoraStatus === 'RETURNED_BY_TEACHER') {
+        } else if (bitacoraStatus === 'CEO_REVISION' || bitacoraStatus === 'RETURNED_BY_CEO' || bitacoraStatus === 'RETURNED_BY_TEACHER') {
             bitacoraBadge = '<span style="background-color: rgba(255, 0, 85, 0.15); border: 1px solid #ff0055; color: #ff0055;" class="text-xs font-mono font-bold px-2 py-0.5 rounded animate-pulse">🔴 SUBSANAR</span>';
         } else if (bitacoraStatus === 'REVIEWED' || bitacoraStatus === 'ACCEPTED') {
             bitacoraBadge = '<span style="background-color: #00ff66; color: #000; font-weight: 900;" class="text-xs font-mono px-2 py-0.5 rounded">✓ CALIFICADO</span>';
         }
 
-        const bitacoraReturnHtml = (bitacoraStatus === 'RETURNED_BY_CEO' || bitacoraStatus === 'RETURNED_BY_TEACHER') && bitacoraDoc ? `
+        const bitacoraReturnHtml = (bitacoraStatus === 'CEO_REVISION' || bitacoraStatus === 'RETURNED_BY_CEO' || bitacoraStatus === 'RETURNED_BY_TEACHER') && bitacoraDoc ? `
             <div class="mb-3 bg-rose-950/30 border border-rose-500/40 p-3 text-xs">
                 <p class="font-bold text-rose-300 uppercase mb-1">⚠️ Bitácora devuelta para subsanar:</p>
                 <p class="text-slate-200">${this.escapeHTML(bitacoraDoc.returnReason || 'Revisar las observaciones antes de reenviar.')}</p>
@@ -406,9 +406,11 @@ Object.assign(ui, {
                     ` : ''}
                 </div>
                 <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                    <button type="button" onclick="ui.modalSubmitRoleDeliverable('${bitacoraDocKey}')" class="min-h-[44px] flex-1 sm:flex-initial px-4 py-2.5 bg-mars-cyan text-black hover:bg-white font-black uppercase text-xs transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)] text-center">
-                        [ 📤 Entregar / Subir Bitácora ]
-                    </button>
+                    ${isOps ? (
+                        this.isDeliverableLocked(bitacoraDocKey, co)
+                        ? `<button type="button" disabled class="min-h-[44px] flex-1 sm:flex-initial px-4 py-2.5 bg-slate-900 border border-slate-700 text-slate-500 font-bold uppercase text-xs cursor-not-allowed text-center">[ 🔒 Bloqueada por Cronograma ]</button>`
+                        : `<button type="button" onclick="ui.modalSubmitRoleDeliverable('${bitacoraDocKey}')" class="min-h-[44px] flex-1 sm:flex-initial px-4 py-2.5 bg-mars-cyan text-black hover:bg-white font-black uppercase text-xs transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)] text-center">[ 📤 Entregar / Subir Bitácora ]</button>`
+                    ) : `<span class="min-h-[44px] inline-flex items-center px-3 py-2 bg-black/60 border border-slate-800 text-slate-400 text-[11px] font-mono uppercase">🔒 Subida exclusiva de Operaciones e IA</span>`}
                     <button type="button" onclick="ui.current = 'role_deliverables'; ui.roleDeliverablesPhase = '${curPhaseKey}'; ui.roleDeliverablesScope = 'MY_ROLE'; ui.render();" class="min-h-[44px] flex-1 sm:flex-initial px-3.5 py-2.5 bg-black border border-slate-700 text-slate-300 hover:text-white hover:border-mars-cyan font-bold uppercase text-xs transition-all text-center">
                         Mis Entregables ➔
                     </button>

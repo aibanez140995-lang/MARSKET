@@ -1709,9 +1709,7 @@ const ui = {
         }
         const roleDeliverablesHtml = roleDeliverables.length > 0 ? roleDeliverables.map(d => {
             const docObj = docs[d.key];
-            const sched = (state.data.config?.deliverableSchedule && state.data.config.deliverableSchedule[d.key]) || {};
-            const openDate = sched.openDate || d.defaultOpenDate;
-            const isLocked = Boolean(openDate && !isNaN(new Date(openDate).getTime()) && (new Date() < new Date(openDate)));
+            const isLocked = this.isDeliverableLocked(d.key, co);
             const lockLabel = isLocked ? '<span class="text-amber-400 font-bold">[🔒 BLOQUEADO]</span>' : '<span class="text-mars-green font-bold">[🟢 ACTIVO]</span>';
             const statusLabel = docObj ? '<span class="text-mars-green font-bold">✓ Entregado</span>' : '<span class="text-mars-magenta font-bold">⏳ Pendiente</span>';
             const tplUrl = sched.guideDocUrl || d.defaultGuideDocUrl || '';
@@ -2817,9 +2815,14 @@ const ui = {
         const cloudEl = document.getElementById('hud-cloud-status');
         const miniLogo = document.getElementById('hud-mini-logo');
         const tacticalRow = document.getElementById('hud-tactical-row');
+        const sandboxBadgeEl = document.getElementById('hud-sandbox-badge');
         
         if (state.user.admin) {
             if(tacticalRow) tacticalRow.classList.remove('hidden');
+            if(sandboxBadgeEl) {
+                sandboxBadgeEl.classList.add('hidden');
+                sandboxBadgeEl.innerText = '';
+            }
             if(balEl) balEl.innerText = '∞ €v';
             if(infoEl) {
                 const teacherInfo = `ENTITY: CLAUSTRO | ROLE: ${state.data.config.teachers[state.user.role]?.name.toUpperCase() || 'ROOT'}`;
@@ -2850,6 +2853,18 @@ const ui = {
                 const entityInfo = `ENTITY: ${co.name.toUpperCase()} | ROLE: ${roleHudLabel}`;
                 infoEl.innerText = entityInfo;
                 infoEl.title = entityInfo;
+            }
+            if (sandboxBadgeEl) {
+                if (co && co.isTestCompany && co.unlockAllContracts === true) {
+                    sandboxBadgeEl.className = 'font-mono font-bold text-[10px] sm:text-[11px] px-2 py-0.5 rounded bg-amber-400 text-black border border-amber-300 whitespace-nowrap shrink-0 shadow-[0_0_8px_rgba(251,191,36,0.3)]';
+                    sandboxBadgeEl.innerText = '🔓 MODO SANDBOX LIBRE';
+                } else if (co && (co.isTestCompany || co.classGroup === 'TEST')) {
+                    sandboxBadgeEl.className = 'font-mono font-bold text-[10px] sm:text-[11px] px-2 py-0.5 rounded bg-cyan-950/90 border border-mars-cyan text-mars-cyan whitespace-nowrap shrink-0 shadow-[0_0_8px_rgba(0,240,255,0.25)]';
+                    sandboxBadgeEl.innerText = '🎓 SIMULACIÓN ALUMNO REAL';
+                } else {
+                    sandboxBadgeEl.className = 'hidden font-mono font-bold text-[10px] sm:text-[11px] px-2 py-0.5 rounded whitespace-nowrap shrink-0';
+                    sandboxBadgeEl.innerText = '';
+                }
             }
             
             if(miniLogo && co) {
@@ -2947,6 +2962,11 @@ const ui = {
             if (miniLogo) {
                 miniLogo.classList.add('hidden');
                 miniLogo.innerHTML = '';
+            }
+            const sandboxBadgeEl = document.getElementById('hud-sandbox-badge');
+            if (sandboxBadgeEl) {
+                sandboxBadgeEl.classList.add('hidden');
+                sandboxBadgeEl.innerText = '';
             }
         }
     },
@@ -3331,6 +3351,7 @@ const ui = {
         }
         if (state.user?.admin) return false;
         const comp = co || (state.data?.companies?.[state.user?.coId]);
+        if (comp?.unlockAllContracts === true) return false;
         const docObj = comp?.deliverables?.[docKey];
         if (docObj && docObj.driveUrl) return false;
         const sched = (state.data?.config?.deliverableSchedule && state.data.config.deliverableSchedule[docKey]) || {};
@@ -3350,7 +3371,7 @@ const ui = {
         if (!phaseId) return true;
         if (state.user?.admin) return true;
         const comp = co || (state.data?.companies?.[state.user?.coId]);
-        if (comp?.isTestCompany) return true;
+        if (comp?.unlockAllContracts === true) return true;
 
         const pDefs = (typeof PROJECT_PHASES_DEF !== 'undefined') ? PROJECT_PHASES_DEF : {};
         const pDef = pDefs[phaseId];
@@ -3393,7 +3414,7 @@ const ui = {
             : '';
 
         let ceoControlsHtml = '';
-        if (isCEO && item && (status === 'SUBMITTED_TO_CEO' || status === 'CEO_REVISION')) {
+        if (isCEO && item && status === 'SUBMITTED_TO_CEO') {
             ceoControlsHtml = `
             <div class="bg-slate-950 border border-mars-cyan/40 p-3 mt-2 flex flex-col sm:flex-row gap-2 justify-end">
                 <button type="button" onclick="ui.approveDeliverableByCEO('${docKey}')" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ ✓ APROBAR Y ELEVAR A DOCENTE ]</button>
@@ -3405,26 +3426,26 @@ const ui = {
         const userRole = this.getEffectiveRole(co);
         const isAdmin = state.user ? !!state.user.admin : false;
         const normalizedDefRole = def.role === 'OPERACIONES' ? 'OPERACIONES_IA' : def.role;
-        const canUpload = (userRole === normalizedDefRole) || isAdmin || (isCEO && def.role === 'CEO');
+        const canUpload = (userRole === normalizedDefRole) || (normalizedDefRole === 'OPERACIONES_IA' && userRole === 'OPERACIONES') || isAdmin;
 
         let uploadSectionHtml = '';
         if (canUpload) {
             uploadSectionHtml = `
             <div class="bg-slate-900 border border-slate-700 p-3 mt-2 space-y-2">
-                <label for="input-drive-url-${docKey}" class="text-xs text-mars-yellow font-bold uppercase block">${isLocked ? '🔒 Entrega Bloqueada hasta la Fecha de Apertura' : (isCEO ? 'Entregar o Actualizar Enlace Google Drive' : 'Subir Enlace para Supervisión del CEO')}</label>
+                <label for="input-drive-url-${docKey}" class="text-xs text-mars-yellow font-bold uppercase block">${isLocked ? '🔒 Entrega Bloqueada hasta la Fecha de Apertura' : (isAdmin ? 'Entregar o Actualizar Enlace Google Drive' : 'Subir Enlace para Supervisión del CEO')}</label>
                 <div class="space-y-1.5">
                   <input type="url" 
                          id="input-drive-url-${docKey}" 
                          name="driveUrl" 
                          ${isLocked ? 'disabled' : 'required'} 
                          placeholder="${isLocked ? '🔒 Entrega bloqueada hasta ' + new Date(openDate).toLocaleString() : 'https://docs.google.com/... o https://drive.google.com/...'}" 
-                         class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white rounded font-mono outline-none focus:border-mars-cyan ${isLocked ? 'opacity-50 cursor-not-allowed bg-slate-950' : ''}">
+                         class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-base sm:text-xs text-white rounded font-mono outline-none focus:border-mars-cyan ${isLocked ? 'opacity-50 cursor-not-allowed bg-slate-950' : ''}">
                   <p class="text-[10px] text-slate-400">
                     ${isLocked ? 'El equipo docente ha programado la apertura de este entregable. Podéis consultar la plantilla oficial arriba.' : 'Pega únicamente el enlace de tu archivo o carpeta en Google Drive configurado con permisos de lectura.'}
                   </p>
                 </div>
                 <div class="flex justify-end pt-1">
-                    <button type="button" ${isLocked ? 'disabled' : ''} onclick="ui.submitDeliverable('${docKey}', this)" class="bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white flex-shrink-0 w-full sm:w-auto min-h-[44px] ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}">${isLocked ? '🔒 Entrega Bloqueada' : (isCEO ? 'Entregar y Elevar a Docente' : 'Enviar a Supervisión CEO')}</button>
+                    <button type="button" ${isLocked ? 'disabled' : ''} onclick="ui.submitDeliverable('${docKey}', this)" class="bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white flex-shrink-0 w-full sm:w-auto min-h-[44px] ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}">${isLocked ? '🔒 Entrega Bloqueada' : (isAdmin ? 'Entregar y Elevar a Docente' : 'Enviar a Supervisión CEO')}</button>
                 </div>
             </div>`;
         } else {
@@ -3586,7 +3607,7 @@ const ui = {
         const doc = co.deliverables?.[docKey];
         const sched = (state.data.config?.deliverableSchedule && state.data.config.deliverableSchedule[docKey]) || {};
         const openDate = sched.openDate || def.defaultOpenDate;
-        const isLocked = Boolean(openDate && !isNaN(new Date(openDate).getTime()) && (new Date() < new Date(openDate)));
+        const isLocked = this.isDeliverableLocked(docKey, co);
         const dlDate = sched.deadline || ((state.data.config?.deadlines && state.data.config.deadlines[def.key]) ? state.data.config.deadlines[def.key] : def.defaultDate);
         const isDeliveredToTeacher = doc && (doc.status === 'DELIVERED_TO_TEACHER' || doc.status === 'DOCENTE_REVIEW_DELIVERABLE');
         const isPendingCeo = doc && doc.status === 'SUBMITTED_TO_CEO';
@@ -3645,7 +3666,7 @@ const ui = {
                         <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors">
                             <span>Abrir ${tipoDoc} ↗</span>
                         </a>
-                        ${(state.user && this.getEffectiveRole(co) === 'CEO' && (status === 'SUBMITTED_TO_CEO' || status === 'CEO_REVISION')) ? `
+                        ${(state.user && this.getEffectiveRole(co) === 'CEO' && status === 'SUBMITTED_TO_CEO') ? `
                             <button type="button" onclick="ui.approveDeliverableByCEO('${docKey}'); ui.closeDrawer()" class="min-h-[44px] px-4 py-2 text-xs bg-mars-green text-black font-black uppercase hover:bg-white transition-all">Aprobar CEO</button>
                             <button type="button" onclick="ui.modalCeoReturnDeliverable('${docKey}'); ui.closeDrawer()" class="min-h-[44px] px-4 py-2 text-xs bg-red-700 text-white font-black uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">Devolver para Subsanación</button>
                         ` : ''}

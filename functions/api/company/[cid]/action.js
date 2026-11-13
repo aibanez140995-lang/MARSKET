@@ -366,6 +366,12 @@ export async function onRequestPost(context) {
             }
 
             case 'SUBMIT_DELIVERABLE': {
+                if (effectiveRole === 'CEO' && !auth.isCoordinator && !auth.isAdmin) {
+                    return new Response(JSON.stringify({
+                        error: 'UNAUTHORIZED_ROLE',
+                        message: 'Solo el departamento responsable puede subir entregables; Dirección General (CEO) solo puede visarlos tras recibirlos.'
+                    }), { status: 403, headers: CORS_HEADERS });
+                }
                 const rawKey = String(p.key || p.docKey || p.docType || '').trim();
                 if (!/^[a-zA-Z0-9_-]{1,40}$/.test(rawKey)) {
                     return new Response(JSON.stringify({ error: 'INVALID_DELIVERABLE_KEY' }), { status: 400, headers: CORS_HEADERS });
@@ -381,8 +387,8 @@ export async function onRequestPost(context) {
                     });
                 }
                 co.deliverables = co.deliverables || {};
-                const isCEO = effectiveRole === 'CEO' || auth.isCoordinator;
-                let status = isCEO ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
+                const isAdminOverride = Boolean(auth.isCoordinator || auth.isAdmin);
+                let status = isAdminOverride ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
                 let returnReasonId = null;
                 let returnReason = null;
 
@@ -391,7 +397,7 @@ export async function onRequestPost(context) {
                     const validWorkshopStatuses = ['DRAFT_TECNICO', 'EN_TALLER_OPERARIO', 'DEVUELTO_A_TECNICO', 'CEO_REVISION', 'SUBMITTED_TO_CEO', 'DELIVERED_TO_TEACHER'];
                     if (validWorkshopStatuses.includes(reqStatus)) {
                         status = reqStatus;
-                    } else if (isCEO) {
+                    } else if (isAdminOverride) {
                         status = 'DELIVERED_TO_TEACHER';
                     } else {
                         status = 'EN_TALLER_OPERARIO';

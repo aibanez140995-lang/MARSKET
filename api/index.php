@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.04
+// Versión: v2.0.05
 
 declare(strict_types=1);
 
@@ -377,6 +377,17 @@ try {
                     exit;
                 }
 
+                if ($code === 'TEST-1111') {
+                    echo json_encode([
+                        'matchedCoId' => 'sandbox_student',
+                        'companyMeta' => [
+                            'hasAux' => true,
+                            'name' => 'MARS-X ALUMNO (ESTÁNDAR)'
+                        ]
+                    ], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
+
                 http_response_code(404);
                 echo json_encode(['error' => 'Company code not found']);
                 exit;
@@ -402,6 +413,14 @@ try {
                 if ($coId === 'sandbox_master' && (!$row || $row['name'] === null)) {
                     $row = [
                         'name' => 'MARS-X SANDBOX (PRUEBAS)',
+                        'vault_pin' => '',
+                        'role_pin' => '1234',
+                        'auth_stamp' => 0
+                    ];
+                }
+                if ($coId === 'sandbox_student' && (!$row || $row['name'] === null)) {
+                    $row = [
+                        'name' => 'MARS-X ALUMNO (ESTÁNDAR)',
                         'vault_pin' => '',
                         'role_pin' => '1234',
                         'auth_stamp' => 0
@@ -1014,12 +1033,20 @@ try {
                 break;
 
             case 'SUBMIT_DELIVERABLE':
+                if ($effectiveRole === 'CEO' && empty($auth['isCoordinator']) && empty($auth['isAdmin'])) {
+                    http_response_code(403);
+                    echo json_encode([
+                        'error' => 'UNAUTHORIZED_ROLE',
+                        'message' => 'Solo el departamento responsable puede subir entregables; Dirección General (CEO) solo puede visarlos tras recibirlos.'
+                    ]);
+                    exit;
+                }
                 $co['deliverables'] = is_array($co['deliverables'] ?? null) ? $co['deliverables'] : [];
                 $rawKey = trim((string)($payload['key'] ?? $payload['docKey'] ?? $payload['docType'] ?? ''));
                 if ($rawKey !== '') {
                     $driveUrl = trim((string)($payload['driveUrl'] ?? $payload['url'] ?? ''));
-                    $isCEO = $effectiveRole === 'CEO' || !empty($auth['isCoordinator']);
-                    $status = $isCEO ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
+                    $isAdminOverride = !empty($auth['isCoordinator']) || !empty($auth['isAdmin']);
+                    $status = $isAdminOverride ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
                     $returnReasonId = null;
                     $returnReason = null;
 
@@ -1028,7 +1055,7 @@ try {
                         $validWorkshop = ['DRAFT_TECNICO', 'EN_TALLER_OPERARIO', 'DEVUELTO_A_TECNICO', 'CEO_REVISION', 'SUBMITTED_TO_CEO', 'DELIVERED_TO_TEACHER'];
                         if (in_array($reqStatus, $validWorkshop, true)) {
                             $status = $reqStatus;
-                        } elseif ($isCEO) {
+                        } elseif ($isAdminOverride) {
                             $status = 'DELIVERED_TO_TEACHER';
                         } else {
                             $status = 'EN_TALLER_OPERARIO';
@@ -1440,6 +1467,7 @@ try {
             $allRoles = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'];
             $defaultCodes = [
                 'sandbox_master' => 'TEST-0000',
+                'sandbox_student' => 'TEST-1111',
                 'astromars' => 'AST-1010',
                 'redares' => 'RED-2020',
                 'olympus' => 'OLY-3030',

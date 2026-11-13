@@ -515,7 +515,14 @@ Object.assign(ui, {
                                 const auxDept = co.auxRoleDept || '--';
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
-                                    <td class="py-3 font-orbitron text-white font-bold pr-3"><button onclick="ui.showCompanyLogins('${this.escapeHTML(cid)}')" class="min-h-[44px] text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 max-w-[200px] truncate inline-flex items-center" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)}</button></td>
+                                    <td class="py-3 font-orbitron text-white font-bold pr-3">
+                                        <div class="flex flex-col items-start gap-0.5">
+                                            <button onclick="ui.showCompanyLogins('${this.escapeHTML(cid)}')" class="min-h-[44px] text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 max-w-[200px] truncate inline-flex items-center" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)}</button>
+                                            ${(co.isTestCompany || co.classGroup === 'TEST') ? (co.unlockAllContracts === true
+                                                ? `<span class="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 bg-amber-400/20 border border-amber-400/60 text-amber-300 rounded">🔓 Modo Sandbox Libre</span>`
+                                                : `<span class="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 bg-cyan-950/60 border border-mars-cyan/60 text-mars-cyan rounded">🎓 Simulación Alumno Real</span>`) : ''}
+                                        </div>
+                                    </td>
                                     <td class="py-3 text-mars-yellow font-bold pr-2">${this.escapeHTML(co.classGroup)}</td>
                                     <td class="py-3 pr-3">
                                         ${isCoord ? `
@@ -1955,7 +1962,7 @@ Object.assign(ui, {
         const co = state.data.companies?.[cid];
         if (!co) return;
 
-        if (cid === 'sandbox_master' || co.isTestCompany || co.classGroup === 'TEST') {
+        if (cid === 'sandbox_master' || cid === 'sandbox_student' || co.isTestCompany || co.classGroup === 'TEST') {
             return this.resetTestCompany(cid);
         }
 
@@ -2059,14 +2066,17 @@ Object.assign(ui, {
         }
 
         // 3. Reseteo atómico de propiedades de simulación a estado limpio de fábrica
-        co.name = "MARS-X SANDBOX (PRUEBAS)";
+        const isMasterSandbox = (cid === 'sandbox_master');
+        const isStudentSandbox = (cid === 'sandbox_student');
+        const defaultCode = isStudentSandbox ? 'TEST-1111' : 'TEST-0000';
+        co.name = isStudentSandbox ? "MARS-X ALUMNO (ESTÁNDAR)" : (isMasterSandbox ? "MARS-X SANDBOX (PRUEBAS)" : coName);
         co.balance = 2400;
         co.logo = null;
-        co.slogan = "BANCO MAESTRO DE PRUEBAS";
-        co.valueProposition = "Entorno de evaluación y pruebas";
+        co.slogan = isMasterSandbox ? "BANCO MAESTRO DE PRUEBAS" : "";
+        co.valueProposition = isMasterSandbox ? "Entorno de evaluación y pruebas" : "";
         co.classGroup = 'TEST';
         co.isTestCompany = true;
-        co.unlockAllContracts = true;
+        co.unlockAllContracts = isStudentSandbox ? false : (isMasterSandbox ? true : Boolean(co.unlockAllContracts));
         co.brandApproval = { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "" };
         co.sponsorAwarded = null;
         co.sponsorData = { name: null, logo: null };
@@ -2076,9 +2086,7 @@ Object.assign(ui, {
         co.votingMotions = [];
         co.cart = [];
         co.orders = [];
-        co.ledger = [
-            { id: 'LEDGER_INIT_TEST_' + now, desc: 'Dotación inicial Sandbox de Pruebas', amount: 2400, date: new Date().toLocaleDateString(), delta: 2400, dept: 'GENERAL', final: 2400 }
-        ];
+        co.ledger = [];
         co.realCosts = [];
         co.grades = {};
         co.marketingCampaigns = [];
@@ -2089,13 +2097,18 @@ Object.assign(ui, {
         co.bom = [];
         co.deliverables = {};
         co.contracts = {};
+        co.phaseBalances = {};
+        co.pressReleases = {};
+        delete co.launchLicense;
+        delete co.nameChangeRequest;
+        delete co.nameChangeStatus;
         co.loginStats = { totalLogins: 0, roles: {} };
         co.resetAt = now;
         co.updatedAt = now;
 
         // Mantener credenciales maestras intactas
         if (!state.getCompanyCode(co)) {
-            state.setCompanyCode(co, 'TEST-0000', false);
+            state.setCompanyCode(co, defaultCode, false);
         }
         ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'].forEach(r => {
             if (!state.getRolePin(co, r)) {

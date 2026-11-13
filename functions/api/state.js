@@ -227,6 +227,20 @@ export async function onRequest(context) {
                             }
                         }
                     }
+                    const fallbackMap = {
+                        'TEST-0000': { matchedCoId: 'sandbox_master', name: 'MARS-X SANDBOX (PRUEBAS)' },
+                        'TEST-1111': { matchedCoId: 'sandbox_student', name: 'MARS-X ALUMNO (ESTÁNDAR)' }
+                    };
+                    const fb = fallbackMap[targetCode];
+                    if (fb) {
+                        const existingRow = rows?.results?.find(r => r.cid === fb.matchedCoId);
+                        if (!existingRow || (!existingRow.vlt_code && !existingRow.access_code)) {
+                            return new Response(JSON.stringify({
+                                matchedCoId: fb.matchedCoId,
+                                companyMeta: { hasAux: true, name: fb.name }
+                            }), { headers });
+                        }
+                    }
                 } catch(e) {}
                 return new Response(JSON.stringify({ error: 'Company code not found' }), { status: 404, headers });
             }
@@ -245,7 +259,7 @@ export async function onRequest(context) {
                     const pathPlain = `$.companies.${coId}.roles.${role}`;
                     const pathAuth = `$.companies.${coId}.authUpdatedAt`;
 
-                    const row = await env.MARSKET_DB.prepare(`
+                    let row = await env.MARSKET_DB.prepare(`
                         SELECT 
                             json_extract(data, ?) as companyName,
                             json_extract(data, ?) as vltPin,
@@ -253,6 +267,15 @@ export async function onRequest(context) {
                             json_extract(data, ?) as authStamp
                         FROM state WHERE id = 'current'
                     `).bind(pathName, pathVlt, pathPlain, pathAuth).first();
+
+                    if ((!row || row.companyName === null) && (coId === 'sandbox_master' || coId === 'sandbox_student')) {
+                        row = {
+                            companyName: coId === 'sandbox_student' ? 'MARS-X ALUMNO (ESTÁNDAR)' : 'MARS-X SANDBOX (PRUEBAS)',
+                            vltPin: '',
+                            plainPin: '1234',
+                            authStamp: 0
+                        };
+                    }
 
                     if (row) {
                         let expectedPin = '';

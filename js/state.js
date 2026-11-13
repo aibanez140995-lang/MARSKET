@@ -86,6 +86,13 @@ const DEFAULT_STATE = {
             ],
             realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
             deliverables: {}, contracts: {}
+        },
+        sandbox_student: {
+            name: "MARS-X ALUMNO (ESTÁNDAR)", balance: 2400, classGroup: 'TEST', isTestCompany: true, unlockAllContracts: false, logo: null, slogan: "", valueProposition: "",
+            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "" }, sponsorAwarded: null, sponsorData: { name: null, logo: null },
+            aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [],
+            realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
+            deliverables: {}, contracts: {}
         }
     }
 };
@@ -468,6 +475,7 @@ const state = {
 
         const defaultCodes = {
             sandbox_master: 'TEST-0000',
+            sandbox_student: 'TEST-1111',
             astromars: 'AST-1010',
             redares: 'RED-2020',
             olympus: 'OLY-3030',
@@ -520,6 +528,48 @@ const state = {
             d.companies['sandbox_master'].contracts = d.companies['sandbox_master'].contracts || {};
             if (!this.getCompanyCode(d.companies['sandbox_master'])) {
                 this.setCompanyCode(d.companies['sandbox_master'], 'TEST-0000', false);
+            }
+        }
+
+        if (!d.companies['sandbox_student']) {
+            d.companies['sandbox_student'] = {
+                name: "MARS-X ALUMNO (ESTÁNDAR)",
+                classGroup: "TEST",
+                balance: 2400,
+                isTestCompany: true,
+                unlockAllContracts: false,
+                slogan: "",
+                valueProposition: "",
+                roles: {
+                    CEO: '1234',
+                    TECNICO: '1234',
+                    FINANZAS: '1234',
+                    MARKETING: '1234',
+                    OPERACIONES_IA: '1234',
+                    AUXILIAR: '1234'
+                },
+                authVault: {
+                    code: 'TEST-1111',
+                    roles: {
+                        CEO: '1234',
+                        TECNICO: '1234',
+                        FINANZAS: '1234',
+                        MARKETING: '1234',
+                        OPERACIONES_IA: '1234',
+                        AUXILIAR: '1234'
+                    }
+                },
+                deliverables: {},
+                contracts: {},
+                ledger: []
+            };
+        } else {
+            d.companies['sandbox_student'].unlockAllContracts = false;
+            d.companies['sandbox_student'].classGroup = 'TEST';
+            d.companies['sandbox_student'].isTestCompany = true;
+            d.companies['sandbox_student'].contracts = d.companies['sandbox_student'].contracts || {};
+            if (!this.getCompanyCode(d.companies['sandbox_student'])) {
+                this.setCompanyCode(d.companies['sandbox_student'], 'TEST-1111', false);
             }
         }
 
@@ -938,7 +988,7 @@ const state = {
                     const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'cart', 'bom', 'coordinatorReports'];
                     const sResetAt = Number(sCo.resetAt) || 0;
                     const lResetAt = Number(lCo.resetAt) || 0;
-                    const isTestCo = (k === 'sandbox_master' || merged.companies[k].isTestCompany);
+                    const isTestCo = (k === 'sandbox_master' || k === 'sandbox_student' || merged.companies[k].isTestCompany);
                     if (isTestCo && (lResetAt > sTime || sResetAt > lTime)) {
                         merged.companies[k].resetAt = Math.max(sResetAt, lResetAt);
                         if (lResetAt >= sResetAt) {
@@ -1087,7 +1137,7 @@ const state = {
                     const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'cart', 'bom', 'coordinatorReports'];
                     const sResetAt = Number(sCo.resetAt) || 0;
                     const lResetAt = Number(lCo.resetAt) || 0;
-                    const isTestCo = (k === 'sandbox_master' || sCo.isTestCompany);
+                    const isTestCo = (k === 'sandbox_master' || k === 'sandbox_student' || sCo.isTestCompany);
                     if (isTestCo && (sResetAt > lTime || lResetAt > sTime)) {
                         sCo.resetAt = Math.max(sResetAt, lResetAt);
                         if (sResetAt >= lResetAt) {
@@ -1871,6 +1921,7 @@ const state = {
     isDeliverableLocked(docKey, co) {
         if (this.user?.admin) return false;
         const comp = co || (this.data?.companies?.[this.user?.coId]);
+        if (comp?.unlockAllContracts === true) return false;
         const docObj = comp?.deliverables?.[docKey];
         if (docObj && docObj.driveUrl) return false;
         const sched = (this.data?.config?.deliverableSchedule && this.data.config.deliverableSchedule[docKey]) || {};
@@ -1887,7 +1938,7 @@ const state = {
         if (!phaseId) return true;
         if (this.user?.admin) return true;
         const comp = co || (this.data?.companies?.[this.user?.coId]);
-        if (comp?.isTestCompany) return true;
+        if (comp?.unlockAllContracts === true) return true;
 
         const pDefs = (typeof PROJECT_PHASES_DEF !== 'undefined') ? PROJECT_PHASES_DEF : {};
         const pDef = pDefs[phaseId];
@@ -1922,8 +1973,20 @@ const state = {
         }
 
         co.deliverables = co.deliverables || {};
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const def = defs.find(d => d.key === docType);
         const effectiveRole = this.getEffectiveRole(this.user, co);
-        const isCEO = (effectiveRole === 'CEO');
+        const isDeptMatch = !def
+            || (effectiveRole === def.role)
+            || (def.role === 'OPERACIONES_IA' && effectiveRole === 'OPERACIONES')
+            || (docType === 'hoja_taller_fyq' && (effectiveRole === 'OPERACIONES_IA' || effectiveRole === 'OPERACIONES' || effectiveRole === 'TECNICO'));
+        if (!this.user.admin && ((effectiveRole === 'CEO' && (!def || def.role !== 'CEO')) || !isDeptMatch)) {
+            if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
+                ui.notify(`Solo el departamento responsable (${(def?.role || 'ASIGNADO').replace('_', ' ')}) puede elaborar y subir este entregable. El CEO debe esperar a recibirlo para visarlo.`, "warning");
+            }
+            return;
+        }
+        const isCEO = Boolean(this.user.admin) || (effectiveRole === 'CEO' && def && def.role === 'CEO');
         const targetStatus = isCEO ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
 
         const sanitizedItem = { 
@@ -2717,8 +2780,8 @@ const state = {
 
     isContractPhaseUnlocked(phase, co) {
         if (!co) return false;
-        // La empresa sandbox de pruebas y el profesorado tienen todas las fases desbloqueadas
-        if (co.unlockAllContracts === true || co.isTestCompany === true || (this.user && this.user.admin)) {
+        // La empresa sandbox maestra y el profesorado tienen todas las fases desbloqueadas
+        if (co.unlockAllContracts === true || (this.user && this.user.admin)) {
             return true;
         }
         const win = typeof CONTRACTS_PHASE_WINDOWS !== 'undefined' ? CONTRACTS_PHASE_WINDOWS[phase] : null;
@@ -2728,8 +2791,8 @@ const state = {
 
     isContractSelectionWindowOpen(phase, co) {
         if (!co) return false;
-        // La empresa sandbox de pruebas tiene las 4 ventanas abiertas siempre
-        if (co.unlockAllContracts === true || co.isTestCompany === true) {
+        // La empresa sandbox maestra tiene las 4 ventanas abiertas siempre
+        if (co.unlockAllContracts === true) {
             return true;
         }
         const win = typeof CONTRACTS_PHASE_WINDOWS !== 'undefined' ? CONTRACTS_PHASE_WINDOWS[phase] : null;
@@ -2749,7 +2812,7 @@ const state = {
             co = this.data.companies?.[this.user.coId];
         }
         if (!co) return false;
-        if (co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000' || (this.user && this.user.admin)) {
+        if (co.unlockAllContracts === true || (this.user && this.user.admin)) {
             return true;
         }
         const prPhases = typeof PRESS_RELEASE_PHASES !== 'undefined' ? PRESS_RELEASE_PHASES : [];
@@ -2763,7 +2826,7 @@ const state = {
             co = this.data.companies?.[this.user.coId];
         }
         if (!co) return false;
-        if (co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000' || (this.user && this.user.admin)) {
+        if (co.unlockAllContracts === true || (this.user && this.user.admin)) {
             return true;
         }
         const phaseDefs = typeof FINANCIAL_PHASE_BALANCES_DEF !== 'undefined' ? FINANCIAL_PHASE_BALANCES_DEF : [];
@@ -2777,7 +2840,7 @@ const state = {
             co = this.data.companies?.[this.user.coId];
         }
         if (!co) return false;
-        if (co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000' || (this.user && this.user.admin)) {
+        if (co.unlockAllContracts === true || (this.user && this.user.admin)) {
             return true;
         }
         const phaseDefs = typeof FINANCIAL_PHASE_BALANCES_DEF !== 'undefined' ? FINANCIAL_PHASE_BALANCES_DEF : [];
@@ -2794,7 +2857,7 @@ const state = {
             co = this.data.companies?.[this.user.coId];
         }
         if (!co) return false;
-        if (co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000' || (this.user && this.user.admin)) {
+        if (co.unlockAllContracts === true || (this.user && this.user.admin)) {
             return true;
         }
         const pItem = co.deliverables?.['preliminaryReport'];
@@ -2806,7 +2869,7 @@ const state = {
             co = this.data.companies?.[this.user.coId];
         }
         if (!co) return false;
-        if (co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000' || (this.user && this.user.admin)) {
+        if (co.unlockAllContracts === true || (this.user && this.user.admin)) {
             return true;
         }
         const p = co.deliverables?.['budgetInitial'];

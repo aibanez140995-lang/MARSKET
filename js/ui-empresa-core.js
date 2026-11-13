@@ -493,7 +493,7 @@ Object.assign(ui, {
                     const st = docObj ? (docObj.status || 'DELIVERED_TO_TEACHER') : null;
                     const sched = (state.data.config?.deliverableSchedule && state.data.config.deliverableSchedule[docKey]) || {};
                     const openDate = sched.openDate || def.defaultOpenDate;
-                    const isLocked = Boolean(openDate && !isNaN(new Date(openDate).getTime()) && (new Date() < new Date(openDate)));
+                    const isLocked = this.isDeliverableLocked(def.key, co);
                     const dlDate = sched.deadline || (state.data.config?.deadlines && state.data.config.deadlines[def.key]) ? (sched.deadline || state.data.config.deadlines[def.key]) : def.defaultDate;
                     const dlStatus = this.getDeadlineStatus(dlDate);
 
@@ -524,7 +524,7 @@ Object.assign(ui, {
                     const templateBtn = this.renderDocTemplateBtn(def.key);
 
                     let ceoDirectActions = '';
-                    if (isCEO && docObj && (st === 'SUBMITTED_TO_CEO' || st === 'CEO_REVISION')) {
+                    if (isCEO && docObj && st === 'SUBMITTED_TO_CEO') {
                         ceoDirectActions = `
                         <div class="flex items-center gap-1.5 shrink-0">
                             <button type="button" onclick="ui.approveDeliverableByCEO('${docKey}')" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-3 py-1.5 hover:bg-white transition-all shadow-sm" title="Aprobar y Elevar a Evaluación Docente">[ ✓ VISAR ]</button>
@@ -881,7 +881,7 @@ Object.assign(ui, {
         let ceoGovernanceModulesHtml = '';
         if (isCEO) {
             const license = co.launchLicense;
-            const isMasterOrAdmin = Boolean(state.user?.admin || co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000');
+            const isMasterOrAdmin = Boolean(state.user?.admin || co.unlockAllContracts === true);
             const prelimItem = co.deliverables?.['preliminaryReport'];
             const isPrelimDelivered = isMasterOrAdmin || Boolean(prelimItem && ((prelimItem.status === 'DELIVERED_TO_TEACHER' && prelimItem.driveUrl) || (typeof prelimItem === 'string' && prelimItem.length > 0)));
             const isPrelimPendingCeo = !isPrelimDelivered && Boolean(prelimItem && prelimItem.status === 'SUBMITTED_TO_CEO' && prelimItem.driveUrl);
@@ -943,7 +943,7 @@ Object.assign(ui, {
                             <div class="flex justify-between items-center mb-2 flex-wrap gap-1">
                                 <span class="text-xs font-black uppercase ${isAesaDenied ? 'text-red-300 bg-red-950/50 border-red-500/60' : 'text-mars-yellow bg-mars-yellow/10 border-mars-yellow/40'} border px-2 py-0.5">${isAesaDenied ? 'AESA // SUBSANACIÓN REQUERIDA' : 'SEGURIDAD AEROESPACIAL'}</span>
                                 <div class="flex items-center gap-1.5">
-                                    ${(co.id === 'TEST-0000' || co.isTestCompany) ? `<span class="px-1.5 py-0.5 bg-amber-400 text-black text-[9px] font-mono font-bold uppercase rounded">🧪 Sandbox Desbloqueado</span>` : `<span style="color: #00ff66 !important;" class="text-[10px] font-mono">✓ Informe Preliminar Entregado</span>`}
+                                    ${co.unlockAllContracts === true ? `<span class="px-1.5 py-0.5 bg-amber-400 text-black text-[9px] font-mono font-bold uppercase rounded">🧪 Sandbox Desbloqueado</span>` : `<span style="color: #00ff66 !important;" class="text-[10px] font-mono">✓ Informe Preliminar Entregado</span>`}
                                     <span class="text-xs font-mono ${feeAlreadyPaid ? 'text-mars-green' : 'text-amber-400'}">${feeAlreadyPaid ? 'Tasa ya abonada (0 €v)' : 'Tasa: 50 €v'}</span>
                                 </div>
                             </div>
@@ -1779,7 +1779,7 @@ Object.assign(ui, {
                 const st = docObj ? (docObj.status || 'DELIVERED_TO_TEACHER') : null;
                 const sched = (state.data.config?.deliverableSchedule && state.data.config.deliverableSchedule[def.key]) || {};
                 const openDate = sched.openDate || def.defaultOpenDate;
-                const isLocked = Boolean(openDate && !isNaN(new Date(openDate).getTime()) && (new Date() < new Date(openDate)));
+                const isLocked = this.isDeliverableLocked(def.key, co);
                 const dlDate = sched.deadline || (state.data.config?.deadlines && state.data.config.deadlines[def.key]) ? (sched.deadline || state.data.config.deadlines[def.key]) : def.defaultDate;
 
                 const isReturned = (st === 'CEO_REVISION' || st === 'DEVUELTO_A_TECNICO');
@@ -1865,8 +1865,8 @@ Object.assign(ui, {
                 }
 
                 // Acciones por rol
-                const isOwnDepartment = (effectiveRole === def.role) || (def.key === 'hoja_taller_fyq' && (effectiveRole === 'OPERACIONES_IA' || effectiveRole === 'OPERACIONES' || effectiveRole === 'TECNICO'));
-                const canRoleEdit = isCEO || isOwnDepartment;
+                const isOwnDepartment = (effectiveRole === def.role) || (def.role === 'OPERACIONES_IA' && effectiveRole === 'OPERACIONES') || (def.key === 'hoja_taller_fyq' && (effectiveRole === 'OPERACIONES_IA' || effectiveRole === 'OPERACIONES' || effectiveRole === 'TECNICO'));
+                const canRoleEdit = isOwnDepartment;
 
                 let actionControlsHtml = '';
                 if (isLocked) {
@@ -1889,9 +1889,17 @@ Object.assign(ui, {
                         <span class="text-mars-green font-mono font-bold text-xs uppercase">✓ ENTREGADO OFICIALMENTE EN CLOUD AL DOCENTE (EN PROCESO DE EVALUACIÓN)</span>
                     </div>`;
                 } else if (!canRoleEdit) {
+                    const deptLabel = this.escapeHTML((def.role || '').replace('_', ' '));
+                    const waitMsg = isCEO
+                        ? (isReturned
+                            ? `⏳ Esperando que <strong>${deptLabel}</strong> subsane las observaciones y reenvíe el documento para nuevo visado.`
+                            : (isWorkshopWork
+                                ? `⚙️ Hoja de Taller en comprobación física por <strong>OPERACIONES IA</strong>. Pasará a tu Bandeja de Visado al finalizar.`
+                                : `🔒 Esperando subida previa de <strong>${deptLabel}</strong>. Podrás visarlo o devolverlo cuando el departamento lo envíe.`))
+                        : `🔒 Subida reservada al departamento responsable: <strong>${deptLabel}</strong>.`;
                     actionControlsHtml = `
                     <div class="p-2.5 bg-black/40 border border-slate-800 text-center">
-                        <span class="text-xs font-mono text-slate-400 uppercase">🔒 Subida reservada al departamento de <strong>${this.escapeHTML(def.role.replace('_',' '))}</strong> o Dirección (CEO).</span>
+                        <span class="text-xs font-mono text-slate-300 uppercase">${waitMsg}</span>
                     </div>`;
                 } else {
                     actionControlsHtml = `
@@ -2034,6 +2042,17 @@ Object.assign(ui, {
         const def = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).find(d => d.key === docKey);
         if (!def) return;
 
+        const effectiveRole = this.getEffectiveRole(co);
+        const isDeptMatch = (effectiveRole === def.role)
+            || (def.role === 'OPERACIONES_IA' && effectiveRole === 'OPERACIONES')
+            || (def.key === 'hoja_taller_fyq' && (effectiveRole === 'OPERACIONES_IA' || effectiveRole === 'OPERACIONES' || effectiveRole === 'TECNICO'));
+        if (!state.user.admin && !isDeptMatch) {
+            return this.notify(`Solo el departamento responsable (${(def.role || '').replace('_', ' ')}) puede elaborar y subir este entregable. El CEO solo puede visarlo tras recibirlo.`, "warning");
+        }
+        if (!state.user.admin && this.isDeliverableLocked(docKey, co)) {
+            return this.notify("Este entregable se encuentra bloqueado hasta su fecha de apertura oficial.", "warning");
+        }
+
         const docObj = co.deliverables?.[docKey];
         const existingUrl = docObj?.driveUrl || '';
         const isReturned = (docObj?.status === 'CEO_REVISION' || docObj?.status === 'DEVUELTO_A_TECNICO');
@@ -2085,6 +2104,20 @@ Object.assign(ui, {
         const co = state.data.companies[state.user.coId];
         if (!co) return;
 
+        const def = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).find(d => d.key === docKey);
+        if (!def) return;
+
+        const effectiveRole = this.getEffectiveRole(co);
+        const isDeptMatch = (effectiveRole === def.role)
+            || (def.role === 'OPERACIONES_IA' && effectiveRole === 'OPERACIONES')
+            || (docKey === 'hoja_taller_fyq' && (effectiveRole === 'OPERACIONES_IA' || effectiveRole === 'OPERACIONES' || effectiveRole === 'TECNICO'));
+        if (!state.user.admin && !isDeptMatch) {
+            return this.notify(`Solo el departamento responsable (${(def.role || '').replace('_', ' ')}) puede subir este entregable. El CEO debe esperar a recibirlo para visarlo.`, "warning");
+        }
+        if (!state.user.admin && this.isDeliverableLocked(docKey, co)) {
+            return this.notify("Este entregable se encuentra bloqueado hasta su fecha de apertura oficial.", "warning");
+        }
+
         // Si es Hoja de Taller (DOC_10)
         if (docKey === 'hoja_taller_fyq') {
             co.deliverables = co.deliverables || {};
@@ -2119,10 +2152,9 @@ Object.assign(ui, {
             return;
         }
 
-        // Entregable general: remite al CEO o al Docente si quien lo envía es el CEO
+        // Entregable general: remite al CEO (o al Docente únicamente si quien lo envía es Coordinación/Admin)
         co.deliverables = co.deliverables || {};
-        const effectiveRole = this.getEffectiveRole(co);
-        const isCEO = effectiveRole === 'CEO';
+        const isCEO = Boolean(state.user.admin) || (effectiveRole === 'CEO' && def.role === 'CEO');
         const targetStatus = isCEO ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
         const newDoc = {
             driveUrl: url,
@@ -3400,7 +3432,7 @@ Object.assign(ui, {
         const curPhase = this.getCurrentPhaseKey();
         const signed = co.contracts?.[curPhase];
         const isCEO = state.user && (this.getEffectiveRole(co) === 'CEO' || state.user.admin);
-        const isMasterOrAdmin = Boolean(state.user && state.user.admin || co.unlockAllContracts === true || co.isTestCompany === true);
+        const isMasterOrAdmin = Boolean(state.user && state.user.admin || co.unlockAllContracts === true);
         const win = typeof CONTRACTS_PHASE_WINDOWS !== 'undefined' ? CONTRACTS_PHASE_WINDOWS[curPhase] : null;
         const isUnlocked = isMasterOrAdmin || (win && Date.now() >= new Date(win.selectionStart).getTime());
 
@@ -3555,7 +3587,7 @@ Object.assign(ui, {
             return state.isContractPhaseUnlocked(phase, co);
         }
         if (!co) return false;
-        if (co.unlockAllContracts === true || co.isTestCompany === true || (state.user && state.user.admin)) {
+        if (co.unlockAllContracts === true || (state.user && state.user.admin)) {
             return true;
         }
         const win = typeof CONTRACTS_PHASE_WINDOWS !== 'undefined' ? CONTRACTS_PHASE_WINDOWS[phase] : null;
@@ -3569,7 +3601,7 @@ Object.assign(ui, {
         }
         if (!co && state.user) co = state.data?.companies?.[state.user.coId];
         if (!co) return false;
-        if (co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000' || (state.user && state.user.admin)) {
+        if (co.unlockAllContracts === true || (state.user && state.user.admin)) {
             return true;
         }
         const prPhases = typeof PRESS_RELEASE_PHASES !== 'undefined' ? PRESS_RELEASE_PHASES : [];
@@ -3598,7 +3630,7 @@ Object.assign(ui, {
         }
         if (!co && state.user) co = state.data?.companies?.[state.user.coId];
         if (!co) return false;
-        if (co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000' || (state.user && state.user.admin)) {
+        if (co.unlockAllContracts === true || (state.user && state.user.admin)) {
             return true;
         }
         const pItem = co.deliverables?.['preliminaryReport'];
@@ -3611,7 +3643,7 @@ Object.assign(ui, {
         }
         if (!co && state.user) co = state.data?.companies?.[state.user.coId];
         if (!co) return false;
-        if (co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000' || (state.user && state.user.admin)) {
+        if (co.unlockAllContracts === true || (state.user && state.user.admin)) {
             return true;
         }
         const p = co.deliverables?.['budgetInitial'];
@@ -3893,7 +3925,7 @@ Object.assign(ui, {
                     const isWithinDates = (nowTs >= winStart && nowTs <= winEnd);
                     const isBudgetDelivered = this.isBudgetInitialDelivered(co);
 
-                    if (currentPhaseTab === 'I' && isWithinDates && !isBudgetDelivered && !co.unlockAllContracts && !co.isTestCompany) {
+                    if (currentPhaseTab === 'I' && isWithinDates && !isBudgetDelivered && !co.unlockAllContracts) {
                         return `
                         <div class="terminal-border p-4 bg-amber-950/20 border border-amber-500/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                             <div>

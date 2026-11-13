@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.04) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.05) ---
 
-const APP_VERSION = "2.0.04";
+const APP_VERSION = "2.0.05";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1097,8 +1097,23 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.04
+// Changelog Oficial de Producción v2.0.05
 const APP_CHANGELOG = [
+    {
+      version: "2.0.05",
+      date: new Date().toISOString().split('T')[0],
+      title: "Bloqueo Estricto de Subidas Prematuras del CEO, Segunda Empresa TEST «Alumno Real» (TEST-1111) y Blindaje de Roles",
+      items: [
+        "Bloqueo Integral de Subidas Prematuras por el CEO (Frontend + PHP + D1): Dirección General (CEO) ya no puede elaborar ni subir entregables curriculares, Bitácoras DOC_4 ni Balances DOC_17 antes de recibirlos de su departamento responsable; su rol queda circunscrito al visado ejecutivo (SUBMITTED_TO_CEO / PENDIENTE_CEO) o devolución para subsanaciones.",
+        "Nueva Empresa Permanente de Pruebas «MARS-X ALUMNO (ESTÁNDAR)» (TEST-1111): Añadida en Clase TEST junto a TEST-0000 con 2.400 €v limpios, bloqueo real de fechas de apertura de fases y entregables, requisito real del Presupuesto Inicial e Informe Preliminar para AESA y reseteo independiente desde Llavero Maestro.",
+        "Desacoplamiento Completo de Sandbox vs Simulación Real e Indicador Táctico en HUD: Separación estricta de isTestCompany frente a unlockAllContracts en todos los módulos y visualización inmediata en la cabecera y Llavero Maestro entre [🔓 MODO SANDBOX LIBRE] y [🎓 SIMULACIÓN ALUMNO REAL]."
+      ],
+      highlights: [
+        { type: "ROLES", text: "El CEO solo puede visar entregables ya remitidos por cada departamento responsable." },
+        { type: "AULA TEST", text: "Nueva startup TEST-1111 con restricciones reales de alumno para auditoría docente fiel." },
+        { type: "SEGURIDAD", text: "Doble blindaje de autorización por departamento en API PHP y Cloudflare Workers." }
+      ]
+    },
     {
       version: "2.0.04",
       date: new Date().toISOString().split('T')[0],

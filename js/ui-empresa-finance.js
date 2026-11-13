@@ -1047,8 +1047,8 @@ Object.assign(ui, {
             const b = co.phaseBalances[p.phase];
             const isPhaseUnlocked = (typeof this.isPhaseBalanceUnlocked === 'function') ? this.isPhaseBalanceUnlocked(p.phase, co) : true;
             const isInWindow = (typeof this.isPhaseBalanceInWindow === 'function') ? this.isPhaseBalanceInWindow(p.phase, co) : true;
-            const isMasterOrAdmin = Boolean(state.user && state.user.admin || co.unlockAllContracts === true || co.isTestCompany === true || co.id === 'TEST-0000');
-            const canRegister = (isFinanzas || isCEO) && (isPhaseUnlocked || isMasterOrAdmin);
+            const isMasterOrAdmin = Boolean((state.user && state.user.admin) || co.unlockAllContracts === true);
+            const canRegister = isFinanzas && (isPhaseUnlocked || isMasterOrAdmin);
 
             const bStatus = b ? (b.status || 'DELIVERED_TO_TEACHER') : null;
             let statusBadge = '';
@@ -1332,6 +1332,15 @@ Object.assign(ui, {
         const co = state.data.companies[state.user.coId];
         if (!co) return;
 
+        const effectiveRole = this.getEffectiveRole(co);
+        if (!state.user.admin && effectiveRole !== 'FINANZAS') {
+            return this.notify("Solo el Departamento Financiero puede registrar el Balance de Cierre (DOC_17). Dirección General (CEO) solo puede visarlo tras recibirlo.", "warning");
+        }
+        const isPhaseUnlocked = (typeof this.isPhaseBalanceUnlocked === 'function') ? this.isPhaseBalanceUnlocked(phaseKey, co) : true;
+        if (!state.user.admin && !isPhaseUnlocked && co.unlockAllContracts !== true) {
+            return this.notify("Este Balance de Cierre está bloqueado hasta el corte oficial de su fase.", "warning");
+        }
+
         const phaseDefs = typeof FINANCIAL_PHASE_BALANCES_DEF !== 'undefined' ? FINANCIAL_PHASE_BALANCES_DEF : [
             { phase: 'I', title: 'Balance de Cierre — Fase I', cutoffLabel: '15/12/2026', docKey: 'DOC_17_BALANCE_FASE' },
             { phase: 'II', title: 'Balance de Cierre — Fase II', cutoffLabel: '15/02/2027', docKey: 'DOC_17_BALANCE_FASE' },
@@ -1423,7 +1432,14 @@ Object.assign(ui, {
         if (!co) return;
 
         const effectiveRole = this.getEffectiveRole(co);
-        const isCEO = effectiveRole === 'CEO';
+        if (!state.user.admin && effectiveRole !== 'FINANZAS') {
+            return this.notify("Solo el Departamento Financiero puede registrar balances contables. El CEO solo puede visarlos tras recibirlos.", "warning");
+        }
+        const isPhaseUnlocked = (typeof this.isPhaseBalanceUnlocked === 'function') ? this.isPhaseBalanceUnlocked(phaseKey, co) : true;
+        if (!state.user.admin && !isPhaseUnlocked && co.unlockAllContracts !== true) {
+            return this.notify("Este Balance de Cierre aún se encuentra bloqueado hasta la fecha de corte.", "warning");
+        }
+        const isAdminCoord = Boolean(state.user.admin);
         const grossCosts = state.getCompanyGrossOperatingCosts ? state.getCompanyGrossOperatingCosts(co) : 0;
         const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
         const virtualSpend = (co.ledger || []).filter(l => l.delta < 0).reduce((acc, l) => acc + Math.abs(Number(l.delta) || 0), 0);
@@ -1432,7 +1448,7 @@ Object.assign(ui, {
         co.phaseBalances[phaseKey] = {
             id: 'BAL-' + coId + '-' + phaseKey,
             phase: phaseKey,
-            status: isCEO ? 'DELIVERED_TO_TEACHER' : 'PENDIENTE_CEO',
+            status: isAdminCoord ? 'DELIVERED_TO_TEACHER' : 'PENDIENTE_CEO',
             verdict: verdict,
             driveUrl: driveUrl,
             snapshot: {
@@ -1453,7 +1469,7 @@ Object.assign(ui, {
         state.save(coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
-        if (isCEO) {
+        if (isAdminCoord) {
             ui.pushNotification(coId, 'ALL', `📊 Balance de Cierre de Fase ${phaseKey} formalizado y elevado al Claustro para Economía.`, 'success');
             this.notify(`✅ Balance Contable de Cierre de Fase ${phaseKey} visado y entregado.`, "success");
         } else {
