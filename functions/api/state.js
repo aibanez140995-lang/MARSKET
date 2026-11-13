@@ -4,13 +4,68 @@
 import { verifySession, signSessionToken, decodeSecret, encodeSecret, VAULT_KEY } from './_auth.js';
 
 /**
+ * Redacta datos de borrador del Concurso Final (Fase V) si la lectura no es de Coordinación
+ * y los resultados aún no han sido publicados oficialmente.
+ *
+ * @param {object} fc
+ * @param {boolean} includeContestDraft
+ * @returns {object}
+ */
+function redactFinalContestForClient(fc, includeContestDraft = false) {
+    if (!fc || typeof fc !== 'object') return fc;
+    const isPublished = Boolean(fc.published);
+    const nextFinalists = (fc.finalists && typeof fc.finalists === 'object') ? { ...fc.finalists } : {};
+    if (!includeContestDraft && !isPublished) {
+        return {
+            finalists: nextFinalists,
+            launches: {},
+            podium: { first: null, second: null, third: null },
+            roleAwards: { CEO: null, TECNICO: null, FINANZAS: null, MARKETING: null, OPERACIONES: null },
+            published: false,
+            publishedAt: null,
+            updatedAt: Number(fc.updatedAt) || 0
+        };
+    }
+    return fc;
+}
+
+/**
+ * Purga cualquier referencia a una startup eliminada del bloque finalContest.
+ *
+ * @param {object} fc
+ * @param {string} delCid
+ */
+function purgeCompanyFromFinalContest(fc, delCid) {
+    if (!fc || typeof fc !== 'object' || !delCid) return;
+    if (fc.finalists && typeof fc.finalists === 'object') {
+        for (const cls of Object.keys(fc.finalists)) {
+            if (fc.finalists[cls] === delCid) delete fc.finalists[cls];
+        }
+    }
+    if (fc.launches && typeof fc.launches === 'object') {
+        delete fc.launches[delCid];
+    }
+    if (fc.podium && typeof fc.podium === 'object') {
+        for (const slot of ['first', 'second', 'third']) {
+            if (fc.podium[slot] === delCid) fc.podium[slot] = null;
+        }
+    }
+    if (fc.roleAwards && typeof fc.roleAwards === 'object') {
+        for (const rKey of Object.keys(fc.roleAwards)) {
+            if (fc.roleAwards[rKey] === delCid) fc.roleAwards[rKey] = null;
+        }
+    }
+}
+
+/**
  * Aplica sanitización quirúrgica in-place sin deep-cloning JSON.parse(JSON.stringify())
  * para erradicar la amplificación de memoria en el Heap de V8 (CWE-200 / SRE Zero-Alloc).
  *
  * @param {object} rawState
+ * @param {boolean} includeContestDraft
  * @returns {object}
  */
-export function sanitizeStateForClient(rawState) {
+export function sanitizeStateForClient(rawState, includeContestDraft = false) {
     if (!rawState || typeof rawState !== 'object') return rawState;
     const clean = Array.isArray(rawState) ? [...rawState] : { ...rawState };
 
@@ -38,6 +93,11 @@ export function sanitizeStateForClient(rawState) {
                 clean.companies[cid] = co;
             }
         }
+    }
+
+    // 3. Redactar borrador interno del Concurso Final (Fase V) hasta su publicación oficial
+    if (clean.finalContest && typeof clean.finalContest === 'object') {
+        clean.finalContest = redactFinalContestForClient(clean.finalContest, includeContestDraft);
     }
 
     return clean;
@@ -74,6 +134,12 @@ export async function onRequest(context) {
     try {
         if (request.method === 'GET') {
             const action = url.searchParams.get('action');
+            const readAuth = await verifySession(request, env).catch(() => null);
+            const isCoordReader = Boolean(
+                readAuth &&
+                readAuth.valid &&
+                (readAuth.isCoordinator || (readAuth.role && (readAuth.role.startsWith('COORD') || readAuth.role === 'COORDINADOR')))
+            );
             
             // Descarga de un backup específico si se solicita
             if (action === 'get_backup') {
@@ -83,9 +149,21 @@ export async function onRequest(context) {
                     let parsed = null;
                     try { parsed = typeof results[0].data === 'string' ? JSON.parse(results[0].data) : results[0].data; } catch(e) {}
                     if (parsed) {
-                        return new Response(JSON.stringify(sanitizeStateForClient(parsed)), { headers });
+                        return new Response(JSON.stringify(sanitizeStateForClient(parsed, isCoordReader)), {
+                            headers: {
+                                ...headers,
+                                'Cache-Control': 'private, no-cache',
+                                'Vary': 'X-Marsket-Auth'
+                            }
+                        });
                     }
-                    return new Response(results[0].data, { headers });
+                    return new Response(results[0].data, {
+                        headers: {
+                            ...headers,
+                            'Cache-Control': 'private, no-cache',
+                            'Vary': 'X-Marsket-Auth'
+                        }
+                    });
                 }
                 return new Response(JSON.stringify({ status: 'empty' }), { headers });
             }
@@ -108,7 +186,7 @@ export async function onRequest(context) {
             const currentVersion = (row && row.v !== null && row.v !== undefined) ? String(row.v) : "1";
             const currentConfigUpdated = (row && row.cu !== null && row.cu !== undefined) ? String(row.cu) : "0";
             const clientETag = request.headers.get('If-None-Match');
-            const serverETag = `W/"v-${currentVersion}-${currentConfigUpdated}"`;
+            const serverETag = `W/"v-${currentVersion}-${currentConfigUpdated}-${isCoordReader ? 'coord' : 'pub'}"`;
 
             // 2. Si el cliente está actualizado, responder 304 sin payload (0 bytes transferidos)
             if (clientETag === serverETag) {
@@ -116,7 +194,8 @@ export async function onRequest(context) {
                     status: 304,
                     headers: {
                         'ETag': serverETag,
-                        'Cache-Control': 'public, no-cache',
+                        'Cache-Control': 'private, no-cache',
+                        'Vary': 'X-Marsket-Auth',
                         'Access-Control-Allow-Origin': '*'
                     }
                 });
@@ -146,7 +225,8 @@ export async function onRequest(context) {
                     headers: {
                         ...headers,
                         'ETag': serverETag,
-                        'Cache-Control': 'public, no-cache'
+                        'Cache-Control': 'private, no-cache',
+                        'Vary': 'X-Marsket-Auth'
                     }
                 });
             }
@@ -158,12 +238,13 @@ export async function onRequest(context) {
             } catch(e) {}
 
             if (parsed) {
-                const clean = sanitizeStateForClient(parsed);
+                const clean = sanitizeStateForClient(parsed, isCoordReader);
                 return new Response(JSON.stringify(clean), {
                     headers: {
                         'Content-Type': 'application/json; charset=utf-8',
                         'ETag': serverETag,
-                        'Cache-Control': 'public, no-cache',
+                        'Cache-Control': 'private, no-cache',
+                        'Vary': 'X-Marsket-Auth',
                         'Access-Control-Allow-Origin': '*'
                     }
                 });
@@ -173,7 +254,8 @@ export async function onRequest(context) {
                 headers: {
                     'Content-Type': 'application/json; charset=utf-8',
                     'ETag': serverETag,
-                    'Cache-Control': 'public, no-cache',
+                    'Cache-Control': 'private, no-cache',
+                    'Vary': 'X-Marsket-Auth',
                     'Access-Control-Allow-Origin': '*'
                 }
             });
@@ -461,6 +543,23 @@ export async function onRequest(context) {
                 }
             }
 
+            // 2B. Blindaje Fase V (finalContest): escritura reservada exclusivamente a roles COORD_*
+            if (currentState) {
+                if (!isCoord) {
+                    if (currentState.finalContest) {
+                        payload.finalContest = currentState.finalContest;
+                    } else {
+                        delete payload.finalContest;
+                    }
+                } else if (currentState.finalContest && payload.finalContest) {
+                    const currFcUpd = Number(currentState.finalContest.updatedAt) || 0;
+                    const incFcUpd = Number(payload.finalContest.updatedAt) || 0;
+                    if (currFcUpd > incFcUpd) {
+                        payload.finalContest = currentState.finalContest;
+                    }
+                }
+            }
+
             // 3. Si D1 está vacío o corrupto, aplicar Seeding de Emergencia
             if (!currentState || !currentState.config || !currentState.config.teachers) {
                 currentState = currentState || { config: {}, companies: {} };
@@ -586,6 +685,8 @@ export async function onRequest(context) {
             for (const delCid of allDeletedCompanyIds) {
                 if (currentState.companies) delete currentState.companies[delCid];
                 if (payload.companies) delete payload.companies[delCid];
+                purgeCompanyFromFinalContest(currentState.finalContest, delCid);
+                purgeCompanyFromFinalContest(payload.finalContest, delCid);
                 try {
                     await env.MARSKET_DB.prepare("DELETE FROM company_state WHERE company_id = ?").bind(delCid).run();
                 } catch(e) {}
@@ -664,13 +765,13 @@ export async function onRequest(context) {
             }
             
             const savedCfgUpdated = Number(payload.config?.updatedAt) || 0;
-            const savedETag = `W/"v-${payload.version}-${savedCfgUpdated}"`;
+            const savedETag = `W/"v-${payload.version}-${savedCfgUpdated}-${isCoord ? 'coord' : 'pub'}"`;
             return new Response(JSON.stringify({
                 success: true,
                 version: payload.version,
                 configUpdatedAt: savedCfgUpdated,
                 etag: savedETag
-            }), { headers: { ...headers, 'ETag': savedETag } });
+            }), { headers: { ...headers, 'ETag': savedETag, 'Cache-Control': 'private, no-cache', 'Vary': 'X-Marsket-Auth' } });
         }
         
         return new Response('Method Not Allowed', { status: 405, headers });

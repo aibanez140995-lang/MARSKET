@@ -334,6 +334,15 @@ Object.assign(ui, {
                     }">
                     🤝 Auditoría de Contratos
                 </button>
+                <button type="button" role="tab" aria-selected="${currentTab === 'contest'}"
+                    onclick="ui.adminTab = 'contest'; ui.render();"
+                    class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-all ${
+                        currentTab === 'contest'
+                            ? 'bg-mars-green text-black border-mars-green shadow-[0_0_10px_rgba(0,255,102,0.3)]'
+                            : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
+                    }">
+                    🏆 Concurso Final (Fase V)
+                </button>
             </div>
             `;
         }
@@ -353,6 +362,7 @@ Object.assign(ui, {
                     break;
                 }
                 case 'contracts': subContainer.innerHTML = this.renderAdminContracts(); break;
+                case 'contest': subContainer.innerHTML = this.renderAdminContest(); break;
                 case 'eval': subContainer.innerHTML = this.renderAdminEval(); break;
                 case 'startups': subContainer.innerHTML = this.renderAdminStartups(); break;
                 case 'telemetry': subContainer.innerHTML = this.renderAdminTelemetry(); break;

@@ -3418,11 +3418,16 @@ const ui = {
                             <span class="text-xs text-mars-green font-mono font-bold uppercase">🏆 CONCURSO FINAL</span>
                         </div>
                         <h4 class="text-white font-bold text-sm uppercase leading-snug">Culminación del Proyecto MARS-KET</h4>
-                        <p class="text-xs text-slate-300 mt-0.5">Lanzamiento oficial de prototipos definitivos, defensa ante tribunal e inversores y premiación general.</p>
+                        <p class="text-xs text-slate-300 mt-0.5">Lanzamiento oficial de prototipos definitivos (1 finalista por clase A–F), podio y 6 galardones oficiales.</p>
                     </div>
-                    <div class="text-left sm:text-right shrink-0">
-                        <span class="text-xs text-slate-400 font-mono block">Fecha del Evento:</span>
-                        <span class="text-sm font-orbitron font-bold text-mars-green">19/05/2027</span>
+                    <div class="flex flex-col sm:items-end gap-2 shrink-0">
+                        <div class="text-left sm:text-right">
+                            <span class="text-xs text-slate-400 font-mono block">Fecha del Evento:</span>
+                            <span class="text-sm font-orbitron font-bold text-mars-green">19/05/2027</span>
+                        </div>
+                        <button type="button" onclick="ui.openPhaseVNews()" class="min-h-[44px] px-3.5 py-2 bg-mars-green text-black font-black text-xs uppercase hover:bg-white transition-all">
+                            🏆 Ir al Tablón Fase V ➔
+                        </button>
                     </div>
                 </div>` : ''}
             </div>

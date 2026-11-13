@@ -82,6 +82,11 @@ const auth = (function() {
             localStorage.removeItem(state.sessionKey);
         } catch (e) {}
 
+        // Rehidratar estado completo autenticado para Coordinación (desbloquea borrador interno Fase V)
+        if (isTeacher && userObj.role && userObj.role.startsWith('COORD') && typeof state.fetchFromCloud === 'function') {
+            await state.fetchFromCloud(true).catch(e => console.warn("[AUTH] Error hidratando borrador Fase V:", e));
+        }
+
         if (typeof ui.playLoginAnimation === 'function') {
             ui.playLoginAnimation(roleName);
         }

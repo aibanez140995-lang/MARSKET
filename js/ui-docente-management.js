@@ -2152,6 +2152,18 @@ Object.assign(ui, {
         // 7. Borrado efectivo de la empresa en memoria local
         delete state.data.companies[cid];
 
+        // 7B. Limpieza de referencias en Concurso Final (Fase V)
+        if (state.data.finalContest && typeof state.normalizeFinalContest === 'function') {
+            state.data.finalContest = state.normalizeFinalContest(
+                state.data.finalContest,
+                state.data.companies || {},
+                state.data.deletedCompanyIds || []
+            );
+            state.data.finalContest.updatedAt = Date.now();
+            if (!state.data.config) state.data.config = {};
+            state.data.config.updatedAt = Date.now();
+        }
+
         // 8. Limpiar selección docente si apuntaba a esta empresa
         if (this.evalSelectedCo === cid) {
             this.evalSelectedCo = '';

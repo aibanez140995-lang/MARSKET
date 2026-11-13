@@ -576,13 +576,19 @@ Object.assign(ui, {
             }).join('');
 
             const phaseVCardHtml = `
-            <div class="terminal-border bg-mars-card border-l-4 border-mars-green p-4 bg-slate-900/70">
-                <div class="flex items-center gap-2 flex-wrap mb-1">
-                    <span class="text-xs font-black uppercase px-2 py-0.5 border border-mars-green text-mars-green bg-black">FASE V // 19/05/2027</span>
-                    <span class="text-xs text-mars-green font-mono font-bold uppercase">🏆 EVENTO CULMINANTE</span>
+            <div class="terminal-border bg-mars-card border-l-4 border-mars-green p-4 bg-slate-900/70 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap mb-1">
+                        <span class="text-xs font-black uppercase px-2 py-0.5 border border-mars-green text-mars-green bg-black">FASE V // 19/05/2027</span>
+                        <span class="text-xs text-mars-green font-mono font-bold uppercase">🏆 EVENTO CULMINANTE</span>
+                    </div>
+                    <h4 class="font-orbitron font-black text-xs sm:text-sm text-white uppercase tracking-wider">${pDefs.V ? this.escapeHTML(pDefs.V.name) : 'Fase V: Concurso Final'}</h4>
+                    <p class="text-xs text-slate-300 mt-1">${pDefs.V ? this.escapeHTML(pDefs.V.desc) : 'Culminación del proyecto con la celebración del Concurso Final (19/05/2027).'}</p>
                 </div>
-                <h4 class="font-orbitron font-black text-xs sm:text-sm text-white uppercase tracking-wider">${pDefs.V ? this.escapeHTML(pDefs.V.name) : 'Fase V: Concurso Final'}</h4>
-                <p class="text-xs text-slate-300 mt-1">${pDefs.V ? this.escapeHTML(pDefs.V.desc) : 'Culminación del proyecto con la celebración del Concurso Final (19/05/2027).'}</p>
+                <button type="button" onclick="ui.openPhaseVNews()"
+                    class="min-h-[44px] px-3.5 py-2 bg-mars-green text-black font-black text-xs uppercase hover:bg-white transition-all shrink-0">
+                    🏆 Ver Concurso Final ➔
+                </button>
             </div>`;
 
             container.innerHTML = `
@@ -1434,6 +1440,7 @@ Object.assign(ui, {
                 </div>
             </div>
 
+            ${typeof this.renderContestDashboardBanner === 'function' ? this.renderContestDashboardBanner(co) : ''}
             ${ceoTrayHtml}
             ${ceoSpecialItemsHtml}
             ${compassCardHtml}
@@ -3273,6 +3280,11 @@ Object.assign(ui, {
             filtered = filtered.filter(r => !r.phase || r.phase === 'ALL' || r.phase === phaseFilter);
         }
 
+        const currentCo = (!state.user.admin && state.user.coId) ? (companies[state.user.coId] || null) : null;
+        const contestShowcaseHtml = (phaseFilter === 'ALL' || phaseFilter === 'V') && typeof this.renderContestNewsShowcase === 'function'
+            ? this.renderContestNewsShowcase(currentCo)
+            : '';
+
         const availableClasses = ['A', 'B', 'C', 'D', 'E', 'F', 'TEST'];
 
         const wrapper = document.createElement('div');
@@ -3333,13 +3345,18 @@ Object.assign(ui, {
                         <button type="button" onclick="ui.setNewsPhaseFilter('IV')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${phaseFilter === 'IV' ? 'bg-amber-400 text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
                             Fase IV
                         </button>
+                        <button type="button" onclick="ui.setNewsPhaseFilter('V')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${phaseFilter === 'V' ? 'bg-mars-green text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
+                            🏆 Fase V
+                        </button>
                     </div>
                 </div>
             </div>
 
+            ${contestShowcaseHtml}
+
             <!-- Listado de Noticias -->
             <div class="space-y-4">
-                ${filtered.length === 0 ? `
+                ${filtered.length === 0 ? (phaseFilter === 'V' && contestShowcaseHtml ? '' : `
                     <div class="terminal-border bg-mars-card p-10 text-center border-dashed border-slate-700">
                         <span class="text-3xl block mb-2">📰</span>
                         <h3 class="text-base font-orbitron font-bold text-white uppercase mb-1">Sin Comunicados Publicados en este Filtro</h3>
@@ -3347,7 +3364,7 @@ Object.assign(ui, {
                             Las notas de prensa oficiales de startups se habilitan al cierre de cada fase, y las crónicas oficiales son emitidas por la Agencia Espacial AEE.
                         </p>
                     </div>
-                ` : `
+                `) : `
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                         ${filtered.map(r => {
                             const hasImage = Boolean(r.imageUrl || r.nanoBananaImage);

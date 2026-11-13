@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.07
+// Versión: v2.0.08
 
 declare(strict_types=1);
 
@@ -127,7 +127,52 @@ function verifySession(): array {
     return ['authorized' => false, 'isCoordinator' => false, 'role' => null, 'isAdmin' => false];
 }
 
-function sanitizeStateForClient(array $state): array {
+function redactFinalContestForClient(array $fc, bool $includeContestDraft = false): array {
+    $isPublished = !empty($fc['published']);
+    $nextFinalists = is_array($fc['finalists'] ?? null) ? $fc['finalists'] : [];
+    if (!$includeContestDraft && !$isPublished) {
+        return [
+            'finalists' => $nextFinalists,
+            'launches' => new \stdClass(),
+            'podium' => ['first' => null, 'second' => null, 'third' => null],
+            'roleAwards' => ['CEO' => null, 'TECNICO' => null, 'FINANZAS' => null, 'MARKETING' => null, 'OPERACIONES' => null],
+            'published' => false,
+            'publishedAt' => null,
+            'updatedAt' => (int)($fc['updatedAt'] ?? 0)
+        ];
+    }
+    return $fc;
+}
+
+function purgeCompanyFromFinalContest(&$fc, string $delCid): void {
+    if (!is_array($fc) || $delCid === '') return;
+    if (isset($fc['finalists']) && is_array($fc['finalists'])) {
+        foreach ($fc['finalists'] as $cls => $cid) {
+            if ($cid === $delCid) {
+                unset($fc['finalists'][$cls]);
+            }
+        }
+    }
+    if (isset($fc['launches']) && is_array($fc['launches'])) {
+        unset($fc['launches'][$delCid]);
+    }
+    if (isset($fc['podium']) && is_array($fc['podium'])) {
+        foreach (['first', 'second', 'third'] as $slot) {
+            if (($fc['podium'][$slot] ?? null) === $delCid) {
+                $fc['podium'][$slot] = null;
+            }
+        }
+    }
+    if (isset($fc['roleAwards']) && is_array($fc['roleAwards'])) {
+        foreach ($fc['roleAwards'] as $rKey => $cid) {
+            if ($cid === $delCid) {
+                $fc['roleAwards'][$rKey] = null;
+            }
+        }
+    }
+}
+
+function sanitizeStateForClient(array $state, bool $includeContestDraft = false): array {
     if (isset($state['config']['teachers']) && is_array($state['config']['teachers'])) {
         foreach ($state['config']['teachers'] as $tk => &$t) {
             if (is_array($t)) {
@@ -141,6 +186,9 @@ function sanitizeStateForClient(array $state): array {
                 unset($co['authVault'], $co['roles'], $co['accessCode']);
             }
         }
+    }
+    if (isset($state['finalContest']) && is_array($state['finalContest'])) {
+        $state['finalContest'] = redactFinalContestForClient($state['finalContest'], $includeContestDraft);
     }
     return $state;
 }
@@ -193,8 +241,17 @@ try {
                 $stmt->execute([':id' => $type]);
                 $row = $stmt->fetch();
                 if ($row && !empty($row['clean_data'])) {
+                    $readAuthBackup = verifySession();
+                    $isCoordBackup = !empty($readAuthBackup['isCoordinator']);
+                    $decodedBackup = json_decode($row['clean_data'], true);
                     header('Content-Type: application/json; charset=utf-8');
-                    echo $row['clean_data'];
+                    header('Cache-Control: private, no-cache');
+                    header('Vary: X-Marsket-Auth');
+                    if (is_array($decodedBackup)) {
+                        echo json_encode(sanitizeStateForClient($decodedBackup, $isCoordBackup), JSON_UNESCAPED_UNICODE);
+                    } else {
+                        echo $row['clean_data'];
+                    }
                     exit;
                 }
                 echo json_encode(['status' => 'empty']);
@@ -213,18 +270,23 @@ try {
                 exit;
             }
 
-            // Mitigación de Ancho de Banda con ETag y HTTP 304 (0 bytes si versión y config.updatedAt coinciden)
+            // Determinar si la lectura proviene de Coordinación para exponer borrador interno Fase V
+            $readAuth = verifySession();
+            $isCoordReader = !empty($readAuth['isCoordinator']);
+
+            // Mitigación de Ancho de Banda con ETag y HTTP 304 (0 bytes si versión, config.updatedAt y nivel de lector coinciden)
             $stmt = $pdo->query("SELECT json_extract(data, '$.version') as v, json_extract(data, '$.config.updatedAt') as cu FROM state WHERE id = 'current'");
             $row = $stmt->fetch();
             $version = (string)($row['v'] ?? '1');
             $cu = (string)((int)($row['cu'] ?? 0));
-            $serverETag = 'W/"v-' . $version . '-' . $cu . '"';
+            $serverETag = 'W/"v-' . $version . '-' . $cu . '-' . ($isCoordReader ? 'coord' : 'pub') . '"';
             $clientETag = $_SERVER['HTTP_IF_NONE_MATCH'] ?? '';
 
             if ($clientETag === $serverETag) {
                 http_response_code(304);
                 header('ETag: ' . $serverETag);
-                header('Cache-Control: public, no-cache');
+                header('Cache-Control: private, no-cache');
+                header('Vary: X-Marsket-Auth');
                 exit;
             }
 
@@ -264,7 +326,8 @@ try {
             if (!$row || empty($row['clean_data'])) {
                 header('Content-Type: application/json; charset=utf-8');
                 header('ETag: ' . $serverETag);
-                header('Cache-Control: public, no-cache');
+                header('Cache-Control: private, no-cache');
+                header('Vary: X-Marsket-Auth');
                 echo json_encode(['status' => 'empty']);
                 exit;
             }
@@ -272,17 +335,19 @@ try {
             $cleanPayload = $row['clean_data'];
             $decoded = json_decode($cleanPayload, true);
             if (is_array($decoded)) {
-                $sanitized = sanitizeStateForClient($decoded);
+                $sanitized = sanitizeStateForClient($decoded, $isCoordReader);
                 header('Content-Type: application/json; charset=utf-8');
                 header('ETag: ' . $serverETag);
-                header('Cache-Control: public, no-cache');
+                header('Cache-Control: private, no-cache');
+                header('Vary: X-Marsket-Auth');
                 echo json_encode($sanitized, JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
             header('Content-Type: application/json; charset=utf-8');
             header('ETag: ' . $serverETag);
-            header('Cache-Control: public, no-cache');
+            header('Cache-Control: private, no-cache');
+            header('Vary: X-Marsket-Auth');
             echo $cleanPayload;
             exit;
         }
@@ -606,6 +671,21 @@ try {
                 }
             }
 
+            // Blindaje Fase V (finalContest): escritura reservada exclusivamente a roles COORD_*
+            if (!$isCoord) {
+                if (isset($currentState['finalContest'])) {
+                    $payload['finalContest'] = $currentState['finalContest'];
+                } else {
+                    unset($payload['finalContest']);
+                }
+            } elseif (!empty($currentState['finalContest']) && !empty($payload['finalContest']) && is_array($currentState['finalContest']) && is_array($payload['finalContest'])) {
+                $currFcUpd = (int)($currentState['finalContest']['updatedAt'] ?? 0);
+                $incFcUpd = (int)($payload['finalContest']['updatedAt'] ?? 0);
+                if ($currFcUpd > $incFcUpd) {
+                    $payload['finalContest'] = $currentState['finalContest'];
+                }
+            }
+
             // Fusión de Secretos en Servidor (Evitar que el payload sanitizado borre PINs)
             $defaultTeacherPins = [
                 'COORD_MARIO' => '0001',
@@ -716,6 +796,12 @@ try {
                 if (isset($payload['companies'][$delCid])) {
                     unset($payload['companies'][$delCid]);
                 }
+                if (isset($currentState['finalContest']) && is_array($currentState['finalContest'])) {
+                    purgeCompanyFromFinalContest($currentState['finalContest'], (string)$delCid);
+                }
+                if (isset($payload['finalContest']) && is_array($payload['finalContest'])) {
+                    purgeCompanyFromFinalContest($payload['finalContest'], (string)$delCid);
+                }
                 try {
                     $pdo->prepare("DELETE FROM company_state WHERE company_id = :cid")->execute([':cid' => $delCid]);
                 } catch (\Exception $e) {}
@@ -789,8 +875,10 @@ try {
             }
 
             $savedCfgUpdated = (int)($payload['config']['updatedAt'] ?? 0);
-            $savedETag = 'W/"v-' . $payload['version'] . '-' . $savedCfgUpdated . '"';
+            $savedETag = 'W/"v-' . $payload['version'] . '-' . $savedCfgUpdated . '-' . ($isCoord ? 'coord' : 'pub') . '"';
             header('ETag: ' . $savedETag);
+            header('Cache-Control: private, no-cache');
+            header('Vary: X-Marsket-Auth');
             echo json_encode([
                 'success' => true,
                 'version' => $payload['version'],

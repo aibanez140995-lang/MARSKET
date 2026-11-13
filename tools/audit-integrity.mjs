@@ -26,6 +26,7 @@ const FILES = [
     'js/ui-docente-core.js',
     'js/ui-docente-eval.js',
     'js/ui-docente-management.js',
+    'js/ui-docente-contest.js',
     'functions/api/state.js'
 ];
 
@@ -114,6 +115,8 @@ function runAudit() {
             adminTabs: {
                 dash: 'ui.renderAdminDash()',
                 eval: 'ui.renderAdminEval()',
+                contracts: 'ui.renderAdminContracts()',
+                contest: 'ui.renderAdminContest()',
                 startups: 'ui.renderAdminStartups()',
                 telemetry: 'ui.renderAdminTelemetry()',
                 hr: 'ui.renderAdminHR()',

@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.07) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.08) ---
 
-const APP_VERSION = "2.0.07";
+const APP_VERSION = "2.0.08";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -9,6 +9,62 @@ const SPONSOR_TIERS_DEF = Object.freeze({
     BRONCE: { id: 'BRONCE', name: 'Nivel BRONCE', amount: 250, colorHex: '#CD7F32', badgeClass: 'text-[#cd7f32] border-[#cd7f32]', emoji: '🥉' },
     COBRE: { id: 'COBRE', name: 'Nivel COBRE', amount: 150, colorHex: '#B87333', badgeClass: 'text-[#b87333] border-[#b87333]', emoji: '🔶' },
     COLABORADOR: { id: 'COLABORADOR', name: 'Nivel COLABORADOR', amount: 100, colorHex: '#00F0FF', badgeClass: 'text-mars-cyan border-mars-cyan', emoji: '🤝' }
+});
+
+const CONTEST_CLASSES = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F']);
+
+const CONTEST_AWARDS_DEF = Object.freeze({
+    GOLD: {
+        id: 'GOLD',
+        podiumKey: 'first',
+        title: 'Trofeo «MarsKet Gold»',
+        subtitle: 'Campeón Absoluto del Concurso Final',
+        roleLabel: 'CAMPEÓN ABSOLUTO',
+        emoji: '🏆',
+        colorHex: '#FFD700'
+    },
+    ROLE_AWARDS: [
+        {
+            id: 'CEO',
+            title: 'Premio a la Excelencia en Dirección General',
+            shortTitle: 'Excelencia en Dirección General',
+            roleLabel: 'CEO',
+            emoji: '🎖️',
+            colorHex: '#00F0FF'
+        },
+        {
+            id: 'TECNICO',
+            title: 'Premio a la Innovación Técnica',
+            shortTitle: 'Innovación Técnica',
+            roleLabel: 'Técnico',
+            emoji: '🚀',
+            colorHex: '#38BDF8'
+        },
+        {
+            id: 'FINANZAS',
+            title: 'Premio a la Excelencia Financiera y Control de Costes',
+            shortTitle: 'Excelencia Financiera y Control de Costes',
+            roleLabel: 'Finanzas',
+            emoji: '💰',
+            colorHex: '#00FF66'
+        },
+        {
+            id: 'MARKETING',
+            title: 'Premio a la Mejor Estrategia de Marketing',
+            shortTitle: 'Mejor Estrategia de Marketing',
+            roleLabel: 'Marketing',
+            emoji: '🎨',
+            colorHex: '#FF0055'
+        },
+        {
+            id: 'OPERACIONES',
+            title: 'Premio a la Excelencia Operativa y Ética en IA',
+            shortTitle: 'Excelencia Operativa y Ética en IA',
+            roleLabel: 'Operaciones',
+            emoji: '⚙️',
+            colorHex: '#FFB703'
+        }
+    ]
 });
 
 const AEE_SANCTION_ARTICLES_DEF = Object.freeze([
@@ -1097,8 +1153,25 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.07
+// Changelog Oficial de Producción v2.0.08
 const APP_CHANGELOG = [
+    {
+      version: "2.0.08",
+      date: "2026-11-13",
+      title: "Fase V — Gran Concurso Final (19/05/2027), Finalistas por Clase (A–F), Podio y 6 Galardones",
+      items: [
+        "Panel de Concurso Final para Coordinación (A–F): Selector oficial de 1 empresa finalista por cada clase real (A a F) con apoyo visual de Nota Global del Acta, mejor Eficiencia E en Banco de Pruebas y saldo actual.",
+        "Marcador en Directo con Cálculo Automático de E y Vídeos Drive: Registro de lanzamientos en vivo (altura real en mm, coste final en €v, cálculo automático E = Altura / Coste) y enlace directo al vídeo en Google Drive demostrando el cálculo.",
+        "Podio Oficial y 6 Galardones (Modo Borrador de Gala vs Publicación): Pre-ordenación automática del Podio por E en directo (editable por Coordinación), asignación de Trofeo «MarsKet Gold» (Campeón Absoluto) y los 5 premios por rol entre las 6 finalistas sin alterar notas curriculares del Acta.",
+        "Escaparate en Tablón de Noticias, Sala de Mando y Modo Proyector: Visibilidad del cuadro de finalistas en Borrador manteniendo el podio secreto bajo llave en servidor (D1 y PHP) hasta su publicación, con vitrina gala al anunciar ganadores.",
+        "Impresión A4 / PDF de Podio y Premios: Generador imprimible en blanco para ahorrar tinta con los galardonados y clasificación oficial del Concurso Final."
+      ],
+      highlights: [
+        { type: "FASE V", text: "1 finalista por clase (A–F), marcador en vivo de E y vídeos Drive." },
+        { type: "GALA Y PODIO", text: "Trofeo «MarsKet Gold» + 5 premios por departamento en modo secreto/publicado." },
+        { type: "IMPRESIÓN", text: "Diploma/Acta imprimible oficial de Podio y los 6 galardones." }
+      ]
+    },
     {
       version: "2.0.07",
       date: "2026-11-13",

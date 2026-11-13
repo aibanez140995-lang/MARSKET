@@ -13,6 +13,15 @@ const DEFAULT_STATE = {
     securityIncidents: [],
     suggestionsToAlex: [],
     pendingCustom: [],
+    finalContest: {
+        finalists: { A: null, B: null, C: null, D: null, E: null, F: null },
+        launches: {},
+        podium: { first: null, second: null, third: null },
+        roleAwards: { CEO: null, TECNICO: null, FINANZAS: null, MARKETING: null, OPERACIONES: null },
+        published: false,
+        publishedAt: 0,
+        updatedAt: 0
+    },
     telemetry: { totalLogins: 0, sessions: [] },
         catalog: [
         // 1. Cuerpo del Cohete (Estructura Principal)
@@ -382,6 +391,7 @@ const state = {
             });
         }
         d.dismissedNotificationIds = Array.isArray(d.dismissedNotificationIds) ? d.dismissedNotificationIds : [];
+        d.finalContest = this.normalizeFinalContest(d.finalContest, d.companies, d.deletedCompanyIds);
         d.config.deadlines = d.config.deadlines || {};
         const hasOwn = Object.prototype.hasOwnProperty;
         if (!d.config.scheduleBaselineVersion || d.config.scheduleBaselineVersion < 1168) {
@@ -1283,6 +1293,16 @@ const state = {
         merged.b2bContracts = mergeArraysGlobal(merged.b2bContracts, localData.b2bContracts)
             .filter(c => c && !allDeletedCompanyIds.has(String(c.sellerCoId)) && !allDeletedCompanyIds.has(String(c.buyerCoId)));
         merged.securityIncidents = mergeArraysGlobal(merged.securityIncidents, localData.securityIncidents);
+
+        const isCoordUser = Boolean(this.user && this.user.admin && this.user.role && String(this.user.role).startsWith('COORD'));
+        const sFc = serverData?.finalContest;
+        const lFc = localData?.finalContest;
+        const sFcTime = Number(sFc?.updatedAt) || 0;
+        const lFcTime = Number(lFc?.updatedAt) || 0;
+        const chosenFc = (isCoordUser && lFc && (!sFc || lFcTime > sFcTime))
+            ? lFc
+            : (sFc || lFc || null);
+        merged.finalContest = this.normalizeFinalContest(chosenFc, merged.companies, merged.deletedCompanyIds);
 
         if (Array.isArray(localData.catalog) && Array.isArray(merged.catalog)) {
             const deletedIds = new Set(this.getDeletedCatalogItems ? this.getDeletedCatalogItems() : []);
@@ -3011,6 +3031,83 @@ const state = {
         const co = (typeof coOrId === 'string') ? this.data?.companies?.[coOrId] : coOrId;
         if (!co) return false;
         return Number(co.balance) <= 0;
+    },
+
+    createDefaultFinalContest() {
+        return {
+            finalists: { A: null, B: null, C: null, D: null, E: null, F: null },
+            launches: {},
+            podium: { first: null, second: null, third: null },
+            roleAwards: { CEO: null, TECNICO: null, FINANZAS: null, MARKETING: null, OPERACIONES: null },
+            published: false,
+            publishedAt: 0,
+            updatedAt: 0
+        };
+    },
+
+    normalizeFinalContest(rawContest, companies = {}, deletedCompanyIds = []) {
+        const base = this.createDefaultFinalContest();
+        const src = (rawContest && typeof rawContest === 'object') ? rawContest : {};
+        const deletedSet = new Set(Array.isArray(deletedCompanyIds) ? deletedCompanyIds.map(String) : []);
+        const validCo = (cid) => {
+            if (!cid || typeof cid !== 'string') return false;
+            if (deletedSet.has(cid)) return false;
+            return Boolean(companies && companies[cid]);
+        };
+
+        const classes = typeof CONTEST_CLASSES !== 'undefined' ? CONTEST_CLASSES : ['A', 'B', 'C', 'D', 'E', 'F'];
+        const activeFinalists = new Set();
+        classes.forEach(cls => {
+            const rawId = src.finalists && typeof src.finalists[cls] === 'string' ? src.finalists[cls].trim() : null;
+            if (rawId && validCo(rawId) && (companies[rawId].classGroup || 'A').toUpperCase() === cls) {
+                base.finalists[cls] = rawId;
+                activeFinalists.add(rawId);
+            } else {
+                base.finalists[cls] = null;
+            }
+        });
+
+        const srcLaunches = (src.launches && typeof src.launches === 'object') ? src.launches : {};
+        Object.keys(srcLaunches).forEach(cid => {
+            if (!validCo(cid)) return;
+            const l = srcLaunches[cid];
+            if (!l || typeof l !== 'object') return;
+            const rawH = l.heightMm !== null && l.heightMm !== undefined && l.heightMm !== '' ? Number(l.heightMm) : null;
+            const rawC = l.costEurV !== null && l.costEurV !== undefined && l.costEurV !== '' ? Number(l.costEurV) : null;
+            const hOk = rawH !== null && isFinite(rawH) && rawH >= 0 ? rawH : null;
+            const cOk = rawC !== null && isFinite(rawC) && rawC > 0 ? rawC : null;
+            const eff = (hOk !== null && cOk !== null && cOk > 0)
+                ? Math.round(((hOk / cOk) + Number.EPSILON) * 10000) / 10000
+                : null;
+            base.launches[cid] = {
+                heightMm: hOk,
+                costEurV: cOk,
+                efficiency: eff,
+                videoUrl: typeof l.videoUrl === 'string' ? l.videoUrl.trim() : '',
+                recordedAt: Number(l.recordedAt) || 0
+            };
+        });
+
+        const seenPodium = new Set();
+        ['first', 'second', 'third'].forEach(slot => {
+            const rawId = src.podium && typeof src.podium[slot] === 'string' ? src.podium[slot].trim() : null;
+            if (rawId && activeFinalists.has(rawId) && !seenPodium.has(rawId)) {
+                base.podium[slot] = rawId;
+                seenPodium.add(rawId);
+            } else {
+                base.podium[slot] = null;
+            }
+        });
+
+        ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES'].forEach(rKey => {
+            const rawId = src.roleAwards && typeof src.roleAwards[rKey] === 'string' ? src.roleAwards[rKey].trim() : null;
+            base.roleAwards[rKey] = (rawId && activeFinalists.has(rawId)) ? rawId : null;
+        });
+
+        base.published = Boolean(src.published);
+        base.publishedAt = Number(src.publishedAt) || 0;
+        base.updatedAt = Number(src.updatedAt) || 0;
+        return base;
     },
 
     addToLedger(coId, concept, dept, delta) {
