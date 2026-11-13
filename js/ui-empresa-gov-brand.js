@@ -112,42 +112,42 @@ Object.assign(ui, {
             const hasRejectedName = co.nameChangeRequest && (co.nameChangeRequest.status === 'RECHAZADO' || co.nameChangeRequest.status === 'DENEGADO');
             nameChangeHtml = `
             <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-amber-400">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                <div class="flex flex-col gap-3">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 mb-1.5 flex-wrap">
                             <span class="px-2 py-0.5 text-xs font-black uppercase bg-amber-950/40 border border-amber-500 text-amber-400">REGISTRO MERCANTIL</span>
                             <span class="text-xs text-slate-400 font-mono">Tasa Mercantil: 50 €v</span>
                         </div>
-                        <h3 class="font-orbitron text-amber-400 text-sm sm:text-base uppercase tracking-tight font-black break-words">
+                        <h3 class="font-orbitron text-amber-400 text-sm sm:text-base uppercase tracking-tight font-black">
                             🏛️ Modificación Estatutaria // Cambio de Razón Social
                         </h3>
-                        <p class="text-xs text-slate-300 mt-0.5 leading-relaxed break-words">
+                        <p class="text-xs text-slate-300 mt-1 leading-relaxed">
                             Razón Social Actual: <strong class="text-white">${this.escapeHTML(co.name)}</strong>. La tramitación de rebranding devenga una tasa mercantil de 50 €v en el Libro Mayor y se formaliza mediante la plantilla oficial DOC_1 en Google Drive.
                         </p>
                     </div>
-                    <div class="w-full md:w-auto shrink-0 flex justify-start md:justify-end">
-                        <button type="button" onclick="ui.modalStatutoryNameChange()" class="min-h-[44px] w-full md:w-auto bg-amber-400 text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white transition-all text-center shadow-[0_0_10px_rgba(255,204,0,0.3)]">
+                    <div class="w-full pt-2 border-t border-slate-800/80">
+                        <button type="button" onclick="ui.modalStatutoryNameChange()" class="min-h-[44px] w-full bg-amber-400 text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white transition-all text-center shadow-[0_0_10px_rgba(255,204,0,0.3)]">
                             [ 🏛️ Modificación Estatutaria (-50 €v) ]
                         </button>
                     </div>
                 </div>
                 ${hasPendingName ? `
-                    <div class="mt-3 p-3 bg-amber-950/30 border border-amber-500/50 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                        <div class="min-w-0 flex-1">
+                    <div class="mt-3 p-3 bg-amber-950/30 border border-amber-500/50 rounded flex flex-col gap-2.5">
+                        <div class="min-w-0">
                             <span class="text-xs font-bold text-amber-400 uppercase tracking-wide block">⏳ Solicitud de Modificación Estatutaria en Tramitación</span>
-                            <p class="text-[11px] text-slate-300 font-sans mt-0.5">Motivo: <em>${this.escapeHTML(co.nameChangeRequest.reason || 'Rebranding')}</em>. Tasa de 50 €v abonada. Pendiente de dictamen y asignación de nombre oficial por Coordinación Docente.</p>
+                            <p class="text-[11px] text-slate-300 font-sans mt-0.5 leading-relaxed">Motivo: <em>${this.escapeHTML(co.nameChangeRequest.reason || 'Rebranding')}</em>. Tasa de 50 €v abonada. Pendiente de dictamen y asignación de nombre oficial por Coordinación Docente.</p>
                         </div>
-                        ${co.nameChangeRequest.driveUrl ? `<a href="${encodeURI(co.nameChangeRequest.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors shrink-0"><span>📄 Ver Solicitud DOC_1 en Docs ↗</span></a>` : ''}
+                        ${co.nameChangeRequest.driveUrl ? `<a href="${encodeURI(co.nameChangeRequest.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors"><span>📄 Ver Solicitud DOC_1 en Docs ↗</span></a>` : ''}
                     </div>
                 ` : ''}
                 ${hasRejectedName ? `
-                    <div class="mt-3 p-3 bg-red-950/40 border border-red-500/50 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                        <div class="min-w-0 flex-1">
+                    <div class="mt-3 p-3 bg-red-950/40 border border-red-500/50 rounded flex flex-col gap-2.5">
+                        <div class="min-w-0">
                             <span class="text-xs font-bold text-red-400 uppercase tracking-wide block">❌ Modificación Estatutaria Denegada por Coordinación</span>
-                            <p class="text-[11px] text-slate-200 font-sans mt-0.5">Dictamen: <em>${this.escapeHTML(co.nameChangeRequest.rejectReason || co.nameChangeRequest.feedback || 'La solicitud no cumple con los criterios del Registro Mercantil.')}</em></p>
+                            <p class="text-[11px] text-slate-200 font-sans mt-0.5 leading-relaxed">Dictamen: <em>${this.escapeHTML(co.nameChangeRequest.rejectReason || co.nameChangeRequest.feedback || 'La solicitud no cumple con los criterios del Registro Mercantil.')}</em></p>
                         </div>
-                        <div class="flex flex-wrap gap-2 shrink-0">
-                            ${(co.nameChangeRequest.returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(co.nameChangeRequest.returnDriveUrl)) ? `<a href="${encodeURI(co.nameChangeRequest.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors"><span>📄 Ver Dictamen ↗</span></a>` : ''}
+                        <div class="flex flex-wrap gap-2">
+                            ${(co.nameChangeRequest.returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(co.nameChangeRequest.returnDriveUrl)) ? `<a href="${encodeURI(co.nameChangeRequest.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors"><span>📄 Ver Dictamen ↗</span></a>` : ''}
                             <button type="button" onclick="ui.dismissNameChangeRejection()" class="min-h-[44px] px-3 py-1.5 text-xs bg-slate-900 border border-red-400/50 text-red-200 hover:bg-red-800 font-bold uppercase rounded">🏛️ Archivar / Enterado</button>
                         </div>
                     </div>
@@ -161,7 +161,7 @@ Object.assign(ui, {
             </div>`;
         } else {
             nameChangeHtml = `
-            <div class="bg-black/50 border border-slate-800 p-3 mb-6 text-xs text-slate-400 flex flex-wrap justify-between items-center gap-2">
+            <div class="bg-black/50 border border-slate-800 p-4 text-xs text-slate-400 flex flex-col gap-1.5">
                 <span>🏛️ Razón Social Oficial: <strong class="text-white">${this.escapeHTML(co.name)}</strong></span>
                 <span class="text-[11px] text-slate-500 font-mono">Modificación Estatutaria reservada exclusivamente al CEO (50 €v)</span>
             </div>`;
@@ -170,7 +170,7 @@ Object.assign(ui, {
         let ceoSloganApprovalHtml = '';
         if (isCEO && co.brandApproval && co.brandApproval.status === 'PENDIENTE_CEO') {
             ceoSloganApprovalHtml = `
-            <div id="ceo-slogan-approval-panel" class="bg-mars-yellow/10 border-2 border-mars-yellow p-4 mb-6 rounded">
+            <div id="ceo-slogan-approval-panel" class="bg-mars-yellow/10 border-2 border-mars-yellow p-4 rounded">
                 <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
                     <span class="text-xs bg-mars-yellow text-black font-black px-2.5 py-1 uppercase">Paso 2: Aval de Dirección General Requerido</span>
                     <span class="text-xs text-slate-300 font-mono">${this.escapeHTML(co.brandApproval.expId || '')}</span>
@@ -201,12 +201,12 @@ Object.assign(ui, {
             if (unreadCrisis.length > 0) {
                 const firstCrisis = unreadCrisis[0];
                 unreadBanner = `
-                <div class="bg-red-950/80 border-2 border-red-500 p-3.5 mb-3 flex flex-wrap justify-between items-center gap-3 animate-pulse">
+                <div class="bg-red-950/80 border-2 border-red-500 p-3.5 mb-3 flex flex-col gap-2.5 animate-pulse">
                     <div>
-                        <span class="text-xs bg-red-600 text-white font-black px-2 py-0.5 uppercase tracking-wider block mb-1">⚠️ Sanción Regulatoria AEE Pendiente de Comunicar</span>
+                        <span class="text-xs bg-red-600 text-white font-black px-2 py-0.5 uppercase tracking-wider inline-block mb-1">⚠️ Sanción Regulatoria AEE Pendiente de Comunicar</span>
                         <p class="text-xs text-white font-semibold">${this.escapeHTML(firstCrisis.article || 'Infracción Disciplinaria')} (${Number(firstCrisis.amount || 0).toFixed(2)} €v)</p>
                     </div>
-                    <button type="button" onclick="ui.modalCrisisAction('${this.escapeHTML(firstCrisis.id || '')}')" class="min-h-[44px] bg-red-600 text-white font-black px-4 py-2 text-xs uppercase tracking-wider hover:bg-white hover:text-black transition-all border border-red-400">
+                    <button type="button" onclick="ui.modalCrisisAction('${this.escapeHTML(firstCrisis.id || '')}')" class="w-full min-h-[44px] bg-red-600 text-white font-black px-4 py-2 text-xs uppercase tracking-wider hover:bg-white hover:text-black transition-all border border-red-400 text-center">
                         [ 📢 Redactar Comunicado de Crisis ]
                     </button>
                 </div>`;
@@ -217,7 +217,7 @@ Object.assign(ui, {
             ceoCrisisBanner = `
             <div class="bg-black/60 border border-red-500/40 p-3 mb-4">
                 ${unreadBanner}
-                <div class="flex flex-wrap justify-between items-center gap-2">
+                <div class="flex flex-col gap-2.5">
                     <div>
                         <span class="text-xs text-red-400 font-bold uppercase tracking-wider block">Gabinete de Crisis // Modelo Oficial DOC_3</span>
                         <span class="text-[11px] text-slate-400">Difusión oficial obligatoria para expedientes sancionadores AEE.</span>

@@ -312,6 +312,11 @@ Object.assign(ui, {
                                         ? `<span class="bg-red-950 text-red-400 border border-red-500/50 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold animate-pulse whitespace-nowrap">⚠️ &lt;300€v</span>`
                                         : '';
 
+                                    const phaseClock = this.getPhaseClockMetrics ? this.getPhaseClockMetrics(c) : { isTeacherBottleneck: false };
+                                    const bottleneckBadge = phaseClock.isTeacherBottleneck
+                                        ? `<span class="bg-orange-950/90 text-orange-300 border border-orange-500/70 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold animate-pulse whitespace-nowrap" title="Cuello de botella Fase ${this.escapeHTML(phaseClock.phaseInfo.key)}: ${phaseClock.phaseDeliveredCount}/${phaseClock.phaseTotalCount} entregas a ${phaseClock.daysRemaining}d del cierre">⏰ Riesgo Plazo</span>`
+                                        : '';
+
                                     return `
                                     <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
                                         <td class="py-3 font-orbitron text-white font-bold pr-2.5 sm:pr-4 flex items-center gap-1.5 sm:gap-2">
@@ -338,6 +343,7 @@ Object.assign(ui, {
                                                 ${b2bBadge}
                                                 ${delivsBadge}
                                                 ${critBadge}
+                                                ${bottleneckBadge}
                                             </div>
                                         </td>
                                         <td class="py-3 pr-2.5 sm:pr-4">

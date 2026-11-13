@@ -201,8 +201,8 @@ Object.assign(ui, {
                     }
 
                     return `
-                    <div class="bg-slate-900 border border-slate-800 p-3.5 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                        <div class="min-w-0 flex-grow">
+                    <div class="bg-slate-900 border border-slate-800 p-3.5 rounded flex flex-col gap-3">
+                        <div class="min-w-0">
                             <div class="flex items-center gap-2 mb-1 flex-wrap">
                                 ${stBadge}
                                 <span class="text-xs text-slate-400 font-mono">${this.escapeHTML(item.date || '--')}</span>
@@ -223,8 +223,8 @@ Object.assign(ui, {
                             </div>
                         </div>
                         ${(item.status === 'DEVUELTO_CEO' || item.status === 'RECHAZADO_CEO') && (this.getEffectiveRole(co) === 'TECNICO' || state.user?.admin) ? `
-                            <div class="shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
-                                <button type="button" onclick="ui.modalResubmitSpecialItem('${this.escapeHTML(item.id)}')" class="min-h-[44px] w-full sm:w-auto bg-mars-yellow text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ ✏️ Subsanar y Reenviar ]</button>
+                            <div class="w-full pt-2 border-t border-slate-800">
+                                <button type="button" onclick="ui.modalResubmitSpecialItem('${this.escapeHTML(item.id)}')" class="min-h-[44px] w-full bg-mars-yellow text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ ✏️ Subsanar y Reenviar ]</button>
                             </div>
                         ` : ''}
                     </div>`;
@@ -362,20 +362,20 @@ Object.assign(ui, {
 
                     <!-- Panel de Solicitudes de Material I+D a Coordinación -->
                     <div id="tech-special-items-panel" class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-magenta shadow-sm">
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-mars-border pb-3 mb-4">
-                            <div class="min-w-0 flex-1">
-                                <div class="flex items-center gap-2 mb-1">
+                        <div class="flex flex-col gap-3 border-b border-mars-border pb-3 mb-4">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2 mb-1 flex-wrap">
                                     <span class="px-2 py-0.5 text-xs font-black uppercase bg-mars-magenta/20 border border-mars-magenta text-mars-magenta">I+D ESPECIAL // FUERA DE CATÁLOGO</span>
                                     <span class="text-xs text-slate-400 font-mono">TÉCNICO ➔ COORDINACIÓN</span>
                                 </div>
                                 <h3 class="font-orbitron text-mars-magenta text-sm sm:text-base uppercase tracking-tight font-black">
                                     📡 Solicitudes Especiales I+D
                                 </h3>
-                                <p class="text-xs text-slate-300 uppercase mt-0.5">
+                                <p class="text-xs text-slate-300 uppercase mt-0.5 leading-relaxed">
                                     Solicita al claustro piezas o reactivos especiales no listados en catálogo con memoria oficial en Drive.
                                 </p>
                             </div>
-                            <button type="button" onclick="ui.modalSpecialItem()" class="shrink-0 w-full sm:w-auto justify-center min-h-[44px] bg-mars-magenta text-white font-black px-4 py-2 text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all whitespace-nowrap shadow-[0_0_10px_rgba(255,0,85,0.3)] text-center">
+                            <button type="button" onclick="ui.modalSpecialItem()" class="w-full justify-center min-h-[44px] bg-mars-magenta text-white font-black px-4 py-2 text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all whitespace-nowrap shadow-[0_0_10px_rgba(255,0,85,0.3)] text-center">
                                 + Solicitar Material I+D
                             </button>
                         </div>

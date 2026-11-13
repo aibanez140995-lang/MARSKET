@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.03) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.04) ---
 
-const APP_VERSION = "2.0.03";
+const APP_VERSION = "2.0.04";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1097,8 +1097,24 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.03
+// Changelog Oficial de Producción v2.0.04
 const APP_CHANGELOG = [
+    {
+      version: "2.0.04",
+      date: new Date().toISOString().split('T')[0],
+      title: "Corrección de Columnas Estrechas, Micro-Filtro CEO, Alerta «Fase en Peligro» y Radar Docente de Plazos",
+      items: [
+        "Apilado Vertical Limpio en Columnas Estrechas (lg:col-span-5): Corrección del aplastamiento horizontal en Modificación Estatutaria y Gabinete de Crisis de ⚖️ Trámites, así como en Solicitudes Especiales I+D (🧪 Banco I+D) y Balances de Cierre DOC_17 (💰 Finanzas & ECO).",
+        "Micro-Filtro Rápido en la Bandeja de Visado Ejecutivo del CEO: Botones táctiles [📋 Todos] y [⚡ Solo Urgentes / Próximos a Cierre] para priorizar en 1 clic entregas con cierre ≤ 7 días, Informe Técnico Preliminar que desbloquea AESA, Balances DOC_17 e Identidad/Slogan DOC_11 con distintivo [⚡ PRIORITARIO].",
+        "Indicador «Fase en Peligro» en el Reloj del Aula y Sala de Mando: Alarma visual ámbar/rojo en #hud-phase-badge y en el Radar de Fase cuando restan ≤ 3 días para el cierre con entregables pendientes, acompañada de pulso sonoro suave opcional por Web Audio API y botón para silenciar; muestra insignia verde «✅ FASE AL DÍA» si todo está entregado.",
+        "Indicador Docente de Cuello de Botella (⏰ Riesgo Plazo): Señalización instantánea en el Radar de Misión por Clases, tabla de Control Financiero y tarjetas de evaluación cuando restan ≤ 3 días y una startup lleva menos del 50% de entregables de fase enviados."
+      ],
+      highlights: [
+        { type: "PRIORIZACIÓN", text: "Micro-filtro CEO de trámites urgentes con distintivo prioritario automático." },
+        { type: "TIEMPO", text: "Alerta «Fase en Peligro» (≤ 3 días) con pulso sonoro opcional e insignia verde al día." },
+        { type: "AULA DOCENTE", text: "Radar automático de riesgo de plazo por startup y clase para el profesorado." }
+      ]
+    },
     {
       version: "2.0.03",
       date: new Date().toISOString().split('T')[0],

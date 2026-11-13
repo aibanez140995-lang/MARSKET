@@ -6,6 +6,7 @@
 const ui = {
     current: 'login', adminTab: 'dash', coordEvalView: 'ACTA', evalSelectedCo: '', evalClassFilter: 'ALL',
     activeMilestoneGroup: 'ACTIVE',
+    ceoTrayFilter: 'ALL',
     ordersFilterTab: 'EN_PROCESO',
     ordersDeptFilter: 'ALL',
     ordersVisibleCount: 5,
@@ -17,6 +18,7 @@ const ui = {
     _isPoppingState: false,
     _cleanupHooks: [],
     _delegationAttached: false,
+    _playedPhaseDangerKey: null,
 
     getGoogleCopyUrl(url) {
         if (!url || typeof url !== 'string') return '';
@@ -812,6 +814,162 @@ const ui = {
             desc: def.desc || '',
             deadline: phaseDeadlines[currentKey] || '15/12/2026 23:59'
         };
+    },
+
+    getDeliverableDeadlineTs(def) {
+        if (!def) return 9999999999999;
+        const sched = (state.data?.config?.deliverableSchedule && state.data.config.deliverableSchedule[def.key]) || {};
+        const dlStr = sched.deadline || (state.data?.config?.deadlines && state.data.config.deadlines[def.key]) || def.defaultDate || '2099-12-31';
+        const ts = new Date(dlStr).getTime();
+        return isNaN(ts) ? 9999999999999 : ts;
+    },
+
+    /**
+     * Calcula de forma centralizada la telemetria temporal y estado de riesgo de la fase activa.
+     */
+    getPhaseClockMetrics(co = null) {
+        const phaseInfo = this.getCurrentPhaseInfo ? this.getCurrentPhaseInfo() : { key: 'I', name: 'Fase I: Preparación, Identidad y Presupuesto Inicial', deadline: '15/12/2026 23:59' };
+        const pDefsSource = typeof PROJECT_PHASES_DEF !== 'undefined' ? PROJECT_PHASES_DEF : {};
+        const phaseConfig = pDefsSource[phaseInfo.key] || {};
+        const phaseStartDate = phaseConfig.startDate ? new Date(phaseConfig.startDate + 'T00:00:00').getTime() : new Date('2026-11-02T00:00:00').getTime();
+
+        let phaseEndDate = 0;
+        if (phaseInfo.deadline) {
+            const parts = String(phaseInfo.deadline).split(' ');
+            const dParts = parts[0]?.split('/');
+            if (dParts && dParts.length === 3) {
+                phaseEndDate = new Date(`${dParts[2]}-${dParts[1]}-${dParts[0]}T${parts[1] || '23:59'}:00`).getTime();
+            }
+        }
+        if (!phaseEndDate || isNaN(phaseEndDate)) {
+            phaseEndDate = new Date('2026-12-15T23:59:59').getTime();
+        }
+
+        const nowTs = Date.now();
+        const totalPhaseDuration = Math.max(1, phaseEndDate - phaseStartDate);
+        const elapsedPhaseTime = Math.max(0, Math.min(totalPhaseDuration, nowTs - phaseStartDate));
+        const timeProgressPct = Math.min(100, Math.max(0, Math.round((elapsedPhaseTime / totalPhaseDuration) * 100)));
+        const msRemaining = Math.max(0, phaseEndDate - nowTs);
+        const daysRemaining = Math.ceil(msRemaining / (1000 * 60 * 60 * 24));
+        const isDeadlinePassed = nowTs > phaseEndDate;
+
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const phaseDefs = defs.filter(d => (this.getDeliverablePhase ? this.getDeliverablePhase(d.key) : (d.phase || 'I')) === phaseInfo.key);
+        const phaseTotalCount = phaseDefs.length;
+
+        const docs = co?.deliverables || {};
+        const phaseDeliveredCount = co
+            ? phaseDefs.filter(d => {
+                const doc = docs[d.key];
+                return doc && (doc.status === 'DELIVERED_TO_TEACHER' || (typeof doc === 'string' && doc.length > 0));
+            }).length
+            : 0;
+        const phaseCeoCount = co
+            ? phaseDefs.filter(d => docs[d.key] && docs[d.key].status === 'SUBMITTED_TO_CEO').length
+            : 0;
+        const phaseReturnedCount = co
+            ? phaseDefs.filter(d => docs[d.key] && (docs[d.key].status === 'CEO_REVISION' || docs[d.key].status === 'DEVUELTO_A_TECNICO')).length
+            : 0;
+        const phasePct = phaseTotalCount > 0 ? Math.round((phaseDeliveredCount / phaseTotalCount) * 100) : 0;
+        const pendingDeliverablesCount = Math.max(0, phaseTotalCount - phaseDeliveredCount);
+
+        const inCriticalWindow = daysRemaining <= 3;
+        const isDanger = Boolean(co && inCriticalWindow && phaseTotalCount > 0 && pendingDeliverablesCount > 0);
+        const isAllDoneSafe = Boolean(co && inCriticalWindow && phaseTotalCount > 0 && pendingDeliverablesCount === 0);
+        const isTeacherBottleneck = Boolean(co && inCriticalWindow && phaseTotalCount > 0 && (phaseDeliveredCount / phaseTotalCount) < 0.5);
+
+        return {
+            phaseInfo,
+            phaseStartDate,
+            phaseEndDate,
+            nowTs,
+            timeProgressPct,
+            msRemaining,
+            daysRemaining,
+            isDeadlinePassed,
+            phaseDefs,
+            phaseTotalCount,
+            phaseDeliveredCount,
+            phaseCeoCount,
+            phaseReturnedCount,
+            pendingDeliverablesCount,
+            phasePct,
+            inCriticalWindow,
+            isDanger,
+            isAllDoneSafe,
+            isTeacherBottleneck
+        };
+    },
+
+    isPhaseDangerAudioMuted() {
+        try {
+            return typeof localStorage !== 'undefined' && localStorage.getItem('marsket_mute_danger_audio') === '1';
+        } catch (e) {
+            return false;
+        }
+    },
+
+    togglePhaseDangerMute() {
+        const nextMuted = !this.isPhaseDangerAudioMuted();
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('marsket_mute_danger_audio', nextMuted ? '1' : '0');
+            }
+        } catch (e) {}
+        this.notify(
+            nextMuted ? '🔕 Alerta sonora de cierre de fase silenciada en este equipo.' : '🔔 Alerta sonora suave de cierre de fase activada.',
+            'info'
+        );
+        this.render();
+    },
+
+    playPhaseDangerChime(phaseKey = 'I') {
+        if (this.isPhaseDangerAudioMuted()) return;
+        const playKey = `${state.user?.coId || 'co'}_${phaseKey}`;
+        if (this._playedPhaseDangerKey === playKey) return;
+        try {
+            if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('marsket_chime_' + playKey) === '1') {
+                this._playedPhaseDangerKey = playKey;
+                return;
+            }
+        } catch (e) {}
+
+        this._playedPhaseDangerKey = playKey;
+        try {
+            if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.setItem('marsket_chime_' + playKey, '1');
+            }
+        } catch (e) {}
+
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+            const now = ctx.currentTime;
+
+            const playTone = (freq, startOffset, duration) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now + startOffset);
+                gain.gain.setValueAtTime(0.0001, now + startOffset);
+                gain.gain.exponentialRampToValueAtTime(0.04, now + startOffset + 0.03);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + startOffset + duration);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now + startOffset);
+                osc.stop(now + startOffset + duration + 0.02);
+            };
+
+            playTone(587.33, 0.0, 0.22);
+            playTone(440.00, 0.24, 0.30);
+            setTimeout(() => { try { ctx.close(); } catch (e) {} }, 1000);
+        } catch (e) {}
+    },
+
+    setCeoTrayFilter(mode) {
+        this.ceoTrayFilter = (mode === 'URGENT') ? 'URGENT' : 'ALL';
+        this.render();
     },
 
     getDeadlineStatus(dateString, isDelivered = false) {
@@ -2627,10 +2785,27 @@ const ui = {
 
         const phaseBadge = document.getElementById('hud-phase-badge');
         if (phaseBadge) {
-            const pInfo = this.getCurrentPhaseInfo ? this.getCurrentPhaseInfo() : { key: 'I', name: 'Fase I', deadline: '15/12/2026' };
-            phaseBadge.innerText = `FASE ${pInfo.key}`;
-            phaseBadge.title = `${pInfo.name} — Cierre estimado: ${pInfo.deadline}`;
-            phaseBadge.classList.remove('hidden');
+            const studentCo = (!state.user.admin && state.user.coId && state.data?.companies?.[state.user.coId])
+                ? state.data.companies[state.user.coId]
+                : null;
+            const m = this.getPhaseClockMetrics(studentCo);
+            if (studentCo && m.isDanger) {
+                phaseBadge.className = 'font-mono font-black text-[10px] sm:text-[11px] px-2 py-0.5 rounded bg-red-950/90 border border-red-400 text-amber-300 whitespace-nowrap shadow-[0_0_10px_rgba(255,0,85,0.45)] animate-pulse';
+                phaseBadge.innerText = `⚠️ FASE ${m.phaseInfo.key} • ${m.daysRemaining}d`;
+                phaseBadge.title = `¡FASE EN PELIGRO! Quedan ${m.daysRemaining} día(s) y faltan ${m.pendingDeliverablesCount} entregable(s) (${m.phaseInfo.deadline})`;
+            } else if (studentCo && m.isAllDoneSafe) {
+                phaseBadge.className = 'font-mono font-bold text-[10px] sm:text-[11px] px-2 py-0.5 rounded bg-emerald-950/70 border border-emerald-400 text-emerald-300 whitespace-nowrap shadow-[0_0_8px_rgba(0,255,102,0.3)]';
+                phaseBadge.innerText = `✅ FASE ${m.phaseInfo.key} AL DÍA`;
+                phaseBadge.title = `${m.phaseInfo.name} — Todos los entregables de fase completados (${m.phaseInfo.deadline})`;
+            } else if (state.user.admin && m.inCriticalWindow) {
+                phaseBadge.className = 'font-mono font-bold text-[10px] sm:text-[11px] px-2 py-0.5 rounded bg-amber-950/70 border border-amber-400 text-amber-300 whitespace-nowrap shadow-[0_0_8px_rgba(251,191,36,0.3)]';
+                phaseBadge.innerText = `⏰ FASE ${m.phaseInfo.key} • ${m.daysRemaining}d`;
+                phaseBadge.title = `${m.phaseInfo.name} — Cierre inminente: ${m.phaseInfo.deadline}`;
+            } else {
+                phaseBadge.className = 'font-mono font-bold text-[10px] sm:text-[11px] px-2 py-0.5 rounded bg-mars-cyan/15 border border-mars-cyan text-mars-cyan whitespace-nowrap shadow-[0_0_8px_rgba(0,240,255,0.25)]';
+                phaseBadge.innerText = `FASE ${m.phaseInfo.key}`;
+                phaseBadge.title = `${m.phaseInfo.name} — Cierre estimado: ${m.phaseInfo.deadline}`;
+            }
         }
 
         if (typeof localStorage !== 'undefined') {

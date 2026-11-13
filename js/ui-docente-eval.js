@@ -757,6 +757,11 @@ Object.assign(ui, {
                 statusPill = `<span class="text-[10px] font-mono bg-slate-900 text-slate-400 border border-slate-800 px-2 py-0.5 rounded">⚪ Sin entregas</span>`;
             }
 
+            const phaseClock = this.getPhaseClockMetrics ? this.getPhaseClockMetrics(co) : { isTeacherBottleneck: false };
+            const bottleneckBadge = phaseClock.isTeacherBottleneck
+                ? `<span class="text-[10px] font-mono bg-orange-950/90 text-orange-300 border border-orange-500/70 px-1.5 py-0.5 rounded font-bold animate-pulse whitespace-nowrap" title="Cuello de botella Fase ${this.escapeHTML(phaseClock.phaseInfo.key)}: ${phaseClock.phaseDeliveredCount}/${phaseClock.phaseTotalCount} entregas a ${phaseClock.daysRemaining}d del cierre">⏰ Riesgo Plazo</span>`
+                : '';
+
             return `
             <button type="button" onclick="ui.selectEvalCo('${this.escapeHTML(cid)}')" class="text-left p-3 rounded transition-all min-h-[56px] flex flex-col justify-between gap-1.5 ${
                 isSelected 
@@ -771,8 +776,11 @@ Object.assign(ui, {
                         ${this.escapeHTML((co.classGroup || 'A').toUpperCase())}
                     </span>
                 </div>
-                <div class="w-full flex justify-between items-center">
-                    ${statusPill}
+                <div class="w-full flex flex-wrap justify-between items-center gap-1">
+                    <div class="flex items-center gap-1 flex-wrap">
+                        ${statusPill}
+                        ${bottleneckBadge}
+                    </div>
                     ${isSelected ? '<span class="text-[10px] font-mono text-mars-cyan font-black">EVALUANDO ➔</span>' : ''}
                 </div>
             </button>`;

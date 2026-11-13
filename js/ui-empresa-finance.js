@@ -1063,15 +1063,15 @@ Object.assign(ui, {
             }
 
             return `
-            <div class="p-3 bg-black/70 border border-slate-800 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                <div class="min-w-0 flex-1">
+            <div class="p-3.5 bg-black/70 border border-slate-800 rounded flex flex-col gap-2.5">
+                <div class="min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-xs font-black uppercase text-amber-400 font-orbitron">${this.escapeHTML(p.title)}</span>
                         <span class="text-[10px] text-slate-400 font-mono">Corte: ${this.escapeHTML(p.cutoffLabel)} • Plazo: ${this.escapeHTML(p.windowEndLabel || '14 días tras corte')}</span>
                         ${statusBadge}
                     </div>
                     ${b ? `
-                        <div class="mt-1 space-y-0.5">
+                        <div class="mt-1.5 space-y-0.5">
                             <span class="inline-block text-[11px] text-emerald-300 font-semibold">✓ Dictamen: ${this.escapeHTML(b.verdict || 'Auditado')}</span>
                             <div class="text-[10px] text-slate-400 font-mono">
                                 Saldo congelado: <span class="text-white font-bold">${Number(b.snapshot?.balance || 0).toFixed(2)} €v</span> | Gasto: <span class="text-mars-yellow font-bold">${Number(b.snapshot?.virtualSpend || 0).toFixed(2)} €v</span> (${this.escapeHTML(b.date || '')})
@@ -1079,10 +1079,10 @@ Object.assign(ui, {
                             ${b.returnReason ? `<p class="text-[10px] text-rose-300 font-sans italic mt-1">⚠️ Observaciones CEO: "${this.escapeHTML(b.returnReason)}"</p>` : ''}
                         </div>
                     ` : `
-                        <p class="text-[11px] text-slate-400 italic mt-0.5">Pendiente de cierre y entrega formal por el Dpto. Financiero tras el corte de fase.</p>
+                        <p class="text-[11px] text-slate-400 italic mt-1">Pendiente de cierre y entrega formal por el Dpto. Financiero tras el corte de fase.</p>
                     `}
                 </div>
-                <div class="shrink-0 flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+                <div class="w-full flex items-center justify-end flex-wrap gap-2 pt-2 border-t border-slate-800/70">
                     ${b ? `
                         <a href="${encodeURI(b.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-300 border border-cyan-500/40 rounded font-mono hover:bg-cyan-900/60 transition-colors">
                             <span>DOC_17 ↗</span>
@@ -1107,14 +1107,14 @@ Object.assign(ui, {
                         ` : ''}
                     ` : `
                         ${canRegister ? `
-                            <div class="flex items-center gap-1 w-full sm:w-auto">
-                                ${isMasterOrAdmin && !isPhaseUnlocked ? `<span class="px-1.5 py-0.5 bg-amber-400 text-black text-[9px] font-mono font-bold uppercase rounded">🧪 Sandbox</span>` : ''}
-                                <button type="button" onclick="ui.modalRegisterPhaseBalance('${this.escapeHTML(p.phase)}')" class="min-h-[44px] bg-amber-400 text-black font-black uppercase text-[11px] px-3 py-1 hover:bg-white transition-all shadow-sm w-full sm:w-auto">
+                            <div class="flex items-center gap-1.5 w-full">
+                                ${isMasterOrAdmin && !isPhaseUnlocked ? `<span class="px-1.5 py-0.5 bg-amber-400 text-black text-[9px] font-mono font-bold uppercase rounded shrink-0">🧪 Sandbox</span>` : ''}
+                                <button type="button" onclick="ui.modalRegisterPhaseBalance('${this.escapeHTML(p.phase)}')" class="min-h-[44px] bg-amber-400 text-black font-black uppercase text-[11px] px-3 py-1 hover:bg-white transition-all shadow-sm w-full">
                                     [ + Registrar Balance Fase ${this.escapeHTML(p.phase)} ]
                                 </button>
                             </div>
                         ` : (!isPhaseUnlocked ? `
-                            <button type="button" disabled class="min-h-[44px] bg-slate-900 border border-slate-800 text-slate-500 font-bold uppercase text-[11px] px-2.5 py-1 cursor-not-allowed" title="Se abrirá al cerrar la fase (${p.cutoffLabel})">
+                            <button type="button" disabled class="min-h-[44px] w-full bg-slate-900 border border-slate-800 text-slate-500 font-bold uppercase text-[11px] px-2.5 py-1 cursor-not-allowed text-center" title="Se abrirá al cerrar la fase (${p.cutoffLabel})">
                                 🔒 Bloqueado hasta cierre (${this.escapeHTML(p.cutoffLabel)})
                             </button>
                         ` : `

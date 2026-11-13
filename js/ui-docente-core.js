@@ -20,7 +20,8 @@ Object.assign(ui, {
                 pendingIncidents: 0,
                 totalPending: 0,
                 deliveredDeliverables: 0,
-                criticalBalanceCount: 0
+                criticalBalanceCount: 0,
+                bottleneckCount: 0
             };
         });
 
@@ -30,12 +31,16 @@ Object.assign(ui, {
             const cls = co.classGroup || 'A';
             const targetClasses = ['ALL'];
             if (classes.includes(cls)) targetClasses.push(cls);
+            const phaseMetrics = this.getPhaseClockMetrics ? this.getPhaseClockMetrics(co) : { isTeacherBottleneck: false };
 
             targetClasses.forEach(cKey => {
                 const s = stats[cKey];
                 s.companyCount++;
                 if (Number(co.balance) < 300) {
                     s.criticalBalanceCount++;
+                }
+                if (phaseMetrics.isTeacherBottleneck) {
+                    s.bottleneckCount++;
                 }
                 if (co.launchLicense && co.launchLicense.status === 'PENDIENTE_DOCENTE') {
                     s.pendingAesa++;
@@ -136,6 +141,7 @@ Object.assign(ui, {
                     ${s.totalPending > 0 ? `<span class="bg-amber-500 text-black px-1.5 py-0.5 rounded text-[10px] font-black font-mono animate-pulse" title="${s.totalPending} trámite(s) pendiente(s) de aduana/validación">⚠️ ${s.totalPending}</span>` : ''}
                     <span class="text-[10px] text-cyan-300 font-mono" title="${s.deliveredDeliverables} entregas realizadas">📄 ${s.deliveredDeliverables}</span>
                     ${s.criticalBalanceCount > 0 ? `<span class="bg-red-950/80 text-red-400 border border-red-500/50 px-1 py-0.5 rounded text-[10px] font-mono font-bold" title="${s.criticalBalanceCount} empresa(s) con saldo crítico <300€v">💸 ${s.criticalBalanceCount}</span>` : ''}
+                    ${s.bottleneckCount > 0 ? `<span class="bg-orange-950/90 text-orange-300 border border-orange-500/70 px-1 py-0.5 rounded text-[10px] font-mono font-bold animate-pulse" title="${s.bottleneckCount} empresa(s) en riesgo de plazo (<50% fase a ≤3d)">⏰ ${s.bottleneckCount}</span>` : ''}
                 </div>
             </button>`;
         }).join('');

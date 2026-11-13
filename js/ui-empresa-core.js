@@ -618,6 +618,13 @@ Object.assign(ui, {
 
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
         const docs = co.deliverables || {};
+        const clockMetrics = this.getPhaseClockMetrics
+            ? this.getPhaseClockMetrics(co)
+            : { phaseInfo: { key: 'I', name: 'Fase I', deadline: '15/12/2026 23:59' }, nowTs: Date.now(), timeProgressPct: 0, daysRemaining: 30, phaseDefs: [], phaseTotalCount: 0, phaseDeliveredCount: 0, phaseCeoCount: 0, phaseReturnedCount: 0, pendingDeliverablesCount: 0, phasePct: 0, isDanger: false, isAllDoneSafe: false };
+        if (clockMetrics.isDanger && typeof this.playPhaseDangerChime === 'function') {
+            this.playPhaseDangerChime(clockMetrics.phaseInfo.key);
+        }
+
         const submittedCeoDefs = defs.filter(d => docs[d.key] && docs[d.key].status === 'SUBMITTED_TO_CEO');
         const pendingPhaseBalances = Object.values(co.phaseBalances || {}).filter(b => b && b.status === 'PENDIENTE_CEO');
         const pendingCeoDeliverables = Object.values(docs).filter(d => d && d.status === 'SUBMITTED_TO_CEO').length + pendingPhaseBalances.length;
@@ -637,14 +644,49 @@ Object.assign(ui, {
         const pendingMktActions = pendingMktActionsList.length;
         const pendingSlogan = (co.brandApproval && co.brandApproval.status === 'PENDIENTE_CEO') ? co.brandApproval : null;
 
+        // Clasificación de urgencia para Micro-Filtro de la Bandeja de Visado del CEO
+        const nowTs = clockMetrics.nowTs || Date.now();
+        const isLicenseBlocked = !co.launchLicense || !co.launchLicense.status || co.launchLicense.status === 'SIN_SOLICITAR' || co.launchLicense.status === 'DENEGADA';
+        const isPhaseClosingSoon = clockMetrics.daysRemaining <= 7;
+
+        const isSloganUrgent = Boolean(pendingSlogan);
+        const sloganUrgentReason = clockMetrics.phaseInfo.key !== 'I' ? 'Rezagado Fase I' : 'Identidad Fase I';
+
+        const isMktUrgent = isPhaseClosingSoon;
+        const mktUrgentReason = clockMetrics.daysRemaining <= 0 ? 'Fase Agotada' : `Cierre Fase (${clockMetrics.daysRemaining}d)`;
+
+        const classifiedCeoDefs = submittedCeoDefs.map(d => {
+            const dlTs = this.getDeliverableDeadlineTs ? this.getDeliverableDeadlineTs(d) : 9999999999999;
+            const daysUntilDl = Math.floor((dlTs - nowTs) / 86400000);
+            const isPrelimBlocking = (d.key === 'preliminaryReport' && isLicenseBlocked);
+            const isDeadlineNear = dlTs < 9000000000000 && daysUntilDl <= 7;
+            const isUrgent = isPrelimBlocking || isDeadlineNear;
+            let urgentReason = '';
+            if (isDeadlineNear) {
+                urgentReason = dlTs < nowTs ? 'Plazo Expirado' : `Vence en ${Math.max(0, daysUntilDl)}d`;
+            } else if (isPrelimBlocking) {
+                urgentReason = 'Desbloquea AESA';
+            }
+            return { def: d, dlTs, isUrgent, urgentReason };
+        });
+
         const totalPendingCeoItems = submittedCeoDefs.length + pendingPhaseBalances.length + pendingMktActionsList.length + (pendingSlogan ? 1 : 0);
+        const urgentCount = (isSloganUrgent ? 1 : 0) + (isMktUrgent ? pendingMktActionsList.length : 0) + pendingPhaseBalances.length + classifiedCeoDefs.filter(x => x.isUrgent).length;
+        const activeTrayFilter = (this.ceoTrayFilter === 'URGENT') ? 'URGENT' : 'ALL';
+
+        const visibleSlogan = (activeTrayFilter === 'ALL' || isSloganUrgent) ? pendingSlogan : null;
+        const visibleMktActions = (activeTrayFilter === 'ALL') ? pendingMktActionsList : (isMktUrgent ? pendingMktActionsList : []);
+        const visiblePhaseBalances = pendingPhaseBalances;
+        const visibleCeoDefs = (activeTrayFilter === 'URGENT') ? classifiedCeoDefs.filter(x => x.isUrgent) : classifiedCeoDefs;
+        const visibleTotalCount = (visibleSlogan ? 1 : 0) + visibleMktActions.length + visiblePhaseBalances.length + visibleCeoDefs.length;
+
         let ceoTrayHtml = '';
         if (isCEO) {
             ceoTrayHtml = `
             <div class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-yellow shadow-[0_0_15px_rgba(255,204,0,0.15)]">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-mars-border pb-3 mb-4">
                     <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-2 mb-1">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
                             <span class="px-2.5 py-0.5 text-xs font-black uppercase bg-mars-yellow/20 border border-mars-yellow text-mars-yellow ${totalPendingCeoItems > 0 ? 'animate-pulse' : ''}">SUPERVISIÓN DIRECTIVA</span>
                             <span class="text-xs text-slate-400 font-mono">${totalPendingCeoItems} PENDIENTES DE VISADO</span>
                         </div>
@@ -657,26 +699,46 @@ Object.assign(ui, {
                         Ver Mis Entregables ➔
                     </button>
                 </div>
+                ${totalPendingCeoItems > 0 ? `
+                    <div class="flex flex-wrap items-center gap-2 mb-4 pb-3 border-b border-slate-800/80">
+                        <span class="text-[11px] font-mono uppercase text-slate-400 mr-1">Priorizar:</span>
+                        <button type="button" onclick="ui.setCeoTrayFilter('ALL')" class="min-h-[44px] px-3.5 py-2 rounded font-mono font-bold text-xs uppercase transition-all border ${activeTrayFilter === 'ALL' ? 'bg-mars-yellow text-black border-mars-yellow shadow-[0_0_10px_rgba(255,204,0,0.3)]' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500 hover:text-white'}">
+                            📋 Todos (${totalPendingCeoItems})
+                        </button>
+                        <button type="button" onclick="ui.setCeoTrayFilter('URGENT')" class="min-h-[44px] px-3.5 py-2 rounded font-mono font-bold text-xs uppercase transition-all border ${activeTrayFilter === 'URGENT' ? 'bg-red-600 text-white border-red-400 shadow-[0_0_12px_rgba(255,0,85,0.4)]' : (urgentCount > 0 ? 'bg-red-950/60 text-amber-300 border-red-500/60 hover:bg-red-900/70' : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200')}">
+                            ⚡ Solo Urgentes / Próximos a Cierre (${urgentCount})
+                        </button>
+                    </div>
+                ` : ''}
                 ${totalPendingCeoItems === 0 ? `
                     <div class="p-6 bg-slate-900/60 border border-slate-800 text-center rounded">
                         <p class="text-xs font-mono text-emerald-400 uppercase font-bold">✨ Todos los entregables y visados departamentales están al día.</p>
                         <p class="text-[11px] text-slate-400 mt-1">Cuando los departamentos (Técnico, Finanzas, Marketing, Operaciones) envíen sus borradores o propuestas, aparecerán aquí para tu firma o devolución.</p>
                     </div>
+                ` : (visibleTotalCount === 0 ? `
+                    <div class="p-5 bg-slate-900/60 border border-emerald-500/40 text-center rounded space-y-3">
+                        <p class="text-xs font-mono text-emerald-300 uppercase font-bold">✅ Sin visados urgentes o con fecha de cierre inminente (≤ 7 días).</p>
+                        <p class="text-[11px] text-slate-400">Tienes ${totalPendingCeoItems} trámite(s) ordinario(s) pendiente(s) con plazo holgado.</p>
+                        <button type="button" onclick="ui.setCeoTrayFilter('ALL')" class="min-h-[44px] bg-slate-800 border border-mars-yellow/70 text-mars-yellow hover:bg-mars-yellow hover:text-black font-black uppercase text-xs px-4 py-2 transition-all rounded">
+                            [ 📋 Ver Todos (${totalPendingCeoItems}) ]
+                        </button>
+                    </div>
                 ` : `
                     <div class="space-y-3">
-                        ${pendingSlogan ? `
-                            <div id="ceo-slogan-approval-panel-dash" class="bg-slate-900/90 border border-mars-magenta/60 p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        ${visibleSlogan ? `
+                            <div id="ceo-slogan-approval-panel-dash" class="bg-slate-900/90 border ${isSloganUrgent ? 'border-red-500/80' : 'border-mars-magenta/60'} p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                 <div class="min-w-0 flex-grow">
                                     <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                                        ${isSloganUrgent ? `<span class="text-xs font-black uppercase px-2 py-0.5 bg-red-600 text-white animate-pulse">⚡ PRIORITARIO · ${this.escapeHTML(sloganUrgentReason)}</span>` : ''}
                                         <span class="text-xs font-black uppercase px-2 py-0.5 bg-black border border-mars-magenta text-mars-magenta">FASE I</span>
                                         <span class="text-xs font-bold uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2 py-0.5">Resp: Marketing</span>
                                         <span class="text-xs text-slate-400 font-mono">Identidad • DOC_11</span>
                                     </div>
-                                    <h4 class="text-white font-bold text-sm uppercase leading-snug">Propuesta de Slogan Corporativo: "${this.escapeHTML(pendingSlogan.slogan || '')}"</h4>
-                                    ${pendingSlogan.valueProposition ? `<p class="text-[11px] text-slate-300 font-mono mt-1">Lema: "${this.escapeHTML(pendingSlogan.valueProposition)}"</p>` : ''}
+                                    <h4 class="text-white font-bold text-sm uppercase leading-snug">Propuesta de Slogan Corporativo: "${this.escapeHTML(visibleSlogan.slogan || '')}"</h4>
+                                    ${visibleSlogan.valueProposition ? `<p class="text-[11px] text-slate-300 font-mono mt-1">Lema: "${this.escapeHTML(visibleSlogan.valueProposition)}"</p>` : ''}
                                     <div class="mt-2.5 flex flex-wrap items-center gap-2">
-                                        ${pendingSlogan.driveUrl ? `
-                                            <a href="${encodeURI(pendingSlogan.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                        ${visibleSlogan.driveUrl ? `
+                                            <a href="${encodeURI(visibleSlogan.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
                                                 <span>📄 Ver DOC_11 en Docs ↗</span>
                                             </a>
                                         ` : ''}
@@ -688,13 +750,14 @@ Object.assign(ui, {
                                 </div>
                             </div>
                         ` : ''}
-                        ${pendingMktActionsList.map(({ camp, act }) => {
+                        ${visibleMktActions.map(({ camp, act }) => {
                             const actDrive = act.driveUrl || act.url || '';
                             const actTitle = act.title || act.type || 'Acción Publicitaria';
                             return `
-                            <div class="bg-slate-900/90 border border-mars-yellow/50 p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div class="bg-slate-900/90 border ${isMktUrgent ? 'border-red-500/80' : 'border-mars-yellow/50'} p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                 <div class="min-w-0 flex-grow">
                                     <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                                        ${isMktUrgent ? `<span class="text-xs font-black uppercase px-2 py-0.5 bg-red-600 text-white animate-pulse">⚡ PRIORITARIO · ${this.escapeHTML(mktUrgentReason)}</span>` : ''}
                                         <span class="text-xs font-black uppercase px-2 py-0.5 bg-purple-950 border border-mars-magenta text-mars-magenta">MARKETING</span>
                                         <span class="text-xs font-bold uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2 py-0.5">Acción Publicitaria • DOC_12</span>
                                     </div>
@@ -714,10 +777,11 @@ Object.assign(ui, {
                                 </div>
                             </div>`;
                         }).join('')}
-                        ${pendingPhaseBalances.map(b => `
-                            <div id="ceo-balance-approval-panel" class="bg-slate-900/90 border border-amber-500/50 p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        ${visiblePhaseBalances.map(b => `
+                            <div id="ceo-balance-approval-panel" class="bg-slate-900/90 border border-red-500/80 p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                 <div class="min-w-0 flex-grow">
                                     <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                                        <span class="text-xs font-black uppercase px-2 py-0.5 bg-red-600 text-white animate-pulse">⚡ PRIORITARIO · Ventana Cierre</span>
                                         <span class="text-xs font-black uppercase px-2 py-0.5 bg-black border border-amber-400 text-amber-400">FASE ${this.escapeHTML(b.phase)}</span>
                                         <span class="text-xs font-bold uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2 py-0.5">Resp: Finanzas</span>
                                         <span class="text-xs text-slate-400 font-mono">Economía • DOC_17</span>
@@ -740,12 +804,13 @@ Object.assign(ui, {
                                 </div>
                             </div>
                         `).join('')}
-                        ${submittedCeoDefs.map(d => {
+                        ${visibleCeoDefs.map(({ def: d, isUrgent, urgentReason }) => {
                             const doc = docs[d.key];
                             return `
-                            <div class="bg-slate-900/90 border border-amber-500/50 p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div class="bg-slate-900/90 border ${isUrgent ? 'border-red-500/80' : 'border-amber-500/50'} p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                 <div class="min-w-0 flex-grow">
                                     <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                                        ${isUrgent ? `<span class="text-xs font-black uppercase px-2 py-0.5 bg-red-600 text-white animate-pulse">⚡ PRIORITARIO · ${this.escapeHTML(urgentReason)}</span>` : ''}
                                         <span class="text-xs font-black uppercase px-2 py-0.5 bg-black border border-mars-cyan text-mars-cyan">FASE ${ui.getDeliverablePhase ? ui.getDeliverablePhase(d.key) : (d.phase || 'I')}</span>
                                         <span class="text-xs font-bold uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2 py-0.5">Resp: ${this.escapeHTML(d.role.replace('_', ' '))}</span>
                                         <span class="text-xs text-slate-400 font-mono">${this.escapeHTML(d.subject)} • ${this.escapeHTML(d.weight)}</span>
@@ -767,7 +832,7 @@ Object.assign(ui, {
                             </div>`;
                         }).join('')}
                     </div>
-                `}
+                `)}
             </div>`;
         }
 
@@ -1128,54 +1193,33 @@ Object.assign(ui, {
         }
 
         // Brújula de Misión y Radar Ejecutivo de Fase (4º ESO)
-        const phaseInfo = (typeof ui.getCurrentPhaseInfo === 'function') ? ui.getCurrentPhaseInfo() : { key: 'I', name: 'Fase I: Preparación, Identidad y Presupuesto Inicial', deadline: '15/12/2026 23:59' };
-        const pDefsSource = typeof PROJECT_PHASES_DEF !== 'undefined' ? PROJECT_PHASES_DEF : {};
-        const phaseConfig = pDefsSource[phaseInfo.key] || {};
-        const phaseStartDate = phaseConfig.startDate ? new Date(phaseConfig.startDate + 'T00:00:00').getTime() : new Date('2026-11-02T00:00:00').getTime();
-
-        let phaseEndDate = 0;
-        if (phaseInfo.deadline) {
-            const parts = String(phaseInfo.deadline).split(' ');
-            const dParts = parts[0]?.split('/');
-            if (dParts && dParts.length === 3) {
-                phaseEndDate = new Date(`${dParts[2]}-${dParts[1]}-${dParts[0]}T${parts[1] || '23:59'}:00`).getTime();
-            }
-        }
-        if (!phaseEndDate || isNaN(phaseEndDate)) {
-            phaseEndDate = new Date('2026-12-15T23:59:59').getTime();
-        }
-
-        const nowTs = Date.now();
-        const totalPhaseDuration = Math.max(1, phaseEndDate - phaseStartDate);
-        const elapsedPhaseTime = Math.max(0, Math.min(totalPhaseDuration, nowTs - phaseStartDate));
-        const timeProgressPct = Math.min(100, Math.max(0, Math.round((elapsedPhaseTime / totalPhaseDuration) * 100)));
-        const msRemaining = Math.max(0, phaseEndDate - nowTs);
-        const daysRemaining = Math.ceil(msRemaining / (1000 * 60 * 60 * 24));
+        const phaseInfo = clockMetrics.phaseInfo;
+        const timeProgressPct = clockMetrics.timeProgressPct;
+        const daysRemaining = clockMetrics.daysRemaining;
+        const phaseDefs = clockMetrics.phaseDefs;
+        const phaseTotalCount = clockMetrics.phaseTotalCount;
+        const phaseDeliveredCount = clockMetrics.phaseDeliveredCount;
+        const phaseCeoCount = clockMetrics.phaseCeoCount;
+        const phaseReturnedCount = clockMetrics.phaseReturnedCount;
+        const phasePct = clockMetrics.phasePct;
+        const isPhaseDanger = clockMetrics.isDanger;
+        const isPhaseAllDoneSafe = clockMetrics.isAllDoneSafe;
+        const isDangerAudioMuted = this.isPhaseDangerAudioMuted ? this.isPhaseDangerAudioMuted() : false;
 
         let timeBarColor = 'from-cyan-500 via-sky-400 to-blue-500';
         let timeAlertText = `Quedan ${daysRemaining} días (${timeProgressPct}% consumido)`;
-        if (daysRemaining <= 5) {
+        if (isPhaseDanger || daysRemaining <= 5) {
             timeBarColor = 'from-red-500 via-rose-500 to-red-600 animate-pulse';
-            timeAlertText = `¡ÚLTIMOS ${daysRemaining} DÍAS! (${timeProgressPct}% consumido)`;
+            timeAlertText = daysRemaining <= 0
+                ? `¡PLAZO CERRADO! (${timeProgressPct}% consumido)`
+                : `¡ÚLTIMOS ${daysRemaining} DÍA(S)! (${timeProgressPct}% consumido)`;
         } else if (daysRemaining <= 14) {
             timeBarColor = 'from-amber-400 via-yellow-400 to-orange-500';
             timeAlertText = `Cierre próximo: ${daysRemaining} días (${timeProgressPct}% consumido)`;
         }
 
-        const phaseDefs = defs.filter(d => (ui.getDeliverablePhase ? ui.getDeliverablePhase(d.key) : (d.phase || 'I')) === phaseInfo.key);
-        const phaseTotalCount = phaseDefs.length;
-        const phaseDeliveredCount = phaseDefs.filter(d => docs[d.key] && docs[d.key].status === 'DELIVERED_TO_TEACHER').length;
-        const phaseCeoCount = phaseDefs.filter(d => docs[d.key] && docs[d.key].status === 'SUBMITTED_TO_CEO').length;
-        const phaseReturnedCount = phaseDefs.filter(d => docs[d.key] && (docs[d.key].status === 'CEO_REVISION' || docs[d.key].status === 'DEVUELTO_A_TECNICO')).length;
-        const phasePct = phaseTotalCount > 0 ? Math.round((phaseDeliveredCount / phaseTotalCount) * 100) : 0;
-
         // Ordenación por urgencia y prioridad en las mini-fichas del Radar
-        const getDefDeadlineTs = (d) => {
-            const sched = (state.data?.config?.deliverableSchedule && state.data.config.deliverableSchedule[d.key]) || {};
-            const dlStr = sched.deadline || (state.data?.config?.deadlines && state.data.config.deadlines[d.key]) || d.defaultDate || '2099-12-31';
-            const ts = new Date(dlStr).getTime();
-            return isNaN(ts) ? 9999999999999 : ts;
-        };
+        const getDefDeadlineTs = (d) => this.getDeliverableDeadlineTs ? this.getDeliverableDeadlineTs(d) : 9999999999999;
         const getDefUrgencyPrio = (dKey) => {
             const doc = docs[dKey];
             const st = doc ? doc.status : null;
@@ -1193,8 +1237,38 @@ Object.assign(ui, {
             return getDefUrgencyPrio(a.key) - getDefUrgencyPrio(b.key);
         });
 
+        const compassCardBorderBg = isPhaseDanger
+            ? 'border border-red-500/80 border-l-4 border-l-red-500 bg-gradient-to-r from-red-950/35 via-[#180710] to-slate-950 shadow-[0_0_24px_rgba(255,0,85,0.28)]'
+            : (isPhaseAllDoneSafe
+                ? 'border border-emerald-500/60 border-l-4 border-l-mars-green bg-gradient-to-r from-emerald-950/25 via-[#071a14] to-slate-950 shadow-[0_0_20px_rgba(0,255,102,0.18)]'
+                : 'border-l-4 border-l-mars-cyan bg-gradient-to-r from-slate-950 via-[#071322] to-slate-950 shadow-[0_4px_25px_rgba(0,240,255,0.12)]');
+
+        const phaseAlertBannerHtml = isPhaseDanger ? `
+            <div class="mb-4 p-3 rounded bg-red-950/80 border border-red-400/80 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <span class="text-xl animate-pulse shrink-0">🚨</span>
+                    <div class="min-w-0">
+                        <span class="text-xs font-black uppercase tracking-wider text-amber-300 block animate-pulse">
+                            ⏰ ¡FASE EN PELIGRO! ${daysRemaining <= 0 ? 'PLAZO DE FASE AGOTADO' : `QUEDAN ${daysRemaining} DÍA(S)`} Y FALTAN ${clockMetrics.pendingDeliverablesCount} ENTREGABLE(S)
+                        </span>
+                        <span class="text-[11px] font-mono text-red-200 block">
+                            Prioriza la revisión en Bandeja de Visado y coordina con los departamentos antes del cierre (${this.escapeHTML(phaseInfo.deadline)}).
+                        </span>
+                    </div>
+                </div>
+                <button type="button" onclick="ui.togglePhaseDangerMute()" class="shrink-0 w-full sm:w-auto min-h-[44px] px-3 py-1.5 text-[11px] font-mono font-bold uppercase rounded border ${isDangerAudioMuted ? 'bg-slate-900 border-slate-600 text-slate-300 hover:text-white' : 'bg-amber-950/70 border-amber-400/70 text-amber-300 hover:bg-amber-900'} transition-all whitespace-nowrap">
+                    ${isDangerAudioMuted ? '🔕 Sonido Silenciado' : '🔔 Silenciar Alerta'}
+                </button>
+            </div>` : (isPhaseAllDoneSafe ? `
+            <div class="mb-4 p-3 rounded bg-emerald-950/50 border border-emerald-400/70 flex items-center gap-2.5">
+                <span class="text-lg shrink-0">✅</span>
+                <span class="text-xs font-black uppercase tracking-wider text-emerald-300">
+                    FASE AL DÍA — Misión Cumplida a Tiempo (${phaseDeliveredCount}/${phaseTotalCount} entregables enviados al Claustro).
+                </span>
+            </div>` : '');
+
         const compassCardHtml = `
-        <div class="terminal-border bg-gradient-to-r from-slate-950 via-[#071322] to-slate-950 p-4 sm:p-5 border-l-4 border-l-mars-cyan shadow-[0_4px_25px_rgba(0,240,255,0.12)] mb-5">
+        <div class="terminal-border ${compassCardBorderBg} p-4 sm:p-5 mb-5">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-3 mb-4">
                 <div class="flex items-center gap-2.5 flex-wrap">
                     <span class="text-xs font-black uppercase px-2.5 py-1 bg-mars-cyan text-black rounded font-mono shadow-[0_0_10px_rgba(0,240,255,0.4)]">📍 FASE ACTUAL // ${this.escapeHTML(phaseInfo.key)}</span>
@@ -1205,16 +1279,17 @@ Object.assign(ui, {
                     <span class="text-mars-yellow font-bold bg-black/60 px-2 py-0.5 border border-slate-800 rounded">${this.escapeHTML(phaseInfo.deadline)}</span>
                 </div>
             </div>
+            ${phaseAlertBannerHtml}
             
             <!-- DOBLE BARRA COMPARATIVA: TIEMPO vs ENTREGABLES -->
             <div class="space-y-3 mb-4 font-mono text-xs">
                 <!-- Barra 1: Cronómetro de Fase -->
                 <div>
-                    <div class="flex justify-between items-center mb-1 text-slate-300 text-[11px]">
+                    <div class="flex justify-between items-center mb-1 text-slate-300 text-[11px] gap-2 flex-wrap">
                         <span class="uppercase flex items-center gap-1.5 font-bold">
-                            <span>⏱️</span> Cronómetro de Fase (Tiempo Consumido)
+                            ${isPhaseDanger ? '<span class="inline-block animate-pulse text-amber-400">⏰</span>' : '<span>⏱️</span>'} Cronómetro de Fase (Tiempo Consumido)
                         </span>
-                        <span class="text-mars-cyan font-bold">${timeAlertText}</span>
+                        <span class="${isPhaseDanger ? 'text-amber-300 font-black animate-pulse' : 'text-mars-cyan font-bold'}">${timeAlertText}</span>
                     </div>
                     <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-800 p-0.5">
                         <div class="bg-gradient-to-r ${timeBarColor} h-full rounded-full transition-all duration-500" style="width: ${timeProgressPct}%"></div>
