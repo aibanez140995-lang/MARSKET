@@ -192,8 +192,9 @@ Object.assign(ui, {
                                         }
                                         return `<div class="flex flex-col items-center gap-1"><span class="min-h-[44px] flex items-center justify-center text-slate-500 border border-slate-800 px-2 py-1 text-center font-mono">0/4</span></div>`;
                                     }
-                                    const sched = state.data.config?.deliverableSchedule?.[colKey];
-                                    const templateBadge = sched?.guideDocUrl ? `<a href="${encodeURI(sched.guideDocUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-[9px] text-mars-cyan block hover:underline" title="Ver Plantilla Docente">📄 Plantilla ↗</a>` : '';
+                                    const tplRaw = this.getDeliverableTemplateUrl ? this.getDeliverableTemplateUrl(colKey) : (state.data.config?.deliverableSchedule?.[colKey]?.guideDocUrl || '');
+                                    const tplView = (tplRaw && this.isDocsEditorUrl && this.isDocsEditorUrl(tplRaw)) ? this.getGoogleViewUrl(tplRaw) : tplRaw;
+                                    const templateBadge = tplView ? `<a href="${encodeURI(tplView).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-[9px] text-mars-cyan block hover:underline" title="Ver Plantilla Docente">📄 Plantilla ↗</a>` : '';
                                     if (doc) {
                                         const docUrl = doc.driveUrl || doc.url || doc.dataUrl || '#';
                                         return `<div class="flex flex-col items-center gap-1"><a href="${this.escapeHTML(docUrl)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] flex items-center justify-center bg-mars-green/15 text-mars-green border border-mars-green px-2 py-1 font-bold hover:bg-mars-green hover:text-black transition-colors text-center">${(doc.type==='link' || doc.driveUrl || doc.url)?'🔗 LINK':'📁 FILE'}</a>${templateBadge}</div>`;

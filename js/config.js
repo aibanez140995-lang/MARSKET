@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.08) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.09) ---
 
-const APP_VERSION = "2.0.08";
+const APP_VERSION = "2.0.09";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -854,7 +854,7 @@ const DELIVERABLES_DEF = [
       defaultOpenDate: "2026-11-02T00:00",
       defaultDate: "2026-12-15T23:59",
       weight: "10% FYQ",
-      defaultGuideDocUrl: ""
+      defaultGuideDocUrl: "https://docs.google.com/document/d/1q4KPkXeaYwwcq6yDkWWsM08wVCD67GppFFnfes3qLSI/copy"
     },
     {
       key: "hoja_taller_fyq",
@@ -1045,7 +1045,7 @@ const DELIVERABLES_DEF = [
       defaultOpenDate: "2026-11-02T00:00",
       defaultDate: "2026-11-20T23:59",
       weight: "20% ECO",
-      defaultGuideDocUrl: ""
+      defaultGuideDocUrl: "https://docs.google.com/document/d/1w6wLBHBA2JlLtbTvDlzpn3zv8ekTkyP7SRNlSEm9XHw/copy"
     },
     {
       key: "budgetPostProto",
@@ -1153,8 +1153,23 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.08
+// Changelog Oficial de Producción v2.0.09
 const APP_CHANGELOG = [
+    {
+      version: "2.0.09",
+      date: "2026-11-13",
+      title: "Plantillas Oficiales Integradas para Presupuesto Inicial e Informe Técnico Preliminar",
+      items: [
+        "Plantilla Oficial de Presupuesto Inicial (Economía · Fase I): Vinculado el documento oficial en Google Docs con botones duales automáticos (Ver Plantilla Oficial / Clonar en Drive) en Finanzas, Mis Entregables, Dossier, Guías de Rol, Cronograma Maestro y Matriz Docente.",
+        "Plantilla Oficial de Informe Técnico Preliminar, Boceto y Foto (Física y Química · Fase I): Vinculado el documento oficial en Google Docs con clonación directa en Drive y acceso en Banco Técnico, Mis Entregables y Sala de Mando.",
+        "Sincronización Automática de Línea Base (scheduleBaselineVersion 2009) y Matriz Docente: Propagación inmediata de ambas plantillas en terminales de aula y visibilidad unificada del acceso 📄 Plantilla ↗ en el panel de evaluación por rúbricas."
+      ],
+      highlights: [
+        { type: "FASE I", text: "Plantilla oficial de Presupuesto Inicial (ECO) lista para ver y clonar en Drive." },
+        { type: "FASE I", text: "Plantilla oficial de Informe Técnico Preliminar (FYQ) lista para ver y clonar." },
+        { type: "SINCRONIZACIÓN", text: "Propagación inmediata en vistas de alumnos, Cronograma Maestro y evaluación docente." }
+      ]
+    },
     {
       version: "2.0.08",
       date: "2026-11-13",

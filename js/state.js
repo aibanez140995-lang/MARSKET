@@ -64,7 +64,7 @@ const DEFAULT_STATE = {
     ],
     config: {
         nextOrderId: 1000,
-        scheduleBaselineVersion: 1168,
+        scheduleBaselineVersion: 0,
         deadlines: typeof DEFAULT_DEADLINES !== 'undefined' ? DEFAULT_DEADLINES : {},
         deliverableSchedule: {},
         guidelines: { techReportDocUrl: "", techReportNotes: "Guía oficial redactada por FYQ." },
@@ -432,6 +432,29 @@ const state = {
                     }
                 }
             });
+        }
+
+        if (d.config.scheduleBaselineVersion < 2009) {
+            d.config.scheduleBaselineVersion = 2009;
+            d.config.deliverableSchedule = d.config.deliverableSchedule || {};
+            if (typeof DELIVERABLES_DEF !== 'undefined') {
+                ['preliminaryReport', 'budgetInitial'].forEach(tKey => {
+                    const def = DELIVERABLES_DEF.find(x => x.key === tKey);
+                    if (!def || !def.defaultGuideDocUrl) return;
+                    const prev = d.config.deliverableSchedule[tKey] || {};
+                    if (!prev.guideDocUrl || !String(prev.guideDocUrl).trim()) {
+                        d.config.deliverableSchedule[tKey] = {
+                            ...prev,
+                            phase: prev.phase || def.phase || "I",
+                            openDate: hasOwn.call(prev, 'openDate') ? prev.openDate : def.defaultOpenDate,
+                            deadline: prev.deadline || d.config.deadlines[tKey] || def.defaultDate,
+                            guideDocUrl: def.defaultGuideDocUrl,
+                            clearedGuide: false,
+                            updatedAt: Number(prev.updatedAt) || 0
+                        };
+                    }
+                });
+            }
         }
 
         if (!d.config.catalogBaselineVersion || d.config.catalogBaselineVersion < 1131) {
