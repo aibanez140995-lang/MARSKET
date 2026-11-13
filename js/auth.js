@@ -29,7 +29,7 @@ const auth = (function() {
         return 'proof_' + Math.abs(h).toString(16);
     }
 
-    async function _doCompleteLogin(userObj, entityName, roleName, verifiedCredential, serverToken = null) {
+    async function _doCompleteLogin(userObj, entityName, roleName, verifiedCredential, serverToken = null, serverStamp = null) {
         // G4a: Solución transitoria de sesión. Expira a las 8 horas.
         const exp = Date.now() + (8 * 60 * 60 * 1000);
         const isTeacher = !!userObj.admin;
@@ -40,10 +40,20 @@ const auth = (function() {
 
         if (isTeacher) {
             const t = state.data?.config?.teachers?.[userObj.role];
-            pinStamp = t?.pinUpdatedAt || 0;
+            pinStamp = (serverStamp !== null && serverStamp !== undefined)
+                ? (Number(serverStamp) || 0)
+                : (t?.pinUpdatedAt || 0);
         } else {
             const co = state.data?.companies?.[userObj.coId];
-            authStamp = co?.authUpdatedAt || 0;
+            authStamp = (serverStamp !== null && serverStamp !== undefined)
+                ? (Number(serverStamp) || 0)
+                : (co?.authUpdatedAt || 0);
+        }
+
+        if (!authToken && typeof state.encodeSecret === 'function') {
+            authToken = isTeacher
+                ? state.encodeSecret(`T|${userObj.role}|${pinStamp}`)
+                : state.encodeSecret(`S|${userObj.coId}|${userObj.role}|${authStamp}`);
         }
 
         const credential = verifiedCredential || (isTeacher 
@@ -67,10 +77,6 @@ const auth = (function() {
         state.currentUser = state.user;
         state.pin = '';
 
-        if (isTeacher && userObj.role && userObj.role.startsWith('COORD') && typeof state.fetchAdminCredentials === 'function') {
-            await state.fetchAdminCredentials().catch(e => console.warn("[AUTH] Error hidratando credenciales:", e));
-        }
-
         // Guardar exclusivamente en sessionStorage, no en localStorage
         try {
             sessionStorage.setItem(state.sessionKey, JSON.stringify(sessionPayload));
@@ -82,9 +88,14 @@ const auth = (function() {
             localStorage.removeItem(state.sessionKey);
         } catch (e) {}
 
-        // Rehidratar estado completo autenticado para Coordinación (desbloquea borrador interno Fase V)
-        if (isTeacher && userObj.role && userObj.role.startsWith('COORD') && typeof state.fetchFromCloud === 'function') {
-            await state.fetchFromCloud(true).catch(e => console.warn("[AUTH] Error hidratando borrador Fase V:", e));
+        // Rehidratar estado completo autenticado para Coordinación (desbloquea borrador interno Fase V) y luego credenciales
+        if (isTeacher && userObj.role && userObj.role.startsWith('COORD')) {
+            if (typeof state.fetchFromCloud === 'function') {
+                await state.fetchFromCloud(true).catch(e => console.warn("[AUTH] Error hidratando borrador Fase V:", e));
+            }
+            if (typeof state.fetchAdminCredentials === 'function') {
+                await state.fetchAdminCredentials().catch(e => console.warn("[AUTH] Error hidratando credenciales:", e));
+            }
         }
 
         if (typeof ui.playLoginAnimation === 'function') {
@@ -365,6 +376,7 @@ const auth = (function() {
             if (_verifiedCoId === 'admin') {
                 let teacherOk = false;
                 let serverToken = null;
+                let serverPinStamp = null;
 
                 // 1. Verificación en servidor Zero-Trust
                 try {
@@ -377,6 +389,7 @@ const auth = (function() {
                         const json = await res.json();
                         teacherOk = !!json.verified;
                         if (json.token) serverToken = json.token;
+                        if (json.pinStamp !== undefined && json.pinStamp !== null) serverPinStamp = json.pinStamp;
                     }
                 } catch(e) {}
 
@@ -389,7 +402,7 @@ const auth = (function() {
                 if (teacherOk) {
                     _internalExecutionGuard = true;
                     try {
-                        await _doCompleteLogin({ admin: true, role: role, coId: null }, 'CLAUSTRO DOCENTE', role, pinAttempt, serverToken);
+                        await _doCompleteLogin({ admin: true, role: role, coId: null }, 'CLAUSTRO DOCENTE', role, pinAttempt, serverToken, serverPinStamp);
                     } finally {
                         _internalExecutionGuard = false;
                     }
@@ -400,6 +413,7 @@ const auth = (function() {
             } else {
                 let studentOk = false;
                 let serverToken = null;
+                let serverAuthStamp = null;
                 const co = state.data.companies[_verifiedCoId];
                 let coName = co?.name || 'EMPRESA';
 
@@ -415,6 +429,7 @@ const auth = (function() {
                         studentOk = !!json.verified;
                         if (json.companyName) coName = json.companyName;
                         if (json.token) serverToken = json.token;
+                        if (json.authStamp !== undefined && json.authStamp !== null) serverAuthStamp = json.authStamp;
                     }
                 } catch(e) {}
 
@@ -435,7 +450,7 @@ const auth = (function() {
                     }
                     _internalExecutionGuard = true;
                     try {
-                        await _doCompleteLogin({ admin: false, role: role, coId: _verifiedCoId }, coName, role, pinAttempt, serverToken);
+                        await _doCompleteLogin({ admin: false, role: role, coId: _verifiedCoId }, coName, role, pinAttempt, serverToken, serverAuthStamp);
                     } finally {
                         _internalExecutionGuard = false;
                     }
@@ -542,9 +557,15 @@ const auth = (function() {
                 state.lastCompanyETag = null;
                 state._adminCredentialsFetched = false;
             }
-            // WP1: Purga total inmediata de sesiones y almacenamiento en cliente
+            // WP1: Purga total inmediata de sesiones y almacenamiento en cliente (preservando epoch de reset y catálogo)
             try { sessionStorage.clear(); } catch(e) {}
-            try { localStorage.clear(); } catch(e) {}
+            try {
+                const savedEpoch = localStorage.getItem('marsket_reset_epoch');
+                const savedDelCat = localStorage.getItem('marsket_deleted_catalog_ids');
+                localStorage.clear();
+                if (savedEpoch !== null) localStorage.setItem('marsket_reset_epoch', savedEpoch);
+                if (savedDelCat !== null) localStorage.setItem('marsket_deleted_catalog_ids', savedDelCat);
+            } catch(e) {}
 
             const appContainer = document.getElementById('app-container') || document.querySelector('.max-w-7xl');
             if (appContainer) {

@@ -230,9 +230,10 @@ Object.assign(ui, {
 
         let tabsHtml = '';
         if (!isCoord || this.adminMode === 'aula') {
-            // MODO AULA / CALIFICACIÓN DIARIA (Visible para todo profesor: exactamente 2 botones prioritarios)
+            // MODO AULA / CALIFICACIÓN DIARIA (Visible para todo profesor)
             const isEval = (currentTab === 'eval');
             const isDash = (currentTab === 'dash');
+            const isContest = (currentTab === 'contest');
             tabsHtml = `
             <div role="tablist" aria-label="Navegación Docente Aula" class="flex flex-wrap gap-3 mb-6 border-b border-mars-border pb-3">
                 <button type="button" role="tab" aria-selected="${isEval}"
@@ -263,6 +264,15 @@ Object.assign(ui, {
                             : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
                     }">
                     <span>🤝 Contratos & Misiones</span>
+                </button>
+                <button type="button" role="tab" aria-selected="${isContest}"
+                    onclick="ui.adminTab = 'contest'; ui.render();"
+                    class="min-h-[44px] px-5 py-2.5 text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-2 ${
+                        isContest
+                            ? 'bg-mars-green text-black border-mars-green shadow-[0_0_10px_rgba(0,255,102,0.3)]'
+                            : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
+                    }">
+                    <span>🏆 Fase V: Concurso Final</span>
                 </button>
             </div>
             `;
@@ -362,7 +372,7 @@ Object.assign(ui, {
                     break;
                 }
                 case 'contracts': subContainer.innerHTML = this.renderAdminContracts(); break;
-                case 'contest': subContainer.innerHTML = this.renderAdminContest(); break;
+                case 'contest': subContainer.innerHTML = typeof this.renderAdminContest === 'function' ? this.renderAdminContest() : '<div class="terminal-border bg-mars-card p-6 text-xs text-mars-magenta">Módulo de Fase V no cargado. Recarga la página con Ctrl+F5.</div>'; break;
                 case 'eval': subContainer.innerHTML = this.renderAdminEval(); break;
                 case 'startups': subContainer.innerHTML = this.renderAdminStartups(); break;
                 case 'telemetry': subContainer.innerHTML = this.renderAdminTelemetry(); break;

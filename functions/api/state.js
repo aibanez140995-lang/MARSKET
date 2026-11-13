@@ -350,23 +350,19 @@ export async function onRequest(context) {
                         FROM state WHERE id = 'current'
                     `).bind(pathName, pathVlt, pathPlain, pathAuth).first();
 
-                    if ((!row || row.companyName === null) && (coId === 'sandbox_master' || coId === 'sandbox_student')) {
-                        row = {
-                            companyName: coId === 'sandbox_student' ? 'MARS-X ALUMNO (ESTÁNDAR)' : 'MARS-X SANDBOX (PRUEBAS)',
-                            vltPin: '',
-                            plainPin: '1234',
-                            authStamp: 0
-                        };
+                    if ((!row || !row.companyName || row.companyName === 'SANDBOX_MASTER' || row.companyName === 'SANDBOX_STUDENT') && (coId === 'sandbox_master' || coId === 'sandbox_student')) {
+                        row = row || { vltPin: '', plainPin: '1234', authStamp: 0 };
+                        row.companyName = coId === 'sandbox_student' ? 'MARS-X ALUMNO (ESTÁNDAR)' : 'MARS-X SANDBOX (PRUEBAS)';
                     }
 
                     if (row) {
                         let expectedPin = '';
                         if (row.vltPin) {
                             expectedPin = decodeSecret(row.vltPin, VAULT_KEY).trim();
-                        } else if (row.plainPin && !String(row.plainPin).startsWith('VLT_')) {
+                        } else if (row.plainPin && !String(row.plainPin).startsWith('VLT_') && String(row.plainPin).trim().toUpperCase() !== 'PROTECTED') {
                             expectedPin = String(row.plainPin).trim();
                         }
-                        if (!expectedPin && role !== 'AUXILIAR') {
+                        if (!expectedPin && (role !== 'AUXILIAR' || coId === 'sandbox_master' || coId === 'sandbox_student')) {
                             expectedPin = '1234';
                         }
                         const authStamp = Number(row.authStamp) || 0;
@@ -385,7 +381,8 @@ export async function onRequest(context) {
                                         '$.telemetry.totalLogins', COALESCE(json_extract(data, '$.telemetry.totalLogins'), 0) + 1
                                     )
                                     WHERE id = 'current'
-                                `).bind(coId, coId, coId, role, coId, role, coId, role, nowIso).run();
+                                      AND json_extract(data, '$.companies.' || ? || '.name') IS NOT NULL
+                                `).bind(coId, coId, coId, role, coId, role, coId, role, nowIso, coId).run();
                             } catch(e) {}
                         }
 

@@ -41,6 +41,7 @@ const filesToUpload = [
     'js/ui-docente-core.js',
     'js/ui-docente-eval.js',
     'js/ui-docente-management.js',
+    'js/ui-docente-contest.js',
     'js/ui-empresa-core.js',
     'js/ui-empresa-finance.js',
     'js/ui-empresa-gov-brand.js',

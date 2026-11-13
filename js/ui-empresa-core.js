@@ -46,10 +46,11 @@ Object.assign(ui, {
         `;
 
         const rgpdClauseHtml = `
-            <div class="mt-4 text-center">
+            <div id="login-rgpd-footer" class="mt-4 text-center">
                 <button type="button" id="btn-open-rgpd-modal" onclick="ui.openRgpdModal()" class="min-h-[44px] min-w-[44px] px-3 py-2 text-xs text-slate-300 hover:text-mars-cyan font-mono tracking-wider transition-colors inline-flex items-center justify-center">
                     [ 🛡️ PROTOCOLO RGPD / ART. 13 ]
                 </button>
+                <p id="login-rgpd-clause-text" class="text-[10px] text-slate-400 text-center mt-2 tracking-wider font-mono leading-relaxed">Tratamiento de datos con fines exclusivamente educativos. Responsable del Tratamiento: Colegio Miravalles-El Redín. No se ceden datos a terceros.</p>
             </div>
         `;
 
@@ -88,12 +89,12 @@ Object.assign(ui, {
         ${scanlineHtml}
         <div id="login-box" class="w-full max-w-md terminal-border bg-mars-card p-4 sm:p-6 glow-cyan animate-in fade-in zoom-in duration-300 transition-all mx-auto my-auto" style="max-width: 28rem;">
             <!-- Sub-barra superior de navegación compacta -->
-            <div class="flex justify-between items-center border-b border-mars-border/60 pb-2 mb-2.5">
-                <span class="text-[11px] font-mono text-mars-cyan uppercase tracking-wider flex items-center gap-1.5">
+            <div class="flex justify-between items-center gap-2 border-b border-mars-border/60 pb-2 mb-2.5">
+                <span class="text-[11px] font-mono text-mars-cyan uppercase tracking-wider flex items-center gap-1.5 shrink-0 whitespace-nowrap">
                     <span class="w-2 h-2 rounded-full bg-mars-cyan animate-pulse" aria-hidden="true"></span>
                     Paso 2/2 // Terminal PIN
                 </span>
-                <button type="button" onclick="auth.resetCompanyStep()" class="min-h-[44px] text-xs text-mars-magenta hover:text-white uppercase font-bold tracking-normal border border-mars-magenta/50 px-2.5 py-1 hover:bg-mars-magenta/20 transition-all whitespace-nowrap">
+                <button type="button" onclick="auth.resetCompanyStep()" class="min-h-[44px] text-xs text-mars-magenta hover:text-white uppercase font-bold tracking-normal border border-mars-magenta/50 px-2.5 py-1 hover:bg-mars-magenta/20 transition-all whitespace-nowrap shrink-0">
                     [⬅ Cambiar]
                 </button>
             </div>

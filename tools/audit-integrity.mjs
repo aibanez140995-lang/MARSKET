@@ -295,6 +295,23 @@ function runAudit() {
         }
     }
 
+    // 3b. VALIDACIÓN DE DESPLIEGUE CDMON (sw.js STATIC_ASSETS vs tools/deploy-cdmon.mjs)
+    const swPath = path.join(ROOT, 'sw.js');
+    const deployPath = path.join(ROOT, 'tools/deploy-cdmon.mjs');
+    if (fs.existsSync(swPath) && fs.existsSync(deployPath)) {
+        const swContent = fs.readFileSync(swPath, 'utf8');
+        const deployContent = fs.readFileSync(deployPath, 'utf8');
+        const swAssetRegex = /['"]\.\/((?:js|css)\/[^'"?]+)(?:\?[^'"]*)?['"]/g;
+        let swMatch;
+        while ((swMatch = swAssetRegex.exec(swContent)) !== null) {
+            const relAsset = swMatch[1];
+            const inDeployRegex = new RegExp(`['"]${relAsset.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]`);
+            if (!inDeployRegex.test(deployContent)) {
+                report.brokenReferences.push(`DEPLOY_OMISSION: ${relAsset} (presente en sw.js pero ausente en tools/deploy-cdmon.mjs)`);
+            }
+        }
+    }
+
     // 4. AUDITORÍA DE IDs (DUPLICADOS Y REFERENCIADOS QUE NO EXISTEN)
     const definedIdsMap = new Map();
     const referencedIds = new Set();

@@ -843,10 +843,16 @@ Object.assign(ui, {
 
     renderAdminContest() {
         if (!this.isCoordinatorUser()) {
+            const summaryHtml = typeof this.renderContestNewsShowcase === 'function'
+                ? this.renderContestNewsShowcase()
+                : '';
             return `
-            <div class="terminal-border bg-mars-card p-6 border-l-4 border-mars-magenta">
-                <h3 class="text-sm font-orbitron font-black text-mars-magenta uppercase">Acceso Restringido a Coordinación</h3>
-                <p class="text-xs text-slate-300 mt-1">Solo los perfiles de Coordinación (COORD_*) pueden configurar finalistas, marcador en directo, podio y galardones del Concurso Final (Fase V).</p>
+            <div class="space-y-4">
+                <div class="terminal-border bg-mars-card p-6 border-l-4 border-mars-magenta">
+                    <h3 class="text-sm font-orbitron font-black text-mars-magenta uppercase">Acceso Restringido a Coordinación</h3>
+                    <p class="text-xs text-slate-300 mt-1">Solo los perfiles de Coordinación (COORD_*) pueden configurar finalistas, marcador en directo, podio y galardones del Concurso Final (Fase V). A continuación puedes consultar el resumen público actual.</p>
+                </div>
+                ${summaryHtml}
             </div>`;
         }
 

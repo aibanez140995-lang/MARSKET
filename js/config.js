@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.09) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.10) ---
 
-const APP_VERSION = "2.0.09";
+const APP_VERSION = "2.0.10";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1153,8 +1153,25 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.09
+// Changelog Oficial de Producción v2.0.10
 const APP_CHANGELOG = [
+    {
+      version: "2.0.10",
+      date: "2026-11-13",
+      title: "Despliegue Completo de Fase V en Coordinación, Corrección de Login Paso 2/2 y Blindaje de TEST-1111",
+      items: [
+        "Fase V (Concurso Final) en Coordinación y Claustro: Incluido el módulo js/ui-docente-contest.js en el despliegue automático a CDMON, añadido el acceso directo 🏆 Fase V: Concurso Final en Modo Aula y habilitada la vista de resumen para todo el profesorado.",
+        "Orden de Rehidratación para Coordinación: Garantizado que la descarga del borrador secreto de Fase V preceda a la hidratación de credenciales (Llavero Maestro) y filtrada cualquier clave obsoleta BIO.",
+        "Corrección Visual en Login Paso 2/2: Eliminado el solapamiento del aviso RGPD en la barra superior [← Cambiar] que aplastaba la etiqueta PASO 2/2 // TERMINAL PIN.",
+        "Blindaje Integral de TEST-1111 (MARS-X ALUMNO ESTÁNDAR) y Sesiones: Corregida la lectura literal de PIN 'PROTECTED' en servidor (PHP y D1), asegurada la creación e integridad de sandbox_student/sandbox_master en ambos backends y cliente, y preservada la época de reset al cerrar sesión.",
+        "Estabilidad de Acciones en Servidor (POST /action): Soporte completo de decideAction y actualización sin duplicados en campañas de Marketing, y habilitación de executiveResolutions en GENERIC_PATCH."
+      ],
+      highlights: [
+        { type: "FASE V", text: "Despliegue CDMON reparado y acceso directo en Modo Aula para Coordinación y Claustro." },
+        { type: "UI / LOGIN", text: "Cabecera de Paso 2/2 // Terminal PIN nítida y sin aplastamientos." },
+        { type: "SANDBOX", text: "Acceso 100% estable en TEST-1111 (MARS-X ALUMNO) sin expulsiones tras el login." }
+      ]
+    },
     {
       version: "2.0.09",
       date: "2026-11-13",

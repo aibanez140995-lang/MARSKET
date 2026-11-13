@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.09
+// Versión: v2.0.10
 
 declare(strict_types=1);
 
@@ -193,6 +193,111 @@ function sanitizeStateForClient(array $state, bool $includeContestDraft = false)
     return $state;
 }
 
+function ensureTestCompaniesInState(array &$state): bool {
+    $changed = false;
+    if (isset($state['config']['teachers']) && is_array($state['config']['teachers']) && array_key_exists('BIO', $state['config']['teachers'])) {
+        unset($state['config']['teachers']['BIO']);
+        $changed = true;
+    }
+    if (!isset($state['companies']) || !is_array($state['companies'])) {
+        $state['companies'] = [];
+    }
+    $defs = [
+        'sandbox_master' => [
+            'name' => 'MARS-X SANDBOX (PRUEBAS)',
+            'code' => 'TEST-0000',
+            'unlockAllContracts' => true
+        ],
+        'sandbox_student' => [
+            'name' => 'MARS-X ALUMNO (ESTÁNDAR)',
+            'code' => 'TEST-1111',
+            'unlockAllContracts' => false
+        ]
+    ];
+    $allRoles = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'];
+    foreach ($defs as $cid => $meta) {
+        if (!isset($state['companies'][$cid]) || !is_array($state['companies'][$cid])) {
+            $state['companies'][$cid] = [
+                'id' => $cid,
+                'name' => $meta['name'],
+                'classGroup' => 'TEST',
+                'balance' => 2400,
+                'isTestCompany' => true,
+                'unlockAllContracts' => $meta['unlockAllContracts'],
+                'slogan' => '',
+                'valueProposition' => '',
+                'roles' => [],
+                'authVault' => ['code' => encodeSecret($meta['code']), 'roles' => []],
+                'deliverables' => new \stdClass(),
+                'contracts' => new \stdClass(),
+                'ledger' => [],
+                'orders' => [],
+                'flightTests' => [],
+                'authUpdatedAt' => 0
+            ];
+            foreach ($allRoles as $r) {
+                $state['companies'][$cid]['authVault']['roles'][$r] = encodeSecret('1234');
+                $state['companies'][$cid]['roles'][$r] = 'PROTECTED';
+            }
+            $changed = true;
+            continue;
+        }
+        $co = &$state['companies'][$cid];
+        if (empty($co['name']) || $co['name'] === strtoupper($cid)) {
+            $co['name'] = $meta['name'];
+            $changed = true;
+        }
+        if (($co['classGroup'] ?? '') !== 'TEST') {
+            $co['classGroup'] = 'TEST';
+            $changed = true;
+        }
+        if (empty($co['isTestCompany'])) {
+            $co['isTestCompany'] = true;
+            $changed = true;
+        }
+        if (!isset($co['unlockAllContracts']) || (bool)$co['unlockAllContracts'] !== $meta['unlockAllContracts']) {
+            $co['unlockAllContracts'] = $meta['unlockAllContracts'];
+            $changed = true;
+        }
+        if (!isset($co['authVault']) || !is_array($co['authVault'])) {
+            $co['authVault'] = ['code' => '', 'roles' => []];
+            $changed = true;
+        }
+        if (empty($co['authVault']['code'])) {
+            $plainCode = !empty($co['accessCode']) ? (string)$co['accessCode'] : $meta['code'];
+            $co['authVault']['code'] = encodeSecret(strtoupper(trim($plainCode)));
+            unset($co['accessCode']);
+            $changed = true;
+        }
+        if (!isset($co['authVault']['roles']) || !is_array($co['authVault']['roles'])) {
+            $co['authVault']['roles'] = [];
+            $changed = true;
+        }
+        if (!isset($co['roles']) || !is_array($co['roles'])) {
+            $co['roles'] = [];
+            $changed = true;
+        }
+        foreach ($allRoles as $r) {
+            if (empty($co['authVault']['roles'][$r])) {
+                $existingPlain = (string)($co['roles'][$r] ?? '');
+                $pinVal = ($existingPlain !== '' && strtoupper($existingPlain) !== 'PROTECTED' && strpos($existingPlain, 'VLT_') !== 0)
+                    ? $existingPlain
+                    : '1234';
+                $co['authVault']['roles'][$r] = encodeSecret($pinVal);
+                $co['roles'][$r] = 'PROTECTED';
+                $changed = true;
+            }
+        }
+        if (!isset($co['deliverables']) || !is_array($co['deliverables'])) { $co['deliverables'] = new \stdClass(); $changed = true; }
+        if (!isset($co['contracts']) || !is_array($co['contracts'])) { $co['contracts'] = new \stdClass(); $changed = true; }
+        if (!isset($co['ledger']) || !is_array($co['ledger'])) { $co['ledger'] = []; $changed = true; }
+        if (!isset($co['orders']) || !is_array($co['orders'])) { $co['orders'] = []; $changed = true; }
+        if (!isset($co['flightTests']) || !is_array($co['flightTests'])) { $co['flightTests'] = []; $changed = true; }
+        unset($co);
+    }
+    return $changed;
+}
+
 // 5. Despacho Atómico de Endpoints
 try {
     $pdo = getDatabaseConnection();
@@ -335,6 +440,7 @@ try {
             $cleanPayload = $row['clean_data'];
             $decoded = json_decode($cleanPayload, true);
             if (is_array($decoded)) {
+                ensureTestCompaniesInState($decoded);
                 $sanitized = sanitizeStateForClient($decoded, $isCoordReader);
                 header('Content-Type: application/json; charset=utf-8');
                 header('ETag: ' . $serverETag);
@@ -488,31 +594,35 @@ try {
                 $stmt->execute([':coId' => $coId, ':role' => $role]);
                 $row = $stmt->fetch();
 
-                if ($coId === 'sandbox_master' && (!$row || $row['name'] === null)) {
-                    $row = [
-                        'name' => 'MARS-X SANDBOX (PRUEBAS)',
-                        'vault_pin' => '',
-                        'role_pin' => '1234',
-                        'auth_stamp' => 0
-                    ];
+                if ($coId === 'sandbox_master' && (!$row || empty($row['name']) || $row['name'] === 'SANDBOX_MASTER')) {
+                    if (!$row) {
+                        $row = [
+                            'vault_pin' => '',
+                            'role_pin' => '1234',
+                            'auth_stamp' => 0
+                        ];
+                    }
+                    $row['name'] = 'MARS-X SANDBOX (PRUEBAS)';
                 }
-                if ($coId === 'sandbox_student' && (!$row || $row['name'] === null)) {
-                    $row = [
-                        'name' => 'MARS-X ALUMNO (ESTÁNDAR)',
-                        'vault_pin' => '',
-                        'role_pin' => '1234',
-                        'auth_stamp' => 0
-                    ];
+                if ($coId === 'sandbox_student' && (!$row || empty($row['name']) || $row['name'] === 'SANDBOX_STUDENT')) {
+                    if (!$row) {
+                        $row = [
+                            'vault_pin' => '',
+                            'role_pin' => '1234',
+                            'auth_stamp' => 0
+                        ];
+                    }
+                    $row['name'] = 'MARS-X ALUMNO (ESTÁNDAR)';
                 }
 
                 if ($row && $row['name'] !== null) {
                     $expectedPin = '';
                     if (!empty($row['vault_pin'])) {
                         $expectedPin = trim(decodeSecret((string)$row['vault_pin']));
-                    } elseif (!empty($row['role_pin']) && strpos((string)$row['role_pin'], 'VLT_') !== 0) {
+                    } elseif (!empty($row['role_pin']) && strpos((string)$row['role_pin'], 'VLT_') !== 0 && strtoupper(trim((string)$row['role_pin'])) !== 'PROTECTED') {
                         $expectedPin = trim((string)$row['role_pin']);
                     }
-                    if (!$expectedPin && $role !== 'AUXILIAR') {
+                    if (!$expectedPin && ($role !== 'AUXILIAR' || $coId === 'sandbox_master' || $coId === 'sandbox_student')) {
                         $expectedPin = '1234';
                     }
                     $authStamp = (int)($row['auth_stamp'] ?? 0);
@@ -531,6 +641,7 @@ try {
                                     '$.telemetry.totalLogins', COALESCE(json_extract(data, '$.telemetry.totalLogins'), 0) + 1
                                 )
                                 WHERE id = 'current'
+                                  AND json_extract(data, '$.companies.' || :coId || '.name') IS NOT NULL
                             ");
                             $statStmt->execute([
                                 ':coId' => $coId,
@@ -639,6 +750,10 @@ try {
             $stmt = $pdo->query("SELECT data FROM state WHERE id = 'current'");
             $row = $stmt->fetch();
             $currentState = $row ? json_decode($row['data'], true) : [];
+            if (!is_array($currentState)) {
+                $currentState = [];
+            }
+            ensureTestCompaniesInState($currentState);
 
             // Reseteo destructivo reservado exclusivamente a roles COORD_*
             if ((($payload['action'] ?? '') === 'reset' || (!empty($payload['resetEpoch']) && !empty($currentState['resetEpoch']) && $payload['resetEpoch'] !== $currentState['resetEpoch'])) && !$isCoord) {
@@ -825,6 +940,7 @@ try {
             } elseif (isset($currentState['companies'])) {
                 $payload['companies'] = $currentState['companies'];
             }
+            ensureTestCompaniesInState($payload);
 
             // Control Optimista Estricto de Concurrencia
             $serverVersion = isset($currentState['version']) ? (int)$currentState['version'] : 0;
@@ -1024,6 +1140,12 @@ try {
                     $version = (int)($legacyData['version'] ?? 1);
                 }
             }
+        }
+
+        if (!$co && ($cid === 'sandbox_master' || $cid === 'sandbox_student')) {
+            $tmpState = ['companies' => []];
+            ensureTestCompaniesInState($tmpState);
+            $co = $tmpState['companies'][$cid] ?? null;
         }
 
         if (!$co) {
@@ -1246,12 +1368,49 @@ try {
                     array_unshift($co['marketingCampaigns'], $camp);
                 }
                 if (!empty($payload['actionItem']) && !empty($payload['campaignId'])) {
+                    $incomingItem = $payload['actionItem'];
+                    $incomingId = (string)($incomingItem['id'] ?? '');
                     foreach ($co['marketingCampaigns'] as &$c) {
                         if ((string)($c['id'] ?? '') === (string)($payload['campaignId'])) {
                             $c['executedActions'] = is_array($c['executedActions'] ?? null) ? $c['executedActions'] : [];
-                            $c['executedActions'][] = $payload['actionItem'];
+                            $updated = false;
+                            if ($incomingId !== '') {
+                                foreach ($c['executedActions'] as &$exAct) {
+                                    if ((string)($exAct['id'] ?? '') === $incomingId) {
+                                        $exAct = array_merge($exAct, $incomingItem);
+                                        $updated = true;
+                                        break;
+                                    }
+                                }
+                                unset($exAct);
+                            }
+                            if (!$updated) {
+                                $c['executedActions'][] = $incomingItem;
+                            }
                         }
                     }
+                    unset($c);
+                }
+                if (!empty($payload['decideAction']) && is_array($payload['decideAction'])) {
+                    $da = $payload['decideAction'];
+                    $campIdDa = (string)($da['campId'] ?? '');
+                    $actIdDa = (string)($da['actId'] ?? '');
+                    $approvedDa = !empty($da['approved']);
+                    foreach ($co['marketingCampaigns'] as &$c) {
+                        if ((string)($c['id'] ?? '') === $campIdDa && is_array($c['executedActions'] ?? null)) {
+                            foreach ($c['executedActions'] as &$exAct) {
+                                if ((string)($exAct['id'] ?? '') === $actIdDa) {
+                                    $exAct['status'] = $approvedDa ? 'VALIDADO_CEO' : 'RECHAZADO_CEO';
+                                    $exAct['reviewedAt'] = $now;
+                                    $exAct['feedback'] = $approvedDa ? '' : (string)($da['feedback'] ?? 'Revisión requerida por CEO');
+                                    $exAct['returnDriveUrl'] = $approvedDa ? '' : (string)($da['returnDriveUrl'] ?? '');
+                                    break;
+                                }
+                            }
+                            unset($exAct);
+                        }
+                    }
+                    unset($c);
                 }
                 break;
 
@@ -1428,7 +1587,7 @@ try {
                 break;
 
             case 'GENERIC_PATCH':
-                $allowed = ['slogan', 'valueProposition', 'cart', 'votingMotions', 'flightTests', 'bom', 'brandApproval', 'pendingSlogan', 'pendingMission', 'brandStatus'];
+                $allowed = ['slogan', 'valueProposition', 'cart', 'votingMotions', 'flightTests', 'bom', 'brandApproval', 'pendingSlogan', 'pendingMission', 'brandStatus', 'executiveResolutions'];
                 foreach ($allowed as $k) {
                     if (isset($payload[$k])) {
                         $co[$k] = $payload[$k];
@@ -1683,8 +1842,12 @@ try {
         }
 
         $currentState = json_decode($row['data'], true);
+        if (!is_array($currentState)) {
+            $currentState = [];
+        }
 
         if ($method === 'GET') {
+            $ensuredChanged = ensureTestCompaniesInState($currentState);
             $teachers = $currentState['config']['teachers'] ?? [];
             $companies = [];
             $allRoles = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'];
@@ -1704,7 +1867,7 @@ try {
                 'orion' => 'ORI-2020',
                 'stellar' => 'STL-3030'
             ];
-            $hasMutations = false;
+            $hasMutations = $ensuredChanged;
             $now = round(microtime(true) * 1000);
 
             foreach ($currentState['companies'] ?? [] as $cid => &$co) {
@@ -1737,7 +1900,7 @@ try {
                     } elseif (!empty($co['roles'][$r]) && strpos((string)$co['roles'][$r], 'VLT_') !== 0 && (string)$co['roles'][$r] !== 'PROTECTED') {
                         $rPin = (string)$co['roles'][$r];
                     }
-                    if ($r !== 'AUXILIAR' && (empty($rPin) || $rPin === 'PROTECTED')) {
+                    if (($r !== 'AUXILIAR' || $cid === 'sandbox_master' || $cid === 'sandbox_student') && (empty($rPin) || $rPin === 'PROTECTED')) {
                         $rPin = '1234';
                         $co['authVault']['roles'][$r] = encodeSecret($rPin);
                         $co['roles'][$r] = 'PROTECTED';
@@ -1918,6 +2081,10 @@ try {
             $stmt = $pdo->query("SELECT data FROM state WHERE id = 'current'");
             $row = $stmt->fetch();
             $currentState = $row ? json_decode($row['data'], true) : [];
+            if (!is_array($currentState)) {
+                $currentState = [];
+            }
+            ensureTestCompaniesInState($currentState);
 
             $now = round(microtime(true) * 1000);
             $newEpoch = ((int)($currentState['resetEpoch'] ?? 0)) + 1;

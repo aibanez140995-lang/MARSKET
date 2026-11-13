@@ -560,6 +560,9 @@ const state = {
                 ledger: []
             };
         } else {
+            if (!d.companies['sandbox_master'].name || d.companies['sandbox_master'].name === 'SANDBOX_MASTER') {
+                d.companies['sandbox_master'].name = "MARS-X SANDBOX (PRUEBAS)";
+            }
             d.companies['sandbox_master'].unlockAllContracts = true;
             d.companies['sandbox_master'].classGroup = 'TEST';
             d.companies['sandbox_master'].isTestCompany = true;
@@ -570,6 +573,11 @@ const state = {
             if (!this.getCompanyCode(d.companies['sandbox_master'])) {
                 this.setCompanyCode(d.companies['sandbox_master'], 'TEST-0000', false);
             }
+            ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'].forEach(r => {
+                if (!this.getRolePin(d.companies['sandbox_master'], r)) {
+                    this.setRolePin(d.companies['sandbox_master'], r, '1234', false);
+                }
+            });
         }
 
         if (!d.companies['sandbox_student']) {
@@ -605,6 +613,9 @@ const state = {
                 ledger: []
             };
         } else {
+            if (!d.companies['sandbox_student'].name || d.companies['sandbox_student'].name === 'SANDBOX_STUDENT') {
+                d.companies['sandbox_student'].name = "MARS-X ALUMNO (ESTÁNDAR)";
+            }
             d.companies['sandbox_student'].unlockAllContracts = false;
             d.companies['sandbox_student'].classGroup = 'TEST';
             d.companies['sandbox_student'].isTestCompany = true;
@@ -612,6 +623,11 @@ const state = {
             if (!this.getCompanyCode(d.companies['sandbox_student'])) {
                 this.setCompanyCode(d.companies['sandbox_student'], 'TEST-1111', false);
             }
+            ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'].forEach(r => {
+                if (!this.getRolePin(d.companies['sandbox_student'], r)) {
+                    this.setRolePin(d.companies['sandbox_student'], r, '1234', false);
+                }
+            });
         }
 
         for(let k in d.companies) {
@@ -621,7 +637,7 @@ const state = {
             co.name = co.name || k.toUpperCase();
             co.ledger = Array.isArray(co.ledger) ? co.ledger : [];
             co.balance = this.calculateBalance(co);
-            co.updatedAt = co.updatedAt || Date.now();
+            co.updatedAt = Number(co.updatedAt) || 0;
             co.authUpdatedAt = Number(co.authUpdatedAt) || 0;
             co.roles = co.roles || {};
             co.contracts = (co.contracts && typeof co.contracts === 'object' && !Array.isArray(co.contracts)) ? co.contracts : {};
@@ -1653,6 +1669,7 @@ const state = {
             if (creds.teachers && this.data.config) {
                 this.data.config.teachers = this.data.config.teachers || {};
                 for (const tKey in creds.teachers) {
+                    if (tKey === 'BIO' || tKey === 'COORD') continue;
                     if (this.data.config.teachers[tKey]) {
                         this.data.config.teachers[tKey].pin = creds.teachers[tKey].pin;
                         if (creds.teachers[tKey].pinUpdatedAt) {
@@ -2536,8 +2553,8 @@ const state = {
                         if (savedV1Session && this.sessionKey) localStorage.setItem(this.sessionKey, savedV1Session);
                         localStorage.setItem('marsket_reset_epoch', serverEpoch.toString());
                         
-                        // Reemplazo destructivo directo, omitiendo cualquier merge aditivo
-                        this.data = JSON.parse(JSON.stringify(json));
+                        // Reemplazo destructivo directo tras resetEpoch, preservando migración de sandbox y estructuras
+                        this.data = this.migrate(JSON.parse(JSON.stringify(json)));
                         this.saveToLocal();
                         if (typeof ui !== 'undefined' && ui.renderAll) ui.renderAll();
                         else if (typeof ui !== 'undefined' && ui.render) ui.render();
