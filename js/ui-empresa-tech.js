@@ -280,19 +280,31 @@ Object.assign(ui, {
                                             <span>⏳ LICENCIA AESA TRAMITADA // PENDIENTE DE VALIDACIÓN DOCENTE</span>
                                         </div>
                                         <p class="text-slate-200">
-                                            El CEO ha tramitado y abonado la tasa de la Licencia AESA (50 €v). El banco de pruebas se desbloqueará tan pronto como el Claustro valide el expediente.
+                                            El CEO ha tramitado la Licencia AESA (${Number(license.feePaid || 50)} €v abonados). El banco de pruebas se desbloqueará tan pronto como el Claustro valide el expediente.
                                         </p>
                                     </div>`;
                             }
                             if (license && license.status === 'DENEGADA') {
+                                const resubFee = (typeof LAUNCH_LICENSE_RESUBMISSION_FEE !== 'undefined') ? LAUNCH_LICENSE_RESUBMISSION_FEE : 10;
+                                const hasReportUrl = Boolean(license.rejectReportUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(license.rejectReportUrl));
                                 return `
-                                    <div class="p-3.5 mb-4 bg-red-950/70 border border-red-500 rounded text-xs space-y-1">
+                                    <div class="p-3.5 mb-4 bg-red-950/70 border border-red-500 rounded text-xs space-y-2">
                                         <div class="flex items-center gap-2 text-red-400 font-bold uppercase">
                                             <span>❌ LICENCIA AESA DENEGADA POR COORDINACIÓN</span>
                                         </div>
                                         <p class="text-slate-200">
-                                            El Claustro ha rechazado la solicitud de vuelo por incumplimiento de protocolos. El CEO debe subsanar y reenviar la solicitud en la Sala de Mando.
+                                            Motivo: <em>"${this.escapeHTML(license.rejectReason || 'Incumplimiento de protocolos técnicos o de seguridad.')}"</em>
                                         </p>
+                                        <p class="text-slate-300 text-[11px]">
+                                            El departamento Técnico debe corregir los aspectos señalados y el <strong>CEO</strong> deberá reenviar la subsanación en la Sala de Mando (tasa de subsanación: ${resubFee} €v).
+                                        </p>
+                                        ${hasReportUrl ? `
+                                            <div>
+                                                <a href="${encodeURI(license.rejectReportUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-900/50 text-red-100 border border-red-400/60 rounded font-mono hover:bg-red-800/70 transition-colors">
+                                                    <span>📄 Ver Informe de No Admisión Docente ↗</span>
+                                                </a>
+                                            </div>
+                                        ` : ''}
                                     </div>`;
                             }
                             return `

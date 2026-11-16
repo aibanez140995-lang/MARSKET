@@ -276,7 +276,7 @@ Object.assign(ui, {
                                         'ORO': 'style="color: #FFD700 !important; border: 1.5px solid #FFD700 !important; background-color: rgba(255, 215, 0, 0.15) !important;"',
                                         'PLATA': 'style="color: #E2E8F0 !important; border: 1.5px solid #E2E8F0 !important; background-color: rgba(226, 232, 240, 0.15) !important;"',
                                         'BRONCE': 'style="color: #CD7F32 !important; border: 1.5px solid #CD7F32 !important; background-color: rgba(205, 127, 50, 0.15) !important;"',
-                                        'COBRE': 'style="color: #B87333 !important; border: 1.5px solid #B87333 !important; background-color: rgba(184, 115, 51, 0.15) !important;"',
+                                        'COBRE': 'style="color: #E04F33 !important; border: 1.5px solid #E04F33 !important; background-color: rgba(224, 79, 51, 0.15) !important;"',
                                         'COLABORADOR': 'style="color: #00F0FF !important; border: 1.5px solid #00F0FF !important; background-color: rgba(0, 240, 255, 0.15) !important;"'
                                     };
                                     const cl = tierStyles[c.sponsorAwarded] || 'class="text-slate-300 border border-slate-700 bg-slate-900"';
@@ -2242,6 +2242,7 @@ Object.assign(ui, {
         co.notifications = [];
         co.sanctions = [];
         co.crisisAlerts = [];
+        co.meetingMinutes = [];
         co.bom = [];
         co.deliverables = {};
         co.contracts = {};
@@ -2710,7 +2711,7 @@ Object.assign(ui, {
                         <option value="ORO" style="color: #FFD700; background: #000;" ${currentTier==='ORO'?'selected':''}>🥇 Nivel ORO (+500 €v)</option>
                         <option value="PLATA" style="color: #E2E8F0; background: #000;" ${currentTier==='PLATA'?'selected':''}>🥈 Nivel PLATA (+400 €v)</option>
                         <option value="BRONCE" style="color: #CD7F32; background: #000;" ${currentTier==='BRONCE'?'selected':''}>🥉 Nivel BRONCE (+250 €v)</option>
-                        <option value="COBRE" style="color: #B87333; background: #000;" ${currentTier==='COBRE'?'selected':''}>🔶 Nivel COBRE (+150 €v)</option>
+                        <option value="COBRE" style="color: #E04F33; background: #000;" ${currentTier==='COBRE'?'selected':''}>🔶 Nivel COBRE (+150 €v)</option>
                         <option value="COLABORADOR" style="color: #00F0FF; background: #000;" ${currentTier==='COLABORADOR'?'selected':''}>🤝 Nivel COLABORADOR (+100 €v)</option>
                     </select>
                 </div>

@@ -425,9 +425,15 @@ Object.assign(ui, {
                             <h2 class="font-orbitron text-mars-cyan text-base sm:text-lg uppercase tracking-tighter">Diario de Reuniones de Dirección (DOC_16)</h2>
                             <p class="text-xs text-slate-300 mt-0.5">Actas de comités de dirección y reuniones interdepartamentales para seguimiento de acuerdos.</p>
                         </div>
-                        <button type="button" onclick="ui.modalRegisterMeetingMinute()" class="shrink-0 w-full sm:w-auto justify-center min-h-[44px] bg-mars-cyan text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all whitespace-nowrap shadow-[0_0_10px_rgba(0,255,204,0.3)] text-center">
-                            + Registrar Nueva Acta
-                        </button>
+                        ${isCEO ? `
+                            <button type="button" onclick="ui.modalRegisterMeetingMinute()" class="shrink-0 w-full sm:w-auto justify-center min-h-[44px] bg-mars-cyan text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all whitespace-nowrap shadow-[0_0_10px_rgba(0,255,204,0.3)] text-center">
+                                + Registrar Nueva Acta
+                            </button>
+                        ` : `
+                            <span class="shrink-0 w-full sm:w-auto justify-center min-h-[44px] inline-flex items-center px-3 py-2 bg-black/50 border border-slate-800 text-[11px] font-mono text-slate-400 rounded text-center">
+                                🔒 Registro reservado al CEO
+                            </span>
+                        `}
                     </div>
                     <div class="space-y-3">
                         ${(co.meetingMinutes && co.meetingMinutes.length > 0) ? co.meetingMinutes.map(m => `
@@ -576,6 +582,10 @@ Object.assign(ui, {
 
     modalRegisterMeetingMinute() {
         if (!state.user) return;
+        const co = state.data.companies?.[state.user.coId];
+        if (!co || this.getEffectiveRole(co) !== 'CEO') {
+            return this.notify("Acceso restringido: solo la Dirección General (CEO) puede registrar actas de comité.", "error");
+        }
         const sessions = typeof MEETING_MINUTE_SESSIONS_DEF !== 'undefined' ? MEETING_MINUTE_SESSIONS_DEF : [
             { id: 'ORD_1_FASE_I', label: 'Sesión Ordinaria nº 1 — Planificación y Constitución (Fase I)' },
             { id: 'ORD_2_FASE_I', label: 'Sesión Ordinaria nº 2 — Asignación de Roles y Presupuesto (Fase I)' },
@@ -632,6 +642,13 @@ Object.assign(ui, {
 
     submitMeetingMinute() {
         if (!state.user) return;
+        const coId = state.user.coId;
+        const co = state.data.companies[coId];
+        if (!co) return;
+        const effRole = this.getEffectiveRole(co);
+        if (effRole !== 'CEO') {
+            return this.notify("Acceso restringido: solo la Dirección General (CEO) puede registrar actas de comité.", "error");
+        }
         const elSession = document.getElementById('meeting-minute-session');
         const elTopic = document.getElementById('meeting-minute-topic');
         const elUrl = document.getElementById('meeting-minute-drive-url');
@@ -647,11 +664,6 @@ Object.assign(ui, {
             return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
         }
 
-        const coId = state.user.coId;
-        const co = state.data.companies[coId];
-        if (!co) return;
-
-        const effRole = this.getEffectiveRole(co);
         const authorLabel = (state.user.role !== effRole) ? `${state.user.role} (${effRole})` : effRole;
         co.meetingMinutes = co.meetingMinutes || [];
         co.meetingMinutes.unshift({

@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.10
+// Versión: v2.0.11
 
 declare(strict_types=1);
 
@@ -1187,9 +1187,14 @@ try {
                             $co['sponsorAwarded'] = $sCo['sponsorAwarded'];
                             if (isset($sCo['sponsorData'])) $co['sponsorData'] = $sCo['sponsorData'];
                         }
-                        // Preservar licencia de vuelo AESA
-                        if (!empty($sCo['launchLicense'])) {
-                            $co['launchLicense'] = $sCo['launchLicense'];
+                        // Preservar licencia de vuelo AESA (LWW por marca de tiempo)
+                        if (!empty($sCo['launchLicense']) && is_array($sCo['launchLicense'])) {
+                            $cLic = is_array($co['launchLicense'] ?? null) ? $co['launchLicense'] : null;
+                            $sLicTime = max((int)($sCo['launchLicense']['approvedAt'] ?? 0), (int)($sCo['launchLicense']['rejectedAt'] ?? 0), (int)($sCo['launchLicense']['appliedAt'] ?? 0));
+                            $cLicTime = $cLic ? max((int)($cLic['approvedAt'] ?? 0), (int)($cLic['rejectedAt'] ?? 0), (int)($cLic['appliedAt'] ?? 0)) : 0;
+                            if (!$cLic || $sLicTime > $cLicTime) {
+                                $co['launchLicense'] = $sCo['launchLicense'];
+                            }
                         }
                         // Preservar contratos comerciales por fase (LWW)
                         if (!empty($sCo['contracts']) && is_array($sCo['contracts'])) {

@@ -109,12 +109,12 @@ Object.assign(ui, {
         const currentCls = this.currentClassFilter || 'ALL';
         const classes = [
             { key: 'ALL', label: 'TODAS', icon: '🌐' },
-            { key: 'A', label: 'CLASE A', icon: '🅰️' },
-            { key: 'B', label: 'CLASE B', icon: '🅱️' },
-            { key: 'C', label: 'CLASE C', icon: '🅲' },
-            { key: 'D', label: 'CLASE D', icon: '🅳' },
-            { key: 'E', label: 'CLASE E', icon: '🅴' },
-            { key: 'F', label: 'CLASE F', icon: '🅵' },
+            { key: 'A', label: 'CLASE A', badgeLetter: 'A' },
+            { key: 'B', label: 'CLASE B', badgeLetter: 'B' },
+            { key: 'C', label: 'CLASE C', badgeLetter: 'C' },
+            { key: 'D', label: 'CLASE D', badgeLetter: 'D' },
+            { key: 'E', label: 'CLASE E', badgeLetter: 'E' },
+            { key: 'F', label: 'CLASE F', badgeLetter: 'F' },
             { key: 'TEST', label: 'TEST', icon: '🧪' }
         ];
 
@@ -128,11 +128,15 @@ Object.assign(ui, {
                 ? (c.key === 'TEST' ? 'bg-amber-950/70 border-amber-400 text-white shadow-[0_0_12px_rgba(251,191,36,0.35)]' : 'bg-cyan-950/70 border-mars-cyan text-white shadow-[0_0_12px_rgba(0,240,255,0.35)]')
                 : 'bg-slate-900/80 border-slate-800 hover:border-slate-600 text-slate-300 hover:text-white';
 
+            const badgeHtml = c.badgeLetter
+                ? `<span class="inline-flex items-center justify-center w-5 h-5 rounded-sm text-[10px] font-mono font-black border shrink-0 ${isSelected ? 'bg-mars-cyan text-black border-mars-cyan' : 'bg-cyan-950/70 text-mars-cyan border-cyan-500/50'}">${c.badgeLetter}</span>`
+                : `<span class="text-xs shrink-0">${c.icon}</span>`;
+
             return `
             <button type="button" onclick="ui.setClassFilter('${c.key}')" class="min-h-[48px] p-2 border rounded transition-all text-left flex flex-col justify-between ${borderBg}">
                 <div class="flex items-center justify-between gap-1 w-full">
-                    <span class="font-orbitron font-bold text-xs uppercase tracking-tight flex items-center gap-1">
-                        <span class="text-xs">${c.icon}</span>
+                    <span class="font-orbitron font-bold text-xs uppercase tracking-tight flex items-center gap-1.5">
+                        ${badgeHtml}
                         <span>${c.label}</span>
                     </span>
                     <span class="font-mono text-[10px] text-slate-400 font-bold">${s.companyCount} emp</span>
@@ -1179,13 +1183,15 @@ Object.assign(ui, {
                 ${pendingCos.map(cid => {
                     const co = companies[cid];
                     const lic = co.launchLicense;
+                    const paidTotal = Number(lic.feePaid || 50);
+                    const resubCount = Number(lic.resubmissionCount || 0);
                     return `
                     <div class="bg-slate-900 border border-amber-500/50 p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                         <div class="min-w-0 flex-grow">
                             <div class="flex items-center gap-2 mb-1 flex-wrap">
                                 <span class="text-sm font-black text-white uppercase">${this.escapeHTML(co.name)}</span>
                                 <span class="text-xs text-slate-400 font-mono">[CLASE ${this.escapeHTML(co.classGroup || 'A')}]</span>
-                                <span class="text-xs text-emerald-400 font-mono font-bold bg-emerald-950/40 border border-emerald-500/40 px-2 py-0.5">50 €v Abonados</span>
+                                <span class="text-xs text-emerald-400 font-mono font-bold bg-emerald-950/40 border border-emerald-500/40 px-2 py-0.5">${paidTotal} €v Abonados${resubCount > 0 ? ` • Subsanación #${resubCount}` : ''}</span>
                             </div>
                             <p class="text-xs text-slate-300 font-mono">Firmado por: <strong>${this.escapeHTML(lic.signedBy || 'CEO')}</strong> • Fecha: ${this.escapeHTML(lic.appliedDate || '--')}</p>
                             <div class="mt-2.5">
@@ -1226,6 +1232,7 @@ Object.assign(ui, {
 
     modalRejectLaunchLicense(coId) {
         if (!state.user || !state.user.admin) return;
+        const resubFee = (typeof LAUNCH_LICENSE_RESUBMISSION_FEE !== 'undefined') ? LAUNCH_LICENSE_RESUBMISSION_FEE : 10;
         const reasons = [
             "Protocolos de seguridad física en zona de lanzamiento incompletos",
             "Cálculos estequiométricos de propelente o proporciones de masa no coherentes",
@@ -1239,13 +1246,18 @@ Object.assign(ui, {
             <div class="space-y-4 font-mono text-xs">
                 <div class="p-3 bg-red-950/40 border border-red-500/50 text-slate-200">
                     <p class="text-red-400 font-bold uppercase mb-1">❌ Denegar Licencia de Lanzamiento AESA (Zero-Text):</p>
-                    <p class="font-sans text-[11px]">Selecciona el motivo tipificado para denegar la solicitud. La empresa mantendrá el banco de pruebas bloqueado hasta su subsanación.</p>
+                    <p class="font-sans text-[11px]">Selecciona el motivo tipificado para denegar la solicitud. La empresa mantendrá el banco de pruebas bloqueado hasta su subsanación (tasa de reenvío: <strong>${resubFee} €v</strong>).</p>
                 </div>
                 <div>
                     <label for="reject-launch-license-reason" class="text-mars-yellow uppercase font-bold block mb-1">Motivo Tipificado de Denegación</label>
                     <select id="reject-launch-license-reason" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white uppercase outline-none focus:border-red-400">
                         ${reasonOptions}
                     </select>
+                </div>
+                <div>
+                    <label for="reject-launch-license-report-url" class="text-mars-cyan uppercase font-bold block mb-1">Informe de No Admisión en Google Drive / Docs (Opcional)</label>
+                    <input type="url" id="reject-launch-license-report-url" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan/60 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono">
+                    <p class="text-[10px] text-slate-400 mt-1 font-sans">Opcional: adjunta un documento de Google Docs/Drive detallando las deficiencias detectadas (recuerda habilitar permisos de lectura).</p>
                 </div>
             </div>
         `;
@@ -1256,21 +1268,31 @@ Object.assign(ui, {
     rejectLaunchLicense(coId) {
         if (!state.user || !state.user.admin) return;
         const elReason = document.getElementById('reject-launch-license-reason');
+        const elReportUrl = document.getElementById('reject-launch-license-report-url');
         if (!elReason) return;
         const reason = this.cleanInput(elReason.value).trim();
+        const reportUrl = elReportUrl ? this.cleanInput(elReportUrl.value).trim() : '';
+
+        if (reportUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(reportUrl)) {
+            return this.notify("El enlace del informe debe ser una URL válida de Google Drive / Docs (o dejarse vacío).", "error");
+        }
 
         const co = state.data.companies?.[coId];
         if (!co || !co.launchLicense) return;
 
         co.launchLicense.status = 'DENEGADA';
         co.launchLicense.rejectReason = reason;
+        co.launchLicense.rejectReportUrl = reportUrl;
         co.launchLicense.rejectedAt = Date.now();
+        co.launchLicense.rejectedBy = state.user.name || 'Coordinación';
         co.updatedAt = Date.now();
 
         state.save(coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
-        ui.pushNotification(coId, 'CEO', `❌ Licencia de Lanzamiento AESA denegada por Coordinación. Motivo: "${reason}". El CEO debe subsanar y reenviar la solicitud.`, 'error', { view: 'dashboard' });
+        const resubFee = (typeof LAUNCH_LICENSE_RESUBMISSION_FEE !== 'undefined') ? LAUNCH_LICENSE_RESUBMISSION_FEE : 10;
+        const reportNote = reportUrl ? ' Incluye informe adjunto en Drive.' : '';
+        ui.pushNotification(coId, 'CEO', `❌ Licencia de Lanzamiento AESA denegada por Coordinación. Motivo: "${reason}".${reportNote} El CEO debe subsanar y reenviar la solicitud (tasa de subsanación: ${resubFee} €v).`, 'error', { view: 'dashboard' });
         this.closeModal();
         this.notify(`Licencia AESA denegada para "${co.name}".`, "info");
         this.render();

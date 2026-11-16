@@ -8,7 +8,7 @@ Object.assign(ui, {
             'ORO': 'color: #FFD700 !important; border: 1px solid #FFD700 !important; background-color: rgba(255, 215, 0, 0.18) !important;',
             'PLATA': 'color: #E2E8F0 !important; border: 1px solid #E2E8F0 !important; background-color: rgba(226, 232, 240, 0.18) !important;',
             'BRONCE': 'color: #CD7F32 !important; border: 1px solid #CD7F32 !important; background-color: rgba(205, 127, 50, 0.20) !important;',
-            'COBRE': 'color: #B87333 !important; border: 1px solid #B87333 !important; background-color: rgba(184, 115, 51, 0.20) !important;',
+            'COBRE': 'color: #E04F33 !important; border: 1px solid #E04F33 !important; background-color: rgba(224, 79, 51, 0.20) !important;',
             'COLABORADOR': 'color: #00F0FF !important; border: 1px solid #00F0FF !important; background-color: rgba(0, 240, 255, 0.18) !important;'
         };
         const s = styles[tier] || 'color: #94a3b8; border: 1px solid #475569; background-color: rgba(15, 23, 42, 0.6);';
@@ -942,8 +942,12 @@ Object.assign(ui, {
                         </div>`;
                     }
                 } else {
+                    const initFee = (typeof LAUNCH_LICENSE_FEE !== 'undefined') ? LAUNCH_LICENSE_FEE : 50;
+                    const resubFee = (typeof LAUNCH_LICENSE_RESUBMISSION_FEE !== 'undefined') ? LAUNCH_LICENSE_RESUBMISSION_FEE : 10;
                     const isAesaDenied = Boolean(license && license.status === 'DENEGADA');
-                    const feeAlreadyPaid = Boolean(isAesaDenied && Number(license.feePaid || 0) >= 50);
+                    const isResubmission = Boolean(isAesaDenied && Number(license.feePaid || 0) >= initFee);
+                    const feeToPay = isResubmission ? resubFee : initFee;
+                    const hasReportUrl = Boolean(isAesaDenied && license.rejectReportUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(license.rejectReportUrl));
                     licenseCardHtml = `
                     <div class="terminal-border bg-mars-card p-5 border-t-2 ${isAesaDenied ? 'border-t-red-500' : 'border-t-mars-yellow'} flex flex-col justify-between hover:border-mars-yellow transition-all">
                         <div>
@@ -951,32 +955,40 @@ Object.assign(ui, {
                                 <span class="text-xs font-black uppercase ${isAesaDenied ? 'text-red-300 bg-red-950/50 border-red-500/60' : 'text-mars-yellow bg-mars-yellow/10 border-mars-yellow/40'} border px-2 py-0.5">${isAesaDenied ? 'AESA // SUBSANACIÓN REQUERIDA' : 'SEGURIDAD AEROESPACIAL'}</span>
                                 <div class="flex items-center gap-1.5">
                                     ${co.unlockAllContracts === true ? `<span class="px-1.5 py-0.5 bg-amber-400 text-black text-[9px] font-mono font-bold uppercase rounded">🧪 Sandbox Desbloqueado</span>` : `<span style="color: #00ff66 !important;" class="text-[10px] font-mono">✓ Informe Preliminar Entregado</span>`}
-                                    <span class="text-xs font-mono ${feeAlreadyPaid ? 'text-mars-green' : 'text-amber-400'}">${feeAlreadyPaid ? 'Tasa ya abonada (0 €v)' : 'Tasa: 50 €v'}</span>
+                                    <span class="text-xs font-mono ${isResubmission ? 'text-red-300 font-bold' : 'text-amber-400'}">${isResubmission ? `Subsanación: ${resubFee} €v` : `Tasa: ${initFee} €v`}</span>
                                 </div>
                             </div>
                             <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">🚀 Licencia de Lanzamiento AESA (Fase II)</h3>
                             <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
-                                Los lanzamientos en el banco de pruebas están bloqueados para Técnico y Operaciones. Tramita y firma la Solicitud AESA (DOC_14) ${feeAlreadyPaid ? 'subsanada para nueva validación del Claustro.' : 'con tasa de 50 €v para validación del Claustro.'}
+                                Los lanzamientos en el banco de pruebas están bloqueados para Técnico y Operaciones. Tramita y firma la Solicitud AESA (DOC_14) ${isResubmission ? `subsanada (tasa de subsanación: ${resubFee} €v) para nueva validación del Claustro.` : `con tasa de ${initFee} €v para validación del Claustro.`}
                             </p>
                             ${isAesaDenied ? `
-                            <div class="mt-2.5 p-2.5 bg-red-950/50 border border-red-500/60 text-xs text-red-200 font-sans rounded">
-                                <strong class="uppercase text-red-400 block mb-0.5">❌ Denegada por Coordinación:</strong>
-                                <span>"${this.escapeHTML(license.rejectReason || 'Revisar documentación y permisos en Drive antes de reenviar.')}"</span>
+                            <div class="mt-2.5 p-2.5 bg-red-950/50 border border-red-500/60 text-xs text-red-200 font-sans rounded space-y-2">
+                                <div>
+                                    <strong class="uppercase text-red-400 block mb-0.5">❌ Denegada por Coordinación:</strong>
+                                    <span>"${this.escapeHTML(license.rejectReason || 'Revisar documentación y permisos en Drive antes de reenviar.')}"</span>
+                                </div>
+                                ${hasReportUrl ? `
+                                    <a href="${encodeURI(license.rejectReportUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-900/50 text-red-100 border border-red-400/60 rounded font-mono hover:bg-red-800/70 transition-colors">
+                                        <span>📄 Ver Informe de No Admisión Docente ↗</span>
+                                    </a>
+                                ` : ''}
                             </div>` : ''}
                         </div>
                         <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center flex-wrap gap-2">
                             <span class="text-[11px] text-slate-400 font-mono">DOC_14 AESA</span>
-                            <button type="button" onclick="ui.modalLaunchLicense()" class="min-h-[44px] ${isAesaDenied ? 'bg-red-600 text-white hover:bg-white hover:text-red-700' : 'bg-mars-yellow text-black hover:bg-white'} font-black uppercase text-xs px-4 py-2 transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">${feeAlreadyPaid ? '[ 🔄 Subsanar Licencia AESA (0 €v) ]' : '[ 🚀 Tramitar Licencia AESA (50 €v) ]'}</button>
+                            <button type="button" onclick="ui.modalLaunchLicense()" class="min-h-[44px] ${isAesaDenied ? 'bg-red-600 text-white hover:bg-white hover:text-red-700' : 'bg-mars-yellow text-black hover:bg-white'} font-black uppercase text-xs px-4 py-2 transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">${isResubmission ? `[ 🔄 Subsanar Licencia AESA (${feeToPay} €v) ]` : `[ 🚀 Tramitar Licencia AESA (${feeToPay} €v) ]`}</button>
                         </div>
                     </div>`;
                 }
             } else if (license.status === 'PENDIENTE_DOCENTE') {
+                const paidTotal = Number(license.feePaid || 50);
                 licenseCardHtml = `
                 <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-amber-400 flex flex-col justify-between hover:border-amber-400 transition-all">
                     <div>
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-xs font-black uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2 py-0.5">EN EVALUACIÓN DOCENTE</span>
-                            <span style="color: #00ff66 !important;" class="text-xs font-mono font-bold">50 €v Abonados</span>
+                            <span style="color: #00ff66 !important;" class="text-xs font-mono font-bold">${paidTotal} €v Abonados</span>
                         </div>
                         <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">🚀 Licencia AESA Tramitada</h3>
                         <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
@@ -2330,11 +2342,22 @@ Object.assign(ui, {
             return this.notify("⛔ Trámite bloqueado: Se requiere haber entregado formalmente el Informe Técnico Preliminar (DOC FYQ) al Claustro Docente antes de tramitar la Licencia AESA.", "error");
         }
 
-        const isResubmission = Boolean(co.launchLicense && co.launchLicense.status === 'DENEGADA' && Number(co.launchLicense.feePaid || 0) >= 50);
-        const existingReason = isResubmission && co.launchLicense.rejectReason
-            ? `<div class="p-3 bg-red-950/40 border border-red-500/50 text-red-200 text-xs">
-                   <strong class="uppercase text-red-400 block mb-0.5">❌ Motivo de Denegación Previa:</strong>
-                   <span>"${this.escapeHTML(co.launchLicense.rejectReason)}"</span>
+        const initFee = (typeof LAUNCH_LICENSE_FEE !== 'undefined') ? LAUNCH_LICENSE_FEE : 50;
+        const resubFee = (typeof LAUNCH_LICENSE_RESUBMISSION_FEE !== 'undefined') ? LAUNCH_LICENSE_RESUBMISSION_FEE : 10;
+        const isResubmission = Boolean(co.launchLicense && co.launchLicense.status === 'DENEGADA' && Number(co.launchLicense.feePaid || 0) >= initFee);
+        const feeToPay = isResubmission ? resubFee : initFee;
+        const hasReportUrl = Boolean(isResubmission && co.launchLicense?.rejectReportUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(co.launchLicense.rejectReportUrl));
+        const existingReason = (isResubmission && (co.launchLicense.rejectReason || hasReportUrl))
+            ? `<div class="p-3 bg-red-950/40 border border-red-500/50 text-red-200 text-xs space-y-2">
+                   <div>
+                       <strong class="uppercase text-red-400 block mb-0.5">❌ Motivo de Denegación Previa:</strong>
+                       <span>"${this.escapeHTML(co.launchLicense.rejectReason || 'Requiere subsanación técnica.')}"</span>
+                   </div>
+                   ${hasReportUrl ? `
+                       <a href="${encodeURI(co.launchLicense.rejectReportUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-900/50 text-red-100 border border-red-400/60 rounded font-mono hover:bg-red-800/70 transition-colors">
+                           <span>📄 Ver Informe de No Admisión Docente ↗</span>
+                       </a>
+                   ` : ''}
                </div>`
             : '';
 
@@ -2345,7 +2368,7 @@ Object.assign(ui, {
                         <span>🚀 Procedimiento de Seguridad AESA (DOC_14)</span>
                     </p>
                     <p class="font-sans text-[11px] leading-relaxed">
-                        Conforme a la normativa aeroespacial simulada de la Fase II, los lanzamientos en el banco de pruebas están bloqueados. Para desbloquearlos, el CEO debe cumplimentar y firmar digitalmente la solicitud oficial y remitirla a Coordinación Docente ${isResubmission ? 'tras subsanar el requerimiento (la tasa administrativa de 50 €v ya fue abonada).' : 'con abono de la tasa administrativa de <strong>50 €v</strong>.'}
+                        Conforme a la normativa aeroespacial simulada de la Fase II, los lanzamientos en el banco de pruebas están bloqueados. Para desbloquearlos, el CEO debe cumplimentar y firmar digitalmente la solicitud oficial y remitirla a Coordinación Docente ${isResubmission ? `tras subsanar el requerimiento (tasa administrativa de subsanación: <strong>${resubFee} €v</strong>).` : `con abono de la tasa administrativa de <strong>${initFee} €v</strong>.`}
                     </p>
                 </div>
                 ${existingReason}
@@ -2366,12 +2389,12 @@ Object.assign(ui, {
                     </label>
                 </div>
                 <div class="p-2.5 bg-black/60 border border-slate-800 flex justify-between items-center text-xs">
-                    <span class="text-slate-300">Tasa Administrativa AESA:</span>
-                    <span class="${isResubmission ? 'text-mars-green' : 'text-mars-yellow'} font-bold font-orbitron">${isResubmission ? '0.00 €v (Ya abonada)' : '-50.00 €v'}</span>
+                    <span class="text-slate-300">${isResubmission ? 'Tasa de Subsanación AESA:' : 'Tasa Administrativa AESA:'}</span>
+                    <span class="text-mars-yellow font-bold font-orbitron">-${feeToPay.toFixed(2)} €v${isResubmission ? ' (Subsanación)' : ''}</span>
                 </div>
             </div>
         `;
-        const actions = `<button type="button" onclick="ui.submitLaunchLicense()" class="min-h-[44px] bg-mars-yellow text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">${isResubmission ? '[ 🔄 Firmar y Reenviar Subsanación (0 €v) ]' : '[ ✍️ Firmar y Tramitar Licencia (-50 €v) ]'}</button>`;
+        const actions = `<button type="button" onclick="ui.submitLaunchLicense()" class="min-h-[44px] bg-mars-yellow text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">${isResubmission ? `[ 🔄 Firmar y Reenviar Subsanación (-${feeToPay} €v) ]` : `[ ✍️ Firmar y Tramitar Licencia (-${feeToPay} €v) ]`}</button>`;
         this.showModal("Tramitación de Licencia de Lanzamiento AESA (DOC_14)", html, actions);
     },
 
@@ -2398,20 +2421,30 @@ Object.assign(ui, {
             return this.notify("⛔ Trámite bloqueado: Se requiere haber entregado formalmente el Informe Técnico Preliminar (DOC FYQ) al Claustro Docente antes de tramitar la Licencia AESA.", "error");
         }
 
-        const feeAlreadyPaid = Boolean(co.launchLicense && co.launchLicense.status === 'DENEGADA' && Number(co.launchLicense.feePaid || 0) >= 50);
+        const initFee = (typeof LAUNCH_LICENSE_FEE !== 'undefined') ? LAUNCH_LICENSE_FEE : 50;
+        const resubFee = (typeof LAUNCH_LICENSE_RESUBMISSION_FEE !== 'undefined') ? LAUNCH_LICENSE_RESUBMISSION_FEE : 10;
+        const isResubmission = Boolean(co.launchLicense && co.launchLicense.status === 'DENEGADA' && Number(co.launchLicense.feePaid || 0) >= initFee);
+        const feeToPay = isResubmission ? resubFee : initFee;
 
-        if (!feeAlreadyPaid && this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
+        if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
             return this.notifyBankruptcyLock();
         }
-        if (!feeAlreadyPaid && Number(co.balance || 0) < 50) {
-            return this.notify("Saldo insuficiente: se requieren 50 €v de tesorería para la tasa administrativa de la licencia AESA.", "error");
+        if (Number(co.balance || 0) < feeToPay) {
+            return this.notify(`Saldo insuficiente: se requieren ${feeToPay} €v de tesorería para la ${isResubmission ? 'tasa de subsanación' : 'tasa administrativa'} de la licencia AESA.`, "error");
         }
 
-        if (!feeAlreadyPaid) {
-            // Deducción de 50 €v y registro en Libro Mayor
-            co.balance -= 50;
-            state.addToLedger(coId, 'Tasa Administrativa AESA // Licencia de Lanzamiento (DOC_14)', 'TASAS_ADMINISTRATIVAS', -50);
-        }
+        co.balance -= feeToPay;
+        state.addToLedger(
+            coId,
+            isResubmission
+                ? 'Tasa Administrativa de Subsanación // Licencia AESA (DOC_14)'
+                : 'Tasa Administrativa AESA // Licencia de Lanzamiento (DOC_14)',
+            'TASAS_ADMINISTRATIVAS',
+            -feeToPay
+        );
+
+        const prevFeePaid = Number(co.launchLicense?.feePaid || 0);
+        const prevResubCount = Number(co.launchLicense?.resubmissionCount || 0);
 
         co.launchLicense = {
             id: co.launchLicense?.id || ('AESA-' + Date.now()),
@@ -2419,19 +2452,22 @@ Object.assign(ui, {
             status: 'PENDIENTE_DOCENTE',
             appliedAt: Date.now(),
             appliedDate: new Date().toLocaleDateString(),
-            feePaid: feeAlreadyPaid ? Number(co.launchLicense.feePaid) : 50,
-            signedBy: state.user.name || 'CEO'
+            feePaid: prevFeePaid + feeToPay,
+            resubmissionCount: isResubmission ? (prevResubCount + 1) : 0,
+            signedBy: state.user.name || 'CEO',
+            rejectReason: '',
+            rejectReportUrl: ''
         };
         co.updatedAt = Date.now();
 
         state.save(coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
-        ui.pushNotification('ADMIN', 'ALL', `🚀 [${co.name}] El CEO ha tramitado ${feeAlreadyPaid ? '(subsanación) ' : 'y abonado '}la Licencia de Lanzamiento AESA. Pendiente de validación.`, 'info', { view: 'coordination' });
-        ui.pushNotification(coId, 'ALL', `🚀 El CEO ha tramitado la Licencia de Lanzamiento AESA. Pendiente de validación por Coordinación Docente.`, 'info');
+        ui.pushNotification('ADMIN', 'ALL', `🚀 [${co.name}] El CEO ha tramitado ${isResubmission ? `una subsanación (${feeToPay} €v) de ` : `y abonado (${feeToPay} €v) `}la Licencia de Lanzamiento AESA. Pendiente de validación.`, 'info', { view: 'coordination' });
+        ui.pushNotification(coId, 'ALL', `🚀 El CEO ha tramitado ${isResubmission ? `la subsanación de la Licencia AESA (-${feeToPay} €v)` : `la Licencia de Lanzamiento AESA (-${feeToPay} €v)`}. Pendiente de validación por Coordinación Docente.`, 'info');
 
         this.closeModal();
-        this.notify(feeAlreadyPaid ? "✅ Subsanación de Licencia AESA reenviada al claustro sin cargo adicional." : "✅ Licencia AESA tramitada exitosamente. Tasa de 50 €v abonada y remitida al claustro para su validación.", "success");
+        this.notify(isResubmission ? `✅ Subsanación de Licencia AESA reenviada al claustro (-${feeToPay} €v).` : `✅ Licencia AESA tramitada exitosamente. Tasa de ${feeToPay} €v abonada y remitida al claustro para su validación.`, "success");
         this.updateHUD();
         this.render();
     },
@@ -3778,7 +3814,7 @@ Object.assign(ui, {
             'ORO': 'style="color: #FFD700 !important; border-color: #FFD700 !important; background-color: rgba(255, 215, 0, 0.15) !important;"',
             'PLATA': 'style="color: #E2E8F0 !important; border-color: #E2E8F0 !important; background-color: rgba(226, 232, 240, 0.15) !important;"',
             'BRONCE': 'style="color: #CD7F32 !important; border-color: #CD7F32 !important; background-color: rgba(205, 127, 50, 0.15) !important;"',
-            'COBRE': 'style="color: #B87333 !important; border-color: #B87333 !important; background-color: rgba(184, 115, 51, 0.15) !important;"',
+            'COBRE': 'style="color: #E04F33 !important; border-color: #E04F33 !important; background-color: rgba(224, 79, 51, 0.15) !important;"',
             'COLABORADOR': 'style="color: #00F0FF !important; border-color: #00F0FF !important; background-color: rgba(0, 240, 255, 0.15) !important;"'
         };
         const sponsorStyle = sponsorAwarded ? (tierStyles[sponsorAwarded] || 'class="text-slate-300 border-slate-700 bg-slate-900"') : '';
@@ -3822,7 +3858,7 @@ Object.assign(ui, {
             { id: 'ORO', name: 'Nivel ORO', amount: 500, emoji: '🥇', colorHex: '#FFD700', perk: 'Dotación de patrocinio Nivel Oro' },
             { id: 'PLATA', name: 'Nivel PLATA', amount: 400, emoji: '🥈', colorHex: '#E2E8F0', perk: 'Dotación de patrocinio Nivel Plata' },
             { id: 'BRONCE', name: 'Nivel BRONCE', amount: 250, emoji: '🥉', colorHex: '#CD7F32', perk: 'Dotación de patrocinio Nivel Bronce' },
-            { id: 'COBRE', name: 'Nivel COBRE', amount: 150, emoji: '🔶', colorHex: '#B87333', perk: 'Dotación de patrocinio Nivel Cobre' },
+            { id: 'COBRE', name: 'Nivel COBRE', amount: 150, emoji: '🔶', colorHex: '#E04F33', perk: 'Dotación de patrocinio Nivel Cobre' },
             { id: 'COLABORADOR', name: 'Nivel COLABORADOR', amount: 100, emoji: '🤝', colorHex: '#00F0FF', perk: 'Dotación de patrocinio Nivel Colaborador' }
         ];
 
@@ -3845,7 +3881,7 @@ Object.assign(ui, {
                                 'ORO': 'rgba(255, 215, 0, 0.14)',
                                 'PLATA': 'rgba(226, 232, 240, 0.14)',
                                 'BRONCE': 'rgba(205, 127, 50, 0.16)',
-                                'COBRE': 'rgba(184, 115, 51, 0.16)',
+                                'COBRE': 'rgba(224, 79, 51, 0.16)',
                                 'COLABORADOR': 'rgba(0, 240, 255, 0.14)'
                             };
                             const cardStyle = isMyTier

@@ -21,3 +21,9 @@ data/*.db
 # Scratch temporales de pruebas
 scratch/
 test-results/
+
+# Borradores temporales de trabajo EGM (los diseños definitivos van en docs/designs/)
+concepts_brief.md
+design_draft.md
+discussion_summary.md
+*review_report*.md

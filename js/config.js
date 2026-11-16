@@ -1,13 +1,13 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.10) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.11) ---
 
-const APP_VERSION = "2.0.10";
+const APP_VERSION = "2.0.11";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
     PLATA: { id: 'PLATA', name: 'Nivel PLATA', amount: 400, colorHex: '#E2E8F0', badgeClass: 'text-[#c0c0c0] border-[#c0c0c0]', emoji: '🥈' },
     BRONCE: { id: 'BRONCE', name: 'Nivel BRONCE', amount: 250, colorHex: '#CD7F32', badgeClass: 'text-[#cd7f32] border-[#cd7f32]', emoji: '🥉' },
-    COBRE: { id: 'COBRE', name: 'Nivel COBRE', amount: 150, colorHex: '#B87333', badgeClass: 'text-[#b87333] border-[#b87333]', emoji: '🔶' },
+    COBRE: { id: 'COBRE', name: 'Nivel COBRE', amount: 150, colorHex: '#E04F33', badgeClass: 'text-[#e04f33] border-[#e04f33]', emoji: '🔶' },
     COLABORADOR: { id: 'COLABORADOR', name: 'Nivel COLABORADOR', amount: 100, colorHex: '#00F0FF', badgeClass: 'text-mars-cyan border-mars-cyan', emoji: '🤝' }
 });
 
@@ -221,7 +221,7 @@ const OFFICIAL_DOC_TEMPLATES = Object.freeze({
     DOC_16_ACTA_COMITE: {
         id: 'DOC_16_ACTA_COMITE',
         title: 'ACTA DE COMITÉ DE DIRECCIÓN // DIARIO DE REUNIONES',
-        flow: 'Todos los Dptos. ➔ Gobernanza y Claustro',
+        flow: 'CEO ➔ Gobernanza y Claustro',
         copyUrl: 'https://docs.google.com/document/d/1lvpFHohpJPN-AlhU1jCLWYdx6tDYzljbTyKXcGBxmR0/copy'
     },
     DOC_17_BALANCE_FASE: {
@@ -233,6 +233,7 @@ const OFFICIAL_DOC_TEMPLATES = Object.freeze({
 });
 
 const LAUNCH_LICENSE_FEE = 50;
+const LAUNCH_LICENSE_RESUBMISSION_FEE = 10;
 const NAME_CHANGE_FEE = 50;
 
 const PRESS_RELEASE_PHASES = Object.freeze([
@@ -1153,8 +1154,25 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.10
+// Changelog Oficial de Producción v2.0.11
 const APP_CHANGELOG = [
+    {
+      version: "2.0.11",
+      date: "2026-11-16",
+      title: "Iconos Uniformes A–F en Radar, Color Rojo Cobrizo para COBRE, Actas Exclusivas del CEO y Tasa de Subsanación AESA (10 €v)",
+      items: [
+        "Iconos Uniformes de Clases (A–F) en Radar de Misión: Sustitución de emojis incompatibles (🅲–🅵) por mini-insignias cuadradas CSS nítidas e idénticas para todas las clases de A a F en el panel docente.",
+        "Diferenciación Cromática del Nivel COBRE: Actualizado el color oficial del patrocinio Nivel Cobre a tono rojo cobrizo metálico (#E04F33) para distinguirlo con claridad del Bronce (#CD7F32) en escalas, tablas y badges.",
+        "Exclusividad del CEO en Registro de Actas (DOC_16): Restringida la emisión de nuevas Actas de Comité de Dirección exclusivamente al rol CEO (y Auxiliar vinculado a Dirección), manteniendo el historial visible en modo lectura para el resto de departamentos.",
+        "Subsanación de Licencia de Vuelo AESA con Tasa de 10 €v e Informe de No Admisión: Coordinación puede adjuntar un enlace a Google Docs/Drive explicando los motivos al denegar la licencia DOC_14 (visible tanto para el CEO como para Técnico), y cada reenvío subsanado devenga una tasa administrativa de 10 €v en el Libro Mayor.",
+        "Blindaje de Sincronización en la Nube: Incorporado meetingMinutes al merge automático de arrays y resolución Last-Write-Wins para launchLicense en cliente y servidor PHP."
+      ],
+      highlights: [
+        { type: "RADAR / UI", text: "Insignias uniformes A–F y nuevo tono rojo cobrizo (#E04F33) para Nivel COBRE." },
+        { type: "GOBERNANZA", text: "Registro de Actas de Comité (DOC_16) reservado exclusivamente al CEO." },
+        { type: "AESA DOC_14", text: "Tasa de 10 €v por subsanación e informe opcional de no admisión en Drive." }
+      ]
+    },
     {
       version: "2.0.10",
       date: "2026-11-13",

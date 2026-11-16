@@ -756,6 +756,7 @@ const state = {
             co.sanctions = Array.isArray(co.sanctions) ? co.sanctions : [];
             co.crisisAlerts = Array.isArray(co.crisisAlerts) ? co.crisisAlerts : [];
             co.executiveResolutions = Array.isArray(co.executiveResolutions) ? co.executiveResolutions : [];
+            co.meetingMinutes = Array.isArray(co.meetingMinutes) ? co.meetingMinutes : [];
         }
         return d;
     },
@@ -1056,7 +1057,7 @@ const state = {
                         }
                         return finalMerged;
                     };
-                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'cart', 'bom', 'coordinatorReports'];
+                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'meetingMinutes', 'cart', 'bom', 'coordinatorReports'];
                     const sResetAt = Number(sCo.resetAt) || 0;
                     const lResetAt = Number(lCo.resetAt) || 0;
                     const isTestCo = (k === 'sandbox_master' || k === 'sandbox_student' || merged.companies[k].isTestCompany);
@@ -1069,6 +1070,7 @@ const state = {
                             merged.companies[k].deliverables = JSON.parse(JSON.stringify(lCo.deliverables || {}));
                             merged.companies[k].contracts = JSON.parse(JSON.stringify(lCo.contracts || {}));
                             merged.companies[k].grades = JSON.parse(JSON.stringify(lCo.grades || {}));
+                            if (!lCo.launchLicense) delete merged.companies[k].launchLicense;
                         } else {
                             arraysToMerge.forEach(arrName => {
                                 merged.companies[k][arrName] = Array.isArray(sCo[arrName]) ? JSON.parse(JSON.stringify(sCo[arrName])) : [];
@@ -1076,11 +1078,21 @@ const state = {
                             merged.companies[k].deliverables = JSON.parse(JSON.stringify(sCo.deliverables || {}));
                             merged.companies[k].contracts = JSON.parse(JSON.stringify(sCo.contracts || {}));
                             merged.companies[k].grades = JSON.parse(JSON.stringify(sCo.grades || {}));
+                            if (sCo.launchLicense) merged.companies[k].launchLicense = JSON.parse(JSON.stringify(sCo.launchLicense));
+                            else delete merged.companies[k].launchLicense;
                         }
                     } else {
                         arraysToMerge.forEach(arrName => {
                             merged.companies[k][arrName] = mergeArraysLocalDominant(lCo[arrName], sCo[arrName], arrName);
                         });
+                        if (sCo.launchLicense && typeof sCo.launchLicense === 'object') {
+                            const lLic = merged.companies[k].launchLicense;
+                            const sLicTime = Math.max(Number(sCo.launchLicense.approvedAt || 0), Number(sCo.launchLicense.rejectedAt || 0), Number(sCo.launchLicense.appliedAt || 0));
+                            const lLicTime = lLic ? Math.max(Number(lLic.approvedAt || 0), Number(lLic.rejectedAt || 0), Number(lLic.appliedAt || 0)) : 0;
+                            if (!lLic || sLicTime >= lLicTime) {
+                                merged.companies[k].launchLicense = JSON.parse(JSON.stringify(sCo.launchLicense));
+                            }
+                        }
                     }
                     merged.companies[k].balance = this.calculateBalance(merged.companies[k]);
                     if (lCo.nameChangeRequest && sCo.nameChangeRequest) {
@@ -1205,7 +1217,7 @@ const state = {
                         return finalMerged;
                     };
 
-                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'cart', 'bom', 'coordinatorReports'];
+                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'meetingMinutes', 'cart', 'bom', 'coordinatorReports'];
                     const sResetAt = Number(sCo.resetAt) || 0;
                     const lResetAt = Number(lCo.resetAt) || 0;
                     const isTestCo = (k === 'sandbox_master' || k === 'sandbox_student' || sCo.isTestCompany);
@@ -1218,6 +1230,7 @@ const state = {
                             sCo.deliverables = JSON.parse(JSON.stringify(sCo.deliverables || {}));
                             sCo.contracts = JSON.parse(JSON.stringify(sCo.contracts || {}));
                             sCo.grades = JSON.parse(JSON.stringify(sCo.grades || {}));
+                            if (!sCo.launchLicense) delete sCo.launchLicense;
                         } else {
                             arraysToMerge.forEach(arrName => {
                                 sCo[arrName] = Array.isArray(lCo[arrName]) ? JSON.parse(JSON.stringify(lCo[arrName])) : [];
@@ -1225,11 +1238,21 @@ const state = {
                             sCo.deliverables = JSON.parse(JSON.stringify(lCo.deliverables || {}));
                             sCo.contracts = JSON.parse(JSON.stringify(lCo.contracts || {}));
                             sCo.grades = JSON.parse(JSON.stringify(lCo.grades || {}));
+                            if (lCo.launchLicense) sCo.launchLicense = JSON.parse(JSON.stringify(lCo.launchLicense));
+                            else delete sCo.launchLicense;
                         }
                     } else {
                         arraysToMerge.forEach(arrName => {
                             sCo[arrName] = mergeArrays(sCo[arrName], lCo[arrName], arrName);
                         });
+                        if (lCo.launchLicense && typeof lCo.launchLicense === 'object') {
+                            const sLic = sCo.launchLicense;
+                            const lLicTime = Math.max(Number(lCo.launchLicense.approvedAt || 0), Number(lCo.launchLicense.rejectedAt || 0), Number(lCo.launchLicense.appliedAt || 0));
+                            const sLicTime = sLic ? Math.max(Number(sLic.approvedAt || 0), Number(sLic.rejectedAt || 0), Number(sLic.appliedAt || 0)) : 0;
+                            if (!sLic || lLicTime > sLicTime) {
+                                sCo.launchLicense = JSON.parse(JSON.stringify(lCo.launchLicense));
+                            }
+                        }
                     }
                     sCo.balance = this.calculateBalance(sCo);
                 }
