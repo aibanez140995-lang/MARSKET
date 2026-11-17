@@ -19,7 +19,45 @@ Object.assign(ui, {
         }
         
         const isCoord = state.user.role.startsWith('COORD');
+        const isFyqTeacher = state.user.role === 'FYQ';
         const canSponsor = state.data.config.teachers[state.user.role]?.canSponsor === true;
+
+        const pendingAuxList = Object.keys(state.data.companies || {}).filter(cid => {
+            const co = state.data.companies[cid];
+            if (!co || !co.auxRoleRequest) return false;
+            if (activeFilter !== 'ALL' && (co.classGroup || 'A') !== activeFilter) return false;
+            return co.auxRoleRequest.status === 'PENDIENTE';
+        });
+
+        const pendingCustomList = (state.data.pendingCustom || []).filter(req => {
+            if (!req) return false;
+            const reqCid = req.company || req.coId;
+            if (activeFilter === 'ALL') return true;
+            const co = state.data.companies?.[reqCid];
+            return co && (co.classGroup || 'A') === activeFilter;
+        });
+
+        let quickQueueBannersHtml = '';
+        if (isCoord && pendingAuxList.length > 0) {
+            quickQueueBannersHtml += `
+            <div class="terminal-border bg-emerald-950/30 border-l-4 border-l-mars-green p-4 mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                    <h4 class="font-orbitron text-mars-green text-xs uppercase font-bold tracking-wider">👥 Puestos Auxiliares Pendientes (${pendingAuxList.length} empresa(s))</h4>
+                    <p class="text-[11px] text-slate-300 mt-0.5">Hay solicitudes de asignación de rol Auxiliar esperando autorización de Coordinación.</p>
+                </div>
+                <button type="button" onclick="ui.adminMode='coord'; ui.adminTab='startups'; ui.render();" class="min-h-[44px] bg-mars-green text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">Ir a Puestos Auxiliares ➔</button>
+            </div>`;
+        }
+        if ((isCoord || isFyqTeacher) && pendingCustomList.length > 0) {
+            quickQueueBannersHtml += `
+            <div class="terminal-border bg-cyan-950/30 border-l-4 border-l-mars-cyan p-4 mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                    <h4 class="font-orbitron text-mars-cyan text-xs uppercase font-bold tracking-wider">⚙️ Solicitudes Especiales I+D · DOC_13 (${pendingCustomList.length})</h4>
+                    <p class="text-[11px] text-slate-300 mt-0.5">Componentes fuera de catálogo avalados por CEO esperando tasación o validación.</p>
+                </div>
+                ${isCoord ? `<button type="button" onclick="ui.adminMode='coord'; ui.adminTab='catalog'; ui.render();" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">Ir a Solicitudes DOC_13 ➔</button>` : `<span class="text-[11px] font-mono text-mars-cyan font-bold shrink-0">Pendiente en Gestión Catálogo (Coord.)</span>`}
+            </div>`;
+        }
 
         state.data.b2bContracts = state.data.b2bContracts || [];
         const pendingB2B = state.data.b2bContracts.filter(c => {
@@ -117,7 +155,7 @@ Object.assign(ui, {
                             <input type="text" id="coord-new-co-name-${cid}" placeholder="Escribe el nombre oficial aprobado..." value="${this.escapeHTML(req.proposedName !== 'Propuesta en Documento Drive' ? req.proposedName : '')}" class="w-full min-h-[44px] bg-black border border-mars-green/50 p-2 text-xs text-white font-orbitron uppercase outline-none focus:border-mars-green mb-3">
                             <div class="flex gap-2">
                                 <button onclick="ui.resolveNameChangeRequest('${this.escapeHTML(cid)}', true)" class="min-h-[44px] flex-1 bg-mars-green text-black px-3 py-2 font-black uppercase text-xs hover:bg-white transition-colors">Aprobar y Registrar Nombre</button>
-                                <button onclick="ui.resolveNameChangeRequest('${this.escapeHTML(cid)}', false)" class="min-h-[44px] flex-1 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 font-black uppercase text-xs hover:bg-mars-magenta hover:text-white transition-colors">Denegar</button>
+                                <button onclick="ui.modalDenyNameChange('${this.escapeHTML(cid)}')" class="min-h-[44px] flex-1 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 font-black uppercase text-xs hover:bg-mars-magenta hover:text-white transition-colors">Denegar</button>
                             </div>
                         </div>`;
                     }).join('')}
@@ -208,7 +246,7 @@ Object.assign(ui, {
                             <span class="text-mars-green font-mono font-black text-base">${Number(c.price).toFixed(2)} €v</span>
                             <div class="flex gap-2">
                                 <button onclick="ui.resolveB2BContract('${this.escapeHTML(c.id)}', true)" class="min-h-[44px] bg-mars-green text-black px-4 py-2 font-black uppercase text-xs hover:bg-white transition-colors">Aprobar</button>
-                                <button onclick="ui.resolveB2BContract('${this.escapeHTML(c.id)}', false)" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 font-black uppercase text-xs hover:bg-mars-magenta hover:text-white transition-colors">Rechazar</button>
+                                <button onclick="ui.modalDenyB2B('${this.escapeHTML(c.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 font-black uppercase text-xs hover:bg-mars-magenta hover:text-white transition-colors">Rechazar</button>
                             </div>
                         </div>
                     </div>`).join('') || '<p class="text-slate-300 text-xs italic">No hay contratos B2B retenidos en la Aduana en este momento.</p>'}
@@ -217,6 +255,7 @@ Object.assign(ui, {
         }
 
         const topAduanasHtml = `
+        ${quickQueueBannersHtml}
         ${incidentsHtml}
         ${nameCustomsHtml}
         ${pendingBrands.length > 0 ? brandCustomsHtml : ''}
@@ -228,8 +267,7 @@ Object.assign(ui, {
         ${pendingB2B.length === 0 ? b2bCustomsHtml : ''}
         `;
 
-        return `
-        ${topAduanasHtml}
+        const financialPanelHtml = isCoord ? `
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
             <div class="lg:col-span-1 terminal-border bg-mars-card p-6 text-center border-t-4 border-t-mars-magenta flex flex-col justify-center">
                 <h3 class="font-orbitron text-mars-magenta text-xs mb-4 uppercase tracking-widest">Inversión FÍSICA ${activeFilter === 'ALL' ? 'GLOBAL' : 'CLASE ' + activeFilter}</h3>
@@ -361,7 +399,11 @@ Object.assign(ui, {
                     </table>
                 </div>
             </div>
-        </div>
+        </div>` : '';
+
+        return `
+        ${topAduanasHtml}
+        ${financialPanelHtml}
         ${bottomAduanasHtml}`;
     },
 
@@ -1500,10 +1542,13 @@ Object.assign(ui, {
     },
 
     renderAdminHR() {
+        const activeFilter = this.currentClassFilter || 'ALL';
         let allReports = [];
         Object.keys(state.data.companies).forEach(cid => {
             const co = state.data.companies[cid];
-            (co.inactivityReports || []).forEach(r => allReports.push({...r, cid, coName: co.name}));
+            if (!co) return;
+            if (activeFilter !== 'ALL' && (co.classGroup || 'A') !== activeFilter) return;
+            (co.inactivityReports || []).forEach(r => allReports.push({...r, cid, coName: co.name, classGroup: co.classGroup || 'A'}));
         });
         allReports.sort((a,b) => b.id.localeCompare(a.id));
 
@@ -1511,17 +1556,20 @@ Object.assign(ui, {
 
         let reportsHtml = '';
         if (allReports.length === 0) {
-            reportsHtml = '<p class="text-slate-300 text-xs italic">No hay reportes de inactividad activos en toda la flota.</p>';
+            reportsHtml = `<p class="text-slate-300 text-xs italic">No hay reportes confidenciales HR en ${activeFilter === 'ALL' ? 'ninguna clase' : 'la Clase ' + this.escapeHTML(activeFilter)}.</p>`;
         } else {
             reportsHtml = allReports.map(r => `
                 <div class="bg-slate-900/50 border ${r.status === 'PENDIENTE' ? 'border-mars-magenta' : 'border-mars-green/50'} p-4 text-xs mb-4 transition-colors w-full">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-700 pb-2 mb-3 gap-2">
-                        <span class="font-bold text-white uppercase text-sm break-words">${this.escapeHTML(r.coName)}</span>
+                        <span class="font-bold text-white uppercase text-sm break-words">${this.escapeHTML(r.coName)} <span class="text-xs font-mono text-mars-cyan">[Clase ${this.escapeHTML(r.classGroup)}]</span></span>
                         <span class="text-xs text-slate-300 bg-black px-2 py-1">${this.escapeHTML(r.date)}</span>
                     </div>
-                    <div class="flex flex-col sm:flex-row justify-between mb-3 gap-2 bg-black/50 p-2 border border-mars-border/30">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-2 bg-black/50 p-2 border border-mars-border/30">
                         <span class="text-mars-magenta font-bold uppercase">🚨 Reportado: ${this.escapeHTML(r.reportedDept)}</span>
-                        <span class="text-slate-300 uppercase">Emisor: ${this.escapeHTML((r.reportingRole || '').replace('_', ' '))}</span>
+                        <details class="text-left sm:text-right">
+                            <summary class="cursor-pointer text-slate-400 hover:text-mars-yellow uppercase text-[11px] font-bold select-none">👁️ Ver emisor confidencial (no abrir en proyector)</summary>
+                            <span class="text-slate-200 uppercase font-bold block mt-1">Emisor: ${this.escapeHTML((r.reportingRole || '').replace('_', ' '))}</span>
+                        </details>
                     </div>
                     <p class="text-slate-200 italic bg-black p-3 border border-slate-800 mb-3 leading-relaxed break-words">"${this.escapeHTML(r.reason)}"</p>
                     ${r.driveUrl ? `
@@ -1529,8 +1577,17 @@ Object.assign(ui, {
                         <a href="${encodeURI(r.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50"><span>📄 Abrir Expediente HR en Google Drive ↗</span></a>
                     </div>` : ''}
                     <div class="flex justify-between items-center mt-2 border-t border-slate-800 pt-3 flex-wrap gap-2">
-                        <span class="text-xs font-bold uppercase ${r.status === 'PENDIENTE' ? 'text-mars-magenta animate-pulse' : 'text-mars-green'}">[ESTADO: ${this.escapeHTML(r.status)}]</span>
-                        ${r.status === 'PENDIENTE' ? `<button onclick="ui.resolveInactivityReport('${this.escapeHTML(r.cid)}', '${this.escapeHTML(r.id)}')" class="min-h-[44px] bg-mars-magenta/20 text-mars-magenta border border-mars-magenta px-4 py-2 font-bold uppercase hover:bg-mars-magenta hover:text-white transition-colors">Marcar Resuelto por Claustro</button>` : ''}
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-xs font-bold uppercase ${r.status === 'PENDIENTE' ? 'text-mars-magenta animate-pulse' : 'text-mars-green'}">[ESTADO: ${this.escapeHTML(r.status)}]</span>
+                            ${r.warnedAt ? `<span class="text-[10px] font-mono bg-amber-950/60 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded">✓ Aviso enviado</span>` : ''}
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" onclick="ui.showCompanyLogins('${this.escapeHTML(r.cid)}')" class="min-h-[44px] bg-slate-800 text-cyan-300 border border-cyan-500/40 px-3 py-2 font-bold uppercase hover:bg-cyan-950 transition-colors">📊 Ver Logins</button>
+                            ${r.status === 'PENDIENTE' ? `
+                                <button type="button" onclick="ui.sendHrWarningToDept('${this.escapeHTML(r.cid)}', '${this.escapeHTML(r.reportedDept)}', '${this.escapeHTML(r.id)}')" class="min-h-[44px] bg-amber-950/60 text-amber-300 border border-amber-500/60 px-3 py-2 font-bold uppercase hover:bg-amber-500 hover:text-black transition-colors">⚠️ Toque de Atención</button>
+                                <button type="button" onclick="ui.resolveInactivityReport('${this.escapeHTML(r.cid)}', '${this.escapeHTML(r.id)}')" class="min-h-[44px] bg-mars-magenta/20 text-mars-magenta border border-mars-magenta px-4 py-2 font-bold uppercase hover:bg-mars-magenta hover:text-white transition-colors">Marcar Resuelto por Claustro</button>
+                            ` : ''}
+                        </div>
                     </div>
                 </div>
             `).join('');
@@ -1539,14 +1596,42 @@ Object.assign(ui, {
         return `
         <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-mars-magenta">
             <div class="flex justify-between items-center mb-6 border-b border-mars-border/50 pb-4 flex-wrap gap-2">
-                <h3 class="font-orbitron text-mars-magenta text-lg uppercase tracking-widest">Gestión de Alertas HR (Recursos Humanos)</h3>
+                <h3 class="font-orbitron text-mars-magenta text-lg uppercase tracking-widest">Buzón Confidencial HR (DOC_2) · ${activeFilter === 'ALL' ? 'Todas las Clases' : 'Clase ' + this.escapeHTML(activeFilter)}</h3>
                 <span class="bg-mars-magenta/10 text-mars-magenta border border-mars-magenta px-3 py-1 font-bold text-xs">${pendingHR} Pendientes</span>
             </div>
-            <p class="text-xs text-slate-300 mb-6 uppercase leading-relaxed">Panel centralizado para la mediación de conflictos interdepartamentales y bloqueos operativos reportados por los alumnos.</p>
+            <p class="text-xs text-slate-300 mb-6 uppercase leading-relaxed">Canal 100% confidencial hacia el Claustro Docente. La identidad del emisor está protegida por defecto frente al proyector.</p>
             <div class="space-y-2">
                 ${reportsHtml}
             </div>
         </div>`;
+    },
+
+    sendHrWarningToDept(cid, dept, repId) {
+        const co = state.data.companies[cid];
+        if (!co) return;
+        const cleanDept = (dept || '').trim().split(/\s+/)[0].toUpperCase();
+        const normalizedDept = cleanDept === 'OPERACIONES' ? 'OPERACIONES_IA' : cleanDept;
+        const validDepts = ['CEO', 'FINANZAS', 'TECNICO', 'OPERACIONES_IA', 'MARKETING'];
+        const targetRole = validDepts.includes(normalizedDept) ? normalizedDept : 'CEO';
+
+        const rep = Array.isArray(co.inactivityReports) ? co.inactivityReports.find(r => r.id === repId) : null;
+        if (rep) {
+            rep.warnedAt = Date.now();
+            rep.updatedAt = Date.now();
+        }
+        co.updatedAt = Date.now();
+
+        this.pushNotification(
+            cid,
+            targetRole,
+            `Aviso del Claustro Docente (${state.user?.role || 'Profesorado'}): Se ha detectado retraso o falta de actividad en ${dept || targetRole}. Por favor, poned al día vuestras tareas de inmediato.`,
+            'warning',
+            { view: 'dashboard' }
+        );
+        state.save(cid);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.notify(`Toque de atención confidencial enviado a ${targetRole} de ${co.name || cid}.`, "success");
+        this.render();
     },
 
     resolveInactivityReport(cid, repId) {
@@ -1559,8 +1644,10 @@ Object.assign(ui, {
         const rep = co.inactivityReports.find(r => r.id === repId);
         if (rep) {
             rep.status = 'RESUELTO';
+            rep.updatedAt = Date.now();
             co.updatedAt = Date.now();
             state.save(cid);
+            if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
             this.notify("Reporte HR marcado como resuelto por el Claustro.", "success");
             this.render();
         }
@@ -2393,6 +2480,7 @@ Object.assign(ui, {
         const co = state.data.companies[cid];
         if(!co || !co.brandApproval) return;
 
+        co.brandStatus = 'REJECTED';
         co.brandApproval.status = 'RECHAZADO';
         co.brandApproval.feedback = reason;
         if (driveUrl) co.brandApproval.returnDriveUrl = driveUrl;
@@ -2404,8 +2492,20 @@ Object.assign(ui, {
         ui.pushNotification(cid, 'CEO', `Propuesta de identidad corporativa rechazada por Coordinación. Revisa el estado con Marketing.`, 'error', { view: 'dashboard' });
 
         state.save(cid);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
         this.render();
+
+        try {
+            const token = state.getAuthToken(state.user, state.data);
+            if (token) {
+                fetch(`/api/company/${cid}/action`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Marsket-Auth': token },
+                    body: JSON.stringify({ action: 'COORDINATOR_DECIDE_BRAND', payload: { approved: false } })
+                }).catch(() => {});
+            }
+        } catch(e) {}
     },
 
     resolveBrandApproval(cid) {
@@ -2422,6 +2522,9 @@ Object.assign(ui, {
         if (officialSlogan) co.slogan = officialSlogan;
         if (co.brandApproval.pendingLogo) co.logo = co.brandApproval.pendingLogo;
 
+        delete co.pendingSlogan;
+        delete co.pendingMission;
+        co.brandStatus = 'APPROVED';
         co.brandApproval.status = 'APROBADO';
         co.brandApproval.pendingLogo = null;
         co.brandApproval.pendingSlogan = "";
@@ -2433,11 +2536,60 @@ Object.assign(ui, {
         ui.pushNotification(cid, 'CEO', `Identidad corporativa aprobada y visible para toda la flota. Slogan: "${co.slogan}".`, 'success', { view: 'dashboard' });
 
         state.save(cid);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.notify(`Identidad corporativa de ${co.name} aprobada y registrada.`, "success");
         this.render();
+
+        try {
+            const token = state.getAuthToken(state.user, state.data);
+            if (token) {
+                fetch(`/api/company/${cid}/action`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Marsket-Auth': token },
+                    body: JSON.stringify({ action: 'COORDINATOR_DECIDE_BRAND', payload: { approved: true } })
+                }).catch(() => {});
+            }
+        } catch(e) {}
     },
 
-    resolveB2BContract(contractId, isApproved) {
+    modalDenyB2B(contractId) {
+        if (!state.user || !state.user.role.startsWith('COORD')) return;
+        const c = (state.data.b2bContracts || []).find(x => x.id === contractId);
+        if (!c) return;
+        const reasons = [
+            'Documentación Drive de compra/venta ilegible o sin permisos públicos',
+            'Desviación de precio o tasación de componente no justificada',
+            'Material incompatible con las especificaciones técnicas de seguridad',
+            'Solicitud duplicada o fuera del calendario operativo'
+        ];
+        const optionsHtml = reasons.map(r => `<option value="${this.escapeHTML(r)}">${this.escapeHTML(r)}</option>`).join('');
+        const html = `
+            <div class="space-y-3 font-mono text-xs">
+                <div class="bg-red-950/40 border border-red-500/40 p-3 rounded text-red-200">
+                    <strong>Contrato B2B #${this.escapeHTML(c.id)}</strong><br>
+                    Pieza: ${this.escapeHTML(c.itemName)} · Importe a reembolsar: <strong>${Number(c.price || 0).toFixed(2)} €v</strong>
+                </div>
+                <div>
+                    <label for="deny-b2b-reason" class="text-xs text-mars-yellow uppercase font-bold block mb-1">Motivo Tipificado de Rechazo</label>
+                    <select id="deny-b2b-reason" class="w-full min-h-[44px] bg-black border border-slate-700 p-2 text-xs text-white outline-none focus:border-red-400">
+                        ${optionsHtml}
+                    </select>
+                </div>
+            </div>`;
+        const actions = `
+            <button type="button" onclick="ui.closeModal()" class="min-h-[44px] bg-slate-800 text-slate-200 px-4 py-2 text-xs font-bold uppercase hover:bg-slate-700">Cancelar</button>
+            <button type="button" onclick="ui.confirmDenyB2B('${this.escapeHTML(contractId)}')" class="min-h-[44px] bg-red-600 text-white font-black px-5 py-2 text-xs uppercase hover:bg-red-500">Confirmar Rechazo y Reembolsar</button>`;
+        this.showModal("Rechazar Traspaso B2B", html, actions);
+    },
+
+    confirmDenyB2B(contractId) {
+        const el = document.getElementById('deny-b2b-reason');
+        const reason = el ? el.value : 'Rechazado por Aduana B2B.';
+        this.closeModal();
+        this.resolveB2BContract(contractId, false, reason);
+    },
+
+    resolveB2BContract(contractId, isApproved, customReason = '') {
         if (!state.user || !state.user.role.startsWith('COORD')) return this.notify("Solo Coordinación puede operar la Aduana B2B.", "error");
         state.data.b2bContracts = state.data.b2bContracts || [];
         
@@ -2549,6 +2701,7 @@ Object.assign(ui, {
             this.notify(`Traspaso B2B #${c.id} aprobado con éxito.${extraMsg}`, "success");
         } else {
             c.status = 'RECHAZADO';
+            if (customReason) c.rejectionReason = customReason;
             c.updatedAt = now;
 
             if (buyerCo) {
@@ -2563,8 +2716,9 @@ Object.assign(ui, {
                     existingBuyerOrder.rejectedByDocenteAt = now;
                     buyerCo.updatedAt = now;
                 }
-                ui.pushNotification(c.buyerCoId, 'FINANZAS', `Aduana B2B rechazó el contrato #${c.id}. Reembolso: +${price.toFixed(2)} €v.`, 'warning', { view: 'finance' });
-                ui.pushNotification(c.buyerCoId, 'TECNICO', `Aduana B2B rechazó el contrato #${c.id}. Reembolso tramitado.`, 'warning', { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' });
+                const reasonTxt = customReason ? ` Motivo: ${customReason}` : '';
+                ui.pushNotification(c.buyerCoId, 'FINANZAS', `Aduana B2B rechazó el contrato #${c.id}. Reembolso: +${price.toFixed(2)} €v.${reasonTxt}`, 'warning', { view: 'finance' });
+                ui.pushNotification(c.buyerCoId, 'TECNICO', `Aduana B2B rechazó el contrato #${c.id}. Reembolso tramitado.${reasonTxt}`, 'warning', { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' });
             }
 
             const hasOtherPending = (state.data.b2bContracts || []).some(other => 
@@ -2830,7 +2984,44 @@ Object.assign(ui, {
         this.render();
     },
 
-    resolveNameChangeRequest(cid, isApproved) {
+    modalDenyNameChange(cid) {
+        if (!state.user || !state.user.role.startsWith('COORD')) return;
+        const co = state.data.companies[cid];
+        if (!co || !co.nameChangeRequest) return;
+        const reasons = [
+            'Nombre comercial no conforme o repetido con otra startup',
+            'El documento justificativo en Google Drive no tiene permisos de lectura o está incompleto',
+            'Vocabulario inadecuado o ajeno al contexto aeroespacial',
+            'Trámite presentado fuera de plazo'
+        ];
+        const optionsHtml = reasons.map(r => `<option value="${this.escapeHTML(r)}">${this.escapeHTML(r)}</option>`).join('');
+        const html = `
+            <div class="space-y-3 font-mono text-xs">
+                <div class="bg-red-950/40 border border-red-500/40 p-3 rounded text-red-200">
+                    <strong>Cambio de Denominación Social</strong><br>
+                    Startup: <span class="text-white font-bold">${this.escapeHTML(co.name || cid)}</span>
+                </div>
+                <div>
+                    <label for="deny-name-reason" class="text-xs text-mars-yellow uppercase font-bold block mb-1">Motivo Tipificado de Denegación</label>
+                    <select id="deny-name-reason" class="w-full min-h-[44px] bg-black border border-slate-700 p-2 text-xs text-white outline-none focus:border-red-400">
+                        ${optionsHtml}
+                    </select>
+                </div>
+            </div>`;
+        const actions = `
+            <button type="button" onclick="ui.closeModal()" class="min-h-[44px] bg-slate-800 text-slate-200 px-4 py-2 text-xs font-bold uppercase hover:bg-slate-700">Cancelar</button>
+            <button type="button" onclick="ui.confirmDenyNameChange('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-red-600 text-white font-black px-5 py-2 text-xs uppercase hover:bg-red-500">Confirmar Denegación</button>`;
+        this.showModal("Denegar Denominación Social", html, actions);
+    },
+
+    confirmDenyNameChange(cid) {
+        const el = document.getElementById('deny-name-reason');
+        const reason = el ? el.value : 'Denegado por Registro Mercantil.';
+        this.closeModal();
+        this.resolveNameChangeRequest(cid, false, reason);
+    },
+
+    resolveNameChangeRequest(cid, isApproved, customReason = '') {
         if (!state.user || !state.user.role.startsWith('COORD')) return;
         const co = state.data.companies[cid];
         if (!co || !co.nameChangeRequest || co.nameChangeRequest.status !== 'PENDIENTE') return;
@@ -2851,7 +3042,9 @@ Object.assign(ui, {
             ui.pushNotification(cid, 'CEO', `¡El Registro Mercantil ha aprobado vuestra nueva denominación social: "${co.name}"!`, 'success', { view: 'resolutions' });
             this.notify(`La empresa ${oldName} ahora se llama ${co.name}.`, "success");
         } else {
-            ui.pushNotification(cid, 'CEO', `El Registro Mercantil ha RECHAZADO la solicitud de cambio de denominación social.`, 'error', { view: 'resolutions' });
+            if (customReason) co.nameChangeRequest.rejectionReason = customReason;
+            const reasonTxt = customReason ? ` Motivo: ${customReason}` : '';
+            ui.pushNotification(cid, 'CEO', `El Registro Mercantil ha RECHAZADO la solicitud de cambio de denominación social.${reasonTxt}`, 'error', { view: 'resolutions' });
             this.notify(`Solicitud de renombramiento denegada.`, "warning");
         }
         
@@ -2860,6 +3053,7 @@ Object.assign(ui, {
         co.nameChangeRequest.updatedAt = Date.now();
         co.updatedAt = Date.now();
         state.save(cid);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.render();
     },
 

@@ -114,6 +114,11 @@ const auth = (function() {
 
             // Entrada directa a la ventana prioritaria del rol
             if (userObj.admin) {
+                const isCoordLogin = Boolean(userObj.role && String(userObj.role).startsWith('COORD'));
+                ui.adminMode = 'aula';
+                ui.adminTab = isCoordLogin ? 'dash' : 'eval';
+                if (isCoordLogin && !ui.coordEvalView) ui.coordEvalView = 'ACTA';
+                ui.evalSelectedCo = '';
                 ui.current = 'admin';
             } else {
                 const landingByRole = {
@@ -161,16 +166,16 @@ const auth = (function() {
 
         handleLogoTrigger(event) {
             const now = Date.now();
-            if (event && event.type === 'dblclick') {
-                _lastLogoTap = 0;
-                this.openTeacherGatewayModal();
-                return;
-            }
-            if (now - _lastLogoTap <= 400) {
+            if (now - _lastLogoTap <= 550) {
                 _lastLogoTap = 0;
                 this.openTeacherGatewayModal();
             } else {
                 _lastLogoTap = now;
+                const img = event?.currentTarget;
+                if (img && img.classList) {
+                    img.classList.add('scale-105');
+                    setTimeout(() => img.classList.remove('scale-105'), 250);
+                }
             }
         },
 
@@ -321,7 +326,7 @@ const auth = (function() {
 
             if (_verifiedCoId === 'admin') {
                 const teachers = state.data.config?.teachers || {};
-                roleSelect.innerHTML = Object.keys(teachers).map(k => `<option value="${ui.escapeHTML(k)}">${ui.escapeHTML(teachers[k].name)}</option>`).join('');
+                roleSelect.innerHTML = `<option value="" disabled selected>[ 1. Elige tu perfil docente ]</option>` + Object.keys(teachers).map(k => `<option value="${ui.escapeHTML(k)}">${ui.escapeHTML(teachers[k].name)}</option>`).join('');
             } else {
                 const co = state.data.companies[_verifiedCoId];
                 const hasAux = !!state.getRolePin(co, 'AUXILIAR') || !!(_serverCompanyMeta && _serverCompanyMeta.hasAux);
@@ -621,6 +626,11 @@ const auth = (function() {
             }
             if (typeof ui !== 'undefined' && typeof ui.setHUDVisibility === 'function') {
                 ui.setHUDVisibility(false);
+            }
+            if (typeof ui !== 'undefined') {
+                ui.adminTab = null;
+                ui.adminMode = 'aula';
+                ui.evalSelectedCo = '';
             }
             ui.current = 'login';
             ui.render();

@@ -2528,8 +2528,6 @@ const state = {
         co.deliverables[docType].returnReason = reasonText;
         co.deliverables[docType].returnDriveUrl = returnDriveUrl || null;
         co.deliverables[docType].returnByTeacher = true;
-        co.deliverables[docType].returnReason = reasonText;
-        co.deliverables[docType].returnByTeacher = true;
         co.deliverables[docType].updatedAt = new Date().toISOString();
 
         if (typeof telemetry !== 'undefined' && telemetry.log) {
@@ -2569,7 +2567,8 @@ const state = {
                 key: docType,
                 action: 'RETURN',
                 reasonId: reasonId,
-                reasonText: reasonText
+                reasonText: reasonText,
+                returnDriveUrl: returnDriveUrl || null
             });
         } catch(e) {
             console.warn("[ACTION] Error sincronizando devolución docente:", e);

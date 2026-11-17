@@ -18,6 +18,8 @@ Object.assign(ui, {
                 pendingB2B: 0,
                 pendingAux: 0,
                 pendingIncidents: 0,
+                pendingHR: 0,
+                pendingCustom: 0,
                 totalPending: 0,
                 deliveredDeliverables: 0,
                 criticalBalanceCount: 0,
@@ -58,6 +60,11 @@ Object.assign(ui, {
                     s.pendingAux++;
                     s.totalPending++;
                 }
+                const hrPend = (co.inactivityReports || []).filter(r => r && r.status === 'PENDIENTE').length;
+                if (hrPend > 0) {
+                    s.pendingHR += hrPend;
+                    s.totalPending += hrPend;
+                }
 
                 const delivs = co.deliverables || {};
                 for (const dKey in delivs) {
@@ -94,10 +101,24 @@ Object.assign(ui, {
         const incidents = (state.data.securityIncidents || []).filter(i => !i.resolved);
         incidents.forEach(inc => {
             stats['ALL'].pendingIncidents++;
+            stats['ALL'].totalPending++;
             const co = companies[inc.coId];
             const cls = co ? (co.classGroup || 'A') : null;
             if (cls && stats[cls]) {
                 stats[cls].pendingIncidents++;
+                stats[cls].totalPending++;
+            }
+        });
+
+        const customList = state.data.pendingCustom || [];
+        customList.forEach(req => {
+            if (!req) return;
+            stats['ALL'].pendingCustom++;
+            stats['ALL'].totalPending++;
+            const co = companies[req.company || req.coId];
+            const cls = co ? (co.classGroup || 'A') : null;
+            if (cls && stats[cls]) {
+                stats[cls].pendingCustom++;
                 stats[cls].totalPending++;
             }
         });
@@ -107,6 +128,15 @@ Object.assign(ui, {
 
     renderClassRadarBar(stats) {
         const currentCls = this.currentClassFilter || 'ALL';
+        const teacherRole = String(state.user?.role || '');
+        const isCoord = teacherRole.startsWith('COORD');
+        const isFyq = teacherRole === 'FYQ';
+        const getScopedPending = (s) => {
+            if (!s) return 0;
+            if (isCoord) return Number(s.totalPending || 0);
+            if (isFyq) return Number(s.pendingAesa || 0) + Number(s.pendingCustom || 0);
+            return 0;
+        };
         const classes = [
             { key: 'ALL', label: 'TODAS', icon: '🌐' },
             { key: 'A', label: 'CLASE A', badgeLetter: 'A' },
@@ -119,9 +149,11 @@ Object.assign(ui, {
         ];
 
         const global = stats['ALL'] || { companyCount: 0, totalPending: 0, deliveredDeliverables: 0, criticalBalanceCount: 0 };
+        const globalPending = getScopedPending(global);
 
         const pillsHtml = classes.map(c => {
             const s = stats[c.key] || { companyCount: 0, totalPending: 0, deliveredDeliverables: 0, criticalBalanceCount: 0 };
+            const scopedPend = getScopedPending(s);
             const isSelected = (currentCls === c.key);
             
             const borderBg = isSelected
@@ -142,9 +174,9 @@ Object.assign(ui, {
                     <span class="font-mono text-[10px] text-slate-400 font-bold">${s.companyCount} emp</span>
                 </div>
                 <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                    ${s.totalPending > 0 ? `<span class="bg-amber-500 text-black px-1.5 py-0.5 rounded text-[10px] font-black font-mono animate-pulse" title="${s.totalPending} trámite(s) pendiente(s) de aduana/validación">⚠️ ${s.totalPending}</span>` : ''}
+                    ${scopedPend > 0 ? `<span class="bg-amber-500 text-black px-1.5 py-0.5 rounded text-[10px] font-black font-mono animate-pulse" title="${scopedPend} trámite(s) pendiente(s) de tu competencia">⚠️ ${scopedPend}</span>` : ''}
                     <span class="text-[10px] text-cyan-300 font-mono" title="${s.deliveredDeliverables} entregas realizadas">📄 ${s.deliveredDeliverables}</span>
-                    ${s.criticalBalanceCount > 0 ? `<span class="bg-red-950/80 text-red-400 border border-red-500/50 px-1 py-0.5 rounded text-[10px] font-mono font-bold" title="${s.criticalBalanceCount} empresa(s) con saldo crítico <300€v">💸 ${s.criticalBalanceCount}</span>` : ''}
+                    ${isCoord && s.criticalBalanceCount > 0 ? `<span class="bg-red-950/80 text-red-400 border border-red-500/50 px-1 py-0.5 rounded text-[10px] font-mono font-bold" title="${s.criticalBalanceCount} empresa(s) con saldo crítico <300€v">💸 ${s.criticalBalanceCount}</span>` : ''}
                     ${s.bottleneckCount > 0 ? `<span class="bg-orange-950/90 text-orange-300 border border-orange-500/70 px-1 py-0.5 rounded text-[10px] font-mono font-bold animate-pulse" title="${s.bottleneckCount} empresa(s) en riesgo de plazo (<50% fase a ≤3d)">⏰ ${s.bottleneckCount}</span>` : ''}
                 </div>
             </button>`;
@@ -162,7 +194,7 @@ Object.assign(ui, {
                 </div>
                 <div class="flex items-center gap-3 text-xs font-mono shrink-0">
                     <span class="text-slate-400">Filtro Activo: <strong class="text-mars-yellow uppercase font-bold">${currentCls === 'ALL' ? 'Todas las Clases' : 'Clase ' + currentCls}</strong></span>
-                    ${global.totalPending > 0 ? `<span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase animate-pulse">Aduana: ${global.totalPending} pendiente(s)</span>` : '<span class="text-emerald-400 text-[10px] font-mono">✅ Aduana al día</span>'}
+                    ${(isCoord || isFyq) ? (globalPending > 0 ? `<span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase animate-pulse">Aduana: ${globalPending} pendiente(s)</span>` : '<span class="text-emerald-400 text-[10px] font-mono">✅ Aduana al día</span>') : ''}
                 </div>
             </div>
             <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
@@ -195,16 +227,26 @@ Object.assign(ui, {
         
         const wrapper = document.createElement('div');
         const isCoord = state.user.role && String(state.user.role).startsWith('COORD_');
-        this.adminMode = this.adminMode || 'aula'; // 'aula' | 'coord'
-        const currentTab = this.adminTab || (this.adminMode === 'coord' ? 'startups' : 'eval');
+        const isFyqTeacher = state.user.role === 'FYQ';
+        const isLyeTeacher = state.user.role === 'LYE';
+        const canSeeAduanaTab = isCoord || isFyqTeacher || isLyeTeacher;
+        this.adminMode = isCoord ? (this.adminMode || 'aula') : 'aula';
+        let currentTab = this.adminTab || (this.adminMode === 'coord' ? 'startups' : (isCoord ? 'dash' : 'eval'));
+        if (!isCoord && currentTab === 'contest') currentTab = 'eval';
+        if (!canSeeAduanaTab && currentTab === 'dash') currentTab = 'eval';
         const activeSuggsCount = (state.data.suggestionsToAlex || []).filter(s => s.status !== 'IMPLEMENTADO' && s.status !== 'RESUELTO' && !s.resolved).length;
         
         this.currentClassFilter = this.currentClassFilter || 'ALL';
         const stats = this.getTeacherDashboardStats();
         const radarBarHtml = this.renderClassRadarBar(stats);
 
-        let deliveredCount = stats[this.currentClassFilter]?.deliveredDeliverables ?? stats.ALL.deliveredDeliverables;
-        let customsPendingCount = stats[this.currentClassFilter]?.totalPending ?? stats.ALL.totalPending;
+        const activeStats = stats[this.currentClassFilter] || stats.ALL;
+        let deliveredCount = activeStats?.deliveredDeliverables ?? stats.ALL.deliveredDeliverables;
+        let customsPendingCount = isCoord
+            ? (activeStats?.totalPending ?? 0)
+            : (isFyqTeacher ? (Number(activeStats?.pendingAesa || 0) + Number(activeStats?.pendingCustom || 0)) : 0);
+        const pendingAuxAll = stats.ALL?.pendingAux || 0;
+        const pendingHrAll = stats.ALL?.pendingHR || 0;
 
         let modeSwitchHtml = '';
         if (isCoord) {
@@ -250,6 +292,7 @@ Object.assign(ui, {
                     <span>📝 Rúbricas y Entregas</span>
                     ${deliveredCount > 0 ? `<span class="bg-mars-green text-black px-1.5 py-0.5 rounded text-[10px] font-mono font-black">${deliveredCount}</span>` : ''}
                 </button>
+                ${canSeeAduanaTab ? `
                 <button type="button" role="tab" aria-selected="${isDash}"
                     onclick="ui.adminTab = 'dash'; ui.render();"
                     class="min-h-[44px] px-5 py-2.5 text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-2 ${
@@ -257,9 +300,9 @@ Object.assign(ui, {
                             ? 'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]'
                             : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
                     }">
-                    <span>🛃 Validaciones y Aduana</span>
+                    <span>🛃 ${isCoord ? 'Validaciones y Aduana' : (isFyqTeacher ? 'AESA, I+D y Recepción FyQ' : 'Supervisión Acciones MKT')}</span>
                     ${customsPendingCount > 0 ? `<span class="bg-amber-400 text-black px-1.5 py-0.5 rounded text-[10px] font-mono font-black animate-pulse">${customsPendingCount}</span>` : ''}
-                </button>
+                </button>` : ''}
                 <button type="button" role="tab" aria-selected="${currentTab === 'contracts'}"
                     onclick="ui.adminTab = 'contracts'; ui.render();"
                     class="min-h-[44px] px-5 py-2.5 text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-2 ${
@@ -269,6 +312,7 @@ Object.assign(ui, {
                     }">
                     <span>🤝 Contratos & Misiones</span>
                 </button>
+                ${isCoord ? `
                 <button type="button" role="tab" aria-selected="${isContest}"
                     onclick="ui.adminTab = 'contest'; ui.render();"
                     class="min-h-[44px] px-5 py-2.5 text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-2 ${
@@ -277,7 +321,7 @@ Object.assign(ui, {
                             : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
                     }">
                     <span>🏆 Fase V: Concurso Final</span>
-                </button>
+                </button>` : ''}
             </div>
             `;
         } else {
@@ -286,12 +330,13 @@ Object.assign(ui, {
             <div role="tablist" aria-label="Administración del Centro TIC" class="flex flex-wrap gap-2 mb-6 border-b border-mars-border pb-3">
                 <button type="button" role="tab" aria-selected="${currentTab === 'startups'}"
                     onclick="ui.adminTab = 'startups'; ui.render();"
-                    class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-all ${
+                    class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-1.5 ${
                         currentTab === 'startups'
                             ? 'bg-amber-400 text-black border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.3)]'
                             : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
                     }">
-                    🚀 Startups & Llavero Maestro (PINs)
+                    <span>🚀 Startups & Llavero Maestro (PINs)</span>
+                    ${pendingAuxAll > 0 ? `<span class="bg-mars-green text-black px-1.5 py-0.5 rounded text-[10px] font-mono font-black animate-pulse">${pendingAuxAll}</span>` : ''}
                 </button>
                 <button type="button" role="tab" aria-selected="${currentTab === 'settings'}"
                     onclick="ui.adminTab = 'settings'; ui.render();"
@@ -314,12 +359,13 @@ Object.assign(ui, {
                 </button>
                 <button type="button" role="tab" aria-selected="${currentTab === 'hr'}"
                     onclick="ui.adminTab = 'hr'; ui.render();"
-                    class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-all ${
+                    class="min-h-[44px] px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-1.5 ${
                         currentTab === 'hr'
                             ? 'bg-mars-magenta text-white border-mars-magenta shadow-[0_0_10px_rgba(255,0,85,0.3)]'
                             : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
                     }">
-                    🚨 Monitor de Infracciones Léxicas
+                    <span>🕊️ Buzón HR Confidencial (DOC_2)</span>
+                    ${pendingHrAll > 0 ? `<span class="bg-white text-mars-magenta px-1.5 py-0.5 rounded text-[10px] font-mono font-black animate-pulse">${pendingHrAll}</span>` : ''}
                 </button>
                 <button type="button" role="tab" aria-selected="${currentTab === 'telemetry'}"
                     onclick="ui.adminTab = 'telemetry'; ui.render();"
@@ -393,164 +439,6 @@ Object.assign(ui, {
         el.appendChild(wrapper);
     },
 
-    renderAdminBrandReview() {
-        const activeFilter = this.currentClassFilter || 'ALL';
-        const companies = state.data.companies || {};
-        const pendingCos = Object.keys(companies).filter(cid => {
-            const co = companies[cid];
-            if (!co) return false;
-            if (activeFilter !== 'ALL' && (co.classGroup || 'A') !== activeFilter) return false;
-            return ((co.brandApproval && co.brandApproval.status === 'PENDIENTE') || co.brandStatus === 'PENDING_APPROVAL');
-        });
-
-        if (pendingCos.length === 0) return '';
-
-        const cardsHtml = pendingCos.map(cid => {
-            const co = companies[cid];
-            const coName = co.name || cid.toUpperCase();
-            const logoPreview = co.brandApproval?.pendingLogo ? `<img src="${this.escapeHTML(co.brandApproval.pendingLogo)}" alt="Logo" width="48" height="48" onerror="this.onerror=null;this.src='logo.png';" class="w-12 h-12 object-contain border border-slate-700 bg-black p-1 shrink-0">` : '';
-
-            return `
-            <div class="bg-slate-900 border border-amber-500/60 p-4 rounded mb-3 text-xs">
-                <div class="flex justify-between items-center mb-2 flex-wrap gap-2 border-b border-slate-800 pb-2">
-                    <span class="text-mars-cyan font-bold uppercase text-sm">${this.escapeHTML(coName)}</span>
-                    <span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 text-[10px] font-black uppercase">[PROPUESTA SLOGAN AVALADA POR CEO]</span>
-                </div>
-                <div class="flex gap-3 items-center mb-3">
-                    ${logoPreview}
-                    <div class="space-y-1 text-slate-200 min-w-0">
-                        <p><strong class="text-mars-yellow uppercase">Enfoque:</strong> ${this.escapeHTML(co.brandApproval?.concept || 'Aeroespacial General')}</p>
-                        <p class="text-[10px] text-slate-400 font-mono">${this.escapeHTML(co.brandApproval?.expId || '')}</p>
-                    </div>
-                </div>
-                ${co.brandApproval?.driveUrl ? `
-                <div class="mb-3">
-                    <a href="${encodeURI(co.brandApproval.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50"><span>📄 Abrir Expediente Slogan en Google Drive ↗</span></a>
-                </div>` : ''}
-                <div class="mb-3">
-                    <label for="coord-review-official-slogan-${cid}" class="text-xs text-mars-yellow uppercase font-bold block mb-1">Slogan Oficial Aprobado (Extraído del Google Doc):</label>
-                    <input type="text" id="coord-review-official-slogan-${cid}" placeholder="Escribe el slogan aprobado que se fijará en el HUD..." value="${this.escapeHTML(co.brandApproval?.pendingSlogan || co.slogan || '')}" class="w-full min-h-[44px] bg-black border border-mars-yellow/50 p-2.5 text-xs text-mars-yellow font-bold uppercase outline-none focus:border-mars-yellow">
-                </div>
-                <div class="flex gap-2 justify-end">
-                    <button type="button" onclick="ui.decideBrand('${this.escapeHTML(cid)}', true)" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ ✅ APROBAR Y REGISTRAR SLOGAN ]</button>
-                    <button type="button" onclick="ui.modalCoordDenyBrand('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-red-700 text-white font-black uppercase text-xs px-4 py-2 hover:bg-white hover:text-red-700 transition-all border border-red-500">[ ❌ RECHAZAR ]</button>
-                </div>
-            </div>
-            `;
-        }).join('');
-
-        return `
-        <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-amber-400 mb-6">
-            <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                <div>
-                    <h3 class="font-orbitron text-amber-400 text-xs sm:text-sm uppercase tracking-wider font-bold">Revisión de Slogan Corporativo (Registro Mercantil)</h3>
-                    <p class="text-[11px] text-slate-300">Validación de expedientes avalados por CEO y registro oficial del slogan.</p>
-                </div>
-                <span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2.5 py-1 text-xs font-black uppercase font-mono">${pendingCos.length} PENDIENTES</span>
-            </div>
-            ${cardsHtml}
-        </div>
-        `;
-    },
-
-    modalCoordDenyBrand(cid) {
-        if (!state.user || !state.user.admin) return;
-        const reasons = [
-            { id: "ENFOQUE_NO_AERO", label: "El slogan no guarda relación con el sector aeroespacial ni la misión" },
-            { id: "PERMISOS_DRIVE_BLOQUEADOS", label: "El expediente Drive (DOC_11) no tiene permisos de lectura abiertos" },
-            { id: "PLANTILLA_INCORRECTA", label: "No se ha utilizado la plantilla oficial DOC_11 de Google Docs" },
-            { id: "CALIDAD_INSUFICIENTE", label: "La justificación de la propuesta es incompleta o requiere corrección léxica" },
-            { id: "LOGO_NO_CONFORME", label: "El logotipo adjunto no cumple las directrices técnicas del proyecto" }
-        ];
-        const optionsHtml = reasons.map(r => `<option value="${this.escapeHTML(r.label)}">${this.escapeHTML(r.label)}</option>`).join('');
-
-        const html = `
-            <div class="space-y-3 font-mono text-xs">
-                <p class="text-slate-300 leading-relaxed">Selecciona el motivo oficial para rechazar la propuesta de identidad corporativa. Cumple la directiva Zero-Text.</p>
-                <div>
-                    <label for="coord-deny-brand-reason" class="text-xs text-mars-yellow font-bold uppercase block mb-1">Motivo Tipificado de Rechazo</label>
-                    <select id="coord-deny-brand-reason" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white outline-none focus:border-white">
-                        ${optionsHtml}
-                    </select>
-                </div>
-            </div>
-        `;
-        const actions = `
-            <button type="button" onclick="ui.closeModal()" class="min-h-[44px] bg-slate-800 text-slate-200 px-4 py-2 text-xs font-bold uppercase hover:bg-slate-700 transition-all">Cancelar</button>
-            <button type="button" onclick="ui.confirmCoordDenyBrand('${this.escapeHTML(cid)}')" class="min-h-[44px] bg-red-700 text-white font-black px-5 py-2.5 text-xs uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">Confirmar Rechazo</button>
-        `;
-        this.showModal("Rechazar Identidad Corporativa", html, actions);
-    },
-
-    confirmCoordDenyBrand(cid) {
-        if (!state.user || !state.user.admin) return;
-        const el = document.getElementById('coord-deny-brand-reason');
-        const reason = el ? el.value : "Incumplimiento de criterios oficiales.";
-        this.closeModal();
-        this.decideBrand(cid, false, reason);
-    },
-
-    async decideBrand(cid, approved, customReason = null) {
-        if (!state.user || !state.user.admin) return;
-        const co = state.data.companies?.[cid];
-        if (!co) return;
-
-        if (approved) {
-            const inputEl = document.getElementById('coord-review-official-slogan-' + cid);
-            const officialSlogan = (inputEl && inputEl.value.trim()) ? this.cleanInput(inputEl.value) : (co.brandApproval?.pendingSlogan || co.slogan || '');
-            if (!officialSlogan && !co.brandApproval?.pendingLogo) {
-                return this.notify("Debes escribir o confirmar el slogan oficial aprobado.", "warning");
-            }
-
-            if (officialSlogan) co.slogan = officialSlogan;
-            if (co.brandApproval?.pendingLogo) co.logo = co.brandApproval.pendingLogo;
-
-            delete co.pendingSlogan;
-            delete co.pendingMission;
-            co.brandStatus = 'APPROVED';
-            if (co.brandApproval) {
-                co.brandApproval.status = 'APROBADO';
-                delete co.brandApproval.pendingSlogan;
-                delete co.brandApproval.pendingLogo;
-            }
-            this.notify(`✅ Slogan de ${co.name || cid} aprobado y registrado con éxito.`, "success");
-            ui.pushNotification(cid, 'MARKETING', `La Coordinación ha APROBADO el slogan oficial: "${co.slogan}".`, 'success', { view: 'brand', anchorId: 'brand-slogan-section' });
-            ui.pushNotification(cid, 'CEO', `Slogan oficial registrado en el expediente: "${co.slogan}".`, 'success', { view: 'dashboard' });
-        } else {
-            const reason = customReason || "Incumplimiento de criterios oficiales.";
-            if (co.brandApproval) {
-                co.brandApproval.status = 'RECHAZADO';
-                co.brandApproval.feedback = reason;
-            }
-            co.brandStatus = 'REJECTED';
-            this.notify(`❌ Propuesta de slogan de ${co.name || cid} rechazada.`, "info");
-            ui.pushNotification(cid, 'MARKETING', `La Coordinación ha rechazado la propuesta de slogan. Motivo: ${reason}`, 'error', { view: 'brand', anchorId: 'brand-slogan-section' });
-            if (typeof telemetry !== 'undefined' && telemetry.log) {
-                telemetry.log("PROPUESTA_DESCARTADA", `Propuesta de slogan de ${cid} descartada por Coordinación.`);
-            }
-        }
-
-        state.save();
-        this.render();
-
-        try {
-            const token = state.getAuthToken(state.user, state.data);
-            await fetch(`/api/company/${cid}/action`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Marsket-Auth': token
-                },
-                body: JSON.stringify({
-                    action: 'COORDINATOR_DECIDE_BRAND',
-                    payload: { approved: Boolean(approved) }
-                })
-            });
-        } catch(e) {
-            console.warn("[ACTION] Error notificando decisión de marca al servidor:", e);
-        }
-    },
-
     renderFyqReceptionPanel() {
         const activeFilter = this.currentClassFilter || 'ALL';
         const companies = state.data.companies || {};
@@ -591,7 +479,7 @@ Object.assign(ui, {
         }
 
         if (!rows) {
-            rows = `<tr><td colspan="5" class="p-4 text-center text-slate-400 italic">No hay recepciones de Física y Química elevadas al equipo docente todavía.</td></tr>`;
+            return '';
         }
 
         return `
@@ -665,7 +553,7 @@ Object.assign(ui, {
         }
 
         if (!rows) {
-            rows = `<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">No hay acciones publicitarias validadas por CEO elevadas al docente de Liderazgo o Coordinación todavía.</td></tr>`;
+            return '';
         }
 
         return `
@@ -1212,14 +1100,18 @@ Object.assign(ui, {
         </div>`;
     },
 
-    approveLaunchLicense(coId) {
+    approveLaunchLicense(coId, skipReadCheck = false) {
         if (!state.user || !state.user.admin) return;
         const co = state.data.companies?.[coId];
         if (!co || !co.launchLicense) return;
+        if (!skipReadCheck && typeof ui.confirmDocOpenedBeforeAction === 'function') {
+            return ui.confirmDocOpenedBeforeAction(co.launchLicense.driveUrl, () => this.approveLaunchLicense(coId, true), 'Sí, Validar Licencia AESA');
+        }
 
+        const teacherObj = state.data?.config?.teachers?.[state.user.role];
         co.launchLicense.status = 'APROBADA';
         co.launchLicense.approvedAt = Date.now();
-        co.launchLicense.validatedBy = state.user.name || 'Coordinación';
+        co.launchLicense.validatedBy = teacherObj?.name || state.user.role || 'Coordinación';
         co.updatedAt = Date.now();
 
         state.save(coId);

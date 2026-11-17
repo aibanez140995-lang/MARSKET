@@ -9,6 +9,53 @@ Object.assign(ui, {
         this.render();
     },
 
+    getPendingEvalDocsForSubject(co, subject) {
+        if (!co || !subject) return { pendingCount: 0, readyTotal: 0 };
+        const docToCrit = {
+            FYQ: { preliminaryReport: 'c1', hoja_taller_fyq: 'c_ws', technicalReport: 'c2' },
+            ECO: { budgetInitial: 'c2', incomeStatement: 'c3', budgetPostProto: 'c4', balanceSheet: 'c5' },
+            LYE: { brandIdentity_dec: 'c1', brandIdentity_apr: 'c2', businessModelDoc: 'c3', businessModelCanvas: 'c4', decisionDiary_dec: 'c5', decisionDiary_apr: 'c6' },
+            LEN: { investorDossier: 'c2' },
+            MAT: { goniometerEvidence: 'c1', mathReportDist: 'c2', mathReportTwoPoints: 'c3', mathReportFinal: 'c4' },
+            ING: {}
+        }[subject] || {};
+
+        const docs = co.deliverables || {};
+        const gradeObj = co.grades?.[subject];
+        const scores = gradeObj?.scores || {};
+        const gradeTs = Number(gradeObj?.updatedAt || 0);
+
+        let pendingCount = 0;
+        let readyTotal = 0;
+
+        Object.entries(docToCrit).forEach(([docKey, critId]) => {
+            const docItem = docs[docKey];
+            if (!docItem) return;
+            const isLegacyStr = typeof docItem === 'string' && docItem.trim().length > 0;
+            const st = isLegacyStr ? 'DELIVERED_TO_TEACHER' : docItem.status;
+            if (st !== 'DELIVERED_TO_TEACHER') return;
+            readyTotal++;
+            const hasScore = scores[critId] !== undefined && scores[critId] !== null && scores[critId] !== '';
+            const docTs = (typeof docItem === 'object' && docItem.updatedAt) ? Date.parse(docItem.updatedAt) : 0;
+            if (!hasScore || (docTs && gradeTs && docTs > gradeTs)) {
+                pendingCount++;
+            }
+        });
+
+        if (subject === 'LEN' && co.pressReleases) {
+            const prs = Object.values(co.pressReleases).filter(p => p && p.driveUrl && p.status !== 'RETURNED');
+            if (prs.length > 0) {
+                readyTotal += prs.length;
+                const hasPrScore = scores.c3 !== undefined && scores.c3 !== null && scores.c3 !== '';
+                const maxPrTs = prs.reduce((mx, p) => Math.max(mx, Number(p.publishedAt || 0)), 0);
+                if (!hasPrScore || (maxPrTs && gradeTs && maxPrTs > gradeTs)) {
+                    pendingCount++;
+                }
+            }
+        }
+        return { pendingCount, readyTotal };
+    },
+
     renderAdminEval() {
         this.evalClassFilter = this.evalClassFilter || this.currentClassFilter || 'ALL';
         const isCoord = state.user.role.startsWith('COORD');
@@ -30,12 +77,14 @@ Object.assign(ui, {
             adminHtml += `<h3 class="font-orbitron text-mars-cyan text-sm uppercase px-4 py-2">Módulo Calificador: <span class="text-white">${this.escapeHTML(RUBRIC_CONFIG[activeSubject].name)}</span> <span class="text-mars-yellow text-xs ml-2">[PESO PROYECTO: ${wPct}%]</span></h3>`;
         }
         
-        adminHtml += `
+        if (isCoord && (this.coordEvalView === 'ACTA' || this.coordEvalView === 'ARCHIVE')) {
+            adminHtml += `
             <select aria-label="Filtrar por clase" onchange="ui.setClassFilter(this.value); ui.evalSelectedCo='';" class="min-h-[44px] w-full sm:w-auto bg-black border border-mars-yellow text-mars-yellow text-xs p-2.5 uppercase font-bold outline-none cursor-pointer sm:ml-auto">
                 <option value="ALL" ${this.evalClassFilter==='ALL'?'selected':''}>Todas las Clases</option>
                 ${['A','B','C','D','E','F','TEST'].map(c => `<option value="${c}" ${this.evalClassFilter===c?'selected':''}>Clase ${c}</option>`).join('')}
-            </select>
-        </div>`;
+            </select>`;
+        }
+        adminHtml += `</div>`;
 
         if(isCoord && this.coordEvalView === 'ACTA') {
             adminHtml += `
@@ -43,14 +92,14 @@ Object.assign(ui, {
                 <div class="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-mars-border pb-3 gap-2">
                     <div>
                         <h4 class="font-orbitron text-mars-yellow text-xs uppercase tracking-widest">Matriz Oficial de Calificaciones Ponderadas</h4>
-                        <p class="text-xs text-slate-300 uppercase mt-0.5">Fórmula: 25% FYQ + 40% LYE + 15% LEN + 10% ECO + 5% MAT + 5% ING</p>
+                        <p class="text-xs text-slate-300 uppercase mt-0.5">Fórmula: 25% FYQ + 40% LYE + 15% LEN + 10% ECO + 5% MAT + 5% ING · Pulsa cualquier fila para abrir su evaluación</p>
                     </div>
                 </div>
-                <div class="overflow-x-auto w-full">
+                <div class="overflow-x-auto max-h-[560px] overflow-y-auto w-full">
                     <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
-                        <thead class="text-slate-300 uppercase border-b border-mars-border">
+                        <thead class="text-slate-300 uppercase border-b border-mars-border sticky top-0 bg-slate-900 z-20">
                             <tr>
-                                <th class="py-3 pr-4">Startups</th>
+                                <th class="py-3 px-2 sticky left-0 bg-slate-900 z-10 border-r border-mars-border">Startups</th>
                                 <th class="pr-3">FYQ <span class="text-mars-cyan">(25%)</span></th>
                                 <th class="pr-3">LYE <span class="text-mars-cyan">(40%)</span></th>
                                 <th class="pr-3">LEN <span class="text-mars-cyan">(15%)</span></th>
@@ -87,7 +136,7 @@ Object.assign(ui, {
                                 
                                 return `
                                 <tr class="border-b border-mars-border/30 hover:bg-mars-cyan/5">
-                                    <td class="py-3 font-orbitron text-white font-bold pr-4"><button onclick="ui.showCompanyLogins('${this.escapeHTML(cid)}')" class="min-h-[44px] text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 max-w-[260px] truncate inline-flex items-center align-middle" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)} [${this.escapeHTML(co.classGroup)}]</button></td>${cellsHtml}
+                                    <td class="py-2.5 px-2 font-orbitron text-white font-bold sticky left-0 bg-slate-950 z-10 border-r border-mars-border/60"><button type="button" onclick="ui.coordEvalView='FYQ'; ui.goToCompanyEval('${this.escapeHTML(cid)}')" class="min-h-[44px] text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 max-w-[260px] truncate inline-flex items-center align-middle" title="Evaluar ${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)} [${this.escapeHTML(co.classGroup)}]</button></td>${cellsHtml}
                                     <td class="py-3 font-mono pr-3 text-xs">
                                         <div class="flex items-center gap-2">
                                             <div class="w-12 bg-black h-1.5 rounded-sm overflow-hidden border border-slate-700 shrink-0">
@@ -197,7 +246,20 @@ Object.assign(ui, {
                                     const templateBadge = tplView ? `<a href="${encodeURI(tplView).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-[9px] text-mars-cyan block hover:underline" title="Ver Plantilla Docente">📄 Plantilla ↗</a>` : '';
                                     if (doc) {
                                         const docUrl = doc.driveUrl || doc.url || doc.dataUrl || '#';
-                                        return `<div class="flex flex-col items-center gap-1"><a href="${this.escapeHTML(docUrl)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] flex items-center justify-center bg-mars-green/15 text-mars-green border border-mars-green px-2 py-1 font-bold hover:bg-mars-green hover:text-black transition-colors text-center">${(doc.type==='link' || doc.driveUrl || doc.url)?'🔗 LINK':'📁 FILE'}</a>${templateBadge}</div>`;
+                                        const st = (typeof doc === 'string') ? 'DELIVERED_TO_TEACHER' : (doc.status || 'DELIVERED_TO_TEACHER');
+                                        let badgeCls = 'bg-mars-green/15 text-mars-green border border-mars-green hover:bg-mars-green hover:text-black';
+                                        let badgeTxt = (doc.type === 'link' || doc.driveUrl || doc.url) ? '🔗 LINK' : '📁 FILE';
+                                        if (st === 'SUBMITTED_TO_CEO') {
+                                            badgeCls = 'bg-amber-950/60 text-amber-300 border border-amber-500/60 hover:bg-amber-400 hover:text-black';
+                                            badgeTxt = '⏳ En CEO';
+                                        } else if (st === 'CEO_REVISION' || st === 'DEVUELTO_A_TECNICO') {
+                                            badgeCls = 'bg-red-950/60 text-red-300 border border-red-500/60 hover:bg-red-500 hover:text-white';
+                                            badgeTxt = '↩ Subsanar';
+                                        } else if (st === 'EN_TALLER_OPERARIO') {
+                                            badgeCls = 'bg-blue-950/60 text-blue-300 border border-blue-500/60 hover:bg-blue-400 hover:text-black';
+                                            badgeTxt = '⚙️ Taller';
+                                        }
+                                        return `<div class="flex flex-col items-center gap-1"><a href="${this.escapeHTML(docUrl)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] flex items-center justify-center ${badgeCls} px-2 py-1 font-bold transition-colors text-center text-[11px]">${badgeTxt}</a>${templateBadge}</div>`;
                                     }
                                     return `<div class="flex flex-col items-center gap-1"><span class="min-h-[44px] flex items-center justify-center text-slate-400 border border-slate-800 px-2 py-1 text-center">--</span>${templateBadge}</div>`;
                                 };
@@ -255,6 +317,9 @@ Object.assign(ui, {
                 ${this.renderClassStartupCards(activeSubject, this.evalClassFilter)}
             </div>`;
 
+            if (this.evalSelectedCo && !state.data.companies?.[this.evalSelectedCo]) {
+                this.evalSelectedCo = '';
+            }
             if(!this.evalSelectedCo) {
                 adminHtml += `
                 <div class="terminal-border bg-black/40 border border-slate-800 border-dashed p-8 text-center rounded">
@@ -267,8 +332,6 @@ Object.assign(ui, {
                 </div>`;
             } else {
                 const co = state.data.companies[this.evalSelectedCo];
-                if (!co) return ''; 
-                
                 const pastGrade = (co.grades && co.grades[activeSubject]) ? co.grades[activeSubject] : { scores: {}, feedback: '' };
                 const docs = co.deliverables || {};
                 
@@ -307,7 +370,7 @@ Object.assign(ui, {
                     evidenceHtml += `<div class="mt-4"><span class="text-mars-yellow text-xs font-bold uppercase">Manifiesto / Propuesta de Valor:</span><p class="text-xs text-slate-200 italic mt-1 bg-black p-3 border border-slate-800 leading-relaxed max-h-28 overflow-y-auto break-words">"${this.escapeHTML(co.valueProposition || 'No redactada todavía.')}"</p></div>`;
                 } else if (activeSubject === 'LEN') {
                     evidenceHtml += this.renderDocBadge('1. Dossier para Inversores (Argumentativo) (40% LEN)', docs.investorDossier, false, this.evalSelectedCo, 'investorDossier');
-                    evidenceHtml += this.renderPressReleasesBadge(co);
+                    evidenceHtml += this.renderPressReleasesBadge(co, this.evalSelectedCo);
                 } else if (activeSubject === 'MAT') {
                     evidenceHtml += this.renderDocBadge('1. Elaboración de Goniómetro/s (25%)', docs.goniometerEvidence, false, this.evalSelectedCo, 'goniometerEvidence');
                     evidenceHtml += this.renderDocBadge('2. Informe Distancia Conocida (25%)', docs.mathReportDist, false, this.evalSelectedCo, 'mathReportDist');
@@ -322,7 +385,7 @@ Object.assign(ui, {
                 }
 
                 adminHtml += `
-                <div class="terminal-border bg-mars-card p-6 animate-in fade-in duration-300">
+                <div id="eval-company-panel" class="terminal-border bg-mars-card p-6 animate-in fade-in duration-300">
                     <div class="flex justify-between items-center border-b border-mars-border pb-3 mb-6 flex-wrap gap-2">
                         <div>
                             <span class="text-[10px] font-mono text-mars-cyan uppercase tracking-wider font-bold">Ficha de Calificación Activa</span>
@@ -367,7 +430,10 @@ Object.assign(ui, {
                                         <p id="realtime-grade" class="text-5xl font-orbitron text-mars-green tracking-tighter">${pastGrade.final !== undefined && pastGrade.final !== null ? Number(pastGrade.final).toFixed(2) : '0.00'}</p>
                                         <p id="realtime-grade-pct" class="text-[11px] text-slate-400 font-mono mt-1">${pastGrade.final !== undefined && pastGrade.final !== null ? '(Nota Registrada)' : '(0% Evaluado)'}</p>
                                     </div>
-                                    <button onclick="ui.saveGrade('${activeSubject}')" class="min-h-[44px] bg-mars-cyan text-black font-black py-4 text-xs uppercase tracking-widest hover:shadow-neon-cyan hover:bg-white transition-all">[ REGISTRAR CALIFICACIÓN ]</button>
+                                    <div class="flex flex-col gap-2">
+                                        <button type="button" onclick="ui.saveGrade('${activeSubject}', false)" class="min-h-[44px] bg-mars-cyan text-black font-black py-3.5 text-xs uppercase tracking-widest hover:shadow-neon-cyan hover:bg-white transition-all">[ 💾 REGISTRAR CALIFICACIÓN ]</button>
+                                        <button type="button" onclick="ui.saveGrade('${activeSubject}', true)" class="min-h-[44px] bg-mars-green/20 border border-mars-green text-mars-green font-black py-2.5 text-xs uppercase tracking-wider hover:bg-mars-green hover:text-black transition-all">[ 💾 Guardar y Siguiente Pendiente ➔ ]</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -399,31 +465,41 @@ Object.assign(ui, {
         this.render();
     },
 
-    renderPressReleasesBadge(co) {
+    renderPressReleasesBadge(co, cid = null) {
         if (!co) return '';
+        const targetCid = cid || this.evalSelectedCo || '';
         const prs = co.pressReleases || {};
         const phases = ['I', 'II', 'III', 'IV'];
-        const publishedCount = phases.filter(ph => prs[ph]?.driveUrl).length;
+        const publishedCount = phases.filter(ph => prs[ph]?.driveUrl && prs[ph]?.status !== 'RETURNED').length;
 
         const rowsHtml = phases.map(ph => {
             const item = prs[ph];
             const hasDoc = item && item.driveUrl;
             if (hasDoc) {
+                const isReturned = item.status === 'RETURNED';
                 const safeUrl = encodeURI(item.driveUrl).replace(/"/g, '&quot;');
+                const badgeHtml = isReturned
+                    ? `<span class="text-[10px] bg-red-950/80 text-red-300 border border-red-500/60 px-2 py-0.5 rounded font-mono font-bold">[⚠️ SUBSANACIÓN DOCENTE]</span>`
+                    : `<span class="text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-mono font-bold">[✓ PUBLICADA]</span>`;
+                const returnBtnHtml = (state.user?.admin && targetCid)
+                    ? `<button type="button" onclick="ui.modalTeacherReturnPressRelease('${this.escapeHTML(targetCid)}', '${ph}')" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-bold uppercase min-h-[44px]" title="Requerir subsanación de nota de prensa">↩ Subsanar</button>`
+                    : '';
                 return `
-                <div class="bg-black/70 border border-slate-800 p-2.5 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
+                <div class="bg-black/70 border ${isReturned ? 'border-red-500/50' : 'border-slate-800'} p-2.5 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
                     <div>
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <span class="text-[10px] font-mono bg-mars-cyan/20 text-mars-cyan border border-mars-cyan/40 px-1.5 py-0.5 rounded font-bold">FASE ${ph}</span>
                             <span class="text-white font-bold">${this.escapeHTML(item.title || 'Nota de Prensa')}</span>
                         </div>
                         <p class="text-[10px] text-slate-400 mt-0.5">Publicada: ${this.escapeHTML(item.publishedDate || item.publishedAt || '')}</p>
+                        ${isReturned && item.returnReason ? `<p class="text-[10px] text-red-300 mt-0.5">⚠️ ${this.escapeHTML(item.returnReason)}</p>` : ''}
                     </div>
-                    <div class="flex items-center gap-2 shrink-0">
-                        <span class="text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-mono font-bold">[✓ PUBLICADA]</span>
+                    <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                        ${badgeHtml}
                         <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors min-h-[44px]">
                             <span>Abrir Doc ↗</span>
                         </a>
+                        ${returnBtnHtml}
                     </div>
                 </div>`;
             } else {
@@ -479,19 +555,12 @@ Object.assign(ui, {
             const co = companies[cid];
             const g = co?.grades?.[activeSubject];
             const isGraded = g && g.final !== null && g.final !== undefined;
-            if (isGraded) {
-                gradedCount++;
-                return;
-            }
+            const { pendingCount, readyTotal } = this.getPendingEvalDocsForSubject(co, activeSubject);
 
-            const docs = co?.deliverables || {};
-            let hasSubmission = subjectDocKeys.some(k => !!docs[k]);
-            if (activeSubject === 'LEN' && co?.pressReleases) {
-                hasSubmission = hasSubmission || Object.values(co.pressReleases).some(pr => !!pr?.driveUrl);
-            }
-
-            if (hasSubmission) {
+            if (pendingCount > 0) {
                 pendingEvalCids.push(cid);
+            } else if (isGraded || readyTotal > 0) {
+                gradedCount++;
             } else {
                 unsubmittedCount++;
             }
@@ -684,25 +753,16 @@ Object.assign(ui, {
             ING: []
         }[activeSubject] || [];
 
-        // Conteo de startups con entregas pendientes de evaluar por clase
+        // Conteo de startups con entregas pendientes de evaluar por clase (multi-fase)
         const pendingCounts = {};
         classes.forEach(c => { pendingCounts[c] = 0; });
         Object.keys(companies).forEach(cid => {
             const co = companies[cid];
             if (!co) return;
             const coCls = (co.classGroup || 'A').toUpperCase();
-            const g = co?.grades?.[activeSubject];
-            const hasGrade = g && g.final !== null && g.final !== undefined;
-            if (hasGrade) return;
+            const { pendingCount } = this.getPendingEvalDocsForSubject(co, activeSubject);
 
-            const docs = co?.deliverables || {};
-            let deliveredCount = subjectDocKeys.filter(k => !!docs[k]).length;
-            if (activeSubject === 'LEN' && co?.pressReleases) {
-                const prCount = Object.values(co.pressReleases).filter(p => !!p?.driveUrl).length;
-                if (prCount > 0) deliveredCount += prCount;
-            }
-
-            if (deliveredCount > 0) {
+            if (pendingCount > 0) {
                 pendingCounts['ALL'] = (pendingCounts['ALL'] || 0) + 1;
                 if (classes.includes(coCls)) {
                     pendingCounts[coCls] = (pendingCounts[coCls] || 0) + 1;
@@ -746,19 +806,15 @@ Object.assign(ui, {
             const isSelected = (this.evalSelectedCo === cid);
             const g = co?.grades?.[activeSubject];
             const hasGrade = g && g.final !== null && g.final !== undefined;
-            const docs = co?.deliverables || {};
-
-            let deliveredCount = subjectDocKeys.filter(k => !!docs[k]).length;
-            if (activeSubject === 'LEN' && co?.pressReleases) {
-                const prCount = Object.values(co.pressReleases).filter(p => !!p?.driveUrl).length;
-                if (prCount > 0) deliveredCount += prCount;
-            }
+            const { pendingCount } = this.getPendingEvalDocsForSubject(co, activeSubject);
 
             let statusPill = '';
-            if (hasGrade) {
+            if (hasGrade && pendingCount > 0) {
+                statusPill = `<span class="text-[10px] font-mono bg-amber-950/70 text-amber-300 border border-amber-500/50 px-2 py-0.5 rounded font-bold animate-pulse">🟢 ${Number(g.final).toFixed(2)} · 🟡 +${pendingCount} nuevos</span>`;
+            } else if (hasGrade) {
                 statusPill = `<span class="text-[10px] font-mono bg-emerald-950/70 text-emerald-300 border border-emerald-500/50 px-2 py-0.5 rounded font-bold">🟢 Nota: ${Number(g.final).toFixed(2)}</span>`;
-            } else if (deliveredCount > 0) {
-                statusPill = `<span class="text-[10px] font-mono bg-amber-950/70 text-amber-300 border border-amber-500/50 px-2 py-0.5 rounded font-bold animate-pulse">🟡 ${deliveredCount} doc(s) listos</span>`;
+            } else if (pendingCount > 0) {
+                statusPill = `<span class="text-[10px] font-mono bg-amber-950/70 text-amber-300 border border-amber-500/50 px-2 py-0.5 rounded font-bold animate-pulse">🟡 ${pendingCount} doc(s) listos</span>`;
             } else {
                 statusPill = `<span class="text-[10px] font-mono bg-slate-900 text-slate-400 border border-slate-800 px-2 py-0.5 rounded">⚪ Sin entregas</span>`;
             }
@@ -804,6 +860,10 @@ Object.assign(ui, {
     selectEvalCo(cid) {
         this.evalSelectedCo = cid;
         this.render();
+        setTimeout(() => {
+            const panel = document.getElementById('eval-company-panel');
+            if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 60);
     },
 
     calcRealtimeGrade(subject) {
@@ -811,25 +871,34 @@ Object.assign(ui, {
         if (!config) return;
         let total = 0;
         let evalWeight = 0;
+        let hasInvalid = false;
         config.criteria.forEach(c => {
             const el = document.getElementById(`grade-${c.id}`);
             if (el && el.value !== '') {
                 const val = parseFloat(el.value);
-                if (!isNaN(val)) {
+                if (isNaN(val) || val < 0 || val > 10) {
+                    hasInvalid = true;
+                    el.classList.add('border-red-500', 'ring-2', 'ring-red-500/60');
+                } else {
+                    el.classList.remove('border-red-500', 'ring-2', 'ring-red-500/60');
                     total += val * c.weight;
                     evalWeight += c.weight;
                 }
+            } else if (el) {
+                el.classList.remove('border-red-500', 'ring-2', 'ring-red-500/60');
             }
         });
         const display = document.getElementById('realtime-grade');
-        if (display) display.innerText = total.toFixed(2);
+        if (display) display.innerText = hasInvalid ? 'ERR' : total.toFixed(2);
         const pctDisplay = document.getElementById('realtime-grade-pct');
         if (pctDisplay) {
-            pctDisplay.innerText = `(${Math.round(evalWeight * 100)}% de la rúbrica evaluado)`;
+            pctDisplay.innerText = hasInvalid
+                ? '⚠️ Solo notas entre 0 y 10'
+                : `(${Math.round(evalWeight * 100)}% de la rúbrica evaluado)`;
         }
     },
 
-    saveGrade(subject) {
+    saveGrade(subject, goNext = false) {
         if (!this.evalSelectedCo) return this.notify("Seleccione una startup primero.", "warning");
         const config = RUBRIC_CONFIG[subject];
         const co = state.data.companies[this.evalSelectedCo];
@@ -840,21 +909,21 @@ Object.assign(ui, {
         let allFilled = true;
         let evaluatedWeight = 0;
         
-        config.criteria.forEach(c => {
+        for (const c of config.criteria) {
             const el = document.getElementById(`grade-${c.id}`);
             if (el && el.value !== '') {
                 const val = parseFloat(el.value);
-                if (isNaN(val)) {
-                    allFilled = false;
-                } else {
-                    scores[c.id] = val;
-                    total += val * c.weight;
-                    evaluatedWeight += c.weight;
+                if (isNaN(val) || val < 0 || val > 10) {
+                    this.highlightInvalidField?.(`La nota en "${c.name}" debe estar entre 0 y 10.`, el);
+                    return this.notify(`Nota fuera de rango [0–10] en "${c.name}".`, "error");
                 }
+                scores[c.id] = val;
+                total += val * c.weight;
+                evaluatedWeight += c.weight;
             } else {
                 allFilled = false;
             }
-        });
+        }
 
         // Capturar dictamen antes de cualquier apertura modal o redibujado de interfaz
         const elFeedback = document.getElementById('eval-feedback');
@@ -892,6 +961,22 @@ Object.assign(ui, {
             }
 
             this.notify(`Calificación de ${subject} registrada para ${liveCo.name}: ${total.toFixed(2)}`, "success");
+            if (goNext) {
+                const classFilter = this.evalClassFilter || this.currentClassFilter || 'ALL';
+                const nextPendingCid = Object.keys(state.data.companies || {}).find(cid => {
+                    if (cid === targetCid) return false;
+                    const candidate = state.data.companies[cid];
+                    if (!candidate) return false;
+                    if (classFilter !== 'ALL' && (candidate.classGroup || 'A') !== classFilter) return false;
+                    return this.getPendingEvalDocsForSubject(candidate, subject).pendingCount > 0;
+                });
+                if (nextPendingCid) {
+                    this.selectEvalCo(nextPendingCid);
+                    this.notify(`Siguiente pendiente: ${state.data.companies[nextPendingCid]?.name || nextPendingCid}`, "info");
+                    return;
+                }
+                this.notify("¡Sin más entregas pendientes en este filtro de clase!", "success");
+            }
             this.render();
         };
 
@@ -912,9 +997,12 @@ Object.assign(ui, {
     exportActaCSV() {
         const weights = typeof GLOBAL_WEIGHTS !== 'undefined' ? GLOBAL_WEIGHTS : { FYQ: 0.25, LYE: 0.40, LEN: 0.15, ECO: 0.10, MAT: 0.05, ING: 0.05 };
         const subOrder = ['FYQ','LYE','LEN','ECO','MAT','ING'];
+        const classFilter = this.evalClassFilter || this.currentClassFilter || 'ALL';
         let csv = "Empresa,Clase,FYQ_25%,LYE_40%,LEN_15%,ECO_10%,MAT_5%,ING_5%,Peso_Evaluado_%,Nota_Global_Ponderada\n";
         
         Object.values(state.data.companies).forEach(co => {
+            if (!co) return;
+            if (classFilter !== 'ALL' && (co.classGroup || 'A') !== classFilter) return;
             const g = co.grades || {};
             let weightedTotal = 0;
             let evaluatedWeight = 0;
@@ -934,7 +1022,102 @@ Object.assign(ui, {
             const finalNote = evaluatedWeight > 0 ? weightedTotal.toFixed(2) : '';
             csv += `"${(co.name || '').replace(/"/g, '""')}","${co.classGroup || 'A'}",${vals.join(',')},${pctEval}%,${finalNote}\n`;
         });
-        this.downloadFile(csv, 'csv', 'marsket_acta_ponderada_oficial.csv');
+        const suffix = classFilter === 'ALL' ? 'oficial' : `clase_${classFilter}`;
+        this.downloadFile(csv, 'csv', `marsket_acta_ponderada_${suffix}.csv`);
+    },
+
+    modalTeacherReturnPressRelease(coId, phaseKey) {
+        if (!state.user || !state.user.admin) return;
+        const co = state.data.companies[coId];
+        if (!co || !co.pressReleases?.[phaseKey]) return;
+
+        const reasonsList = (typeof CEO_RETURN_REASONS !== 'undefined' && CEO_RETURN_REASONS.length > 0)
+            ? CEO_RETURN_REASONS
+            : [
+                { id: 'PERMISOS_DRIVE_BLOQUEADOS', label: 'El enlace de Drive pide permiso o no es público de lectura' },
+                { id: 'PLANTILLA_INCORRECTA', label: 'No usa la plantilla oficial o está incompleta' },
+                { id: 'DATOS_INSUFICIENTES', label: 'Falta redactar el cuerpo, evidencias o rigor lingüístico' }
+            ];
+        const optionsHtml = reasonsList.map(r => `<option value="${this.escapeHTML(r.label)}">${this.escapeHTML(r.label)}</option>`).join('');
+
+        const bodyHtml = `
+            <div class="space-y-4 font-mono text-xs">
+                <div class="bg-red-950/40 border border-red-500/40 p-3 text-red-200 rounded">
+                    <strong>Nota de Prensa DOC_15 · Fase ${this.escapeHTML(phaseKey)}</strong><br>
+                    Startup: <span class="text-white font-bold">${this.escapeHTML(co.name || coId)}</span>
+                </div>
+                <div>
+                    <label for="teacher-return-pr-reason" class="text-xs text-mars-yellow uppercase font-bold block mb-1">1. Motivo Tipificado de Subsanación</label>
+                    <select id="teacher-return-pr-reason" class="w-full min-h-[44px] bg-black border border-slate-700 p-2 text-xs text-white outline-none focus:border-red-400">
+                        ${optionsHtml}
+                    </select>
+                </div>
+                <div>
+                    <label for="teacher-return-pr-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1">2. Documento con Correcciones Docentes (Opcional)</label>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="teacher-return-pr-drive-url" placeholder="https://docs.google.com/... (opcional)" class="flex-1 min-h-[44px] bg-black border border-slate-700 p-2 text-xs text-white outline-none focus:border-mars-cyan">
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('teacher-return-pr-drive-url') : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+        const actions = `
+            <button type="button" onclick="ui.closeModal()" class="min-h-[44px] bg-slate-800 text-slate-200 px-4 py-2 text-xs font-bold uppercase hover:bg-slate-700 transition-all">Cancelar</button>
+            <button type="button" onclick="ui.confirmTeacherReturnPressRelease('${this.escapeHTML(coId)}', '${this.escapeHTML(phaseKey)}')" class="min-h-[44px] bg-red-600 text-white font-black px-5 py-2 text-xs uppercase hover:bg-red-500 transition-all">Devolver Nota de Prensa</button>
+        `;
+        this.showModal("Devolver Nota de Prensa (DOC_15)", bodyHtml, actions);
+    },
+
+    confirmTeacherReturnPressRelease(coId, phaseKey) {
+        if (!state.user || !state.user.admin) return;
+        const co = state.data.companies[coId];
+        const pr = co?.pressReleases?.[phaseKey];
+        if (!pr) return;
+
+        const reasonEl = document.getElementById('teacher-return-pr-reason');
+        const reason = reasonEl ? reasonEl.value : 'Subsanación requerida por el docente.';
+        const driveInputEl = document.getElementById('teacher-return-pr-drive-url');
+        const rawUrl = driveInputEl ? driveInputEl.value.trim() : '';
+
+        let validatedUrl = '';
+        if (rawUrl) {
+            const urlCheck = this.validateStudentDriveUrl
+                ? this.validateStudentDriveUrl(rawUrl, driveInputEl, { required: false, label: 'las correcciones docentes' })
+                : { valid: true, url: rawUrl };
+            if (!urlCheck || !urlCheck.valid) return;
+            validatedUrl = urlCheck.url || '';
+        }
+
+        const nowTs = Date.now();
+        const teacherName = state.user?.role || 'DOCENTE';
+        pr.status = 'RETURNED';
+        pr.returnReason = reason;
+        pr.returnDriveUrl = validatedUrl || null;
+        pr.returnedByTeacher = teacherName;
+        pr.returnedAt = nowTs;
+        pr.updatedAt = nowTs;
+
+        if (Array.isArray(state.data.pressReleases)) {
+            const globalPr = state.data.pressReleases.find(p => p.coId === coId && p.phase === phaseKey);
+            if (globalPr) {
+                globalPr.status = 'RETURNED';
+                globalPr.returnReason = reason;
+                globalPr.returnDriveUrl = validatedUrl || null;
+                globalPr.updatedAt = nowTs;
+            }
+        }
+        co.updatedAt = nowTs;
+
+        const notifMsg = `El docente (${teacherName}) requiere subsanar la Nota de Prensa de Fase ${phaseKey} (DOC_15). Motivo: ${reason}`;
+        this.pushNotification(coId, 'CEO', notifMsg, 'warning', { view: 'dashboard', subTab: 'press' });
+        this.pushNotification(coId, 'MARKETING', notifMsg, 'warning', { view: 'dashboard', subTab: 'press' });
+
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+
+        this.closeModal();
+        this.notify(`Nota de Prensa Fase ${phaseKey} devuelta a ${co.name || coId} para subsanación.`, "info");
+        this.render();
     },
 
     renderAdminContracts() {

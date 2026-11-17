@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.16) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.17) ---
 
-const APP_VERSION = "2.0.16";
+const APP_VERSION = "2.0.17";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1154,8 +1154,24 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.16
+// Changelog Oficial de Producción v2.0.17
 const APP_CHANGELOG = [
+    {
+      version: "2.0.17",
+      date: "2026-11-17",
+      title: "Portal Docente Flujo Ágil (Bloque A), Corrección Modo Calma/Login y Confidencialidad HR",
+      items: [
+        "Acceso y Modo Calma Blindados: Eliminación definitiva de restos cacheados del icono 🧘 al entrar con cualquier sesión, corrección de la ayuda del código de acceso a «3 letras de empresa, guion y 4 números, ej: AST-1010», unificación del doble clic del logo y selector docente sin preseleccionar FyQ por defecto.",
+        "Rúbricas Multi-Fase y Evaluador Ágil: Aterrizaje directo del profesorado de materia en 📝 Rúbricas y Entregas con contadores multi-fase reales (los parciales de Fase I ya no ocultan nuevas entregas de Fases II–IV ni confunden estados previos al visado CEO), validación estricta [0–10], botón [💾 Guardar y Siguiente Pendiente ➔], columna fija y clickable en el Acta, filtro de clase en exportActaCSV() y subsanación completa docente incluso sobre Notas de Prensa (DOC_15).",
+        "Buzón HR Confidencial (DOC_2) y Seguridad de Claustro: Filtro por clase en HR, ocultación anti-proyector del emisor dentro de un desplegable confidencial, accesos directos [📊 Ver Logins] y [⚠️ Toque de Atención], separación de vistas financieras (ocultando Inversión FÍSICA € a materias no coordinadoras) y modales tipificados Zero-Text al denegar B2B o Denominación Social.",
+        "Consistencia en Aduana y Puestos/I+D: Enlaces rápidos a Puestos Auxiliares y Solicitudes DOC_13 desde Validaciones, unificación del estado brandStatus en la aprobación/rechazo de Marca, confirmación previa de lectura en Licencia AESA y supresión de tablas de recepción vacías."
+      ],
+      highlights: [
+        { type: "RÚBRICAS ÁGILES", text: "Conteo multi-fase preciso y salto en 1 clic a la siguiente startup pendiente." },
+        { type: "AULA SEGURA", text: "Emisor HR oculto ante proyector, filtro Zero-Text al denegar y control de notas [0–10]." },
+        { type: "LOGIN LIMPIO", text: "Texto exacto 3 letras + guion + 4 números y botón Calma libre de caché." }
+      ]
+    },
     {
       version: "2.0.16",
       date: "2026-11-17",

@@ -68,7 +68,7 @@ Object.assign(ui, {
             <div id="login-box" class="w-full max-w-md terminal-border bg-mars-card p-4 sm:p-6 glow-cyan animate-in fade-in zoom-in duration-300 transition-all mx-auto my-auto" style="max-width: 28rem;">
                 ${loginAccessBarHtml}
                 <img id="marsket-logo" src="logo.png" alt="Logo oficial MARS-KET 2.0" width="96" height="96" 
-                    onclick="auth.handleLogoTrigger(event)" ondblclick="auth.handleLogoTrigger(event)" 
+                    onclick="auth.handleLogoTrigger(event)" 
                     style="touch-action: manipulation; width: clamp(72px, 12vh, 96px); height: clamp(72px, 12vh, 96px); aspect-ratio: 1/1;" 
                     class="mx-auto mb-2.5 sm:mb-4 drop-shadow-[0_0_16px_rgba(0,240,255,0.75)] hover:drop-shadow-[0_0_24px_rgba(0,240,255,0.95)] transition-all duration-300 cursor-pointer select-none object-contain" 
                     onerror="this.onerror=null;this.src='logo.png';">
@@ -77,7 +77,7 @@ Object.assign(ui, {
                 
                 <div class="bg-black/60 border border-mars-border p-3 sm:p-4">
                     <label for="login-company-code" class="text-xs text-mars-cyan uppercase font-bold block mb-1 tracking-wider">Código Privado de Empresa</label>
-                    <p class="text-[11px] text-slate-400 font-sans mb-2">Está en tu tarjeta de clase (4 letras y 4 números, ej: AST-1010).</p>
+                    <p class="text-[11px] text-slate-400 font-sans mb-2">Está en tu tarjeta de clase (3 letras de empresa, guion y 4 números, ej: AST-1010).</p>
                     <input type="text" id="login-company-code" autocomplete="off" placeholder="EJ: AST-1010" style="touch-action: manipulation; font-size: 16px;" onkeydown="if(event.key==='Enter') auth.validateCompanyCode()" onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="w-full bg-slate-900 border border-mars-cyan/60 p-2.5 sm:p-3 text-center font-orbitron font-black uppercase tracking-widest text-mars-yellow outline-none focus:border-mars-cyan mb-3 min-h-[48px]">
                     <button type="button" onclick="auth.validateCompanyCode()" style="touch-action: manipulation;" class="w-full min-h-[48px] bg-mars-cyan text-black font-black py-3 px-3 text-xs uppercase tracking-normal sm:tracking-wider hover:bg-white transition-all shadow-[0_0_12px_rgba(0,240,255,0.3)] whitespace-nowrap">[ VALIDAR CÓDIGO ➔ ]</button>
                 </div>
@@ -116,7 +116,7 @@ Object.assign(ui, {
             <!-- Logo centrado de alta visibilidad + Tarjeta de Entidad Verificada -->
             <div class="text-center mb-2.5">
                 <img id="marsket-logo-step2" src="logo.png" alt="Logo oficial MARS-KET 2.0" width="60" height="60"
-                    onclick="auth.handleLogoTrigger(event)" ondblclick="auth.handleLogoTrigger(event)"
+                    onclick="auth.handleLogoTrigger(event)"
                     style="touch-action: manipulation; width: clamp(48px, 7vh, 60px); height: clamp(48px, 7vh, 60px); aspect-ratio: 1/1;"
                     class="mx-auto mb-1.5 drop-shadow-[0_0_12px_rgba(0,240,255,0.75)] hover:drop-shadow-[0_0_20px_rgba(0,240,255,0.95)] transition-all duration-300 cursor-pointer select-none object-contain"
                     onerror="this.onerror=null;this.src='logo.png';">
@@ -126,7 +126,7 @@ Object.assign(ui, {
                 </div>
             </div>
 
-            <label for="login-role" class="text-xs text-slate-300 uppercase font-bold block mb-1">1. Elige tu Puesto en el Equipo</label>
+            <label for="login-role" class="text-xs text-slate-300 uppercase font-bold block mb-1">${isTeacher ? '1. Elige tu Perfil Docente' : '1. Elige tu Puesto en el Equipo'}</label>
             <select id="login-role" onchange="auth.onRoleChange()" style="touch-action: manipulation; font-size: 16px;" class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-xs sm:text-sm mb-3 outline-none focus:border-mars-cyan uppercase text-white font-bold transition-all"></select>
             
             <p class="text-[11px] text-slate-400 font-sans text-center mb-1.5">2. Introduce tu PIN de 4 cifras</p>
@@ -1239,12 +1239,24 @@ Object.assign(ui, {
                                     `}
                                 </div>
                                 <div class="shrink-0">
-                                    ${published ? `
+                                    ${published ? (published.status === 'RETURNED' ? `
+                                        <div class="flex flex-col items-end gap-1.5">
+                                            <div class="flex items-center gap-2 flex-wrap justify-end">
+                                                <span class="bg-red-950/80 border border-red-500 text-red-300 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded">⚠️ Subsanación DOC_15</span>
+                                                <a href="${encodeURI(published.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-2 py-1 text-[11px] text-cyan-300 underline font-mono">Ver DOC_15 ↗</a>
+                                                ${published.returnDriveUrl ? `<a href="${encodeURI(published.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-2 py-1 text-[11px] text-amber-300 underline font-mono">Notas Docente ↗</a>` : ''}
+                                            </div>
+                                            ${published.returnReason ? `<p class="text-[10px] text-red-300 text-right max-w-xs">${this.escapeHTML(published.returnReason)}</p>` : ''}
+                                            <button type="button" onclick="ui.modalPublishPressRelease('${this.escapeHTML(p.phase)}')" class="min-h-[44px] bg-red-950/60 border border-red-400 text-red-200 hover:bg-red-500 hover:text-white font-bold uppercase text-[11px] px-2.5 py-1 transition-all">
+                                                🔄 Reenviar Nota Corregida
+                                            </button>
+                                        </div>
+                                    ` : `
                                         <div class="flex items-center gap-2">
                                             <span style="background-color: rgba(0, 255, 102, 0.15); border: 1px solid #00ff66; color: #00ff66;" class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded">✓ Publicada</span>
                                             <a href="${encodeURI(published.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-[11px] text-cyan-300 underline font-mono">Ver DOC_15 ↗</a>
                                         </div>
-                                    ` : (!isPrUnlocked ? `
+                                    `) : (!isPrUnlocked ? `
                                         <button type="button" disabled class="min-h-[44px] bg-slate-900 border border-slate-800 text-slate-500 font-bold uppercase text-[11px] px-2.5 py-1 cursor-not-allowed" title="Disponible a partir del ${this.escapeHTML(p.phaseCutoffLabel || '')}">
                                             🔒 Bloqueada hasta ${this.escapeHTML(p.phaseCutoffLabel || '')}
                                         </button>

@@ -1278,9 +1278,8 @@ const ui = {
     updateCalmButtonUI(mode) {
         const isCalm = mode === 'calm';
         const btn = document.getElementById('hud-btn-calm');
-        const lbl = document.getElementById('hud-calm-label');
-        if (lbl) lbl.innerText = isCalm ? 'Calma ON' : 'Calma';
         if (btn) {
+            btn.innerHTML = `<span id="hud-calm-label" class="text-xs font-bold">${isCalm ? 'Calma ON' : 'Calma'}</span>`;
             btn.title = isCalm ? 'Modo Calma activo (pulsa para volver al modo visual completo)' : 'Activar Modo Calma (detiene parpadeos y avisos sonoros)';
             if (isCalm) {
                 btn.className = 'min-h-[44px] min-w-[44px] px-2.5 py-1.5 bg-emerald-950/70 border-2 border-emerald-400 text-emerald-300 font-mono font-bold text-xs uppercase flex items-center justify-center gap-1.5 transition-all rounded-sm active:scale-95';
@@ -3797,11 +3796,15 @@ const ui = {
         }
 
         let teacherSubsanarBtn = '';
-        if (state.user && state.user.admin && coId && docKey && isValidDriveUrl) {
-            teacherSubsanarBtn = `
-            <button type="button" onclick="ui.modalTeacherReturnDeliverable('${this.escapeHTML(coId)}', '${this.escapeHTML(docKey)}')" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-bold uppercase min-h-[44px]" title="Requerir subsanación a la startup">
-                <span>↩ Subsanar</span>
-            </button>`;
+        if (state.user && state.user.admin && coId && docKey) {
+            if (status === 'CEO_REVISION') {
+                teacherSubsanarBtn = `<span class="inline-flex items-center px-2.5 py-1 text-[10px] bg-slate-900 border border-red-500/40 text-red-300 rounded font-mono uppercase">↩ Esperando subsanación</span>`;
+            } else {
+                teacherSubsanarBtn = `
+                <button type="button" onclick="ui.modalTeacherReturnDeliverable('${this.escapeHTML(coId)}', '${this.escapeHTML(docKey)}')" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-bold uppercase min-h-[44px]" title="Requerir subsanación a la startup">
+                    <span>↩ Subsanar</span>
+                </button>`;
+            }
         }
 
         let actionHtml = '';
@@ -4043,7 +4046,10 @@ const ui = {
                     <label for="teacher-return-drive-url" class="text-xs text-mars-cyan font-bold uppercase block mb-1">
                         📄 Documento con Correcciones / Rúbrica en Google Docs (Opcional)
                     </label>
-                    <input type="url" id="teacher-return-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-mars-cyan font-mono outline-none focus:border-mars-cyan">
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="teacher-return-drive-url" placeholder="https://docs.google.com/document/d/..." class="flex-1 min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-mars-cyan font-mono outline-none focus:border-mars-cyan">
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('teacher-return-drive-url') : ''}
+                    </div>
                     <p class="text-[10px] text-slate-400 mt-1 font-sans">Adjunta el enlace a las correcciones o rúbrica de subsanación para el alumnado.</p>
                 </div>
             </div>
