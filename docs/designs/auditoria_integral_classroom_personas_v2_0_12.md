@@ -138,7 +138,12 @@ Al revisar [config.js](file:///c:/Users/aiban/OneDrive/MARSKET/js/config.js#L861
    - Botón `[✓ Aprobar Todo]` en 1 clic junto a `[⚙️ Revisar Partidas]` en Finanzas + desglose de piezas en la tarjeta de la Bandeja.
    - Selector maestro *"Aplicar comercio a toda la orden"* (`applyShopToOrder`) en Taller de Operaciones *(sin botón de `0.00 €` reciclado, manteniendo coste real `> 0 €`)*.
 
-### ✨ Fase B — Bloque B2 (Versión `v2.0.15` — Telemetría `€v`/`E` y Pulido Móvil `360px`)
-3. **Telemetría Científica/Estratégica (en `€v` y `E`) + Pulido Móvil `360px`:**
-   - Mini-KPIs de vuelo (`Mejor E`, `Altura Récord`, `Ratio g/10ml` y pre-cálculo en vivo de `E`), `Saldo Comprometido en Taller (€v)` y filtros en el Historial de Movimientos, chips de cobertura IA por departamento, marcador de acciones `DOC_12` + `€v` MKT + desglose `I+D vs MKT` + previsualización de saldo + acceso Patrocinios/Fase V + auto-ajuste de URL Drive del Logo para el HUD, clic Tesorería CEO ➔ Historial, `Nota Acumulada` en Dossier, chip cumplimiento Contrato y detalle al tocar ficha Radar.
-   - Ajustes móviles `360px`: `max-h-[90dvh]` en modales, `.mars-checkbox-label`, `flex-wrap` en cabeceras, `min-h-[44px]` en todos los enlaces Drive y lupa de Noticias, 2 `<select>` compactos en Noticias móvil y vista de tarjetas para la tabla de vuelos en móvil.
+### ✅ Fase B — Bloque B2 (Versión `v2.0.15` — COMPLETADA: Telemetría `€v`/`E` y Pulido Móvil `360px`)
+> **Estado:** ✅ **COMPLETADA Y VALIDADA (`v2.0.15`)** por `@feature-reviewer` (`[APROBADO_FUNCIONAL]`), `@qa-validator` (`[PASS]`) y `node tools/audit-integrity.mjs` (`PASS`).
+
+3. **[x] Telemetría Científica/Estratégica (en `€v` y `E`) + Pulido Móvil `360px`:**
+   - Mini-KPIs de vuelo (`Mejor E`, `Altura Récord`, `Ratio Óptimo`), pre-cálculo en vivo `previewFlightEfficiency()` y vista en tarjetas móvil (`sm:hidden`) en [ui-empresa-tech.js](file:///c:/Users/aiban/OneDrive/MARSKET/js/ui-empresa-tech.js).
+   - Tarjetas superiores con `Comprometido en Taller (€v)` y `Libre real`, más chips de filtro real (`deptFilterMap`) en `Historial de Cobros y Pagos` en [ui-empresa-finance.js](file:///c:/Users/aiban/OneDrive/MARSKET/js/ui-empresa-finance.js).
+   - Resumen desplegable `<details>` de recepciones completadas (piezas y `€v`) y 5 chips de cobertura IA en [ui-empresa-ops.js](file:///c:/Users/aiban/OneDrive/MARSKET/js/ui-empresa-ops.js).
+   - En [ui-empresa-core.js](file:///c:/Users/aiban/OneDrive/MARSKET/js/ui-empresa-core.js): `Tesorería Virtual` clicable ➔ `modalCeoLedgerPreview()`, `Nota acumulada` en Dossier, chip de cumplimiento (`Coste BOM` / `Mejor E`) en Contrato activo, fichas del Radar ➔ `inspectDeliverableDrawer()`, 2 `<select>` compactos de Clase/Fase en Noticias móvil y lupa `🔍` 44px.
+   - En [ui-empresa-gov-brand.js](file:///c:/Users/aiban/OneDrive/MARSKET/js/ui-empresa-gov-brand.js) y [ui-core.js](file:///c:/Users/aiban/OneDrive/MARSKET/js/ui-core.js): contador `DOC_12` validadas + inversión MKT vs I+D, saldo estimado al elegir pack, enlace Patrocinios/Fase V y auto-conversión al vuelo `getDirectDriveImageUrl()` para Logos Drive en HUD; modales adaptados a `max-h-[90dvh]` ([index.html](file:///c:/Users/aiban/OneDrive/MARSKET/index.html)) y enlaces Drive `min-h-[44px]`.

@@ -394,7 +394,7 @@ Object.assign(ui, {
                                 <div class="flex flex-wrap justify-between gap-2 mb-2 mt-3"><h3 class="text-white font-bold uppercase text-xs sm:text-sm break-words">${this.escapeHTML(m.title)}</h3><span class="text-xs text-slate-300">${this.escapeHTML(m.date)}</span></div>
                                 <div class="mb-3">
                                     ${(m.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(m.driveUrl))
-                                        ? `<a href="${encodeURI(m.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Propuesta en Docs ↗</span></a>`
+                                        ? `<a href="${encodeURI(m.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Propuesta en Docs ↗</span></a>`
                                         : `<span class="text-xs text-mars-yellow/80 font-mono italic">[Propuesta legacy archivada por protocolo RGPD]</span>`
                                     }
                                 </div>
@@ -1029,7 +1029,7 @@ Object.assign(ui, {
                     </div>
                     <div class="mb-2">
                         ${(c.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(c.driveUrl))
-                            ? `<a href="${encodeURI(c.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Dossier ROI en Docs ↗</span></a>`
+                            ? `<a href="${encodeURI(c.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Dossier ROI en Docs ↗</span></a>`
                             : `<span class="text-xs text-mars-yellow/80 font-mono italic">[Dossier legacy archivado por protocolo RGPD]</span>`
                         }
                     </div>
@@ -1404,16 +1404,27 @@ Object.assign(ui, {
                     <p class="text-xs text-slate-300 mb-4 leading-relaxed">
                         Contrata paquetes de marketing para promocionar tu prototipo ante la comunidad educativa, ganar tracción comercial y maximizar el impacto público del proyecto.
                     </p>
-                    <div class="space-y-3 mb-6">
-                        <div class="bg-black/60 border border-slate-800 p-3 rounded flex justify-between items-center text-xs">
-                            <span class="text-slate-300">Campañas Activas / Contratadas</span>
-                            <span class="text-mars-yellow font-mono font-bold">${(co.marketingCampaigns || []).filter(c => c.status === 'ACTIVO').length}</span>
-                        </div>
-                        <div class="bg-black/60 border border-slate-800 p-3 rounded flex justify-between items-center text-xs">
-                            <span class="text-slate-300">Solicitudes en Revisión de Finanzas</span>
-                            <span class="text-amber-400 font-mono font-bold">${(co.marketingCampaigns || []).filter(c => c.status === 'PENDIENTE_FINANZAS').length}</span>
-                        </div>
-                    </div>
+                    ${(() => {
+                        const activeCamps = (co.marketingCampaigns || []).filter(c => c.status === 'ACTIVO');
+                        const pendingCamps = (co.marketingCampaigns || []).filter(c => c.status === 'PENDIENTE_FINANZAS');
+                        const validatedActions = activeCamps.reduce((sum, c) => sum + (c.executedActions || []).filter(a => a && a.status === 'VALIDADO_CEO').length, 0);
+                        const activeMktSpend = activeCamps.reduce((sum, c) => sum + (Number(c.price || c.cost) || 0), 0);
+                        return `
+                        <div class="space-y-2.5 mb-5">
+                            <div class="bg-black/60 border border-slate-800 p-3 rounded flex justify-between items-center text-xs">
+                                <span class="text-slate-300">Campañas Activas / Contratadas</span>
+                                <span class="text-mars-yellow font-mono font-bold">${activeCamps.length} (${activeMktSpend.toFixed(2)} €v)</span>
+                            </div>
+                            <div class="bg-black/60 border border-slate-800 p-3 rounded flex justify-between items-center text-xs">
+                                <span class="text-slate-300">Acciones DOC_12 Validadas por CEO</span>
+                                <span class="text-mars-green font-mono font-bold">${validatedActions}</span>
+                            </div>
+                            <div class="bg-black/60 border border-slate-800 p-3 rounded flex justify-between items-center text-xs">
+                                <span class="text-slate-300">Solicitudes en Revisión de Finanzas</span>
+                                <span class="text-amber-400 font-mono font-bold">${pendingCamps.length}</span>
+                            </div>
+                        </div>`;
+                    })()}
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         ${isBrandBankrupt
                             ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] bg-slate-900 border border-rose-500/60 text-rose-300 px-4 py-2.5 text-xs font-black uppercase tracking-wider cursor-not-allowed flex items-center justify-center gap-1.5"><span>🔒 Bloqueado (Saldo ≤ 0 €v)</span></button>`
@@ -1428,10 +1439,20 @@ Object.assign(ui, {
                 <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-green w-full">
                     <h2 class="font-orbitron text-mars-green text-sm sm:text-base mb-3 uppercase tracking-tighter">Inteligencia de Mercado y KPIs Técnicos</h2>
                     <div class="space-y-3">
-                        <div class="bg-black p-3 border border-mars-border flex justify-between items-center gap-2">
-                            <span class="text-xs text-mars-cyan uppercase font-bold">Inversión Total I+D Ejecutada</span>
-                            <span class="text-mars-cyan font-mono font-bold text-base">${totalDevCost.toFixed(2)} €v</span>
-                        </div>
+                        ${(() => {
+                            const activeMktInv = (co.marketingCampaigns || []).filter(c => c.status === 'ACTIVO').reduce((s, c) => s + (Number(c.price || c.cost) || 0), 0);
+                            return `
+                            <div class="bg-black p-3 border border-mars-border grid grid-cols-2 gap-2">
+                                <div>
+                                    <span class="text-[10px] text-mars-cyan uppercase font-bold block">Inversión I+D Ejecutada</span>
+                                    <span class="text-mars-cyan font-mono font-bold text-sm sm:text-base">${totalDevCost.toFixed(2)} €v</span>
+                                </div>
+                                <div class="text-right border-l border-slate-800 pl-2">
+                                    <span class="text-[10px] text-mars-yellow uppercase font-bold block">Inversión Marketing</span>
+                                    <span class="text-mars-yellow font-mono font-bold text-sm sm:text-base">${activeMktInv.toFixed(2)} €v</span>
+                                </div>
+                            </div>`;
+                        })()}
                         <div class="bg-black p-3 border border-slate-800 space-y-1.5">
                             <div class="flex justify-between items-center text-xs">
                                 <span class="text-slate-300 uppercase">Coste Operativo Bruto:</span>
@@ -1448,6 +1469,13 @@ Object.assign(ui, {
                             </div>
                         </div>
                         ${bestFlightHtml}
+                        <div class="bg-slate-900/90 border border-amber-500/40 p-3 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
+                            <div class="min-w-0">
+                                <span class="text-amber-300 font-bold uppercase block">🏆 Objetivo Estratégico & Patrocinios</span>
+                                <span class="text-[11px] text-slate-300 font-sans">Aporta al Premio «Mejor Estrategia de Marketing» en Fase V y consulta patrocinios desde Fase I.</span>
+                            </div>
+                            <button type="button" onclick="ui.navigate('contracts')" class="min-h-[44px] shrink-0 px-3 py-1.5 bg-black border border-amber-400/60 text-amber-300 hover:bg-amber-400 hover:text-black font-bold text-xs uppercase rounded transition-all">🤝 Patrocinios ➔</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1474,6 +1502,10 @@ Object.assign(ui, {
 
         const doc5Btn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_5_BRIEF_MKT', '📄 Modelo Oficial Brief Creativo MKT') : '';
 
+        const coObj = state.data.companies?.[state.user.coId];
+        const freeBalMkt = (coObj && typeof state.getFreeVirtualBalance === 'function') ? state.getFreeVirtualBalance(coObj) : Number(coObj?.balance || 0);
+        const initAfter = freeBalMkt - (selectedPkg ? Number(selectedPkg.price) : 0);
+
         const html = `
             <div class="space-y-3">
                 <div class="mb-2">
@@ -1481,16 +1513,22 @@ Object.assign(ui, {
                 </div>
                 <div>
                     <label for="campaign-tier" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Paquete / Tier Publicitario Predefinido</label>
-                    <select id="campaign-tier" onchange="const p = (typeof MARKETING_PACKAGES !== 'undefined' ? MARKETING_PACKAGES : []).find(x => x.id === this.value); const sEl = document.getElementById('campaign-price-display'); if(sEl && p) sEl.textContent = p.price + ' €v';" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow">
+                    <select id="campaign-tier" onchange="const p = (typeof MARKETING_PACKAGES !== 'undefined' ? MARKETING_PACKAGES : []).find(x => x.id === this.value); const sEl = document.getElementById('campaign-price-display'); const aEl = document.getElementById('campaign-after-display'); if(sEl && p) sEl.textContent = p.price + ' €v'; if(aEl && p){ const fb = Number(aEl.getAttribute('data-free') || 0); const aft = fb - Number(p.price || 0); aEl.textContent = aft.toFixed(2) + ' €v'; aEl.className = 'font-mono font-bold ' + (aft <= 0 ? 'text-rose-400' : 'text-mars-green'); }" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow">
                         ${optionsHtml}
                     </select>
                 </div>
-                <div class="bg-slate-900/80 border border-slate-800 p-3 flex justify-between items-center rounded">
-                    <div>
-                        <span class="text-xs text-slate-300 uppercase font-bold block">Coste Tarifario Oficial Inmutable</span>
-                        <p class="text-[10px] text-slate-400 mt-0.5">Precio congelado estipulado para la contratación del paquete.</p>
+                <div class="bg-slate-900/80 border border-slate-800 p-3 rounded space-y-1.5">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <span class="text-xs text-slate-300 uppercase font-bold block">Coste Tarifario Oficial Inmutable</span>
+                            <p class="text-[10px] text-slate-400 mt-0.5">Precio congelado estipulado para la contratación del paquete.</p>
+                        </div>
+                        <span id="campaign-price-display" class="text-cyan-400 font-mono font-bold text-base sm:text-lg">${selectedPkg ? selectedPkg.price : 0} €v</span>
                     </div>
-                    <span id="campaign-price-display" class="text-cyan-400 font-mono font-bold text-base sm:text-lg">${selectedPkg ? selectedPkg.price : 0} €v</span>
+                    <div class="flex justify-between items-center text-[11px] font-mono border-t border-slate-800 pt-1.5">
+                        <span class="text-slate-300">Saldo libre estimado tras aprobación (${freeBalMkt.toFixed(2)} €v):</span>
+                        <span id="campaign-after-display" data-free="${freeBalMkt.toFixed(2)}" class="font-mono font-bold ${initAfter <= 0 ? 'text-rose-400' : 'text-mars-green'}">${initAfter.toFixed(2)} €v</span>
+                    </div>
                 </div>
                 <div>
                     <label for="campaign-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Brief Creativo y Justificación ROI (Google Drive / Docs)</label>

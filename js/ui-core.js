@@ -2897,6 +2897,17 @@ const ui = {
         this.showModal("Buzón de Coordinación", html, "");
     },
 
+    getDirectDriveImageUrl(url) {
+        const clean = String(url || '').trim();
+        if (!clean) return '';
+        const fileMatch = clean.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/i)
+            || clean.match(/drive\.google\.com\/(?:open|uc)\?(?:[^#]*&)?id=([a-zA-Z0-9_-]+)/i);
+        if (fileMatch && fileMatch[1]) {
+            return `https://drive.google.com/thumbnail?id=${fileMatch[1]}&sz=w256`;
+        }
+        return clean;
+    },
+
     generateHeroBanner() {
         if (!state.user || state.user.admin) return '';
         const co = state.data.companies[state.user.coId];
@@ -2904,7 +2915,7 @@ const ui = {
 
         const isBrandPending = co.brandApproval && co.brandApproval.status === 'PENDIENTE';
         const hasApprovedLogo = co.logo && (!co.brandApproval || co.brandApproval.status === 'APROBADO');
-        const activeLogoSrc = hasApprovedLogo ? this.escapeHTML(co.logo) : 'logo.png';
+        const activeLogoSrc = hasApprovedLogo ? this.escapeAttr(this.getDirectDriveImageUrl(co.logo)) : 'logo.png';
         const rawRole = state.user.role || '';
         const effRole = this.getEffectiveRole ? this.getEffectiveRole(co) : rawRole;
         let roleLabel = this.escapeHTML(rawRole.replace('_', ' '));
@@ -3332,7 +3343,7 @@ const ui = {
             if(miniLogo && co) {
                 miniLogo.classList.remove('hidden');
                 const hasApprovedLogo = co.logo && (!co.brandApproval || co.brandApproval.status === 'APROBADO');
-                const hudLogoSrc = hasApprovedLogo ? this.escapeHTML(co.logo) : 'logo.png';
+                const hudLogoSrc = hasApprovedLogo ? this.escapeAttr(this.getDirectDriveImageUrl ? this.getDirectDriveImageUrl(co.logo) : co.logo) : 'logo.png';
                 miniLogo.innerHTML = `<img src="${hudLogoSrc}" alt="Logo startup ${this.escapeHTML(co.name)}" width="36" height="36" onerror="this.onerror=null;this.src='logo.png';" class="w-full h-full ${hasApprovedLogo ? 'object-cover' : 'object-contain p-0.5'}">`;
             }
         }

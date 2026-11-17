@@ -2,6 +2,22 @@
 // --- MÓDULO I+D: BANCO DE PRUEBAS (en mm), MATEMÁTICAS, ENTREGABLES CIENTÍFICOS Y TALLER BOM (v1.1.44) ---
 
 Object.assign(ui, {
+    previewFlightEfficiency() {
+        const elCost = document.getElementById('ft-cost');
+        const elHeight = document.getElementById('ft-height-mm');
+        const elOut = document.getElementById('ft-live-preview');
+        if (!elOut) return;
+        const c = parseFloat(String(elCost ? elCost.value : '').replace(',', '.'));
+        const h = parseFloat(String(elHeight ? elHeight.value : '').replace(',', '.'));
+        if (!isNaN(c) && c > 0 && !isNaN(h) && h >= 0) {
+            const eVal = h / c;
+            const eCls = eVal > 0 ? 'text-mars-yellow' : 'text-amber-400';
+            elOut.innerHTML = `⚡ Pre-cálculo en vivo: <strong class="${eCls} font-orbitron">E = ${eVal.toFixed(2)} mm/€v</strong> <span class="text-slate-400">(${h.toFixed(0)} mm / ${c.toFixed(2)} €v)</span>`;
+        } else {
+            elOut.innerHTML = `⚡ Pre-cálculo en vivo: <span class="text-slate-400">Introduce Coste (&gt; 0) y Altura (mm) para estimar E = H / C</span>`;
+        }
+    },
+
     techSendHojaTaller() {
         if (!state.user) return;
         const el = document.getElementById('tech-hoja-taller-drive-url');
@@ -24,6 +40,61 @@ Object.assign(ui, {
         
         const wrapper = document.createElement('div');
         
+        let bestE = 0;
+        let maxHeightMm = 0;
+        let bestRatioLabel = '--';
+        const flightCardsMobileHtml = co.flightTests.map(f => {
+            const h_mm = !isNaN(Number(f.heightMm)) ? Number(f.heightMm) : (!isNaN(Number(f.heightM)) ? Number(f.heightM) * 1000 : 0);
+            const naVal = !isNaN(Number(f.naHCO3)) ? Number(f.naHCO3) : (!isNaN(Number(f.nahco3)) ? Number(f.nahco3) : (!isNaN(Number(f.weightG)) ? Number(f.weightG) : 0));
+            const vinVal = !isNaN(Number(f.vinegar)) ? Number(f.vinegar) : (!isNaN(Number(f.waterMl)) ? Number(f.waterMl) : 0);
+            const costVal = !isNaN(Number(f.costEurV)) ? Number(f.costEurV) : 0;
+            const effVal = !isNaN(Number(f.efficiency)) ? Number(f.efficiency) : (costVal > 0 ? h_mm / costVal : 0);
+            if (effVal > bestE) {
+                bestE = effVal;
+                bestRatioLabel = (vinVal > 0 && naVal > 0) ? `${((naVal / vinVal) * 10).toFixed(2)} g/10ml` : `${naVal}g/${vinVal}ml`;
+            }
+            if (h_mm > maxHeightMm) maxHeightMm = h_mm;
+            const safeVideoUrl = this.sanitizeDriveUrl ? this.sanitizeDriveUrl(f.videoUrl) : '';
+            const fid = String(f.id || '');
+            const mobileVideoBtn = safeVideoUrl
+                ? `<div class="flex items-center gap-1.5 w-full">
+                    <a href="${safeVideoUrl}" target="_blank" rel="noopener noreferrer" class="flex-1 min-h-[44px] inline-flex items-center justify-center gap-1 px-2.5 py-1.5 bg-cyan-950/70 border border-mars-cyan/60 text-mars-cyan font-bold text-xs uppercase rounded">🎥 Ver Vídeo E ↗</a>
+                    ${fid ? `<button type="button" onclick="ui.modalAttachFlightVideo('${this.escapeHTML(fid)}')" aria-label="Cambiar vídeo del ensayo" class="min-h-[44px] min-w-[44px] inline-flex items-center justify-center bg-slate-900 border border-slate-700 text-slate-300 px-2 rounded">✏️</button>` : ''}
+                   </div>`
+                : (fid ? `<button type="button" onclick="ui.modalAttachFlightVideo('${this.escapeHTML(fid)}')" class="w-full min-h-[44px] inline-flex items-center justify-center gap-1 px-2.5 py-1.5 bg-slate-900 border border-slate-700 text-slate-300 font-bold text-xs uppercase rounded">📹 + Vídeo E</button>` : '');
+            return `
+            <div class="bg-slate-900/90 border border-mars-border/70 p-3 rounded space-y-2 text-xs">
+                <div class="flex justify-between items-start gap-2">
+                    <div class="min-w-0">
+                        <span class="text-white font-bold uppercase block break-words">${this.escapeHTML(f.bottle || 'Prototipo')}</span>
+                        <span class="text-[11px] text-slate-400 font-mono">${this.escapeHTML(f.date || '--')} · Mix ${naVal}g / ${vinVal}ml</span>
+                    </div>
+                    <span class="font-orbitron font-black text-mars-yellow text-sm shrink-0">E ${effVal.toFixed(2)}</span>
+                </div>
+                <div class="flex justify-between items-center text-[11px] font-mono border-t border-slate-800 pt-1.5">
+                    <span class="text-mars-green font-bold">Altura: ${h_mm.toFixed(0)} mm</span>
+                    <span class="text-mars-magenta">Coste: ${costVal.toFixed(2)} €v</span>
+                </div>
+                ${mobileVideoBtn ? `<div class="pt-1">${mobileVideoBtn}</div>` : ''}
+            </div>`;
+        }).join('') || `<div class="terminal-border bg-slate-950 p-4 text-center border-dashed border-mars-yellow/40"><p class="text-xs text-mars-yellow font-bold uppercase mb-1">🚀 Banco de Pruebas sin Ensayos</p><p class="text-[11px] text-slate-400">Introduce los reactivos y la altura arriba para registrar el primer vuelo de tu prototipo.</p></div>`;
+
+        const flightMiniKpisHtml = `
+        <div class="grid grid-cols-3 gap-2 mb-4">
+            <div class="bg-black/70 border border-mars-yellow/40 p-2.5 rounded text-center">
+                <span class="text-[10px] font-mono text-slate-400 uppercase block">🏆 Mejor E</span>
+                <span class="font-orbitron font-black text-sm sm:text-base text-mars-yellow">${co.flightTests.length > 0 ? bestE.toFixed(2) : '--'}</span>
+            </div>
+            <div class="bg-black/70 border border-mars-green/40 p-2.5 rounded text-center">
+                <span class="text-[10px] font-mono text-slate-400 uppercase block">🚀 Altura Récord</span>
+                <span class="font-orbitron font-black text-sm sm:text-base text-mars-green">${co.flightTests.length > 0 ? `${maxHeightMm.toFixed(0)} mm` : '--'}</span>
+            </div>
+            <div class="bg-black/70 border border-mars-cyan/40 p-2.5 rounded text-center">
+                <span class="text-[10px] font-mono text-slate-400 uppercase block">🧪 Ratio Óptimo</span>
+                <span class="font-mono font-bold text-xs sm:text-sm text-mars-cyan">${this.escapeHTML(bestRatioLabel)}</span>
+            </div>
+        </div>`;
+
         let ftHtml = co.flightTests.map(f => {
             // Retrocompatibilidad: Si el vuelo se guardó en metros o con claves heredadas, normaliza sin producir NaN
             const h_mm = !isNaN(Number(f.heightMm)) ? Number(f.heightMm) : (!isNaN(Number(f.heightM)) ? Number(f.heightM) * 1000 : 0);
@@ -363,11 +434,11 @@ Object.assign(ui, {
                             </div>
                             <div>
                                 <label for="ft-cost" class="text-xs text-slate-300 uppercase block mb-1">Coste Ensayo (€v)</label>
-                                <input type="number" id="ft-cost" placeholder="Coste (€v)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-magenta w-full" step="0.1">
+                                <input type="number" id="ft-cost" oninput="ui.previewFlightEfficiency()" placeholder="Coste (€v)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-magenta w-full" step="0.1">
                             </div>
                             <div>
                                 <label for="ft-height-mm" class="text-xs text-slate-300 uppercase block mb-1">Altura H (mm)</label>
-                                <input type="number" id="ft-height-mm" placeholder="Altura H (mm)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-green font-bold w-full" step="1">
+                                <input type="number" id="ft-height-mm" oninput="ui.previewFlightEfficiency()" placeholder="Altura H (mm)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-green font-bold w-full" step="1">
                             </div>
                             <div class="sm:col-span-2 md:col-span-2">
                                 <label for="ft-video-url" class="text-xs text-slate-300 uppercase block mb-1">Vídeo Cálculo E (Opcional // Drive)</label>
@@ -383,6 +454,9 @@ Object.assign(ui, {
                                     <button type="button" onclick="ui.notify('⛔ Banco bloqueado: Requiere Licencia de Lanzamiento AESA (DOC_14) tramitada por el CEO y aprobada por Coordinación.', 'error')" class="min-h-[44px] bg-slate-800 text-slate-500 border border-slate-700 font-black uppercase tracking-wider cursor-not-allowed py-2.5 px-3 w-full">🔒 Vuelos Bloqueados</button>
                                 `}
                             </div>
+                            <div id="ft-live-preview" class="sm:col-span-2 md:col-span-3 text-[11px] font-mono text-slate-300 bg-slate-950 border border-slate-800 px-3 py-2 rounded">
+                                ⚡ Pre-cálculo en vivo: <span class="text-slate-400">Introduce Coste (&gt; 0) y Altura (mm) para estimar E = H / C</span>
+                            </div>
                         </div>`;
                             return canFlyNow
                                 ? `<div class="mb-6">${formFieldsHtml}</div>`
@@ -394,7 +468,11 @@ Object.assign(ui, {
                                     <div class="p-2 pt-0">${formFieldsHtml}</div>
                                    </details>`;
                         })()}
-                        <div class="overflow-x-auto w-full max-h-60 overflow-y-auto">
+                        ${flightMiniKpisHtml}
+                        <div class="sm:hidden space-y-2.5">
+                            ${flightCardsMobileHtml}
+                        </div>
+                        <div class="hidden sm:block overflow-x-auto w-full max-h-60 overflow-y-auto">
                             <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
                                 <thead class="text-slate-300 uppercase border-b border-mars-border sticky top-0 bg-mars-card">
                                     <tr><th class="py-2 pr-3">Fecha</th><th class="pr-3">Fuselaje</th><th class="pr-3">Mix (Sól/Líq)</th><th class="pr-3">Coste (€v)</th><th class="pr-3">H (mm)</th><th class="pr-3 text-mars-yellow">E = H/C</th><th>Vídeo Cálculo E</th></tr>

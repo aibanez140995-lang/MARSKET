@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.14) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.15) ---
 
-const APP_VERSION = "2.0.14";
+const APP_VERSION = "2.0.15";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1154,8 +1154,25 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.14
+// Changelog Oficial de Producción v2.0.15
 const APP_CHANGELOG = [
+    {
+      version: "2.0.15",
+      date: "2026-11-17",
+      title: "Fase B2: Telemetría Científica/Estratégica (€v y E) y Pulido Móvil BYOD 360px",
+      items: [
+        "Banco I+D con Telemetría en Vivo y Tarjetas Móviles: 3 mini-KPIs (Mejor E, Altura Récord y Ratio g/10ml), pre-cálculo automático de E = H / C al teclear coste y altura, y vista en tarjetas cómoda en móvil (< 640px).",
+        "Finanzas (€v Comprometido vs Libre) y Filtros en Movimientos: Sustitución del indicador redundante por «Comprometido en Taller (€v)» con el saldo libre real, más chips de filtro rápido (Todos, Ingresos +, Gastos -, por departamento) en el Historial de Cobros y Pagos.",
+        "Operaciones e IA: Resumen desplegable en Taller con recepciones físicas completadas (piezas y €v, manteniendo ocultos los costes reales al alumnado) y 5 chips de cobertura IA por departamento en la Bitácora.",
+        "Sala de Mando CEO Enriquecida: Acceso en 1 clic al Historial de Cobros y Pagos desde «Tesorería Virtual», nota ponderada acumulada en el Dossier Académico, métricas de cumplimiento (Coste BOM y Mejor E) en el Contrato activo y apertura directa del cajón de detalle al tocar cualquier ficha del Radar.",
+        "Marketing, Logos Drive en HUD y Pulido Móvil 360px: Marcador de acciones DOC_12 validadas e inversión I+D vs Marketing, saldo estimado al elegir pack, acceso directo a Patrocinios/Fase V, auto-conversión al vuelo de enlaces Drive del Logo para el HUD, modales adaptados a 90dvh, lupa y enlaces de 44px y selectores compactos de Clase/Fase en Noticias móvil."
+      ],
+      highlights: [
+        { type: "TELEMETRÍA", text: "Mini-KPIs y pre-cálculo en vivo de E en Técnico; saldo comprometido y filtros en Finanzas." },
+        { type: "MANDO CEO Y MKT", text: "Nota acumulada, historial financiero en 1 clic, métricas BOM/E en Contratos y logo Drive en HUD." },
+        { type: "MÓVIL 360px", text: "Tarjetas de vuelo móvil, modales 90dvh, filtros compactos en Noticias y objetivos táctiles 44px." }
+      ]
+    },
     {
       version: "2.0.14",
       date: "2026-11-17",

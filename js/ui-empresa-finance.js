@@ -3,6 +3,12 @@
 
 Object.assign(ui, {
     cronogramaFilter: 'ALL',
+    ledgerFilter: 'ALL',
+
+    setLedgerFilter(f) {
+        this.ledgerFilter = String(f || 'ALL');
+        this.render();
+    },
 
     viewApprovals(el) {
         return this.viewOrders(el);
@@ -1117,7 +1123,23 @@ Object.assign(ui, {
         const sponsorTierLabel = co.sponsorAwarded ? (co.sponsorData?.tier || co.sponsorAwarded || 'SPONSOR') : null;
 
         const maxVisibleLedger = 100;
-        const visibleLedger = co.ledger.slice(0, maxVisibleLedger);
+        const activeLedgerFilter = this.ledgerFilter || 'ALL';
+        const deptFilterMap = {
+            TECNICO: ['TECNICO', 'ADUANA_B2B', 'I+D'],
+            MARKETING: ['MARKETING'],
+            OPERACIONES_IA: ['OPERACIONES_IA', 'OPERACIONES'],
+            CEO: ['CEO', 'TASAS_ADMINISTRATIVAS', 'REGISTRO_MERCANTIL', 'CONTRATO_COMERCIAL'],
+            DOCENTE: ['DOCENTE', 'AEE', 'PATROCINIO']
+        };
+        const filteredLedger = co.ledger.filter(entry => {
+            if (activeLedgerFilter === 'ALL') return true;
+            if (activeLedgerFilter === 'INGRESOS') return Number(entry.delta || 0) > 0;
+            if (activeLedgerFilter === 'GASTOS') return Number(entry.delta || 0) < 0;
+            const deptUp = String(entry.dept || '').toUpperCase();
+            const keys = deptFilterMap[activeLedgerFilter] || [activeLedgerFilter];
+            return keys.some(k => deptUp.includes(k));
+        });
+        const visibleLedger = filteredLedger.slice(0, maxVisibleLedger);
 
         const wrapper = document.createElement('div');
 
@@ -1373,6 +1395,19 @@ Object.assign(ui, {
             </div>
         </div>` : '';
 
+        const committedB2C = state.getCommittedB2CBalance ? state.getCommittedB2CBalance(co) : 0;
+        const freeBalFin = state.getFreeVirtualBalance ? state.getFreeVirtualBalance(co) : Number(co.balance || 0);
+        const ledgerFilterChipsHtml = [
+            { id: 'ALL', label: 'Todos' },
+            { id: 'INGRESOS', label: 'Ingresos +' },
+            { id: 'GASTOS', label: 'Gastos -' },
+            { id: 'TECNICO', label: 'I+D / B2B' },
+            { id: 'MARKETING', label: 'MKT' },
+            { id: 'OPERACIONES_IA', label: 'Taller' },
+            { id: 'CEO', label: 'CEO / Contratos' },
+            { id: 'DOCENTE', label: 'AEE / Claustro' }
+        ].map(f => `<button type="button" onclick="ui.setLedgerFilter('${f.id}')" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-bold uppercase rounded border transition-all ${activeLedgerFilter === f.id ? 'bg-mars-cyan text-black border-mars-cyan' : 'bg-slate-900 text-slate-300 border-slate-700 hover:text-white'}">${f.label}</button>`).join('');
+
         wrapper.innerHTML = `
         ${debtAlertHtml}
         ${finStatusBannerHtml}
@@ -1384,17 +1419,18 @@ Object.assign(ui, {
             <div class="lg:col-span-7 space-y-6">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div class="terminal-border bg-mars-card p-4 border-t-2 ${co.balance < 0 ? 'border-t-rose-500' : 'border-t-mars-green'} text-center">
-                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">${co.balance < 0 ? 'Deuda Virtual' : 'Saldo Virtual'}</span>
+                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">${co.balance < 0 ? 'Deuda Virtual' : 'Saldo Disponible'}</span>
                         <p class="text-lg sm:text-xl font-orbitron font-black ${co.balance < 0 ? 'text-rose-400 animate-pulse' : 'text-mars-green'}">${Number(co.balance).toFixed(2)} €v</p>
                     </div>
-                    <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-cyan text-center">
-                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Coste Neto</span>
-                        <p class="text-lg sm:text-xl font-orbitron font-black text-mars-cyan">${netOpCosts.toFixed(2)} €v</p>
-                        ${sponsorAmt > 0 ? `<span class="text-[10px] text-amber-400 font-mono block mt-0.5 text-slate-300">(Bruto: ${grossCosts.toFixed(2)} | Patr: -${sponsorAmt.toFixed(2)}${sponsorTierLabel ? ` ${this.getSponsorTierBadge ? this.getSponsorTierBadge(sponsorTierLabel) : `[${this.escapeHTML(sponsorTierLabel)}]`}` : ''})</span>` : ''}
-                    </div>
                     <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-yellow text-center">
-                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Gasto Acumulado</span>
-                        <p class="text-lg sm:text-xl font-orbitron font-black text-mars-yellow">-${virtualSpend.toFixed(2)} €v</p>
+                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Comprometido en Taller</span>
+                        <p class="text-lg sm:text-xl font-orbitron font-black text-mars-yellow">${committedB2C.toFixed(2)} €v</p>
+                        <span class="text-[10px] text-slate-300 font-mono block mt-0.5">Libre real: <strong class="${freeBalFin <= 0 ? 'text-rose-400' : 'text-mars-cyan'}">${freeBalFin.toFixed(2)} €v</strong></span>
+                    </div>
+                    <div class="terminal-border bg-mars-card p-4 border-t-2 border-t-mars-cyan text-center">
+                        <span class="text-xs text-slate-300 uppercase font-bold tracking-wider block mb-1">Coste Operativo Neto</span>
+                        <p class="text-lg sm:text-xl font-orbitron font-black text-mars-cyan">${netOpCosts.toFixed(2)} €v</p>
+                        ${sponsorAmt > 0 ? `<span class="text-[10px] text-amber-400 font-mono block mt-0.5">(Bruto: ${grossCosts.toFixed(2)} | Patr: -${sponsorAmt.toFixed(2)}${sponsorTierLabel ? ` ${this.getSponsorTierBadge ? this.getSponsorTierBadge(sponsorTierLabel) : `[${this.escapeHTML(sponsorTierLabel)}]`}` : ''})</span>` : `<span class="text-[10px] text-slate-400 font-mono block mt-0.5">Acumulado: -${virtualSpend.toFixed(2)} €v</span>`}
                     </div>
                 </div>
 
@@ -1405,7 +1441,10 @@ Object.assign(ui, {
                             <h3 class="font-orbitron text-mars-cyan text-sm uppercase tracking-tighter">Historial de Cobros y Pagos</h3>
                             <p class="text-xs text-slate-300 uppercase mt-0.5">Movimientos de €v ordenados cronológicamente (del más reciente al más antiguo).</p>
                         </div>
-                        <span class="text-xs bg-slate-800 text-slate-200 font-mono px-2.5 py-1 border border-slate-700">${co.ledger.length} Movimientos</span>
+                        <span class="text-xs bg-slate-800 text-slate-200 font-mono px-2.5 py-1 border border-slate-700">${filteredLedger.length}/${co.ledger.length} Movimientos</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 mb-3">
+                        ${ledgerFilterChipsHtml}
                     </div>
                     <div class="max-h-80 overflow-x-auto overflow-y-auto pr-1">
                         <table class="w-full text-left text-xs font-mono whitespace-nowrap min-w-max">
@@ -1427,11 +1466,11 @@ Object.assign(ui, {
                                             ${entry.delta >= 0 ? '+' : ''}${Number(entry.delta).toFixed(2)} €v
                                         </td>
                                     </tr>
-                                `).join('') || `<tr><td colspan="4" class="text-center py-4 text-slate-300 italic text-xs">No hay transacciones registradas.</td></tr>`}
+                                `).join('') || `<tr><td colspan="4" class="text-center py-4 text-slate-300 italic text-xs">No hay movimientos registrados con este filtro.</td></tr>`}
                             </tbody>
                         </table>
                     </div>
-                    ${co.ledger.length > maxVisibleLedger ? `<p class="text-xs text-slate-300 uppercase font-mono mt-2 pt-2 border-t border-slate-800 text-center">Mostrando los ${visibleLedger.length} asientos más recientes de ${co.ledger.length} contabilizados.</p>` : ''}
+                    ${filteredLedger.length > maxVisibleLedger ? `<p class="text-xs text-slate-300 uppercase font-mono mt-2 pt-2 border-t border-slate-800 text-center">Mostrando los ${visibleLedger.length} movimientos más recientes de ${filteredLedger.length}.</p>` : ''}
                 </div>
             </div>
 

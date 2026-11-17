@@ -1129,6 +1129,21 @@ Object.assign(ui, {
                             <strong class="text-slate-400 uppercase">Requisitos:</strong> ${this.escapeHTML(signedActiveContract.requirements)}
                         </p>
                     </div>
+                    <div class="mt-2.5 flex flex-wrap items-center gap-2 text-[11px] font-mono">
+                        ${(() => {
+                            const bomList = Array.isArray(co.bom) ? co.bom : [];
+                            let bomCostEv = 0;
+                            bomList.forEach(k => {
+                                const [oid, idx] = String(k).split('-');
+                                const ord = (co.orders || []).find(o => String(o.id) === String(oid));
+                                const it = ord?.items?.[Number(idx)];
+                                if (it) bomCostEv += (Number(it.price) || 0) * (Number(it.qty) || 1);
+                            });
+                            const actaC = this.getCompanyActaSummary ? this.getCompanyActaSummary(co) : { bestE: null };
+                            return `<span class="px-2 py-0.5 bg-black/60 border border-slate-700 text-cyan-300 rounded">Coste BOM: ${bomCostEv.toFixed(2)} €v</span>
+                                    <span class="px-2 py-0.5 bg-black/60 border border-slate-700 text-mars-yellow rounded">Mejor E: ${actaC.bestE !== null ? actaC.bestE.toFixed(2) : '--'}</span>`;
+                        })()}
+                    </div>
                     <div class="mt-3 pt-2.5 border-t border-slate-800 flex justify-between items-center gap-2">
                         <div class="flex items-center gap-2 font-mono text-xs">
                             <span style="color: #00ff66 !important;" class="font-bold">+${signedActiveContract.reward} €v</span>
@@ -1458,7 +1473,7 @@ Object.assign(ui, {
                         }
 
                         return `
-                        <button type="button" onclick="ui.roleDeliverablesScope='ALL'; ui.navigate('role_deliverables');" class="terminal-border p-3 border rounded ${cardBorder} cursor-pointer transition-all hover:scale-[1.01] flex flex-col justify-between text-left w-full min-h-[44px]">
+                        <button type="button" onclick="ui.inspectDeliverableDrawer('${this.escapeAttr(co.id || state.user.coId)}', '${this.escapeAttr(def.key)}')" class="terminal-border p-3 border rounded ${cardBorder} cursor-pointer transition-all hover:scale-[1.01] flex flex-col justify-between text-left w-full min-h-[44px]">
                             <div class="w-full">
                                 <div class="flex justify-between items-start gap-1 mb-1">
                                     <span class="text-[9px] font-mono font-bold text-mars-cyan uppercase tracking-wider truncate">${this.escapeHTML(deptRole)}</span>
@@ -1531,11 +1546,11 @@ Object.assign(ui, {
 
                 <!-- KPIs RÁPIDOS -->
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-5">
-                    <div class="bg-black/50 p-3 sm:p-4 border border-slate-800">
+                    <button type="button" onclick="ui.modalCeoLedgerPreview()" class="bg-black/50 hover:bg-black/80 p-3 sm:p-4 border border-slate-800 hover:border-mars-green/70 text-left transition-all min-h-[44px]">
                         <span class="text-[10px] sm:text-xs text-slate-400 font-bold uppercase block mb-1">Tesorería Virtual</span>
                         <p class="text-base sm:text-xl font-orbitron font-black text-mars-green">${Number(co.balance).toFixed(2)} €v</p>
-                        <span class="text-[10px] text-slate-500 font-mono">Saldo disponible</span>
-                    </div>
+                        <span class="text-[10px] text-mars-cyan font-mono">🔍 Ver movimientos ↗</span>
+                    </button>
                     <div class="bg-black/50 p-3 sm:p-4 border border-slate-800">
                         <span class="text-[10px] sm:text-xs text-slate-400 font-bold uppercase block mb-1">Coste Neto Operativo</span>
                         <p class="text-base sm:text-xl font-orbitron font-black text-mars-cyan">${netOpCosts.toFixed(2)} €v</p>
@@ -1572,8 +1587,11 @@ Object.assign(ui, {
                         <h3 class="font-orbitron font-black text-xs sm:text-sm text-white uppercase">📋 Dossier Académico</h3>
                         <p class="text-[11px] text-slate-300 mt-1 line-clamp-2 leading-relaxed">Supervisa el acta y calificaciones ponderadas de los 6 docentes.</p>
                     </div>
-                    <div class="mt-3 pt-2.5 border-t border-slate-800 flex justify-between items-center">
-                        <span class="text-[10px] text-slate-400 font-mono">6 Materias</span>
+                    <div class="mt-3 pt-2.5 border-t border-slate-800 flex justify-between items-center gap-2">
+                        ${(() => {
+                            const actaS = this.getCompanyActaSummary ? this.getCompanyActaSummary(co) : { nota: null, evalPct: 0 };
+                            return `<span class="text-[10px] font-mono ${actaS.nota !== null ? 'text-mars-green font-bold' : 'text-slate-400'}">${actaS.nota !== null ? `Nota: ${actaS.nota.toFixed(2)}/10 (${actaS.evalPct}%)` : '6 Materias'}</span>`;
+                        })()}
                         <button type="button" onclick="ui.roleDeliverablesSection = 'grades'; ui.navigate('role_deliverables');" class="min-h-[44px] bg-slate-900 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-black uppercase text-xs px-3 py-1.5 transition-all">Acceder ➔</button>
                     </div>
                 </div>
@@ -2229,8 +2247,9 @@ Object.assign(ui, {
                     ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('deliverable-drive-input') : ''}
                 </div>
                 <p class="text-[11px] text-slate-300 font-sans">No pegues el enlace de la plantilla vacía (<code>/copy</code>): usa primero <strong>[📋 Hacer Copia en Drive]</strong> y pega aquí el enlace de vuestra copia.</p>
-                <label class="flex items-start gap-2.5 cursor-pointer p-2.5 bg-black/50 border border-slate-800 rounded min-h-[44px]">
-                    <input type="checkbox" id="deliverable-drive-perm-check" class="mt-0.5 min-h-[20px] min-w-[20px] accent-mars-cyan">
+                <label class="mars-checkbox-label flex items-start gap-2.5 cursor-pointer p-2.5 bg-black/50 border border-slate-800 rounded min-h-[44px]">
+                    <input type="checkbox" id="deliverable-drive-perm-check" class="mars-touch-input">
+                    <span class="mars-checkbox-visual mt-0.5"></span>
                     <span class="text-xs text-slate-200 font-sans">Confirmo que en Google Drive he marcado <strong>«Cualquier persona con el enlace (Lector)»</strong> para que el CEO y el profesor puedan abrirlo.</span>
                 </label>
             </div>
@@ -2243,6 +2262,34 @@ Object.assign(ui, {
         `;
 
         this.showModal(`Entregar: ${def.shortName || def.name}`, bodyHtml, actionsHtml);
+    },
+
+    modalCeoLedgerPreview() {
+        if (!state.user || state.user.admin) return;
+        const co = state.data.companies?.[state.user.coId];
+        if (!co) return;
+        const ledger = Array.isArray(co.ledger) ? co.ledger : [];
+        const committed = state.getCommittedB2CBalance ? state.getCommittedB2CBalance(co) : 0;
+        const freeBal = state.getFreeVirtualBalance ? state.getFreeVirtualBalance(co) : Number(co.balance || 0);
+        const rows = ledger.slice(0, 50).map(e => `
+            <tr class="border-b border-slate-800/70">
+                <td class="py-1.5 pr-2 text-slate-400 text-[11px]">${this.escapeHTML(e.date || '--')}</td>
+                <td class="py-1.5 pr-2 text-white font-sans text-xs">${this.escapeHTML(e.concept || '')}</td>
+                <td class="py-1.5 text-right font-mono font-bold text-xs ${Number(e.delta || 0) >= 0 ? 'text-mars-green' : 'text-mars-magenta'}">${Number(e.delta || 0) >= 0 ? '+' : ''}${Number(e.delta || 0).toFixed(2)} €v</td>
+            </tr>`).join('') || `<tr><td colspan="3" class="py-4 text-center text-slate-400 italic text-xs">Sin movimientos registrados todavía.</td></tr>`;
+        const html = `
+            <div class="space-y-3">
+                <div class="grid grid-cols-3 gap-2 text-center bg-black/60 border border-slate-800 p-2.5 rounded">
+                    <div><span class="text-[10px] text-slate-400 uppercase block">Disponible</span><strong class="text-mars-green font-mono text-xs">${Number(co.balance || 0).toFixed(2)} €v</strong></div>
+                    <div><span class="text-[10px] text-slate-400 uppercase block">Comprometido</span><strong class="text-mars-yellow font-mono text-xs">${committed.toFixed(2)} €v</strong></div>
+                    <div><span class="text-[10px] text-slate-400 uppercase block">Libre Real</span><strong class="text-mars-cyan font-mono text-xs">${freeBal.toFixed(2)} €v</strong></div>
+                </div>
+                <div class="max-h-72 overflow-y-auto overflow-x-auto">
+                    <table class="w-full text-left font-mono">${rows}</table>
+                </div>
+                ${ledger.length > 50 ? `<p class="text-[11px] text-slate-400 font-sans text-center">Mostrando los últimos 50 de ${ledger.length} movimientos (Finanzas dispone de los filtros completos).</p>` : ''}
+            </div>`;
+        this.showModal("Historial de Cobros y Pagos (€v)", html, "");
     },
 
     renderHojaTallerHistoryHtml(hojaObj) {
@@ -3553,8 +3600,28 @@ Object.assign(ui, {
                     ` : ''}
                 </div>
 
-                <!-- Barra de Filtros Rápidos (Ergonomía Docente y Alumnos) -->
-                <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+                <!-- Barra de Filtros Rápidos (Compacta <select> en móvil, píldoras en sm+) -->
+                <div class="sm:hidden grid grid-cols-2 gap-2 pt-2">
+                    <div>
+                        <label for="news-class-select" class="text-[10px] font-mono text-slate-400 uppercase block mb-1">Clase</label>
+                        <select id="news-class-select" onchange="ui.setNewsClassFilter(this.value)" class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan/50 p-2 text-base sm:text-xs text-white font-mono">
+                            <option value="ALL" ${classFilter === 'ALL' ? 'selected' : ''}>Todas</option>
+                            ${availableClasses.map(c => `<option value="${c}" ${classFilter === c ? 'selected' : ''}>Clase ${c}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="news-phase-select" class="text-[10px] font-mono text-slate-400 uppercase block mb-1">Fase</label>
+                        <select id="news-phase-select" onchange="ui.setNewsPhaseFilter(this.value)" class="w-full min-h-[44px] bg-slate-900 border border-amber-400/50 p-2 text-base sm:text-xs text-white font-mono">
+                            <option value="ALL" ${phaseFilter === 'ALL' ? 'selected' : ''}>Todas</option>
+                            <option value="I" ${phaseFilter === 'I' ? 'selected' : ''}>Fase I</option>
+                            <option value="II" ${phaseFilter === 'II' ? 'selected' : ''}>Fase II</option>
+                            <option value="III" ${phaseFilter === 'III' ? 'selected' : ''}>Fase III</option>
+                            <option value="IV" ${phaseFilter === 'IV' ? 'selected' : ''}>Fase IV</option>
+                            <option value="V" ${phaseFilter === 'V' ? 'selected' : ''}>🏆 Fase V</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="hidden sm:flex flex-wrap items-center justify-between gap-3 pt-2">
                     <!-- Filtro por Clase -->
                     <div class="flex items-center gap-1.5 flex-wrap">
                         <span class="text-xs text-slate-400 font-mono font-bold mr-1 uppercase">Clase:</span>
@@ -3622,7 +3689,7 @@ Object.assign(ui, {
                                                 <span>🎨</span>
                                                 <span>Nano Banana 3</span>
                                             </div>
-                                            <button type="button" onclick="ui.modalViewNewsImage('${this.escapeAttr(imgSource)}', '${this.escapeAttr(r.title)}')" class="absolute top-2 right-2 bg-black/70 hover:bg-black text-white p-1.5 rounded text-xs opacity-90 hover:opacity-100 transition-opacity" title="Ampliar imagen">
+                                            <button type="button" onclick="ui.modalViewNewsImage('${this.escapeAttr(imgSource)}', '${this.escapeAttr(r.title)}')" class="min-h-[44px] min-w-[44px] flex items-center justify-center absolute top-2 right-2 bg-black/80 hover:bg-black text-white p-2 rounded text-sm opacity-90 hover:opacity-100 transition-opacity" title="Ampliar imagen">
                                                 🔍
                                             </button>
                                         </div>

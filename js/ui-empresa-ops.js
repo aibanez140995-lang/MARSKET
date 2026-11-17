@@ -125,6 +125,29 @@ Object.assign(ui, {
             </div>`;
         }
 
+        const executedOrders = allOrders.filter(o => o.status === 'EJECUTADO');
+        const executedSummaryHtml = executedOrders.length > 0 ? `
+        <details class="mt-4 pt-3 border-t border-slate-800">
+            <summary class="min-h-[44px] cursor-pointer flex items-center justify-between gap-2 text-xs font-mono text-slate-200 hover:text-mars-cyan select-none">
+                <span>✅ Ver historial de recepciones completadas en taller (${executedOrders.length})</span>
+                <span class="text-mars-cyan shrink-0">▼ Ver</span>
+            </summary>
+            <div class="mt-2 space-y-2 max-h-56 overflow-y-auto pr-1">
+                ${executedOrders.map(o => {
+                    const pieces = (o.items || []).map(it => `${this.escapeHTML(it.name)} ×${Number(it.qty) || 1}`).join(', ');
+                    return `
+                    <div class="bg-black/50 border border-slate-800 p-2.5 rounded text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                        <div class="min-w-0">
+                            <span class="text-mars-green font-mono font-bold">#${this.escapeHTML(o.id)}</span>
+                            <span class="text-slate-400 font-mono text-[11px] ml-1.5">${this.escapeHTML(o.date || '--')}</span>
+                            <p class="text-slate-200 font-sans mt-0.5 break-words">${pieces || 'Sin desglose'}</p>
+                        </div>
+                        <span class="text-mars-cyan font-mono font-bold shrink-0">${Number(o.total || 0).toFixed(2)} €v</span>
+                    </div>`;
+                }).join('')}
+            </div>
+        </details>` : '';
+
         const ordersPanelHtml = `
         <div id="ops-orders-tracking-panel" class="mt-6 terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-green">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-3">
@@ -142,6 +165,7 @@ Object.assign(ui, {
             <div>
                 ${ordersTabContentHtml}
             </div>
+            ${executedSummaryHtml}
         </div>`;
 
         const currentHoja = co.deliverables?.hoja_taller_fyq;
@@ -518,7 +542,19 @@ Object.assign(ui, {
             ${bitacoraCardHtml}
             ${pendingHtml}
             <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
-                <h3 class="font-orbitron text-mars-cyan text-sm sm:text-base mb-4 uppercase tracking-tighter">Historial Oficial de Uso de IA (Aprobados)</h3>
+                <h3 class="font-orbitron text-mars-cyan text-sm sm:text-base mb-3 uppercase tracking-tighter">Historial Oficial de Uso de IA (Aprobados)</h3>
+                <div class="flex flex-wrap gap-2 mb-4 pb-3 border-b border-slate-800">
+                    ${[
+                        { k: 'CEO', label: 'CEO' },
+                        { k: 'TECNICO', label: 'I+D' },
+                        { k: 'FINANZAS', label: 'FIN' },
+                        { k: 'MARKETING', label: 'MKT' },
+                        { k: 'OPERACIONES_IA', label: 'OPS' }
+                    ].map(d => {
+                        const cnt = approvedPrompts.filter(p => p.role === d.k || (d.k === 'OPERACIONES_IA' && p.role === 'OPERACIONES')).length;
+                        return `<span class="text-[11px] font-mono px-2.5 py-1 rounded border ${cnt > 0 ? 'bg-mars-green/10 border-mars-green/50 text-mars-green font-bold' : 'bg-slate-900 border-slate-800 text-slate-400'}">${cnt > 0 ? '✓' : '○'} ${d.label} (${cnt})</span>`;
+                    }).join('')}
+                </div>
                 <div class="space-y-4">
                     ${approvedPrompts.map(p => {
                         const authorLabel = (p.submittedBy && p.submittedBy !== p.role) ? `${p.submittedBy} (${p.role})` : p.role;
