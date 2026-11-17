@@ -29,6 +29,8 @@ Object.assign(ui, {
         const canBuy = this.getEffectiveRole() === 'TECNICO' && !state.user?.admin;
         
         let tabsHtml = `
+        ${(co && this.renderRoleActivePhaseDeliverableBanner) ? this.renderRoleActivePhaseDeliverableBanner(co) : ''}
+        ${canBuy ? `<div class="mb-3 px-3 py-2 bg-cyan-950/30 border border-cyan-500/30 rounded text-xs text-slate-200 font-sans">💡 <strong>Sin sustos:</strong> añadir piezas al carrito <strong>no gasta €v todavía</strong>; Finanzas debe revisar y aprobar el pedido antes de descontar saldo.</div>` : ''}
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 border-b border-mars-border pb-3">
             <div role="tablist" aria-label="Mercados de suministro" class="flex flex-wrap gap-2">
                 <button type="button" role="tab" aria-selected="${this.marketTab==='B2C'}" onclick="ui.setMarketTab('B2C')" class="min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase transition-colors whitespace-nowrap ${this.marketTab==='B2C'?'bg-mars-cyan text-black font-black shadow-[0_0_10px_rgba(0,240,255,0.4)]':'bg-slate-900 text-slate-200 hover:text-white border border-slate-700'}">🚀 Catálogo Oficial (B2C)</button>

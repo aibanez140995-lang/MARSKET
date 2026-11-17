@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.11) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.12) ---
 
-const APP_VERSION = "2.0.11";
+const APP_VERSION = "2.0.12";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1154,8 +1154,25 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.11
+// Changelog Oficial de Producción v2.0.12
 const APP_CHANGELOG = [
+    {
+      version: "2.0.12",
+      date: "2026-11-17",
+      title: "Login sin Castigos, Escudo Anti-Plantilla (/copy), Onboarding Directo, Turnos en Radar y Modo Calma",
+      items: [
+        "Login en 2 Pasos sin Castigos: Traducción a español claro (ACCESO DE STARTUP, BORRAR, ENTRAR), pista de tarjeta de clase, borrado unitario de 1 dígito con Retroceso, conservación del PIN si faltó elegir puesto y diferenciación de errores de red.",
+        "Escudo Preventivo Anti-Plantilla Vacía (/copy): Bloqueo automático si alguien intenta entregar la URL de clonación o plantilla original sin copiar, botón [🔗 Probar enlace ↗] y confirmación guiada de permisos públicos en Drive.",
+        "Onboarding Accionable y Sin Enlaces Rotos: Ordenado por fecha límite real (Presupuesto Inicial primero), botón directo [⚡ Ir a mi tarea de hoy ➔], guía Drive en 3 pasos desplegable, enlace válido para CEO y tarjeta propia de apoyo para Auxiliar.",
+        "Claridad Fase I y «¿Quién tiene la pelota?»: Indicadores explícitos de turno (👉 Turno de / 🚨 Turno de: CEO) en Radar y banners, acordeones plegables para módulos futuros (AESA Fase II, Prensa, Balances, Taller Fase III), estado real de Marca y notificación al Claustro en Buzón HR.",
+        "Personalización «🧘 Modo Calma», Tipografía Legible y Móvil BYOD: Nuevo interruptor de Modo Calma (detiene animaciones y avisos sonoros), textos largos en sans-serif legible con zoom real 100/110/120%, toasts arriba en móvil, stepper 2x2 y banner superior elástico."
+      ],
+      highlights: [
+        { type: "ACCESIBILIDAD", text: "Nuevo Modo Calma 🧘 + tipografía sans-serif en textos + zoom real 100%/110%/120%." },
+        { type: "ANTI-ERROR", text: "Escudo anti-plantillas /copy y login que no borra el PIN si olvidaste elegir puesto." },
+        { type: "COORDINACIÓN", text: "Etiquetas «¿Quién tiene la pelota?» y botón directo a tu tarea de hoy en 1 clic." }
+      ]
+    },
     {
       version: "2.0.11",
       date: "2026-11-16",

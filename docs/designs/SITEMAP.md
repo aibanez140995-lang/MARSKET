@@ -7,6 +7,7 @@ Este archivo es el índice central de especificaciones técnicas bajo el **Eleph
 ## 1. Contexto Base del Proyecto (Elephant Baseline)
 
 * **[Contexto Maestro del Elefante (`marsket-elephant`)](../../.agents/skills/marsket-elephant/SKILL.md):** Arquitectura del sistema, leyes innegociables (Zero-Text RGPD, Vanilla JS + Tailwind local, 44px BYOD, persistencia dual CDMON SQLite + Cloudflare D1) y mapa de módulos.
+* **[Tribunal de Arquetipos de Aula (`classroom-personas`)](../../.agents/skills/classroom-personas/SKILL.md):** 10 arquetipos realistas de alumnado y profesorado para pruebas en paralelo estilo Goldfish con Test de 5 Segundos y filtro TRIZ de contradicciones.
 * **[Constitución Técnica y Operativa (`core-rules.md`)](../../.agents/rules/core-rules.md):** Reglas del ciclo de agentes y estándares de calidad visual.
 * **[Catálogo Funcional (`FUNCIONES.md`)](../FUNCIONES.md):** Resumen general de módulos y capacidades del simulador.
 * **[Informe de Conformidad RGPD y Menores (`INFORME_CONFORMIDAD_RGPD_MARSKET.md`)](../INFORME_CONFORMIDAD_RGPD_MARSKET.md):** Marco jurídico LOPDGDD art. 7, política Zero-PII y medidas técnicas de privacidad escolar.

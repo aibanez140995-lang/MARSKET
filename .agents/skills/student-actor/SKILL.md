@@ -51,6 +51,12 @@ Actúas como un **alumno (o equipo de alumnos)** dentro de una startup en MARS-K
 
 ---
 
+## Combinación Rol Departamental × Arquetipo de Aula (`@classroom-personas`):
+
+Cualquier rol departamental (`CEO`, `FINANZAS`, `TECNICO`, `OPERACIONES_IA`, `MARKETING`, `AUXILIAR`) puede simularse cruzándolo con los 10 perfiles psicológicos, técnicos y de accesibilidad definidos en `.agents/skills/classroom-personas/SKILL.md` (`GAMER_NATIVO`, `NOVATO_DIGITAL`, `ENTUSIASTA_LIDER`, `DESCONECTADO_BAJO_INTERES`, `MOVIL_BYOD`, `CAOTICO_ULTIMA_HORA`, `SOCIO_AUXILIAR`, `DOCENTE_HORA_PUNTA`, `NEURODIVERGENTE_FOCO`, `EQUIPO_BLOQUEADO`) para auditar tanto el flujo funcional como la experiencia real en el aula.
+
+---
+
 ## Modos de Operación:
 
 Cuando el usuario te invoque:

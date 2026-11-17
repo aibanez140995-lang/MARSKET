@@ -219,6 +219,50 @@ const ui = {
         return String(str).replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
     },
 
+    isTemplateDriveUrl(url) {
+        const clean = this.cleanInput(url);
+        if (!clean) return { isTemplate: false };
+        if (/\/copy(?:[/?#]|$)/i.test(clean) || /\/template\/preview(?:[/?#]|$)/i.test(clean)) {
+            return {
+                isTemplate: true,
+                reason: 'Has pegado el enlace de clonación (/copy) o vista previa de la plantilla oficial. Haz primero una copia en tu Google Drive y pega el enlace de tu propio documento.'
+            };
+        }
+        const matchId = clean.match(/\/d\/([a-zA-Z0-9_-]{15,})/) || clean.match(/[?&]id=([a-zA-Z0-9_-]{15,})/);
+        if (matchId && matchId[1]) {
+            const docId = matchId[1];
+            const templateIds = new Set();
+            if (typeof OFFICIAL_DOC_TEMPLATES !== 'undefined') {
+                Object.values(OFFICIAL_DOC_TEMPLATES).forEach(t => {
+                    const u = t?.copyUrl || t?.url || '';
+                    const m = u.match(/\/d\/([a-zA-Z0-9_-]{15,})/);
+                    if (m && m[1]) templateIds.add(m[1]);
+                });
+            }
+            if (typeof DELIVERABLES_DEF !== 'undefined') {
+                DELIVERABLES_DEF.forEach(d => {
+                    const u = d?.defaultGuideDocUrl || '';
+                    const m = u.match(/\/d\/([a-zA-Z0-9_-]{15,})/);
+                    if (m && m[1]) templateIds.add(m[1]);
+                });
+            }
+            const tplMap = state.data?.config?.deliverableTemplates || {};
+            Object.values(tplMap).forEach(u => {
+                if (typeof u === 'string') {
+                    const m = u.match(/\/d\/([a-zA-Z0-9_-]{15,})/) || u.match(/[?&]id=([a-zA-Z0-9_-]{15,})/);
+                    if (m && m[1]) templateIds.add(m[1]);
+                }
+            });
+            if (templateIds.has(docId)) {
+                return {
+                    isTemplate: true,
+                    reason: 'Ese enlace apunta a la plantilla oficial original del profesorado, no a vuestra copia rellenada. Pulsa primero [📋 Hacer Copia en Drive] y pega la URL de vuestro documento.'
+                };
+            }
+        }
+        return { isTemplate: false };
+    },
+
     toast(message, tone = 'info', duration = 4000) {
         return this.notify(message, tone, duration);
     },
@@ -246,7 +290,7 @@ const ui = {
         if (!container) {
             container = document.createElement('div');
             container.id = 'hud-toast-container';
-            container.className = 'fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-[70] flex flex-col gap-2 pointer-events-none';
+            container.className = 'fixed top-3 right-3 left-3 sm:top-auto sm:bottom-4 sm:right-4 sm:left-auto sm:w-96 z-[70] flex flex-col gap-2 pointer-events-none';
             container.setAttribute('role', 'status');
             container.setAttribute('aria-live', 'polite');
             document.body.appendChild(container);
@@ -999,7 +1043,7 @@ const ui = {
     },
 
     playPhaseDangerChime(phaseKey = 'I') {
-        if (this.isPhaseDangerAudioMuted()) return;
+        if (this.isFocusCalmMode() || this.isPhaseDangerAudioMuted()) return;
         const playKey = `${state.user?.coId || 'co'}_${phaseKey}`;
         if (this._playedPhaseDangerKey === playKey) return;
         try {
@@ -1103,6 +1147,71 @@ const ui = {
         if (typeof window === 'undefined' || !window.localStorage) return;
         const currentZoom = localStorage.getItem('marsket_text_zoom') || 'normal';
         this.applyTextZoom(currentZoom);
+        this.initFocusMode();
+    },
+
+    initFocusMode() {
+        if (typeof window === 'undefined' || !window.localStorage) return;
+        const mode = localStorage.getItem('marsket_focus_mode') || 'standard';
+        this.applyFocusMode(mode);
+    },
+
+    isFocusCalmMode() {
+        if (typeof document !== 'undefined' && document.documentElement.getAttribute('data-focus-mode') === 'calm') {
+            return true;
+        }
+        try {
+            return typeof localStorage !== 'undefined' && localStorage.getItem('marsket_focus_mode') === 'calm';
+        } catch(e) { return false; }
+    },
+
+    toggleFocusMode() {
+        const nextMode = this.isFocusCalmMode() ? 'standard' : 'calm';
+        this.applyFocusMode(nextMode);
+        this.notify(
+            nextMode === 'calm'
+                ? '🧘 Modo Calma activado: animaciones y avisos sonoros pausados.'
+                : '✨ Modo Estándar activado: efectos visuales espaciales restaurados.',
+            'info'
+        );
+    },
+
+    applyFocusMode(mode) {
+        if (typeof document === 'undefined') return;
+        const target = mode === 'calm' ? 'calm' : 'standard';
+        if (target === 'calm') {
+            document.documentElement.setAttribute('data-focus-mode', 'calm');
+        } else {
+            document.documentElement.removeAttribute('data-focus-mode');
+        }
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('marsket_focus_mode', target);
+            }
+        } catch(e) {}
+        this.updateCalmButtonUI(target);
+    },
+
+    updateCalmButtonUI(mode) {
+        const isCalm = mode === 'calm';
+        const btn = document.getElementById('hud-btn-calm');
+        const lbl = document.getElementById('hud-calm-label');
+        if (lbl) lbl.innerText = isCalm ? 'Calma ON' : 'Calma';
+        if (btn) {
+            btn.title = isCalm ? 'Modo Calma activo (pulsa para volver al modo visual completo)' : 'Activar Modo Calma (detiene parpadeos y avisos sonoros)';
+            if (isCalm) {
+                btn.className = 'min-h-[44px] min-w-[44px] px-2.5 py-1.5 bg-emerald-950/70 border-2 border-emerald-400 text-emerald-300 font-mono font-bold text-xs uppercase flex items-center justify-center gap-1.5 transition-all rounded-sm active:scale-95';
+            } else {
+                btn.className = 'min-h-[44px] min-w-[44px] px-2.5 py-1.5 bg-black/60 border border-slate-700 hover:border-mars-cyan text-slate-300 hover:text-mars-cyan font-mono font-bold text-xs uppercase flex items-center justify-center gap-1.5 transition-all rounded-sm shadow-sm active:scale-95';
+            }
+        }
+        const loginBtn = document.getElementById('login-btn-calm');
+        if (loginBtn) {
+            loginBtn.innerText = isCalm ? '🧘 Calma ON' : '🧘 Calma';
+            loginBtn.className = isCalm
+                ? 'min-h-[44px] px-2.5 py-1.5 bg-emerald-950/70 border border-emerald-400 text-emerald-300 font-mono font-bold text-[11px] uppercase rounded-sm transition-all'
+                : 'min-h-[44px] px-2.5 py-1.5 bg-black/60 border border-slate-700 hover:border-mars-cyan text-slate-300 hover:text-mars-cyan font-mono font-bold text-[11px] uppercase rounded-sm transition-all';
+        }
     },
 
     toggleTextZoom() {
@@ -1145,6 +1254,10 @@ const ui = {
             } else {
                 btn.className = 'min-h-[44px] min-w-[44px] px-2.5 py-1.5 bg-black/60 border border-slate-700 hover:border-mars-cyan text-slate-300 hover:text-mars-cyan font-mono font-bold text-xs uppercase flex items-center justify-center gap-1.5 transition-all rounded-sm shadow-sm active:scale-95';
             }
+        }
+        const loginZoomBtn = document.getElementById('login-btn-zoom');
+        if (loginZoomBtn) {
+            loginZoomBtn.innerText = `🔠 ${text}`;
         }
     },
 
@@ -1259,7 +1372,8 @@ const ui = {
                             auth.press(e.key);
                         } else if (e.key === 'Backspace' || e.key === 'Delete') {
                             e.preventDefault();
-                            auth.clear();
+                            if (typeof auth.backspace === 'function') auth.backspace();
+                            else auth.clear();
                         } else if (e.key === 'Enter' && state.pin.length === 4) {
                             e.preventDefault();
                             auth.verify();
@@ -1778,7 +1892,10 @@ const ui = {
         }
 
         // Estructura limpia de 3 bloques para los 6 roles de alumno
-        let roleDeliverables = defs.filter(d => d.role === targetRole);
+        const activePhaseKey = (typeof this.getCurrentPhaseKey === 'function') ? this.getCurrentPhaseKey() : 'I';
+        let roleDeliverables = targetRole === 'CEO'
+            ? defs.filter(d => ((typeof this.getDeliverablePhase === 'function') ? this.getDeliverablePhase(d.key) : (d.phase || 'I')) === activePhaseKey)
+            : defs.filter(d => d.role === targetRole || (targetRole === 'OPERACIONES_IA' && d.role === 'OPERACIONES'));
         if (!state.user?.admin) {
             roleDeliverables = roleDeliverables.filter(d => !this.isDeliverableLocked(d.key, co));
         }
@@ -1786,20 +1903,25 @@ const ui = {
             const docObj = docs[d.key];
             const isLocked = this.isDeliverableLocked(d.key, co);
             const lockLabel = isLocked ? '<span class="text-amber-400 font-bold">[🔒 BLOQUEADO]</span>' : '<span class="text-mars-green font-bold">[🟢 ACTIVO]</span>';
-            const statusLabel = docObj ? '<span class="text-mars-green font-bold">✓ Entregado</span>' : '<span class="text-mars-magenta font-bold">⏳ Pendiente</span>';
+            const statusLabel = docObj?.status === 'DELIVERED_TO_TEACHER'
+                ? '<span class="text-mars-green font-bold">✓ Entregado</span>'
+                : (docObj?.status === 'SUBMITTED_TO_CEO'
+                    ? '<span class="text-mars-yellow font-bold">🟡 En Revisión CEO</span>'
+                    : '<span class="text-mars-magenta font-bold">⏳ Pendiente</span>');
+            const deptTag = targetRole === 'CEO' ? `<span class="text-mars-cyan font-mono text-[10px]">[${this.escapeHTML((d.role || '').replace('_', ' '))}]</span> ` : '';
             const tplUrl = this.getDeliverableTemplateUrl(d.key);
             let tplBadge = '';
             if (tplUrl) {
                 if (this.isDocsEditorUrl(tplUrl)) {
                     const viewUrl = this.getGoogleViewUrl(tplUrl);
                     const copyUrl = this.getGoogleCopyUrl(tplUrl);
-                    tplBadge = `<span class="inline-flex flex-wrap items-center gap-1.5 mt-1 sm:mt-0 sm:ml-2"><a href="${encodeURI(viewUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-2.5 py-1.5 bg-slate-900 border border-blue-500/50 rounded text-[11px] text-blue-300 hover:border-cyan-400 hover:text-white font-mono transition-colors">📄 Ver Plantilla ↗</a><a href="${encodeURI(copyUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-2.5 py-1.5 bg-cyan-950/60 border border-mars-cyan/50 rounded text-[11px] text-mars-cyan hover:bg-mars-cyan hover:text-black font-mono font-bold transition-colors">📋 Clonar en Drive ↗</a></span>`;
+                    tplBadge = `<span class="inline-flex flex-wrap items-center gap-1.5 mt-1 sm:mt-0 sm:ml-2"><a href="${encodeURI(viewUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-2.5 py-1.5 bg-slate-900 border border-blue-500/50 rounded text-[11px] text-blue-300 hover:border-cyan-400 hover:text-white font-mono transition-colors">📄 Ver Plantilla Oficial ↗</a><a href="${encodeURI(copyUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-2.5 py-1.5 bg-cyan-950/60 border border-mars-cyan/50 rounded text-[11px] text-mars-cyan hover:bg-mars-cyan hover:text-black font-mono font-bold transition-colors">📋 Hacer Copia en Drive ↗</a></span>`;
                 } else {
                     tplBadge = `<a href="${encodeURI(tplUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-2.5 py-1.5 bg-slate-900 border border-blue-500/50 rounded text-[11px] text-blue-300 hover:border-cyan-400 hover:text-white font-mono ml-1.5 transition-colors">📄 Plantilla Drive ↗</a>`;
                 }
             }
-            return `<li class="border-b border-slate-800/80 py-2 flex justify-between items-center gap-2 flex-wrap"><span class="flex flex-wrap items-center gap-1.5"><strong class="text-white">${this.escapeHTML(d.shortName || d.name)}</strong> <span class="text-slate-400">(${this.escapeHTML(d.subject)})</span>: ${statusLabel}${tplBadge}</span>${lockLabel}</li>`;
-        }).join('') : '<li class="text-slate-400 italic">No tienes entregables curriculares activos asignados directamente a tu rol en esta fase. Supervisa o asiste al equipo en el Dossier.</li>';
+            return `<li class="border-b border-slate-800/80 py-2 flex justify-between items-center gap-2 flex-wrap"><span class="flex flex-wrap items-center gap-1.5">${deptTag}<strong class="text-white">${this.escapeHTML(d.shortName || d.name)}</strong> <span class="text-slate-400">(${this.escapeHTML(d.subject)})</span>: ${statusLabel}${tplBadge}</span>${lockLabel}</li>`;
+        }).join('') : '<li class="text-slate-400 italic">No tienes entregables curriculares activos asignados directamente a tu rol en esta fase. Supervisa o asiste al equipo en Entregables &amp; Dossier.</li>';
 
         let roleTitle = '';
         let roleDesc = '';
@@ -1812,27 +1934,27 @@ const ui = {
         switch(targetRole) {
             case 'CEO':
                 roleTitle = 'DIRECCIÓN GENERAL // CEO';
-                roleDesc = 'Liderar la estrategia global de la empresa, visar entregables en el Dossier, validar campañas de marketing y coordinar la gobernanza corporativa.';
+                roleDesc = 'Liderar la estrategia global de la empresa, visar entregables en Entregables & Dossier, validar campañas de marketing y coordinar la gobernanza corporativa.';
                 checklist3Min = `
-                <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] <strong>1. Revisa el saldo:</strong> Comprueba el capital en el HUD superior antes de autorizar decisiones de gasto.</li>
-                    <li>[ ] <strong>2. Revisa entregables:</strong> Entra en <strong>[📋 Dossier]</strong>, abre los enlaces de tu equipo en Google Drive y pulsa <strong>[✓ APROBAR Y ELEVAR A DOCENTE]</strong>.</li>
-                    <li>[ ] <strong>3. Valida Marketing:</strong> Entra en <strong>[🎨 Marca & MKT]</strong> para autorizar las acciones publicitarias presentadas por tu equipo.</li>
+                <ul class="space-y-1.5 text-xs text-slate-300 pl-1 font-sans">
+                    <li>[ ] <strong>1. Revisa el saldo:</strong> Comprueba el capital en el encabezado superior antes de autorizar decisiones de gasto.</li>
+                    <li>[ ] <strong>2. Visa entregables:</strong> En <strong>[📤 Entregables &amp; Dossier]</strong> (o en tu Bandeja de Visado), abre los enlaces de Google Drive y pulsa <strong>[✓ VISAR Y ENTREGAR AL DOCENTE]</strong>.</li>
+                    <li>[ ] <strong>3. Trámites y Marca:</strong> Entra en <strong>[⚖️ Trámites]</strong> para avalar el Eslogan (DOC_11), registrar Actas (DOC_16) o convocar votaciones.</li>
                 </ul>`;
-                teamChain = `Tus directores (Técnico, Finanzas, Marketing, Operaciones) redactan en Google Drive ➔ Tú revisas en Dossier ➔ Elevas la entrega al Claustro Docente.`;
+                teamChain = `Tus directores (Técnico, Finanzas, Marketing, Operaciones) redactan en Google Drive ➔ Tú revisas y visas ➔ Elevas la entrega al Claustro Docente.`;
                 contingencyHtml = `
                 <details class="bg-black/60 border border-slate-800 p-2.5 rounded text-xs mt-3">
                     <summary class="cursor-pointer text-mars-cyan font-bold uppercase select-none">⚙️ Procedimientos Especiales (Sanciones y Gobernanza)</summary>
-                    <div class="mt-2 space-y-2 text-slate-300 border-t border-slate-800 pt-2 leading-relaxed">
+                    <div class="mt-2 space-y-2 text-slate-300 border-t border-slate-800 pt-2 leading-relaxed font-sans">
                         <p>• <strong>Expediente AEE:</strong> Si recibes una sanción, pulsa <strong>[📢 Redactar Comunicado de Crisis]</strong>, redacta el descargo en el modelo DOC_3 y difúndelo con su enlace.</p>
-                        <p>• <strong>Asamblea de Socios:</strong> En <strong>[⚖️ Gobernanza]</strong> convoca votaciones de socios y avala la propuesta oficial de eslogan ante Coordinación.</p>
-                        <p>• <strong>Devolución de entregables:</strong> Si un documento no cumple la rúbrica o tiene permisos cerrados, pulsa <strong>[↩ DEVOLVER CON MOTIVO]</strong> para que el departamento subsane.</p>
+                        <p>• <strong>Asamblea y Actas (DOC_16):</strong> En <strong>[⚖️ Trámites]</strong> convoca votaciones, registra las actas de dirección (exclusivo CEO) y avala la propuesta de eslogan ante Coordinación.</p>
+                        <p>• <strong>Devolución de entregables:</strong> Si un documento no cumple la rúbrica o tiene permisos cerrados, pulsa <strong>[↩ DEVOLVER]</strong> para que el departamento subsane.</p>
                     </div>
                 </details>`;
                 roleButtons = `
-                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
+                    <button type="button" onclick="ui.navigate('role_deliverables'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Entregables &amp; Dossier</button>
                     <button type="button" onclick="ui.navigate('orders'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bóveda de Órdenes</button>
-                    <button type="button" onclick="ui.navigate('brand'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Marca & MKT</button>
+                    <button type="button" onclick="ui.navigate('resolutions'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Trámites &amp; Slogan</button>
                 `;
                 roleWarning = 'Nunca apruebes un documento o acción sin abrir su enlace de Google Drive para comprobar que la plantilla oficial está completa y con permisos de lectura abiertos.';
                 break;
@@ -1879,13 +2001,13 @@ const ui = {
                     <div class="mt-2 space-y-2 text-slate-300 border-t border-slate-800 pt-2 leading-relaxed">
                         <p>• <strong>Patrocinios:</strong> Si la empresa obtiene un patrocinador (Oro, Plata, Bronce), el descuento se aplica automáticamente a los costes operativos.</p>
                         <p>• <strong>Bloqueo en Números Rojos (≤ 0 €v):</strong> Si el saldo cae a 0 €v o entra en negativo por tasas o sanciones, todas las compras, pedidos y tasas quedan congelados hasta recuperar saldo positivo con Contratos, Patrocinios o ventas B2B.</p>
-                        <p>• <strong>Balances de Economía:</strong> En <strong>[📋 Dossier]</strong> entrega los balances y cuentas de resultados en Google Sheets cuando se abra la fase.</p>
+                        <p>• <strong>Balances de Economía:</strong> En <strong>[📤 Entregables &amp; Dossier]</strong> entrega los balances y cuentas de resultados en Google Sheets cuando se abra la fase.</p>
                     </div>
                 </details>`;
                 roleButtons = `
                     <button type="button" onclick="ui.navigate('orders'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bóveda de Órdenes</button>
                     <button type="button" onclick="ui.navigate('finance'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Finanzas & ECO</button>
-                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
+                    <button type="button" onclick="ui.navigate('role_deliverables'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Entregables</button>
                 `;
                 roleWarning = 'No apruebes pedidos que dejen la cuenta en 0 €v o negativo: entrar en «números rojos» (≤ 0 €v) bloquea gastos, pedidos, I+D y campañas hasta recuperar liquidez.';
                 break;
@@ -1911,7 +2033,7 @@ const ui = {
                 roleButtons = `
                     <button type="button" onclick="ui.navigate('brand'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Marca & MKT</button>
                     <button type="button" onclick="ui.navigate('campaigns'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Campañas</button>
-                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
+                    <button type="button" onclick="ui.navigate('role_deliverables'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Entregables</button>
                 `;
                 roleWarning = 'Cada acción publicitaria requiere adjuntar la Ficha Técnica oficial (DOC_12) en Google Drive con permisos de lectura antes de entregarla al CEO.';
                 break;
@@ -1937,31 +2059,31 @@ const ui = {
                 roleButtons = `
                     <button type="button" onclick="ui.navigate('cart'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Taller Ensamble</button>
                     <button type="button" onclick="ui.navigate('ailog'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bitácora IA</button>
-                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
+                    <button type="button" onclick="ui.navigate('role_deliverables'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Entregables</button>
                 `;
                 roleWarning = 'El uso de IA no declarado en Bitácora acarrea sanción disciplinaria docente; documenta siempre el prompt, la herramienta y la respuesta verificada.';
                 break;
 
             default: // AUXILIAR
                 roleTitle = 'OBSERVADOR AUXILIAR // CALIDAD';
-                roleDesc = 'Apoyar operativamente a los departamentos de la empresa, auditar permisos de Google Drive y ejercer derecho a voto en las asambleas de socios.';
+                roleDesc = 'Apoyar operativamente a los departamentos de la empresa, auditar permisos de Google Drive y ejercer derecho a voto propio en las asambleas de socios.';
                 checklist3Min = `
-                <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] <strong>1. Auditoría Drive:</strong> En <strong>[📋 Dossier]</strong>, abre todos los enlaces del equipo en ventana de incógnito para verificar acceso público.</li>
-                    <li>[ ] <strong>2. Voto Asambleario:</strong> En <strong>[⚖️ Gobernanza]</strong>, vota en las mociones y resoluciones de socios.</li>
-                    <li>[ ] <strong>3. Apoyo operativo:</strong> Ayuda al departamento que tenga mayor carga de trabajo en la sesión de hoy.</li>
+                <ul class="space-y-1.5 text-xs text-slate-300 pl-1 font-sans">
+                    <li>[ ] <strong>1. Auditoría Drive:</strong> En <strong>[📤 Entregables &amp; Dossier]</strong> (pestaña Toda la Startup), abre los enlaces del equipo en incógnito para comprobar acceso público.</li>
+                    <li>[ ] <strong>2. Voto Asambleario:</strong> En <strong>[⚖️ Trámites]</strong>, vota con tu propio usuario en las mociones de socios.</li>
+                    <li>[ ] <strong>3. Apoyo departamental:</strong> Si Coordinación te vincula a un departamento, heredas todas sus herramientas operativas manteniendo tu PIN y voto propio.</li>
                 </ul>`;
-                teamChain = `Auditas permisos y calidad de enlaces de Drive ➔ Respaldas al departamento con más carga ➔ Desbloqueas votaciones con tu voto.`;
+                teamChain = `Auditas permisos y calidad de enlaces de Drive ➔ Respaldas al departamento asignado en paridad operativa ➔ Desbloqueas votaciones con tu voto personal.`;
                 contingencyHtml = `
-                <details class="bg-black/60 border border-slate-800 p-2.5 rounded text-xs mt-3">
-                    <summary class="cursor-pointer text-mars-cyan font-bold uppercase select-none">⚙️ Procedimientos Especiales (Rol Asignado)</summary>
-                    <div class="mt-2 space-y-2 text-slate-300 border-t border-slate-800 pt-2 leading-relaxed">
-                        <p>• <strong>Vinculación Departamental Plena:</strong> Cuando Coordinación te vincula a un departamento, heredas sus mismas herramientas operativas, envíos, autorizaciones y notificaciones (mostrando <code>AUXILIAR (DPTO)</code> en tu HUD) mientras conservas tu propio PIN y voto personal en Asamblea.</p>
+                <details class="bg-black/60 border border-slate-800 p-2.5 rounded text-xs mt-3" open>
+                    <summary class="cursor-pointer text-mars-cyan font-bold uppercase select-none">⚙️ Vinculación Departamental Plena (Cómo funciona)</summary>
+                    <div class="mt-2 space-y-2 text-slate-300 border-t border-slate-800 pt-2 leading-relaxed font-sans">
+                        <p>• <strong>Paridad + Voto Propio:</strong> Cuando el CEO solicita tu vinculación y Coordinación la aprueba, heredas todas las funciones del departamento asignado (mostrando <code>AUXILIAR (DPTO)</code> en tu HUD) mientras conservas tu propio PIN y tu voto independiente en <strong>[⚖️ Trámites]</strong>.</p>
                     </div>
                 </details>`;
                 roleButtons = `
-                    <button type="button" onclick="ui.navigate('dossier'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Dossier</button>
-                    <button type="button" onclick="ui.navigate('resolutions'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Gobernanza</button>
+                    <button type="button" onclick="ui.roleDeliverablesScope='ALL'; ui.navigate('role_deliverables'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Entregables &amp; Dossier</button>
+                    <button type="button" onclick="ui.navigate('resolutions'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Trámites</button>
                 `;
                 roleWarning = 'Tu misión esencial es el control de calidad de accesos en Google Drive y el desbloqueo de decisiones asamblearias.';
                 break;
@@ -2019,20 +2141,26 @@ const ui = {
     },
 
     showOnboarding() {
-        if (sessionStorage.getItem('hideWelcome')) return;
+        const todayStr = new Date().toISOString().split('T')[0];
+        let hideToday = false;
+        try {
+            hideToday = typeof localStorage !== 'undefined' && localStorage.getItem('marsket_hide_welcome_date') === todayStr;
+        } catch(e) {}
+        if (sessionStorage.getItem('hideWelcome') || hideToday) return;
         this._lastFocusedElement = document.activeElement;
-        let role = state.user ? state.user.role : '';
+        const rawRole = state.user ? state.user.role : '';
+        let role = rawRole;
+        let co = null;
         if (state.user && state.user.admin) {
             role = 'DOCENTE';
         } else if (state.user) {
-            const co = state.data.companies?.[state.user.coId];
+            co = state.data.companies?.[state.user.coId] || null;
             const eff = this.getEffectiveRole(co);
-            if (role === 'AUXILIAR' && eff && eff !== 'AUXILIAR') role = eff;
+            if (rawRole === 'AUXILIAR' && eff && eff !== 'AUXILIAR') role = eff;
         }
         
         const elTitle = document.getElementById('onboarding-title');
         if(elTitle) {
-            const rawRole = state.user?.role || '';
             const titleLabel = (!state.user?.admin && rawRole === 'AUXILIAR' && role !== 'AUXILIAR')
                 ? `AUXILIAR (${role.replace('_',' ')})`
                 : role.replace('_',' ');
@@ -2100,44 +2228,125 @@ const ui = {
                 </div>
             </div>`;
         } else if (state.user && !state.user.admin) {
-            const co = state.data.companies?.[state.user.coId];
+            co = co || state.data.companies?.[state.user.coId];
             const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
-            const effectiveRole = role === 'AUXILIAR' ? (co?.auxRoleDept || 'CEO') : role;
-            const roleDefs = effectiveRole === 'CEO' ? defs : defs.filter(d => d.role === effectiveRole);
-            const pendingDocs = roleDefs.filter(d => !co?.deliverables?.[d.key]);
+            const isUnassignedAux = (rawRole === 'AUXILIAR' && !co?.auxRoleDept);
+            const effectiveRole = isUnassignedAux ? 'AUXILIAR' : role;
+            const curPhaseKey = (typeof this.getCurrentPhaseKey === 'function') ? this.getCurrentPhaseKey() : 'I';
+            const getPhaseFor = (d) => (typeof this.getDeliverablePhase === 'function') ? this.getDeliverablePhase(d.key) : (d.phase || 'I');
+            const getDlTs = (d) => {
+                if (typeof this.getDeliverableDeadlineTs === 'function') return this.getDeliverableDeadlineTs(d.key);
+                const rawDl = state.data.config?.deadlines?.[d.key] || d.defaultDate || '2099-12-31';
+                return new Date(rawDl).getTime() || Number.MAX_SAFE_INTEGER;
+            };
+
+            const activePhaseDefs = defs.filter(d => getPhaseFor(d) === curPhaseKey);
+            const phaseDoneCount = activePhaseDefs.filter(d => co?.deliverables?.[d.key]?.status === 'DELIVERED_TO_TEACHER').length;
+
+            const roleDefs = (effectiveRole === 'CEO' || isUnassignedAux)
+                ? activePhaseDefs
+                : defs.filter(d => (d.role === effectiveRole || (effectiveRole === 'OPERACIONES_IA' && d.role === 'OPERACIONES')) && !this.isDeliverableLocked(d.key, co));
+
+            const pendingDocs = roleDefs
+                .filter(d => !co?.deliverables?.[d.key] || co.deliverables[d.key].status === 'CEO_REVISION' || co.deliverables[d.key].status === 'DEVUELTO_A_TECNICO')
+                .sort((a, b) => getDlTs(a) - getDlTs(b));
+
             const nextPending = pendingDocs[0];
             const dlDate = nextPending ? (state.data.config?.deadlines?.[nextPending.key] || nextPending.defaultDate) : null;
             const dlBadge = dlDate ? this.getDeadlineStatus(dlDate) : null;
             const coName = co?.name || 'TU EMPRESA';
 
+            let missionLabel = `Próximo Entregable (${effectiveRole.replace('_', ' ')})`;
+            let missionValue = nextPending ? this.escapeHTML(nextPending.shortName || nextPending.name) : '¡Todos los entregables de tu departamento están al día!';
+            let directActionView = nextPending ? 'role_deliverables' : (effectiveRole === 'CEO' ? 'dashboard' : (effectiveRole === 'FINANZAS' ? 'finance' : (effectiveRole === 'TECNICO' ? 'tech' : (effectiveRole === 'MARKETING' ? 'brand' : 'ailog'))));
+            let directActionLabel = nextPending ? `⚡ Ir a entregar: ${this.escapeHTML(nextPending.shortName || nextPending.name)} ➔` : '⚡ Ir a mi Panel de Trabajo ➔';
+            let directScope = 'MY_ROLE';
+
+            if (effectiveRole === 'CEO') {
+                const submittedToCeo = defs.filter(d => co?.deliverables?.[d.key]?.status === 'SUBMITTED_TO_CEO');
+                if (submittedToCeo.length > 0) {
+                    missionLabel = `Tienes ${submittedToCeo.length} documento(s) esperando tu Visado CEO`;
+                    missionValue = this.escapeHTML(submittedToCeo[0].shortName || submittedToCeo[0].name);
+                    directActionView = 'dashboard';
+                    directActionLabel = `⚡ Ir a Bandeja de Visado (${submittedToCeo.length}) ➔`;
+                } else if (nextPending) {
+                    missionLabel = `Próximo Hito del Equipo (Fase ${curPhaseKey} · Resp: ${(nextPending.role || '').replace('_', ' ')})`;
+                    directActionView = 'dashboard';
+                    directActionLabel = '⚡ Abrir Sala de Mando (Fase ' + curPhaseKey + ') ➔';
+                }
+            } else if (isUnassignedAux) {
+                const req = co?.auxRoleRequest;
+                missionLabel = 'Estado de Rol Auxiliar (Comodín)';
+                if (req && req.status === 'PENDIENTE') {
+                    missionValue = `⏳ Vinculación solicitada por el CEO para apoyar a ${this.escapeHTML(req.dept)} (pendiente de aprobación docente).`;
+                } else {
+                    missionValue = 'Aún sin departamento asignado: puedes auditar enlaces Drive del equipo, votar en Trámites y registrar uso de IA.';
+                }
+                directActionView = 'role_deliverables';
+                directScope = 'ALL';
+                directActionLabel = '⚡ Auditar Entregables del Equipo ➔';
+            } else if (effectiveRole === 'FINANZAS') {
+                const pendingOrders = (co?.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS').length;
+                if (pendingOrders > 0) {
+                    missionLabel = `Autorizaciones Pendientes (${pendingOrders})`;
+                    missionValue = `Tienes ${pendingOrders} pedido(s) esperando tu visto bueno financiero.`;
+                    directActionView = 'orders';
+                    directActionLabel = `⚡ Ir a Bóveda de Órdenes (${pendingOrders}) ➔`;
+                }
+            }
+
+            const sessionBadgeText = (!state.user?.admin && rawRole === 'AUXILIAR' && !isUnassignedAux)
+                ? `AUXILIAR (${effectiveRole.replace('_', ' ')})`
+                : rawRole.replace('_', ' ');
+
             content = `
-            <div class="space-y-3 font-mono text-xs leading-relaxed text-slate-200">
-                <!-- Estado Activo -->
+            <div class="space-y-3 font-sans text-xs leading-relaxed text-slate-200">
+                <!-- Estado Activo + Progreso de Fase -->
                 <div class="bg-slate-950 border border-mars-cyan/60 p-3 space-y-2">
-                    <div class="flex justify-between items-center border-b border-slate-800 pb-1.5 flex-wrap gap-1">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-1.5 flex-wrap gap-1.5">
                         <span class="font-orbitron font-black text-mars-cyan uppercase tracking-wider">${this.escapeHTML(coName)}</span>
-                        <span class="text-mars-green font-bold uppercase text-[11px]">[SESIÓN ACTIVA: ${role.replace('_', ' ')}]</span>
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="text-[10px] font-mono px-2 py-0.5 bg-cyan-950/70 border border-cyan-500/40 text-cyan-300 rounded">Fase ${this.escapeHTML(curPhaseKey)}: ${phaseDoneCount}/${activePhaseDefs.length} Hitos</span>
+                            <span class="text-mars-green font-mono font-bold uppercase text-[11px]">[${this.escapeHTML(sessionBadgeText)}]</span>
+                        </div>
                     </div>
                     <div class="bg-slate-900 border border-slate-800 p-2.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                        <div>
-                            <span class="text-mars-yellow font-bold uppercase block">Próximo Entregable (${this.escapeHTML(effectiveRole)}):</span>
-                            <span class="text-slate-200">${nextPending ? this.escapeHTML(nextPending.shortName || nextPending.name) : '¡Todos los entregables de tu departamento están registrados!'}</span>
+                        <div class="min-w-0 flex-1">
+                            <span class="text-mars-yellow font-bold uppercase block text-[11px] font-mono">${this.escapeHTML(missionLabel)}:</span>
+                            <span class="text-slate-100 font-medium">${missionValue}</span>
                         </div>
-                        ${dlBadge ? `<span class="px-2 py-1 font-black uppercase text-xs shrink-0 ${dlBadge.class}">${this.escapeHTML(dlBadge.text)}</span>` : ''}
+                        ${dlBadge ? `<span class="px-2 py-1 font-black uppercase text-xs shrink-0 font-mono ${dlBadge.class}">${this.escapeHTML(dlBadge.text)}</span>` : ''}
                     </div>
                 </div>
+
+                <!-- Botón Directo de Acción Única -->
+                <button type="button" onclick="ui.roleDeliverablesScope='${directScope}'; ui.closeOnboarding(); ui.navigate('${directActionView}');" class="min-h-[44px] w-full bg-mars-cyan text-black hover:bg-white font-black uppercase text-xs py-2.5 px-4 tracking-wider transition-all text-center shadow-[0_0_12px_rgba(0,240,255,0.3)] rounded-sm">
+                    ${directActionLabel}
+                </button>
 
                 <!-- 3 Reglas Básicas -->
                 <div class="bg-slate-900 border border-slate-800 p-3 space-y-1.5">
-                    <p class="text-mars-cyan font-bold uppercase text-xs mb-1">⚡ Reglas Básicas de Operación:</p>
-                    <p>1. <strong>Documentos:</strong> Usa el botón <strong>[📄 Modelo de documento (Hacer copia)]</strong> y comparte en <strong>Google Drive</strong> con permisos de lectura abiertos.</p>
-                    <p>2. <strong>Privacidad:</strong> No escribas nombres reales, apellidos ni teléfonos. Opera siempre con tu rol de equipo.</p>
-                    <p>3. <strong>Inteligencia Artificial:</strong> Cualquier uso de IA debe anotarse en la pestaña <strong>[🤖 Bitácora IA]</strong>.</p>
+                    <p class="text-mars-cyan font-bold uppercase text-xs mb-1 font-mono">⚡ Reglas Básicas de Operación:</p>
+                    <p>1. <strong>Documentos:</strong> Pulsa <strong>[📋 Hacer Copia en Drive]</strong>, rellena tu copia y pega el enlace de <em>tu propio documento</em>.</p>
+                    <p>2. <strong>Privacidad (Zero-PII):</strong> No escribas nombres reales, apellidos ni teléfonos. Opera siempre con tu rol de equipo.</p>
+                    <p>3. <strong>Inteligencia Artificial:</strong> Todo uso de IA debe registrarse en <strong>[🤖 Bitácora IA]</strong>.</p>
                 </div>
 
+                <!-- Ayuda Plegable Drive (Zero-Friction para Novatos) -->
+                <details class="bg-black/60 border border-slate-800 p-2.5 rounded text-xs">
+                    <summary class="min-h-[44px] flex items-center justify-between cursor-pointer text-amber-300 font-bold select-none">
+                        <span>▶ ¿Cómo abrir los permisos de lectura en Google Drive? (3 pasos)</span>
+                    </summary>
+                    <ol class="mt-2 space-y-1.5 text-slate-300 border-t border-slate-800 pt-2 pl-4 list-decimal">
+                        <li>Abre tu documento en Google Docs y pulsa el botón azul <strong>Compartir</strong> (arriba a la derecha).</li>
+                        <li>En «Acceso general», cambia <em>Restringido</em> por <strong>Cualquier persona con el enlace</strong> (permiso: <strong>Lector</strong>).</li>
+                        <li>Pulsa <strong>Copiar enlace</strong> y pégalo aquí en MARS-KET.</li>
+                    </ol>
+                </details>
+
                 <!-- Botón de apertura de guía bajo demanda -->
-                <div class="pt-1">
-                    <button type="button" onclick="ui.closeOnboarding(); ui.showGuide('${role}');" class="min-h-[44px] w-full bg-mars-cyan/20 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-black uppercase text-xs py-2 px-3 tracking-wider transition-all text-center">
+                <div>
+                    <button type="button" onclick="ui.closeOnboarding(); ui.showGuide('${effectiveRole}');" class="min-h-[44px] w-full bg-slate-900 border border-mars-cyan/60 text-mars-cyan hover:bg-mars-cyan hover:text-black font-black uppercase text-xs py-2 px-3 tracking-wider transition-all text-center">
                         [ ❓ ABRIR GUÍA OPERATIVA DE MI PUESTO ]
                     </button>
                 </div>
@@ -2161,6 +2370,11 @@ const ui = {
         const elSkip = document.getElementById('skip-onboarding');
         if(elSkip && elSkip.checked) {
             sessionStorage.setItem('hideWelcome', 'true');
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem('marsket_hide_welcome_date', new Date().toISOString().split('T')[0]);
+                }
+            } catch(e) {}
         }
         const elOverlay = document.getElementById('onboarding-overlay');
         if(elOverlay) elOverlay.classList.add('hidden');
@@ -2617,17 +2831,17 @@ const ui = {
         const isDebt = numBalance < 0;
 
         return `
-        <div class="h-16 max-h-16 flex items-center justify-between px-2 sm:px-4 bg-[#07090E]/90 border-b border-cyan-500/20 backdrop-blur relative z-10 w-full mb-4 terminal-border overflow-hidden">
+        <div class="min-h-16 flex items-center justify-between gap-2 px-2.5 sm:px-4 py-2 bg-[#07090E]/90 border-b border-cyan-500/20 backdrop-blur relative z-10 w-full mb-4 terminal-border">
             <!-- Izquierda: Miniatura del logotipo (40x40px) + Nombre Orbitron + Badge Rol Activo -->
-            <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            <div class="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
                 <div class="relative w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 p-0.5 hex-clip bg-mars-bg ${isBrandPending ? 'border border-mars-magenta shadow-[0_0_10px_rgba(255,0,85,0.4)]' : 'border border-mars-cyan shadow-neon-cyan'}">
                     <div class="w-full h-full hex-clip overflow-hidden">
                         <img src="${activeLogoSrc}" alt="Logo de ${coName}" width="40" height="40" onerror="this.onerror=null;this.src='logo.png';" class="w-full h-full ${hasApprovedLogo ? 'object-cover' : 'object-contain p-1 bg-black'}">
                     </div>
                 </div>
-                <div class="flex items-center gap-1.5 sm:gap-2">
-                    <span class="company-header-title font-orbitron font-black text-xs sm:text-base text-mars-cyan tracking-wider uppercase" title="${coName}">${coName}</span>
-                    <span class="bg-mars-cyan/10 border border-mars-cyan/40 text-mars-cyan text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 uppercase tracking-wider whitespace-nowrap shrink-0">${roleLabel}</span>
+                <div class="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+                    <span class="company-header-title font-orbitron font-black text-xs sm:text-base text-mars-cyan tracking-wider uppercase truncate" title="${coName}">${coName}</span>
+                    <span class="bg-mars-cyan/10 border border-mars-cyan/40 text-mars-cyan text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 uppercase tracking-wider whitespace-nowrap shrink-0 hidden xs:inline-block sm:inline-block">${roleLabel}</span>
                 </div>
             </div>
 
@@ -2789,6 +3003,8 @@ const ui = {
 
             if (effectiveRole === 'CEO') {
                 pendingDeliverables = Object.values(co.deliverables || {}).filter(d => d && d.status === 'SUBMITTED_TO_CEO').length;
+            } else if (role === 'AUXILIAR' && !co?.auxRoleDept) {
+                pendingDeliverables = 0;
             } else {
                 pendingDeliverables = Object.entries(co.deliverables || {}).filter(([k, d]) => myDefs.includes(k) && d && (d.status === 'CEO_REVISION' || d.status === 'DEVUELTO_A_TECNICO')).length;
             }
@@ -2950,6 +3166,7 @@ const ui = {
 
         if (typeof localStorage !== 'undefined') {
             this.updateZoomButtonUI(localStorage.getItem('marsket_text_zoom') || 'normal');
+            this.updateCalmButtonUI(localStorage.getItem('marsket_focus_mode') || 'standard');
         }
 
         const balEl = document.getElementById('hud-balance');
@@ -3021,13 +3238,13 @@ const ui = {
         if(cloudEl) {
             if(state.isSyncing) {
                 cloudEl.className = 'text-xs font-bold uppercase tracking-normal sm:tracking-wider px-2 sm:px-2.5 py-1 border border-mars-cyan text-mars-cyan bg-mars-cyan/10 animate-pulse whitespace-nowrap';
-                cloudEl.innerHTML = '<span class="inline sm:hidden">☁️⚡</span><span class="hidden sm:inline">[CLOUD: SYNCING]</span>';
+                cloudEl.innerHTML = '<span class="inline sm:hidden">☁️⚡</span><span class="hidden sm:inline">☁️ Guardando...</span>';
             } else if(state.isCloudOnline) {
                 cloudEl.className = 'text-xs font-bold uppercase tracking-normal sm:tracking-wider px-2 sm:px-2.5 py-1 border border-mars-green/60 text-mars-green bg-mars-green/10 whitespace-nowrap';
-                cloudEl.innerHTML = '<span class="inline sm:hidden">☁️✓</span><span class="hidden sm:inline">[D1: SYNCED]</span>';
+                cloudEl.innerHTML = '<span class="inline sm:hidden">☁️✓</span><span class="hidden sm:inline">☁️ Guardado</span>';
             } else {
                 cloudEl.className = 'text-xs font-bold uppercase tracking-normal sm:tracking-wider px-2 sm:px-2.5 py-1 border border-mars-yellow/60 text-mars-yellow bg-slate-900 whitespace-nowrap';
-                cloudEl.innerHTML = '<span class="inline sm:hidden">☁️⚠️</span><span class="hidden sm:inline">[D1: OFFLINE]</span>';
+                cloudEl.innerHTML = '<span class="inline sm:hidden">☁️⚠️</span><span class="hidden sm:inline">☁️ Sin red</span>';
             }
         }
 
@@ -3188,7 +3405,6 @@ const ui = {
             }
         }
         
-        this.updateHUD();
         const hero = this.generateHeroBanner();
         const notifs = state.user.admin ? '' : (this.renderNotifications ? this.renderNotifications() : '');
         const bankruptBanner = (!state.user.admin && co && typeof this.renderBankruptcyAlertBanner === 'function')
@@ -3220,6 +3436,7 @@ const ui = {
                 break;
             }
         }
+        this.updateHUD();
 
         if (activeId) {
             const restoredEl = document.getElementById(activeId);
@@ -3588,6 +3805,7 @@ const ui = {
                   <input type="url" 
                          id="input-drive-url-${docKey}" 
                          name="driveUrl" 
+                         onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })"
                          ${isLocked ? 'disabled' : 'required'} 
                          placeholder="${isLocked ? '🔒 Entrega bloqueada hasta ' + new Date(openDate).toLocaleString() : 'https://docs.google.com/... o https://drive.google.com/...'}" 
                          class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-base sm:text-xs text-white rounded font-mono outline-none focus:border-mars-cyan ${isLocked ? 'opacity-50 cursor-not-allowed bg-slate-950' : ''}">
@@ -3736,10 +3954,18 @@ const ui = {
             return;
         }
         const inputFromBtn = (btnEl && btnEl.closest) ? (btnEl.closest('.bg-slate-900')?.querySelector('input[name="driveUrl"]') || btnEl.closest('.border-b')?.querySelector('input[name="driveUrl"]')) : null;
+        const inputEl = inputFromBtn || document.getElementById(`input-drive-url-${docType}`);
         const driveUrl = (inputFromBtn?.value || (document.getElementById(`input-drive-url-${docType}`)?.value || '')).trim();
 
         if (!GOOGLE_DRIVE_REGEX.test(driveUrl)) {
+            if (inputEl && this.highlightInvalidField) this.highlightInvalidField(driveUrl, inputEl);
             this.notify("Solo se admiten enlaces válidos a recursos de Google Drive.", "error");
+            return;
+        }
+        const tplCheck = this.isTemplateDriveUrl ? this.isTemplateDriveUrl(driveUrl) : { isTemplate: false };
+        if (tplCheck.isTemplate) {
+            if (inputEl && this.highlightInvalidField) this.highlightInvalidField(driveUrl, inputEl);
+            this.notify(`⚠️ ${tplCheck.reason}`, "error");
             return;
         }
 

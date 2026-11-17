@@ -54,28 +54,41 @@ Object.assign(ui, {
             </div>
         `;
 
+        const loginAccessBarHtml = `
+            <div class="flex justify-end items-center gap-1.5 mb-2">
+                <button type="button" id="login-btn-calm" onclick="ui.toggleFocusMode()" class="min-h-[44px] px-2.5 py-1.5 bg-black/60 border border-slate-700 hover:border-mars-cyan text-slate-300 hover:text-mars-cyan font-mono font-bold text-[11px] uppercase rounded-sm transition-all">🧘 Calma</button>
+                <button type="button" id="login-btn-zoom" onclick="ui.toggleTextZoom()" class="min-h-[44px] px-2.5 py-1.5 bg-black/60 border border-slate-700 hover:border-mars-cyan text-slate-300 hover:text-mars-cyan font-mono font-bold text-[11px] uppercase rounded-sm transition-all">🔠 100%</button>
+            </div>
+        `;
+
         // PASO 1: Solicitud de Código Privado de Empresa (Pasarela Docente oculta tras doble clic/tap en #marsket-logo)
         if (!verifiedCoId) {
             el.innerHTML = `
             ${scanlineHtml}
             <div id="login-box" class="w-full max-w-md terminal-border bg-mars-card p-4 sm:p-6 glow-cyan animate-in fade-in zoom-in duration-300 transition-all mx-auto my-auto" style="max-width: 28rem;">
+                ${loginAccessBarHtml}
                 <img id="marsket-logo" src="logo.png" alt="Logo oficial MARS-KET 2.0" width="96" height="96" 
                     onclick="auth.handleLogoTrigger(event)" ondblclick="auth.handleLogoTrigger(event)" 
                     style="touch-action: manipulation; width: clamp(72px, 12vh, 96px); height: clamp(72px, 12vh, 96px); aspect-ratio: 1/1;" 
                     class="mx-auto mb-2.5 sm:mb-4 drop-shadow-[0_0_16px_rgba(0,240,255,0.75)] hover:drop-shadow-[0_0_24px_rgba(0,240,255,0.95)] transition-all duration-300 cursor-pointer select-none object-contain" 
                     onerror="this.onerror=null;this.src='logo.png';">
-                <h2 id="login-title" class="font-orbitron text-center text-mars-cyan text-sm sm:text-base tracking-wider uppercase font-black mb-1" style="font-size: clamp(0.95rem, 2.2vh, 1.2rem);">SECURE_GATEWAY</h2>
-                <p class="text-xs text-slate-300 text-center uppercase tracking-normal sm:tracking-wider mb-3 sm:mb-4">Paso 1/2: Identificación de Entidad</p>
+                <h2 id="login-title" class="font-orbitron text-center text-mars-cyan text-sm sm:text-base tracking-wider uppercase font-black mb-1" style="font-size: clamp(0.95rem, 2.2vh, 1.2rem);">ACCESO DE STARTUP</h2>
+                <p class="text-xs text-slate-300 text-center uppercase tracking-normal sm:tracking-wider mb-3 sm:mb-4">Paso 1 de 2 · Código de tu equipo</p>
                 
                 <div class="bg-black/60 border border-mars-border p-3 sm:p-4">
-                    <label for="login-company-code" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5 tracking-wider">Código Privado de Empresa</label>
+                    <label for="login-company-code" class="text-xs text-mars-cyan uppercase font-bold block mb-1 tracking-wider">Código Privado de Empresa</label>
+                    <p class="text-[11px] text-slate-400 font-sans mb-2">Está en tu tarjeta de clase (4 letras y 4 números, ej: AST-1010).</p>
                     <input type="text" id="login-company-code" autocomplete="off" placeholder="EJ: AST-1010" style="touch-action: manipulation; font-size: 16px;" onkeydown="if(event.key==='Enter') auth.validateCompanyCode()" onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="w-full bg-slate-900 border border-mars-cyan/60 p-2.5 sm:p-3 text-center font-orbitron font-black uppercase tracking-widest text-mars-yellow outline-none focus:border-mars-cyan mb-3 min-h-[48px]">
-                    <button type="button" onclick="auth.validateCompanyCode()" style="touch-action: manipulation;" class="w-full min-h-[48px] bg-mars-cyan text-black font-black py-3 px-3 text-xs uppercase tracking-normal sm:tracking-wider hover:bg-white transition-all shadow-[0_0_12px_rgba(0,240,255,0.3)] whitespace-nowrap">[ VALIDAR CÓDIGO ]</button>
+                    <button type="button" onclick="auth.validateCompanyCode()" style="touch-action: manipulation;" class="w-full min-h-[48px] bg-mars-cyan text-black font-black py-3 px-3 text-xs uppercase tracking-normal sm:tracking-wider hover:bg-white transition-all shadow-[0_0_12px_rgba(0,240,255,0.3)] whitespace-nowrap">[ VALIDAR CÓDIGO ➔ ]</button>
                 </div>
                 ${rgpdClauseHtml}
                 ${offlineHtml}
             </div>`;
-            setTimeout(() => document.getElementById('login-company-code')?.focus(), 50);
+            setTimeout(() => {
+                document.getElementById('login-company-code')?.focus();
+                this.updateCalmButtonUI(this.isFocusCalmMode() ? 'calm' : 'standard');
+                this.updateZoomButtonUI(localStorage.getItem('marsket_text_zoom') || 'normal');
+            }, 50);
             return;
         }
 
@@ -88,11 +101,12 @@ Object.assign(ui, {
         el.innerHTML = `
         ${scanlineHtml}
         <div id="login-box" class="w-full max-w-md terminal-border bg-mars-card p-4 sm:p-6 glow-cyan animate-in fade-in zoom-in duration-300 transition-all mx-auto my-auto" style="max-width: 28rem;">
+            ${loginAccessBarHtml}
             <!-- Sub-barra superior de navegación compacta -->
             <div class="flex justify-between items-center gap-2 border-b border-mars-border/60 pb-2 mb-2.5">
                 <span class="text-[11px] font-mono text-mars-cyan uppercase tracking-wider flex items-center gap-1.5 shrink-0 whitespace-nowrap">
                     <span class="w-2 h-2 rounded-full bg-mars-cyan animate-pulse" aria-hidden="true"></span>
-                    Paso 2/2 // Terminal PIN
+                    Paso 2 de 2 · Puesto y PIN
                 </span>
                 <button type="button" onclick="auth.resetCompanyStep()" class="min-h-[44px] text-xs text-mars-magenta hover:text-white uppercase font-bold tracking-normal border border-mars-magenta/50 px-2.5 py-1 hover:bg-mars-magenta/20 transition-all whitespace-nowrap shrink-0">
                     [⬅ Cambiar]
@@ -112,23 +126,28 @@ Object.assign(ui, {
                 </div>
             </div>
 
-            <label for="login-role" class="text-xs text-slate-300 uppercase font-bold block mb-1">Selecciona tu Departamento / Rol</label>
-            <select id="login-role" onchange="auth.clear()" style="touch-action: manipulation; font-size: 16px;" class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-xs sm:text-sm mb-3 outline-none focus:border-mars-cyan uppercase text-white font-bold"></select>
+            <label for="login-role" class="text-xs text-slate-300 uppercase font-bold block mb-1">1. Elige tu Puesto en el Equipo</label>
+            <select id="login-role" onchange="auth.onRoleChange()" style="touch-action: manipulation; font-size: 16px;" class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-xs sm:text-sm mb-3 outline-none focus:border-mars-cyan uppercase text-white font-bold transition-all"></select>
             
+            <p class="text-[11px] text-slate-400 font-sans text-center mb-1.5">2. Introduce tu PIN de 4 cifras</p>
             <div class="flex justify-center gap-3 mb-3" role="status" aria-label="Indicador de dígitos de PIN introducidos">
                 ${[1,2,3,4].map(() => `<div class="pin-dot w-3.5 h-3.5 rounded-full border-2 border-mars-cyan transition-all"></div>`).join('')}
             </div>
-            <div id="login-keypad" role="group" style="touch-action: manipulation;" aria-label="Teclado numérico de PIN (también admite teclado físico 0-9, Backspace y Enter)" class="grid grid-cols-3 gap-2 max-w-[240px] mx-auto transition-all">
+            <div id="login-keypad" role="group" style="touch-action: manipulation;" aria-label="Teclado numérico de PIN (también admite teclado físico 0-9, Retroceso y Enter)" class="grid grid-cols-3 gap-2 max-w-[240px] mx-auto transition-all">
                 ${[1,2,3,4,5,6,7,8,9].map(n => `<button type="button" aria-label="Dígito ${n}" onclick="auth.press('${n}')" style="touch-action: manipulation;" class="min-h-[44px] bg-slate-800 border border-slate-700 p-2.5 text-base font-bold text-white hover:bg-mars-cyan hover:text-mars-bg transition-all active:scale-95">${n}</button>`).join('')}
-                <button type="button" aria-label="Borrar PIN" onclick="auth.clear()" style="touch-action: manipulation;" class="min-h-[44px] bg-slate-800 border border-mars-magenta/50 p-2 text-mars-magenta text-xs font-black hover:bg-mars-magenta hover:text-white transition-all active:scale-95">CLR</button>
+                <button type="button" aria-label="Borrar todo el PIN" onclick="auth.clear()" style="touch-action: manipulation;" class="min-h-[44px] bg-slate-800 border border-mars-magenta/50 p-2 text-mars-magenta text-xs font-black hover:bg-mars-magenta hover:text-white transition-all active:scale-95">BORRAR</button>
                 <button type="button" aria-label="Dígito 0" onclick="auth.press('0')" style="touch-action: manipulation;" class="min-h-[44px] bg-slate-800 border border-slate-700 p-2.5 text-base font-bold text-white hover:bg-mars-cyan hover:text-mars-bg transition-all active:scale-95">0</button>
-                <button type="button" aria-label="Confirmar PIN" onclick="auth.verify()" style="touch-action: manipulation;" class="min-h-[44px] bg-mars-green/20 border border-mars-green text-mars-green p-2 text-xs font-black hover:bg-mars-green hover:text-mars-bg transition-all active:scale-95">ENT</button>
+                <button type="button" aria-label="Entrar" onclick="auth.verify()" style="touch-action: manipulation;" class="min-h-[44px] bg-mars-green/20 border border-mars-green text-mars-green p-2 text-xs font-black hover:bg-mars-green hover:text-mars-bg transition-all active:scale-95">ENTRAR</button>
             </div>
-            <p class="text-xs text-slate-400 text-center uppercase mt-2.5">Soporta teclado numérico físico (0-9, Backspace, Enter)</p>
+            <p class="text-[11px] text-slate-400 text-center font-sans mt-2.5">También funciona con teclado físico (0-9, Retroceso borra 1 dígito, Enter).</p>
             ${rgpdClauseHtml}
             ${offlineHtml}
         </div>`;
-        setTimeout(() => auth.updateRoleOptions(), 30);
+        setTimeout(() => {
+            auth.updateRoleOptions();
+            this.updateCalmButtonUI(this.isFocusCalmMode() ? 'calm' : 'standard');
+            this.updateZoomButtonUI(localStorage.getItem('marsket_text_zoom') || 'normal');
+        }, 30);
     },
 
     playLoginAnimation(role) {
@@ -718,9 +737,13 @@ Object.assign(ui, {
                     </div>
                 ` : ''}
                 ${totalPendingCeoItems === 0 ? `
-                    <div class="p-6 bg-slate-900/60 border border-slate-800 text-center rounded">
-                        <p class="text-xs font-mono text-emerald-400 uppercase font-bold">✨ Todos los entregables y visados departamentales están al día.</p>
-                        <p class="text-[11px] text-slate-400 mt-1">Cuando los departamentos (Técnico, Finanzas, Marketing, Operaciones) envíen sus borradores o propuestas, aparecerán aquí para tu firma o devolución.</p>
+                    <div class="p-5 bg-slate-900/60 border border-slate-800 text-center rounded">
+                        ${clockMetrics.phaseDeliveredCount >= clockMetrics.phaseTotalCount && clockMetrics.phaseTotalCount > 0 ? `
+                            <p class="text-xs font-mono text-emerald-400 uppercase font-bold">✨ Todos los entregables de Fase ${this.escapeHTML(clockMetrics.phaseInfo.key)} están entregados al Claustro.</p>
+                        ` : `
+                            <p class="text-xs font-mono text-cyan-300 uppercase font-bold">⏳ Sin visados en espera ahora mismo (${clockMetrics.phaseDeliveredCount}/${clockMetrics.phaseTotalCount} hitos completados en Fase ${this.escapeHTML(clockMetrics.phaseInfo.key)}).</p>
+                            <p class="text-[11px] text-slate-300 mt-1 font-sans">Faltan ${Math.max(0, clockMetrics.phaseTotalCount - clockMetrics.phaseDeliveredCount)} hito(s) en elaboración por tus departamentos. Cuando los suban, aparecerán aquí para tu firma.</p>
+                        `}
                     </div>
                 ` : (visibleTotalCount === 0 ? `
                     <div class="p-5 bg-slate-900/60 border border-emerald-500/40 text-center rounded space-y-3">
@@ -919,7 +942,7 @@ Object.assign(ui, {
                             </div>
                         </div>`;
                     } else {
-                        licenseCardHtml = `
+                        const rawLicenseCardHtml = `
                         <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-slate-700 flex flex-col justify-between hover:border-slate-600 transition-all">
                             <div>
                                 <div class="flex justify-between items-center mb-2">
@@ -932,7 +955,7 @@ Object.assign(ui, {
                                 </p>
                                 <div class="mt-2.5 p-2.5 bg-slate-900/80 border border-slate-800 text-[11px] text-slate-400 font-sans flex items-start gap-2">
                                     <span class="text-sm">🔒</span>
-                                    <span>El Departamento Técnico debe elaborar y subir previamente el <strong>Informe Técnico Preliminar (DOC FYQ)</strong> para habilitar el trámite de la licencia.</span>
+                                    <span>El Departamento Técnico debe elaborar y subir previamente el <strong>Informe Técnico Preliminar (FYQ)</strong> para habilitar el trámite de la licencia.</span>
                                 </div>
                             </div>
                             <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
@@ -940,6 +963,14 @@ Object.assign(ui, {
                                 <button type="button" disabled class="min-h-[44px] bg-slate-900 border border-slate-700 text-slate-500 font-bold uppercase text-xs px-4 py-2 cursor-not-allowed">[ 🔒 Requiere Informe Preliminar ]</button>
                             </div>
                         </div>`;
+                        licenseCardHtml = (curPhaseKey === 'I' && !isMasterOrAdmin) ? `
+                        <details class="terminal-border bg-mars-card/80 border border-slate-800 rounded">
+                            <summary class="min-h-[44px] px-4 py-3 cursor-pointer flex items-center justify-between gap-2 text-xs font-mono text-slate-300 hover:text-white select-none">
+                                <span>🔒 Próxima Fase (Fase II): Licencia de Vuelo AESA (Tras Informe Preliminar)</span>
+                                <span class="text-mars-cyan shrink-0">▼ Ver</span>
+                            </summary>
+                            <div class="p-2 pt-0">${rawLicenseCardHtml}</div>
+                        </details>` : rawLicenseCardHtml;
                     }
                 } else {
                     const initFee = (typeof LAUNCH_LICENSE_FEE !== 'undefined') ? LAUNCH_LICENSE_FEE : 50;
@@ -1082,6 +1113,13 @@ Object.assign(ui, {
                     </div>
                 </div>`;
             } else {
+                const isWinOpen = this.isContractPhaseUnlocked ? this.isContractPhaseUnlocked(curPhaseKey, co) : true;
+                const isBudgetReady = this.isBudgetInitialDelivered ? this.isBudgetInitialDelivered(co) : true;
+                const contractHintText = (curPhaseKey === 'I' && !isBudgetReady && !isMasterOrAdmin)
+                    ? 'Requisito previo: Finanzas debe entregar primero el Presupuesto Inicial de Economía para desbloquear la firma (hasta +200 €v).'
+                    : (!isWinOpen && curPhaseKey === 'I' && !isMasterOrAdmin
+                        ? 'La ventana de selección comercial de Fase I abre el 21/11/2026 (requiere Presupuesto Inicial entregado). Recompensas hasta +200 €v.'
+                        : `Elige y formaliza un contrato comercial para la Fase ${this.escapeHTML(curPhaseKey)} y consigue hasta +200 €v para la tesorería.`);
                 ceoActiveContractCardHtml = `
                 <div class="terminal-border bg-slate-900/60 border border-slate-800 p-4 sm:p-5 rounded flex flex-col justify-between">
                     <div>
@@ -1090,17 +1128,17 @@ Object.assign(ui, {
                                 🤝 CONTRATO DE FASE ${this.escapeHTML(curPhaseKey)}
                             </span>
                             <span class="text-[10px] font-mono text-slate-400">
-                                ${signedContractsCount > 0 ? `🏆 ${completedContractsCount}/${signedContractsCount} Cumplidos` : 'Sin Contratos'}
+                                ${signedContractsCount > 0 ? `🏆 ${completedContractsCount}/${signedContractsCount} Cumplidos` : (!isWinOpen && curPhaseKey === 'I' && !isMasterOrAdmin ? '🔒 Apertura 21/11' : 'Sin Contratos')}
                             </span>
                         </div>
-                        <h4 class="font-orbitron font-bold text-white text-xs sm:text-sm uppercase">Sin Licitación Suscrita</h4>
-                        <p class="text-xs text-slate-300 mt-1 leading-relaxed">
-                            Elige y formaliza un contrato comercial vinculado para la Fase ${this.escapeHTML(curPhaseKey)} para obtener hasta +150 €v para la tesorería.
+                        <h4 class="font-orbitron font-bold text-white text-xs sm:text-sm uppercase">${!isWinOpen && curPhaseKey === 'I' && !isMasterOrAdmin ? 'Licitaciones Fase I (Próxima Apertura)' : 'Sin Licitación Suscrita'}</h4>
+                        <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
+                            ${contractHintText}
                         </p>
                     </div>
                     <div class="mt-3 pt-2.5 border-t border-slate-800 flex justify-end">
                         <button type="button" onclick="ui.navigate('contracts')" class="min-h-[44px] px-3.5 py-1.5 bg-mars-cyan text-black hover:bg-white font-black uppercase text-xs rounded transition-all shadow-sm">
-                            ✍️ Elegir Contrato ➔
+                            ${!isWinOpen && curPhaseKey === 'I' && !isMasterOrAdmin ? '👀 Ver Contratos ➔' : '✍️ Elegir Contrato ➔'}
                         </button>
                     </div>
                 </div>`;
@@ -1114,8 +1152,9 @@ Object.assign(ui, {
             ];
             const coReleases = co.pressReleases || {};
             const publishedPrCount = prPhases.filter(p => coReleases[p.phase]).length;
+            const anyPrUnlocked = prPhases.some(p => this.isPressReleaseUnlocked(p.phase, co));
 
-            const pressReleaseCardHtml = `
+            const rawPressReleaseCardHtml = `
             <div class="terminal-border bg-mars-card p-5 border-t-2 border-t-mars-cyan flex flex-col justify-between hover:border-mars-cyan transition-all">
                 <div>
                     <div class="flex justify-between items-center mb-2">
@@ -1179,6 +1218,14 @@ Object.assign(ui, {
                     <button type="button" onclick="ui.navigate('news')" class="min-h-[44px] bg-slate-900 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-black uppercase text-xs px-4 py-2 transition-all">Ver Tablón ➔</button>
                 </div>
             </div>`;
+            const pressReleaseCardHtml = (!anyPrUnlocked && publishedPrCount === 0 && !isMasterOrAdmin) ? `
+            <details class="terminal-border bg-mars-card/80 border border-slate-800 rounded self-start">
+                <summary class="min-h-[44px] px-4 py-3 cursor-pointer flex items-center justify-between gap-2 text-xs font-mono text-slate-300 hover:text-white select-none">
+                    <span>🔒 Fin de Fase: Notas de Prensa DOC_15 (Se abren el 15/12)</span>
+                    <span class="text-mars-cyan shrink-0">▼ Ver</span>
+                </summary>
+                <div class="p-2 pt-0">${rawPressReleaseCardHtml}</div>
+            </details>` : rawPressReleaseCardHtml;
 
             ceoGovernanceModulesHtml = `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
@@ -1365,25 +1412,26 @@ Object.assign(ui, {
                             } catch (_) { shortDl = dlDateStr.slice(0, 10); }
                         }
 
+                        const deptRole = def.role === 'FINANZAS' ? 'FINANZAS (ECO)' : def.role === 'TECNICO' ? 'TÉCNICO (FYQ)' : def.role === 'MARKETING' ? 'MARKETING (LYE)' : (def.role === 'OPERACIONES_IA' || def.role === 'OPERACIONES') ? 'OPERACIONES IA (LYE)' : def.role;
+                        const shortDeptName = def.role === 'FINANZAS' ? 'FINANZAS' : def.role === 'TECNICO' ? 'TÉCNICO' : def.role === 'MARKETING' ? 'MARKETING' : (def.role === 'OPERACIONES_IA' || def.role === 'OPERACIONES') ? 'OPERACIONES' : def.role;
+
                         let cardBorder = 'border-slate-800 bg-black/40 hover:border-slate-700';
-                        let badgeHtml = '<span class="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-black/60 text-slate-400 border border-slate-800">⏳ Pendiente</span>';
+                        let badgeHtml = `<span class="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-black/60 text-slate-300 border border-slate-700">👉 Turno de: ${this.escapeHTML(shortDeptName)}</span>`;
 
                         if (isSubmittedCeo) {
                             cardBorder = 'border-amber-400/80 bg-amber-950/30 ring-1 ring-amber-400/50 shadow-[0_0_12px_rgba(255,204,0,0.2)] animate-pulse';
-                            badgeHtml = '<span style="background-color: #f59e0b !important; color: #000000 !important; font-weight: 900 !important;" class="text-[9px] uppercase px-1.5 py-0.5 rounded font-orbitron">🟡 En tu Visado</span>';
+                            badgeHtml = '<span style="background-color: #f59e0b !important; color: #000000 !important; font-weight: 900 !important;" class="text-[9px] uppercase px-1.5 py-0.5 rounded font-orbitron">🚨 Turno de: CEO (Visar)</span>';
                         } else if (isReturned) {
                             cardBorder = 'border-red-500/80 bg-red-950/30 shadow-[0_0_10px_rgba(255,0,0,0.2)]';
-                            badgeHtml = '<span style="background-color: #ef4444 !important; color: #ffffff !important; font-weight: 900 !important;" class="text-[9px] uppercase px-1.5 py-0.5 rounded font-mono">🔴 Subsanar</span>';
+                            badgeHtml = `<span style="background-color: #ef4444 !important; color: #ffffff !important; font-weight: 900 !important;" class="text-[9px] uppercase px-1.5 py-0.5 rounded font-mono">↩️ Turno de: ${this.escapeHTML(shortDeptName)}</span>`;
                         } else if (isDelivered) {
                             cardBorder = 'border-slate-700 bg-black/50';
-                            badgeHtml = '<span style="background-color: rgba(0, 255, 102, 0.15) !important; border: 1px solid #00ff66 !important; color: #00ff66 !important; font-weight: bold !important;" class="text-[9px] uppercase px-1.5 py-0.5 rounded font-mono">🟢 Entregado</span>';
+                            badgeHtml = '<span style="background-color: rgba(0, 255, 102, 0.15) !important; border: 1px solid #00ff66 !important; color: #00ff66 !important; font-weight: bold !important;" class="text-[9px] uppercase px-1.5 py-0.5 rounded font-mono">🏛️ En Claustro</span>';
                         }
 
-                        const deptRole = def.role === 'FINANZAS' ? 'FINANZAS (ECO)' : def.role === 'TECNICO' ? 'TÉCNICO (FYQ)' : def.role === 'MARKETING' ? 'MARKETING (LYE)' : (def.role === 'OPERACIONES_IA' || def.role === 'OPERACIONES') ? 'OPERACIONES IA (LYE)' : def.role;
-
                         return `
-                        <div onclick="ui.navigate('role_deliverables')" class="terminal-border p-3 border rounded ${cardBorder} cursor-pointer transition-all hover:scale-[1.01] flex flex-col justify-between">
-                            <div>
+                        <button type="button" onclick="ui.roleDeliverablesScope='ALL'; ui.navigate('role_deliverables');" class="terminal-border p-3 border rounded ${cardBorder} cursor-pointer transition-all hover:scale-[1.01] flex flex-col justify-between text-left w-full min-h-[44px]">
+                            <div class="w-full">
                                 <div class="flex justify-between items-start gap-1 mb-1">
                                     <span class="text-[9px] font-mono font-bold text-mars-cyan uppercase tracking-wider truncate">${this.escapeHTML(deptRole)}</span>
                                     <span class="text-[9px] font-mono text-slate-400 shrink-0">Lím: ${this.escapeHTML(shortDl)}</span>
@@ -1392,20 +1440,45 @@ Object.assign(ui, {
                                     ${this.escapeHTML(def.shortName || def.name)}
                                 </h4>
                             </div>
-                            <div class="flex justify-between items-center pt-2 border-t border-slate-800/60 mt-1">
+                            <div class="flex justify-between items-center pt-2 border-t border-slate-800/60 mt-1 w-full gap-1">
                                 ${badgeHtml}
-                                <span class="text-[10px] text-mars-cyan font-mono hover:text-white">Ver ➔</span>
+                                <span class="text-[10px] text-mars-cyan font-mono hover:text-white shrink-0">Ver ➔</span>
                             </div>
-                        </div>`;
+                        </button>`;
                     }).join('')}
                 </div>
             </div>
         </div>`;
 
+        const isUnassignedAux = (!isCEO && state.user.role === 'AUXILIAR' && !co.auxRoleDept);
+        let auxWelcomeCardHtml = '';
+        if (isUnassignedAux) {
+            const auxReq = co.auxRoleRequest;
+            const reqText = (auxReq && auxReq.status === 'PENDIENTE')
+                ? `⏳ El CEO ya ha solicitado vincularte a <strong>${this.escapeHTML(auxReq.dept)}</strong> (pendiente de autorización docente).`
+                : 'Aún no tienes un departamento asignado. Pide al CEO que solicite tu vinculación desde su Sala de Mando (boton «Gestionar Auxiliar»).';
+            auxWelcomeCardHtml = `
+            <div class="terminal-border bg-mars-card p-5 border-t-4 border-t-mars-yellow space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+                    <div>
+                        <span class="text-[10px] font-mono uppercase px-2 py-0.5 bg-mars-yellow/20 border border-mars-yellow text-mars-yellow font-bold">Rol Comodín // Apoyo Transversal</span>
+                        <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase mt-1">🤝 Tu Misión Hoy como Socio Auxiliar</h3>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-200 font-sans leading-relaxed">${reqText}</p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                    <button type="button" onclick="ui.roleDeliverablesScope='ALL'; ui.navigate('role_deliverables');" class="min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs px-3 py-2 hover:bg-white transition-all rounded-sm">🔍 1. Auditar Drive del Equipo ➔</button>
+                    <button type="button" onclick="ui.navigate('resolutions')" class="min-h-[44px] bg-slate-900 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold uppercase text-xs px-3 py-2 transition-all rounded-sm">🗳️ 2. Votar en Trámites ➔</button>
+                    <button type="button" onclick="ui.modalReportAI()" class="min-h-[44px] bg-slate-900 border border-slate-700 text-slate-200 hover:border-mars-cyan hover:text-mars-cyan font-bold uppercase text-xs px-3 py-2 transition-all rounded-sm">🤖 3. Registrar Uso de IA</button>
+                </div>
+            </div>`;
+        }
+
         const wrapper = document.createElement('div');
         wrapper.className = 'space-y-6';
         wrapper.innerHTML = `
             ${crisisHtml}
+            ${auxWelcomeCardHtml}
 
             <!-- CABECERA DE SALA DE MANDO -->
             <div class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-cyan">
@@ -1837,7 +1910,7 @@ Object.assign(ui, {
                 ];
 
                 const stepperHtml = `
-                <div class="grid grid-cols-4 gap-1.5 sm:gap-2 my-3 py-2 border-y border-slate-800/80 bg-black/40 px-2 rounded">
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 my-3 py-2 border-y border-slate-800/80 bg-black/40 px-2 rounded">
                     ${steps.map((s, idx) => {
                         let stepColor = 'text-slate-500 border-slate-800 bg-slate-900/50';
                         let dot = '○';
@@ -1929,8 +2002,18 @@ Object.assign(ui, {
                                 : `🔒 Esperando subida previa de <strong>${deptLabel}</strong>. Podrás visarlo o devolverlo cuando el departamento lo envíe.`))
                         : `🔒 Subida reservada al departamento responsable: <strong>${deptLabel}</strong>.`;
                     actionControlsHtml = `
-                    <div class="p-2.5 bg-black/40 border border-slate-800 text-center">
-                        <span class="text-xs font-mono text-slate-300 uppercase">${waitMsg}</span>
+                    <div class="p-2.5 bg-black/40 border border-slate-800 text-center space-y-2">
+                        <span class="text-xs font-mono text-slate-300 uppercase block">${waitMsg}</span>
+                        ${(!isCEO && isSubmittedCeo) ? `
+                            <details class="text-left bg-slate-950/80 border border-slate-800 p-2 rounded">
+                                <summary class="cursor-pointer text-[11px] font-mono text-amber-300 font-bold select-none">🤝 ¿El CEO ha faltado hoy? Qué puedes adelantar mientras tanto</summary>
+                                <div class="mt-2 pt-2 border-t border-slate-800 text-xs text-slate-300 font-sans space-y-2">
+                                    <p>• Revisa la pestaña <strong>🏢 Toda la Startup</strong> para comprobar en modo incógnito que los enlaces Drive del equipo abren sin pedir permiso.</p>
+                                    <p>• Registra vuestros usos de IA en <strong>🤖 IA</strong> o prepara en Google Docs el borrador de la siguiente entrega.</p>
+                                    <button type="button" onclick="ui.navigate('resolutions')" class="min-h-[44px] px-3 py-1.5 bg-red-950/60 border border-red-500/50 text-red-200 hover:bg-red-800 text-xs font-bold uppercase rounded">⚠️ Si el bloqueo persiste: Reportar en Buzón HR (DOC_2) ➔</button>
+                                </div>
+                            </details>
+                        ` : ''}
                     </div>`;
                 } else {
                     actionControlsHtml = `
@@ -2111,15 +2194,22 @@ Object.assign(ui, {
                 </div>
             ` : ''}
 
-            <div class="space-y-1.5">
-                <label for="deliverable-drive-input" class="text-xs text-mars-cyan uppercase font-bold block">Enlace de Google Drive / Docs con permisos compartidos</label>
-                <input type="url" id="deliverable-drive-input" value="${this.escapeHTML(existingUrl)}" placeholder="https://docs.google.com/document/d/..." class="w-full bg-black border-2 border-mars-cyan p-3 text-base sm:text-xs text-mars-cyan font-mono outline-none focus:shadow-neon-cyan min-h-[44px]">
-                <p class="text-[10px] text-slate-400 font-mono">Aseguraos de configurar el enlace en Google Docs como "Cualquiera con el enlace puede ver" o con permisos de lectura.</p>
+            <div class="space-y-2">
+                <label for="deliverable-drive-input" class="text-xs text-mars-cyan uppercase font-bold block">Enlace de TU documento rellenado en Google Drive / Docs</label>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="url" id="deliverable-drive-input" value="${this.escapeHTML(existingUrl)}" placeholder="https://docs.google.com/document/d/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 bg-black border-2 border-mars-cyan p-3 text-base sm:text-xs text-mars-cyan font-mono outline-none focus:shadow-neon-cyan min-h-[44px]">
+                    <button type="button" onclick="const u = (document.getElementById('deliverable-drive-input')?.value || '').trim(); if(!u) return ui.notify('Pega primero tu enlace arriba para probarlo.', 'warning'); window.open(u, '_blank', 'noopener,noreferrer');" class="min-h-[44px] px-3 py-2 bg-slate-900 border border-slate-600 text-slate-200 hover:border-mars-cyan hover:text-mars-cyan text-xs font-mono font-bold uppercase rounded shrink-0">🔗 Probar enlace ↗</button>
+                </div>
+                <p class="text-[11px] text-slate-300 font-sans">No pegues el enlace de la plantilla vacía (<code>/copy</code>): usa primero <strong>[📋 Hacer Copia en Drive]</strong> y pega aquí el enlace de vuestra copia.</p>
+                <label class="flex items-start gap-2.5 cursor-pointer p-2.5 bg-black/50 border border-slate-800 rounded min-h-[44px]">
+                    <input type="checkbox" id="deliverable-drive-perm-check" class="mt-0.5 min-h-[20px] min-w-[20px] accent-mars-cyan">
+                    <span class="text-xs text-slate-200 font-sans">Confirmo que en Google Drive he marcado <strong>«Cualquier persona con el enlace (Lector)»</strong> para que el CEO y el profesor puedan abrirlo.</span>
+                </label>
             </div>
         </div>`;
 
         const actionsHtml = `
-            <button type="button" onclick="ui.submitRoleDeliverable('${this.escapeHTML(docKey)}')" class="min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs px-5 py-2.5 hover:bg-white transition-all shadow-sm">
+            <button type="button" id="btn-submit-role-deliverable" onclick="ui.submitRoleDeliverable('${this.escapeHTML(docKey)}')" class="min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs px-5 py-2.5 hover:bg-white transition-all shadow-sm">
                 [ 🚀 REMITIR AL CEO PARA SU VISADO ]
             </button>
         `;
@@ -2129,14 +2219,31 @@ Object.assign(ui, {
 
     async submitRoleDeliverable(docKey) {
         const inputEl = document.getElementById('deliverable-drive-input');
+        const permCheckEl = document.getElementById('deliverable-drive-perm-check');
         if (!inputEl) return;
         const url = this.cleanInput(inputEl.value);
 
         if (!url) {
+            if (this.highlightInvalidField) this.highlightInvalidField(url, inputEl);
             return this.notify("Debes indicar un enlace válido de Google Drive / Docs.", "warning");
         }
         if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(url)) {
+            if (this.highlightInvalidField) this.highlightInvalidField(url, inputEl);
             return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+        }
+        const tplCheck = this.isTemplateDriveUrl ? this.isTemplateDriveUrl(url) : { isTemplate: false };
+        if (tplCheck.isTemplate) {
+            if (this.highlightInvalidField) this.highlightInvalidField(url, inputEl);
+            return this.notify(`⚠️ ${tplCheck.reason}`, "error");
+        }
+        if (permCheckEl && !permCheckEl.checked) {
+            return this.notify("Marca la casilla confirmando que el enlace tiene permisos de lectura en Google Drive.", "warning");
+        }
+        const submitBtn = document.getElementById('btn-submit-role-deliverable');
+        if (submitBtn && submitBtn.disabled) return;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerText = '⏳ Enviando...';
         }
 
         const co = state.data.companies[state.user.coId];
@@ -3557,6 +3664,13 @@ Object.assign(ui, {
                 </div>
             </div>`;
         } else {
+            if (!isCEO) {
+                return `
+                <div class="bg-slate-900/50 border border-slate-800 px-3 py-2 mb-3 rounded flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-400">
+                    <span>🤝 Contratos Fase ${this.escapeHTML(curPhase)}: pendiente de selección por Dirección General (CEO).</span>
+                    <button type="button" onclick="ui.navigate('contracts')" class="text-mars-cyan hover:underline font-bold">Ver opciones ➔</button>
+                </div>`;
+            }
             return `
             <div class="terminal-border bg-slate-900/60 border-slate-800 p-3 sm:p-4 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div class="flex items-center gap-2.5 min-w-0 flex-1">
@@ -3567,13 +3681,9 @@ Object.assign(ui, {
                     </div>
                 </div>
                 <div class="shrink-0 w-full sm:w-auto">
-                    ${isCEO ? `
-                        <button type="button" onclick="ui.navigate('contracts')" class="shrink-0 w-full sm:w-auto justify-center min-h-[44px] px-4 py-2 bg-mars-cyan text-black hover:bg-white font-bold text-xs uppercase tracking-wider transition-all whitespace-nowrap text-center">
-                            ✍️ Elegir Contrato de Fase ${this.escapeHTML(curPhase)} ➔
-                        </button>
-                    ` : `
-                        <span class="text-xs font-mono text-slate-500 italic">Pendiente de selección por Dirección General (CEO)</span>
-                    `}
+                    <button type="button" onclick="ui.navigate('contracts')" class="shrink-0 w-full sm:w-auto justify-center min-h-[44px] px-4 py-2 bg-mars-cyan text-black hover:bg-white font-bold text-xs uppercase tracking-wider transition-all whitespace-nowrap text-center">
+                        ✍️ Elegir Contrato de Fase ${this.escapeHTML(curPhase)} ➔
+                    </button>
                 </div>
             </div>`;
         }
@@ -3588,6 +3698,7 @@ Object.assign(ui, {
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
 
         const targetRole = this.getEffectiveRole(co) || role;
+        const isAuxInParity = (role === 'AUXILIAR' && co?.auxRoleDept && targetRole !== 'AUXILIAR');
 
         const myActiveDeliverables = defs.filter(d => {
             const p = (typeof this.getDeliverablePhase === 'function') ? this.getDeliverablePhase(d.key) : (d.phase || 'I');
@@ -3606,17 +3717,17 @@ Object.assign(ui, {
             const docItem = docs[d.key];
             const rawStatus = (typeof docItem === 'object' && docItem) ? docItem.status : (typeof docItem === 'string' && docItem ? 'DELIVERED_TO_TEACHER' : 'PENDING');
             
-            let statusBadge = '<span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-amber-400 border border-amber-500/40">⏳ PENDIENTE</span>';
+            let statusBadge = `<span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-amber-500/40">👉 Tu turno · PENDIENTE</span>`;
             let borderStyle = 'border: 1px solid rgba(245, 158, 11, 0.4);';
             
-            if (rawStatus === 'CEO_REVISION') {
-                statusBadge = '<span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-400 animate-pulse">🟡 EN REVISIÓN CEO</span>';
+            if (rawStatus === 'SUBMITTED_TO_CEO') {
+                statusBadge = `<span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-400 animate-pulse">${targetRole === 'CEO' ? '🚨 Tu turno · VISAR' : '⏳ Turno de: CEO'}</span>`;
                 borderStyle = 'border: 1px solid rgba(0, 240, 255, 0.5);';
             } else if (rawStatus === 'DELIVERED_TO_TEACHER') {
-                statusBadge = '<span style="background-color: rgba(0, 255, 102, 0.15); border: 1px solid #00ff66; color: #00ff66;" class="text-[11px] font-mono font-bold px-2 py-0.5 rounded">🟢 ENTREGADO A DOCENTE</span>';
+                statusBadge = '<span style="background-color: rgba(0, 255, 102, 0.15); border: 1px solid #00ff66; color: #00ff66;" class="text-[11px] font-mono font-bold px-2 py-0.5 rounded">🏛️ ENTREGADO A DOCENTE</span>';
                 borderStyle = 'border: 1px solid rgba(0, 255, 102, 0.4);';
-            } else if (rawStatus === 'RETURNED_BY_CEO' || rawStatus === 'RETURNED_BY_TEACHER') {
-                statusBadge = '<span style="background-color: rgba(255, 0, 85, 0.15); border: 1px solid #ff0055; color: #ff0055;" class="text-[11px] font-mono font-bold px-2 py-0.5 rounded animate-pulse">🔴 SUBSANAR</span>';
+            } else if (rawStatus === 'CEO_REVISION' || rawStatus === 'DEVUELTO_A_TECNICO' || rawStatus === 'RETURNED_BY_CEO' || rawStatus === 'RETURNED_BY_TEACHER') {
+                statusBadge = '<span style="background-color: rgba(255, 0, 85, 0.15); border: 1px solid #ff0055; color: #ff0055;" class="text-[11px] font-mono font-bold px-2 py-0.5 rounded animate-pulse">↩️ SUBSANAR</span>';
                 borderStyle = 'border: 1px solid rgba(255, 0, 85, 0.5);';
             } else if (rawStatus === 'REVIEWED' || rawStatus === 'ACCEPTED') {
                 statusBadge = '<span style="background-color: #00ff66; color: #000; font-weight: 900;" class="text-[11px] font-mono px-2 py-0.5 rounded">✓ CALIFICADO</span>';
@@ -3624,6 +3735,7 @@ Object.assign(ui, {
             }
 
             const deadlineLabel = d.defaultDate ? d.defaultDate.replace('T', ' ') : 'Fin de Fase';
+            const canDirectSubmit = (targetRole !== 'CEO') && (rawStatus === 'PENDING' || rawStatus === 'CEO_REVISION' || rawStatus === 'DEVUELTO_A_TECNICO' || rawStatus === 'RETURNED_BY_CEO' || rawStatus === 'RETURNED_BY_TEACHER');
 
             return `
             <div style="${borderStyle}" class="bg-black/60 p-3 rounded flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2.5">
@@ -3637,24 +3749,31 @@ Object.assign(ui, {
                 </div>
                 <div class="flex flex-wrap items-center gap-2 shrink-0">
                     ${this.renderDocTemplateBtn(d.key)}
-                    <button type="button" onclick="ui.current = 'role_deliverables'; ui.roleDeliverablesPhase = '${curPhase}'; ui.roleDeliverablesScope = 'MY_ROLE'; ui.render();" class="shrink-0 min-h-[44px] px-3.5 py-1.5 bg-slate-900 hover:bg-mars-cyan hover:text-black text-mars-cyan border border-mars-cyan/60 font-bold uppercase text-[11px] rounded transition-all flex items-center gap-1.5 shadow-sm">
-                        <span>📤 Gestionar en Mis Entregables ➔</span>
-                    </button>
+                    ${canDirectSubmit ? `
+                        <button type="button" onclick="ui.modalSubmitRoleDeliverable('${this.escapeHTML(d.key)}')" class="shrink-0 min-h-[44px] px-3.5 py-1.5 bg-mars-cyan hover:bg-white text-black font-black uppercase text-[11px] rounded transition-all flex items-center gap-1.5 shadow-sm">
+                            <span>📤 Subir Enlace Ahora ➔</span>
+                        </button>
+                    ` : `
+                        <button type="button" onclick="ui.current = 'role_deliverables'; ui.roleDeliverablesPhase = '${curPhase}'; ui.roleDeliverablesScope = 'MY_ROLE'; ui.render();" class="shrink-0 min-h-[44px] px-3.5 py-1.5 bg-slate-900 hover:bg-mars-cyan hover:text-black text-mars-cyan border border-mars-cyan/60 font-bold uppercase text-[11px] rounded transition-all flex items-center gap-1.5 shadow-sm">
+                            <span>📤 Ver en Mis Entregables ➔</span>
+                        </button>
+                    `}
                 </div>
             </div>`;
         }).join('');
 
         return `
         <div class="terminal-border bg-slate-950/80 border border-slate-800 p-3.5 sm:p-4 mb-6 rounded shadow-sm">
-            <div class="flex justify-between items-center mb-2.5 border-b border-slate-800 pb-2">
-                <div class="flex items-center gap-2">
+            <div class="flex flex-wrap justify-between items-center gap-2 mb-2.5 border-b border-slate-800 pb-2">
+                <div class="flex items-center gap-2 flex-wrap">
                     <span class="text-xs">📌</span>
                     <span class="text-[11px] font-orbitron font-bold uppercase tracking-wider text-slate-300">
-                        Entregable(s) Oficial(es) de ${this.escapeHTML(targetRole)} • Fase ${this.escapeHTML(curPhase)}
+                        Tu Misión Fase ${this.escapeHTML(curPhase)} (${this.escapeHTML(targetRole.replace('_', ' '))})
                     </span>
+                    ${isAuxInParity ? `<span class="text-[10px] font-mono px-2 py-0.5 bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 rounded">🤝 Paridad Auxiliar (tu voto en Trámites es propio)</span>` : ''}
                 </div>
-                <button type="button" onclick="ui.current = 'role_deliverables'; ui.roleDeliverablesPhase = '${curPhase}'; ui.roleDeliverablesScope = 'MY_ROLE'; ui.render();" class="text-[11px] text-mars-cyan hover:underline font-mono">
-                    Ver todos en Mis Entregables ↗
+                <button type="button" onclick="ui.current = 'role_deliverables'; ui.roleDeliverablesPhase = '${curPhase}'; ui.roleDeliverablesScope = 'ALL'; ui.render();" class="text-[11px] text-mars-cyan hover:underline font-mono min-h-[44px] inline-flex items-center">
+                    🗺️ Mapa del Equipo ↗
                 </button>
             </div>
             <div class="space-y-2">
@@ -4017,7 +4136,7 @@ Object.assign(ui, {
                                     </h4>
                                 </div>
                                 <p class="text-xs text-slate-300 mt-0.5">
-                                    Para poder suscribir un contrato comercial en esta Fase I, el departamento de Finanzas debe entregar previamente el <strong>Presupuesto Inicial de Economía (DOC_4)</strong>. Plazo oficial improrrogable: hasta el <strong>27/11/2026 a las 23:59</strong>.
+                                    Para poder suscribir un contrato comercial en esta Fase I, el departamento de Finanzas debe entregar previamente el <strong>Presupuesto Inicial de Economía</strong>. Plazo oficial improrrogable: hasta el <strong>27/11/2026 a las 23:59</strong>.
                                 </p>
                             </div>
                             <button type="button" onclick="ui.current = 'role_deliverables'; ui.render();" class="min-h-[44px] px-4 py-2 bg-amber-400 hover:bg-amber-300 text-black font-bold uppercase text-xs rounded font-orbitron shrink-0 transition-all flex items-center gap-1.5 shadow-lg shadow-amber-400/20">

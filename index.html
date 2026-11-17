@@ -9,13 +9,13 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MARS-KET 2.0">
-    <link rel="manifest" href="manifest.json?v=2.0.11">
-    <link rel="icon" type="image/jpeg" href="logo.jpg?v=2.0.11">
-    <link rel="shortcut icon" href="logo.jpg?v=2.0.11">
-    <link rel="apple-touch-icon" href="logo.jpg?v=2.0.11">
-    <link rel="apple-touch-icon-precomposed" href="logo.jpg?v=2.0.11">
+    <link rel="manifest" href="manifest.json?v=2.0.12">
+    <link rel="icon" type="image/jpeg" href="logo.jpg?v=2.0.12">
+    <link rel="shortcut icon" href="logo.jpg?v=2.0.12">
+    <link rel="apple-touch-icon" href="logo.jpg?v=2.0.12">
+    <link rel="apple-touch-icon-precomposed" href="logo.jpg?v=2.0.12">
     
-    <!-- Script de Precarga de Zoom Accesible (Zero-Shift / Cero Parpadeo) -->
+    <!-- Script de Precarga de Zoom y Modo Calma (Zero-Shift / Cero Parpadeo) -->
     <script>
         (function(){
             try {
@@ -23,12 +23,15 @@
                 if (z && (z === 'large' || z === 'xlarge')) {
                     document.documentElement.setAttribute('data-text-zoom', z);
                 }
+                if (localStorage.getItem('marsket_focus_mode') === 'calm') {
+                    document.documentElement.setAttribute('data-focus-mode', 'calm');
+                }
             } catch(e){}
         })();
     </script>
 
     <!-- Tailwind CSS (Compilado localmente v1.1.03 - Bloque T) -->
-    <link rel="stylesheet" href="css/tailwind.css?v=2.0.11">
+    <link rel="stylesheet" href="css/tailwind.css?v=2.0.12">
     <style>
         :root {
             color-scheme: dark;
@@ -36,7 +39,7 @@
         body {
             background-color: #05070f;
             color: #e2e8f0;
-            font-family: 'Cascadia Mono', 'Consolas', 'SF Mono', 'Segoe UI Mono', 'Roboto Mono', 'Courier New', monospace;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
             overflow-x: hidden;
             padding-top: env(safe-area-inset-top, 0px);
             padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -50,10 +53,13 @@
             background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
         }
 
-        /* 1. Tipografía Técnica Moderna de Pantalla (Consolas/Cascadia Mono de Alta Legibilidad) */
-        body, .font-mono, code, kbd, pre, samp {
+        /* 1. Tipografía Técnica para cifras/códigos (prose en sans-serif legible) */
+        .font-mono, code, kbd, pre, samp {
             font-family: 'Cascadia Mono', 'Consolas', 'SF Mono', 'Segoe UI Mono', 'Roboto Mono', 'Courier New', monospace !important;
             letter-spacing: -0.005em;
+        }
+        .font-sans {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
         }
         .font-orbitron {
             font-family: 'Orbitron', 'Cascadia Mono', 'Consolas', sans-serif !important;
@@ -85,22 +91,38 @@
             color: #94a3b8 !important;
         }
 
-        /* 3. Escalas de Zoom de Accesibilidad Dinámica (Normal: 100% / Grande: 108% / Extra: 116%) */
+        /* 3. Escalas de Zoom de Accesibilidad Dinámica (Normal: 100% / Grande: 110% / Extra: 120%) */
         html[data-text-zoom="large"] {
-            font-size: 108%;
+            font-size: 110%;
         }
-        html[data-text-zoom="large"] .text-\[9px\] { font-size: 12px !important; }
-        html[data-text-zoom="large"] .text-\[10px\] { font-size: 12.5px !important; }
+        html[data-text-zoom="large"] .text-\[9px\] { font-size: 12.1px !important; }
+        html[data-text-zoom="large"] .text-\[10px\] { font-size: 12.65px !important; }
         html[data-text-zoom="large"] .text-\[11px\] { font-size: 13.5px !important; }
-        html[data-text-zoom="large"] .text-xs { font-size: 0.875rem !important; }
+        html[data-text-zoom="large"] .text-xs { font-size: 0.89375rem !important; }
 
         html[data-text-zoom="xlarge"] {
-            font-size: 116%;
+            font-size: 120%;
         }
-        html[data-text-zoom="xlarge"] .text-\[9px\] { font-size: 13px !important; }
-        html[data-text-zoom="xlarge"] .text-\[10px\] { font-size: 13.5px !important; }
+        html[data-text-zoom="xlarge"] .text-\[9px\] { font-size: 13.2px !important; }
+        html[data-text-zoom="xlarge"] .text-\[10px\] { font-size: 13.8px !important; }
         html[data-text-zoom="xlarge"] .text-\[11px\] { font-size: 14.5px !important; }
-        html[data-text-zoom="xlarge"] .text-xs { font-size: 0.9375rem !important; }
+        html[data-text-zoom="xlarge"] .text-xs { font-size: 0.975rem !important; }
+
+        /* 4. Modo Calma (TDAH / Dislexia / Baja Estimulación Visual) */
+        html[data-focus-mode="calm"] .login-laser-beam {
+            display: none !important;
+            animation: none !important;
+        }
+        html[data-focus-mode="calm"] .animate-pulse,
+        html[data-focus-mode="calm"] .animate-ping {
+            animation: none !important;
+        }
+        html[data-focus-mode="calm"] .glow-cyan {
+            box-shadow: none !important;
+        }
+        html[data-focus-mode="calm"] .text-slate-400 {
+            color: #e2e8f0 !important;
+        }
         .terminal-border {
             border: 1px solid #1e293b;
             position: relative;
@@ -486,7 +508,7 @@
     <div id="app-container" class="hidden max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden p-2 sm:p-4 flex-grow flex flex-col">
         
         <!-- HEADER HUD (FASE 1 v1.0.17: LÍNEA ÚNICA RESPONSIVA COMPACTA - DIMENSIÓN CONSTANTE) -->
-        <header id="hud-header" class="hidden terminal-border bg-mars-card/95 backdrop-blur-md p-3 sm:p-4 mb-3 sm:mb-4 border-b-2 border-b-mars-cyan sticky top-0 z-40">
+        <header id="hud-header" class="hidden terminal-border bg-mars-card/95 backdrop-blur-md p-3 sm:p-4 mb-3 sm:mb-4 border-b-2 border-b-mars-cyan sm:sticky sm:top-0 z-40">
             <!-- Fila 1: Logo, Versión, Avatar de Marca y Estado de Nube D1 -->
             <div class="flex justify-between items-center gap-1.5 sm:gap-2">
                 <div class="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -496,15 +518,18 @@
                         <h1 class="font-orbitron font-black text-xs sm:text-lg text-white tracking-wider sm:tracking-widest leading-none flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
                             MARS-KET <span class="text-mars-cyan">2.0</span>
                         </h1>
-                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v2.0.11</span>
+                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v2.0.12</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    <button type="button" id="hud-btn-calm" onclick="ui.toggleFocusMode()" title="Activar Modo Calma (detiene parpadeos y avisos sonoros)" class="min-h-[44px] min-w-[44px] px-2.5 py-1.5 bg-black/60 border border-slate-700 hover:border-mars-cyan text-slate-300 hover:text-mars-cyan font-mono font-bold text-xs uppercase flex items-center justify-center gap-1.5 transition-all rounded-sm shadow-sm active:scale-95">
+                        <span class="text-sm">🧘</span> <span id="hud-calm-label" class="hidden sm:inline text-xs font-bold">Calma</span>
+                    </button>
                     <button type="button" id="hud-btn-zoom" onclick="ui.toggleTextZoom()" title="Ajustar tamaño de letra para accesibilidad (Normal 100% / Grande 110% / Extra 120%)" class="min-h-[44px] min-w-[44px] px-2.5 py-1.5 bg-black/60 border border-slate-700 hover:border-mars-cyan text-slate-300 hover:text-mars-cyan font-mono font-bold text-xs uppercase flex items-center justify-center gap-1.5 transition-all rounded-sm shadow-sm active:scale-95">
                         <span class="text-sm">🔠</span> <span id="hud-zoom-label" class="hidden sm:inline text-xs font-bold">100%</span>
                     </button>
                     <div id="hud-mini-logo" class="w-8 h-8 sm:w-9 sm:h-9 hex-clip border border-mars-cyan bg-black overflow-hidden flex items-center justify-center hidden" title="Emblema de Entidad Activa"></div>
-                    <span id="hud-cloud-status" role="status" aria-live="polite" class="text-xs font-bold uppercase tracking-normal sm:tracking-wider px-2 sm:px-2.5 py-1 border border-mars-green/60 text-mars-green bg-mars-green/10 whitespace-nowrap"><span class="inline sm:hidden">☁️✓</span><span class="hidden sm:inline">[D1: SYNCED]</span></span>
+                    <span id="hud-cloud-status" role="status" aria-live="polite" class="text-xs font-bold uppercase tracking-normal sm:tracking-wider px-2 sm:px-2.5 py-1 border border-mars-green/60 text-mars-green bg-mars-green/10 whitespace-nowrap"><span class="inline sm:hidden">☁️✓</span><span class="hidden sm:inline">☁️ Guardado</span></span>
                 </div>
             </div>
 
@@ -558,7 +583,7 @@
             <div class="font-orbitron font-black text-xs sm:text-sm tracking-[0.2em] text-white uppercase mb-1.5 flex items-center justify-center gap-2">
                 <span>MARS-KET <span class="text-mars-cyan">2.0</span></span>
                 <span class="text-slate-600 font-mono">|</span>
-                <span id="footer-version" class="text-slate-400 font-mono text-[11px] sm:text-xs tracking-widest font-normal">v2.0.11</span>
+                <span id="footer-version" class="text-slate-400 font-mono text-[11px] sm:text-xs tracking-widest font-normal">v2.0.12</span>
             </div>
 
             <!-- Capa 2: Descriptor Institucional y Académico -->
@@ -633,27 +658,27 @@
     </div>
 
     <!-- CONTENEDOR DE TOASTS HUD -->
-    <div id="hud-toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-[70] flex flex-col gap-2 pointer-events-none"></div>
+    <div id="hud-toast-container" role="status" aria-live="polite" class="fixed top-3 right-3 left-3 sm:top-auto sm:bottom-4 sm:right-4 sm:left-auto sm:w-96 z-[70] flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- ÁREA EXCLUSIVA DE IMPRESIÓN DE CREDENCIALES PDF (@media print) -->
     <div id="credentials-print-area" class="hidden"></div>
 
     <!-- SCRIPTS ORDENADOS DEL SISTEMA -->
-    <script src="js/lexicon-data.js?v=2.0.11"></script>
-    <script src="js/config.js?v=2.0.11"></script>
-    <script src="js/state.js?v=2.0.11"></script>
-    <script src="js/auth.js?v=2.0.11"></script>
-    <script src="js/ui-core.js?v=2.0.11"></script>
-    <script src="js/ui-empresa-core.js?v=2.0.11"></script>
-    <script src="js/ui-empresa-market.js?v=2.0.11"></script>
-    <script src="js/ui-empresa-tech.js?v=2.0.11"></script>
-    <script src="js/ui-empresa-finance.js?v=2.0.11"></script>
-    <script src="js/ui-empresa-ops.js?v=2.0.11"></script>
-    <script src="js/ui-empresa-gov-brand.js?v=2.0.11"></script>
-    <script src="js/ui-docente-core.js?v=2.0.11"></script>
-    <script src="js/ui-docente-eval.js?v=2.0.11"></script>
-    <script src="js/ui-docente-management.js?v=2.0.11"></script>
-    <script src="js/ui-docente-contest.js?v=2.0.11"></script>
+    <script src="js/lexicon-data.js?v=2.0.12"></script>
+    <script src="js/config.js?v=2.0.12"></script>
+    <script src="js/state.js?v=2.0.12"></script>
+    <script src="js/auth.js?v=2.0.12"></script>
+    <script src="js/ui-core.js?v=2.0.12"></script>
+    <script src="js/ui-empresa-core.js?v=2.0.12"></script>
+    <script src="js/ui-empresa-market.js?v=2.0.12"></script>
+    <script src="js/ui-empresa-tech.js?v=2.0.12"></script>
+    <script src="js/ui-empresa-finance.js?v=2.0.12"></script>
+    <script src="js/ui-empresa-ops.js?v=2.0.12"></script>
+    <script src="js/ui-empresa-gov-brand.js?v=2.0.12"></script>
+    <script src="js/ui-docente-core.js?v=2.0.12"></script>
+    <script src="js/ui-docente-eval.js?v=2.0.12"></script>
+    <script src="js/ui-docente-management.js?v=2.0.12"></script>
+    <script src="js/ui-docente-contest.js?v=2.0.12"></script>
 
     <script>
         window.addEventListener('DOMContentLoaded', () => {
@@ -693,7 +718,7 @@
                 }).observe(loginScreenEl, { childList: true, subtree: true });
             }
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-                navigator.serviceWorker.register('sw.js?v=2.0.11').then(reg => {
+                navigator.serviceWorker.register('sw.js?v=2.0.12').then(reg => {
                     reg.update().catch(() => {});
                 }).catch(() => {});
                 navigator.serviceWorker.addEventListener('controllerchange', () => {

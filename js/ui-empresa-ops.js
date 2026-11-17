@@ -220,11 +220,33 @@ Object.assign(ui, {
                 <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Abrir Documento Oficial Drive ↗</span></a>
             </div>`;
         }
-        const hojaHtml = hojaWorkshopHtml;
+        const curOpsPhase = (typeof this.getCurrentPhaseKey === 'function') ? this.getCurrentPhaseKey() : 'I';
+        const isPhaseIOpsQuiet = (curOpsPhase === 'I' && (!currentHoja || hojaStatus === 'DRAFT_TECNICO') && (co.orders || []).filter(o => o.status === 'APROBADO_FINANZAS').length === 0);
+        const phaseIAiMissionHtml = isPhaseIOpsQuiet ? `
+        <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-cyan mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div class="min-w-0 flex-1">
+                <span class="text-[10px] font-mono uppercase px-2 py-0.5 bg-mars-cyan/15 border border-mars-cyan text-mars-cyan font-bold">Tu Misión Activa • Fase I</span>
+                <h3 class="font-orbitron text-white text-sm sm:text-base font-black uppercase mt-1">🤖 Cuaderno de Bitácora Ética de IA (DOC_4)</h3>
+                <p class="text-xs text-slate-300 font-sans mt-0.5">En Fase I aún no hay piezas aprobadas en taller. Registra los usos de IA del equipo y prepara tu Diario de Decisiones de Diciembre.</p>
+            </div>
+            <button type="button" onclick="ui.navigate('ailog')" class="min-h-[44px] w-full sm:w-auto bg-mars-cyan text-black hover:bg-white font-black uppercase text-xs px-4 py-2 transition-all shrink-0 rounded-sm">
+                🤖 Ir a Bitácora IA ➔
+            </button>
+        </div>` : '';
+
+        const hojaHtml = isPhaseIOpsQuiet ? `
+        <details class="terminal-border bg-mars-card/80 border border-slate-800 rounded mb-6">
+            <summary class="min-h-[44px] px-4 py-3 cursor-pointer flex items-center justify-between gap-2 text-xs font-mono text-slate-300 hover:text-white select-none">
+                <span>🔒 Próximas Fases (Fase III): Hoja de Taller y Montaje BOM (En diseño por Técnico)</span>
+                <span class="text-mars-cyan shrink-0">▼ Ver</span>
+            </summary>
+            <div class="p-2 pt-0">${hojaWorkshopHtml}</div>
+        </details>` : hojaWorkshopHtml;
 
         wrapper.innerHTML = `
             ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
             ${this.renderRoleActivePhaseDeliverableBanner ? this.renderRoleActivePhaseDeliverableBanner(co) : ''}
+            ${phaseIAiMissionHtml}
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
                 <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">Logística de Despliegue Físico</h2>
                 <div class="flex gap-2 flex-wrap">

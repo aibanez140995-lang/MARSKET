@@ -1136,7 +1136,9 @@ Object.assign(ui, {
             </div>`;
         }).join('');
 
-        const phaseBalancesBlockHtml = `
+        const anyBalancePhaseUnlocked = phaseDefs.some(p => (typeof this.isPhaseBalanceUnlocked === 'function') ? this.isPhaseBalanceUnlocked(p.phase, co) : true);
+        const isMasterOrAdminFin = Boolean((state.user && state.user.admin) || co.unlockAllContracts === true);
+        const rawPhaseBalancesBlockHtml = `
         <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-amber-400">
             <div class="flex justify-between items-center mb-3 border-b border-mars-border pb-2 flex-wrap gap-2">
                 <div>
@@ -1151,6 +1153,14 @@ Object.assign(ui, {
                 ${phaseBalancesCardsHtml}
             </div>
         </div>`;
+        const phaseBalancesBlockHtml = (!isMasterOrAdminFin && !anyBalancePhaseUnlocked && Object.keys(co.phaseBalances || {}).length === 0) ? `
+        <details class="terminal-border bg-mars-card/80 border border-slate-800 rounded">
+            <summary class="min-h-[44px] px-4 py-3 cursor-pointer flex items-center justify-between gap-2 text-xs font-mono text-slate-300 hover:text-white select-none">
+                <span>🔒 Próximas Fases: Balances de Cierre DOC_17 (Se abren el 15/12)</span>
+                <span class="text-mars-cyan shrink-0">▼ Ver</span>
+            </summary>
+            <div class="p-2 pt-0">${rawPhaseBalancesBlockHtml}</div>
+        </details>` : rawPhaseBalancesBlockHtml;
 
         const pendingOrdersList = (co.orders || []).filter(o => o.status === 'PENDIENTE_FINANZAS');
         const pendingB2BSales = (state.data.b2bMarket || []).filter(o => o && o.sellerCoId === state.user.coId && o.status === 'PENDIENTE_FINANZAS');

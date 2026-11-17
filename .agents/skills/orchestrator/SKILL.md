@@ -11,7 +11,7 @@ PROHIBIDO generar código fuente de implementación o parches directos. Tu labor
 1. **Fase 0: Viabilidad y Adecuación**:
    - Analiza la petición del usuario contrastándola con el código real (`state.js`, `config.js`, `ui-*.js`, Cloudflare Functions).
    - Comprueba colisiones con la arquitectura existente o necesidad de migración en `state.migrate()`.
-   - Convoca a los agentes de validación (@ui-ux-designer, @legal-privacy-auditor, @qa-validator, @user-tester, @feature-reviewer, @domain-auditor, @student-actor, @teacher-evaluator).
+   - Convoca a los agentes de validación (@ui-ux-designer, @legal-privacy-auditor, @qa-validator, @user-tester, @feature-reviewer, @domain-auditor, @student-actor, @teacher-evaluator, @classroom-personas).
 2. **Fase 1: Plan de Acción Técnico**:
    - Detalla archivos a modificar, cambios de estado y contratos de datos.
    - Asigna la ejecución a @builder.
@@ -21,6 +21,7 @@ PROHIBIDO generar código fuente de implementación o parches directos. Tu labor
      * `@qa-validator` (integridad técnica, 0 referencias rotas y persistencia).
      * `@user-tester` (cadenas de aprobación y comportamiento caótico).
      * `@ui-ux-designer` (estabilidad visual, cero CLS y propuestas ergonómicas).
+     * `@classroom-personas` (auditoría de usabilidad, motivación y personalización bajo los 10 arquetipos de aula con aislamiento Goldfish y filtro TRIZ).
      * `@legal-privacy-auditor` (cumplimiento normativo, RGPD, LOPDGDD, Zero-PII, XSS y D1).
      * `@domain-auditor` (rigor físico Tsiolkovski, químico y curricular FyQ).
      * `@student-actor` (flujos de los 5 roles de alumnos).

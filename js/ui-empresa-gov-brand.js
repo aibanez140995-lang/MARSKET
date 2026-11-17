@@ -802,6 +802,8 @@ Object.assign(ui, {
         if (effRole !== 'CEO') {
             ui.pushNotification(state.user.coId, 'CEO', `⚠️ ALERTA HR: ${roleLabel} ha reportado inactividad en el departamento ${dept}.`, 'error', { view: 'resolutions' });
         }
+        const coNameLabel = co.name || state.user.coId;
+        ui.pushNotification('ADMIN', 'ALL', `⚠️ [HR · ${coNameLabel}] ${roleLabel} ha emitido un reporte de bloqueo/inactividad en ${dept} (DOC_2).`, 'warning', { view: 'hr', coId: state.user.coId });
         
         state.save();
         this.closeModal();
@@ -1180,6 +1182,12 @@ Object.assign(ui, {
                 <span class="text-mars-magenta font-black uppercase block mb-1">❌ Propuesta de Marca Rechazada por Coordinación</span>
                 <p class="text-slate-200 leading-relaxed break-words">Motivo: "${this.escapeHTML(co.brandApproval.feedback || 'Incumplimiento de criterios corporativos.')}"</p>
                 ${co.brandApproval.returnDriveUrl ? `<div class="mt-2"><a href="${encodeURI(co.brandApproval.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-mono font-bold"><span>📄 Ver Correcciones de Coordinación en Drive ↗</span></a></div>` : ''}
+            </div>`;
+        } else if (!co.slogan && !co.logo && !co.pendingSlogan) {
+            brandApprovalAlert = `
+            <div class="bg-cyan-950/30 border border-mars-cyan/50 p-2.5 mb-4 text-xs flex flex-wrap justify-between items-center gap-2">
+                <span class="text-mars-cyan font-bold uppercase">🎨 Identidad Corporativa Pendiente de Propuesta</span>
+                <span class="text-slate-300 font-sans">Envía tu Slogan/Logo en DOC_11 abajo para visado del CEO y Coordinación.</span>
             </div>`;
         } else {
             brandApprovalAlert = `

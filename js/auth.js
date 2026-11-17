@@ -117,7 +117,7 @@ const auth = (function() {
                 ui.current = 'admin';
             } else {
                 const landingByRole = {
-                    'TECNICO': 'market',
+                    'TECNICO': 'tech',
                     'FINANZAS': 'finance',
                     'OPERACIONES_IA': 'cart',
                     'OPERACIONES': 'cart',
@@ -252,8 +252,8 @@ const auth = (function() {
             const input = document.getElementById('login-company-code');
             if (!input) return;
             const cleanVal = typeof ui !== 'undefined' && ui.cleanInput ? ui.cleanInput(input.value) : input.value.trim();
-            const code = cleanVal.toUpperCase();
-            if (!code) return ui.notify("Introduce el Código de Acceso de tu Startup.", "warning");
+            const code = cleanVal.replace(/\s+/g, '').toUpperCase();
+            if (!code) return ui.notify("Introduce el Código de Acceso de tu Startup (ej: AST-1010).", "warning");
 
             // 1. Comprobación local inicial
             let matchedCoId = null;
@@ -266,6 +266,7 @@ const auth = (function() {
             }
 
             // 2. Validación centralizada en servidor (Zero-Trust)
+            let networkFailed = false;
             if (!matchedCoId) {
                 try {
                     const res = await fetch('/api/state', {
@@ -279,15 +280,22 @@ const auth = (function() {
                             matchedCoId = data.matchedCoId;
                             _serverCompanyMeta = data.companyMeta;
                         }
+                    } else {
+                        networkFailed = true;
                     }
-                } catch(e) {}
+                } catch(e) {
+                    networkFailed = true;
+                }
             }
 
             if (!matchedCoId) {
                 if (typeof ui !== 'undefined' && ui.highlightInvalidField) {
                     ui.highlightInvalidField(input.value, input);
                 }
-                return ui.notify("❌ Código de Empresa no reconocido. Solicita el código de tu equipo a Coordinación.", "error");
+                if (networkFailed) {
+                    return ui.notify("⚠️ No se pudo conectar con el servidor para validar el código. Revisa tu conexión e inténtalo de nuevo.", "warning");
+                }
+                return ui.notify("❌ Código de Empresa no reconocido. Comprueba el código de tu tarjeta de clase o pídeselo a Coordinación.", "error");
             }
 
             _verifiedCoId = matchedCoId;
@@ -326,7 +334,8 @@ const auth = (function() {
                     <option value="OPERACIONES_IA">Dpto. Operaciones e IA</option>
                 `;
                 if (hasAux) {
-                    html += `<option value="AUXILIAR">Observador Auxiliar (${ui.escapeHTML(co?.auxRoleDept || 'General')})</option>`;
+                    const auxDeptLabel = co?.auxRoleDept || (_serverCompanyMeta && _serverCompanyMeta.auxRoleDept) || 'General';
+                    html += `<option value="AUXILIAR">Observador Auxiliar (${ui.escapeHTML(auxDeptLabel)})</option>`;
                 }
                 roleSelect.innerHTML = html;
             }
@@ -346,9 +355,26 @@ const auth = (function() {
             }
         },
 
+        backspace() {
+            if (state.pin && state.pin.length > 0) {
+                state.pin = state.pin.slice(0, -1);
+                this.updateDots();
+            }
+        },
+
         clear() {
             state.pin = '';
             this.updateDots();
+        },
+
+        onRoleChange() {
+            const roleSelect = document.getElementById('login-role');
+            if (roleSelect) {
+                roleSelect.classList.remove('border-mars-yellow', 'ring-2', 'ring-mars-yellow');
+                if (roleSelect.value && state.pin && state.pin.length === 4) {
+                    setTimeout(() => this.verify(), 80);
+                }
+            }
         },
 
         updateDots() {
@@ -367,8 +393,9 @@ const auth = (function() {
             if (!roleSelect) return;
             const role = roleSelect.value;
             if (!role) {
-                ui.notify("Por favor, selecciona tu departamento o rol en el equipo.", "warning");
-                this.clear();
+                roleSelect.classList.add('border-mars-yellow', 'ring-2', 'ring-mars-yellow');
+                roleSelect.focus();
+                ui.notify("👆 Elige primero tu puesto arriba y entrarás automáticamente (no hemos borrado tu PIN).", "warning");
                 return;
             }
             const pinAttempt = state.pin;
