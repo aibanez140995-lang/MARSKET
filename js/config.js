@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.12) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.13) ---
 
-const APP_VERSION = "2.0.12";
+const APP_VERSION = "2.0.13";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1154,8 +1154,25 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.12
+// Changelog Oficial de Producción v2.0.13
 const APP_CHANGELOG = [
+    {
+      version: "2.0.13",
+      date: "2026-11-17",
+      title: "Hoja de Taller Viva + Histórico de Montaje, Blindaje Anti-Errores (Técnico/Finanzas/Ops/CEO/MKT) y Buzón HR Confidencial",
+      items: [
+        "Hoja de Taller (DOC_10) como Canal Vivo Pre-Fase III e Histórico de Montaje: Técnico y Operaciones ya pueden iterar configuraciones BOM e incidencias desde Fase I/II registrando automáticamente la línea temporal inmutable del cohete (solo el paso final al CEO/FyQ queda reservado a Fase III).",
+        "Control Estricto de Gastos Reales (> 0 €) y Saldo Libre: En recepción B2C toda partida registra su coste real en tienda (> 0.00 € sin botón de 0.00 € reciclado; uso exclusivo de control docente), mientras Finanzas visualiza el saldo comprometido por órdenes pendientes y evita dobles cargos al aprobar o visar.",
+        "Buzón HR (DOC_2) 100% Confidencial al Claustro Docente: Los reportes de inactividad entre socios se envían exclusivamente al profesorado (nunca notifican al CEO ni aparecen al resto del equipo), permitiendo el toque de atención anónimo en clase.",
+        "Estabilidad CEO, Marca, Marketing y Técnico: Corregido el fallo de orden de variables en Fase I del CEO (TDZ), desbloqueo de rechazo de Marca con motivo tipificado y retirada voluntaria de propuesta, estado exacto en Campañas Denegadas, botón [🔗 Probar enlace ↗] y escudo anti-/copy extendido a I+D, Balances, AESA, Prensa y Actas.",
+        "Aislamiento Multi-Rol y Auxiliar / Modo Calma: Lectura independiente de avisos cuando un Auxiliar comparte departamento, conservación del Zoom y Modo Calma tras cerrar sesión y bloqueo de animaciones residuales en Modo Calma."
+      ],
+      highlights: [
+        { type: "TALLER E I+D", text: "Hoja de Taller viva desde Fase I/II con Histórico de Montaje y rechazo tipificado." },
+        { type: "PRIVACIDAD HR", text: "Buzón HR 100% confidencial al Claustro Docente y control de costes reales (> 0 €) solo para profesores." },
+        { type: "FIABILIDAD", text: "Escudo /copy y saldo libre en Finanzas, corrección crítica Fase I del CEO y trazabilidad MKT/Marca." }
+      ]
+    },
     {
       version: "2.0.12",
       date: "2026-11-17",

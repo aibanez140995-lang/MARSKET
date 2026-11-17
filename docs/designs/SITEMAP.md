@@ -21,4 +21,5 @@ Aquí se indexan los documentos de diseño técnico aprobados tras pasar por el 
 
 | Fecha | Documento de Diseño | Estado | Resumen / Alcance |
 | :--- | :--- | :--- | :--- |
+| `2026-11-17` | **[`auditoria_integral_classroom_personas_v2_0_12.md`](./auditoria_integral_classroom_personas_v2_0_12.md)** | `Auditado / Plan Propuesto` | Auditoría integral del Tribunal `@classroom-personas` sobre los 5 roles de alumnado (`Técnico`, `Finanzas`, `Operaciones e IA`, `CEO` y `Marketing`) + Hoja de Ruta `v2.0.13` / `v2.0.14`. |
 | *Pendiente* | *(Próximo diseño, ej. `fase-v-concurso-final.md`)* | `En espera` | Especificación del panel en directo, selección de 1 finalista por clase (`A`–`F`), podio y 6 galardones oficiales del Concurso Final (`19/05/2027`). |

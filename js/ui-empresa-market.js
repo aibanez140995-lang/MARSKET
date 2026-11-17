@@ -161,9 +161,10 @@ Object.assign(ui, {
                 <h4 class="font-orbitron text-xs sm:text-sm text-mars-magenta uppercase font-bold">¿Necesitas reactivos o piezas fuera de catálogo?</h4>
                 <p class="text-xs text-slate-300 uppercase mt-0.5">El Dpto. Técnico puede solicitar materiales especiales de I+D a Coordinación mediante memoria técnica en Google Docs.</p>
             </div>
-            <button type="button" onclick="ui.modalSpecialItem()" class="shrink-0 min-h-[44px] px-4 py-2 bg-mars-magenta text-white font-black text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all shadow-[0_0_10px_rgba(255,0,85,0.3)]">
-                + Solicitar Material I+D
-            </button>
+            ${isBankrupt
+                ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="shrink-0 min-h-[44px] px-4 py-2 bg-slate-900 border border-rose-500/60 text-rose-300 font-black text-xs uppercase cursor-not-allowed">🔒 Bloqueado (Saldo ≤ 0 €v)</button>`
+                : `<button type="button" onclick="ui.modalSpecialItem()" class="shrink-0 min-h-[44px] px-4 py-2 bg-mars-magenta text-white font-black text-xs uppercase hover:bg-white hover:text-mars-magenta transition-all shadow-[0_0_10px_rgba(255,0,85,0.3)]">+ Solicitar Material I+D</button>`
+            }
         </div>` : '';
 
         return header + searchBarHtml + pillsHtml + groupsHtml + catalogFooterHtml;
@@ -382,8 +383,11 @@ Object.assign(ui, {
             </select>
             <label for="input-unit-price" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Precio de Venta Propuesto (€v)</label>
             <input type="number" id="input-unit-price" min="0.01" max="1000000" step="0.01" required value="${(item.price * 0.8).toFixed(2)}" oninput="ui.validateB2BPrice(this)" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold mb-3 outline-none focus:border-mars-yellow">
-            <label for="b2b-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Enlace Drive a Ficha Técnica / Estado (Opcional)</label>
-            <input type="url" id="b2b-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow mb-2">
+            <label for="b2b-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Enlace Drive a Ficha Técnica / Estado (Opcional · DOC_7)</label>
+            <div class="flex flex-col sm:flex-row gap-2 mb-2">
+                <input type="url" id="b2b-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="flex-1 min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow">
+                ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('b2b-drive-url') : ''}
+            </div>
         `;
         const actions = `<button type="button" id="btn-confirm-b2b" onclick="ui.confirmPublishB2B('${this.escapeHTML(orderId)}', ${Number(itemIndex)})" class="min-h-[44px] bg-mars-yellow text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all w-full sm:w-auto">Publicar Oferta B2B</button>`;
         this.showModal("Venta en Mercado Secundario", html, actions);
@@ -397,16 +401,18 @@ Object.assign(ui, {
             return this.notify("Segmento de mercado no autorizado.", "warning");
         }
         const elPrice = document.getElementById('input-unit-price');
-        const rawPrice = elPrice ? elPrice.value.trim() : '';
+        const rawPrice = elPrice ? elPrice.value.trim().replace(',', '.') : '';
         const price = parseFloat(rawPrice);
         if (!rawPrice || isNaN(price) || !Number.isFinite(price) || price <= 0 || price > 1000000 || !/^\d+(\.\d{1,2})?$/.test(rawPrice)) {
             return this.notify("Precio unitario inválido. Debe ser un número estrictamente positivo (máx. 2 decimales, hasta 1.000.000 €v).", "warning");
         }
         const elDrive = document.getElementById('b2b-drive-url');
-        const driveUrl = elDrive ? elDrive.value.trim() : '';
-        if (driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace opcional debe pertenecer a un recurso válido de Google Drive.", "warning");
-        }
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elDrive ? elDrive.value : '', elDrive, { required: false, label: 'la ficha técnica B2B' })
+            : { valid: true, url: elDrive ? elDrive.value.trim() : '' };
+        if (!urlCheck.valid) return;
+        const driveUrl = urlCheck.url;
+        if (this.acquireActionLock && !this.acquireActionLock('pub-b2b-' + orderId + '-' + itemIndex, 1500)) return;
 
         const co = state.data.companies[state.user.coId];
         const ord = co.orders.find(o => String(o.id) === String(orderId));
@@ -474,9 +480,12 @@ Object.assign(ui, {
                     Informe Técnico de Especificación (Google Drive / Docs) *
                 </label>
                 <div class="mb-2">
-                    ${this.renderDocTemplateBtn ? this.renderDocTemplateBtn('DOC_9_ORDEN_ADQUISICION', '📄 Plantilla Orden Adquisición (Clonar Drive)') : ''}
+                    ${this.renderDocTemplateBtn ? this.renderDocTemplateBtn('DOC_9_ORDEN_ADQUISICION', '📄 Plantilla Orden Adquisición (Vista previa)') : ''}
                 </div>
-                <input type="url" id="b2b-buy-drive-url" required placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." class="w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono min-h-[44px]">
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="url" id="b2b-buy-drive-url" required placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono min-h-[44px]">
+                    ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('b2b-buy-drive-url') : ''}
+                </div>
                 <p class="text-[10px] text-slate-400">De conformidad con la política Zero-Text, la justificación de la compra debe alojarse en el Google Doc corporativo con permisos de lectura para Finanzas y la Aduana Docente.</p>
             </div>
             <div class="bg-amber-950/40 border border-amber-500/50 p-3 rounded text-xs text-amber-200 mb-2 space-y-1">
@@ -503,13 +512,12 @@ Object.assign(ui, {
         }
 
         const elDrive = document.getElementById('b2b-buy-drive-url');
-        const driveUrl = elDrive ? this.cleanInput(elDrive.value).trim() : '';
-        if (!driveUrl) {
-            return this.notify("Debes indicar el enlace Drive del informe técnico de especificación (DOC_9).", "warning");
-        }
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elDrive ? elDrive.value : '', elDrive, { required: true, label: 'la Orden de Adquisición (DOC_9)' })
+            : { valid: Boolean(elDrive && this.cleanInput(elDrive.value).trim()), url: elDrive ? this.cleanInput(elDrive.value).trim() : '' };
+        if (!urlCheck.valid) return;
+        const driveUrl = urlCheck.url;
+        if (this.acquireActionLock && !this.acquireActionLock('buy-b2b-' + offerId, 1500)) return;
 
         const co = state.data.companies[state.user.coId];
         if (!co) return;

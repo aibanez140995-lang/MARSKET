@@ -700,6 +700,9 @@ const state = {
                             if (!validHojaStatuses.includes(co.deliverables[docKey].status)) {
                                 co.deliverables[docKey].status = 'DRAFT_TECNICO';
                             }
+                            if (!Array.isArray(co.deliverables[docKey].history)) {
+                                co.deliverables[docKey].history = [];
+                            }
                         } else if (!co.deliverables[docKey].status) {
                             co.deliverables[docKey].status = 'DELIVERED_TO_TEACHER';
                         }
@@ -757,6 +760,7 @@ const state = {
             co.crisisAlerts = Array.isArray(co.crisisAlerts) ? co.crisisAlerts : [];
             co.executiveResolutions = Array.isArray(co.executiveResolutions) ? co.executiveResolutions : [];
             co.meetingMinutes = Array.isArray(co.meetingMinutes) ? co.meetingMinutes : [];
+            co.specialItemRequests = Array.isArray(co.specialItemRequests) ? co.specialItemRequests : [];
         }
         return d;
     },
@@ -1015,8 +1019,19 @@ const state = {
                             } else if (sDoc && lDoc) {
                                 const sDocTime = new Date(sDoc.updatedAt || 0).getTime();
                                 const lDocTime = new Date(lDoc.updatedAt || 0).getTime();
+                                let mergedHist = undefined;
+                                if (dKey === 'hoja_taller_fyq' && (Array.isArray(lDoc.history) || Array.isArray(sDoc.history))) {
+                                    const histMap = new Map();
+                                    [...(Array.isArray(sDoc.history) ? sDoc.history : []), ...(Array.isArray(lDoc.history) ? lDoc.history : [])].forEach(ev => {
+                                        if (ev && ev.id) histMap.set(String(ev.id), ev);
+                                    });
+                                    mergedHist = Array.from(histMap.values()).sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0));
+                                }
                                 if (sDocTime >= lDocTime) {
                                     merged.companies[k].deliverables[dKey] = JSON.parse(JSON.stringify(sDoc));
+                                }
+                                if (mergedHist && typeof merged.companies[k].deliverables[dKey] === 'object' && merged.companies[k].deliverables[dKey]) {
+                                    merged.companies[k].deliverables[dKey].history = mergedHist;
                                 }
                             }
                         }
@@ -1057,7 +1072,7 @@ const state = {
                         }
                         return finalMerged;
                     };
-                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'meetingMinutes', 'cart', 'bom', 'coordinatorReports'];
+                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'meetingMinutes', 'specialItemRequests', 'cart', 'bom', 'coordinatorReports'];
                     const sResetAt = Number(sCo.resetAt) || 0;
                     const lResetAt = Number(lCo.resetAt) || 0;
                     const isTestCo = (k === 'sandbox_master' || k === 'sandbox_student' || merged.companies[k].isTestCompany);
@@ -1171,8 +1186,19 @@ const state = {
                             } else if (lDoc && sDoc) {
                                 const lDocTime = new Date(lDoc.updatedAt || 0).getTime();
                                 const sDocTime = new Date(sDoc.updatedAt || 0).getTime();
+                                let mergedHist = undefined;
+                                if (dKey === 'hoja_taller_fyq' && (Array.isArray(lDoc.history) || Array.isArray(sDoc.history))) {
+                                    const histMap = new Map();
+                                    [...(Array.isArray(sDoc.history) ? sDoc.history : []), ...(Array.isArray(lDoc.history) ? lDoc.history : [])].forEach(ev => {
+                                        if (ev && ev.id) histMap.set(String(ev.id), ev);
+                                    });
+                                    mergedHist = Array.from(histMap.values()).sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0));
+                                }
                                 if (lDocTime > sDocTime) {
                                     sCo.deliverables[dKey] = JSON.parse(JSON.stringify(lDoc));
+                                }
+                                if (mergedHist && typeof sCo.deliverables[dKey] === 'object' && sCo.deliverables[dKey]) {
+                                    sCo.deliverables[dKey].history = mergedHist;
                                 }
                             }
                         }
@@ -1217,7 +1243,7 @@ const state = {
                         return finalMerged;
                     };
 
-                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'meetingMinutes', 'cart', 'bom', 'coordinatorReports'];
+                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'meetingMinutes', 'specialItemRequests', 'cart', 'bom', 'coordinatorReports'];
                     const sResetAt = Number(sCo.resetAt) || 0;
                     const lResetAt = Number(lCo.resetAt) || 0;
                     const isTestCo = (k === 'sandbox_master' || k === 'sandbox_student' || sCo.isTestCompany);
@@ -2140,6 +2166,33 @@ const state = {
         }
     },
 
+    getCommittedB2CBalance(co) {
+        if (!co || !Array.isArray(co.orders)) return 0;
+        return co.orders
+            .filter(o => o && o.status === 'APROBADO_FINANZAS' && o.type !== 'MARKETING' && o.type !== 'B2B_BUY_REQUEST' && !o.offerId)
+            .reduce((acc, o) => acc + (Number(o.total) || 0), 0);
+    },
+
+    getFreeVirtualBalance(co) {
+        if (!co) return 0;
+        return (Number(co.balance) || 0) - this.getCommittedB2CBalance(co);
+    },
+
+    _appendHojaHistoryEntry(hojaObj, co, entry) {
+        if (!hojaObj) return [];
+        hojaObj.history = Array.isArray(hojaObj.history) ? hojaObj.history : [];
+        const bomCount = Array.isArray(co?.bom) ? co.bom.length : 0;
+        hojaObj.history.push({
+            id: entry.id || ('HT-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6)),
+            iteration: hojaObj.history.length + 1,
+            date: new Date().toLocaleString(),
+            timestamp: Date.now(),
+            bomCount,
+            ...entry
+        });
+        return hojaObj.history;
+    },
+
     async sendHojaTallerToWorkshop(driveUrl) {
         if (!this.user || !this.user.coId) return;
         if (this.getEffectiveRole() !== 'TECNICO' && !this.user.admin) {
@@ -2151,43 +2204,92 @@ const state = {
         const co = this.data.companies?.[this.user.coId];
         if (!co) return;
 
-        if (!this.user.admin && this.isDeliverableLocked('hoja_taller_fyq', co)) {
-            console.warn("[SECURITY] Intento no autorizado de envío de Hoja de Taller bloqueada.");
-            if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
-                ui.notify("La Hoja de Taller se encuentra bloqueada hasta su fecha de apertura.", "error");
-            }
-            return;
-        }
-
         co.deliverables = co.deliverables || {};
-        co.deliverables.hoja_taller_fyq = {
+        const prevHoja = (co.deliverables.hoja_taller_fyq && typeof co.deliverables.hoja_taller_fyq === 'object') ? co.deliverables.hoja_taller_fyq : {};
+        const prevHistory = Array.isArray(prevHoja.history) ? [...prevHoja.history] : [];
+        const newDoc = {
+            ...prevHoja,
             driveUrl: driveUrl,
+            url: driveUrl,
             status: 'EN_TALLER_OPERARIO',
             returnReasonId: null,
             returnReason: null,
+            returnDriveUrl: null,
+            history: prevHistory,
             updatedAt: new Date().toISOString()
         };
+        const isResub = prevHoja.status === 'DEVUELTO_A_TECNICO' || prevHoja.status === 'CEO_REVISION' || prevHistory.length > 0;
+        this._appendHojaHistoryEntry(newDoc, co, {
+            actor: (typeof ui !== 'undefined' && typeof ui.getActorRoleLabel === 'function') ? ui.getActorRoleLabel(co) : 'TECNICO',
+            action: isResub ? 'ACTUALIZACION_A_TALLER' : 'ENVIO_A_TALLER',
+            summary: isResub
+                ? 'I+D actualizó la configuración del cohete / BOM y la reenvió a Taller.'
+                : 'I+D envió la configuración inicial del cohete y BOM a Taller para montaje.',
+            driveUrl: driveUrl
+        });
+        co.deliverables.hoja_taller_fyq = newDoc;
 
         if (typeof telemetry !== 'undefined' && telemetry.log) {
             telemetry.log("TALLER_FYQ", "Hoja de Taller y BOM remitidos a Taller: " + driveUrl);
         }
-        ui.pushNotification(this.user.coId, 'OPERACIONES_IA', 'Técnico ha enviado la Hoja de Taller (BOM) a Taller para validación física.', 'info', {
+        ui.pushNotification(this.user.coId, 'OPERACIONES_IA', 'Técnico ha enviado una actualización de la Hoja de Taller (BOM) para configurar y revisar el cohete.', 'info', {
             view: 'cart'
         });
         this.save();
         if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
             ui.render();
-            ui.notify("🚀 Hoja de Taller remitida al Operario de Taller para verificación de ensamble.", "success");
+            ui.notify("🚀 Hoja de Taller registrada en el Histórico y remitida al Operario de Taller.", "success");
         }
 
         try {
             await this.executeAction('SUBMIT_DELIVERABLE', {
                 key: 'hoja_taller_fyq',
                 driveUrl: driveUrl,
-                status: 'EN_TALLER_OPERARIO'
+                status: 'EN_TALLER_OPERARIO',
+                history: newDoc.history
             });
         } catch(e) {
             console.warn("[ACTION] Error sincronizando Hoja de Taller:", e);
+        }
+    },
+
+    async recordHojaWorkshopCheckByOperator() {
+        if (!this.user || !this.user.coId) return;
+        const co = this.data.companies?.[this.user.coId];
+        if (!co || !co.deliverables?.hoja_taller_fyq) return;
+
+        const hoja = co.deliverables.hoja_taller_fyq;
+        hoja.status = 'DRAFT_TECNICO';
+        hoja.lastWorkshopCheckAt = new Date().toISOString();
+        delete hoja.returnReasonId;
+        delete hoja.returnReason;
+        hoja.updatedAt = new Date().toISOString();
+        this._appendHojaHistoryEntry(hoja, co, {
+            actor: (typeof ui !== 'undefined' && typeof ui.getActorRoleLabel === 'function') ? ui.getActorRoleLabel(co) : 'OPERACIONES_IA',
+            action: 'REVISION_TALLER_OK',
+            summary: 'Operaciones verificó este montaje físico en Taller (checkpoint guardado en el histórico previo a Fase III).',
+            driveUrl: hoja.driveUrl || ''
+        });
+
+        if (typeof telemetry !== 'undefined' && telemetry.log) {
+            telemetry.log("TALLER_CHECKPOINT", "Operaciones registró verificación de montaje en Histórico.");
+        }
+        ui.pushNotification(this.user.coId, 'TECNICO', '✅ Operaciones ha verificado la configuración actual en Taller y la ha guardado en el Histórico de Montaje.', 'success', {
+            view: 'tech_workshop',
+            anchorId: 'tech-hoja-taller-panel'
+        });
+        this.save();
+
+        try {
+            await this.executeAction('SUBMIT_DELIVERABLE', {
+                key: 'hoja_taller_fyq',
+                driveUrl: hoja.driveUrl || '',
+                status: 'DRAFT_TECNICO',
+                lastWorkshopCheckAt: hoja.lastWorkshopCheckAt,
+                history: hoja.history
+            });
+        } catch(e) {
+            console.warn("[ACTION] Error sincronizando checkpoint de taller:", e);
         }
     },
 
@@ -2196,11 +2298,23 @@ const state = {
         const co = this.data.companies?.[this.user.coId];
         if (!co || !co.deliverables?.hoja_taller_fyq) return;
 
+        const isHojaLocked = !this.user.admin && typeof ui !== 'undefined' && typeof ui.isDeliverableLocked === 'function' && ui.isDeliverableLocked('hoja_taller_fyq', co);
+        if (isHojaLocked) {
+            await this.recordHojaWorkshopCheckByOperator();
+            return 'CHECKPOINT_SAVED';
+        }
+
         const hoja = co.deliverables.hoja_taller_fyq;
         hoja.status = 'SUBMITTED_TO_CEO';
         delete hoja.returnReasonId;
         delete hoja.returnReason;
         hoja.updatedAt = new Date().toISOString();
+        this._appendHojaHistoryEntry(hoja, co, {
+            actor: (typeof ui !== 'undefined' && typeof ui.getActorRoleLabel === 'function') ? ui.getActorRoleLabel(co) : 'OPERACIONES_IA',
+            action: 'ELEVADO_A_CEO',
+            summary: 'Ensamble definitivo de Fase III validado en Taller y elevado al CEO para evaluación en FyQ.',
+            driveUrl: hoja.driveUrl || ''
+        });
 
         if (typeof telemetry !== 'undefined' && telemetry.log) {
             telemetry.log("TALLER_VALIDADO", "Operario validó ensamble físico de Hoja de Taller.");
@@ -2216,11 +2330,13 @@ const state = {
             await this.executeAction('SUBMIT_DELIVERABLE', {
                 key: 'hoja_taller_fyq',
                 driveUrl: hoja.driveUrl,
-                status: 'SUBMITTED_TO_CEO'
+                status: 'SUBMITTED_TO_CEO',
+                history: hoja.history
             });
         } catch(e) {
             console.warn("[ACTION] Error sincronizando validación de taller:", e);
         }
+        return 'ELEVATED_TO_CEO';
     },
 
     async returnHojaTallerByOperator(reasonId, reasonLabel, driveUrl) {
@@ -2236,6 +2352,13 @@ const state = {
             hoja.returnDriveUrl = driveUrl;
         }
         hoja.updatedAt = new Date().toISOString();
+        this._appendHojaHistoryEntry(hoja, co, {
+            actor: (typeof ui !== 'undefined' && typeof ui.getActorRoleLabel === 'function') ? ui.getActorRoleLabel(co) : 'OPERACIONES_IA',
+            action: 'INCIDENCIA_TALLER',
+            reasonId: reasonId,
+            summary: `Incidencia en Taller: ${reasonLabel}`,
+            driveUrl: driveUrl || hoja.driveUrl || ''
+        });
 
         if (typeof telemetry !== 'undefined' && telemetry.log) {
             telemetry.log("TALLER_DEVUELTO", "Operario devolvió Hoja de Taller por: " + reasonId);
@@ -2253,7 +2376,8 @@ const state = {
                 status: 'DEVUELTO_A_TECNICO',
                 returnReasonId: reasonId,
                 returnReason: reasonLabel,
-                returnDriveUrl: driveUrl || hoja.returnDriveUrl || null
+                returnDriveUrl: driveUrl || hoja.returnDriveUrl || null,
+                history: hoja.history
             });
         } catch(e) {
             console.warn("[ACTION] Error sincronizando devolución de taller:", e);
@@ -2265,6 +2389,10 @@ const state = {
         const coId = this.user.coId;
         const co = this.data.companies?.[coId];
         if (!co || !co.deliverables || !co.deliverables[docType]) return;
+        if (co.deliverables[docType].status !== 'SUBMITTED_TO_CEO') {
+            if (typeof ui !== 'undefined' && ui.notify) ui.notify("Este entregable ya fue procesado o no está pendiente de visado CEO.", "warning");
+            return;
+        }
 
         co.deliverables[docType].status = 'DELIVERED_TO_TEACHER';
         delete co.deliverables[docType].returnReasonId;
@@ -2272,6 +2400,14 @@ const state = {
         delete co.deliverables[docType].returnDriveUrl;
         delete co.deliverables[docType].returnByTeacher;
         co.deliverables[docType].updatedAt = new Date().toISOString();
+        if (docType === 'hoja_taller_fyq') {
+            this._appendHojaHistoryEntry(co.deliverables[docType], co, {
+                actor: (typeof ui !== 'undefined' && typeof ui.getActorRoleLabel === 'function') ? ui.getActorRoleLabel(co) : 'CEO',
+                action: 'VISADO_CEO',
+                summary: 'El CEO visó el histórico y la Hoja de Taller definitiva y la elevó a FyQ.',
+                driveUrl: co.deliverables[docType].driveUrl || ''
+            });
+        }
 
         if (typeof telemetry !== 'undefined' && telemetry.log) {
             telemetry.log("CEO_APROBACION", `Entregable aprobado y elevado a docente: ${docType}`);
@@ -2298,7 +2434,8 @@ const state = {
         try {
             await this.executeAction('CEO_REVIEW_DELIVERABLE', {
                 key: docType,
-                action: 'APPROVE'
+                action: 'APPROVE',
+                ...(docType === 'hoja_taller_fyq' ? { history: co.deliverables[docType].history } : {})
             });
         } catch(e) {
             console.warn("[ACTION] Error sincronizando aprobación del CEO:", e);
@@ -2310,6 +2447,10 @@ const state = {
         const coId = this.user.coId;
         const co = this.data.companies?.[coId];
         if (!co || !co.deliverables || !co.deliverables[docType]) return;
+        if (co.deliverables[docType].status !== 'SUBMITTED_TO_CEO') {
+            if (typeof ui !== 'undefined' && ui.notify) ui.notify("Este entregable ya fue procesado o no está pendiente de visado CEO.", "warning");
+            return;
+        }
 
         const reasonList = typeof CEO_RETURN_REASONS !== 'undefined' ? CEO_RETURN_REASONS : [];
         const reasonObj = reasonList.find(r => r.id === reasonId);
@@ -2321,6 +2462,15 @@ const state = {
         co.deliverables[docType].returnDriveUrl = returnDriveUrl || null;
         delete co.deliverables[docType].returnByTeacher;
         co.deliverables[docType].updatedAt = new Date().toISOString();
+        if (docType === 'hoja_taller_fyq') {
+            this._appendHojaHistoryEntry(co.deliverables[docType], co, {
+                actor: (typeof ui !== 'undefined' && typeof ui.getActorRoleLabel === 'function') ? ui.getActorRoleLabel(co) : 'CEO',
+                action: 'DEVUELTO_CEO',
+                reasonId: reasonId,
+                summary: `Devuelto por el CEO: ${reasonText}`,
+                driveUrl: returnDriveUrl || co.deliverables[docType].driveUrl || ''
+            });
+        }
 
         if (typeof telemetry !== 'undefined' && telemetry.log) {
             telemetry.log("CEO_DEVOLUCION", `Entregable devuelto a departamento: ${docType} (${reasonId})`);
@@ -2350,7 +2500,8 @@ const state = {
                 action: 'RETURN',
                 reasonId: reasonId,
                 reasonText: reasonText,
-                returnDriveUrl: returnDriveUrl || null
+                returnDriveUrl: returnDriveUrl || null,
+                ...(docType === 'hoja_taller_fyq' ? { history: co.deliverables[docType].history } : {})
             });
         } catch(e) {
             console.warn("[ACTION] Error sincronizando devolución del CEO:", e);

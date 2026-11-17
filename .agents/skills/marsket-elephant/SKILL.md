@@ -54,6 +54,10 @@ Ningún documento de diseño (`concepts_brief.md`, `design_draft.md` o `docs/des
    - Ningún cambio puede romper `node tools/audit-integrity.mjs` (que verifica que todos los handlers `ui.*`, `auth.*`, `state.*` invocados en HTML/JS existan y que la versión coincida en `js/config.js`, `index.html`, `sw.js`, `.htaccess` y `api/index.php`).
 6. **Despliegue por Lista Blanca a CDMON:**
    - El despliegue a producción se ejecuta automáticamente vía GitHub Actions ejecutando `node tools/deploy-cdmon.mjs`, que sube únicamente los archivos listados en `filesToUpload`. Los documentos en `docs/designs/` nunca ensucian el servidor de producción.
+7. **Reglas de Dominio en Taller (`DOC_10`), Costes Reales (`€`) y Buzón HR Confidencial (`DOC_2`):**
+   - **Hoja de Taller (`hoja_taller_fyq` / `DOC_10`):** Aunque se entrega para nota en **Fase III**, funciona desde fases previas como canal de comunicación iterativo entre **Técnico** y **Operaciones** para ir configurando el cohete y construyendo el **Histórico de Montaje del Cohete** (`hoja.history`); solo la elevación final al CEO/FyQ espera a Fase III.
+   - **Costes Reales (`€` en tienda):** Todo material B2C (incluso traído de casa o reciclado) tiene siempre un coste real `> 0 €` (prohibido botón `0.00 €` reciclado). Los euros reales (`€`) solo los registra Operaciones en la recepción y son de **uso exclusivo del profesorado** (control de gasto familiar y estudio de distribuidores para otros años), por lo que no se muestran como KPI al alumnado.
+   - **Buzón HR (`DOC_2`):** Es **100% confidencial y anónimo hacia el Claustro Docente**; nunca se notifica ni se muestra al CEO ni a otros alumnos.
 
 ---
 

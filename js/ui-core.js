@@ -263,6 +263,89 @@ const ui = {
         return { isTemplate: false };
     },
 
+    getDeptDisplayName(roleKey) {
+        const k = String(roleKey || '').toUpperCase().trim();
+        const map = {
+            'CEO': 'Dirección General (CEO)',
+            'TECNICO': 'Dpto. Técnico (I+D)',
+            'FINANZAS': 'Dpto. Financiero',
+            'MARKETING': 'Dpto. Marketing',
+            'OPERACIONES_IA': 'Dpto. Operaciones e IA',
+            'OPERACIONES': 'Dpto. Operaciones e IA',
+            'AUXILIAR': 'Socio Auxiliar'
+        };
+        return map[k] || (k ? k.replace(/_/g, ' ') : 'General');
+    },
+
+    getActorRoleLabel(co = null) {
+        const raw = String(state.user?.role || '').toUpperCase();
+        const eff = String(this.getEffectiveRole(co) || raw).toUpperCase();
+        if (!raw) return eff || 'CEO';
+        return (raw !== eff) ? `${raw} (${eff})` : eff;
+    },
+
+    validateStudentDriveUrl(rawUrl, inputEl = null, opts = {}) {
+        const { required = true, label = 'el documento' } = opts;
+        const clean = this.cleanInput(rawUrl);
+        if (!clean) {
+            if (!required) return { valid: true, url: '' };
+            if (inputEl && this.highlightInvalidField) this.highlightInvalidField('', inputEl);
+            this.notify(`Debes indicar el enlace válido de Google Drive / Docs para ${label}.`, 'warning');
+            return { valid: false, url: '' };
+        }
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(clean)) {
+            if (inputEl && this.highlightInvalidField) this.highlightInvalidField(clean, inputEl);
+            this.notify(`El enlace de ${label} debe ser una URL válida de Google Drive o Google Docs.`, 'error');
+            return { valid: false, url: clean };
+        }
+        const tplCheck = this.isTemplateDriveUrl ? this.isTemplateDriveUrl(clean) : { isTemplate: false };
+        if (tplCheck.isTemplate) {
+            if (inputEl && this.highlightInvalidField) this.highlightInvalidField(clean, inputEl);
+            this.notify(`⚠️ ${tplCheck.reason}`, 'error');
+            return { valid: false, url: clean };
+        }
+        return { valid: true, url: clean };
+    },
+
+    testDriveInputUrl(inputId) {
+        const el = document.getElementById(inputId);
+        const u = el ? this.cleanInput(el.value) : '';
+        if (!u) return this.notify('Pega primero tu enlace arriba para probarlo.', 'warning');
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(u)) {
+            if (el && this.highlightInvalidField) this.highlightInvalidField(u, el);
+            return this.notify('El texto introducido no parece una URL válida de Google Drive / Docs.', 'error');
+        }
+        window.open(u, '_blank', 'noopener,noreferrer');
+    },
+
+    renderDriveTestBtnHtml(inputId, permCheckId = null) {
+        const btn = `<button type="button" onclick="ui.testDriveInputUrl('${this.escapeHTML(inputId)}')" class="min-h-[44px] px-3 py-2 bg-slate-900 border border-slate-600 text-slate-200 hover:border-mars-cyan hover:text-mars-cyan text-xs font-mono font-bold uppercase rounded shrink-0">🔗 Probar enlace ↗</button>`;
+        if (!permCheckId) return btn;
+        return {
+            btn,
+            checkbox: `
+            <label class="mars-checkbox-label flex items-start gap-2.5 cursor-pointer p-2.5 bg-black/50 border border-slate-800 rounded min-h-[44px]">
+                <input type="checkbox" id="${this.escapeHTML(permCheckId)}" class="mars-touch-input">
+                <span class="mars-checkbox-visual mt-0.5"></span>
+                <span class="text-xs text-slate-200 font-sans">Confirmo que en Google Drive he marcado <strong>«Cualquier persona con el enlace (Lector)»</strong> para que el equipo y el profesor puedan abrirlo.</span>
+            </label>`
+        };
+    },
+
+    acquireActionLock(key, ms = 1200) {
+        this._actionLocks = this._actionLocks || {};
+        const now = Date.now();
+        if (this._actionLocks[key] && (now - this._actionLocks[key]) < ms) {
+            return false;
+        }
+        this._actionLocks[key] = now;
+        return true;
+    },
+
+    releaseActionLock(key) {
+        if (this._actionLocks && key) delete this._actionLocks[key];
+    },
+
     toast(message, tone = 'info', duration = 4000) {
         return this.notify(message, tone, duration);
     },
@@ -1606,11 +1689,14 @@ const ui = {
 
         co.notifications = co.notifications || [];
         const notif = co.notifications.find(n => n.id === notifId);
-        const effectiveRole = this.getEffectiveRole(co) || state.user.role;
+        const rawRole = String(state.user.role || '').toUpperCase();
+        const effectiveRole = String(this.getEffectiveRole(co) || rawRole).toUpperCase();
         if (notif) {
-            if (String(notif.role).toUpperCase() === 'ALL') {
+            const nRole = String(notif.role || '').toUpperCase();
+            const isSharedDeptWithAux = Boolean(co.auxRoleDept) && (nRole === effectiveRole || (effectiveRole === 'OPERACIONES_IA' && nRole === 'OPERACIONES'));
+            if (nRole === 'ALL' || isSharedDeptWithAux) {
                 notif.readBy = notif.readBy || {};
-                notif.readBy[effectiveRole] = true;
+                notif.readBy[rawRole] = true;
             } else {
                 notif.read = true;
             }
@@ -2040,20 +2126,20 @@ const ui = {
 
             case 'OPERACIONES_IA':
                 roleTitle = 'DPTO. OPERACIONES E IA // TALLER';
-                roleDesc = 'Gestionar la recepción física de piezas en Taller Ensamble, confeccionar la Hoja de Taller (BOM) y auditar prompts en la Bitácora de IA.';
+                roleDesc = 'Gestionar la recepción física de piezas en Taller Ensamble, validar las iteraciones de la Hoja de Taller (DOC_10) junto a Técnico y auditar prompts en la Bitácora de IA.';
                 checklist3Min = `
                 <ul class="space-y-1.5 text-xs text-slate-300 pl-1">
-                    <li>[ ] <strong>1. Recepción en taller:</strong> En <strong>[📦 Taller Ensamble]</strong>, recepciona los pedidos aprobados y anota su coste en euros reales (€).</li>
-                    <li>[ ] <strong>2. Confecciona BOM:</strong> Completa la Hoja de Taller (DOC_10) garantizando la trazabilidad de cada material del cohete.</li>
-                    <li>[ ] <strong>3. Bitácora ética:</strong> En <strong>[🤖 Bitácora IA]</strong>, registra obligatoriamente cada prompt y herramienta de IA utilizada por el equipo.</li>
+                    <li>[ ] <strong>1. Recepción en taller:</strong> En <strong>[📦 Taller Ensamble]</strong>, recepciona los pedidos aprobados y registra siempre su precio real de compra en tienda (&gt; 0 €).</li>
+                    <li>[ ] <strong>2. Canal Hoja de Taller (DOC_10):</strong> Revisa el montaje que envía Técnico y registra revisiones o incidencias en el Histórico de Montaje. En <strong>Fase III</strong> la elevas al CEO.</li>
+                    <li>[ ] <strong>3. Bitácora ética:</strong> En <strong>[🤖 Bitácora IA]</strong>, registra la herramienta IA usada y el enlace a tu Google Doc donde documentas prompt y verificación.</li>
                 </ul>`;
-                teamChain = `Finanzas libera los fondos ➔ Tú recepcionas las piezas físicas y ensamblas en taller ➔ Registras el uso ético en la Bitácora IA.`;
+                teamChain = `Finanzas libera los fondos ➔ Tú recepcionas las piezas físicas y verificas cada iteración del montaje con Técnico ➔ Documentas la IA en Bitácora.`;
                 contingencyHtml = `
                 <details class="bg-black/60 border border-slate-800 p-2.5 rounded text-xs mt-3">
                     <summary class="cursor-pointer text-mars-cyan font-bold uppercase select-none">⚙️ Procedimientos Especiales (Auditoría de IA y Taller)</summary>
                     <div class="mt-2 space-y-2 text-slate-300 border-t border-slate-800 pt-2 leading-relaxed">
-                        <p>• <strong>Evidencias Éticas de IA:</strong> Documenta siempre el prompt, el modelo usado y la comprobación humana; el uso opaco de IA conlleva sanción.</p>
-                        <p>• <strong>Entrega de Hoja de Taller:</strong> Cuando el prototipo esté montado, el Técnico eleva la Hoja de Taller completada a revisión del CEO.</p>
+                        <p>• <strong>Evidencias Éticas de IA:</strong> Documenta siempre en tu Google Doc oficial el prompt, el modelo usado y la comprobación humana; el uso opaco de IA conlleva sanción.</p>
+                        <p>• <strong>Hoja de Taller viva (DOC_10):</strong> Técnico diseña y envía las versiones de configuración del cohete a Taller; tú las validas o devuelves con incidencias para formar el histórico. Cuando el prototipo esté listo en <strong>Fase III</strong>, Operaciones eleva la Hoja definitiva al CEO.</p>
                     </div>
                 </details>`;
                 roleButtons = `
@@ -2061,7 +2147,7 @@ const ui = {
                     <button type="button" onclick="ui.navigate('ailog'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Bitácora IA</button>
                     <button type="button" onclick="ui.navigate('role_deliverables'); ui.closeModal();" class="text-xs bg-mars-cyan text-black px-3.5 py-2 font-bold font-mono uppercase rounded min-h-[44px]">Ir a Entregables</button>
                 `;
-                roleWarning = 'El uso de IA no declarado en Bitácora acarrea sanción disciplinaria docente; documenta siempre el prompt, la herramienta y la respuesta verificada.';
+                roleWarning = 'El uso de IA no declarado en Bitácora acarrea sanción disciplinaria docente; documenta en Google Docs el prompt, la herramienta y la respuesta verificada.';
                 break;
 
             default: // AUXILIAR
@@ -2927,7 +3013,8 @@ const ui = {
                     });
                 });
                 const pendingSlogan = (co.brandApproval && co.brandApproval.status === 'PENDIENTE_CEO') ? 1 : 0;
-                pendingDash = submittedCeoDefs + pendingPhaseBalances + pendingMktActions + pendingSlogan;
+                const pendingSpecialItems = (co.specialItemRequests || []).filter(r => r && r.status === 'PENDIENTE_CEO').length;
+                pendingDash = submittedCeoDefs + pendingPhaseBalances + pendingMktActions + pendingSlogan + pendingSpecialItems;
             }
             if (pendingDash > 0) { elDash.innerText = pendingDash; elDash.classList.remove('hidden'); }
             else { elDash.classList.add('hidden'); }
@@ -3006,7 +3093,13 @@ const ui = {
             } else if (role === 'AUXILIAR' && !co?.auxRoleDept) {
                 pendingDeliverables = 0;
             } else {
-                pendingDeliverables = Object.entries(co.deliverables || {}).filter(([k, d]) => myDefs.includes(k) && d && (d.status === 'CEO_REVISION' || d.status === 'DEVUELTO_A_TECNICO')).length;
+                pendingDeliverables = Object.entries(co.deliverables || {}).filter(([k, d]) => {
+                    if (!myDefs.includes(k) || !d) return false;
+                    if (k === 'hoja_taller_fyq' && effectiveRole === 'OPERACIONES_IA') {
+                        return d.status === 'CEO_REVISION';
+                    }
+                    return d.status === 'CEO_REVISION' || d.status === 'DEVUELTO_A_TECNICO';
+                }).length;
             }
             if (pendingDeliverables > 0) {
                 elDeliverables.innerText = pendingDeliverables;
@@ -3610,7 +3703,7 @@ const ui = {
                     <button type="button" onclick="ui.toggleDossierShowAll()" class="min-h-[44px] px-3.5 py-2 text-xs font-black uppercase tracking-wider border transition-all ${showAll ? 'bg-mars-yellow text-black border-mars-yellow' : 'bg-slate-900 text-mars-cyan border-mars-cyan hover:bg-mars-cyan hover:text-black'}">
                         ${showAll ? '🎯 ENFOCAR PRÓXIMOS 15 DÍAS' : `🌐 VER LAS 5 FASES (${visibleDefs.length})`}
                     </button>
-                    ${(state.user && this.getEffectiveRole() === 'CEO') ? `<button type="button" onclick="ui.modalCreateAuxRole()" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase tracking-wider hover:bg-mars-cyan hover:text-black transition-all shrink-0 w-full sm:w-auto">Gestionar Rol Observador</button>` : ''}
+                    ${(state.user && this.getEffectiveRole() === 'CEO' && state.user.role !== 'AUXILIAR') ? `<button type="button" onclick="ui.modalCreateAuxRole()" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-black uppercase tracking-wider hover:bg-mars-cyan hover:text-black transition-all shrink-0 w-full sm:w-auto">Gestionar Rol Observador</button>` : ''}
                 </div>
             </div>
 
@@ -3865,7 +3958,10 @@ const ui = {
                     <label for="ceo-return-drive-url" class="text-xs text-mars-cyan font-bold uppercase block mb-1">
                         📄 Documento con Correcciones / Observaciones en Google Docs (Opcional)
                     </label>
-                    <input type="url" id="ceo-return-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-mars-cyan font-mono outline-none focus:border-mars-cyan">
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="ceo-return-drive-url" placeholder="https://docs.google.com/document/d/..." class="flex-1 min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-mars-cyan font-mono outline-none focus:border-mars-cyan">
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('ceo-return-drive-url') : ''}
+                    </div>
                     <p class="text-[10px] text-slate-400 mt-1 font-sans">Adjunta un enlace con permisos de lectura para que el equipo consulte las indicaciones exactas.</p>
                 </div>
             </div>
@@ -3880,12 +3976,10 @@ const ui = {
         if (!el) return;
         const reasonId = el.value;
         const elDrive = document.getElementById('ceo-return-drive-url');
-        const returnDriveUrl = elDrive ? elDrive.value.trim() : '';
-        if (returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(returnDriveUrl)) {
-            return this.notify("El enlace con correcciones debe ser una URL válida de Google Drive / Docs.", "error");
-        }
+        const check = this.validateStudentDriveUrl(elDrive ? elDrive.value : '', elDrive, { required: false, label: 'observaciones' });
+        if (!check.valid) return;
         this.closeModal();
-        state.returnDeliverableByCEO(docKey, reasonId, returnDriveUrl);
+        state.returnDeliverableByCEO(docKey, reasonId, check.url);
     },
 
     modalTeacherReturnDeliverable(coId, docKey) {

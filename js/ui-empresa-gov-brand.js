@@ -13,10 +13,11 @@ Object.assign(ui, {
         if (!co) return auth.logout();
         
         co.roles = co.roles || {};
-        co.auxRoleRequest = co.auxRoleRequest || { status: co.roles['AUXILIAR'] ? 'APROBADO' : 'INACTIVO', dept: co.auxRoleDept || '', pin: co.roles['AUXILIAR'] || '' };
+        const auxPinVal = state.getRolePin(co, 'AUXILIAR') || '';
+        co.auxRoleRequest = co.auxRoleRequest || { status: co.roles['AUXILIAR'] ? 'APROBADO' : 'INACTIVO', dept: co.auxRoleDept || '', pin: auxPinVal };
         
         const req = co.auxRoleRequest;
-        const currentPin = state.getRolePin(co, 'AUXILIAR') || co.roles['AUXILIAR'] || 'No activo';
+        const currentPin = auxPinVal || (req.pin && req.pin !== 'PROTECTED' ? req.pin : 'No activo');
         const currentDept = co.auxRoleDept || 'No asignado';
 
         let statusBanner = '';
@@ -41,11 +42,11 @@ Object.assign(ui, {
         }
         
         const html = `
-            <p class="text-xs text-slate-300 mb-3 leading-relaxed">El Rol Observador (Auxiliar) requiere autorización previa de Coordinación Docente. Propón el departamento al que prestará apoyo y el PIN de 4 dígitos deseado.</p>
+            <p class="text-xs text-slate-300 mb-3 leading-relaxed">El Rol Socio Auxiliar requiere autorización previa de Coordinación Docente. Propón el departamento al que prestará apoyo y el PIN de 4 dígitos deseado.</p>
             ${statusBanner}
             <div class="bg-slate-900 p-4 border border-mars-cyan mb-2">
                 <label for="aux-pin-input" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">PIN Propuesto (4 dígitos)</label>
-                <input type="text" id="aux-pin-input" maxlength="4" value="${this.escapeHTML(req.pin || '')}" placeholder="Ej: 5555" class="w-full min-h-[44px] bg-black border border-mars-border p-3 text-center text-white font-bold tracking-widest outline-none focus:border-mars-cyan mb-3">
+                <input type="text" inputmode="numeric" pattern="[0-9]{4}" id="aux-pin-input" maxlength="4" value="${this.escapeHTML((req.pin && req.pin !== 'PROTECTED') ? req.pin : auxPinVal)}" placeholder="Ej: 5555" class="w-full min-h-[44px] bg-black border border-mars-border p-3 text-center text-white font-bold tracking-widest outline-none focus:border-mars-cyan mb-3">
                 <label for="aux-dept-select" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Departamento Vinculado</label>
                 <select id="aux-dept-select" class="w-full min-h-[44px] bg-black border border-mars-border p-3 text-base sm:text-xs text-white uppercase outline-none focus:border-mars-cyan">
                     <option value="">-- Selecciona Departamento Vinculado --</option>
@@ -212,7 +213,7 @@ Object.assign(ui, {
                 </div>`;
             }
 
-            const doc3Btn = this.renderDocTemplateBtn ? this.renderDocTemplateBtn('DOC_3_COMUNICADO_SANCION', '📄 Modelo DOC_3 (Hacer copia)') : '';
+            const doc3Btn = this.renderDocTemplateBtn ? this.renderDocTemplateBtn('DOC_3_COMUNICADO_SANCION', '📄 Modelo DOC_3 (Vista previa)') : '';
 
             ceoCrisisBanner = `
             <div class="bg-black/60 border border-red-500/40 p-3 mb-4">
@@ -512,8 +513,11 @@ Object.assign(ui, {
                         ${this.renderDocTemplateBtn('DOC_1_DENOMINACION', '📄 Ver Plantilla Solicitud Denominación (DOC_1)')}
                     </div>
                     <label for="statutory-drive-url" class="text-mars-cyan uppercase font-bold block mb-1">Enlace a la Solicitud Formal en Google Drive o Docs</label>
-                    <input type="url" id="statutory-drive-url" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
-                    <p class="text-[10px] text-slate-400 font-sans mt-0.5">La propuesta de nueva denominación y justificación se cumplimenta en el Google Doc corporativo con permisos de lectura.</p>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="statutory-drive-url" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('statutory-drive-url') : ''}
+                    </div>
+                    <p class="text-[10px] text-slate-400 font-sans mt-0.5">La propuesta de nueva denominación y justificación se cumplimenta en tu copia del Google Doc con permisos de lectura.</p>
                 </div>
                 <div class="p-2.5 bg-black/60 border border-slate-800 flex justify-between items-center text-xs">
                     <span class="text-slate-300">Tasa Registro Mercantil:</span>
@@ -532,17 +536,20 @@ Object.assign(ui, {
         if (!elReason || !elUrl) return;
 
         const reason = this.cleanInput(elReason.value).trim();
-        const driveUrl = this.cleanInput(elUrl.value).trim();
-
         if (!reason) return this.notify("Debes seleccionar el motivo de la modificación estatutaria.", "warning");
-        if (!driveUrl) return this.notify("Debes indicar el enlace Drive de la solicitud formal DOC_1.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elUrl.value, elUrl, { required: true, label: 'la solicitud estatutaria (DOC_1)' })
+            : { valid: Boolean(this.cleanInput(elUrl.value)), url: this.cleanInput(elUrl.value) };
+        if (!urlCheck.valid) return;
+        const driveUrl = urlCheck.url;
 
         const coId = state.user.coId;
         const co = state.data.companies[coId];
         if (!co) return;
+        if (co.nameChangeRequest && co.nameChangeRequest.status === 'PENDIENTE') {
+            return this.notify("Ya hay una solicitud de cambio de denominación social pendiente de resolución.", "info");
+        }
+        if (this.acquireActionLock && !this.acquireActionLock('stat-name-' + coId, 2000)) return;
 
         if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
             return this.notifyBankruptcyLock();
@@ -564,7 +571,7 @@ Object.assign(ui, {
             date: new Date().toLocaleDateString(),
             timestamp: Date.now(),
             feePaid: 50,
-            requestedBy: state.user.name || 'CEO'
+            requestedBy: this.getActorRoleLabel ? this.getActorRoleLabel(co) : 'CEO'
         };
         co.updatedAt = Date.now();
 
@@ -631,7 +638,10 @@ Object.assign(ui, {
                 </div>
                 <div>
                     <label for="meeting-minute-drive-url" class="text-mars-cyan uppercase font-bold block mb-1">Enlace al Acta Oficial en Google Drive o Docs</label>
-                    <input type="url" id="meeting-minute-drive-url" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="meeting-minute-drive-url" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('meeting-minute-drive-url') : ''}
+                    </div>
                     <p class="text-[10px] text-slate-400 mt-1 font-sans">El documento debe compartirse con permisos de lectura abiertos.</p>
                 </div>
             </div>
@@ -656,13 +666,13 @@ Object.assign(ui, {
 
         const session = this.cleanInput(elSession.value).trim();
         const topic = this.cleanInput(elTopic.value).trim();
-        const driveUrl = this.cleanInput(elUrl.value).trim();
-
         if (!session) return this.notify("Debes seleccionar la sesión del comité.", "warning");
-        if (!driveUrl) return this.notify("Debes indicar el enlace Drive del acta oficial.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elUrl.value, elUrl, { required: true, label: 'el Acta Oficial (DOC_16)' })
+            : { valid: Boolean(this.cleanInput(elUrl.value)), url: this.cleanInput(elUrl.value) };
+        if (!urlCheck.valid) return;
+        const driveUrl = urlCheck.url;
+        if (this.acquireActionLock && !this.acquireActionLock('submit-minute-' + coId, 1500)) return;
 
         const authorLabel = (state.user.role !== effRole) ? `${state.user.role} (${effRole})` : effRole;
         co.meetingMinutes = co.meetingMinutes || [];
@@ -737,10 +747,10 @@ Object.assign(ui, {
             { id: "ROTURA_COMUNICACION", label: "Falta absoluta de comunicación y coordinación en el equipo" }
         ];
         const reasonsOpts = reasons.map(r => `<option value="${this.escapeHTML(r.label)}">${this.escapeHTML(r.label)}</option>`).join('');
-        const templateBtn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_2_INACTIVIDAD_HR', '📄 Modelo Oficial Expediente HR (Hacer copia)') : '';
+        const templateBtn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_2_INACTIVIDAD_HR', '📄 Modelo Oficial Expediente HR') : '';
 
         const html = `
-            <p class="text-xs text-slate-300 mb-3 leading-relaxed">Usa este canal oficial para notificar al Claustro Docente si un departamento está bloqueando el progreso de la startup por inactividad.</p>
+            <p class="text-xs text-slate-300 mb-3 leading-relaxed">Canal <strong>100% confidencial y anónimo</strong> hacia el Claustro Docente si un compañero bloquea el progreso del equipo por inactividad. Nunca se notifica al CEO ni a otros socios.</p>
             <div class="mb-4">
                 ${templateBtn}
             </div>
@@ -758,11 +768,14 @@ Object.assign(ui, {
                 ${reasonsOpts}
             </select>
             <label for="inactivity-drive-url" class="text-xs text-mars-magenta uppercase font-bold block mb-1.5">Enlace a Expediente HR Oficial (Google Drive / Docs)</label>
-            <input type="url" id="inactivity-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white mb-2 outline-none focus:border-mars-cyan font-mono" required>
-            <p class="text-[10px] text-slate-400 mb-2">Adjunta la copia del expediente completado con las evidencias de inactividad.</p>
+            <div class="flex flex-col sm:flex-row gap-2 mb-2">
+                <input type="url" id="inactivity-drive-url" placeholder="https://docs.google.com/document/d/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono" required>
+                ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('inactivity-drive-url') : ''}
+            </div>
+            <p class="text-[10px] text-slate-400 mb-2">Adjunta tu copia del expediente completado con las evidencias (acceso lector en Drive).</p>
         `;
-        const actions = `<button type="button" onclick="ui.submitInactivityReport()" class="min-h-[44px] bg-mars-magenta text-white px-5 py-2.5 text-xs font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Enviar Reporte al Claustro</button>`;
-        this.showModal("Reporte de Inactividad (HR)", html, actions);
+        const actions = `<button type="button" onclick="ui.submitInactivityReport()" class="min-h-[44px] w-full sm:w-auto bg-mars-magenta text-white px-5 py-2.5 text-xs font-bold uppercase hover:bg-white hover:text-mars-magenta transition-colors">Enviar Reporte Confidencial al Claustro</button>`;
+        this.showModal("Buzón HR Confidencial (Docente)", html, actions);
     },
 
     submitInactivityReport() {
@@ -774,16 +787,16 @@ Object.assign(ui, {
         
         const dept = elDept.value;
         const reason = this.cleanInput(elReason.value);
-        const driveUrl = this.cleanInput(elUrl.value);
-        
         const effRole = this.getEffectiveRole();
         const roleLabel = (state.user.role !== effRole) ? `${state.user.role} (${effRole})` : effRole;
         if(!dept || !reason) return this.notify("Debes seleccionar un departamento y el motivo tipificado.", "warning");
-        if(dept === state.user.role || dept === effRole) return this.notify("No puedes reportarte a ti mismo.", "warning");
-        if(!driveUrl) return this.notify("Debes adjuntar el enlace Drive al expediente oficial de HR.", "warning");
-        if(typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
-        }
+        if(dept === String(state.user.role || '').toUpperCase()) return this.notify("No puedes reportarte a tu propio puesto de acceso.", "warning");
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elUrl.value, elUrl, { required: true, label: 'el expediente HR (DOC_2)' })
+            : { valid: Boolean(this.cleanInput(elUrl.value)), url: this.cleanInput(elUrl.value) };
+        if (!urlCheck.valid) return;
+        const driveUrl = urlCheck.url;
+        if (this.acquireActionLock && !this.acquireActionLock('submit-hr-' + state.user.coId, 1500)) return;
         
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
@@ -799,15 +812,12 @@ Object.assign(ui, {
             status: 'PENDIENTE'
         });
         
-        if (effRole !== 'CEO') {
-            ui.pushNotification(state.user.coId, 'CEO', `⚠️ ALERTA HR: ${roleLabel} ha reportado inactividad en el departamento ${dept}.`, 'error', { view: 'resolutions' });
-        }
         const coNameLabel = co.name || state.user.coId;
-        ui.pushNotification('ADMIN', 'ALL', `⚠️ [HR · ${coNameLabel}] ${roleLabel} ha emitido un reporte de bloqueo/inactividad en ${dept} (DOC_2).`, 'warning', { view: 'hr', coId: state.user.coId });
+        ui.pushNotification('ADMIN', 'ALL', `⚠️ [HR Confidencial · ${coNameLabel}] ${roleLabel} ha emitido un reporte de bloqueo/inactividad en ${dept} (DOC_2).`, 'warning', { view: 'hr', coId: state.user.coId });
         
         state.save();
         this.closeModal();
-        this.notify("Reporte enviado exitosamente al Claustro Docente y a Dirección General.", "success");
+        this.notify("✅ Reporte confidencial enviado exclusivamente al Claustro Docente.", "success");
         this.render();
     },
 
@@ -827,7 +837,7 @@ Object.assign(ui, {
             { id: "JUNTA_GENERAL", label: "[EXTRAORDINARIA] Convocatoria de Junta General de Socios" }
         ];
         const optionsHtml = motionTypes.map(m => `<option value="${this.escapeHTML(m.id)}">${this.escapeHTML(m.label)}</option>`).join('');
-        const templateBtn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_6_MOCION_ASAMBLEA', '📄 Modelo Oficial Acta de Moción (Hacer copia)') : '';
+        const templateBtn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_6_MOCION_ASAMBLEA', '📄 Modelo Oficial Acta de Moción') : '';
 
         const html = `
             <div class="mb-4">
@@ -838,10 +848,13 @@ Object.assign(ui, {
                 ${optionsHtml}
             </select>
             <label for="motion-drive-url" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Enlace al Documento de la Propuesta (Google Docs)</label>
-            <input type="url" id="motion-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white mb-2 outline-none focus:border-mars-yellow font-mono" required>
-            <p class="text-[10px] text-slate-400 mb-2">La memoria y argumentario de la moción se desarrolla en el Google Doc oficial con permisos de lectura.</p>
+            <div class="flex flex-col sm:flex-row gap-2 mb-2">
+                <input type="url" id="motion-drive-url" placeholder="https://docs.google.com/document/d/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow font-mono" required>
+                ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('motion-drive-url') : ''}
+            </div>
+            <p class="text-[10px] text-slate-400 mb-2">La memoria y argumentario de la moción se desarrolla en tu copia del Google Doc con permisos de lectura.</p>
         `;
-        const actions = `<button type="button" onclick="ui.submitMotion()" class="min-h-[44px] bg-mars-yellow text-black px-5 py-2.5 text-xs font-bold uppercase hover:bg-white transition-colors">Registrar Moción</button>`;
+        const actions = `<button type="button" onclick="ui.submitMotion()" class="min-h-[44px] w-full sm:w-auto bg-mars-yellow text-black px-5 py-2.5 text-xs font-bold uppercase hover:bg-white transition-colors">Registrar Moción</button>`;
         this.showModal("Proponer Moción de Gobernanza", html, actions);
     },
 
@@ -855,11 +868,13 @@ Object.assign(ui, {
         const motionList = typeof GOVERNANCE_MOTION_TYPES !== 'undefined' ? GOVERNANCE_MOTION_TYPES : [];
         const motionObj = motionList.find(m => m.id === motionTypeId);
         const title = motionObj ? motionObj.label : motionTypeId;
-        const driveUrl = this.cleanInput(elUrl.value);
-        if(!title || !driveUrl) return this.notify("Rellene todos los campos.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
-        }
+        if(!title) return this.notify("Selecciona un tipo de moción.", "warning");
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elUrl.value, elUrl, { required: true, label: 'la moción (DOC_6)' })
+            : { valid: Boolean(this.cleanInput(elUrl.value)), url: this.cleanInput(elUrl.value) };
+        if (!urlCheck.valid) return;
+        const driveUrl = urlCheck.url;
+        if (this.acquireActionLock && !this.acquireActionLock('submit-motion-' + state.user.coId, 1500)) return;
         
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
@@ -1167,23 +1182,38 @@ Object.assign(ui, {
         const wrapper = document.createElement('div');
         
         let brandApprovalAlert = '';
-        const isPendingBrand = (co.brandStatus === 'PENDING_APPROVAL' || co.brandApproval?.status === 'PENDIENTE');
-        if (isPendingBrand) {
+        const hasAnyBrandSubmission = Boolean(co.slogan || co.logo || co.pendingSlogan || co.brandApproval?.driveUrl || co.brandApproval?.expId);
+        const rawBrandSt = co.brandApproval?.status || 'APROBADO';
+        const isPendingCeoBrand = rawBrandSt === 'PENDIENTE_CEO';
+        const isPendingCoordBrand = (co.brandStatus === 'PENDING_APPROVAL' || rawBrandSt === 'PENDIENTE');
+        const isReturnedCeoBrand = rawBrandSt === 'DEVUELTO_CEO';
+
+        if (isPendingCeoBrand) {
+            brandApprovalAlert = `
+            <div class="bg-mars-yellow/10 border border-mars-yellow/60 p-3 mb-4 text-xs">
+                <span class="text-mars-yellow font-bold uppercase block mb-1">⏳ Paso 2: En revisión del CEO</span>
+                <p class="text-slate-200 leading-relaxed font-sans">Tu propuesta de Slogan y Marca está esperando el aval de Dirección General (CEO) antes de elevarse a Coordinación.</p>
+            </div>`;
+        } else if (isPendingCoordBrand) {
             brandApprovalAlert = `
             <div class="bg-mars-yellow/15 border border-mars-yellow/60 p-3 mb-4 text-xs">
                 <span class="bg-mars-yellow/20 text-mars-yellow border border-mars-yellow/50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider block mb-2">[Eslogan/Misión en revisión por Coordinación]</span>
-                <p class="text-slate-200 leading-relaxed">Tu propuesta de Eslogan y Misión ha sido enviada a Coordinación Docente y se encuentra en proceso de validación previa antes de su publicación en el HUD.</p>
-                ${(co.pendingSlogan || co.brandApproval?.pendingSlogan) ? `<p class="text-white mt-1.5 break-words"><strong>Eslogan propuesto:</strong> "${this.escapeHTML(co.pendingSlogan || co.brandApproval?.pendingSlogan)}"</p>` : ''}
-                ${(co.pendingMission || co.valueProposition) ? `<p class="text-white mt-1.5 break-words"><strong>Misión propuesta:</strong> "${this.escapeHTML(co.pendingMission || co.valueProposition)}"</p>` : ''}
+                <p class="text-slate-200 leading-relaxed font-sans">Tu propuesta ha sido avalada por el CEO y enviada a Coordinación Docente para validación previa antes de su publicación en el HUD.</p>
             </div>`;
-        } else if (co.brandApproval.status === 'RECHAZADO') {
+        } else if (isReturnedCeoBrand) {
+            brandApprovalAlert = `
+            <div class="bg-mars-magenta/15 border border-mars-magenta p-3 mb-4 text-xs">
+                <span class="text-mars-magenta font-black uppercase block mb-1">↩️ Devuelta por el CEO para subsanar</span>
+                <p class="text-slate-200 leading-relaxed break-words font-sans">Motivo: "${this.escapeHTML(co.brandApproval.feedback || 'Revisar criterios antes de reenviar.')}"</p>
+            </div>`;
+        } else if (rawBrandSt === 'RECHAZADO') {
             brandApprovalAlert = `
             <div class="bg-mars-magenta/15 border border-mars-magenta p-3 mb-4 text-xs">
                 <span class="text-mars-magenta font-black uppercase block mb-1">❌ Propuesta de Marca Rechazada por Coordinación</span>
-                <p class="text-slate-200 leading-relaxed break-words">Motivo: "${this.escapeHTML(co.brandApproval.feedback || 'Incumplimiento de criterios corporativos.')}"</p>
-                ${co.brandApproval.returnDriveUrl ? `<div class="mt-2"><a href="${encodeURI(co.brandApproval.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-mono font-bold"><span>📄 Ver Correcciones de Coordinación en Drive ↗</span></a></div>` : ''}
+                <p class="text-slate-200 leading-relaxed break-words font-sans">Motivo: "${this.escapeHTML(co.brandApproval.feedback || 'Incumplimiento de criterios corporativos.')}"</p>
+                ${co.brandApproval.returnDriveUrl ? `<div class="mt-2"><a href="${encodeURI(co.brandApproval.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-mono font-bold"><span>📄 Ver Correcciones de Coordinación en Drive ↗</span></a></div>` : ''}
             </div>`;
-        } else if (!co.slogan && !co.logo && !co.pendingSlogan) {
+        } else if (!hasAnyBrandSubmission || (!co.slogan && !co.logo && !co.pendingSlogan && !co.brandApproval?.driveUrl)) {
             brandApprovalAlert = `
             <div class="bg-cyan-950/30 border border-mars-cyan/50 p-2.5 mb-4 text-xs flex flex-wrap justify-between items-center gap-2">
                 <span class="text-mars-cyan font-bold uppercase">🎨 Identidad Corporativa Pendiente de Propuesta</span>
@@ -1193,7 +1223,7 @@ Object.assign(ui, {
             brandApprovalAlert = `
             <div class="bg-mars-green/10 border border-mars-green/50 p-2.5 mb-4 text-xs flex flex-wrap justify-between items-center gap-2">
                 <span class="text-mars-green font-bold uppercase">✓ Marca Oficial Verificada por Coordinación</span>
-                <span class="text-slate-300">Cambios nuevos requerirán re-aprobación</span>
+                <span class="text-slate-300 font-sans">Cambios nuevos requerirán re-aprobación</span>
             </div>`;
         }
 
@@ -1230,9 +1260,12 @@ Object.assign(ui, {
 
         const coCode = co.code || state.user.coId;
         const expId = (co.brandApproval && co.brandApproval.expId) || ('PROP-SLOGAN-' + coCode + '-001');
-        const estadoActual = (co.brandApproval && co.brandApproval.status) || 'APROBADO';
+        const estadoActual = (!hasAnyBrandSubmission && rawBrandSt === 'APROBADO') ? 'SIN_PROPUESTA' : rawBrandSt;
+        const estadoBadgeLabel = estadoActual === 'SIN_PROPUESTA' ? 'SIN PROPUESTA' : estadoActual.replace(/_/g, ' ');
+        const isBrandBankrupt = Boolean(this.isCompanyBankrupt && this.isCompanyBankrupt(co));
+        const isBrandLockedInReview = (estadoActual === 'PENDIENTE_CEO' || estadoActual === 'PENDIENTE');
 
-        const doc11Btn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_11_SLOGAN', '📄 Modelo Oficial Solicitud de Slogan (Hacer copia)') : '';
+        const doc11Btn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_11_SLOGAN', '📄 Modelo Oficial Solicitud de Slogan') : '';
 
         let step2CeoControls = '';
         if (estadoActual === 'PENDIENTE_CEO') {
@@ -1289,10 +1322,12 @@ Object.assign(ui, {
                     <div class="border-b border-mars-border pb-3 mb-4">
                         <div class="flex flex-wrap justify-between items-center gap-2 mb-1">
                             <span class="text-[10px] font-mono text-mars-cyan tracking-widest uppercase">REGISTRO MERCANTIL // SOLICITUD DE APROBACIÓN DE SLOGAN CORPORATIVO</span>
-                            <span class="text-[10px] font-bold px-2 py-0.5 uppercase ${estadoActual==='APROBADO'?'bg-mars-green/20 text-mars-green border border-mars-green':'bg-mars-yellow/20 text-mars-yellow border border-mars-yellow'}">${this.escapeHTML(estadoActual)}</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 uppercase ${estadoActual==='APROBADO'?'bg-mars-green/20 text-mars-green border border-mars-green':(estadoActual==='SIN_PROPUESTA'?'bg-slate-800 text-mars-cyan border border-mars-cyan/50':'bg-mars-yellow/20 text-mars-yellow border border-mars-yellow')}">${this.escapeHTML(estadoBadgeLabel)}</span>
                         </div>
                         <h2 class="font-orbitron text-white text-xs sm:text-sm font-bold uppercase break-words">EXPEDIENTE: ${this.escapeHTML(expId)} | EMPRESA: ${this.escapeHTML(co.name)}</h2>
                     </div>
+
+                    ${brandApprovalAlert}
 
                     <!-- Instrucciones del Flujo de Trámite Oficial -->
                     <div class="bg-black/60 border border-slate-800 p-3 mb-4 text-xs text-slate-300 space-y-2">
@@ -1315,19 +1350,32 @@ Object.assign(ui, {
                     <!-- Paso 1: Formulación de Propuesta (Marketing) -->
                     <div class="bg-slate-950 p-4 border border-slate-800 space-y-3">
                         <span class="text-xs text-mars-cyan font-bold uppercase block">Paso 1: Formulación de Propuesta (Dpto. Marketing)</span>
-                        <div class="mb-2">
-                            ${doc11Btn}
-                        </div>
-                        <div>
-                            <label for="company-logo-drive" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Enlace al Escudo / Logo Corporativo (Google Drive)</label>
-                            <input type="url" id="company-logo-drive" value="${this.escapeHTML((co.brandApproval && co.brandApproval.pendingLogo) ? co.brandApproval.pendingLogo : (co.logo || ''))}" placeholder="https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-magenta">
-                        </div>
-                        <div>
-                            <label for="brand-slogan-drive-url" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Enlace a la Propuesta de Slogan en Google Drive (Obligatorio)</label>
-                            <input type="url" id="brand-slogan-drive-url" value="${this.escapeHTML(co.brandApproval?.driveUrl || '')}" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/60 p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow" required>
-                            <p class="text-[10px] text-slate-400 mt-1">El argumentario, lema propuesto y justificación residen en el Google Doc oficial con permisos de lectura.</p>
-                        </div>
-                        <button type="button" onclick="ui.submitBrandProposalToCEO()" class="w-full min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)]">[ 📤 1. Presentar Propuesta al CEO ]</button>
+                        ${isBrandLockedInReview ? `
+                            <div class="bg-black/60 border border-amber-500/40 p-3 rounded text-xs text-slate-200 space-y-2 font-sans">
+                                <p>🔒 Propuesta actualmente en trámite (<strong>${this.escapeHTML(estadoBadgeLabel)}</strong>). Para evitar sobrescrituras accidentales, el envío está bloqueado mientras se revisa.</p>
+                                ${co.brandApproval?.driveUrl ? `<a href="${encodeURI(co.brandApproval.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/40 rounded font-mono"><span>📄 Ver Propuesta Enviada ↗</span></a>` : ''}
+                                ${estadoActual === 'PENDIENTE_CEO' ? `
+                                    <button type="button" onclick="ui.withdrawBrandProposalByMkt()" class="min-h-[44px] w-full bg-slate-900 border border-amber-400 text-amber-300 hover:bg-amber-400 hover:text-black px-4 py-2 text-xs font-bold uppercase transition-all">[ ✏️ Retirar del CEO para Editar ]</button>
+                                ` : ''}
+                            </div>
+                        ` : `
+                            <div class="mb-2">
+                                ${doc11Btn}
+                            </div>
+                            <div>
+                                <label for="company-logo-drive" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Enlace al Escudo / Logo Corporativo (Google Drive)</label>
+                                <input type="url" id="company-logo-drive" value="${this.escapeHTML((co.brandApproval && co.brandApproval.pendingLogo) ? co.brandApproval.pendingLogo : (co.logo || ''))}" placeholder="https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-magenta">
+                            </div>
+                            <div>
+                                <label for="brand-slogan-drive-url" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Enlace a la Propuesta de Slogan en Google Drive (Obligatorio)</label>
+                                <div class="flex flex-col sm:flex-row gap-2">
+                                    <input type="url" id="brand-slogan-drive-url" value="${this.escapeHTML(co.brandApproval?.driveUrl || '')}" placeholder="https://docs.google.com/document/d/..." class="flex-1 min-h-[44px] bg-slate-900 border border-mars-yellow/60 p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow" required>
+                                    ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('brand-slogan-drive-url') : ''}
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-1">Usa primero [📋 Hacer Copia en Drive]. El Google Doc oficial debe tener permisos públicos de lectura.</p>
+                            </div>
+                            <button type="button" onclick="ui.submitBrandProposalToCEO()" class="w-full min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)]">[ 📤 1. Presentar Propuesta al CEO ]</button>
+                        `}
                     </div>
                 </div>
             </div>
@@ -1356,9 +1404,10 @@ Object.assign(ui, {
                         </div>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button type="button" onclick="ui.modalRequestMktPackage()" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_12px_rgba(255,204,0,0.3)] flex items-center justify-center gap-1.5">
-                            <span>+ Contratar Paquete</span>
-                        </button>
+                        ${isBrandBankrupt
+                            ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] bg-slate-900 border border-rose-500/60 text-rose-300 px-4 py-2.5 text-xs font-black uppercase tracking-wider cursor-not-allowed flex items-center justify-center gap-1.5"><span>🔒 Bloqueado (Saldo ≤ 0 €v)</span></button>`
+                            : `<button type="button" onclick="ui.modalRequestMktPackage()" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_12px_rgba(255,204,0,0.3)] flex items-center justify-center gap-1.5"><span>+ Contratar Paquete</span></button>`
+                        }
                         <button type="button" onclick="ui.navigate('campaigns')" class="min-h-[44px] bg-slate-900 text-mars-yellow border border-mars-yellow/60 px-4 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-mars-yellow hover:text-black transition-all flex items-center justify-center gap-1.5">
                             <span>📡 Ver Mis Campañas ➔</span>
                         </button>
@@ -1412,7 +1461,7 @@ Object.assign(ui, {
             </option>
         `).join('');
 
-        const doc5Btn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_5_BRIEF_MKT', '📄 Modelo Oficial Brief Creativo MKT (Hacer copia)') : '';
+        const doc5Btn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_5_BRIEF_MKT', '📄 Modelo Oficial Brief Creativo MKT') : '';
 
         const html = `
             <div class="space-y-3">
@@ -1434,8 +1483,11 @@ Object.assign(ui, {
                 </div>
                 <div>
                     <label for="campaign-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Brief Creativo y Justificación ROI (Google Drive / Docs)</label>
-                    <input type="url" id="campaign-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-black border border-mars-cyan/50 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono" required>
-                    <p class="text-[10px] text-slate-400 mt-1">El brief creativo y la estimación de retorno residen en el Google Doc corporativo con permisos de lectura.</p>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="campaign-drive-url" placeholder="https://docs.google.com/document/d/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-black border border-mars-cyan/50 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono" required>
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('campaign-drive-url') : ''}
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1">Usa primero [📋 Hacer Copia en Drive] y pega el enlace de vuestra copia con permisos de lectura.</p>
                 </div>
             </div>
         `;
@@ -1453,13 +1505,13 @@ Object.assign(ui, {
         const pkg = mktPackages.find(p => p.id === finalPkgId);
         if (!pkg) return this.notify("Paquete publicitario no encontrado.", "error");
 
-        const driveUrl = elUrl ? this.cleanInput(elUrl.value) : '';
         const budget = pkg.price;
-
-        if (!driveUrl) return this.notify("Debes indicar el enlace Drive del brief publicitario.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elUrl ? elUrl.value : '', elUrl, { required: true, label: 'el Brief Creativo (DOC_5)' })
+            : { valid: Boolean(elUrl && this.cleanInput(elUrl.value)), url: elUrl ? this.cleanInput(elUrl.value) : '' };
+        if (!urlCheck.valid) return;
+        const driveUrl = urlCheck.url;
+        if (this.acquireActionLock && !this.acquireActionLock('mkt-pack-' + finalPkgId, 1500)) return;
 
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
@@ -1553,7 +1605,7 @@ Object.assign(ui, {
         }
 
         const actionsOpts = standardizedActions.map(act => `<option value="${this.escapeHTML(act)}">${this.escapeHTML(act)}</option>`).join('');
-        const doc12Btn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_12_ACCION_MKT', '📄 Modelo Oficial de Acción Publicitaria (Hacer copia)') : '';
+        const doc12Btn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_12_ACCION_MKT', '📄 Modelo Oficial de Acción Publicitaria') : '';
 
         const html = `
             <p class="text-xs text-slate-200 mb-3">Registrando acción <strong>#${used + 1} de ${total}</strong> del paquete <span class="text-mars-yellow font-bold">${this.escapeHTML(camp.packageName)}</span>.</p>
@@ -1573,12 +1625,15 @@ Object.assign(ui, {
                 </div>
                 <div>
                     <label for="mkt-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Enlace a Evidencia Oficial (Google Drive / Docs)</label>
-                    <input type="url" id="mkt-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono" required>
-                    <p class="text-[10px] text-slate-400 mt-1">Adjunta exclusivamente la URL verificada de Google Drive de la Ficha Técnica (DOC_12) con permisos abiertos de lectura.</p>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="mkt-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono" required>
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('mkt-drive-url') : ''}
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1">Adjunta tu copia del Google Doc DOC_12 con permisos abiertos de lectura.</p>
                 </div>
             </div>
         `;
-        const actions = `<button type="button" onclick="ui.confirmConsumeMktAction('${this.escapeHTML(camp.id)}')" class="min-h-[44px] bg-mars-cyan text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-all">Entregar Acción al CEO</button>`;
+        const actions = `<button type="button" onclick="ui.confirmConsumeMktAction('${this.escapeHTML(camp.id)}')" class="min-h-[44px] w-full sm:w-auto bg-mars-cyan text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-all">Entregar Acción al CEO</button>`;
         this.showModal("Ejecutar Acción Publicitaria", html, actions);
     },
 
@@ -1589,12 +1644,13 @@ Object.assign(ui, {
         if (!elType || !elUrl) return;
 
         const actionType = this.cleanInput(elType.value);
-        const url = this.cleanInput(elUrl.value);
-
-        if (!actionType || !url) return this.notify("Debes seleccionar la acción estandarizada e indicar la URL de Google Drive.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(url)) {
-            return this.notify("El enlace de la creatividad debe ser una URL válida de Google Drive.", "error");
-        }
+        if (!actionType) return this.notify("Debes seleccionar la acción estandarizada.", "warning");
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elUrl.value, elUrl, { required: true, label: 'la Acción Publicitaria (DOC_12)' })
+            : { valid: Boolean(this.cleanInput(elUrl.value)), url: this.cleanInput(elUrl.value) };
+        if (!urlCheck.valid) return;
+        const url = urlCheck.url;
+        if (this.acquireActionLock && !this.acquireActionLock('mkt-act-' + campId, 1500)) return;
 
         const co = state.data.companies[state.user.coId];
         if (!co || !co.marketingCampaigns) return;
@@ -1673,7 +1729,10 @@ Object.assign(ui, {
                 </div>
                 <div>
                     <label for="reject-mkt-drive-url" class="text-xs text-mars-yellow uppercase font-bold block mb-1">Enlace a Google Drive con observaciones / correcciones (Obligatorio)</label>
-                    <input type="url" id="reject-mkt-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-white" required>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="reject-mkt-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="flex-1 min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-white" required>
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('reject-mkt-drive-url') : ''}
+                    </div>
                     <p class="text-[10px] text-slate-400 mt-1">Conforme a la directiva Zero-Text y blindaje RGPD, no se admite texto libre. Incluye las observaciones o correcciones en tu documento de Google Drive con permisos de lectura.</p>
                 </div>
             </div>
@@ -1688,12 +1747,12 @@ Object.assign(ui, {
         const sel = document.getElementById('reject-mkt-reason-select');
         const reason = sel ? this.cleanInput(sel.value) : 'Revisión requerida por CEO';
         const elUrl = document.getElementById('reject-mkt-drive-url');
-        const driveUrl = elUrl ? this.cleanInput(elUrl.value) : '';
-        if (!driveUrl || (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl))) {
-            return this.notify("Debes indicar un enlace válido de Google Drive / Docs con las observaciones de subsanación.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elUrl ? elUrl.value : '', elUrl, { required: true, label: 'observaciones en Docs' })
+            : { valid: Boolean(elUrl && this.cleanInput(elUrl.value)), url: elUrl ? this.cleanInput(elUrl.value) : '' };
+        if (!urlCheck.valid) return;
         this.closeModal();
-        state.decideMktAction(campId, actId, false, reason, driveUrl);
+        state.decideMktAction(campId, actId, false, reason, urlCheck.url);
     },
 
     modalResubmitMktAction(campId, actId) {
@@ -1705,12 +1764,12 @@ Object.assign(ui, {
         const act = camp.executedActions.find(a => String(a.id) === String(actId));
         if (!act) return;
 
-        const doc12Btn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_12_ACCION_MKT', '📄 Modelo Oficial de Acción Publicitaria (Hacer copia)') : '';
+        const doc12Btn = ui.renderDocTemplateBtn ? ui.renderDocTemplateBtn('DOC_12_ACCION_MKT', '📄 Modelo Oficial de Acción Publicitaria') : '';
         const currentUrl = act.url || act.driveUrl || '';
         const ceoCorrectionsBtn = act.returnDriveUrl ? `
             <div class="bg-red-950/40 border border-red-500/40 p-2.5 rounded mb-2">
                 <p class="text-[11px] text-red-200 font-bold mb-1">Anotaciones del CEO en Google Drive:</p>
-                <a href="${encodeURI(act.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs text-mars-cyan hover:underline font-mono"><span>📄 Abrir Correcciones del CEO en Google Drive ↗</span></a>
+                <a href="${encodeURI(act.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 text-xs text-mars-cyan hover:underline font-mono"><span>📄 Abrir Correcciones del CEO en Google Drive ↗</span></a>
             </div>
         ` : '';
 
@@ -1726,13 +1785,16 @@ Object.assign(ui, {
                 </div>
                 <div>
                     <label for="resubmit-mkt-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1">Nuevo enlace corregido de Google Drive</label>
-                    <input type="url" id="resubmit-mkt-drive-url" value="${this.escapeHTML(currentUrl)}" placeholder="https://docs.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
-                    <p class="text-[10px] text-slate-400 mt-1">Verifica que el documento tenga permisos de lectura abiertos.</p>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="resubmit-mkt-drive-url" value="${this.escapeHTML(currentUrl)}" placeholder="https://docs.google.com/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('resubmit-mkt-drive-url') : ''}
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1">Verifica que tu copia del documento tenga permisos de lectura abiertos.</p>
                 </div>
             </div>
         `;
         const actions = `
-            <button type="button" onclick="ui.confirmResubmitMktAction('${this.escapeHTML(campId)}', '${this.escapeHTML(actId)}')" class="min-h-[44px] bg-mars-yellow text-black px-5 py-2 text-xs font-black uppercase hover:bg-white transition-all">Reenviar al CEO</button>
+            <button type="button" onclick="ui.confirmResubmitMktAction('${this.escapeHTML(campId)}', '${this.escapeHTML(actId)}')" class="min-h-[44px] w-full sm:w-auto bg-mars-yellow text-black px-5 py-2 text-xs font-black uppercase hover:bg-white transition-all">Reenviar al CEO</button>
         `;
         this.showModal("Subsanar y Reenviar Acción", html, actions);
     },
@@ -1740,13 +1802,12 @@ Object.assign(ui, {
     confirmResubmitMktAction(campId, actId) {
         const el = document.getElementById('resubmit-mkt-drive-url');
         if (!el) return;
-        const newUrl = this.cleanInput(el.value);
-        if (!newUrl) return this.notify("Debes indicar la URL de Google Drive subsanada.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(newUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(el.value, el, { required: true, label: 'la subsanación DOC_12' })
+            : { valid: Boolean(this.cleanInput(el.value)), url: this.cleanInput(el.value) };
+        if (!urlCheck.valid) return;
         this.closeModal();
-        state.resubmitMktAction(campId, actId, newUrl);
+        state.resubmitMktAction(campId, actId, urlCheck.url);
     },
 
     saveBrandIdentityText() {
@@ -1801,24 +1862,44 @@ Object.assign(ui, {
         reader.readAsDataURL(file);
     },
 
+    withdrawBrandProposalByMkt() {
+        if (!state.user) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co || !co.brandApproval) return;
+        if (co.brandApproval.status !== 'PENDIENTE_CEO') {
+            return this.notify("Solo puedes retirar una propuesta antes de que el CEO la avale.", "info");
+        }
+        co.brandApproval.status = 'DEVUELTO_CEO';
+        co.brandApproval.feedback = 'Retirada por Marketing para edición antes del visado CEO.';
+        co.updatedAt = Date.now();
+        state.save();
+        this.notify("✏️ Propuesta desbloqueada para edición.", "info");
+        this.render();
+    },
+
     submitBrandProposalToCEO() {
         if (!state.user) return;
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
+        if (co.brandApproval && (co.brandApproval.status === 'PENDIENTE_CEO' || co.brandApproval.status === 'PENDIENTE')) {
+            return this.notify("La propuesta ya se encuentra en revisión. Retírala primero si necesitas modificarla.", "warning");
+        }
 
         const elDrive = document.getElementById('brand-slogan-drive-url');
         const elLogo = document.getElementById('company-logo-drive');
 
-        const driveUrl = elDrive ? this.cleanInput(elDrive.value) : '';
-        const logoUrl = elLogo ? this.cleanInput(elLogo.value) : '';
+        const sloganCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elDrive ? elDrive.value : '', elDrive, { required: true, label: 'la propuesta de Slogan (DOC_11)' })
+            : { valid: Boolean(elDrive && this.cleanInput(elDrive.value)), url: elDrive ? this.cleanInput(elDrive.value) : '' };
+        if (!sloganCheck.valid) return;
+        const driveUrl = sloganCheck.url;
 
-        if (!driveUrl) return this.notify("Debes indicar la URL de Google Drive con la propuesta oficial del Slogan.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace al documento del eslogan debe ser una URL válida de Google Drive / Docs.", "error");
-        }
-        if (logoUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(logoUrl)) {
-            return this.notify("El enlace al logotipo debe ser una URL válida de Google Drive.", "error");
-        }
+        const logoCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elLogo ? elLogo.value : '', elLogo, { required: false, label: 'el logotipo en Google Drive' })
+            : { valid: true, url: elLogo ? this.cleanInput(elLogo.value) : '' };
+        if (!logoCheck.valid) return;
+        const logoUrl = logoCheck.url;
+        if (this.acquireActionLock && !this.acquireActionLock('submit-brand-' + state.user.coId, 1500)) return;
 
         const coCode = co.code || state.user.coId;
         const expId = 'PROP-SLOGAN-' + coCode + '-001';
@@ -1834,7 +1915,7 @@ Object.assign(ui, {
             feedback: ''
         };
 
-        ui.pushNotification(state.user.coId, 'CEO', `Marketing ha presentado la propuesta de Slogan Corporativo (${expId}) para aval y elevación a Coordinación.`, 'info', { view: 'resolutions', anchorId: 'ceo-slogan-approval-panel' });
+        ui.pushNotification(state.user.coId, 'CEO', `Marketing ha presentado la propuesta de Slogan Corporativo (${expId}) para aval y elevación a Coordinación.`, 'info', { view: 'dashboard', anchorId: 'ceo-slogan-approval-panel-dash' });
 
         state.save();
         this.render();
@@ -1845,6 +1926,10 @@ Object.assign(ui, {
         if (!state.user || this.getEffectiveRole() !== 'CEO') return this.notify("Solo Dirección General (CEO) puede avalar esta propuesta.", "warning");
         const co = state.data.companies[cid || state.user.coId];
         if (!co || !co.brandApproval) return;
+        if (co.brandApproval.status !== 'PENDIENTE_CEO') {
+            return this.notify("Esta propuesta de marca ya fue avalada o procesada.", "info");
+        }
+        if (this.acquireActionLock && !this.acquireActionLock('endorse-brand-' + (cid || state.user.coId), 1500)) return;
 
         co.brandApproval.status = 'PENDIENTE';
         co.brandApproval.endorsedAt = Date.now();
@@ -1883,7 +1968,10 @@ Object.assign(ui, {
                 </div>
                 <div>
                     <label for="ceo-brand-return-drive-url" class="text-xs text-mars-cyan font-bold uppercase block mb-1">Enlace a Google Drive con observaciones (Opcional)</label>
-                    <input type="url" id="ceo-brand-return-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan/60 p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-white">
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="ceo-brand-return-drive-url" placeholder="https://docs.google.com/document/d/..." class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan/60 p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-white">
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('ceo-brand-return-drive-url') : ''}
+                    </div>
                 </div>
             </div>
         `;
@@ -1898,10 +1986,11 @@ Object.assign(ui, {
         const sel = document.getElementById('ceo-brand-return-reason');
         const feedback = sel ? sel.value : "Revisar propuesta en Google Docs.";
         const elUrl = document.getElementById('ceo-brand-return-drive-url');
-        const returnDriveUrl = elUrl ? this.cleanInput(elUrl.value) : '';
-        if (returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(returnDriveUrl)) {
-            return this.notify("Si introduces enlace de observaciones, debe ser una URL válida de Google Drive / Docs.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elUrl ? elUrl.value : '', elUrl, { required: false, label: 'observaciones en Docs' })
+            : { valid: true, url: elUrl ? this.cleanInput(elUrl.value) : '' };
+        if (!urlCheck.valid) return;
+        const returnDriveUrl = urlCheck.url;
         this.closeModal();
 
         co.brandApproval.status = 'DEVUELTO_CEO';

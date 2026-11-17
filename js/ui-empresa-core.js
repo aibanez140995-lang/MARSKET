@@ -182,8 +182,11 @@ Object.assign(ui, {
             const nRole = String(n.role || '').toUpperCase();
             const isForMe = (nRole === effectiveRole) || (nRole === rawRole) || (nRole === 'ALL') || (effectiveRole === 'OPERACIONES_IA' && nRole === 'OPERACIONES');
             if (!isForMe) return false;
-            if (nRole === 'ALL') {
-                return !(n.readBy && n.readBy[effectiveRole]);
+            const isSharedDeptWithAux = Boolean(co.auxRoleDept) && (nRole === effectiveRole || (effectiveRole === 'OPERACIONES_IA' && nRole === 'OPERACIONES'));
+            if (nRole === 'ALL' || isSharedDeptWithAux) {
+                if (n.readBy && n.readBy[rawRole]) return false;
+                if (n.readBy && n.readBy[effectiveRole] && !co.auxRoleDept) return false;
+                return !n.read || Boolean(co.auxRoleDept && (!n.readBy || !n.readBy[rawRole]));
             }
             return !n.read;
         });
@@ -222,12 +225,15 @@ Object.assign(ui, {
         
         co.notifications = co.notifications || [];
         state.data.dismissedNotificationIds = state.data.dismissedNotificationIds || [];
-        const effectiveRole = (typeof this.getEffectiveRole === 'function' ? this.getEffectiveRole(co) : state.user.role) || state.user.role;
+        const rawRole = String(state.user.role || '').toUpperCase();
+        const effectiveRole = String((typeof this.getEffectiveRole === 'function' ? this.getEffectiveRole(co) : rawRole) || rawRole).toUpperCase();
         const notif = co.notifications.find(n => n.id === id);
         if (notif) {
-            if (String(notif.role || '').toUpperCase() === 'ALL') {
+            const nRole = String(notif.role || '').toUpperCase();
+            const isSharedDeptWithAux = Boolean(co.auxRoleDept) && (nRole === effectiveRole || (effectiveRole === 'OPERACIONES_IA' && nRole === 'OPERACIONES'));
+            if (nRole === 'ALL' || isSharedDeptWithAux) {
                 notif.readBy = notif.readBy || {};
-                notif.readBy[effectiveRole] = true;
+                notif.readBy[rawRole] = true;
             } else {
                 notif.read = true;
                 if (id && !state.data.dismissedNotificationIds.includes(String(id))) {
@@ -249,16 +255,17 @@ Object.assign(ui, {
         co.notifications = co.notifications || [];
         state.data.dismissedNotificationIds = state.data.dismissedNotificationIds || [];
         const rawRole = String(state.user.role || '').toUpperCase();
-        const effectiveRole = (typeof this.getEffectiveRole === 'function' ? this.getEffectiveRole(co) : rawRole) || rawRole;
+        const effectiveRole = String((typeof this.getEffectiveRole === 'function' ? this.getEffectiveRole(co) : rawRole) || rawRole).toUpperCase();
         (co.notifications || []).forEach(n => {
             if (!n) return;
             const nRole = String(n.role || '').toUpperCase();
             const isForMe = (nRole === effectiveRole) || (nRole === rawRole) || (nRole === 'ALL') || (effectiveRole === 'OPERACIONES_IA' && nRole === 'OPERACIONES');
             if (!isForMe) return;
-            if (nRole === 'ALL') {
-                if (!(n.readBy && n.readBy[effectiveRole])) {
+            const isSharedDeptWithAux = Boolean(co.auxRoleDept) && (nRole === effectiveRole || (effectiveRole === 'OPERACIONES_IA' && nRole === 'OPERACIONES'));
+            if (nRole === 'ALL' || isSharedDeptWithAux) {
+                if (!(n.readBy && n.readBy[rawRole])) {
                     n.readBy = n.readBy || {};
-                    n.readBy[effectiveRole] = true;
+                    n.readBy[rawRole] = true;
                     n.updatedAt = Date.now();
                 }
             } else if (!n.read) {
@@ -696,7 +703,9 @@ Object.assign(ui, {
             return { def: d, dlTs, isUrgent, urgentReason };
         });
 
-        const totalPendingCeoItems = submittedCeoDefs.length + pendingPhaseBalances.length + pendingMktActionsList.length + (pendingSlogan ? 1 : 0);
+        const pendingSpecialItemsCount = (co.specialItemRequests || []).filter(r => r && r.status === 'PENDIENTE_CEO').length;
+        const totalTrayPendingItems = submittedCeoDefs.length + pendingPhaseBalances.length + pendingMktActionsList.length + (pendingSlogan ? 1 : 0);
+        const totalPendingCeoItems = totalTrayPendingItems + pendingSpecialItemsCount;
         const urgentCount = (isSloganUrgent ? 1 : 0) + (isMktUrgent ? pendingMktActionsList.length : 0) + pendingPhaseBalances.length + classifiedCeoDefs.filter(x => x.isUrgent).length;
         const activeTrayFilter = (this.ceoTrayFilter === 'URGENT') ? 'URGENT' : 'ALL';
 
@@ -725,18 +734,18 @@ Object.assign(ui, {
                         Ver Mis Entregables ➔
                     </button>
                 </div>
-                ${totalPendingCeoItems > 0 ? `
+                ${totalTrayPendingItems > 0 ? `
                     <div class="flex flex-wrap items-center gap-2 mb-4 pb-3 border-b border-slate-800/80">
                         <span class="text-[11px] font-mono uppercase text-slate-400 mr-1">Priorizar:</span>
                         <button type="button" onclick="ui.setCeoTrayFilter('ALL')" class="min-h-[44px] px-3.5 py-2 rounded font-mono font-bold text-xs uppercase transition-all border ${activeTrayFilter === 'ALL' ? 'bg-mars-yellow text-black border-mars-yellow shadow-[0_0_10px_rgba(255,204,0,0.3)]' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500 hover:text-white'}">
-                            📋 Todos (${totalPendingCeoItems})
+                            📋 Todos (${totalTrayPendingItems})
                         </button>
                         <button type="button" onclick="ui.setCeoTrayFilter('URGENT')" class="min-h-[44px] px-3.5 py-2 rounded font-mono font-bold text-xs uppercase transition-all border ${activeTrayFilter === 'URGENT' ? 'bg-red-600 text-white border-red-400 shadow-[0_0_12px_rgba(255,0,85,0.4)]' : (urgentCount > 0 ? 'bg-red-950/60 text-amber-300 border-red-500/60 hover:bg-red-900/70' : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200')}">
                             ⚡ Solo Urgentes / Próximos a Cierre (${urgentCount})
                         </button>
                     </div>
                 ` : ''}
-                ${totalPendingCeoItems === 0 ? `
+                ${totalTrayPendingItems === 0 ? `
                     <div class="p-5 bg-slate-900/60 border border-slate-800 text-center rounded">
                         ${clockMetrics.phaseDeliveredCount >= clockMetrics.phaseTotalCount && clockMetrics.phaseTotalCount > 0 ? `
                             <p class="text-xs font-mono text-emerald-400 uppercase font-bold">✨ Todos los entregables de Fase ${this.escapeHTML(clockMetrics.phaseInfo.key)} están entregados al Claustro.</p>
@@ -744,13 +753,16 @@ Object.assign(ui, {
                             <p class="text-xs font-mono text-cyan-300 uppercase font-bold">⏳ Sin visados en espera ahora mismo (${clockMetrics.phaseDeliveredCount}/${clockMetrics.phaseTotalCount} hitos completados en Fase ${this.escapeHTML(clockMetrics.phaseInfo.key)}).</p>
                             <p class="text-[11px] text-slate-300 mt-1 font-sans">Faltan ${Math.max(0, clockMetrics.phaseTotalCount - clockMetrics.phaseDeliveredCount)} hito(s) en elaboración por tus departamentos. Cuando los suban, aparecerán aquí para tu firma.</p>
                         `}
+                        ${pendingSpecialItemsCount > 0 ? `
+                            <p class="text-xs font-mono text-mars-magenta mt-2 font-bold">🔬 Tienes ${pendingSpecialItemsCount} solicitud(es) de material especial I+D pendiente(s) en el panel inferior.</p>
+                        ` : ''}
                     </div>
                 ` : (visibleTotalCount === 0 ? `
                     <div class="p-5 bg-slate-900/60 border border-emerald-500/40 text-center rounded space-y-3">
                         <p class="text-xs font-mono text-emerald-300 uppercase font-bold">✅ Sin visados urgentes o con fecha de cierre inminente (≤ 7 días).</p>
-                        <p class="text-[11px] text-slate-400">Tienes ${totalPendingCeoItems} trámite(s) ordinario(s) pendiente(s) con plazo holgado.</p>
+                        <p class="text-[11px] text-slate-400">Tienes ${totalTrayPendingItems} trámite(s) ordinario(s) pendiente(s) con plazo holgado.</p>
                         <button type="button" onclick="ui.setCeoTrayFilter('ALL')" class="min-h-[44px] bg-slate-800 border border-mars-yellow/70 text-mars-yellow hover:bg-mars-yellow hover:text-black font-black uppercase text-xs px-4 py-2 transition-all rounded">
-                            [ 📋 Ver Todos (${totalPendingCeoItems}) ]
+                            [ 📋 Ver Todos (${totalTrayPendingItems}) ]
                         </button>
                     </div>
                 ` : `
@@ -764,7 +776,7 @@ Object.assign(ui, {
                                         <span class="text-xs font-bold uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2 py-0.5">Resp: Marketing</span>
                                         <span class="text-xs text-slate-400 font-mono">Identidad • DOC_11</span>
                                     </div>
-                                    <h4 class="text-white font-bold text-sm uppercase leading-snug">Propuesta de Slogan Corporativo: "${this.escapeHTML(visibleSlogan.slogan || '')}"</h4>
+                                    <h4 class="text-white font-bold text-sm uppercase leading-snug">Propuesta de Slogan Corporativo: ${visibleSlogan.pendingSlogan ? `"${this.escapeHTML(visibleSlogan.pendingSlogan)}"` : `<span class="text-mars-cyan">${this.escapeHTML(visibleSlogan.concept || 'Documento DOC_11 en Drive')}</span>`}</h4>
                                     ${visibleSlogan.valueProposition ? `<p class="text-[11px] text-slate-300 font-mono mt-1">Lema: "${this.escapeHTML(visibleSlogan.valueProposition)}"</p>` : ''}
                                     <div class="mt-2.5 flex flex-wrap items-center gap-2">
                                         ${visibleSlogan.driveUrl ? `
@@ -908,6 +920,7 @@ Object.assign(ui, {
             </div>`;
         }
 
+        const curPhaseKey = (typeof this.getCurrentPhaseKey === 'function') ? this.getCurrentPhaseKey() : 'I';
         let ceoGovernanceModulesHtml = '';
         if (isCEO) {
             const license = co.launchLicense;
@@ -1008,7 +1021,10 @@ Object.assign(ui, {
                         </div>
                         <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center flex-wrap gap-2">
                             <span class="text-[11px] text-slate-400 font-mono">DOC_14 AESA</span>
-                            <button type="button" onclick="ui.modalLaunchLicense()" class="min-h-[44px] ${isAesaDenied ? 'bg-red-600 text-white hover:bg-white hover:text-red-700' : 'bg-mars-yellow text-black hover:bg-white'} font-black uppercase text-xs px-4 py-2 transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">${isResubmission ? `[ 🔄 Subsanar Licencia AESA (${feeToPay} €v) ]` : `[ 🚀 Tramitar Licencia AESA (${feeToPay} €v) ]`}</button>
+                            ${(this.isCompanyBankrupt && this.isCompanyBankrupt(co))
+                                ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] bg-slate-900 border border-rose-500/60 text-rose-300 font-black uppercase text-xs px-4 py-2 cursor-not-allowed">🔒 Bloqueado (Saldo ≤ 0 €v)</button>`
+                                : `<button type="button" onclick="ui.modalLaunchLicense()" class="min-h-[44px] ${isAesaDenied ? 'bg-red-600 text-white hover:bg-white hover:text-red-700' : 'bg-mars-yellow text-black hover:bg-white'} font-black uppercase text-xs px-4 py-2 transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">${isResubmission ? `[ 🔄 Subsanar Licencia AESA (${feeToPay} €v) ]` : `[ 🚀 Tramitar Licencia AESA (${feeToPay} €v) ]`}</button>`
+                            }
                         </div>
                     </div>`;
                 }
@@ -1052,7 +1068,6 @@ Object.assign(ui, {
             }
 
             // Módulo de Contrato en Vigor y Contador para el CEO (Mitad inferior izquierda)
-            const curPhaseKey = (typeof this.getCurrentPhaseKey === 'function') ? this.getCurrentPhaseKey() : 'I';
             const signedActiveContract = co.contracts?.[curPhaseKey];
             const allSignedContracts = Object.values(co.contracts || {}).filter(c => c && c.contractId);
             const signedContractsCount = allSignedContracts.length;
@@ -1380,7 +1395,7 @@ Object.assign(ui, {
                     <span class="text-mars-green font-bold">✓ ${phaseDeliveredCount} Entregados al Docente</span>
                     ${phaseCeoCount > 0 ? `<span class="text-mars-yellow font-bold animate-pulse">🟡 ${phaseCeoCount} En Visado CEO</span>` : ''}
                     ${phaseReturnedCount > 0 ? `<span class="text-red-400 font-bold animate-pulse">🔴 ${phaseReturnedCount} Requiere Subsanación</span>` : ''}
-                    <span>⏳ ${Math.max(0, phaseTotalCount - phaseDeliveredCount - phaseCeoCount)} Pendientes</span>
+                    <span>⏳ ${Math.max(0, phaseTotalCount - phaseDeliveredCount - phaseCeoCount - phaseReturnedCount)} Pendientes</span>
                 </div>
             </div>
 
@@ -1495,9 +1510,9 @@ Object.assign(ui, {
                         </h2>
                         <p class="text-xs text-slate-300 uppercase mt-0.5">Control Ejecutivo, Supervisión de Hitos y Trazabilidad de Misión Aeroespacial.</p>
                     </div>
-                    <div class="flex items-center gap-2 w-full sm:w-auto">
-                        ${isCEO ? `<button type="button" onclick="ui.modalCreateAuxRole()" class="min-h-[44px] flex-1 sm:flex-initial bg-slate-900 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-bold uppercase hover:bg-mars-cyan hover:text-black transition-all whitespace-nowrap">[ 👥 Gestionar Auxiliar ]</button>` : ''}
-                        <button type="button" onclick="ui.navigate('role_deliverables')" class="min-h-[44px] flex-1 sm:flex-initial bg-mars-cyan text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_12px_rgba(0,240,255,0.3)] whitespace-nowrap">[ 📤 Mis Entregables ]</button>
+                    <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        ${(isCEO && state.user.role !== 'AUXILIAR') ? `<button type="button" onclick="ui.modalCreateAuxRole()" class="min-h-[44px] flex-1 sm:flex-initial bg-slate-900 border border-mars-cyan text-mars-cyan px-4 py-2 text-xs font-bold uppercase hover:bg-mars-cyan hover:text-black transition-all whitespace-nowrap">[ 👥 Gestionar Auxiliar ]</button>` : ''}
+                        <button type="button" onclick="ui.navigate('role_deliverables')" class="min-h-[44px] flex-1 sm:flex-initial bg-mars-cyan text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_12px_rgba(0,240,255,0.3)] whitespace-nowrap">[ 📤 ${isCEO ? 'Supervisión Entregas' : 'Mis Entregables'} ]</button>
                     </div>
                 </div>
 
@@ -1521,7 +1536,7 @@ Object.assign(ui, {
                     <div class="bg-black/50 p-3 sm:p-4 border border-slate-800">
                         <span class="text-[10px] sm:text-xs text-slate-400 font-bold uppercase block mb-1">Visados CEO Pendientes</span>
                         <p class="text-base sm:text-xl font-orbitron font-black ${totalPendingCeoItems > 0 ? 'text-mars-yellow animate-pulse' : 'text-slate-400'}">${totalPendingCeoItems}</p>
-                        <span class="text-[10px] text-slate-500 font-mono">${pendingCeoDeliverables} entregables + ${pendingMktActions + (pendingSlogan ? 1 : 0)} mkt/identidad</span>
+                        <span class="text-[10px] text-slate-500 font-mono">${pendingCeoDeliverables} entregables + ${pendingMktActions + (pendingSlogan ? 1 : 0)} mkt${pendingSpecialItemsCount > 0 ? ` + ${pendingSpecialItemsCount} I+D` : ''}</span>
                     </div>
                 </div>
             </div>
@@ -2198,7 +2213,7 @@ Object.assign(ui, {
                 <label for="deliverable-drive-input" class="text-xs text-mars-cyan uppercase font-bold block">Enlace de TU documento rellenado en Google Drive / Docs</label>
                 <div class="flex flex-col sm:flex-row gap-2">
                     <input type="url" id="deliverable-drive-input" value="${this.escapeHTML(existingUrl)}" placeholder="https://docs.google.com/document/d/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 bg-black border-2 border-mars-cyan p-3 text-base sm:text-xs text-mars-cyan font-mono outline-none focus:shadow-neon-cyan min-h-[44px]">
-                    <button type="button" onclick="const u = (document.getElementById('deliverable-drive-input')?.value || '').trim(); if(!u) return ui.notify('Pega primero tu enlace arriba para probarlo.', 'warning'); window.open(u, '_blank', 'noopener,noreferrer');" class="min-h-[44px] px-3 py-2 bg-slate-900 border border-slate-600 text-slate-200 hover:border-mars-cyan hover:text-mars-cyan text-xs font-mono font-bold uppercase rounded shrink-0">🔗 Probar enlace ↗</button>
+                    ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('deliverable-drive-input') : ''}
                 </div>
                 <p class="text-[11px] text-slate-300 font-sans">No pegues el enlace de la plantilla vacía (<code>/copy</code>): usa primero <strong>[📋 Hacer Copia en Drive]</strong> y pega aquí el enlace de vuestra copia.</p>
                 <label class="flex items-start gap-2.5 cursor-pointer p-2.5 bg-black/50 border border-slate-800 rounded min-h-[44px]">
@@ -2215,6 +2230,49 @@ Object.assign(ui, {
         `;
 
         this.showModal(`Entregar: ${def.shortName || def.name}`, bodyHtml, actionsHtml);
+    },
+
+    renderHojaTallerHistoryHtml(hojaObj) {
+        const hist = Array.isArray(hojaObj?.history) ? hojaObj.history : [];
+        if (hist.length === 0) {
+            return `
+            <div class="mt-3 pt-3 border-t border-slate-800/80">
+                <p class="text-xs text-slate-400 font-sans italic">📜 Histórico de Montaje del Cohete (0 iteraciones todavía). Cada envío de I+D y revisión/incidencia de Operaciones quedará registrado aquí para elaborar la entrega final en Fase III.</p>
+            </div>`;
+        }
+        const rows = [...hist].reverse().map((ev, idx) => {
+            const iterNum = ev.iteration || (hist.length - idx);
+            let badgeCls = 'text-cyan-300 bg-cyan-950/60 border-cyan-500/40';
+            let badgeTxt = ev.action || 'REGISTRO';
+            if (ev.action === 'INCIDENCIA_TALLER' || ev.action === 'DEVUELTO_CEO') {
+                badgeCls = 'text-amber-300 bg-amber-950/60 border-amber-500/50';
+            } else if (ev.action === 'REVISION_TALLER_OK' || ev.action === 'ELEVADO_A_CEO' || ev.action === 'VISADO_CEO') {
+                badgeCls = 'text-mars-green bg-mars-green/10 border-mars-green/40';
+            }
+            const safeEvUrl = ev.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(ev.driveUrl) ? ev.driveUrl : '';
+            return `
+            <div class="bg-black/50 border border-slate-800 p-2.5 rounded text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div class="min-w-0 flex-1 space-y-0.5">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-mono font-bold text-white">#${iterNum}</span>
+                        <span class="text-[11px] font-mono px-2 py-0.5 border rounded ${badgeCls}">${this.escapeHTML(badgeTxt)}</span>
+                        <span class="text-[11px] text-slate-400 font-mono">${this.escapeHTML(ev.actor || '')} · ${this.escapeHTML(ev.date || '')}${ev.bomCount !== undefined ? ` · BOM: ${Number(ev.bomCount)} uds` : ''}</span>
+                    </div>
+                    <p class="text-slate-200 font-sans leading-snug break-words">${this.escapeHTML(ev.summary || '')}</p>
+                </div>
+                ${safeEvUrl ? `<a href="${encodeURI(safeEvUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-3 py-1.5 bg-slate-900 border border-cyan-500/40 text-cyan-300 hover:border-cyan-300 rounded font-mono text-xs shrink-0"><span>Ver Doc ↗</span></a>` : ''}
+            </div>`;
+        }).join('');
+        return `
+        <details class="mt-4 pt-3 border-t border-slate-800/80" ${hist.length <= 3 ? 'open' : ''}>
+            <summary class="min-h-[44px] cursor-pointer flex items-center justify-between gap-2 text-xs font-mono font-bold text-mars-cyan hover:text-white select-none">
+                <span>📜 Histórico de Montaje del Cohete (${hist.length} ${hist.length === 1 ? 'iteración' : 'iteraciones'} I+D ⇄ Taller)</span>
+                <span class="text-slate-400 shrink-0">▼ Ver</span>
+            </summary>
+            <div class="mt-2 space-y-2 max-h-64 overflow-y-auto pr-1">
+                ${rows}
+            </div>
+        </details>`;
     },
 
     async submitRoleDeliverable(docKey) {
@@ -2239,13 +2297,6 @@ Object.assign(ui, {
         if (permCheckEl && !permCheckEl.checked) {
             return this.notify("Marca la casilla confirmando que el enlace tiene permisos de lectura en Google Drive.", "warning");
         }
-        const submitBtn = document.getElementById('btn-submit-role-deliverable');
-        if (submitBtn && submitBtn.disabled) return;
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.innerText = '⏳ Enviando...';
-        }
-
         const co = state.data.companies[state.user.coId];
         if (!co) return;
 
@@ -2262,22 +2313,45 @@ Object.assign(ui, {
         if (!state.user.admin && this.isDeliverableLocked(docKey, co)) {
             return this.notify("Este entregable se encuentra bloqueado hasta su fecha de apertura oficial.", "warning");
         }
+        const submitBtn = document.getElementById('btn-submit-role-deliverable');
+        if (submitBtn && submitBtn.disabled) return;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerText = '⏳ Enviando...';
+        }
 
         // Si es Hoja de Taller (DOC_10)
         if (docKey === 'hoja_taller_fyq') {
+            if (effectiveRole === 'TECNICO' && typeof state.sendHojaTallerToWorkshop === 'function') {
+                ui.closeModal();
+                await state.sendHojaTallerToWorkshop(url);
+                return;
+            }
             co.deliverables = co.deliverables || {};
-            const prev = co.deliverables.hoja_taller_fyq || {};
+            const prev = (co.deliverables.hoja_taller_fyq && typeof co.deliverables.hoja_taller_fyq === 'object') ? co.deliverables.hoja_taller_fyq : {};
+            const prevHistory = Array.isArray(prev.history) ? [...prev.history] : [];
+            const isAdminOverride = Boolean(state.user.admin);
+            const nextStatus = isAdminOverride ? 'DELIVERED_TO_TEACHER' : 'EN_TALLER_OPERARIO';
             const newDoc = {
                 ...prev,
                 driveUrl: url,
                 url: url,
-                status: 'EN_TALLER_OPERARIO',
+                status: nextStatus,
+                history: prevHistory,
                 updatedAt: new Date().toISOString()
             };
             delete newDoc.returnReasonId;
             delete newDoc.returnReason;
             delete newDoc.returnDriveUrl;
             delete newDoc.returnByTeacher;
+            if (typeof state._appendHojaHistoryEntry === 'function') {
+                state._appendHojaHistoryEntry(newDoc, co, {
+                    actor: this.getActorRoleLabel ? this.getActorRoleLabel(co) : effectiveRole,
+                    action: prevHistory.length > 0 ? 'ACTUALIZACION_A_TALLER' : 'ENVIO_A_TALLER',
+                    summary: 'Hoja de Taller registrada desde Mis Entregables y remitida a Taller.',
+                    driveUrl: url
+                });
+            }
             co.deliverables.hoja_taller_fyq = newDoc;
             state.save(state.user.coId);
             try {
@@ -2285,7 +2359,8 @@ Object.assign(ui, {
                     await state.executeAction('SUBMIT_DELIVERABLE', {
                         key: 'hoja_taller_fyq',
                         driveUrl: url,
-                        status: 'EN_TALLER_OPERARIO'
+                        status: nextStatus,
+                        history: newDoc.history
                     });
                 }
             } catch(e) {}
@@ -2339,6 +2414,7 @@ Object.assign(ui, {
 
     approveSpecialItemByCEO(reqId) {
         if (!state.user || this.getEffectiveRole() !== 'CEO') return;
+        if (this.acquireActionLock && !this.acquireActionLock('ceo-special-' + reqId, 1500)) return;
         const coId = state.user.coId;
         const co = state.data.companies[coId];
         if (!co || !co.specialItemRequests) return;
@@ -2348,6 +2424,7 @@ Object.assign(ui, {
 
         const req = co.specialItemRequests.find(r => r.id === reqId);
         if (!req) return this.notify("Solicitud de material I+D no localizada.", "error");
+        if (req.status !== 'PENDIENTE_CEO') return this.notify("Esta solicitud ya ha sido tramitada.", "info");
 
         req.status = 'PENDIENTE_COORDINACION';
         req.approvedByCEO = true;
@@ -2486,8 +2563,11 @@ Object.assign(ui, {
                     <label for="launch-license-drive-url" class="text-mars-cyan uppercase font-bold block mb-1">
                         Enlace a Solicitud Formal AESA en Google Drive / Docs (URL)
                     </label>
-                    <input type="url" id="launch-license-drive-url" value="${isResubmission && co.launchLicense?.driveUrl ? this.escapeHTML(co.launchLicense.driveUrl) : ''}" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
-                    <p class="text-[10px] text-slate-400 mt-1 font-sans">Asegúrate de compartir el documento con permisos de lectura abiertos ("Cualquiera con el enlace puede ver").</p>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="launch-license-drive-url" value="${isResubmission && co.launchLicense?.driveUrl ? this.escapeHTML(co.launchLicense.driveUrl) : ''}" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('launch-license-drive-url') : ''}
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1 font-sans">Asegúrate de compartir tu copia con permisos de lectura abiertos ("Cualquiera con el enlace puede ver").</p>
                 </div>
                 <div class="p-3 bg-black/60 border border-slate-800 space-y-2">
                     <label class="flex items-start gap-2.5 cursor-pointer text-slate-200 text-xs font-sans">
@@ -2511,11 +2591,9 @@ Object.assign(ui, {
         const elCheck = document.getElementById('launch-license-sign-check');
         if (!elUrl || !elCheck) return;
 
-        const driveUrl = this.cleanInput(elUrl.value).trim();
-        if (!driveUrl) return this.notify("Debes indicar el enlace Drive de la solicitud formal AESA.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl(elUrl.value, elUrl, { required: true, label: 'la Solicitud AESA (DOC_14)' });
+        if (!urlCheck.valid) return;
+        const driveUrl = urlCheck.url;
         if (!elCheck.checked) {
             return this.notify("Debes marcar la casilla de certificación y firma digital del CEO.", "warning");
         }
@@ -2523,6 +2601,10 @@ Object.assign(ui, {
         const coId = state.user.coId;
         const co = state.data.companies[coId];
         if (!co) return;
+        if (co.launchLicense && co.launchLicense.status === 'PENDIENTE_DOCENTE') {
+            return this.notify("La Licencia AESA ya se encuentra enviada y pendiente de resolución docente.", "info");
+        }
+        if (this.acquireActionLock && !this.acquireActionLock('submit-aesa-' + coId, 2000)) return;
 
         if (!this.isLaunchLicenseUnlocked(co)) {
             return this.notify("⛔ Trámite bloqueado: Se requiere haber entregado formalmente el Informe Técnico Preliminar (DOC FYQ) al Claustro Docente antes de tramitar la Licencia AESA.", "error");
@@ -2561,7 +2643,7 @@ Object.assign(ui, {
             appliedDate: new Date().toLocaleDateString(),
             feePaid: prevFeePaid + feeToPay,
             resubmissionCount: isResubmission ? (prevResubCount + 1) : 0,
-            signedBy: state.user.name || 'CEO',
+            signedBy: this.getActorRoleLabel ? this.getActorRoleLabel(co) : 'CEO',
             rejectReason: '',
             rejectReportUrl: ''
         };
@@ -2634,7 +2716,10 @@ Object.assign(ui, {
                     <label for="press-release-drive-url" class="text-mars-cyan uppercase font-bold block mb-1">
                         Enlace a la Nota de Prensa en Google Drive o Docs (URL)
                     </label>
-                    <input type="url" id="press-release-drive-url" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="press-release-drive-url" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('press-release-drive-url') : ''}
+                    </div>
                     <p class="text-[10px] text-slate-400 mt-1 font-sans">El documento debe estar en modo <em>"Cualquiera con el enlace puede ver"</em> para que toda la comunidad pueda leerlo.</p>
                 </div>
             </div>
@@ -2648,11 +2733,10 @@ Object.assign(ui, {
         const elUrl = document.getElementById('press-release-drive-url');
         if (!elUrl) return;
 
-        const driveUrl = this.cleanInput(elUrl.value).trim();
-        if (!driveUrl) return this.notify("Debes indicar el enlace Drive de la nota de prensa.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl(elUrl.value, elUrl, { required: true, label: 'la Nota de Prensa (DOC_15)' });
+        if (!urlCheck.valid) return;
+        const driveUrl = urlCheck.url;
+        if (this.acquireActionLock && !this.acquireActionLock('submit-pr-' + phaseKey, 1500)) return;
 
         const coId = state.user.coId;
         const co = state.data.companies[coId];
@@ -2670,7 +2754,7 @@ Object.assign(ui, {
             driveUrl: driveUrl,
             publishedAt: Date.now(),
             publishedDate: new Date().toLocaleDateString(),
-            author: state.user.name || 'CEO'
+            author: this.getActorRoleLabel ? this.getActorRoleLabel(co) : 'CEO'
         };
         co.updatedAt = Date.now();
 

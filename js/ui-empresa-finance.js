@@ -367,7 +367,7 @@ Object.assign(ui, {
                 let matchesCampTab = false;
                 if (ordersTab === 'EN_PROCESO') matchesCampTab = (cst === 'PENDIENTE_FINANZAS');
                 else if (ordersTab === 'COMPLETADAS') matchesCampTab = (cst === 'ACTIVO' || cst === 'COMPLETADO');
-                else if (ordersTab === 'DENEGADAS') matchesCampTab = (cst === 'RECHAZADO');
+                else if (ordersTab === 'DENEGADAS') matchesCampTab = (cst === 'RECHAZADO' || cst === 'DENEGADO');
 
                 if (matchesCampTab) {
                     const campPrice = !isNaN(Number(camp.price)) ? Number(camp.price) : (!isNaN(Number(camp.cost)) ? Number(camp.cost) : 0);
@@ -376,7 +376,7 @@ Object.assign(ui, {
 
                     let campBadge = 'bg-mars-yellow/20 text-mars-yellow border-mars-yellow animate-pulse';
                     if (cst === 'ACTIVO' || cst === 'COMPLETADO') campBadge = 'bg-mars-green/20 text-mars-green border-mars-green';
-                    if (cst === 'RECHAZADO') campBadge = 'bg-mars-magenta/20 text-mars-magenta border-mars-magenta';
+                    if (cst === 'RECHAZADO' || cst === 'DENEGADO') campBadge = 'bg-mars-magenta/20 text-mars-magenta border-mars-magenta';
 
                     allUnifiedItems.push({
                         date: camp.date || '',
@@ -386,7 +386,7 @@ Object.assign(ui, {
                             <div class="flex items-center gap-2 mb-2">
                                 <span class="text-[10px] font-black uppercase px-2 py-0.5 bg-yellow-950 text-mars-yellow border border-mars-yellow/40">DEPTO: MARKETING (PAQUETE)</span>
                             </div>
-                            ${ui.renderWorkflowTracker(['1. Solicitud MKT', '2. Finanzas (Audita)', '3. Activo / Pack'], cst === 'PENDIENTE_FINANZAS' ? 0 : 2)}
+                            ${ui.renderWorkflowTracker(['1. Solicitud MKT', '2. Finanzas (Audita)', '3. Activo / Pack'], cst === 'PENDIENTE_FINANZAS' ? 1 : 2)}
                             <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
                                 <div>
                                     <span class="text-xs font-black uppercase px-2 py-0.5 border ${campBadge}">${this.escapeHTML(cst)}</span>
@@ -398,6 +398,7 @@ Object.assign(ui, {
                                 </div>
                             </div>
                             <p class="text-slate-200 italic mb-1 break-words"><strong class="text-mars-cyan">Campaña:</strong> "${this.escapeHTML(campTitle)}"</p>
+                            ${(cst === 'DENEGADO' || cst === 'RECHAZADO') && camp.rejectReason ? `<p class="text-rose-300 font-sans text-xs bg-rose-950/30 border border-rose-500/40 p-2 rounded my-1.5"><strong>Motivo Finanzas:</strong> ${this.escapeHTML(camp.rejectReason)}</p>` : ''}
                             <div class="hidden sm:block mb-2">
                                 ${(camp.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(camp.driveUrl))
                                     ? `<a href="${encodeURI(camp.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Dossier ROI en Docs ↗</span></a>`
@@ -617,7 +618,10 @@ Object.assign(ui, {
             <div class="mb-2">
                 ${this.renderDocTemplateBtn('DOC_9_ORDEN_ADQUISICION')}
             </div>
-            <input type="url" id="order-drive-url" value="${this.escapeHTML(this._lastOrderDriveUrl || '')}" oninput="ui._lastOrderDriveUrl = this.value" placeholder="https://docs.google.com/document/d/..." class="w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono min-h-[44px]">
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input type="url" id="order-drive-url" value="${this.escapeHTML(this._lastOrderDriveUrl || '')}" oninput="ui._lastOrderDriveUrl = this.value" onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" placeholder="https://docs.google.com/document/d/..." class="flex-1 bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono min-h-[44px]">
+                ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('order-drive-url') : ''}
+            </div>
             <p class="text-[10px] text-slate-400">La justificación técnica de la compra se aloja en el Google Doc corporativo con permisos de lectura.</p>
         </div>
         `;
@@ -629,17 +633,23 @@ Object.assign(ui, {
     confirmCart(total) {
         const elUrl = document.getElementById('order-drive-url');
         if (!elUrl) return;
-        const driveUrl = this.cleanInput(elUrl.value);
-        if (!driveUrl) return this.notify("Debes indicar el enlace Drive del informe técnico.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elUrl.value, elUrl, { required: true, label: 'el informe técnico (DOC_9)' })
+            : { valid: Boolean(this.cleanInput(elUrl.value)), url: this.cleanInput(elUrl.value) };
+        if (!urlCheck.valid) return;
+        const driveUrl = urlCheck.url;
 
         const co = state.data.companies[state.user.coId];
         if (!co) return;
         if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
             return this.notifyBankruptcyLock();
         }
+        if (!Array.isArray(co.cart) || co.cart.length === 0) {
+            return this.notify("Tu carrito está vacío. Añade al menos una partida antes de enviar.", "warning");
+        }
+        if (this.acquireActionLock && !this.acquireActionLock('confirm-cart-' + state.user.coId, 1500)) return;
+        const btnCart = document.getElementById('btn-transmit-cart');
+        if (btnCart) btnCart.disabled = true;
 
         co.orders = co.orders || [];
         const orderNum = ui.getNextOrderNumber ? ui.getNextOrderNumber(co) : String(Date.now()).slice(-3);
@@ -665,7 +675,7 @@ Object.assign(ui, {
         this.render();
     },
 
-    approveOrder(oid) {
+    approveOrder(oid, skipLowBalanceConfirm = false) {
         if (!state.user || this.getEffectiveRole() !== 'FINANZAS') return this.notify("Solo Finanzas puede aprobar órdenes.", "warning");
         const co = state.data.companies[state.user.coId];
         if (!co || !co.orders) return;
@@ -677,9 +687,18 @@ Object.assign(ui, {
         const order = co.orders.find(o => String(o.id) === String(oid));
         if (!order || order.status !== 'PENDIENTE_FINANZAS') return;
 
+        const freeBal = (typeof state.getFreeVirtualBalance === 'function') ? state.getFreeVirtualBalance(co) : Number(co.balance || 0);
         if (co.balance < order.total) {
             return this.notify("Fondos virtuales insuficientes en el saldo corporativo para autorizar esta orden.", "error");
         }
+        const freeAfter = freeBal - Number(order.total || 0);
+        if (freeAfter <= 0 && !skipLowBalanceConfirm && typeof this.confirmAction === 'function') {
+            const msg = freeBal < order.total
+                ? `Tienes ${freeBal.toFixed(2)} €v libres (descontando órdenes ya aprobadas pendientes de taller). Autorizar ${Number(order.total).toFixed(2)} €v dejará el saldo libre en ${freeAfter.toFixed(2)} €v y activará bloqueo de Números Rojos. ¿Continuar?`
+                : `Esta autorización dejará el saldo libre en 0.00 €v y activará el bloqueo de Números Rojos hasta conseguir nuevos ingresos. ¿Continuar?`;
+            return this.confirmAction('⚠️ Alerta de Saldo Libre Crítico', msg, () => this.approveOrder(oid, true), 'Autorizar Igualmente');
+        }
+        if (this.acquireActionLock && !this.acquireActionLock('fin-approve-order-' + order.id, 1500)) return;
 
         order.status = 'APROBADO_FINANZAS';
         ui.pushNotification(state.user.coId, 'TECNICO', `Finanzas ha APROBADO la orden #${order.id} (${order.total.toFixed(2)} €v). Ya está en Logística.`, 'success', { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' });
@@ -710,7 +729,7 @@ Object.assign(ui, {
         this.render();
     },
 
-    approveMktCamp(campId) {
+    approveMktCamp(campId, skipLowBalanceConfirm = false) {
         if (!state.user || this.getEffectiveRole() !== 'FINANZAS') return;
         const co = state.data.companies[state.user.coId];
         if (!co || !co.marketingCampaigns) return;
@@ -723,7 +742,14 @@ Object.assign(ui, {
         if (!camp || camp.status !== 'PENDIENTE_FINANZAS') return;
 
         const price = Number(camp.price) || 0;
+        const freeBal = (typeof state.getFreeVirtualBalance === 'function') ? state.getFreeVirtualBalance(co) : Number(co.balance || 0);
         if (co.balance < price) return this.notify("Fondos virtuales insuficientes para contratar este paquete.", "error");
+        const freeAfter = freeBal - price;
+        if (freeAfter <= 0 && !skipLowBalanceConfirm && typeof this.confirmAction === 'function') {
+            const msg = `Contando pedidos aprobados pendientes de taller (${freeBal.toFixed(2)} €v libres), autorizar este pack (-${price.toFixed(2)} €v) dejará el saldo libre en ${freeAfter.toFixed(2)} €v (bloqueo Números Rojos). ¿Continuar?`;
+            return this.confirmAction('⚠️ Alerta de Saldo Libre Crítico', msg, () => this.approveMktCamp(campId, true), 'Autorizar Pack');
+        }
+        if (this.acquireActionLock && !this.acquireActionLock('fin-approve-mkt-' + campId, 1500)) return;
 
         camp.status = 'ACTIVO';
         state.addToLedger(state.user.coId, `[PUBLICIDAD] Contratación de ${camp.packageName}`, 'MARKETING', -price);
@@ -744,21 +770,58 @@ Object.assign(ui, {
         return this.rejectMktCamp(campId);
     },
 
-    rejectMktCamp(campId) {
+    rejectMktCamp(campId, directReason = null) {
         if (!state.user || this.getEffectiveRole() !== 'FINANZAS') return;
         const co = state.data.companies[state.user.coId];
         if (!co || !co.marketingCampaigns) return;
 
         const camp = co.marketingCampaigns.find(c => String(c.id) === String(campId));
-        if (!camp) return;
+        if (!camp || camp.status !== 'PENDIENTE_FINANZAS') return;
+
+        if (!directReason) {
+            return this.modalRejectMktCamp(campId);
+        }
 
         camp.status = 'DENEGADO';
-        ui.pushNotification(state.user.coId, 'MARKETING', `Finanzas denegó la contratación del paquete "${camp.packageName}".`, 'error', { view: 'campaigns', anchorId: 'mkt-campaigns-section' });
-        telemetry.log("MKT RECHAZADO", `Denegado ${camp.packageName}`);
+        camp.rejectReason = directReason;
+        camp.rejectedAt = Date.now();
+        ui.pushNotification(state.user.coId, 'MARKETING', `Finanzas denegó el paquete "${camp.packageName}". Motivo: ${directReason}`, 'error', { view: 'campaigns', anchorId: 'mkt-campaigns-section' });
+        telemetry.log("MKT RECHAZADO", `Denegado ${camp.packageName} (${directReason})`);
         co.updatedAt = Date.now();
         state.save(state.user.coId);
-        this.notify(`❌ Solicitud de paquete de marketing rechazada.`, "info");
+        this.notify(`❌ Solicitud de paquete de marketing denegada.`, "info");
         this.render();
+    },
+
+    modalRejectMktCamp(campId) {
+        if (!state.user || this.getEffectiveRole() !== 'FINANZAS') return;
+        const co = state.data.companies[state.user.coId];
+        const camp = (co?.marketingCampaigns || []).find(c => String(c.id) === String(campId));
+        if (!camp || camp.status !== 'PENDIENTE_FINANZAS') return;
+        const reasons = [
+            "Saldo insuficiente o reservado para materiales críticos de I+D",
+            "El paquete supera el límite recomendable para esta fase",
+            "El Brief Creativo y Justificación ROI (DOC_5) requiere revisión",
+            "Conviene esperar a ingresar contrato comercial o patrocinio"
+        ];
+        const html = `
+            <div class="space-y-3 font-sans text-xs">
+                <p class="text-slate-300 leading-relaxed">Vas a denegar el paquete <strong>${this.escapeHTML(camp.packageName || 'Marketing')}</strong> (${Number(camp.price || 0).toFixed(2)} €v). Selecciona el motivo tipificado (Zero-Text):</p>
+                <label for="reject-mkt-camp-reason" class="text-mars-magenta uppercase font-bold block">Motivo Tipificado</label>
+                <select id="reject-mkt-camp-reason" class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white outline-none">
+                    ${reasons.map(r => `<option value="${this.escapeHTML(r)}">${this.escapeHTML(r)}</option>`).join('')}
+                </select>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.confirmRejectMktCamp('${this.escapeHTML(campId)}')" class="min-h-[44px] bg-mars-magenta text-white px-5 py-2.5 text-xs font-black uppercase hover:bg-white hover:text-mars-magenta transition-colors w-full sm:w-auto">Confirmar Denegación de Pack</button>`;
+        this.showModal("Denegar Paquete Publicitario", html, actions);
+    },
+
+    confirmRejectMktCamp(campId) {
+        const el = document.getElementById('reject-mkt-camp-reason');
+        const reason = el ? this.cleanInput(el.value) : 'Prioridad presupuestaria de la empresa';
+        this.closeModal();
+        this.rejectMktCamp(campId, reason);
     },
 
     approveB2BSell(offerId) {
@@ -771,6 +834,10 @@ Object.assign(ui, {
         state.data.b2bMarket = state.data.b2bMarket || [];
         const offer = state.data.b2bMarket.find(o => o.id === offerId && o.sellerCoId === state.user.coId);
         if (!offer) return this.notify("Oferta B2B no localizada.", "error");
+        if (offer.status !== 'PENDIENTE_FINANZAS') {
+            return this.notify("Esta propuesta B2B ya ha sido tramitada.", "warning");
+        }
+        if (this.acquireActionLock && !this.acquireActionLock('fin-approve-b2bsell-' + offerId, 1500)) return;
 
         offer.status = 'EN_VENTA';
         offer.updatedAt = Date.now();
@@ -920,7 +987,7 @@ Object.assign(ui, {
         const cuantia = Number(crisis.amount || 0).toFixed(2);
         const immutableText = `COMUNICADO OFICIAL DE SANCIÓN AEE: Expediente ${expId} incoado por ${articulo}. Motivo: "${motivo}". Penalización aplicada al saldo: -${cuantia} €v.`;
 
-        const templateBtn = this.renderDocTemplateBtn ? this.renderDocTemplateBtn('DOC_3_COMUNICADO_SANCION', '📄 Modelo de Comunicado de Crisis (Hacer copia)') : '';
+        const templateBtn = this.renderDocTemplateBtn ? this.renderDocTemplateBtn('DOC_3_COMUNICADO_SANCION', '📄 Modelo de Comunicado de Crisis (Vista previa)') : '';
 
         const html = `
             <div class="space-y-4">
@@ -937,7 +1004,10 @@ Object.assign(ui, {
                         ${templateBtn}
                     </div>
                     <label for="crisis-drive-url" class="text-xs text-mars-cyan font-bold uppercase block mt-3 mb-1">Enlace del Comunicado Oficial en Google Drive (Docs / Drive)</label>
-                    <input type="url" id="crisis-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-red-500/60 p-2.5 text-xs text-white font-mono outline-none focus:border-red-400 mb-2" required>
+                    <div class="flex flex-col sm:flex-row gap-2 mb-2">
+                        <input type="url" id="crisis-drive-url" placeholder="https://docs.google.com/document/d/..." class="flex-1 min-h-[44px] bg-slate-900 border border-red-500/60 p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-red-400" required>
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('crisis-drive-url') : ''}
+                    </div>
                     <p class="text-[10px] text-slate-400 font-mono">Por directiva de gobernanza y política Zero-Text, debes redactar el comunicado en el modelo oficial de Google Docs y pegar aquí el enlace con permisos de lectura.</p>
                 </div>
                 <div class="bg-mars-card/60 border border-slate-700 p-3 text-xs text-slate-300 space-y-1">
@@ -960,13 +1030,12 @@ Object.assign(ui, {
         if (!co) return auth.logout();
 
         const inputDrive = document.getElementById('crisis-drive-url');
-        const driveUrl = inputDrive ? this.cleanInput(inputDrive.value) : '';
-        if (!driveUrl || typeof GOOGLE_DRIVE_REGEX === 'undefined' || !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            if (this.highlightInvalidField && inputDrive) {
-                this.highlightInvalidField('', inputDrive);
-            }
-            return this.notify("Debes adjuntar un enlace válido de Google Drive al Comunicado de Crisis.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(inputDrive ? inputDrive.value : '', inputDrive, { required: true, label: 'el Comunicado de Crisis (DOC_3)' })
+            : { valid: Boolean(inputDrive && this.cleanInput(inputDrive.value)), url: inputDrive ? this.cleanInput(inputDrive.value) : '' };
+        if (!urlCheck.valid) return;
+        const driveUrl = urlCheck.url;
+        if (this.acquireActionLock && !this.acquireActionLock('notify-crisis-' + (expId || '0'), 1500)) return;
 
         const crisis = (co.crisisAlerts || []).find(a => String(a.id) === String(expId)) || (co.crisisAlerts || [])[0] || {};
         const expClean = expId || crisis.id || ('EXP-' + Date.now().toString().slice(-4));
@@ -1033,7 +1102,6 @@ Object.assign(ui, {
         co.realCosts = co.realCosts || [];
         const docs = co.deliverables || {};
 
-        const totalRealCost = co.realCosts.reduce((acc, c) => acc + (Number(c.eur) || 0), 0);
         const virtualSpend = co.ledger.filter(l => l.delta < 0).reduce((acc, l) => acc + Math.abs(Number(l.delta) || 0), 0);
         const grossCosts = state.getCompanyGrossOperatingCosts ? state.getCompanyGrossOperatingCosts(co) : 0;
         const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
@@ -1167,6 +1235,7 @@ Object.assign(ui, {
         const pendingMktPacks = (co.marketingCampaigns || []).filter(c => c.status === 'PENDIENTE_FINANZAS');
         const totalPendingFinCount = pendingOrdersList.length + pendingB2BSales.length + pendingMktPacks.length;
 
+        const isFinBankrupt = Boolean(this.isCompanyBankrupt && this.isCompanyBankrupt(co));
         let pendingAuthorizationsHtml = '';
         if (isFinanzas && totalPendingFinCount > 0) {
             pendingAuthorizationsHtml = `
@@ -1202,16 +1271,18 @@ Object.assign(ui, {
                             </div>
                             <div class="flex items-center gap-2 shrink-0 w-full md:w-auto">
                                 ${isB2BBuy ? `
-                                    <button type="button" onclick="ui.approveB2BBuyByFinanzas('${this.escapeHTML(order.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-yellow text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.4)]">
-                                        [ 🤝 Aprobar Compra B2B y Bloquear en Aduana ]
-                                    </button>
+                                    ${isFinBankrupt
+                                        ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] flex-1 md:flex-initial bg-slate-900 border border-rose-500/60 text-rose-300 px-4 py-2 text-xs font-black uppercase cursor-not-allowed">🔒 Bloqueado (≤ 0 €v)</button>`
+                                        : `<button type="button" onclick="ui.approveB2BBuyByFinanzas('${this.escapeHTML(order.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-yellow text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.4)]">[ 🤝 Aprobar Compra B2B y Bloquear en Aduana ]</button>`
+                                    }
                                     <button type="button" onclick="ui.rejectOrder('${this.escapeHTML(order.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all">
                                         Descartar
                                     </button>
                                 ` : `
-                                    <button type="button" onclick="ui.modalReviewOrderFinanzas('${this.escapeHTML(order.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-green text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">
-                                        Revisar y Autorizar Partidas
-                                    </button>
+                                    ${isFinBankrupt
+                                        ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] flex-1 md:flex-initial bg-slate-900 border border-rose-500/60 text-rose-300 px-4 py-2 text-xs font-black uppercase cursor-not-allowed">🔒 Bloqueado (≤ 0 €v)</button>`
+                                        : `<button type="button" onclick="ui.modalReviewOrderFinanzas('${this.escapeHTML(order.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-green text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">Revisar y Autorizar Partidas</button>`
+                                    }
                                     <button type="button" onclick="ui.modalRejectOrderWithDoc('${this.escapeHTML(order.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all">
                                         Denegar Orden
                                     </button>
@@ -1254,9 +1325,10 @@ Object.assign(ui, {
                                 <span class="text-mars-green font-mono font-bold text-sm mt-1 block">${Number(camp.price || camp.cost || 0).toFixed(2)} €v</span>
                             </div>
                             <div class="flex items-center gap-2 shrink-0 w-full md:w-auto">
-                                <button type="button" onclick="ui.approveMktPackage('${this.escapeHTML(camp.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-green text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all">
-                                    Autorizar Pack
-                                </button>
+                                ${isFinBankrupt
+                                    ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] flex-1 md:flex-initial bg-slate-900 border border-rose-500/60 text-rose-300 px-4 py-2 text-xs font-black uppercase cursor-not-allowed">🔒 Bloqueado (≤ 0 €v)</button>`
+                                    : `<button type="button" onclick="ui.approveMktPackage('${this.escapeHTML(camp.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-green text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all">Autorizar Pack</button>`
+                                }
                                 <button type="button" onclick="ui.rejectMktPackage('${this.escapeHTML(camp.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all">
                                     Denegar Pack
                                 </button>
@@ -1424,8 +1496,15 @@ Object.assign(ui, {
                         ${this.renderDocTemplateBtn('DOC_17_BALANCE_FASE', '📄 Ver Plantilla Balance de Fase (DOC_17)')}
                     </div>
                     <label for="phase-balance-drive-url" class="text-mars-cyan uppercase font-bold block mb-1">Enlace al Balance Oficial en Google Drive o Docs</label>
-                    <input type="url" id="phase-balance-drive-url" value="${this.escapeAttr(currentBalanceObj?.driveUrl || '')}" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
-                    <p class="text-[10px] text-slate-400 mt-1 font-sans">El documento debe compartirse con permisos de lectura abiertos ("Cualquiera con el enlace puede ver").</p>
+                    <div class="flex flex-col sm:flex-row gap-2 mb-2">
+                        <input type="url" id="phase-balance-drive-url" value="${this.escapeAttr(currentBalanceObj?.driveUrl || '')}" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('phase-balance-drive-url') : ''}
+                    </div>
+                    <label class="mars-checkbox-label flex items-start gap-2.5 cursor-pointer p-2 bg-black/50 border border-slate-800 rounded min-h-[44px]">
+                        <input type="checkbox" id="phase-balance-perm-check" class="mars-touch-input">
+                        <span class="mars-checkbox-visual mt-0.5"></span>
+                        <span class="text-xs text-slate-200 font-sans">Confirmo que el Balance (DOC_17) tiene acceso <strong>«Cualquier persona con el enlace (Lector)»</strong>.</span>
+                    </label>
                 </div>
             </div>
         `;
@@ -1437,16 +1516,20 @@ Object.assign(ui, {
         if (!state.user) return;
         const elVerdict = document.getElementById('phase-balance-verdict');
         const elUrl = document.getElementById('phase-balance-drive-url');
+        const elPerm = document.getElementById('phase-balance-perm-check');
         if (!elVerdict || !elUrl) return;
 
         const verdict = this.cleanInput(elVerdict.value).trim();
-        const driveUrl = this.cleanInput(elUrl.value).trim();
-
         if (!verdict) return this.notify("Debes seleccionar el dictamen contable.", "warning");
-        if (!driveUrl) return this.notify("Debes indicar el enlace Drive del balance oficial.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elUrl.value, elUrl, { required: true, label: 'el Balance de Cierre (DOC_17)' })
+            : { valid: Boolean(this.cleanInput(elUrl.value)), url: this.cleanInput(elUrl.value) };
+        if (!urlCheck.valid) return;
+        const driveUrl = urlCheck.url;
+        if (elPerm && !elPerm.checked) {
+            return this.notify("Marca la casilla confirmando los permisos de lectura en Google Drive.", "warning");
         }
+        if (this.acquireActionLock && !this.acquireActionLock('submit-balance-' + phaseKey, 1500)) return;
 
         const coId = state.user.coId;
         const co = state.data.companies[coId];
@@ -1541,7 +1624,10 @@ Object.assign(ui, {
                 </div>
                 <div>
                     <label for="return-balance-drive-url" class="text-mars-cyan font-bold uppercase block mb-1">Enlace a Google Docs con Anotaciones de Corrección (Opcional)</label>
-                    <input type="url" id="return-balance-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono">
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="return-balance-drive-url" placeholder="https://docs.google.com/document/d/..." class="flex-1 min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono">
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('return-balance-drive-url') : ''}
+                    </div>
                 </div>
             </div>
         `;
@@ -1558,11 +1644,11 @@ Object.assign(ui, {
         const elReason = document.getElementById('return-balance-reason');
         const elUrl = document.getElementById('return-balance-drive-url');
         const reason = elReason ? this.cleanInput(elReason.value) : 'Requiere subsanación contable';
-        const driveUrl = elUrl ? this.cleanInput(elUrl.value).trim() : '';
-
-        if (driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elUrl ? elUrl.value : '', elUrl, { required: false, label: 'observaciones del Balance' })
+            : { valid: true, url: elUrl ? this.cleanInput(elUrl.value).trim() : '' };
+        if (!urlCheck.valid) return;
+        const driveUrl = urlCheck.url;
 
         co.phaseBalances[phaseKey].status = 'RETURNED_BY_CEO';
         co.phaseBalances[phaseKey].returnReason = reason;
@@ -1605,16 +1691,25 @@ Object.assign(ui, {
                 <div class="space-y-2 max-h-60 overflow-y-auto">
                     ${itemsHtml}
                 </div>
-                <div class="bg-black/60 p-3 border border-slate-800 flex justify-between items-center rounded">
-                    <span class="text-xs text-slate-300 uppercase font-bold">Total Partidas Seleccionadas:</span>
-                    <span id="order-review-total-badge" class="text-base font-bold text-mars-green font-mono">${Number(order.total).toFixed(2)} €v</span>
+                <div class="bg-black/60 p-3 border border-slate-800 space-y-1 rounded">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-slate-300 uppercase font-bold">Total Partidas Seleccionadas:</span>
+                        <span id="order-review-total-badge" class="text-base font-bold text-mars-green font-mono">${Number(order.total).toFixed(2)} €v</span>
+                    </div>
+                    <div class="flex justify-between items-center text-[11px] text-slate-400 font-mono">
+                        <span>Saldo Libre Real (tras pedidos ya aprobados):</span>
+                        <span class="text-mars-cyan font-bold">${((typeof state.getFreeVirtualBalance === 'function') ? state.getFreeVirtualBalance(co) : Number(co.balance || 0)).toFixed(2)} €v</span>
+                    </div>
                 </div>
                 <div id="order-partial-justification-block" class="hidden space-y-2 p-3 bg-amber-950/40 border border-amber-500/50 rounded">
                     <span class="text-amber-400 font-bold uppercase block">⚠️ Aprobación Parcial / Partidas Descartadas</span>
                     <p class="text-[11px] text-slate-300 font-sans leading-relaxed">
-                        Has desmarcado una o más partidas. Para cumplir con la política Zero-Text, debes adjuntar el enlace a un Google Doc explicando qué partidas se autorizan, cuáles se descartan y por qué:
+                        Has desmarcado una o más partidas. Para cumplir con la política Zero-Text, adjunta el enlace a un Google Doc explicando qué partidas se autorizan, cuáles se descartan y por qué:
                     </p>
-                    <input type="url" id="order-partial-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-amber-400 p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono">
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="order-partial-drive-url" placeholder="https://docs.google.com/document/d/..." class="flex-1 min-h-[44px] bg-slate-900 border border-amber-400 p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono">
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('order-partial-drive-url') : ''}
+                    </div>
                 </div>
             </div>
         `;
@@ -1652,7 +1747,7 @@ Object.assign(ui, {
         }
     },
 
-    confirmReviewOrderFinanzas(orderId) {
+    confirmReviewOrderFinanzas(orderId, precomputed = null) {
         if (!state.user || this.getEffectiveRole() !== 'FINANZAS') return;
         const coId = state.user.coId;
         const co = state.data.companies[coId];
@@ -1663,39 +1758,52 @@ Object.assign(ui, {
         const order = co.orders.find(o => String(o.id) === String(orderId));
         if (!order || order.status !== 'PENDIENTE_FINANZAS') return;
 
-        let approvedItems = [];
-        let rejectedItems = [];
-        let newTotal = 0;
+        let approvedItems = precomputed ? precomputed.approvedItems : [];
+        let rejectedItems = precomputed ? precomputed.rejectedItems : [];
+        let newTotal = precomputed ? precomputed.newTotal : 0;
+        let partialDriveUrl = precomputed ? precomputed.partialDriveUrl : null;
 
-        (order.items || []).forEach((it, idx) => {
-            const cb = document.getElementById(`order-item-cb-${idx}`);
-            if (cb && cb.checked) {
-                approvedItems.push(it);
-                newTotal += (Number(it.price) || 0) * (Number(it.qty) || 1);
-            } else {
-                rejectedItems.push(it);
+        if (!precomputed) {
+            (order.items || []).forEach((it, idx) => {
+                const cb = document.getElementById(`order-item-cb-${idx}`);
+                if (cb && cb.checked) {
+                    approvedItems.push(it);
+                    newTotal += (Number(it.price) || 0) * (Number(it.qty) || 1);
+                } else {
+                    rejectedItems.push(it);
+                }
+            });
+
+            if (approvedItems.length === 0) {
+                return this.notify("No has seleccionado ninguna partida para aprobar. Si deseas rechazar la orden completa, pulsa Denegar Orden.", "warning");
             }
-        });
 
-        if (approvedItems.length === 0) {
-            return this.notify("No has seleccionado ninguna partida para aprobar. Si deseas rechazar la orden completa, pulsa Denegar Orden.", "warning");
+            if (co.balance < newTotal) {
+                return this.notify(`Fondos virtuales insuficientes (${co.balance.toFixed(2)} €v disponibles para un total de ${newTotal.toFixed(2)} €v).`, "error");
+            }
+
+            if (rejectedItems.length > 0) {
+                const elDrive = document.getElementById('order-partial-drive-url');
+                const urlCheck = this.validateStudentDriveUrl
+                    ? this.validateStudentDriveUrl(elDrive ? elDrive.value : '', elDrive, { required: true, label: 'la justificación parcial en Docs' })
+                    : { valid: Boolean(elDrive && this.cleanInput(elDrive.value).trim()), url: elDrive ? this.cleanInput(elDrive.value).trim() : '' };
+                if (!urlCheck.valid) return;
+                partialDriveUrl = urlCheck.url;
+            }
+
+            const freeBal = (typeof state.getFreeVirtualBalance === 'function') ? state.getFreeVirtualBalance(co) : Number(co.balance || 0);
+            const freeAfter = freeBal - newTotal;
+            if (freeAfter <= 0 && typeof this.confirmAction === 'function') {
+                const msg = `Contando pedidos aprobados pendientes de taller (${freeBal.toFixed(2)} €v libres), autorizar esta orden (-${newTotal.toFixed(2)} €v) dejará el saldo libre en ${freeAfter.toFixed(2)} €v (riesgo de Números Rojos). ¿Continuar?`;
+                return this.confirmAction('⚠️ Alerta de Saldo Libre Crítico', msg, () => {
+                    this.confirmReviewOrderFinanzas(orderId, { approvedItems, rejectedItems, newTotal, partialDriveUrl });
+                }, 'Autorizar Orden');
+            }
         }
-
         if (co.balance < newTotal) {
             return this.notify(`Fondos virtuales insuficientes (${co.balance.toFixed(2)} €v disponibles para un total de ${newTotal.toFixed(2)} €v).`, "error");
         }
-
-        let partialDriveUrl = null;
-        if (rejectedItems.length > 0) {
-            const elDrive = document.getElementById('order-partial-drive-url');
-            partialDriveUrl = elDrive ? this.cleanInput(elDrive.value).trim() : '';
-            if (!partialDriveUrl) {
-                return this.notify("Al desmarcar partidas debes adjuntar la URL de Google Docs con la justificación oficial.", "warning");
-            }
-            if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(partialDriveUrl)) {
-                return this.notify("El enlace a la justificación debe ser una URL válida de Google Drive / Docs.", "error");
-            }
-        }
+        if (this.acquireActionLock && !this.acquireActionLock('fin-review-' + orderId, 1500)) return;
 
         order.items = approvedItems;
         order.total = newTotal;
@@ -1730,14 +1838,29 @@ Object.assign(ui, {
         const order = co.orders.find(o => String(o.id) === String(orderId));
         if (!order || order.status !== 'PENDIENTE_FINANZAS') return;
 
+        const reasons = [
+            "Supera el presupuesto disponible o prioridad de tesorería",
+            "Falta justificación técnica suficiente en el documento DOC_9",
+            "Materiales sustituibles por piezas ya existentes o B2B",
+            "Conviene ajustar cantidades antes de autorizar el gasto"
+        ];
         const html = `
             <div class="space-y-3 font-mono text-xs">
                 <p class="text-slate-300 font-sans leading-relaxed">
-                    Vas a denegar la Orden #${this.escapeHTML(order.id)} (${Number(order.total).toFixed(2)} €v). Para cumplir con la política Zero-Text, debes adjuntar el enlace al Google Doc oficial explicando la justificación presupuestaria:
+                    Vas a denegar la Orden #${this.escapeHTML(order.id)} (${Number(order.total).toFixed(2)} €v). Para cumplir con la política Zero-Text, selecciona el motivo tipificado y adjunta el enlace al Google Doc oficial:
                 </p>
                 <div>
+                    <label for="reject-order-reason" class="text-mars-yellow font-bold uppercase block mb-1">Motivo Tipificado</label>
+                    <select id="reject-order-reason" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white outline-none">
+                        ${reasons.map(r => `<option value="${this.escapeHTML(r)}">${this.escapeHTML(r)}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
                     <label for="reject-order-drive-url" class="text-mars-magenta font-bold uppercase block mb-1">Enlace a Google Docs con Justificación de Denegación (Obligatorio)</label>
-                    <input type="url" id="reject-order-drive-url" placeholder="https://docs.google.com/document/d/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="reject-order-drive-url" placeholder="https://docs.google.com/document/d/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('reject-order-drive-url') : ''}
+                    </div>
                 </div>
             </div>
         `;
@@ -1752,28 +1875,31 @@ Object.assign(ui, {
         const order = co.orders.find(o => String(o.id) === String(orderId));
         if (!order || order.status !== 'PENDIENTE_FINANZAS') return;
 
+        const elReason = document.getElementById('reject-order-reason');
+        const reason = elReason ? this.cleanInput(elReason.value) : 'Justificación presupuestaria';
         const elDrive = document.getElementById('reject-order-drive-url');
-        const driveUrl = elDrive ? this.cleanInput(elDrive.value).trim() : '';
-        if (!driveUrl) return this.notify("Debes indicar la URL del Google Doc justificando la denegación.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elDrive ? elDrive.value : '', elDrive, { required: true, label: 'la justificación de denegación en Docs' })
+            : { valid: Boolean(elDrive && this.cleanInput(elDrive.value).trim()), url: elDrive ? this.cleanInput(elDrive.value).trim() : '' };
+        if (!urlCheck.valid) return;
+        if (this.acquireActionLock && !this.acquireActionLock('fin-reject-' + orderId, 1500)) return;
 
         order.status = 'RECHAZADO';
-        order.responseDriveUrl = driveUrl;
+        order.rejectReason = reason;
+        order.responseDriveUrl = urlCheck.url;
         order.rejectedAt = Date.now();
         co.updatedAt = Date.now();
 
         state.save(state.user.coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
-        ui.pushNotification(state.user.coId, 'TECNICO', `❌ Finanzas ha DENEGADO la orden #${order.id}. Consulta el informe justificativo en Google Docs.`, 'error', { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' });
+        ui.pushNotification(state.user.coId, 'TECNICO', `❌ Finanzas ha DENEGADO la orden #${order.id} ("${reason}"). Consulta el informe justificativo en Google Docs.`, 'error', { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' });
         this.closeModal();
         this.notify(`❌ Orden #${order.id} denegada.`, "info");
         this.render();
     },
 
-    approveB2BBuyByFinanzas(orderId) {
+    approveB2BBuyByFinanzas(orderId, skipLowBalanceConfirm = false) {
         if (!state.user || this.getEffectiveRole() !== 'FINANZAS') return;
         const coId = state.user.coId;
         const co = state.data.companies[coId];
@@ -1800,6 +1926,13 @@ Object.assign(ui, {
         if (co.balance < price) {
             return this.notify(`Fondos virtuales insuficientes (${co.balance.toFixed(2)} €v disponibles, precio: ${price.toFixed(2)} €v).`, "error");
         }
+        const freeBal = (typeof state.getFreeVirtualBalance === 'function') ? state.getFreeVirtualBalance(co) : Number(co.balance || 0);
+        const freeAfter = freeBal - price;
+        if (freeAfter <= 0 && !skipLowBalanceConfirm && typeof this.confirmAction === 'function') {
+            const msg = `Autorizar esta compra B2B (-${price.toFixed(2)} €v) dejará el saldo libre en ${freeAfter.toFixed(2)} €v y activará el bloqueo de Números Rojos. ¿Continuar?`;
+            return this.confirmAction('⚠️ Alerta de Saldo Libre Crítico', msg, () => this.approveB2BBuyByFinanzas(orderId, true), 'Sí, Aprobar y Bloquear');
+        }
+        if (this.acquireActionLock && !this.acquireActionLock('fin-b2bbuy-' + orderId, 1500)) return;
 
         const now = Date.now();
         offer.status = 'EN_ADUANA';

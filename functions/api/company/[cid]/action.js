@@ -395,7 +395,13 @@ export async function onRequestPost(context) {
                 if (!/^[a-zA-Z0-9_-]{1,40}$/.test(rawKey)) {
                     return new Response(JSON.stringify({ error: 'INVALID_DELIVERABLE_KEY' }), { status: 400, headers: CORS_HEADERS });
                 }
-                const driveUrl = String(p.driveUrl || p.url || '').trim();
+                co.deliverables = co.deliverables || {};
+                const currentDoc = co.deliverables[rawKey];
+                const existingObj = (currentDoc && typeof currentDoc === 'object') ? currentDoc : {};
+                let driveUrl = String(p.driveUrl || p.url || '').trim();
+                if (rawKey === 'hoja_taller_fyq' && !driveUrl && existingObj.driveUrl) {
+                    driveUrl = String(existingObj.driveUrl).trim();
+                }
                 if (!GOOGLE_DRIVE_REGEX.test(driveUrl)) {
                     return new Response(JSON.stringify({ 
                         error: 'INVALID_DRIVE_URL', 
@@ -405,11 +411,12 @@ export async function onRequestPost(context) {
                         headers: { 'Content-Type': 'application/json' } 
                     });
                 }
-                co.deliverables = co.deliverables || {};
                 const isAdminOverride = Boolean(auth.isCoordinator || auth.isAdmin);
                 let status = isAdminOverride ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
                 let returnReasonId = null;
                 let returnReason = null;
+                let mergedHistory = Array.isArray(existingObj.history) ? [...existingObj.history] : [];
+                let lastWorkshopCheckAt = existingObj.lastWorkshopCheckAt || null;
 
                 if (rawKey === 'hoja_taller_fyq') {
                     const reqStatus = String(p.status || '').trim();
@@ -423,15 +430,31 @@ export async function onRequestPost(context) {
                     }
                     returnReasonId = p.returnReasonId || null;
                     returnReason = p.returnReason || null;
+                    if (Array.isArray(p.history)) {
+                        const histMap = new Map();
+                        mergedHistory.forEach(ev => { if (ev && ev.id) histMap.set(String(ev.id), ev); });
+                        p.history.forEach(ev => { if (ev && ev.id) histMap.set(String(ev.id), ev); });
+                        mergedHistory = Array.from(histMap.values()).sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0));
+                    }
+                    if (p.lastWorkshopCheckAt) {
+                        lastWorkshopCheckAt = String(p.lastWorkshopCheckAt);
+                    }
                 }
 
-                co.deliverables[rawKey] = { 
+                const newDelivObj = { 
                     driveUrl, 
                     status,
                     returnReasonId,
                     returnReason,
+                    returnDriveUrl: p.returnDriveUrl || null,
+                    returnByTeacher: Boolean(p.returnByTeacher),
                     updatedAt: new Date().toISOString() 
                 };
+                if (rawKey === 'hoja_taller_fyq') {
+                    newDelivObj.history = mergedHistory;
+                    if (lastWorkshopCheckAt) newDelivObj.lastWorkshopCheckAt = lastWorkshopCheckAt;
+                }
+                co.deliverables[rawKey] = newDelivObj;
                 break;
             }
 
@@ -449,10 +472,20 @@ export async function onRequestPost(context) {
                     return new Response(JSON.stringify({ error: 'DELIVERABLE_NOT_FOUND' }), { status: 404, headers: CORS_HEADERS });
                 }
 
+                const mergeHojaReviewHistory = (docObj) => {
+                    if (rawKey === 'hoja_taller_fyq' && Array.isArray(p.history)) {
+                        const histMap = new Map();
+                        (Array.isArray(docObj.history) ? docObj.history : []).forEach(ev => { if (ev && ev.id) histMap.set(String(ev.id), ev); });
+                        p.history.forEach(ev => { if (ev && ev.id) histMap.set(String(ev.id), ev); });
+                        docObj.history = Array.from(histMap.values()).sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0));
+                    }
+                };
+
                 const subAction = String(p.subAction || (p.action && p.action !== action ? p.action : '')).toUpperCase();
                 if (subAction === 'APPROVE') {
                     if (typeof currentDoc === 'string') {
                         co.deliverables[rawKey] = { driveUrl: currentDoc, status: 'DELIVERED_TO_TEACHER', updatedAt: new Date().toISOString() };
+                        mergeHojaReviewHistory(co.deliverables[rawKey]);
                     } else {
                         currentDoc.status = 'DELIVERED_TO_TEACHER';
                         delete currentDoc.returnReasonId;
@@ -460,6 +493,7 @@ export async function onRequestPost(context) {
                         delete currentDoc.returnDriveUrl;
                         delete currentDoc.returnByTeacher;
                         currentDoc.updatedAt = new Date().toISOString();
+                        mergeHojaReviewHistory(currentDoc);
                     }
                 } else if (subAction === 'RETURN') {
                     const reasonId = String(p.reasonId || '').trim();
@@ -478,6 +512,7 @@ export async function onRequestPost(context) {
                             returnDriveUrl: (retDrive && GOOGLE_DRIVE_REGEX.test(retDrive)) ? retDrive : null,
                             updatedAt: new Date().toISOString()
                         };
+                        mergeHojaReviewHistory(co.deliverables[rawKey]);
                     } else {
                         currentDoc.status = 'CEO_REVISION';
                         currentDoc.returnReasonId = reasonId;
@@ -487,6 +522,7 @@ export async function onRequestPost(context) {
                         }
                         delete currentDoc.returnByTeacher;
                         currentDoc.updatedAt = new Date().toISOString();
+                        mergeHojaReviewHistory(currentDoc);
                     }
                 } else {
                     return new Response(JSON.stringify({ error: 'INVALID_REVIEW_ACTION' }), { status: 400, headers: CORS_HEADERS });
@@ -506,7 +542,7 @@ export async function onRequestPost(context) {
                 const driveUrl = typeof currentDoc === 'string' ? currentDoc : (currentDoc?.driveUrl || '');
 
                 const returnDriveUrl = String(p.returnDriveUrl || '').trim();
-                co.deliverables[rawKey] = {
+                const preserved = {
                     driveUrl,
                     status: 'CEO_REVISION',
                     returnReasonId: reasonId,
@@ -515,6 +551,11 @@ export async function onRequestPost(context) {
                     returnByTeacher: true,
                     updatedAt: new Date().toISOString()
                 };
+                if (currentDoc && typeof currentDoc === 'object') {
+                    if (Array.isArray(currentDoc.history)) preserved.history = currentDoc.history;
+                    if (currentDoc.lastWorkshopCheckAt) preserved.lastWorkshopCheckAt = currentDoc.lastWorkshopCheckAt;
+                }
+                co.deliverables[rawKey] = preserved;
                 break;
             }
 

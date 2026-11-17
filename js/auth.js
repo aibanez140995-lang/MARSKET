@@ -334,8 +334,12 @@ const auth = (function() {
                     <option value="OPERACIONES_IA">Dpto. Operaciones e IA</option>
                 `;
                 if (hasAux) {
-                    const auxDeptLabel = co?.auxRoleDept || (_serverCompanyMeta && _serverCompanyMeta.auxRoleDept) || 'General';
-                    html += `<option value="AUXILIAR">Observador Auxiliar (${ui.escapeHTML(auxDeptLabel)})</option>`;
+                    const auxDeptRaw = co?.auxRoleDept || (_serverCompanyMeta && _serverCompanyMeta.auxRoleDept) || '';
+                    const auxDeptHuman = auxDeptRaw
+                        ? ((typeof ui !== 'undefined' && typeof ui.getDeptDisplayName === 'function') ? ui.getDeptDisplayName(auxDeptRaw) : auxDeptRaw)
+                        : 'Sin asignar';
+                    const auxOptionText = auxDeptRaw ? `Socio Auxiliar · Apoyo ${auxDeptHuman}` : 'Observador Auxiliar (Sin asignar)';
+                    html += `<option value="AUXILIAR">${ui.escapeHTML(auxOptionText)}</option>`;
                 }
                 roleSelect.innerHTML = html;
             }
@@ -589,9 +593,13 @@ const auth = (function() {
             try {
                 const savedEpoch = localStorage.getItem('marsket_reset_epoch');
                 const savedDelCat = localStorage.getItem('marsket_deleted_catalog_ids');
+                const savedFocusMode = localStorage.getItem('marsket_focus_mode');
+                const savedTextZoom = localStorage.getItem('marsket_text_zoom');
                 localStorage.clear();
                 if (savedEpoch !== null) localStorage.setItem('marsket_reset_epoch', savedEpoch);
                 if (savedDelCat !== null) localStorage.setItem('marsket_deleted_catalog_ids', savedDelCat);
+                if (savedFocusMode !== null) localStorage.setItem('marsket_focus_mode', savedFocusMode);
+                if (savedTextZoom !== null) localStorage.setItem('marsket_text_zoom', savedTextZoom);
             } catch(e) {}
 
             const appContainer = document.getElementById('app-container') || document.querySelector('.max-w-7xl');

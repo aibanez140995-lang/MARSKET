@@ -4,17 +4,14 @@
 Object.assign(ui, {
     techSendHojaTaller() {
         if (!state.user) return;
-        if (!state.user.admin && this.isDeliverableLocked('hoja_taller_fyq')) {
-            return this.notify("La Hoja de Taller se encuentra bloqueada hasta su fecha de apertura.", "error");
-        }
         const el = document.getElementById('tech-hoja-taller-drive-url');
         if (!el) return;
-        const url = this.cleanInput(el.value);
-        if (!url) return this.notify("Debes introducir el enlace de Google Drive con la Hoja de Taller y BOM.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(url)) {
-            return this.notify("Solo se admiten enlaces válidos a recursos de Google Drive.", "error");
-        }
-        state.sendHojaTallerToWorkshop(url);
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(el.value, el, { required: true, label: 'la Hoja de Taller y BOM (DOC_10)' })
+            : { valid: Boolean(this.cleanInput(el.value)), url: this.cleanInput(el.value) };
+        if (!urlCheck.valid) return;
+        if (this.acquireActionLock && !this.acquireActionLock('tech-send-hoja-' + state.user.coId, 1500)) return;
+        state.sendHojaTallerToWorkshop(urlCheck.url);
     },
 
     viewTech(el) {
@@ -350,7 +347,10 @@ Object.assign(ui, {
                             </div>
                             <div class="sm:col-span-2 md:col-span-2">
                                 <label for="ft-video-url" class="text-xs text-slate-300 uppercase block mb-1">Vídeo Cálculo E (Opcional // Drive)</label>
-                                <input type="url" id="ft-video-url" placeholder="Opcional: https://drive.google.com/... (explicación de E = H/C)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-cyan w-full">
+                                <div class="flex flex-col sm:flex-row gap-2">
+                                    <input type="url" id="ft-video-url" placeholder="Opcional: https://drive.google.com/... (explicación de E = H/C)" class="min-h-[44px] flex-1 bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-cyan w-full">
+                                    ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('ft-video-url') : ''}
+                                </div>
                             </div>
                             <div class="flex items-end">
                                 ${Boolean(state.user?.admin || (co.launchLicense && co.launchLicense.status === 'APROBADA')) ? `
@@ -510,132 +510,140 @@ Object.assign(ui, {
         const sponsorTierLabel = co.sponsorAwarded ? (co.sponsorData?.tier || co.sponsorAwarded || 'SPONSOR') : null;
 
         const isHojaLocked = !state.user?.admin && this.isDeliverableLocked('hoja_taller_fyq', co);
-        let hojaPanelHtml = '';
+        const hojaFyq = co.deliverables?.hoja_taller_fyq;
+        const hojaStatus = hojaFyq?.status || 'DRAFT_TECNICO';
+        const hojaUrl = hojaFyq?.driveUrl || '';
 
-        if (isHojaLocked) {
-            hojaPanelHtml = `
-            <div id="tech-hoja-taller-panel" class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-cyan-400">
-                <h2 class="font-orbitron text-cyan-400 text-sm sm:text-base uppercase tracking-tighter mb-2">Hoja de Taller Oficial, BOM y Control de Calidad (FYQ)</h2>
-                <div class="terminal-border border-dashed p-6 text-center text-slate-400 italic text-xs uppercase">
-                    🔒 Hoja de Taller no habilitada en esta fase según el cronograma oficial.
+        let trackerIdx = 0;
+        if (hojaStatus === 'EN_TALLER_OPERARIO') trackerIdx = 1;
+        else if (hojaStatus === 'SUBMITTED_TO_CEO') trackerIdx = 2;
+        else if (hojaStatus === 'DELIVERED_TO_TEACHER') trackerIdx = 3;
+        else trackerIdx = 0; // DRAFT_TECNICO, DEVUELTO_A_TECNICO, CEO_REVISION
+
+        const faseIIILockNotice = isHojaLocked
+            ? `<div class="bg-cyan-950/30 border border-cyan-500/40 p-2.5 rounded text-xs text-slate-200 font-sans mb-2">
+                <strong class="text-mars-cyan">🛠️ Canal Vivo I+D ⇄ Taller:</strong> Aunque la entrega oficial con nota en FyQ se habilita en <strong>Fase III (15/02/2027)</strong>, enviad ya aquí cada versión del diseño/BOM para que Operaciones registre validaciones o incidencias en el <strong>Histórico de Montaje</strong>.
+               </div>`
+            : '';
+
+        let hojaInnerHtml = '';
+        if (!hojaFyq || hojaStatus === 'DRAFT_TECNICO') {
+            hojaInnerHtml = `
+            <div class="bg-slate-900 border border-cyan-500/50 p-4 space-y-3 rounded">
+                <div class="flex justify-between items-center flex-wrap gap-2">
+                    <span class="text-xs font-bold uppercase text-cyan-400">[CANAL I+D ⇄ TALLER: CONFIGURACIÓN Y BOM]</span>
+                    <span class="text-xs font-mono font-bold ${hojaFyq?.lastWorkshopCheckAt ? 'text-mars-green bg-mars-green/10 border border-mars-green/40' : 'text-slate-300 bg-slate-800'} px-2 py-0.5 rounded">${hojaFyq?.lastWorkshopCheckAt ? '✓ ÚLTIMA ITERACIÓN OK EN TALLER' : 'BORRADOR / NUEVA ITERACIÓN'}</span>
+                </div>
+                ${faseIIILockNotice}
+                <p class="text-xs text-slate-300 font-sans">Genera el escandallo (BOM) en el panel de inventario, actualiza la Hoja de Taller en Google Docs y envíala al Taller para registrar la iteración de montaje.</p>
+                <div class="mb-2">
+                    ${this.renderDocTemplateBtn('DOC_10_HOJA_TALLER')}
+                </div>
+                <label for="tech-hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Enlace Drive Hoja de Taller (BOM &amp; Histórico)</label>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="url" id="tech-hoja-taller-drive-url" value="${this.escapeAttr(hojaUrl)}" placeholder="https://docs.google.com/document/d/..." class="flex-1 bg-black border border-slate-700 p-2 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-cyan min-h-[44px]">
+                    ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('tech-hoja-taller-drive-url') : ''}
+                </div>
+                <div class="flex justify-end pt-1">
+                    <button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ 🚀 ENVIAR ITERACIÓN A TALLER ]</button>
                 </div>
             </div>`;
-        } else {
-            const hojaFyq = co.deliverables?.hoja_taller_fyq;
-            const hojaStatus = hojaFyq?.status || 'DRAFT_TECNICO';
-            const hojaUrl = hojaFyq?.driveUrl || '';
-
-            let trackerIdx = 0;
-            if (hojaStatus === 'EN_TALLER_OPERARIO') trackerIdx = 1;
-            else if (hojaStatus === 'SUBMITTED_TO_CEO') trackerIdx = 2;
-            else if (hojaStatus === 'DELIVERED_TO_TEACHER') trackerIdx = 3;
-            else trackerIdx = 0; // DRAFT_TECNICO, DEVUELTO_A_TECNICO, CEO_REVISION
-
-            let hojaInnerHtml = '';
-            if (!hojaFyq || hojaStatus === 'DRAFT_TECNICO') {
-                hojaInnerHtml = `
-                <div class="bg-slate-900 border border-cyan-500/50 p-4 space-y-3 rounded">
-                    <div class="flex justify-between items-center flex-wrap gap-2">
-                        <span class="text-xs font-bold uppercase text-cyan-400">[FASE 1: ESPECIFICACIÓN Y BOM]</span>
-                        <span class="text-xs font-mono font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded">BORRADOR TÉCNICO</span>
-                    </div>
-                    <p class="text-xs text-slate-300">Genera el escandallo (BOM) en el panel de inventario, redacta la Hoja de Taller en Google Docs y envíala al Taller para montaje físico.</p>
-                    <div class="mb-2">
-                        ${this.renderDocTemplateBtn('DOC_10_HOJA_TALLER')}
-                    </div>
-                    <label for="tech-hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Enlace Drive Hoja de Taller (BOM & Control Físico)</label>
-                    <input type="url" id="tech-hoja-taller-drive-url" value="${this.escapeAttr(hojaUrl)}" placeholder="https://docs.google.com/document/d/..." class="w-full bg-black border border-slate-700 p-2 text-xs text-white font-mono outline-none focus:border-mars-cyan min-h-[44px]">
-                    <div class="flex justify-end pt-1">
-                        <button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ 🚀 ENVIAR A TALLER ]</button>
-                    </div>
-                </div>`;
-            } else if (hojaStatus === 'EN_TALLER_OPERARIO') {
-                hojaInnerHtml = `
-                <div class="bg-slate-900 border border-blue-500/50 p-4 space-y-3 rounded">
-                    <div class="flex justify-between items-center flex-wrap gap-2">
-                        <span class="text-xs font-bold uppercase text-blue-400">[FASE 2: EN TALLER FÍSICO]</span>
-                        <span class="text-xs font-mono font-bold text-blue-300 bg-blue-900/40 border border-blue-500 px-2 py-0.5 rounded">EN TALLER (OPERARIO)</span>
-                    </div>
-                    <p class="text-xs text-slate-300">La Hoja de Taller ha sido remitida a Operaciones. El Operario está ensamblando y verificando la tolerancia física.</p>
-                    <div class="pt-1 flex gap-2 items-center flex-wrap">
-                        <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors"><span>Ver Documento Drive ↗</span></a>
-                    </div>
-                </div>`;
-            } else if (hojaStatus === 'DEVUELTO_A_TECNICO') {
-                hojaInnerHtml = `
-                <div class="bg-slate-900 border border-amber-500 p-4 space-y-3 rounded">
-                    <div class="flex justify-between items-center flex-wrap gap-2">
-                        <span class="text-xs font-bold uppercase text-amber-400">[FASE 3: SUBSANACIÓN TÉCNICA]</span>
-                        <span class="text-xs font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-500 px-2 py-0.5 rounded">⚠️ DEVUELTO POR INCIDENCIA EN TALLER</span>
-                    </div>
-                    <div class="bg-amber-950/40 border border-amber-500/50 p-2.5 my-1 text-xs text-amber-300 font-mono">
-                        <strong>Motivo de Incidencia Tipificado:</strong> ${this.escapeHTML(hojaFyq.returnReason || hojaFyq.returnReasonId || 'Incidencia de taller')}
-                    </div>
-                    ${hojaFyq.returnDriveUrl ? `
-                    <div class="my-2">
-                        <a href="${encodeURI(hojaFyq.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-2 px-3 py-2 text-xs bg-amber-950/60 text-amber-300 border border-amber-400 rounded hover:bg-amber-900/60 transition-colors font-bold uppercase">
-                            <span>📄 Abrir Registro de Incidencias en Google Docs ↗</span>
-                        </a>
-                    </div>` : ''}
-                    <p class="text-xs text-slate-300">Corrige las tolerancias o sustituye las piezas en el Google Doc y vuelve a remitir a taller.</p>
-                    <label for="tech-hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Actualizar Enlace Drive Hoja de Taller</label>
-                    <input type="url" id="tech-hoja-taller-drive-url" value="${this.escapeAttr(hojaUrl)}" class="w-full bg-black border border-amber-500/60 p-2 text-xs text-white font-mono outline-none focus:border-amber-400 min-h-[44px]">
-                    <div class="flex justify-end pt-1">
-                        <button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-amber-400 text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ 🔄 REENVIAR A TALLER ]</button>
-                    </div>
-                </div>`;
-            } else if (hojaStatus === 'SUBMITTED_TO_CEO') {
-                hojaInnerHtml = `
-                <div class="bg-slate-900 border border-purple-500/50 p-4 space-y-3 rounded">
-                    <div class="flex justify-between items-center flex-wrap gap-2">
-                        <span class="text-xs font-bold uppercase text-purple-400">[FASE 4: SUPERVISIÓN CEO]</span>
-                        <span class="text-xs font-mono font-bold text-purple-300 bg-purple-900/40 border border-purple-500 px-2 py-0.5 rounded">VALIDADO EN TALLER // EN REVISIÓN CEO</span>
-                    </div>
-                    <p class="text-xs text-slate-300">Operaciones ha validado el montaje físico. La Hoja de Taller está pendiente del visado final del CEO hacia el profesor de FyQ.</p>
-                    <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Ver Documento Drive ↗</span></a>
-                </div>`;
-            } else if (hojaStatus === 'CEO_REVISION') {
-                hojaInnerHtml = `
-                <div class="bg-slate-900 border border-mars-magenta p-4 space-y-3 rounded">
-                    <div class="flex justify-between items-center flex-wrap gap-2">
-                        <span class="text-xs font-bold uppercase text-mars-magenta">[REVISIÓN REQUERIDA POR CEO]</span>
-                        <span class="text-xs font-mono font-bold text-mars-magenta bg-mars-magenta/20 border border-mars-magenta px-2 py-0.5 rounded">⚠️ DEVUELTO POR CEO</span>
-                    </div>
-                    <div class="bg-red-950/40 border border-red-500/50 p-2.5 my-1 text-xs text-red-300 font-mono">
-                        <strong>Motivo de Devolución CEO:</strong> ${this.escapeHTML(hojaFyq.returnReason || hojaFyq.returnReasonId || 'Requiere subsanación técnica')}
-                    </div>
-                    <p class="text-xs text-slate-300">Corrige las observaciones en el documento de Drive y vuelve a enviar a Taller/CEO.</p>
-                    <label for="tech-hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Actualizar Enlace Drive Hoja de Taller</label>
-                    <input type="url" id="tech-hoja-taller-drive-url" value="${this.escapeAttr(hojaUrl)}" class="w-full bg-black border border-mars-magenta/60 p-2 text-xs text-white font-mono outline-none focus:border-mars-magenta min-h-[44px]">
-                    <div class="flex justify-end pt-1">
-                        <button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-mars-magenta text-white font-black uppercase text-xs px-4 py-2 hover:bg-white hover:text-mars-magenta transition-all">[ 🔄 REENVIAR A REVISIÓN ]</button>
-                    </div>
-                </div>`;
-            } else if (hojaStatus === 'DELIVERED_TO_TEACHER') {
-                hojaInnerHtml = `
-                <div class="bg-slate-900 border border-mars-green/50 p-4 space-y-3 rounded">
-                    <div class="flex justify-between items-center flex-wrap gap-2">
-                        <span class="text-xs font-bold uppercase text-mars-green">[COMPLETADO: ENTREGADO A DOCENTE]</span>
-                        <span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">✓ VISADO Y ENTREGADO A FYQ</span>
-                    </div>
-                    <p class="text-xs text-slate-300">El CEO ha visado y remitido la Hoja de Taller al profesor de Física y Química para su evaluación oficial (10%).</p>
-                    <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Abrir Documento Oficial Drive ↗</span></a>
-                </div>`;
-            }
-
-            hojaPanelHtml = `
-            <div id="tech-hoja-taller-panel" class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-cyan-400">
-                <div class="flex justify-between items-start mb-3 flex-wrap gap-2">
-                    <div>
-                        <h3 class="font-orbitron text-cyan-400 text-sm sm:text-base uppercase tracking-tighter">Hoja de Taller: BOM y Control de Ensamble (FYQ)</h3>
-                        <p class="text-xs text-slate-300 uppercase mt-0.5">Control de calidad y seguimiento operativo en 4 fases: I+D ➔ Taller ➔ CEO ➔ Docente.</p>
-                    </div>
-                    <span class="text-xs font-mono font-bold text-cyan-400 bg-cyan-950/60 border border-cyan-500/50 px-2.5 py-1 uppercase">Peso: 10% FYQ</span>
+        } else if (hojaStatus === 'EN_TALLER_OPERARIO') {
+            hojaInnerHtml = `
+            <div class="bg-slate-900 border border-blue-500/50 p-4 space-y-3 rounded">
+                <div class="flex justify-between items-center flex-wrap gap-2">
+                    <span class="text-xs font-bold uppercase text-blue-400">[FASE 2: EN TALLER FÍSICO]</span>
+                    <span class="text-xs font-mono font-bold text-blue-300 bg-blue-900/40 border border-blue-500 px-2 py-0.5 rounded">EN TALLER (OPERARIO)</span>
                 </div>
-                ${this.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval)', '4. Docente FyQ'], trackerIdx)}
-                ${hojaInnerHtml}
+                ${faseIIILockNotice}
+                <p class="text-xs text-slate-300 font-sans">La Hoja de Taller ha sido remitida a Operaciones. El Operario está ensamblando y verificando la tolerancia física para añadir el dictamen al Histórico.</p>
+                <div class="pt-1 flex gap-2 items-center flex-wrap">
+                    <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors"><span>Ver Documento Drive ↗</span></a>
+                </div>
+            </div>`;
+        } else if (hojaStatus === 'DEVUELTO_A_TECNICO') {
+            hojaInnerHtml = `
+            <div class="bg-slate-900 border border-amber-500 p-4 space-y-3 rounded">
+                <div class="flex justify-between items-center flex-wrap gap-2">
+                    <span class="text-xs font-bold uppercase text-amber-400">[SUBSANACIÓN TÉCNICA]</span>
+                    <span class="text-xs font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-500 px-2 py-0.5 rounded">⚠️ DEVUELTO POR INCIDENCIA EN TALLER</span>
+                </div>
+                ${faseIIILockNotice}
+                <div class="bg-amber-950/40 border border-amber-500/50 p-2.5 my-1 text-xs text-amber-300 font-mono">
+                    <strong>Motivo de Incidencia Tipificado:</strong> ${this.escapeHTML(hojaFyq.returnReason || hojaFyq.returnReasonId || 'Incidencia de taller')}
+                </div>
+                ${hojaFyq.returnDriveUrl ? `
+                <div class="my-2">
+                    <a href="${encodeURI(hojaFyq.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-2 px-3 py-2 text-xs bg-amber-950/60 text-amber-300 border border-amber-400 rounded hover:bg-amber-900/60 transition-colors font-bold uppercase">
+                        <span>📄 Abrir Registro de Incidencias en Google Docs ↗</span>
+                    </a>
+                </div>` : ''}
+                <p class="text-xs text-slate-300 font-sans">Corrige las tolerancias o sustituye las piezas en el Google Doc y vuelve a remitir a taller.</p>
+                <label for="tech-hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Actualizar Enlace Drive Hoja de Taller</label>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="url" id="tech-hoja-taller-drive-url" value="${this.escapeAttr(hojaUrl)}" class="flex-1 bg-black border border-amber-500/60 p-2 text-base sm:text-xs text-white font-mono outline-none focus:border-amber-400 min-h-[44px]">
+                    ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('tech-hoja-taller-drive-url') : ''}
+                </div>
+                <div class="flex justify-end pt-1">
+                    <button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-amber-400 text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ 🔄 REENVIAR A TALLER ]</button>
+                </div>
+            </div>`;
+        } else if (hojaStatus === 'SUBMITTED_TO_CEO') {
+            hojaInnerHtml = `
+            <div class="bg-slate-900 border border-purple-500/50 p-4 space-y-3 rounded">
+                <div class="flex justify-between items-center flex-wrap gap-2">
+                    <span class="text-xs font-bold uppercase text-purple-400">[FASE 4: SUPERVISIÓN CEO]</span>
+                    <span class="text-xs font-mono font-bold text-purple-300 bg-purple-900/40 border border-purple-500 px-2 py-0.5 rounded">VALIDADO EN TALLER // EN REVISIÓN CEO</span>
+                </div>
+                <p class="text-xs text-slate-300 font-sans">Operaciones ha validado el montaje físico definitivo. La Hoja de Taller está pendiente del visado final del CEO hacia el profesor de FyQ.</p>
+                <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Ver Documento Drive ↗</span></a>
+            </div>`;
+        } else if (hojaStatus === 'CEO_REVISION') {
+            hojaInnerHtml = `
+            <div class="bg-slate-900 border border-mars-magenta p-4 space-y-3 rounded">
+                <div class="flex justify-between items-center flex-wrap gap-2">
+                    <span class="text-xs font-bold uppercase text-mars-magenta">[REVISIÓN REQUERIDA POR CEO]</span>
+                    <span class="text-xs font-mono font-bold text-mars-magenta bg-mars-magenta/20 border border-mars-magenta px-2 py-0.5 rounded">⚠️ DEVUELTO POR CEO</span>
+                </div>
+                <div class="bg-red-950/40 border border-red-500/50 p-2.5 my-1 text-xs text-red-300 font-mono">
+                    <strong>Motivo de Devolución CEO:</strong> ${this.escapeHTML(hojaFyq.returnReason || hojaFyq.returnReasonId || 'Requiere subsanación técnica')}
+                </div>
+                <p class="text-xs text-slate-300 font-sans">Corrige las observaciones en el documento de Drive y vuelve a enviar a Taller/CEO.</p>
+                <label for="tech-hoja-taller-drive-url" class="text-xs text-mars-yellow font-bold uppercase block">Actualizar Enlace Drive Hoja de Taller</label>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="url" id="tech-hoja-taller-drive-url" value="${this.escapeAttr(hojaUrl)}" class="flex-1 bg-black border border-mars-magenta/60 p-2 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-magenta min-h-[44px]">
+                    ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('tech-hoja-taller-drive-url') : ''}
+                </div>
+                <div class="flex justify-end pt-1">
+                    <button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-mars-magenta text-white font-black uppercase text-xs px-4 py-2 hover:bg-white hover:text-mars-magenta transition-all">[ 🔄 REENVIAR A REVISIÓN ]</button>
+                </div>
+            </div>`;
+        } else if (hojaStatus === 'DELIVERED_TO_TEACHER') {
+            hojaInnerHtml = `
+            <div class="bg-slate-900 border border-mars-green/50 p-4 space-y-3 rounded">
+                <div class="flex justify-between items-center flex-wrap gap-2">
+                    <span class="text-xs font-bold uppercase text-mars-green">[COMPLETADO: ENTREGADO A DOCENTE]</span>
+                    <span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">✓ VISADO Y ENTREGADO A FYQ</span>
+                </div>
+                <p class="text-xs text-slate-300 font-sans">El CEO ha visado y remitido la Hoja de Taller al profesor de Física y Química para su evaluación oficial (10%).</p>
+                <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Abrir Documento Oficial Drive ↗</span></a>
             </div>`;
         }
+
+        const historyTimelineHtml = this.renderHojaTallerHistoryHtml ? this.renderHojaTallerHistoryHtml(hojaFyq) : '';
+        const hojaPanelHtml = `
+        <div id="tech-hoja-taller-panel" class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-cyan-400">
+            <div class="flex justify-between items-start mb-3 flex-wrap gap-2">
+                <div>
+                    <h3 class="font-orbitron text-cyan-400 text-sm sm:text-base uppercase tracking-tighter">Hoja de Taller: BOM e Histórico de Montaje (FYQ)</h3>
+                    <p class="text-xs text-slate-300 mt-0.5 font-sans">Canal vivo I+D ⇄ Taller para configurar el cohete. Con el histórico elaboraréis la entrega de Fase III (Peso: 10% FyQ).</p>
+                </div>
+                <span class="text-xs font-mono font-bold px-2.5 py-1 uppercase border ${isHojaLocked ? 'text-cyan-300 bg-cyan-950/50 border-cyan-500/40' : 'text-mars-green bg-mars-green/10 border-mars-green/40'}">${isHojaLocked ? '🛠️ Canal I+D ⇄ Taller Activo' : '📤 Entrega Fase III Abierta'}</span>
+            </div>
+            ${this.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval · Fase III)', '4. Docente FyQ'], trackerIdx)}
+            ${hojaInnerHtml}
+            ${historyTimelineHtml}
+        </div>`;
 
         wrapper.innerHTML = `
         <div class="space-y-6">
@@ -779,8 +787,11 @@ Object.assign(ui, {
                     <div class="mb-2">
                         ${this.renderDocTemplateBtn('DOC_7_B2B_DESINVERSION')}
                     </div>
-                    <input type="url" id="b2b-drive-url" value="${this.escapeHTML(item.b2bDriveUrl || '')}" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono" required>
-                    <p class="text-[10px] text-slate-400 mt-1">Adjunta la memoria técnica en Google Drive justificando el excedente para autorización en Aduana Docente.</p>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="b2b-drive-url" value="${this.escapeHTML(item.b2bDriveUrl || '')}" placeholder="https://docs.google.com/... o https://drive.google.com/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono" required>
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('b2b-drive-url') : ''}
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1">Adjunta la memoria técnica en Google Drive justificando el excedente para autorización en Aduana Docente. No pegues la plantilla <code>/copy</code> sin copiar.</p>
                 </div>
             </div>
         `;
@@ -794,14 +805,14 @@ Object.assign(ui, {
         const elDriveUrl = document.getElementById('b2b-drive-url');
         if (!elPrice) return;
 
-        const price = parseFloat(elPrice.value);
-        const driveUrl = elDriveUrl ? this.cleanInput(elDriveUrl.value) : '';
-
+        const price = parseFloat(String(elPrice.value).replace(',', '.'));
         if (isNaN(price) || price <= 0) return this.notify("Introduce un precio en €v válido mayor que cero.", "warning");
-        if (!driveUrl) return this.notify("Debes indicar el enlace Drive del informe técnico de excedentes.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elDriveUrl ? elDriveUrl.value : '', elDriveUrl, { required: true, label: 'el informe técnico de excedentes DOC_7' })
+            : { valid: Boolean(elDriveUrl && this.cleanInput(elDriveUrl.value) && (typeof GOOGLE_DRIVE_REGEX === 'undefined' || GOOGLE_DRIVE_REGEX.test(this.cleanInput(elDriveUrl.value)))), url: elDriveUrl ? this.cleanInput(elDriveUrl.value) : '' };
+        if (!urlCheck.valid) return;
+        const driveUrl = urlCheck.url;
+        if (this.acquireActionLock && !this.acquireActionLock(`tech-sell-b2b-${orderId}-${itemIdx}`, 1500)) return;
 
         const co = state.data.companies[state.user.coId];
         if (!co || !co.orders) return;
@@ -877,33 +888,47 @@ Object.assign(ui, {
         if (!elBottle || !elNahco3 || !elVinegar || !elCost || !elHeightMm) return; 
 
         const bottle = this.cleanInput(elBottle.value);
-        const rawNahco3 = String(elNahco3.value || '').trim();
-        const rawVinegar = String(elVinegar.value || '').trim();
+        const rawNahco3 = String(elNahco3.value || '').trim().replace(',', '.');
+        const rawVinegar = String(elVinegar.value || '').trim().replace(',', '.');
+        const rawCost = String(elCost.value || '').trim().replace(',', '.');
+        const rawHeight = String(elHeightMm.value || '').trim().replace(',', '.');
         const rawVideoUrl = elVideoUrl ? this.cleanInput(elVideoUrl.value).trim() : '';
 
         // Controlar que las entradas de masa (NaHCO3) y volumen (CH3COOH) rechacen números negativos o cadenas con caracteres alfanuméricos no numéricos
         const strictNumPattern = /^[0-9]+(\.[0-9]+)?$/;
         if (!strictNumPattern.test(rawNahco3)) {
-            return this.notify("La masa de NaHCO3 debe ser un valor numérico estrictamente positivo sin caracteres alfanuméricos.", "error");
+            if (this.highlightInvalidField) this.highlightInvalidField('', elNahco3);
+            return this.notify("La masa de NaHCO3 debe ser un valor numérico estrictamente positivo (puedes usar punto o coma decimal).", "error");
         }
         if (!strictNumPattern.test(rawVinegar)) {
-            return this.notify("El volumen de vinagre (CH3COOH) debe ser un valor numérico estrictamente positivo sin caracteres alfanuméricos.", "error");
+            if (this.highlightInvalidField) this.highlightInvalidField('', elVinegar);
+            return this.notify("El volumen de vinagre (CH3COOH) debe ser un valor numérico estrictamente positivo (punto o coma decimal).", "error");
         }
 
         const naHCO3 = parseFloat(rawNahco3);
         const vinegar = parseFloat(rawVinegar);
-        const costEurV = parseFloat(elCost.value);
-        const heightMm = parseFloat(elHeightMm.value); // <--- v1.0.16: Se registra en milímetros
+        const costEurV = parseFloat(rawCost);
+        const heightMm = parseFloat(rawHeight); // <--- v1.0.16: Se registra en milímetros
 
         if(!bottle || isNaN(naHCO3) || isNaN(vinegar) || isNaN(costEurV) || isNaN(heightMm)) return this.notify("Rellene todos los datos numéricos del ensayo.", "warning");
         if(naHCO3 <= 0 || vinegar <= 0) return this.notify("La masa y el volumen de reactivos deben ser mayores a cero.", "warning");
         if(this.hasForbiddenWords(bottle, 'Banco de Pruebas (Fuselaje)', elBottle)) return;
-        if(costEurV <= 0) return this.notify("El coste no puede ser cero.", "warning");
-        if(heightMm < 0) return this.notify("La altura no puede ser un número negativo.", "warning");
-
-        if (rawVideoUrl && !(this.isValidDriveUrl ? this.isValidDriveUrl(rawVideoUrl) : (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(rawVideoUrl)))) {
-            return this.notify("El vídeo opcional debe ser un enlace válido de Google Drive.", "error");
+        if(costEurV <= 0) {
+            if (this.highlightInvalidField) this.highlightInvalidField('', elCost);
+            return this.notify("El coste del ensayo debe ser mayor a cero (€v).", "warning");
         }
+        if(heightMm <= 0) {
+            if (this.highlightInvalidField) this.highlightInvalidField('', elHeightMm);
+            return this.notify("La altura alcanzada debe ser estrictamente mayor que 0 mm.", "warning");
+        }
+
+        if (rawVideoUrl) {
+            const videoCheck = this.validateStudentDriveUrl
+                ? this.validateStudentDriveUrl(rawVideoUrl, elVideoUrl, { required: false, label: 'el vídeo de cálculo E' })
+                : { valid: (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(rawVideoUrl)) };
+            if (!videoCheck.valid) return;
+        }
+        if (this.acquireActionLock && !this.acquireActionLock('flight-test-' + (state.user.coId || 'co'), 1200)) return;
 
         // Eficiencia: Milímetros por cada € virtual gastado
         const efficiency = heightMm / costEurV;
@@ -948,7 +973,10 @@ Object.assign(ui, {
                     <label for="attach-flight-video-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">
                         🎥 Enlace al Vídeo en Google Drive demostrando E = Altura / Coste (Opcional)
                     </label>
-                    <input type="url" id="attach-flight-video-url" value="${this.escapeHTML(curVideo)}" placeholder="https://drive.google.com/file/d/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow">
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="attach-flight-video-url" value="${this.escapeHTML(curVideo)}" placeholder="https://drive.google.com/file/d/..." class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow">
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('attach-flight-video-url') : ''}
+                    </div>
                     <p class="text-[10px] text-slate-400 mt-1 font-sans">Asegúrate de configurar el acceso compartido como <em>"Cualquiera con el enlace puede ver"</em>. Déjalo vacío si deseas quitar el vídeo.</p>
                 </div>
             </div>
@@ -966,11 +994,11 @@ Object.assign(ui, {
 
         const elUrl = document.getElementById('attach-flight-video-url');
         if (!elUrl) return;
-        const videoUrl = this.cleanInput(elUrl.value).trim();
-
-        if (videoUrl && !(this.isValidDriveUrl ? this.isValidDriveUrl(videoUrl) : (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(videoUrl)))) {
-            return this.notify("El enlace de vídeo debe ser una URL válida de Google Drive.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elUrl.value, elUrl, { required: false, label: 'el vídeo de cálculo E' })
+            : { valid: true, url: this.cleanInput(elUrl.value).trim() };
+        if (!urlCheck.valid) return;
+        const videoUrl = urlCheck.url;
 
         f.videoUrl = videoUrl;
         co.updatedAt = Date.now();
@@ -996,7 +1024,10 @@ Object.assign(ui, {
                     <label for="special-item-drive-url" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">
                         📄 Memoria Técnica / Ficha de Pieza en Google Drive o Docs (URL)
                     </label>
-                    <input type="url" id="special-item-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." required class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow">
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="special-item-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" required class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow">
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('special-item-drive-url') : ''}
+                    </div>
                     <p class="text-[10px] text-slate-400 mt-1 font-sans">
                         Configura los permisos del documento en Google Drive como <em>"Cualquiera con el enlace puede ver"</em> para que el CEO y el claustro docente examinen los planos y especificaciones.
                     </p>
@@ -1015,11 +1046,12 @@ Object.assign(ui, {
         const elUrl = document.getElementById('special-item-drive-url');
         if (!elUrl) return; 
         
-        const driveUrl = this.cleanInput(elUrl.value);
-        if (!driveUrl) return this.notify("Debes incluir el enlace a la memoria técnica en Google Drive o Google Docs.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive o Google Docs.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elUrl.value, elUrl, { required: true, label: 'la solicitud I+D (DOC_13)' })
+            : { valid: Boolean(this.cleanInput(elUrl.value)), url: this.cleanInput(elUrl.value) };
+        if (!urlCheck.valid) return;
+        const driveUrl = urlCheck.url;
+        if (this.acquireActionLock && !this.acquireActionLock('submit-special-' + state.user.coId, 1500)) return;
         
         const coId = state.user.coId;
         const co = state.data.companies?.[coId];
@@ -1069,7 +1101,10 @@ Object.assign(ui, {
                     <label for="resubmit-special-item-url" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">
                         📄 Nuevo o Actualizado Enlace a DOC_13 en Google Drive / Docs (URL)
                     </label>
-                    <input type="url" id="resubmit-special-item-url" value="${req.driveUrl ? this.escapeHTML(req.driveUrl) : ''}" placeholder="https://docs.google.com/... o https://drive.google.com/..." required class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow">
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="resubmit-special-item-url" value="${req.driveUrl ? this.escapeHTML(req.driveUrl) : ''}" placeholder="https://docs.google.com/... o https://drive.google.com/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" required class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow">
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('resubmit-special-item-url') : ''}
+                    </div>
                     <p class="text-[10px] text-slate-400 mt-1 font-sans">Asegúrate de haber corregido el documento y mantenido permisos públicos de lectura.</p>
                 </div>
                 <div class="pt-1">
@@ -1085,11 +1120,12 @@ Object.assign(ui, {
         if (!state.user) return;
         const elUrl = document.getElementById('resubmit-special-item-url');
         if (!elUrl) return;
-        const driveUrl = this.cleanInput(elUrl.value).trim();
-        if (!driveUrl) return this.notify("Debes incluir el enlace a la memoria técnica en Google Drive o Docs.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive o Docs.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elUrl.value, elUrl, { required: true, label: 'la subsanación DOC_13' })
+            : { valid: Boolean(this.cleanInput(elUrl.value)), url: this.cleanInput(elUrl.value) };
+        if (!urlCheck.valid) return;
+        const driveUrl = urlCheck.url;
+        if (this.acquireActionLock && !this.acquireActionLock('resubmit-special-' + reqId, 1500)) return;
 
         const coId = state.user.coId;
         const co = state.data.companies?.[coId];

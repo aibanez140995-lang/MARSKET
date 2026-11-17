@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.12
+// Versión: v2.0.13
 
 declare(strict_types=1);
 
@@ -1437,6 +1437,10 @@ try {
                     $returnReasonId = null;
                     $returnReason = null;
 
+                    $existingDoc = is_array($co['deliverables'][$rawKey] ?? null) ? $co['deliverables'][$rawKey] : [];
+                    $existingHistory = is_array($existingDoc['history'] ?? null) ? $existingDoc['history'] : [];
+                    $lastWorkshopCheckAt = $existingDoc['lastWorkshopCheckAt'] ?? null;
+
                     if ($rawKey === 'hoja_taller_fyq') {
                         $reqStatus = trim((string)($payload['status'] ?? ''));
                         $validWorkshop = ['DRAFT_TECNICO', 'EN_TALLER_OPERARIO', 'DEVUELTO_A_TECNICO', 'CEO_REVISION', 'SUBMITTED_TO_CEO', 'DELIVERED_TO_TEACHER'];
@@ -1449,9 +1453,22 @@ try {
                         }
                         $returnReasonId = $payload['returnReasonId'] ?? null;
                         $returnReason = $payload['returnReason'] ?? null;
+                        if (is_array($payload['history'] ?? null)) {
+                            $histById = [];
+                            foreach ($existingHistory as $ev) {
+                                if (is_array($ev) && !empty($ev['id'])) $histById[(string)$ev['id']] = $ev;
+                            }
+                            foreach ($payload['history'] as $ev) {
+                                if (is_array($ev) && !empty($ev['id'])) $histById[(string)$ev['id']] = $ev;
+                            }
+                            $existingHistory = array_values($histById);
+                        }
+                        if (!empty($payload['lastWorkshopCheckAt'])) {
+                            $lastWorkshopCheckAt = (string)$payload['lastWorkshopCheckAt'];
+                        }
                     }
 
-                    $co['deliverables'][$rawKey] = [
+                    $newDelivObj = [
                         'driveUrl' => $driveUrl,
                         'status' => $status,
                         'returnReasonId' => $returnReasonId,
@@ -1460,6 +1477,13 @@ try {
                         'returnByTeacher' => !empty($payload['returnByTeacher']),
                         'updatedAt' => date('c')
                     ];
+                    if ($rawKey === 'hoja_taller_fyq') {
+                        $newDelivObj['history'] = $existingHistory;
+                        if ($lastWorkshopCheckAt) {
+                            $newDelivObj['lastWorkshopCheckAt'] = $lastWorkshopCheckAt;
+                        }
+                    }
+                    $co['deliverables'][$rawKey] = $newDelivObj;
                 }
                 break;
 
@@ -1486,6 +1510,16 @@ try {
                         unset($currentDoc['returnReasonId'], $currentDoc['returnReason'], $currentDoc['returnDriveUrl'], $currentDoc['returnByTeacher']);
                         $currentDoc['updatedAt'] = date('c');
                     }
+                    if ($rawKey === 'hoja_taller_fyq' && is_array($payload['history'] ?? null)) {
+                        $histById = [];
+                        foreach ((is_array($currentDoc['history'] ?? null) ? $currentDoc['history'] : []) as $ev) {
+                            if (is_array($ev) && !empty($ev['id'])) $histById[(string)$ev['id']] = $ev;
+                        }
+                        foreach ($payload['history'] as $ev) {
+                            if (is_array($ev) && !empty($ev['id'])) $histById[(string)$ev['id']] = $ev;
+                        }
+                        $currentDoc['history'] = array_values($histById);
+                    }
                 } elseif ($subAction === 'RETURN') {
                     $reasonId = trim((string)($payload['reasonId'] ?? ''));
                     $reasonText = trim((string)($payload['reason'] ?? $reasonId));
@@ -1510,6 +1544,16 @@ try {
                         unset($currentDoc['returnByTeacher']);
                         $currentDoc['updatedAt'] = date('c');
                     }
+                    if ($rawKey === 'hoja_taller_fyq' && is_array($payload['history'] ?? null)) {
+                        $histById = [];
+                        foreach ((is_array($currentDoc['history'] ?? null) ? $currentDoc['history'] : []) as $ev) {
+                            if (is_array($ev) && !empty($ev['id'])) $histById[(string)$ev['id']] = $ev;
+                        }
+                        foreach ($payload['history'] as $ev) {
+                            if (is_array($ev) && !empty($ev['id'])) $histById[(string)$ev['id']] = $ev;
+                        }
+                        $currentDoc['history'] = array_values($histById);
+                    }
                 } else {
                     http_response_code(400);
                     echo json_encode(['error' => 'INVALID_REVIEW_ACTION']);
@@ -1531,7 +1575,7 @@ try {
                 $driveUrl = is_array($currentDoc) ? ($currentDoc['driveUrl'] ?? '') : (string)$currentDoc;
                 
                 $returnDriveUrl = trim((string)($payload['returnDriveUrl'] ?? $p['returnDriveUrl'] ?? ''));
-                $co['deliverables'][$rawKey] = [
+                $preservedDoc = [
                     'driveUrl' => $driveUrl,
                     'status' => 'CEO_REVISION',
                     'returnReasonId' => $reasonId,
@@ -1540,6 +1584,11 @@ try {
                     'returnByTeacher' => true,
                     'updatedAt' => date('c')
                 ];
+                if (is_array($currentDoc)) {
+                    if (is_array($currentDoc['history'] ?? null)) $preservedDoc['history'] = $currentDoc['history'];
+                    if (!empty($currentDoc['lastWorkshopCheckAt'])) $preservedDoc['lastWorkshopCheckAt'] = $currentDoc['lastWorkshopCheckAt'];
+                }
+                $co['deliverables'][$rawKey] = $preservedDoc;
                 break;
 
             case 'COORDINATOR_DECIDE_BRAND':

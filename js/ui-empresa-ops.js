@@ -52,12 +52,12 @@ Object.assign(ui, {
                                     <label class="mars-checkbox-label flex items-center gap-2.5 text-xs text-white font-bold cursor-pointer min-h-[44px]">
                                         <input type="checkbox" id="assembled-${this.escapeHTML(order.id)}-${idx}" class="mars-touch-input" checked ${isOperario ? '' : 'disabled'}>
                                         <span class="mars-checkbox-visual"></span>
-                                        <span class="break-words">${this.escapeHTML(item.name)} (x${Number(item.qty)||1}) - <span class="text-mars-cyan font-mono">${Number(item.price).toFixed(2)} €v</span></span>
+                                        <span class="break-words">${this.escapeHTML(item.name)} (x${Number(item.qty)||1}) - <span class="text-mars-cyan font-mono">${((Number(item.price) || 0) * (Number(item.qty) || 1)).toFixed(2)} €v</span>${(Number(item.qty) || 1) > 1 ? ` <span class="text-[11px] text-slate-400 font-mono">(${Number(item.price).toFixed(2)} c/u)</span>` : ''}</span>
                                     </label>
-                                    <p class="text-[10px] text-slate-400 font-mono mt-0.5 ml-7">${isB2B ? 'Pieza adquirida en mercado secundario B2B (coste en € = 0.00)' : 'Material donado o reciclado: registrar 0.00 €'}</p>
+                                    <p class="text-[11px] text-slate-300 font-sans mt-0.5 ml-7">${isB2B ? 'Pieza adquirida en mercado secundario B2B (coste en € = 0.00)' : 'Registra el precio real pagado en comercio (> 0.00 €), aunque el material se haya traído de casa.'}</p>
                                 </div>
                                 <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                                    <input type="number" id="real-eur-${this.escapeHTML(order.id)}-${idx}" aria-label="Coste real en euros de ${this.escapeHTML(item.name)}" placeholder="${isB2B ? 'Coste Real (€) 0.00' : 'Coste Real (€) - 0.00 si es reciclado'}" value="${isB2B ? '0.00' : ''}" step="0.01" min="0" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-mars-magenta p-2.5 text-base sm:text-xs text-white w-full sm:w-48 outline-none focus:border-mars-cyan font-mono">
+                                    <input type="number" inputmode="decimal" id="real-eur-${this.escapeHTML(order.id)}-${idx}" aria-label="Coste real en euros de ${this.escapeHTML(item.name)}" placeholder="${isB2B ? 'Coste Real (€) 0.00' : 'Precio real (€ > 0)'}" value="${isB2B ? '0.00' : ''}" step="0.01" min="${isB2B ? '0' : '0.01'}" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-mars-cyan/60 p-2.5 text-base sm:text-xs text-white w-full sm:w-48 outline-none focus:border-mars-yellow font-mono">
                                     <select id="real-shop-${this.escapeHTML(order.id)}-${idx}" aria-label="Comercio de adquisición de ${this.escapeHTML(item.name)}" ${isOperario ? '' : 'disabled'} class="min-h-[44px] bg-black border border-slate-700 p-2.5 text-base sm:text-xs text-white w-full sm:w-44 outline-none focus:border-mars-cyan">
                                         ${isB2B ? `<option value="Mercado B2B">Mercado B2B</option>` : ''}
                                         ${(typeof COMMERCIAL_SHOPS_DEF !== 'undefined' ? COMMERCIAL_SHOPS_DEF : [
@@ -75,7 +75,9 @@ Object.assign(ui, {
                         `).join('')}
                     </div>
                     ${isOperario
-                        ? `<button type="button" onclick="ui.executePhysicalOrder('${this.escapeHTML(order.id)}')" class="w-full min-h-[48px] bg-mars-cyan text-black font-black py-3 px-4 text-xs uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)]">[ CONFIRMAR ${isB2B ? 'RECEPCIÓN FÍSICA B2B Y ENSAMBLE' : 'COMPRA FÍSICA Y ENSAMBLAJE'} ]</button>`
+                        ? ((!isB2B && this.isCompanyBankrupt && this.isCompanyBankrupt(co))
+                            ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="w-full min-h-[48px] bg-slate-900 border border-rose-500/60 text-rose-300 font-black py-3 px-4 text-xs uppercase tracking-wider cursor-not-allowed">🔒 Compra Física B2C Bloqueada (Saldo ≤ 0 €v)</button>`
+                            : `<button type="button" onclick="ui.executePhysicalOrder('${this.escapeHTML(order.id)}')" class="w-full min-h-[48px] bg-mars-cyan text-black font-black py-3 px-4 text-xs uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)]">[ CONFIRMAR ${isB2B ? 'RECEPCIÓN FÍSICA B2B Y ENSAMBLE' : 'COMPRA FÍSICA Y ENSAMBLAJE'} ]</button>`)
                         : `<div class="p-3 bg-slate-950 border border-slate-800 text-center text-xs text-slate-400 uppercase font-mono">🔒 Vista de Sólo Lectura: Registro de compra física reservado exclusivamente al Operario de Taller.</div>`
                     }
                 </div>`;
@@ -112,32 +114,35 @@ Object.assign(ui, {
         const currentHoja = co.deliverables?.hoja_taller_fyq;
         const hojaStatus = currentHoja?.status || 'DRAFT_TECNICO';
         const hojaUrl = currentHoja?.driveUrl || '';
+        const isHojaLocked = !state.user?.admin && (typeof this.isDeliverableLocked === 'function') && this.isDeliverableLocked('hoja_taller_fyq', co);
+        const historyTimelineHtml = this.renderHojaTallerHistoryHtml ? this.renderHojaTallerHistoryHtml(currentHoja) : '';
 
         let hojaWorkshopHtml = '';
         if (!currentHoja || hojaStatus === 'DRAFT_TECNICO') {
             hojaWorkshopHtml = `
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-slate-600 mb-6 w-full">
-                <div class="flex justify-between items-start mb-2">
+            <div id="ops-hoja-taller-panel" class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-slate-600 mb-6 w-full">
+                <div class="flex flex-col sm:flex-row justify-between items-start mb-2 gap-2">
                     <div>
-                        <span class="text-xs font-bold uppercase text-slate-400 bg-slate-800 px-2.5 py-1 tracking-wider">[ENTREGABLE OFICIAL FYQ // 10%]</span>
-                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM y Control de Ensamble</h3>
+                        <span class="text-xs font-bold uppercase text-slate-300 bg-slate-800 px-2.5 py-1 tracking-wider">[CANAL I+D ⇄ TALLER // FYQ 10%]</span>
+                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM e Histórico de Montaje</h3>
                     </div>
-                    <span class="text-xs font-mono font-bold text-slate-400 bg-slate-900 border border-slate-700 px-2.5 py-1 rounded">⏳ EN DISEÑO POR TÉCNICO</span>
+                    <span class="text-xs font-mono font-bold ${currentHoja?.lastWorkshopCheckAt ? 'text-mars-green bg-mars-green/10 border border-mars-green/40' : 'text-slate-300 bg-slate-900 border border-slate-700'} px-2.5 py-1 rounded">${currentHoja?.lastWorkshopCheckAt ? '✓ ÚLTIMA ITERACIÓN OK' : '⏳ EN DISEÑO POR TÉCNICO'}</span>
                 </div>
-                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval)', '4. Docente FyQ'], 0)}
-                <p class="text-xs text-slate-300">El departamento Técnico (I+D) está configurando el BOM y la especificación inicial. En cuanto lo envíe a taller, podrás verificar el montaje físico.</p>
+                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval · Fase III)', '4. Docente FyQ'], 0)}
+                <p class="text-xs text-slate-300 font-sans">El departamento Técnico (I+D) está configurando el BOM y la especificación en Google Docs. En cuanto envíe una iteración a Taller, podrás verificar el montaje o registrar incidencias en el histórico.</p>
+                ${historyTimelineHtml}
             </div>`;
         } else if (hojaStatus === 'DEVUELTO_A_TECNICO') {
             hojaWorkshopHtml = `
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-amber-500 mb-6 w-full">
-                <div class="flex justify-between items-start mb-2">
+            <div id="ops-hoja-taller-panel" class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-amber-500 mb-6 w-full">
+                <div class="flex flex-col sm:flex-row justify-between items-start mb-2 gap-2">
                     <div>
-                        <span class="text-xs font-bold uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2.5 py-1 tracking-wider">[ENTREGABLE OFICIAL FYQ // 10%]</span>
-                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM y Control de Ensamble</h3>
+                        <span class="text-xs font-bold uppercase text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2.5 py-1 tracking-wider">[CANAL I+D ⇄ TALLER // FYQ 10%]</span>
+                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM e Histórico de Montaje</h3>
                     </div>
                     <span class="text-xs font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-500 px-2.5 py-1 rounded">⚠️ DEVUELTO A TÉCNICO</span>
                 </div>
-                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval)', '4. Docente FyQ'], 0)}
+                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval · Fase III)', '4. Docente FyQ'], 0)}
                 <div class="bg-amber-950/40 border border-amber-500/50 p-2.5 my-2 text-xs text-amber-300 font-mono">
                     <strong>Incidencia reportada a I+D:</strong> ${this.escapeHTML(currentHoja.returnReason || currentHoja.returnReasonId || 'Incidencia de taller')}
                 </div>
@@ -147,81 +152,89 @@ Object.assign(ui, {
                         <span>📄 Abrir Registro de Incidencias en Google Docs ↗</span>
                     </a>
                 </div>` : ''}
-                <p class="text-xs text-slate-300">Esperando que el departamento Técnico subsane el BOM en Google Docs y lo reenvíe a Taller.</p>
+                <p class="text-xs text-slate-300 font-sans">Esperando que Técnico subsane el diseño en Google Docs y envíe la siguiente iteración a Taller.</p>
+                ${historyTimelineHtml}
             </div>`;
         } else if (hojaStatus === 'EN_TALLER_OPERARIO') {
             hojaWorkshopHtml = `
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-cyan-400 mb-6 w-full">
-                <div class="flex justify-between items-start mb-2">
+            <div id="ops-hoja-taller-panel" class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-cyan-400 mb-6 w-full">
+                <div class="flex flex-col sm:flex-row justify-between items-start mb-2 gap-2">
                     <div>
                         <span class="text-xs font-bold uppercase text-cyan-400 bg-cyan-950/40 border border-cyan-500/40 px-2.5 py-1 tracking-wider">[FASE 2: EN TALLER FÍSICO // FYQ 10%]</span>
-                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM y Control de Ensamble</h3>
+                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM e Histórico de Montaje</h3>
                     </div>
                     <span class="text-xs font-mono font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-500 px-2.5 py-1 rounded">⚙️ EN TALLER (OPERARIO)</span>
                 </div>
-                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval)', '4. Docente FyQ'], 1)}
-                <p class="text-xs text-slate-300 mb-3">Revisa el montaje físico del cohete con respecto al BOM documentado por el departamento Técnico.</p>
+                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval · Fase III)', '4. Docente FyQ'], 1)}
+                <p class="text-xs text-slate-300 font-sans mb-3">Revisa el montaje físico del cohete respecto al BOM documentado por Técnico. Cada validación o incidencia queda guardada en el histórico para elaborar la entrega final en Fase III.</p>
                 <div class="mb-4">
                     <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/60 transition-colors">
                         <span>📄 Inspeccionar Hoja de Taller y BOM en Docs ↗</span>
                     </a>
                 </div>
                 <div class="flex flex-col sm:flex-row gap-3 pt-2 border-t border-slate-800">
-                    <button type="button" onclick="ui.opsValidateHojaTaller()" class="min-h-[44px] flex-1 bg-mars-green text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">[ ✓ VALIDAR ENSAMBLE Y REMITIR A CEO ]</button>
+                    <button type="button" onclick="ui.opsValidateHojaTaller()" class="min-h-[44px] flex-1 bg-mars-green text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">${isHojaLocked ? '[ ✅ VALIDAR MONTAJE EN HISTÓRICO (PRE-FASE III) ]' : '[ ✓ VALIDAR ENSAMBLE DEFINITIVO Y REMITIR A CEO ]'}</button>
                     <button type="button" onclick="ui.modalTallerReturnReason()" class="min-h-[44px] flex-1 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-4 py-2.5 hover:bg-mars-magenta hover:text-white transition-all">[ ↩ DEVOLVER POR INCIDENCIA ]</button>
                 </div>
+                ${isHojaLocked ? `<p class="text-[11px] text-cyan-300 font-sans mt-2">🔒 La elevación oficial al CEO y al profesor de FyQ se habilitará en <strong>Fase III (15/02/2027)</strong>.</p>` : ''}
+                ${historyTimelineHtml}
             </div>`;
         } else if (hojaStatus === 'SUBMITTED_TO_CEO') {
             hojaWorkshopHtml = `
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-purple-500 mb-6 w-full">
-                <div class="flex justify-between items-start mb-2">
+            <div id="ops-hoja-taller-panel" class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-purple-500 mb-6 w-full">
+                <div class="flex flex-col sm:flex-row justify-between items-start mb-2 gap-2">
                     <div>
                         <span class="text-xs font-bold uppercase text-purple-400 bg-purple-950/40 border border-purple-500/40 px-2.5 py-1 tracking-wider">[FASE 4: VISADO CEO // FYQ 10%]</span>
-                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM y Control de Ensamble</h3>
+                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM e Histórico de Montaje</h3>
                     </div>
                     <span class="text-xs font-mono font-bold text-purple-300 bg-purple-950/60 border border-purple-500 px-2.5 py-1 rounded">⏳ REMITIDO AL CEO</span>
                 </div>
-                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval)', '4. Docente FyQ'], 2)}
-                <p class="text-xs text-slate-300 mb-2">Has validado el ensamble físico en taller. El entregable está pendiente de visado formal por el CEO hacia el profesor de FyQ.</p>
+                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval · Fase III)', '4. Docente FyQ'], 2)}
+                <p class="text-xs text-slate-300 font-sans mb-2">Has validado el ensamble físico en taller. El entregable está pendiente de visado formal por el CEO hacia el profesor de FyQ.</p>
                 <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-purple-950/40 text-purple-300 border border-purple-500/30 rounded font-mono"><span>Ver Documento Drive ↗</span></a>
+                ${historyTimelineHtml}
             </div>`;
         } else if (hojaStatus === 'CEO_REVISION') {
             hojaWorkshopHtml = `
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-magenta mb-6 w-full">
-                <div class="flex justify-between items-start mb-2">
+            <div id="ops-hoja-taller-panel" class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-magenta mb-6 w-full">
+                <div class="flex flex-col sm:flex-row justify-between items-start mb-2 gap-2">
                     <div>
                         <span class="text-xs font-bold uppercase text-mars-magenta bg-mars-magenta/20 border border-mars-magenta px-2.5 py-1 tracking-wider">[REVISIÓN REQUERIDA POR CEO]</span>
-                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM y Control de Ensamble</h3>
+                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM e Histórico de Montaje</h3>
                     </div>
                     <span class="text-xs font-mono font-bold text-mars-magenta bg-mars-magenta/20 border border-mars-magenta px-2.5 py-1 rounded">⚠️ DEVUELTO POR CEO</span>
                 </div>
-                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval)', '4. Docente FyQ'], 2)}
+                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval · Fase III)', '4. Docente FyQ'], 2)}
                 <div class="bg-red-950/40 border border-red-500/50 p-2.5 my-2 text-xs text-red-300 font-mono">
                     <strong>Motivo de Devolución CEO:</strong> ${this.escapeHTML(currentHoja?.returnReason || currentHoja?.returnReasonId || 'Requiere subsanación')}
                 </div>
-                <p class="text-xs text-slate-300 mb-3">El CEO ha devuelto la Hoja de Taller. Revisa las piezas en taller y vuelve a validar y remitir al CEO cuando esté subsanado.</p>
+                <p class="text-xs text-slate-300 font-sans mb-3">El CEO ha devuelto la Hoja de Taller. Revisa las piezas en taller y vuelve a validar cuando esté subsanado.</p>
                 <div class="flex flex-col sm:flex-row gap-3 pt-2 border-t border-slate-800">
-                    <button type="button" onclick="ui.opsValidateHojaTaller()" class="min-h-[44px] flex-1 bg-mars-green text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">[ ✓ REVALIDAR Y REMITIR A CEO ]</button>
+                    <button type="button" onclick="ui.opsValidateHojaTaller()" class="min-h-[44px] flex-1 bg-mars-green text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">${isHojaLocked ? '[ ✅ VALIDAR REVISIÓN EN HISTÓRICO ]' : '[ ✓ REVALIDAR Y REMITIR A CEO ]'}</button>
                     <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/60 transition-colors"><span>Ver Documento Drive ↗</span></a>
                 </div>
+                ${historyTimelineHtml}
             </div>`;
         } else if (hojaStatus === 'DELIVERED_TO_TEACHER') {
             hojaWorkshopHtml = `
-            <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-green mb-6 w-full">
-                <div class="flex justify-between items-start mb-2">
+            <div id="ops-hoja-taller-panel" class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 border-l-mars-green mb-6 w-full">
+                <div class="flex flex-col sm:flex-row justify-between items-start mb-2 gap-2">
                     <div>
                         <span class="text-xs font-bold uppercase text-mars-green bg-mars-green/10 border border-mars-green/40 px-2.5 py-1 tracking-wider">[EVALUACIÓN OFICIAL FYQ // 10%]</span>
-                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM y Control de Ensamble</h3>
+                        <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">Hoja de Taller: BOM e Histórico de Montaje</h3>
                     </div>
                     <span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2.5 py-1 rounded">✓ VISADO Y ENTREGADO A FYQ</span>
                 </div>
-                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval)', '4. Docente FyQ'], 3)}
-                <p class="text-xs text-slate-300 mb-2">El CEO ha visado y remitido la Hoja de Taller al profesor de Física y Química para su evaluación oficial.</p>
+                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval · Fase III)', '4. Docente FyQ'], 3)}
+                <p class="text-xs text-slate-300 font-sans mb-2">El CEO ha visado y remitido la Hoja de Taller al profesor de Física y Química para su evaluación oficial.</p>
                 <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Abrir Documento Oficial Drive ↗</span></a>
+                ${historyTimelineHtml}
             </div>`;
         }
         const curOpsPhase = (typeof this.getCurrentPhaseKey === 'function') ? this.getCurrentPhaseKey() : 'I';
-        const isPhaseIOpsQuiet = (curOpsPhase === 'I' && (!currentHoja || hojaStatus === 'DRAFT_TECNICO') && (co.orders || []).filter(o => o.status === 'APROBADO_FINANZAS').length === 0);
+        const hasPendingLogistics = (co.orders || []).some(o => (o.status === 'APROBADO_FINANZAS' || o.status === 'APROBADO_DOCENTE') && o.type !== 'MARKETING');
+        const hasActiveHojaIteration = Boolean(currentHoja && (hojaStatus !== 'DRAFT_TECNICO' || (Array.isArray(currentHoja.history) && currentHoja.history.length > 0)));
+        const isPhaseIOpsQuiet = (curOpsPhase === 'I' && !hasActiveHojaIteration && !hasPendingLogistics);
         const phaseIAiMissionHtml = isPhaseIOpsQuiet ? `
         <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-cyan mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div class="min-w-0 flex-1">
@@ -237,21 +250,24 @@ Object.assign(ui, {
         const hojaHtml = isPhaseIOpsQuiet ? `
         <details class="terminal-border bg-mars-card/80 border border-slate-800 rounded mb-6">
             <summary class="min-h-[44px] px-4 py-3 cursor-pointer flex items-center justify-between gap-2 text-xs font-mono text-slate-300 hover:text-white select-none">
-                <span>🔒 Próximas Fases (Fase III): Hoja de Taller y Montaje BOM (En diseño por Técnico)</span>
+                <span>🛠️ Canal I+D ⇄ Taller: Hoja de Taller e Histórico (Entrega final en Fase III)</span>
                 <span class="text-mars-cyan shrink-0">▼ Ver</span>
             </summary>
-            <div class="p-2 pt-0">${hojaWorkshopHtml}</div>
-        </details>` : hojaWorkshopHtml;
+            <div class="p-2 pt-0">
+                <div class="mb-3 px-1 pt-2">${this.renderDocTemplateBtn('DOC_10_HOJA_TALLER')}</div>
+                ${hojaWorkshopHtml}
+            </div>
+        </details>` : `
+            <div class="mb-3">${this.renderDocTemplateBtn('DOC_10_HOJA_TALLER')}</div>
+            ${hojaWorkshopHtml}
+        `;
 
         wrapper.innerHTML = `
             ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
             ${this.renderRoleActivePhaseDeliverableBanner ? this.renderRoleActivePhaseDeliverableBanner(co) : ''}
             ${phaseIAiMissionHtml}
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
                 <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">Logística de Despliegue Físico</h2>
-                <div class="flex gap-2 flex-wrap">
-                    ${this.renderDocTemplateBtn('DOC_10_HOJA_TALLER')}
-                </div>
             </div>
             ${hojaHtml}
             ${ordersPanelHtml}
@@ -264,7 +280,7 @@ Object.assign(ui, {
         this.render();
     },
 
-    executePhysicalOrder(oid) {
+    executePhysicalOrder(oid, skipPartialConfirm = false) {
         if (!state.user) return;
         const isOperario = (this.getEffectiveRole() === 'OPERACIONES_IA' || Boolean(state.user.admin));
         if (!isOperario) {
@@ -279,10 +295,21 @@ Object.assign(ui, {
         
         const order = co.orders.find(o => String(o.id) === String(oid));
         if(!order) return this.notify("Orden no encontrada.", "error");
+        if (order.status !== 'APROBADO_FINANZAS' && order.status !== 'APROBADO_DOCENTE') {
+            return this.notify("Esta orden ya ha sido ejecutada o aún no está autorizada.", "info");
+        }
+
+        const isB2B = order.type === 'B2B_BUY_REQUEST' || !!order.offerId;
+        if (typeof state.recalculateBalance === 'function') state.recalculateBalance(co);
+        if (!isB2B && this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
+            return this.notifyBankruptcyLock();
+        }
 
         let finalItems = [];
         let finalTotalEurV = 0;
         let realCostsToLog = [];
+        const itemUpdates = [];
+        let uncheckedCount = 0;
 
         for(let i=0; i<order.items.length; i++) {
             const cb = document.getElementById(`assembled-${order.id}-${i}`);
@@ -290,28 +317,45 @@ Object.assign(ui, {
             const shopInput = document.getElementById(`real-shop-${order.id}-${i}`);
             
             if(cb && cb.checked) {
-                const valEur = parseFloat(eurInput ? eurInput.value : 0);
+                const rawEur = eurInput ? String(eurInput.value || '').trim().replace(',', '.') : '';
+                const valEur = isB2B ? (rawEur === '' ? 0 : parseFloat(rawEur)) : parseFloat(rawEur);
                 const valShop = shopInput ? this.cleanInput(shopInput.value) : '';
                 
-                if(isNaN(valEur) || valEur < 0 || !valShop) {
-                    return this.notify(`Falta indicar el coste real (€) o el comercio para: ${order.items[i].name}`, "warning");
+                if (rawEur === '' && !isB2B) {
+                    if (this.highlightInvalidField && eurInput) this.highlightInvalidField('', eurInput);
+                    return this.notify(`Indica el precio real pagado en tienda (> 0.00 €) para: ${order.items[i].name}`, "warning");
                 }
-                order.items[i].realEur = valEur;
-                order.items[i].realShop = valShop;
-                order.items[i].ticketUrl = null;
-                finalItems.push(order.items[i]);
+                if (isNaN(valEur) || (!isB2B && valEur <= 0) || valEur < 0) {
+                    if (this.highlightInvalidField && eurInput) this.highlightInvalidField('', eurInput);
+                    return this.notify(isB2B ? `Coste inválido en B2B para: ${order.items[i].name}` : `El coste real en tienda de "${order.items[i].name}" debe ser mayor que 0.00 € (aunque sea material de casa).`, "warning");
+                }
+                if (!valShop) {
+                    return this.notify(`Indica el comercio de adquisición para: ${order.items[i].name}`, "warning");
+                }
+                const cloneIt = { ...order.items[i], realEur: valEur, realShop: valShop, ticketUrl: null };
+                itemUpdates.push(cloneIt);
+                finalItems.push(cloneIt);
                 const itemQty = Number(order.items[i].qty) || 1;
                 finalTotalEurV += (Number(order.items[i].price) || 0) * itemQty;
                 realCostsToLog.push({ id: 'RC-'+Date.now()+'-'+i, date: new Date().toLocaleDateString(), item: order.items[i].name, eur: valEur, shop: valShop, ticketUrl: null, qty: itemQty });
+            } else {
+                uncheckedCount++;
             }
         }
 
-        const isB2B = order.type === 'B2B_BUY_REQUEST' || !!order.offerId;
         if(finalItems.length === 0) return this.notify("Debes marcar al menos un componente como comprado/ensamblado.", "warning");
-        if (!isB2B && this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
-            return this.notifyBankruptcyLock();
-        }
         if(!isB2B && co.balance < finalTotalEurV) return this.notify("Fondos virtuales insuficientes en la cuenta de la empresa.", "error");
+
+        if (uncheckedCount > 0 && !skipPartialConfirm && typeof this.confirmAction === 'function') {
+            return this.confirmAction(
+                '⚠️ Recepción Parcial de Orden',
+                `Has desmarcado ${uncheckedCount} partida(s) de esta orden. Si continúas ahora, esas piezas quedarán fuera del pedido y solo se descontará del saldo el importe de las piezas marcadas (${finalTotalEurV.toFixed(2)} €v). ¿Confirmar?`,
+                () => this.executePhysicalOrder(oid, true),
+                'Sí, Confirmar Marcadas'
+            );
+        }
+
+        if (this.acquireActionLock && !this.acquireActionLock('exec-order-' + order.id, 1500)) return;
 
         order.items = finalItems;
         order.total = finalTotalEurV;
@@ -477,12 +521,17 @@ Object.assign(ui, {
         el.appendChild(wrapper);
     },
 
-    opsValidateHojaTaller() {
+    async opsValidateHojaTaller() {
         if (!state.user || (this.getEffectiveRole() !== 'OPERACIONES_IA' && !state.user.admin)) {
             return this.notify("Acceso restringido: Solo Operaciones/Operario puede visar el ensamble en taller.", "error");
         }
-        state.validateHojaTallerByOperator();
-        this.notify("✅ Ensamble físico validado. Remitido al CEO para visado docente.", "success");
+        if (this.acquireActionLock && !this.acquireActionLock('ops-validate-hoja-' + state.user.coId, 1500)) return;
+        const result = await state.validateHojaTallerByOperator();
+        if (result === 'CHECKPOINT_SAVED') {
+            this.notify("✅ Montaje verificado en Taller y guardado en el Histórico de Montaje (elevación al CEO en Fase III).", "success");
+        } else {
+            this.notify("✅ Ensamble físico definitivo validado. Remitido al CEO para visado docente.", "success");
+        }
         this.render();
     },
 
@@ -508,7 +557,10 @@ Object.assign(ui, {
                 </div>
                 <div>
                     <label for="taller-return-drive-url" class="text-xs text-mars-cyan font-bold uppercase block mb-1.5">Enlace a Documento de Incidencias / Evidencias (Google Docs / Drive) *</label>
-                    <input type="url" id="taller-return-drive-url" placeholder="https://docs.google.com/document/d/..." required class="w-full min-h-[44px] bg-slate-900 border border-cyan-500/60 p-2.5 text-base sm:text-xs text-white outline-none focus:border-cyan-400 font-mono">
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" id="taller-return-drive-url" placeholder="https://docs.google.com/document/d/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" required class="flex-1 min-h-[44px] bg-slate-900 border border-cyan-500/60 p-2.5 text-base sm:text-xs text-white outline-none focus:border-cyan-400 font-mono">
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('taller-return-drive-url') : ''}
+                    </div>
                     <p class="text-[10px] text-slate-400 mt-1">El departamento Técnico revisará este enlace para subsanar los defectos físicos indicados.</p>
                 </div>
             </div>
@@ -527,15 +579,15 @@ Object.assign(ui, {
         const reasonObj = reasons.find(r => r.id === reasonId);
         const label = reasonObj ? reasonObj.label : reasonId;
 
-        const driveUrl = elUrl ? this.cleanInput(elUrl.value) : '';
-        if (!driveUrl) return this.notify("Debes introducir el enlace de Google Docs/Drive con el registro de la incidencia.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("Solo se admiten enlaces válidos a recursos de Google Drive o Google Docs.", "error");
-        }
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elUrl ? elUrl.value : '', elUrl, { required: true, label: 'las evidencias de incidencia en taller' })
+            : { valid: Boolean(elUrl && this.cleanInput(elUrl.value)), url: elUrl ? this.cleanInput(elUrl.value) : '' };
+        if (!urlCheck.valid) return;
+        if (this.acquireActionLock && !this.acquireActionLock('ops-return-hoja-' + state.user.coId, 1500)) return;
 
-        state.returnHojaTallerByOperator(reasonId, label, driveUrl);
+        state.returnHojaTallerByOperator(reasonId, label, urlCheck.url);
         this.closeModal();
-        this.notify("⚠️ Hoja de Taller devuelta al departamento Técnico para subsanación.", "warning");
+        this.notify("⚠️ Incidencia registrada en Histórico y Hoja de Taller devuelta al departamento Técnico.", "warning");
         this.render();
     },
 
@@ -571,20 +623,29 @@ Object.assign(ui, {
                     <div class="mb-2">
                         ${this.renderDocTemplateBtn('DOC_4_BITACORA_IA')}
                     </div>
-                    <input type="url" 
-                           id="input-bitacora-url" 
-                           name="bitacoraUrl" 
-                           required 
-                           placeholder="https://docs.google.com/document/d/..." 
-                           class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white rounded font-mono outline-none focus:border-cyan-400 min-h-[44px]">
-                    <p class="text-[10px] text-slate-400">
-                        El enlace debe pertenecer al Google Doc corporativo con permisos de lectura.
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="url" 
+                               id="input-bitacora-url" 
+                               name="bitacoraUrl" 
+                               required 
+                               onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })"
+                               placeholder="https://docs.google.com/document/d/..." 
+                               class="flex-1 bg-slate-900 border border-slate-700 p-2 text-base sm:text-xs text-white rounded font-mono outline-none focus:border-cyan-400 min-h-[44px]">
+                        ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('input-bitacora-url') : ''}
+                    </div>
+                    <p class="text-[11px] text-slate-300 font-sans">
+                        Usa primero <strong>[📋 Hacer Copia en Drive]</strong> y pega el enlace de vuestra copia (no <code>/copy</code>).
                     </p>
+                    <label class="mars-checkbox-label flex items-start gap-2.5 cursor-pointer p-2 bg-black/50 border border-slate-800 rounded min-h-[44px]">
+                        <input type="checkbox" id="input-bitacora-perm-check" class="mars-touch-input">
+                        <span class="mars-checkbox-visual mt-0.5"></span>
+                        <span class="text-xs text-slate-200 font-sans">Confirmo que el Google Doc tiene acceso <strong>«Cualquier persona con el enlace (Lector)»</strong>.</span>
+                    </label>
                 </div>
             </div>
         `;
         const actionLabel = isOps ? 'Registrar en Bitácora' : 'Enviar a Operaciones IA';
-        const actions = `<button type="button" onclick="ui.submitReportAI()" class="min-h-[44px] bg-mars-cyan text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-colors">${actionLabel}</button>`;
+        const actions = `<button type="button" onclick="ui.submitReportAI()" class="min-h-[44px] w-full sm:w-auto bg-mars-cyan text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-colors">${actionLabel}</button>`;
         this.showModal("Declaración de Uso de IA", html, actions);
     },
 
@@ -592,18 +653,23 @@ Object.assign(ui, {
         if (!state.user || state.user.admin) return;
         const elTool = document.getElementById('ai-tool');
         const elUrl = document.getElementById('input-bitacora-url');
+        const elPerm = document.getElementById('input-bitacora-perm-check');
         if (!elTool || !elUrl) return;
         
         const tool = this.cleanInput(elTool.value);
-        const bitacoraUrl = this.cleanInput(elUrl.value);
-        
-        if (!tool || !bitacoraUrl) return this.notify("Completa todos los campos obligatorios.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(bitacoraUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+        if (!tool) return this.notify("Selecciona la herramienta de IA.", "warning");
+        const urlCheck = this.validateStudentDriveUrl
+            ? this.validateStudentDriveUrl(elUrl.value, elUrl, { required: true, label: 'la Bitácora IA (DOC_4)' })
+            : { valid: Boolean(this.cleanInput(elUrl.value)), url: this.cleanInput(elUrl.value) };
+        if (!urlCheck.valid) return;
+        const bitacoraUrl = urlCheck.url;
+        if (elPerm && !elPerm.checked) {
+            return this.notify("Marca la casilla confirmando permisos de lectura en Google Drive.", "warning");
         }
         if (this.hasForbiddenWords(tool, 'Herramienta IA', elTool)) {
             return;
         }
+        if (this.acquireActionLock && !this.acquireActionLock('submit-ai-' + state.user.coId, 1500)) return;
         
         const co = state.data.companies?.[state.user.coId];
         if (!co) return auth.logout();
@@ -638,20 +704,69 @@ Object.assign(ui, {
         if (!state.user) return;
         const co = state.data.companies[state.user.coId];
         if (!co || !co.aiPrompts) return;
-        
+        if (this.getEffectiveRole(co) !== 'OPERACIONES_IA' && !state.user.admin) {
+            return this.notify("Solo el Departamento de Operaciones e IA puede validar o devolver reportes de IA.", "warning");
+        }
         const p = co.aiPrompts.find(x => x.id === pid);
-        if(p) {
-            if(ok) {
-                p.status = 'APROBADO';
-                ui.pushNotification(state.user.coId, p.role, `Tu reporte de uso de IA (${p.tool}) ha sido validado por Operaciones.`, 'success', { view: 'ailog', anchorId: 'ailog-section' });
-                this.notify("Reporte de IA validado y archivado.", "success");
-            } else {
-                co.aiPrompts = co.aiPrompts.filter(x => x.id !== pid);
-                ui.pushNotification(state.user.coId, p.role, `Tu reporte de uso de IA (${p.tool}) fue rechazado por falta de verificación humana rigurosa.`, 'error', { view: 'ailog', anchorId: 'ailog-section' });
-                this.notify("Reporte de IA rechazado.", "info");
-            }
+        if (!p) return;
+
+        if (ok) {
+            if (p.status === 'APROBADO') return;
+            p.status = 'APROBADO';
+            delete p.rejectReason;
+            p.updatedAt = Date.now();
+            ui.pushNotification(state.user.coId, p.role, `Tu reporte de uso de IA (${p.tool}) ha sido validado por Operaciones.`, 'success', { view: 'ailog', anchorId: 'ailog-section' });
+            this.notify("Reporte de IA validado y archivado.", "success");
             state.save();
             this.render();
+        } else {
+            this.modalRejectAIPrompt(pid);
         }
+    },
+
+    modalRejectAIPrompt(pid) {
+        if (!state.user) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co || !co.aiPrompts) return;
+        if (this.getEffectiveRole(co) !== 'OPERACIONES_IA' && !state.user.admin) return;
+        const p = co.aiPrompts.find(x => x.id === pid);
+        if (!p) return;
+        const reasons = [
+            "Falta incluir el prompt exacto o la verificación humana en el Google Doc",
+            "El enlace de Google Drive no tiene permisos públicos de lectura",
+            "Se ha adjuntado una plantilla sin rellenar (/copy)",
+            "Uso de herramienta o respuesta sin contraste científico/técnico"
+        ];
+        const html = `
+            <div class="space-y-3 font-sans text-xs">
+                <p class="text-slate-300 leading-relaxed">Indica el motivo tipificado por el cual se devuelve el reporte de <strong>${this.escapeHTML(p.tool || 'IA')}</strong> (${this.escapeHTML(p.role || '')}):</p>
+                <label for="reject-ai-reason" class="text-mars-magenta uppercase font-bold block">Motivo Tipificado</label>
+                <select id="reject-ai-reason" class="w-full min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white outline-none">
+                    ${reasons.map(r => `<option value="${this.escapeHTML(r)}">${this.escapeHTML(r)}</option>`).join('')}
+                </select>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.confirmRejectAIPrompt('${this.escapeHTML(pid)}')" class="min-h-[44px] bg-mars-magenta text-white px-5 py-2.5 text-xs font-black uppercase hover:bg-white hover:text-mars-magenta transition-colors w-full sm:w-auto">Confirmar Rechazo de Reporte</button>`;
+        this.showModal("Rechazar Reporte de Uso de IA", html, actions);
+    },
+
+    confirmRejectAIPrompt(pid) {
+        if (!state.user) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co || !co.aiPrompts) return;
+        if (this.getEffectiveRole(co) !== 'OPERACIONES_IA' && !state.user.admin) return;
+        const p = co.aiPrompts.find(x => x.id === pid);
+        if (!p) return;
+        const sel = document.getElementById('reject-ai-reason');
+        const reason = sel ? this.cleanInput(sel.value) : 'Falta verificación humana rigurosa';
+        p.status = 'RECHAZADO';
+        p.rejectReason = reason;
+        p.rejectedAt = Date.now();
+        p.updatedAt = Date.now();
+        ui.pushNotification(state.user.coId, p.role, `Tu reporte de uso de IA (${p.tool}) fue rechazado: "${reason}". Registra uno corregido en Bitácora IA.`, 'error', { view: 'ailog', anchorId: 'ailog-section' });
+        state.save();
+        this.closeModal();
+        this.notify("Reporte de IA rechazado con motivo tipificado.", "info");
+        this.render();
     }
 });
