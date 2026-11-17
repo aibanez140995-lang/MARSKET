@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.15) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.16) ---
 
-const APP_VERSION = "2.0.15";
+const APP_VERSION = "2.0.16";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1154,8 +1154,24 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.15
+// Changelog Oficial de Producción v2.0.16
 const APP_CHANGELOG = [
+    {
+      version: "2.0.16",
+      date: "2026-11-17",
+      title: "Trámite Universal Licencia AESA, Recepción Parcial en Taller, Limpieza Modo Calma y Pulidos Ronda 2",
+      items: [
+        "Licencia de Vuelo AESA (DOC_14) como Trámite Oficial Común: Nuevo panel en ⚖️ Trámites con tracker de 4 pasos que culmina en la aprobación de Coordinación Docente; todas las notificaciones AESA llevan ya a cualquier socio directo al trámite.",
+        "Recepción Parcial No Destructiva en Operaciones: Al desmarcar en Taller un componente que aún no está comprado en tienda, solo se cobran y pasan al BOM de I+D las piezas recibidas hoy y las restantes siguen pendientes en la misma orden ya autorizada por Finanzas hasta su compra física.",
+        "Modo Calma Limpio y Pulidos Técnico/Carrito: Retirado el icono de yoga del Modo Calma, actualización en vivo de + / +5 en el Carrito sin saltar el scroll (mostrando el Saldo Libre Real antes de enviar DOC_9), aviso en Banco I+D si la altura es < 100 mm, atajo [⚡ Usar Coste BOM], contadores de órdenes y guardas de rol en Taller & BOM.",
+        "Claridad en Operaciones, Finanzas, CEO y Marketing: Visibilidad en Bitácora IA de envíos pendientes y devueltos (sin mezclar hitos MAT en Fase II), banners multi-entregable plegados con divulgación progresiva, rechazo B2C con motivo tipificado y enlace Drive opcional, confirmación previa de lectura en todos los visados del CEO, chips BOM/E dentro de Contratos, corrección de 1A Marca Dic a Liderazgo y Emprendimiento (LyE) y [🔗 Probar enlace ↗] en el Logo."
+      ],
+      highlights: [
+        { type: "TRÁMITE AESA", text: "Licencia de Vuelo DOC_14 visible en ⚖️ Trámites para toda la empresa con enrutamiento directo." },
+        { type: "TALLER PARCIAL", text: "Los materiales desmarcados por Operaciones quedan pendientes en la misma orden hasta su compra." },
+        { type: "AULA 4.5/5", text: "Pulidos integrales de usabilidad tras la 2ª Ronda de Arquetipos de Aula en los 5 roles." }
+      ]
+    },
     {
       version: "2.0.15",
       date: "2026-11-17",
@@ -1215,10 +1231,10 @@ const APP_CHANGELOG = [
         "Escudo Preventivo Anti-Plantilla Vacía (/copy): Bloqueo automático si alguien intenta entregar la URL de clonación o plantilla original sin copiar, botón [🔗 Probar enlace ↗] y confirmación guiada de permisos públicos en Drive.",
         "Onboarding Accionable y Sin Enlaces Rotos: Ordenado por fecha límite real (Presupuesto Inicial primero), botón directo [⚡ Ir a mi tarea de hoy ➔], guía Drive en 3 pasos desplegable, enlace válido para CEO y tarjeta propia de apoyo para Auxiliar.",
         "Claridad Fase I y «¿Quién tiene la pelota?»: Indicadores explícitos de turno (👉 Turno de / 🚨 Turno de: CEO) en Radar y banners, acordeones plegables para módulos futuros (AESA Fase II, Prensa, Balances, Taller Fase III), estado real de Marca y notificación al Claustro en Buzón HR.",
-        "Personalización «🧘 Modo Calma», Tipografía Legible y Móvil BYOD: Nuevo interruptor de Modo Calma (detiene animaciones y avisos sonoros), textos largos en sans-serif legible con zoom real 100/110/120%, toasts arriba en móvil, stepper 2x2 y banner superior elástico."
+        "Personalización «Modo Calma», Tipografía Legible y Móvil BYOD: Nuevo interruptor de Modo Calma (detiene animaciones y avisos sonoros), textos largos en sans-serif legible con zoom real 100/110/120%, toasts arriba en móvil, stepper 2x2 y banner superior elástico."
       ],
       highlights: [
-        { type: "ACCESIBILIDAD", text: "Nuevo Modo Calma 🧘 + tipografía sans-serif en textos + zoom real 100%/110%/120%." },
+        { type: "ACCESIBILIDAD", text: "Nuevo Modo Calma + tipografía sans-serif en textos + zoom real 100%/110%/120%." },
         { type: "ANTI-ERROR", text: "Escudo anti-plantillas /copy y login que no borra el PIN si olvidaste elegir puesto." },
         { type: "COORDINACIÓN", text: "Etiquetas «¿Quién tiene la pelota?» y botón directo a tu tarea de hoy en 1 clic." }
       ]

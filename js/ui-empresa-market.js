@@ -316,13 +316,35 @@ Object.assign(ui, {
         else { co.cart.push({ ...itemDef, qty: addQty }); }
 
         state.save();
-        this.notify(`Añadido al carrito (+${addQty}): ${itemDef.name}`, 'info');
         const toggleBtn = document.getElementById('btn-cart-toggle');
         if (toggleBtn) toggleBtn.textContent = `🛒 Carrito (${co.cart.length})`;
         if (typeof this.updateBadges === 'function') this.updateBadges();
-        if (fromModal && typeof this.modalCheckout === 'function') {
-            this.modalCheckout();
+
+        if (fromModal) {
+            const row = document.querySelector(`[data-cart-item="${itemId}"]`);
+            if (row && exist) {
+                const qtyEl = row.querySelector('.cart-item-qty');
+                if (qtyEl) qtyEl.textContent = String(exist.qty);
+                const subtotalEl = row.querySelector('.cart-item-subtotal');
+                if (subtotalEl) subtotalEl.textContent = `${(Number(exist.price) * Number(exist.qty)).toFixed(2)} €v`;
+                const newTotal = co.cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.qty) || 0), 0);
+                const totalBadge = document.getElementById('cart-total-badge');
+                if (totalBadge) totalBadge.textContent = `${newTotal.toFixed(2)} €v`;
+                const btnTrans = document.getElementById('btn-transmit-cart');
+                if (btnTrans) btnTrans.setAttribute('onclick', `ui.confirmCart(${newTotal})`);
+                const freeBalWarn = document.getElementById('cart-free-balance-warning');
+                if (freeBalWarn && state.getFreeVirtualBalance) {
+                    const freeBal = state.getFreeVirtualBalance(co);
+                    freeBalWarn.classList.toggle('hidden', newTotal <= freeBal);
+                }
+                return;
+            }
+            if (typeof this.modalCheckout === 'function') {
+                this.modalCheckout();
+                return;
+            }
         }
+        this.notify(`Añadido al carrito (+${addQty}): ${itemDef.name}`, 'info');
     },
 
     removeFromCart(itemId) {
@@ -374,6 +396,11 @@ Object.assign(ui, {
             const btnTrans = document.getElementById('btn-transmit-cart');
             if (btnTrans) {
                 btnTrans.setAttribute('onclick', `ui.confirmCart(${newTotal})`);
+            }
+            const freeBalWarn = document.getElementById('cart-free-balance-warning');
+            if (freeBalWarn && state.getFreeVirtualBalance) {
+                const freeBal = state.getFreeVirtualBalance(co);
+                freeBalWarn.classList.toggle('hidden', newTotal <= freeBal);
             }
         }
     },

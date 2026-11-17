@@ -56,7 +56,7 @@ Object.assign(ui, {
 
         const loginAccessBarHtml = `
             <div class="flex justify-end items-center gap-1.5 mb-2">
-                <button type="button" id="login-btn-calm" onclick="ui.toggleFocusMode()" class="min-h-[44px] px-2.5 py-1.5 bg-black/60 border border-slate-700 hover:border-mars-cyan text-slate-300 hover:text-mars-cyan font-mono font-bold text-[11px] uppercase rounded-sm transition-all">🧘 Calma</button>
+                <button type="button" id="login-btn-calm" onclick="ui.toggleFocusMode()" class="min-h-[44px] px-2.5 py-1.5 bg-black/60 border border-slate-700 hover:border-mars-cyan text-slate-300 hover:text-mars-cyan font-mono font-bold text-[11px] uppercase rounded-sm transition-all">Calma</button>
                 <button type="button" id="login-btn-zoom" onclick="ui.toggleTextZoom()" class="min-h-[44px] px-2.5 py-1.5 bg-black/60 border border-slate-700 hover:border-mars-cyan text-slate-300 hover:text-mars-cyan font-mono font-bold text-[11px] uppercase rounded-sm transition-all">🔠 100%</button>
             </div>
         `;
@@ -757,8 +757,13 @@ Object.assign(ui, {
                             const hasPhaseContract = Object.values(co.contracts || {}).some(c => c && c.phase === clockMetrics.phaseInfo.key);
                             const openMotions = (co.votingMotions || []).filter(m => m && m.status === 'ABIERTA').length;
                             const unreadCris = (co.crisisAlerts || []).some(a => a && !a.read);
+                            const aesaUnlocked = this.isLaunchLicenseUnlocked ? this.isLaunchLicenseUnlocked(co) : false;
+                            const aesaSt = co.launchLicense?.status || 'SIN_SOLICITAR';
+                            const aesaNeedsCeo = aesaUnlocked && (aesaSt === 'SIN_SOLICITAR' || aesaSt === 'DENEGADA');
                             if (unreadCris) {
                                 return `<p class="text-xs font-sans text-rose-300 font-bold">👉 Siguiente acción prioritaria: Comunicar la alerta disciplinaria AEE superior.</p>`;
+                            } else if (aesaNeedsCeo) {
+                                return `<div class="pt-1 flex justify-center"><button type="button" onclick="ui.modalLaunchLicense()" class="min-h-[44px] px-4 py-2 bg-slate-800 border border-mars-yellow/70 text-mars-yellow hover:bg-mars-yellow hover:text-black font-bold text-xs uppercase rounded">🚀 Siguiente acción: ${aesaSt === 'DENEGADA' ? 'Subsanar' : 'Tramitar'} Licencia AESA (DOC_14) ➔</button></div>`;
                             } else if (openMotions > 0) {
                                 return `<div class="pt-1 flex justify-center"><button type="button" onclick="ui.navigate('resolutions')" class="min-h-[44px] px-4 py-2 bg-slate-800 border border-mars-yellow/60 text-mars-yellow hover:bg-mars-yellow hover:text-black font-bold text-xs uppercase rounded">⚖️ Siguiente acción: Revisar ${openMotions} moción(es) en Asamblea ➔</button></div>`;
                             } else if (!hasPhaseContract) {
@@ -793,7 +798,7 @@ Object.assign(ui, {
                                     ${visibleSlogan.valueProposition ? `<p class="text-[11px] text-slate-300 font-mono mt-1">Lema: "${this.escapeHTML(visibleSlogan.valueProposition)}"</p>` : ''}
                                     <div class="mt-2.5 flex flex-wrap items-center gap-2">
                                         ${visibleSlogan.driveUrl ? `
-                                            <a href="${encodeURI(visibleSlogan.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                            <a href="${encodeURI(visibleSlogan.driveUrl).replace(/"/g, '&quot;')}" data-doc-url="${this.escapeAttr(visibleSlogan.driveUrl)}" onclick="ui.markDocOpened(this.dataset.docUrl)" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
                                                 <span>📄 Ver DOC_11 en Docs ↗</span>
                                             </a>
                                         ` : ''}
@@ -820,7 +825,7 @@ Object.assign(ui, {
                                     <p class="text-[11px] text-slate-300 font-mono mt-1">Pack: ${this.escapeHTML(camp.packageName || camp.type || '')}</p>
                                     <div class="mt-2.5 flex flex-wrap items-center gap-2">
                                         ${actDrive ? `
-                                            <a href="${encodeURI(actDrive).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                            <a href="${encodeURI(actDrive).replace(/"/g, '&quot;')}" data-doc-url="${this.escapeAttr(actDrive)}" onclick="ui.markDocOpened(this.dataset.docUrl)" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
                                                 <span>📄 Ver Creatividad DOC_12 en Docs ↗</span>
                                             </a>
                                         ` : ''}
@@ -847,7 +852,7 @@ Object.assign(ui, {
                                     </div>
                                     <div class="mt-2.5 flex flex-wrap items-center gap-2">
                                         ${b.driveUrl ? `
-                                            <a href="${encodeURI(b.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                            <a href="${encodeURI(b.driveUrl).replace(/"/g, '&quot;')}" data-doc-url="${this.escapeAttr(b.driveUrl)}" onclick="ui.markDocOpened(this.dataset.docUrl)" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
                                                 <span>📄 Ver DOC_17 en Docs ↗</span>
                                             </a>
                                         ` : ''}
@@ -918,7 +923,7 @@ Object.assign(ui, {
                                 </div>
                                 <h4 class="text-white font-bold text-sm uppercase leading-snug">${this.escapeHTML(item.name || 'Componente Especial I+D')}</h4>
                                 <div class="mt-2.5 flex flex-wrap items-center gap-2">
-                                    <a href="${encodeURI(item.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                    <a href="${encodeURI(item.driveUrl).replace(/"/g, '&quot;')}" data-doc-url="${this.escapeAttr(item.driveUrl)}" onclick="ui.markDocOpened(this.dataset.docUrl)" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
                                         <span>📄 Ver Memoria Técnica DOC_13 ↗</span>
                                     </a>
                                 </div>
@@ -1434,7 +1439,7 @@ Object.assign(ui, {
                         Radar de Entregables Fase ${this.escapeHTML(phaseInfo.key)} (Por Urgencia de Entrega)
                     </span>
                     <button type="button" onclick="ui.navigate('role_deliverables')" class="text-[11px] font-mono text-mars-cyan hover:underline flex items-center gap-1">
-                        <span>Gestionar en Mis Entregables ➔</span>
+                        <span>Gestionar en Supervisión Entregas ➔</span>
                     </button>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
@@ -1635,7 +1640,7 @@ Object.assign(ui, {
                             <span class="text-[10px] font-black uppercase text-mars-green bg-mars-green/10 border border-mars-green/40 px-1.5 py-0.5">MISIÓN</span>
                             <span class="text-[10px] font-mono ${returnedDeliverables > 0 ? 'text-red-400 font-bold' : 'text-slate-400'}">${returnedDeliverables > 0 ? `⚠️ ${returnedDeliverables} Acción` : 'Al día'}</span>
                         </div>
-                        <h3 class="font-orbitron font-black text-xs sm:text-sm text-white uppercase">📤 Mis Entregables</h3>
+                        <h3 class="font-orbitron font-black text-xs sm:text-sm text-white uppercase">📋 Supervisión Entregas</h3>
                         <p class="text-[11px] text-slate-300 mt-1 line-clamp-2 leading-relaxed">Gestión guiada en Docs, visado formal y envío al claustro.</p>
                     </div>
                     <div class="mt-3 pt-2.5 border-t border-slate-800 flex justify-between items-center">
@@ -1700,7 +1705,6 @@ Object.assign(ui, {
         }
 
         const phaseFilter = this.roleDeliverablesPhase || activePhaseId;
-        const scope = this.roleDeliverablesScope || 'MY_ROLE';
         const statusFilter = this.roleDeliverablesStatus || 'ALL';
 
         // 2. Blindaje de fases no iniciadas para alumnado
@@ -1719,14 +1723,15 @@ Object.assign(ui, {
 
         // 4. Filtrado por Rol / Ámbito
         let myRolePhaseDefs = phaseDefs;
-        if (effectiveRole === 'CEO') {
-            myRolePhaseDefs = phaseDefs;
+        if (isCEO) {
+            myRolePhaseDefs = phaseDefs.filter(d => docs[d.key] && docs[d.key].status === 'SUBMITTED_TO_CEO');
         } else if (effectiveRole === 'OPERACIONES_IA' || effectiveRole === 'OPERACIONES') {
             myRolePhaseDefs = phaseDefs.filter(d => d.role === 'OPERACIONES_IA' || d.role === 'OPERACIONES');
         } else {
             myRolePhaseDefs = phaseDefs.filter(d => d.role === effectiveRole);
         }
         const allStartupPhaseDefs = phaseDefs;
+        const scope = this.roleDeliverablesScope || (isCEO ? (myRolePhaseDefs.length > 0 ? 'MY_ROLE' : 'ALL') : 'MY_ROLE');
         const baseDefs = (scope === 'MY_ROLE') ? myRolePhaseDefs : allStartupPhaseDefs;
 
         // 5. Contadores del resumen superior calculados sobre la fase y ámbito activos
@@ -1902,7 +1907,7 @@ Object.assign(ui, {
         const scopeSwitchHtml = `
             <div class="flex items-center gap-2 bg-black p-1 border border-mars-border">
                 <button type="button" onclick="ui.setRoleDeliverablesScopeFilter('MY_ROLE')" class="min-h-[44px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${scope === 'MY_ROLE' ? 'bg-mars-cyan text-black font-bold' : 'text-slate-400 hover:text-white'}">
-                    🎯 Mis Entregables (${myRolePhaseDefs.length})
+                    ${isCEO ? `🟡 Pendientes de Visar (${myRolePhaseDefs.length})` : `🎯 Mis Entregables (${myRolePhaseDefs.length})`}
                 </button>
                 <button type="button" onclick="ui.setRoleDeliverablesScopeFilter('ALL')" class="min-h-[44px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${scope === 'ALL' ? 'bg-mars-cyan text-black font-bold' : 'text-slate-400 hover:text-white'}">
                     🏢 Toda la Startup (${allStartupPhaseDefs.length})
@@ -2028,9 +2033,10 @@ Object.assign(ui, {
                         <button type="button" onclick="ui.modalCeoReturnDeliverable('${this.escapeHTML(def.key)}')" class="min-h-[44px] flex-1 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-4 py-2 hover:bg-mars-magenta hover:text-white transition-all">[ ↩ DEVOLVER POR CORRECCIONES ]</button>
                     </div>`;
                 } else if (def.key === 'hoja_taller_fyq' && isWorkshopWork && (effectiveRole === 'OPERACIONES_IA' || effectiveRole === 'OPERACIONES')) {
+                    const isHojaPrePhaseIII = !state.user?.admin && this.isDeliverableLocked('hoja_taller_fyq', co);
                     actionControlsHtml = `
                     <div class="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-800">
-                        <button type="button" onclick="ui.opsValidateHojaTaller()" class="min-h-[44px] flex-1 bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">[ ✓ VALIDAR ENSAMBLE EN TALLER Y ENVIAR AL CEO ]</button>
+                        <button type="button" onclick="ui.opsValidateHojaTaller()" class="min-h-[44px] flex-1 bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">${isHojaPrePhaseIII ? '[ ✅ VALIDAR MONTAJE EN HISTÓRICO (PRE-FASE III) ]' : '[ ✓ VALIDAR ENSAMBLE DEFINITIVO Y REMITIR A CEO ]'}</button>
                         <button type="button" onclick="ui.modalTallerReturnReason()" class="min-h-[44px] flex-1 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-4 py-2 hover:bg-mars-magenta hover:text-white transition-all">[ ↩ REPORTAR INCIDENCIA A I+D ]</button>
                     </div>`;
                 } else if (isDelivered && !isReturned) {
@@ -2129,7 +2135,7 @@ Object.assign(ui, {
                             <span class="text-xs text-slate-400 font-mono">${phaseFilter === 'ALL' ? `${defs.length} HITOS CURRICULARES • 6 MATERIAS` : `${baseDefs.length} HITOS (FASE ${phaseFilter}) • 6 MATERIAS`}</span>
                         </div>
                         <h2 class="text-lg sm:text-xl font-orbitron font-black text-white uppercase tracking-tight">
-                            📤 Mis Entregables & Dossier Académico
+                            ${isCEO ? '📋 Supervisión de Entregas & Dossier Académico' : '📤 Mis Entregables & Dossier Académico'}
                         </h2>
                         <p class="text-xs text-slate-300 uppercase mt-0.5">Gestión integral: Plantillas Drive ➔ Visado CEO ➔ Calificaciones LOMLOE (100%) ➔ Cronograma.</p>
                     </div>
@@ -2472,9 +2478,8 @@ Object.assign(ui, {
         this.render();
     },
 
-    approveSpecialItemByCEO(reqId) {
+    approveSpecialItemByCEO(reqId, skipReadCheck = false) {
         if (!state.user || this.getEffectiveRole() !== 'CEO') return;
-        if (this.acquireActionLock && !this.acquireActionLock('ceo-special-' + reqId, 1500)) return;
         const coId = state.user.coId;
         const co = state.data.companies[coId];
         if (!co || !co.specialItemRequests) return;
@@ -2485,6 +2490,10 @@ Object.assign(ui, {
         const req = co.specialItemRequests.find(r => r.id === reqId);
         if (!req) return this.notify("Solicitud de material I+D no localizada.", "error");
         if (req.status !== 'PENDIENTE_CEO') return this.notify("Esta solicitud ya ha sido tramitada.", "info");
+        if (!skipReadCheck && typeof this.confirmDocOpenedBeforeAction === 'function') {
+            return this.confirmDocOpenedBeforeAction(req.driveUrl, () => this.approveSpecialItemByCEO(reqId, true), 'Sí, Aprobar y Elevar');
+        }
+        if (this.acquireActionLock && !this.acquireActionLock('ceo-special-' + reqId, 1500)) return;
 
         req.status = 'PENDIENTE_COORDINACION';
         req.approvedByCEO = true;
@@ -2713,7 +2722,7 @@ Object.assign(ui, {
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
         ui.pushNotification('ADMIN', 'ALL', `🚀 [${co.name}] El CEO ha tramitado ${isResubmission ? `una subsanación (${feeToPay} €v) de ` : `y abonado (${feeToPay} €v) `}la Licencia de Lanzamiento AESA. Pendiente de validación.`, 'info', { view: 'coordination' });
-        ui.pushNotification(coId, 'ALL', `🚀 El CEO ha tramitado ${isResubmission ? `la subsanación de la Licencia AESA (-${feeToPay} €v)` : `la Licencia de Lanzamiento AESA (-${feeToPay} €v)`}. Pendiente de validación por Coordinación Docente.`, 'info');
+        ui.pushNotification(coId, 'ALL', `🚀 El CEO ha tramitado ${isResubmission ? `la subsanación de la Licencia AESA (-${feeToPay} €v)` : `la Licencia de Lanzamiento AESA (-${feeToPay} €v)`}. Pendiente de validación por Coordinación Docente.`, 'info', { view: 'resolutions', anchorId: 'aesa-license-tramite-panel' });
 
         this.closeModal();
         this.notify(isResubmission ? `✅ Subsanación de Licencia AESA reenviada al claustro (-${feeToPay} €v).` : `✅ Licencia AESA tramitada exitosamente. Tasa de ${feeToPay} €v abonada y remitida al claustro para su validación.`, "success");
@@ -3877,7 +3886,18 @@ Object.assign(ui, {
         if (myActiveDeliverables.length === 0) return '';
 
         const docs = co.deliverables || {};
-        const itemsHtml = myActiveDeliverables.map(d => {
+        const priorityScore = (d) => {
+            const docItem = docs[d.key];
+            const st = (typeof docItem === 'object' && docItem) ? docItem.status : (typeof docItem === 'string' && docItem ? 'DELIVERED_TO_TEACHER' : 'PENDING');
+            if (st === 'CEO_REVISION' || st === 'DEVUELTO_A_TECNICO' || st === 'RETURNED_BY_CEO' || st === 'RETURNED_BY_TEACHER') return 0;
+            if (targetRole === 'CEO' && st === 'SUBMITTED_TO_CEO') return 1;
+            if (st === 'PENDING') return 2;
+            if (st === 'SUBMITTED_TO_CEO') return 3;
+            return 4;
+        };
+        const sortedActiveDeliverables = [...myActiveDeliverables].sort((a, b) => priorityScore(a) - priorityScore(b));
+
+        const renderBannerCard = (d) => {
             const docItem = docs[d.key];
             const rawStatus = (typeof docItem === 'object' && docItem) ? docItem.status : (typeof docItem === 'string' && docItem ? 'DELIVERED_TO_TEACHER' : 'PENDING');
             
@@ -3924,7 +3944,22 @@ Object.assign(ui, {
                     `}
                 </div>
             </div>`;
-        }).join('');
+        };
+
+        const primaryHtml = renderBannerCard(sortedActiveDeliverables[0]);
+        const restDeliverables = sortedActiveDeliverables.slice(1);
+        const itemsHtml = restDeliverables.length > 0 ? `
+            ${primaryHtml}
+            <details class="mt-2 bg-black/40 border border-slate-800 rounded">
+                <summary class="min-h-[44px] px-3 py-2 cursor-pointer flex items-center justify-between gap-2 text-xs font-mono text-slate-300 hover:text-mars-cyan select-none">
+                    <span>📋 Ver los otros ${restDeliverables.length} entregable(s) de tu rol en Fase ${this.escapeHTML(curPhase)}</span>
+                    <span class="text-mars-cyan shrink-0">▼ Ver</span>
+                </summary>
+                <div class="p-2 pt-0 space-y-2">
+                    ${restDeliverables.map(renderBannerCard).join('')}
+                </div>
+            </details>
+        ` : primaryHtml;
 
         return `
         <div class="terminal-border bg-slate-950/80 border border-slate-800 p-3.5 sm:p-4 mb-6 rounded shadow-sm">
@@ -4327,6 +4362,36 @@ Object.assign(ui, {
                                 🧪 Sandbox Pruebas: Ventanas Desbloqueadas
                             </span>
                         ` : ''}
+                    </div>`;
+                })()}
+
+                <!-- Chips de Referencia Táctica para comparar licitaciones -->
+                ${(() => {
+                    const freeContractBal = state.getFreeVirtualBalance ? state.getFreeVirtualBalance(co) : Number(co.balance || 0);
+                    let bomContractCost = 0;
+                    const bomSet = new Set(Array.isArray(co.bom) ? co.bom : []);
+                    (co.orders || []).filter(o => o && (o.status === 'EJECUTADO' || ((o.status === 'APROBADO_FINANZAS' || o.status === 'APROBADO_DOCENTE') && o.partialExecuted))).forEach(o => {
+                        (o.items || []).forEach((it, idx) => {
+                            if ((o.status === 'EJECUTADO' || it.executed) && it.b2bStatus !== 'VENDIDO' && it.b2bStatus !== 'EN_VENTA' && it.b2bStatus !== 'PENDIENTE_FINANZAS' && it.b2bStatus !== 'RECHAZADO_FINANZAS' && bomSet.has(`${o.id}-${idx}`)) {
+                                bomContractCost += (Number(it.price) || 0) * (Number(it.qty) || 1);
+                            }
+                        });
+                    });
+                    const bestContractE = (co.flightTests || []).reduce((mx, f) => Math.max(mx, Number(f.efficiency) || 0), 0);
+                    return `
+                    <div class="grid grid-cols-3 gap-2 text-center font-mono text-xs">
+                        <div class="bg-black/60 border border-mars-green/40 p-2 rounded">
+                            <span class="text-[10px] text-slate-400 uppercase block">Saldo Libre Real</span>
+                            <strong class="text-mars-green">${freeContractBal.toFixed(2)} €v</strong>
+                        </div>
+                        <div class="bg-black/60 border border-mars-cyan/40 p-2 rounded">
+                            <span class="text-[10px] text-slate-400 uppercase block">Coste BOM Actual</span>
+                            <strong class="text-mars-cyan">${bomContractCost.toFixed(2)} €v</strong>
+                        </div>
+                        <div class="bg-black/60 border border-mars-yellow/40 p-2 rounded">
+                            <span class="text-[10px] text-slate-400 uppercase block">Mejor E Actual</span>
+                            <strong class="text-mars-yellow">${bestContractE > 0 ? bestContractE.toFixed(2) : '--'}</strong>
+                        </div>
                     </div>`;
                 })()}
 

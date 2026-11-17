@@ -2170,7 +2170,13 @@ const state = {
         if (!co || !Array.isArray(co.orders)) return 0;
         return co.orders
             .filter(o => o && o.status === 'APROBADO_FINANZAS' && o.type !== 'MARKETING' && o.type !== 'B2B_BUY_REQUEST' && !o.offerId)
-            .reduce((acc, o) => acc + (Number(o.total) || 0), 0);
+            .reduce((acc, o) => {
+                const pendingSum = (o.items || []).reduce((s, it) => {
+                    if (it && it.executed) return s;
+                    return s + (Number(it?.price) || 0) * (Number(it?.qty) || 1);
+                }, 0);
+                return acc + pendingSum;
+            }, 0);
     },
 
     getFreeVirtualBalance(co) {

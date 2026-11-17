@@ -179,7 +179,7 @@ Object.assign(ui, {
                 <h4 class="text-white font-orbitron font-bold text-sm uppercase mb-1">Propuesta de Slogan Corporativo recibida de Marketing</h4>
                 <p class="text-xs text-slate-300 mb-2">Enfoque: <strong class="text-mars-cyan">${this.escapeHTML(co.brandApproval.concept || 'General')}</strong></p>
                 <div class="mb-3">
-                    ${co.brandApproval.driveUrl ? `<a href="${encodeURI(co.brandApproval.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono font-bold"><span>📄 Abrir Expediente Slogan en Google Drive ↗</span></a>` : ''}
+                    ${co.brandApproval.driveUrl ? `<a href="${encodeURI(co.brandApproval.driveUrl).replace(/"/g, '&quot;')}" data-doc-url="${this.escapeAttr(co.brandApproval.driveUrl)}" onclick="ui.markDocOpened(this.dataset.docUrl)" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono font-bold"><span>📄 Abrir Expediente Slogan en Google Drive ↗</span></a>` : ''}
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <button type="button" onclick="ui.endorseBrandProposal('${state.user.coId}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all">[ ✅ 2. Avalar y Elevar a Coordinación Docente ]</button>
@@ -469,8 +469,93 @@ Object.assign(ui, {
                     </div>
                 </div>
             </div>
-            <!-- Columna Derecha: Modificación Estatutaria, Régimen Disciplinario y Conflictos HR -->
+            <!-- Columna Derecha: Licencia AESA, Slogan CEO, Modificación Estatutaria, Régimen Disciplinario y Conflictos HR -->
             <div class="lg:col-span-5 space-y-6">
+                ${(() => {
+                    const aesaLic = co.launchLicense;
+                    const aesaSt = aesaLic?.status || 'SIN_SOLICITAR';
+                    const isAdminOrMaster = Boolean(state.user?.admin || co.unlockAllContracts === true);
+                    const isAesaUnlocked = this.isLaunchLicenseUnlocked ? this.isLaunchLicenseUnlocked(co) : isAdminOrMaster;
+                    const prelimObj = co.deliverables?.['preliminaryReport'];
+                    const isPrelimPendingCeo = !isAesaUnlocked && Boolean(prelimObj && prelimObj.status === 'SUBMITTED_TO_CEO' && prelimObj.driveUrl);
+                    const effRoleRes = this.getEffectiveRole(co);
+                    const isCeoRes = effRoleRes === 'CEO';
+                    const isTechRes = effRoleRes === 'TECNICO';
+                    const curPhaseRes = (typeof this.getCurrentPhaseKey === 'function') ? this.getCurrentPhaseKey() : 'I';
+                    const initFee = (typeof LAUNCH_LICENSE_FEE !== 'undefined') ? LAUNCH_LICENSE_FEE : 50;
+                    const resubFee = (typeof LAUNCH_LICENSE_RESUBMISSION_FEE !== 'undefined') ? LAUNCH_LICENSE_RESUBMISSION_FEE : 10;
+                    const isResub = Boolean(aesaSt === 'DENEGADA' && Number(aesaLic?.feePaid || 0) >= initFee);
+                    const feeToPay = isResub ? resubFee : initFee;
+
+                    let aesaTrackerIdx = 0;
+                    if (aesaSt === 'APROBADA') aesaTrackerIdx = 3;
+                    else if (aesaSt === 'PENDIENTE_DOCENTE') aesaTrackerIdx = 3;
+                    else if (isAesaUnlocked) aesaTrackerIdx = 2;
+                    else if (isPrelimPendingCeo) aesaTrackerIdx = 1;
+
+                    let aesaBadge = '<span class="text-[10px] font-black uppercase px-2 py-0.5 bg-slate-900 border border-slate-700 text-slate-400">🔒 BLOQUEADA</span>';
+                    let aesaMsg = 'Requiere que I+D entregue el Informe Técnico Preliminar y que el CEO lo vise al Claustro.';
+                    if (aesaSt === 'APROBADA') {
+                        aesaBadge = '<span class="text-[10px] font-black uppercase px-2 py-0.5 bg-mars-green/20 border border-mars-green text-mars-green">✓ AUTORIZADA POR COORDINACIÓN</span>';
+                        aesaMsg = 'Permiso de vuelo concedido por Coordinación Docente. El Banco de Pruebas está desbloqueado para I+D.';
+                    } else if (aesaSt === 'PENDIENTE_DOCENTE') {
+                        aesaBadge = '<span class="text-[10px] font-black uppercase px-2 py-0.5 bg-amber-950/60 border border-amber-400 text-amber-300 animate-pulse">⏳ EN APROBACIÓN COORDINACIÓN</span>';
+                        aesaMsg = `Solicitud tramitada por el CEO (${Number(aesaLic?.feePaid || initFee)} €v abonados). Coordinación Docente tiene la aprobación final.`;
+                    } else if (aesaSt === 'DENEGADA') {
+                        aesaBadge = '<span class="text-[10px] font-black uppercase px-2 py-0.5 bg-red-950/60 border border-red-500 text-red-300 animate-pulse">❌ DENEGADA · SUBSANAR</span>';
+                        aesaMsg = `Motivo: "${this.escapeHTML(aesaLic?.rejectReason || 'Revisar documentación y permisos Drive')}".`;
+                    } else if (isAesaUnlocked) {
+                        aesaBadge = '<span class="text-[10px] font-black uppercase px-2 py-0.5 bg-mars-yellow/20 border border-mars-yellow text-mars-yellow">👉 TURNO CEO · LISTA</span>';
+                        aesaMsg = `Informe Preliminar entregado. El CEO ya puede tramitar DOC_14 (${feeToPay} €v) para su aprobación final por Coordinación.`;
+                    } else if (isPrelimPendingCeo) {
+                        aesaBadge = '<span class="text-[10px] font-black uppercase px-2 py-0.5 bg-cyan-950/60 border border-mars-cyan text-mars-cyan">🟡 VISADO PRELIMINAR CEO</span>';
+                        aesaMsg = 'El Informe Preliminar espera visado del CEO en Sala de Mando para desbloquear este trámite.';
+                    }
+
+                    const isCollapsedPhaseIAesa = (curPhaseRes === 'I' && !isAdminOrMaster && !isAesaUnlocked && !isPrelimPendingCeo && aesaSt === 'SIN_SOLICITAR');
+                    const cardBody = `
+                    <div ${isCollapsedPhaseIAesa ? '' : 'id="aesa-license-tramite-panel" '}class="terminal-border bg-mars-card p-5 border-t-4 ${aesaSt === 'APROBADA' ? 'border-t-mars-green' : (aesaSt === 'DENEGADA' ? 'border-t-red-500' : 'border-t-mars-cyan')}">
+                        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-mars-border pb-2.5 mb-3">
+                            <h3 class="font-orbitron text-white text-sm sm:text-base uppercase tracking-tighter">🚀 Licencia de Vuelo AESA (DOC_14)</h3>
+                            ${aesaBadge}
+                        </div>
+                        ${this.renderWorkflowTracker ? this.renderWorkflowTracker(['1. Preliminar I+D', '2. Visado CEO', '3. CEO (DOC_14)', '4. Coordinación'], aesaTrackerIdx) : ''}
+                        <p class="text-xs text-slate-300 font-sans mt-2 mb-3 leading-relaxed">${aesaMsg}</p>
+                        <div class="flex flex-wrap items-center gap-2">
+                            ${(aesaLic?.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(aesaLic.driveUrl)) ? `
+                                <a href="${encodeURI(aesaLic.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/50 text-cyan-300 border border-cyan-500/40 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                    <span>📄 Ver DOC_14 en Drive ↗</span>
+                                </a>
+                            ` : ''}
+                            ${(aesaSt === 'DENEGADA' && aesaLic?.rejectReportUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(aesaLic.rejectReportUrl)) ? `
+                                <a href="${encodeURI(aesaLic.rejectReportUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/60 text-red-200 border border-red-400/60 rounded font-mono hover:bg-red-900/70 transition-colors">
+                                    <span>📄 Informe No Admisión ↗</span>
+                                </a>
+                            ` : ''}
+                            ${(isCeoRes && isAesaUnlocked && (aesaSt === 'SIN_SOLICITAR' || aesaSt === 'DENEGADA')) ? `
+                                ${(this.isCompanyBankrupt && this.isCompanyBankrupt(co))
+                                    ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] flex-1 bg-slate-900 border border-rose-500/60 text-rose-300 font-black uppercase text-xs px-4 py-2 cursor-not-allowed">🔒 Bloqueado (Saldo ≤ 0 €v)</button>`
+                                    : `<button type="button" onclick="ui.modalLaunchLicense()" class="min-h-[44px] flex-1 ${aesaSt === 'DENEGADA' ? 'bg-red-600 text-white hover:bg-white hover:text-red-700' : 'bg-mars-yellow text-black hover:bg-white'} font-black uppercase text-xs px-4 py-2 transition-all">${isResub ? `[ 🔄 Subsanar AESA (${feeToPay} €v) ]` : `[ 🚀 Tramitar AESA (${feeToPay} €v) ]`}</button>`
+                                }
+                            ` : ''}
+                            ${(isTechRes && aesaSt === 'APROBADA') ? `
+                                <button type="button" onclick="ui.navigate('tech')" class="min-h-[44px] flex-1 bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">🧪 Ir al Banco de Pruebas ➔</button>
+                            ` : ''}
+                        </div>
+                    </div>`;
+
+                    if (isCollapsedPhaseIAesa) {
+                        return `
+                        <details id="aesa-license-tramite-panel" class="terminal-border bg-mars-card/80 border border-slate-800 rounded">
+                            <summary class="min-h-[44px] px-4 py-3 cursor-pointer flex items-center justify-between gap-2 text-xs font-mono text-slate-300 hover:text-white select-none">
+                                <span>🔒 Próxima Fase (Fase II): Trámite Licencia AESA (DOC_14)</span>
+                                <span class="text-mars-cyan shrink-0">▼ Ver</span>
+                            </summary>
+                            <div class="p-2 pt-0">${cardBody}</div>
+                        </details>`;
+                    }
+                    return cardBody;
+                })()}
                 ${ceoSloganApprovalHtml}
                 ${nameChangeHtml}
                 ${crisisResolutionsHtml}
@@ -1098,18 +1183,24 @@ Object.assign(ui, {
                         ` : (actFeedback ? `<div class="text-[11px] text-mars-magenta font-mono">Motivo devolución CEO: "${this.escapeHTML(actFeedback)}"</div>` : '')}
                     </div>
                         <div class="flex items-center gap-2 flex-wrap shrink-0">
-                            ${safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 px-3 py-1.5 text-xs font-bold uppercase hover:bg-cyan-900/50">Abrir en Drive ↗</a>` : ''}
+                            ${safeUrl ? `<a href="${safeUrl}" data-doc-url="${this.escapeAttr(actUrl)}" onclick="ui.markDocOpened(this.dataset.docUrl)" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 px-3 py-1.5 text-xs font-bold uppercase hover:bg-cyan-900/50">Abrir en Drive ↗</a>` : ''}
                             ${actionControls}
                         </div>
                     </div>
                 </div>`;
             }).join('');
 
+            const packStatusLabel = status === 'PENDIENTE_FINANZAS'
+                ? '⏳ TURNO DE FINANZAS'
+                : (status === 'ACTIVO'
+                    ? '✓ ACTIVO'
+                    : ((status === 'DENEGADO' || status === 'RECHAZADO') ? '❌ DENEGADO POR FINANZAS' : status));
+
             return `
-            <div class="bg-black/70 border ${status === 'ACTIVO' ? 'border-mars-green/50' : 'border-mars-border'} p-4 mb-3">
+            <div class="bg-black/70 border ${status === 'ACTIVO' ? 'border-mars-green/50' : ((status === 'DENEGADO' || status === 'RECHAZADO') ? 'border-mars-magenta/60' : 'border-mars-border')} p-4 mb-3">
                 <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
                     <div>
-                        <span class="text-xs font-black uppercase px-2 py-0.5 border ${stBadge}">${this.escapeHTML(status)}</span>
+                        <span class="text-xs font-black uppercase px-2 py-0.5 border ${stBadge}">${this.escapeHTML(packStatusLabel)}</span>
                         <h4 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5 break-words">${this.escapeHTML(c.packageName)} — ${this.escapeHTML(c.title)}</h4>
                     </div>
                     <div class="text-right">
@@ -1119,11 +1210,15 @@ Object.assign(ui, {
                 </div>
                 <div class="mb-3">
                     ${(c.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(c.driveUrl))
-                        ? `<a href="${encodeURI(c.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Dossier ROI en Docs ↗</span></a>`
+                        ? `<a href="${encodeURI(c.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Dossier ROI en Docs ↗</span></a>`
                         : `<span class="text-xs text-mars-yellow/80 font-mono italic">[Dossier legacy archivado por protocolo RGPD]</span>`
                     }
                 </div>
-                
+                ${(status === 'DENEGADO' || status === 'RECHAZADO') ? `
+                <div class="bg-red-950/40 border border-red-500/50 p-3 mt-2 rounded text-xs space-y-2">
+                    <p class="text-red-200 font-sans"><strong class="text-mars-magenta uppercase">Motivo de Finanzas:</strong> "${this.escapeHTML(c.rejectReason || 'Ajustar presupuesto o justificación ROI antes de volver a solicitar.')}"</p>
+                    <button type="button" onclick="ui.modalRequestMktPackage('${this.escapeAttr(c.packageId || '')}')" class="min-h-[44px] bg-amber-400 text-black px-3.5 py-2 text-xs font-black uppercase hover:bg-white transition-colors">[ 🔄 Volver a Solicitar Pack ]</button>
+                </div>` : ''}
                 ${status === 'ACTIVO' ? `
                 <div class="bg-slate-950 border border-slate-800 p-3 mt-2">
                     <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
@@ -1285,7 +1380,7 @@ Object.assign(ui, {
                     <span class="text-xs bg-mars-yellow text-black font-black px-2 py-0.5 uppercase block mb-2 w-fit">Paso 2: Aval de Dirección General Requerido</span>
                     <p class="text-xs text-white mb-2">Marketing ha formulado esta propuesta conceptual. Como CEO, debes examinar el documento Drive y decidir si avalarla ante Coordinación Docente:</p>
                     <div class="mb-3">
-                        ${co.brandApproval.driveUrl ? `<a href="${encodeURI(co.brandApproval.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono font-bold"><span>📄 Abrir Propuesta de Slogan en Google Drive ↗</span></a>` : ''}
+                        ${co.brandApproval.driveUrl ? `<a href="${encodeURI(co.brandApproval.driveUrl).replace(/"/g, '&quot;')}" data-doc-url="${this.escapeAttr(co.brandApproval.driveUrl)}" onclick="ui.markDocOpened(this.dataset.docUrl)" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono font-bold"><span>📄 Abrir Propuesta de Slogan en Google Drive ↗</span></a>` : ''}
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <button type="button" onclick="ui.endorseBrandProposal('${state.user.coId}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all">[ ✅ 2. Avalar y Elevar a Coordinación Docente ]</button>
@@ -1347,7 +1442,7 @@ Object.assign(ui, {
                             <li><strong class="text-white">CEO ➔ Coordinación:</strong> El CEO revisa, avala la propuesta y la eleva a Coordinación Docente para su resolución final.</li>
                             <li><strong class="text-white">Coordinación Docente:</strong> Emite la resolución oficial (Aprobado/Denegado) y registra el slogan oficial en el expediente de la empresa.</li>
                         </ol>
-                        <p class="text-[11px] text-cyan-300 font-sans pt-1 border-t border-slate-800/80">ℹ️ <strong>Diferencia clave:</strong> DOC_11 sirve para inscribir vuestro Slogan y Logo en la cabecera del HUD; el entregable evaluable de Lengua (<strong>1A. Marca Dic</strong>) se sube aparte en <em>Mis Entregables</em>.</p>
+                        <p class="text-[11px] text-cyan-300 font-sans pt-1 border-t border-slate-800/80">ℹ️ <strong>Diferencia clave:</strong> DOC_11 sirve para inscribir vuestro Slogan y Logo en la cabecera del HUD; el entregable evaluable de Liderazgo y Emprendimiento (LyE) (<strong>1A. Marca Dic</strong>) se sube aparte en <button type="button" onclick="ui.navigate('role_deliverables')" class="underline font-bold text-white hover:text-mars-cyan">Mis Entregables ➔</button>.</p>
                     </div>
 
                     ${co.slogan ? `
@@ -1375,7 +1470,11 @@ Object.assign(ui, {
                             </div>
                             <div>
                                 <label for="company-logo-drive" class="text-xs text-slate-300 uppercase font-bold block mb-1.5">Enlace al Escudo / Logo Corporativo (Google Drive)</label>
-                                <input type="url" id="company-logo-drive" value="${this.escapeHTML((co.brandApproval && co.brandApproval.pendingLogo) ? co.brandApproval.pendingLogo : (co.logo || ''))}" placeholder="https://drive.google.com/..." class="w-full min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-magenta">
+                                <div class="flex flex-col sm:flex-row gap-2">
+                                    <input type="url" id="company-logo-drive" value="${this.escapeHTML((co.brandApproval && co.brandApproval.pendingLogo) ? co.brandApproval.pendingLogo : (co.logo || ''))}" placeholder="https://drive.google.com/..." class="flex-1 min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-magenta">
+                                    ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('company-logo-drive') : ''}
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-1">La imagen en Drive debe tener acceso público de lectura («Cualquier persona con el enlace») para mostrarse en el HUD.</p>
                             </div>
                             <div>
                                 <label for="brand-slogan-drive-url" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Enlace a la Propuesta de Slogan en Google Drive (Obligatorio)</label>
@@ -1743,8 +1842,15 @@ Object.assign(ui, {
         }
     },
 
-    decideMktAction(campId, actId, approved) {
+    decideMktAction(campId, actId, approved, skipReadCheck = false) {
         if (approved) {
+            const co = state.user?.coId ? state.data?.companies?.[state.user.coId] : null;
+            const camp = (co?.marketingCampaigns || []).find(c => String(c.id) === String(campId));
+            const act = (camp?.executedActions || []).find(a => String(a.id) === String(actId));
+            const docUrl = String(act?.driveUrl || act?.url || '').trim();
+            if (!skipReadCheck && typeof this.confirmDocOpenedBeforeAction === 'function') {
+                return this.confirmDocOpenedBeforeAction(docUrl, () => this.decideMktAction(campId, actId, true, true), 'Sí, Aprobar Acción');
+            }
             state.decideMktAction(campId, actId, true);
         } else {
             this.modalRejectMktAction(campId, actId);
@@ -1971,12 +2077,16 @@ Object.assign(ui, {
         this.notify("✅ Propuesta presentada al CEO exitosamente. En espera de su aval.", "success");
     },
 
-    endorseBrandProposal(cid) {
+    endorseBrandProposal(cid, skipReadCheck = false) {
         if (!state.user || this.getEffectiveRole() !== 'CEO') return this.notify("Solo Dirección General (CEO) puede avalar esta propuesta.", "warning");
         const co = state.data.companies[cid || state.user.coId];
         if (!co || !co.brandApproval) return;
         if (co.brandApproval.status !== 'PENDIENTE_CEO') {
             return this.notify("Esta propuesta de marca ya fue avalada o procesada.", "info");
+        }
+        const docUrl = String(co.brandApproval.driveUrl || '').trim();
+        if (!skipReadCheck && typeof this.confirmDocOpenedBeforeAction === 'function') {
+            return this.confirmDocOpenedBeforeAction(docUrl, () => this.endorseBrandProposal(cid, true), 'Sí, Avalar y Elevar');
         }
         if (this.acquireActionLock && !this.acquireActionLock('endorse-brand-' + (cid || state.user.coId), 1500)) return;
 

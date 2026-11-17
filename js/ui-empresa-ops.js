@@ -38,23 +38,29 @@ Object.assign(ui, {
                 const statusBadge = isB2B
                     ? `<span class="text-xs font-bold uppercase text-mars-cyan bg-cyan-950/60 border border-cyan-500/50 px-2.5 py-1 tracking-wider">[AUTORIZADO POR ADUANA DOCENTE]</span>`
                     : `<span class="text-xs font-bold uppercase text-mars-green bg-mars-green/10 border border-mars-green/40 px-2.5 py-1 tracking-wider">[APROBADO POR FINANZAS]</span>`;
+                const itemsArr = Array.isArray(order.items) ? order.items : [];
+                const doneCount = itemsArr.filter(it => it && it.executed).length;
+                const pendingItemsCount = itemsArr.length - doneCount;
+                const remainingEurV = itemsArr.reduce((s, it) => (it && !it.executed) ? s + (Number(it.price) || 0) * (Number(it.qty) || 1) : s, 0);
 
                 return `
                 <div class="terminal-border bg-mars-card p-4 sm:p-6 border-l-4 ${isB2B ? 'border-l-mars-cyan' : 'border-l-mars-green'} mb-6 w-full">
                     ${tracker}
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-3 gap-2 mt-4">
-                        <div>
+                        <div class="flex flex-wrap items-center gap-2">
                             ${statusBadge}
-                            <h3 class="text-white font-orbitron mt-2 uppercase text-sm sm:text-base font-bold">${isB2B ? 'ORDEN B2B #' : 'ORDEN #'}${this.escapeHTML(order.id)}</h3>
+                            ${doneCount > 0 ? `<span class="text-[11px] font-mono font-bold uppercase text-amber-300 bg-amber-950/50 border border-amber-500/60 px-2 py-0.5 rounded">🟡 Recepción Parcial (${doneCount}/${itemsArr.length})</span>` : ''}
+                            <h3 class="text-white font-orbitron w-full mt-1 uppercase text-sm sm:text-base font-bold">${isB2B ? 'ORDEN B2B #' : 'ORDEN #'}${this.escapeHTML(order.id)}</h3>
                         </div>
                         <div class="text-left sm:text-right">
-                            <p class="text-mars-green font-black font-mono text-xl">${Number(order.total).toFixed(2)} €v</p>
+                            <p class="text-mars-green font-black font-mono text-xl">${remainingEurV.toFixed(2)} €v ${doneCount > 0 ? '<span class="text-xs text-amber-300 font-normal">pendiente</span>' : ''}</p>
+                            ${doneCount > 0 ? `<p class="text-[11px] text-slate-400 font-mono">Total aprobado: ${Number(order.total).toFixed(2)} €v</p>` : ''}
                             <p class="text-xs text-slate-300 uppercase">${this.escapeHTML(order.date)}</p>
                         </div>
                     </div>
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
-                        <p class="text-xs text-mars-yellow uppercase font-bold">${isB2B ? 'Registra la recepción física de la pieza B2B de segunda mano en taller:' : 'Registra el coste real físico (€) y el comercio oficial de adquisición:'}</p>
-                        ${(!isB2B && isOperario && (order.items || []).length >= 2) ? `
+                        <p class="text-xs text-mars-yellow uppercase font-bold">${isB2B ? 'Registra la recepción física de la pieza B2B de segunda mano en taller:' : 'Registra el coste real físico (€) y el comercio oficial de adquisición (desmarca si algún componente aún no se ha comprado):'}</p>
+                        ${(!isB2B && isOperario && pendingItemsCount >= 2) ? `
                             <div class="flex items-center gap-2 w-full sm:w-auto">
                                 <label for="master-shop-${this.escapeHTML(order.id)}" class="text-[11px] font-mono text-mars-cyan uppercase whitespace-nowrap">Comercio común:</label>
                                 <select id="master-shop-${this.escapeHTML(order.id)}" onchange="ui.applyShopToOrder('${this.escapeAttr(order.id)}', this.value)" class="min-h-[44px] flex-1 sm:w-44 bg-black border border-mars-cyan/60 p-2 text-base sm:text-xs text-white outline-none focus:border-mars-cyan">
@@ -73,7 +79,18 @@ Object.assign(ui, {
                         ` : ''}
                     </div>
                     <div class="space-y-3 mb-6">
-                        ${(order.items || []).map((item, idx) => `
+                        ${itemsArr.map((item, idx) => {
+                            if (item && item.executed) {
+                                return `
+                                <div class="border border-emerald-500/40 bg-emerald-950/20 p-3 mb-3 rounded flex flex-col md:flex-row justify-between items-start md:items-center gap-3 opacity-80">
+                                    <div class="flex-grow min-w-0">
+                                        <span class="text-xs text-emerald-300 font-bold break-words">✓ ${this.escapeHTML(item.name)} (x${Number(item.qty)||1}) — ${((Number(item.price) || 0) * (Number(item.qty) || 1)).toFixed(2)} €v</span>
+                                        <p class="text-[11px] text-emerald-400/90 font-mono mt-0.5">Ya comprado y enviado al Taller de I+D · Comercio: ${this.escapeHTML(item.realShop || 'Comercio')}</p>
+                                    </div>
+                                    <span class="text-[10px] font-mono uppercase px-2 py-1 bg-emerald-950 border border-emerald-500/50 text-emerald-300 rounded shrink-0">✓ Recepcionada</span>
+                                </div>`;
+                            }
+                            return `
                             <div class="border border-slate-800 bg-slate-900/90 p-3 mb-3 rounded flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                                 <div class="flex-grow min-w-0">
                                     <label class="mars-checkbox-label flex items-center gap-2.5 text-xs text-white font-bold cursor-pointer min-h-[44px]">
@@ -99,7 +116,7 @@ Object.assign(ui, {
                                     </select>
                                 </div>
                             </div>
-                        `).join('')}
+                        `; }).join('')}
                     </div>
                     ${isOperario
                         ? ((!isB2B && this.isCompanyBankrupt && this.isCompanyBankrupt(co))
@@ -350,78 +367,104 @@ Object.assign(ui, {
             return this.notifyBankruptcyLock();
         }
 
-        let finalItems = [];
-        let finalTotalEurV = 0;
+        const checkedEntries = [];
+        let chargeNowEurV = 0;
         let realCostsToLog = [];
-        const itemUpdates = [];
-        let uncheckedCount = 0;
+        let uncheckedPendingCount = 0;
 
-        for(let i=0; i<order.items.length; i++) {
+        for (let i = 0; i < order.items.length; i++) {
+            const origItem = order.items[i];
+            if (origItem && origItem.executed) continue;
+
             const cb = document.getElementById(`assembled-${order.id}-${i}`);
             const eurInput = document.getElementById(`real-eur-${order.id}-${i}`);
             const shopInput = document.getElementById(`real-shop-${order.id}-${i}`);
-            
-            if(cb && cb.checked) {
+
+            if (cb && cb.checked) {
                 const rawEur = eurInput ? String(eurInput.value || '').trim().replace(',', '.') : '';
                 const valEur = isB2B ? (rawEur === '' ? 0 : parseFloat(rawEur)) : parseFloat(rawEur);
                 const valShop = shopInput ? this.cleanInput(shopInput.value) : '';
-                
+
                 if (rawEur === '' && !isB2B) {
                     if (this.highlightInvalidField && eurInput) this.highlightInvalidField('', eurInput);
-                    return this.notify(`Indica el precio real pagado en tienda (> 0.00 €) para: ${order.items[i].name}`, "warning");
+                    return this.notify(`Indica el precio real pagado en tienda (> 0.00 €) para: ${origItem.name}`, "warning");
                 }
                 if (isNaN(valEur) || (!isB2B && valEur <= 0) || valEur < 0) {
                     if (this.highlightInvalidField && eurInput) this.highlightInvalidField('', eurInput);
-                    return this.notify(isB2B ? `Coste inválido en B2B para: ${order.items[i].name}` : `El coste real en tienda de "${order.items[i].name}" debe ser mayor que 0.00 € (aunque sea material de casa).`, "warning");
+                    return this.notify(isB2B ? `Coste inválido en B2B para: ${origItem.name}` : `El coste real en tienda de "${origItem.name}" debe ser mayor que 0.00 € (aunque sea material de casa).`, "warning");
                 }
                 if (!valShop) {
-                    return this.notify(`Indica el comercio de adquisición para: ${order.items[i].name}`, "warning");
+                    return this.notify(`Indica el comercio de adquisición para: ${origItem.name}`, "warning");
                 }
-                const cloneIt = { ...order.items[i], realEur: valEur, realShop: valShop, ticketUrl: null };
-                itemUpdates.push(cloneIt);
-                finalItems.push(cloneIt);
-                const itemQty = Number(order.items[i].qty) || 1;
-                finalTotalEurV += (Number(order.items[i].price) || 0) * itemQty;
-                realCostsToLog.push({ id: 'RC-'+Date.now()+'-'+i, date: new Date().toLocaleDateString(), item: order.items[i].name, eur: valEur, shop: valShop, ticketUrl: null, qty: itemQty });
+                checkedEntries.push({ idx: i, valEur, valShop });
+                const itemQty = Number(origItem.qty) || 1;
+                chargeNowEurV += (Number(origItem.price) || 0) * itemQty;
+                realCostsToLog.push({ id: 'RC-' + Date.now() + '-' + i, date: new Date().toLocaleDateString(), item: origItem.name, eur: valEur, shop: valShop, ticketUrl: null, qty: itemQty });
             } else {
-                uncheckedCount++;
+                uncheckedPendingCount++;
             }
         }
 
-        if(finalItems.length === 0) return this.notify("Debes marcar al menos un componente como comprado/ensamblado.", "warning");
-        if(!isB2B && co.balance < finalTotalEurV) return this.notify("Fondos virtuales insuficientes en la cuenta de la empresa.", "error");
+        if (checkedEntries.length === 0) return this.notify("Debes marcar al menos un componente pendiente como comprado/ensamblado.", "warning");
+        if (!isB2B && co.balance < chargeNowEurV) return this.notify("Fondos virtuales insuficientes en la cuenta de la empresa.", "error");
 
-        if (uncheckedCount > 0 && !skipPartialConfirm && typeof this.confirmAction === 'function') {
+        if (uncheckedPendingCount > 0 && !skipPartialConfirm && typeof this.confirmAction === 'function') {
             return this.confirmAction(
-                '⚠️ Recepción Parcial de Orden',
-                `Has desmarcado ${uncheckedCount} partida(s) de esta orden. Si continúas ahora, esas piezas quedarán fuera del pedido y solo se descontará del saldo el importe de las piezas marcadas (${finalTotalEurV.toFixed(2)} €v). ¿Confirmar?`,
+                '📦 Recepción Parcial en Taller',
+                `Has desmarcado ${uncheckedPendingCount} partida(s) que aún no habéis comprado. Al confirmar, se cobrarán y pasarán al Taller de I+D solo las ${checkedEntries.length} marcada(s) ahora (${chargeNowEurV.toFixed(2)} €v), y las ${uncheckedPendingCount} restante(s) quedarán pendientes en esta misma orden ya aprobada por Finanzas hasta que las compréis. ¿Continuar?`,
                 () => this.executePhysicalOrder(oid, true),
-                'Sí, Confirmar Marcadas'
+                'Sí, Registrar Marcadas'
             );
         }
 
         if (this.acquireActionLock && !this.acquireActionLock('exec-order-' + order.id, 1500)) return;
 
-        order.items = finalItems;
-        order.total = finalTotalEurV;
-        order.status = 'EJECUTADO';
+        checkedEntries.forEach(entry => {
+            order.items[entry.idx] = {
+                ...order.items[entry.idx],
+                executed: true,
+                realEur: entry.valEur,
+                realShop: entry.valShop,
+                ticketUrl: null,
+                executedAt: Date.now()
+            };
+        });
+
+        const remainingPendingAfter = (order.items || []).filter(it => !it || !it.executed).length;
+        if (remainingPendingAfter === 0) {
+            order.status = 'EJECUTADO';
+            order.executedAt = Date.now();
+        } else {
+            order.partialExecuted = true;
+            order.lastPartialAt = Date.now();
+        }
 
         if (!isB2B) {
-            state.addToLedger(state.user.coId, `Ejecución Logística Orden #${order.id}`, 'OPERACIONES_IA', -finalTotalEurV);
+            const ledgerDesc = remainingPendingAfter === 0
+                ? (order.partialExecuted ? `Liquidación Final Logística Orden #${order.id}` : `Ejecución Logística Orden #${order.id}`)
+                : `Recepción Parcial Logística Orden #${order.id} (${checkedEntries.length} part.)`;
+            state.addToLedger(state.user.coId, ledgerDesc, 'OPERACIONES_IA', -chargeNowEurV);
         }
         co.realCosts.push(...realCostsToLog);
         co.updatedAt = Date.now();
 
-        telemetry.log("EJECUCIÓN LOGÍSTICA", `Orden ${isB2B ? 'B2B ' : ''}#${order.id} completada por ${finalTotalEurV.toFixed(2)}€v`);
+        telemetry.log("EJECUCIÓN LOGÍSTICA", `Orden ${isB2B ? 'B2B ' : ''}#${order.id} (${remainingPendingAfter === 0 ? 'completada' : `parcial, quedan ${remainingPendingAfter}`}) por ${chargeNowEurV.toFixed(2)}€v`);
         state.save(state.user.coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
-        
-        ui.pushNotification(state.user.coId, 'TECNICO', `📦 Orden #${order.id} (${isB2B ? 'Pieza B2B' : 'Material'}) recibida y ensamblada en Taller.`, 'success', { view: 'orders', filter: 'COMPLETADAS', dept: 'TECNICO' });
-        if (!isB2B) {
-            ui.pushNotification(state.user.coId, 'FINANZAS', `📦 Orden #${order.id} ejecutada: ${finalTotalEurV.toFixed(2)} €v descontados en el Libro Mayor.`, 'info', { view: 'finance' });
-        }
 
-        this.notify(`✅ Orden #${order.id} ejecutada. Los componentes han sido registrados para ensamble.`, "success");
+        if (remainingPendingAfter === 0) {
+            ui.pushNotification(state.user.coId, 'TECNICO', `📦 Orden #${order.id} (${isB2B ? 'Pieza B2B' : 'Material'}) completada y disponible en Taller & BOM.`, 'success', { view: 'orders', filter: 'COMPLETADAS', dept: 'TECNICO' });
+            if (!isB2B) {
+                ui.pushNotification(state.user.coId, 'FINANZAS', `📦 Orden #${order.id} completada en Taller: ${chargeNowEurV.toFixed(2)} €v descontados en el Libro Mayor.`, 'info', { view: 'finance' });
+            }
+            this.notify(`✅ Orden #${order.id} completada. Todos los componentes han pasado a Taller & BOM.`, "success");
+        } else {
+            ui.pushNotification(state.user.coId, 'TECNICO', `📦 Recepción parcial en Orden #${order.id}: ${checkedEntries.length} partida(s) ya disponibles en Taller & BOM (${remainingPendingAfter} quedan pendientes de compra).`, 'info', { view: 'tech_workshop' });
+            if (!isB2B) {
+                ui.pushNotification(state.user.coId, 'FINANZAS', `📦 Recepción parcial en Orden #${order.id}: descontados ${chargeNowEurV.toFixed(2)} €v de las piezas compradas (${remainingPendingAfter} quedan pendientes en Taller sin nueva autorización).`, 'info', { view: 'finance' });
+            }
+            this.notify(`✅ Registradas ${checkedEntries.length} partida(s). Quedan ${remainingPendingAfter} pendiente(s) en esta misma orden hasta que las compréis.`, "success");
+        }
         this.render();
     },
 
@@ -438,6 +481,7 @@ Object.assign(ui, {
         wrapper.id = 'ailog-section';
         
         const pendingPrompts = co.aiPrompts.filter(p => p.status === 'PENDIENTE_VALIDACION');
+        const rejectedPrompts = co.aiPrompts.filter(p => p.status === 'RECHAZADO');
         const approvedPrompts = co.aiPrompts.filter(p => p.status === 'APROBADO');
 
         let pendingHtml = '';
@@ -453,7 +497,7 @@ Object.assign(ui, {
                             <div class="flex flex-wrap justify-between gap-2 mb-2"><span class="text-mars-cyan font-bold uppercase">Autor: ${this.escapeHTML(authorLabel)} | Herramienta: ${this.escapeHTML(p.tool)}</span><span class="text-slate-300">${this.escapeHTML(p.date)}</span></div>
                             <div class="mb-3">
                                 ${(p.bitacoraUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(p.bitacoraUrl)) || (p.prompt && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(p.prompt))
-                                    ? `<a href="${encodeURI(p.bitacoraUrl || p.prompt).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Bitácora en Docs ↗</span></a>`
+                                    ? `<a href="${encodeURI(p.bitacoraUrl || p.prompt).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Bitácora en Docs ↗</span></a>`
                                     : `<span class="text-xs text-amber-500/80 font-mono italic">[Bitácora legacy archivada por protocolo RGPD]</span>`
                                 }
                             </div>
@@ -465,7 +509,34 @@ Object.assign(ui, {
                     `; }).join('')}
                 </div>
             </div>`;
+        } else if (!isOps && pendingPrompts.length > 0) {
+            pendingHtml = `
+            <div class="bg-amber-950/30 border border-amber-500/50 p-3.5 rounded mb-6 text-xs">
+                <p class="text-amber-300 font-bold uppercase font-mono mb-1.5">⏳ Reportes de IA en cola de auditoría por Operaciones (${pendingPrompts.length})</p>
+                <div class="space-y-1 text-slate-200 font-mono text-[11px]">
+                    ${pendingPrompts.map(p => `<div>• ${this.escapeHTML(p.tool || 'IA')} — <span class="text-mars-cyan">${this.escapeHTML(p.role || '')}</span> (${this.escapeHTML(p.date || '')})</div>`).join('')}
+                </div>
+            </div>`;
         }
+
+        const rejectedAiHtml = rejectedPrompts.length > 0 ? `
+            <div class="bg-red-950/40 border border-mars-magenta/70 p-4 rounded mb-6 text-xs space-y-2.5">
+                <div class="flex flex-wrap justify-between items-center gap-2">
+                    <span class="text-mars-magenta font-bold uppercase font-mono">❌ Reportes de IA Devueltos para Subsanar (${rejectedPrompts.length})</span>
+                    <button type="button" onclick="ui.modalReportAI()" class="min-h-[44px] bg-amber-400 text-black px-3 py-1.5 text-xs font-black uppercase hover:bg-white transition-colors">[ 🔄 Declarar Nuevo Reporte Corregido ]</button>
+                </div>
+                <div class="space-y-2">
+                    ${rejectedPrompts.map(p => `
+                        <div class="bg-black/60 border border-red-500/40 p-2.5 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                            <div class="min-w-0">
+                                <span class="text-white font-bold uppercase font-mono">${this.escapeHTML(p.tool || 'IA')} (${this.escapeHTML(p.role || '')})</span>
+                                <p class="text-red-200 font-sans mt-0.5 break-words">Motivo: "${this.escapeHTML(p.rejectReason || 'Requiere subsanación ética o de permisos.')}"</p>
+                            </div>
+                            <span class="text-[11px] text-slate-400 font-mono shrink-0">${this.escapeHTML(p.date || '')}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>` : '';
 
         const curPhaseKey = (typeof this.getCurrentPhaseKey === 'function') ? this.getCurrentPhaseKey() : 'I';
         const bitacoraDocKey = curPhaseKey === 'IV' ? 'decisionDiary_apr' : 'decisionDiary_dec';
@@ -534,12 +605,12 @@ Object.assign(ui, {
 
         wrapper.innerHTML = `
             ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
-            ${(curPhaseKey !== 'I' && curPhaseKey !== 'IV' && this.renderRoleActivePhaseDeliverableBanner) ? this.renderRoleActivePhaseDeliverableBanner(co) : ''}
             <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
                 <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">Bitácora y Auditoría de Inteligencia Artificial</h2>
                 <button type="button" onclick="ui.modalReportAI()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_12px_rgba(0,240,255,0.3)]">[🤖 Nuevo Reporte IA]</button>
             </div>
             ${bitacoraCardHtml}
+            ${rejectedAiHtml}
             ${pendingHtml}
             <div class="terminal-border bg-mars-card p-4 sm:p-6 border-t-4 border-t-mars-cyan">
                 <h3 class="font-orbitron text-mars-cyan text-sm sm:text-base mb-3 uppercase tracking-tighter">Historial Oficial de Uso de IA (Aprobados)</h3>

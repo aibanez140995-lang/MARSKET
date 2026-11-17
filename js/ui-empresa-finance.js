@@ -175,7 +175,7 @@ Object.assign(ui, {
                             finActions = `
                             <div class="flex flex-col sm:flex-row gap-2 mt-4 pt-3 border-t border-slate-800">
                                 <button type="button" onclick="ui.approveB2BBuyByFinanzas('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1 shadow-[0_0_10px_rgba(255,204,0,0.3)]">[ 🤝 Aprobar Compra B2B y Bloquear en Aduana ]</button>
-                                <button type="button" onclick="ui.rejectOrder('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Descartar</button>
+                                <button type="button" onclick="ui.modalRejectOrderWithDoc('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Denegar Compra B2B</button>
                             </div>`;
                         } else {
                             finActions = `
@@ -201,11 +201,18 @@ Object.assign(ui, {
                             ${trackerHtml}
                             <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
                                 <div>
+                                <div class="flex flex-wrap items-center gap-2">
                                     <span class="text-xs font-black uppercase px-2 py-0.5 border ${stBadge}">${this.escapeHTML(stLabel)}</span>
+                                    ${(isApproved && order.partialExecuted) ? `<span class="text-[10px] font-mono font-bold uppercase px-2 py-0.5 bg-amber-950/60 border border-amber-500/60 text-amber-300 rounded">🟡 Recepción Parcial en Curso</span>` : ''}
+                                </div>
                                     <h4 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">${isB2B ? 'Orden B2B #' : 'Orden #'}${this.escapeHTML(order.id)}</h4>
                                 </div>
                                 <div class="text-right">
                                     <span class="text-mars-green font-mono font-bold text-sm sm:text-base">${Number(order.total).toFixed(2)} €v</span>
+                                    ${(isApproved && order.partialExecuted) ? (() => {
+                                        const remVal = (order.items || []).reduce((s, it) => (!it || !it.executed) ? s + (Number(it?.price) || 0) * (Number(it?.qty) || 1) : s, 0);
+                                        return `<span class="block text-[11px] text-amber-300 font-mono font-bold">Pendiente taller: ${remVal.toFixed(2)} €v</span>`;
+                                    })() : ''}
                                     <span class="block text-xs text-slate-300 font-mono">${this.escapeHTML(order.date)}</span>
                                 </div>
                             </div>
@@ -225,10 +232,11 @@ Object.assign(ui, {
                             </div>
                             ${st === 'PENDIENTE_DOCENTE' ? `<p class="text-xs text-purple-300 font-mono mt-1 mb-2 p-2 bg-purple-950/30 border border-purple-500/30 rounded">🛃 Compra autorizada por Finanzas. Retenida en Aduana Docente a la espera de validación oficial.</p>` : ''}
                             ${st === 'DENEGADO_DOCENTE' ? `<p class="text-xs text-rose-300 font-mono mt-1 mb-2 p-2 bg-rose-950/30 border border-rose-500/30 rounded">❌ Traspaso denegado por Aduana Docente. El 100% del importe ha sido reembolsado en vuestra tesorería.</p>` : ''}
+                            ${(st === 'RECHAZADO' && order.rejectReason) ? `<p class="text-xs text-rose-300 font-sans mt-1 mb-2 p-2 bg-rose-950/30 border border-rose-500/40 rounded"><strong>Motivo Finanzas:</strong> "${this.escapeHTML(order.rejectReason)}"</p>` : ''}
                             <div class="space-y-1.5 mb-2 bg-black/60 p-2.5 border border-slate-800">
                                 ${(order.items || []).map(it => `
-                                    <div class="flex justify-between text-xs text-slate-300 gap-2">
-                                        <span class="break-words">${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
+                                    <div class="flex justify-between text-xs ${it.executed ? 'text-emerald-300' : 'text-slate-300'} gap-2">
+                                        <span class="break-words">${it.executed ? '✓ ' : (isApproved && order.partialExecuted ? '⏳ ' : '')}${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
                                         <span class="font-mono text-white shrink-0">${Number(it.price).toFixed(2)} €v</span>
                                     </div>
                                 `).join('')}
@@ -267,7 +275,7 @@ Object.assign(ui, {
                                 </div>
                             </div>` : ''}
                             <button type="button" onclick="ui.inspectOrderDrawer('${this.escapeHTML(co.id || state.user.coId)}', '${this.escapeHTML(order.id)}', false)" class="sm:hidden w-full min-h-[44px] bg-slate-950 border border-mars-cyan/60 text-mars-cyan font-black uppercase text-xs py-2 px-3 hover:bg-mars-cyan hover:text-black transition-all">[ 🔍 INSPECCIONAR ORDEN (${(order.items || []).length} partidas) ]</button>
-                            ${isApproved ? '<p class="text-xs text-blue-400 font-mono mt-2 pt-2 border-t border-slate-800">📦 Orden en Logística de Taller: El Operario ejecuta la compra física real y el ensamble.</p>' : ''}
+                            ${isApproved ? `<p class="text-xs text-blue-400 font-mono mt-2 pt-2 border-t border-slate-800">${order.partialExecuted ? '🟡 Recepción Parcial: las partidas marcadas con ✓ ya están compradas y en Taller de I+D; las restantes (⏳) esperan compra física sin requerir nueva aprobación.' : '📦 Orden en Logística de Taller: El Operario ejecuta la compra física real y el ensamble.'}</p>` : ''}
                             ${finActions}
                         </div>`
                     });
@@ -442,7 +450,7 @@ Object.assign(ui, {
                                 <div class="flex items-center gap-2 mb-2">
                                     <span class="text-[10px] font-black uppercase px-2 py-0.5 bg-purple-950 text-mars-magenta border border-mars-magenta/40">DEPTO: MARKETING (ACCIÓN ESPECÍFICA)</span>
                                 </div>
-                                ${ui.renderWorkflowTracker(['1. Creatividad MKT', '2. CEO (Valida)', '3. Docente Liderazgo'], ast === 'PENDIENTE_CEO' ? 0 : 2)}
+                                ${ui.renderWorkflowTracker(['1. Creatividad MKT', '2. CEO (Valida)', '3. Docente Liderazgo'], ast === 'PENDIENTE_CEO' ? 1 : (ast === 'VALIDADO_CEO' ? 2 : 0))}
                                 <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
                                     <div>
                                         <span class="text-xs font-black uppercase px-2 py-0.5 border ${actBadge}">${this.escapeHTML(ast)}</span>
@@ -455,7 +463,7 @@ Object.assign(ui, {
                                 </div>
                                 ${act.desc ? `<p class="text-slate-300 mb-2 leading-relaxed break-words">${this.escapeHTML(act.desc)}</p>` : ''}
                                 ${(act.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(act.driveUrl))
-                                    ? `<div class="mb-3"><a href="${encodeURI(act.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>📄 Ver Creatividad / Memoria en Docs ↗</span></a></div>`
+                                    ? `<div class="mb-3"><a href="${encodeURI(act.driveUrl).replace(/"/g, '&quot;')}" data-doc-url="${this.escapeAttr(act.driveUrl)}" onclick="ui.markDocOpened(this.dataset.docUrl)" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>📄 Ver Creatividad / Memoria en Docs ↗</span></a></div>`
                                     : ''
                                 }
                                 ${(ast === 'RECHAZADO_CEO') ? `
@@ -620,10 +628,18 @@ Object.assign(ui, {
                 </div>
             </div>`;
         });
+        const freeBalCart = state.getFreeVirtualBalance ? state.getFreeVirtualBalance(co) : Number(co.balance || 0);
         html += `</div>
-        <div class="flex justify-between items-center bg-slate-900 p-3 mb-4 border border-mars-cyan">
-            <span class="text-xs text-slate-300 uppercase font-bold">Presupuesto Estimado</span>
-            <span id="cart-total-badge" class="text-lg font-orbitron font-black text-mars-cyan">${total.toFixed(2)} €v</span>
+        <div class="bg-slate-900 p-3 mb-4 border border-mars-cyan space-y-1.5">
+            <div class="flex justify-between items-center">
+                <span class="text-xs text-slate-300 uppercase font-bold">Presupuesto Estimado</span>
+                <span id="cart-total-badge" class="text-lg font-orbitron font-black text-mars-cyan">${total.toFixed(2)} €v</span>
+            </div>
+            <div class="flex justify-between items-center text-[11px] font-mono border-t border-slate-800 pt-1">
+                <span class="text-slate-400">Saldo Libre Real disponible:</span>
+                <span class="${freeBalCart <= 0 ? 'text-rose-400 font-bold' : 'text-mars-green font-bold'}">${freeBalCart.toFixed(2)} €v</span>
+            </div>
+            <p id="cart-free-balance-warning" class="${total > freeBalCart ? '' : 'hidden '}text-[11px] text-amber-300 font-sans pt-1">⚠️ El pedido supera tu Saldo Libre Real. Finanzas deberá recortar partidas o esperar nuevos ingresos.</p>
         </div>
         <div class="space-y-1.5 mb-2">
             <label for="order-drive-url" class="text-xs text-mars-cyan font-bold uppercase block">Informe Técnico de Especificación (Google Drive / Docs)</label>
@@ -1192,7 +1208,7 @@ Object.assign(ui, {
                 </div>
                 <div class="w-full flex items-center justify-end flex-wrap gap-2 pt-2 border-t border-slate-800/70">
                     ${b ? `
-                        <a href="${encodeURI(b.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-300 border border-cyan-500/40 rounded font-mono hover:bg-cyan-900/60 transition-colors">
+                        <a href="${encodeURI(b.driveUrl).replace(/"/g, '&quot;')}" data-doc-url="${this.escapeAttr(b.driveUrl)}" onclick="ui.markDocOpened(this.dataset.docUrl)" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-300 border border-cyan-500/40 rounded font-mono hover:bg-cyan-900/60 transition-colors">
                             <span>DOC_17 ↗</span>
                         </a>
                         ${(bStatus === 'RETURNED_BY_CEO' && b.returnDriveUrl) ? `
@@ -1241,6 +1257,7 @@ Object.assign(ui, {
                 <div>
                     <h3 class="font-orbitron text-amber-400 text-sm uppercase tracking-tighter font-black">📊 Balances de Cierre de Fase (DOC_17)</h3>
                     <p class="text-xs text-slate-300 uppercase mt-0.5">Control de tesorería y dictamen contable al final de cada fase.</p>
+                    <p class="text-[11px] text-cyan-300 font-sans mt-1">ℹ️ Cierre contable interno de caja (alimenta Prensa DOC_15); las entregas evaluables de Economía (20% ECO) van aparte en <button type="button" onclick="ui.navigate('role_deliverables')" class="underline font-bold text-white hover:text-mars-cyan">Mis Entregables ➔</button>.</p>
                 </div>
                 <span class="text-xs bg-amber-950/40 text-amber-300 font-mono px-2 py-0.5 border border-amber-500/40">
                     ${Object.keys(co.phaseBalances || {}).length}/4 Fases
@@ -1276,7 +1293,14 @@ Object.assign(ui, {
                     <span class="text-[11px] text-slate-300 font-sans">Cuando Técnico o Marketing envíen compras o packs de campaña, aparecerán aquí para tu visto bueno.</span>
                 </div>
                 <button type="button" onclick="ui.navigate('role_deliverables')" class="min-h-[44px] shrink-0 px-3.5 py-2 bg-slate-900 border border-emerald-500/50 text-emerald-300 hover:bg-emerald-500 hover:text-black font-bold text-xs uppercase rounded">📤 Mis Entregables ➔</button>
-            </div>`) : '';
+            </div>`) : (totalPendingFinCount > 0 ? `
+            <div class="mb-4 p-3.5 bg-slate-900/90 border border-amber-500/50 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
+                <div>
+                    <span class="font-bold text-mars-yellow uppercase block">⏳ Turno de Finanzas: ${totalPendingFinCount} solicitud(es) pendiente(s) de autorización</span>
+                    <span class="text-[11px] text-slate-300 font-sans">Solo el Dpto. Financiero puede autorizarlas. Si el titular ha faltado hoy, el CEO puede vincular al Socio Auxiliar o consultar en Bóveda de Órdenes.</span>
+                </div>
+                <button type="button" onclick="ui.navigate('orders')" class="min-h-[44px] shrink-0 px-3.5 py-2 bg-slate-950 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold text-xs uppercase rounded">📡 Ver en Bóveda ➔</button>
+            </div>` : '');
 
         let pendingAuthorizationsHtml = '';
         if (isFinanzas && totalPendingFinCount > 0) {
@@ -1319,8 +1343,8 @@ Object.assign(ui, {
                                         ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] flex-1 md:flex-initial bg-slate-900 border border-rose-500/60 text-rose-300 px-4 py-2 text-xs font-black uppercase cursor-not-allowed">🔒 Bloqueado (≤ 0 €v)</button>`
                                         : `<button type="button" onclick="ui.approveB2BBuyByFinanzas('${this.escapeHTML(order.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-yellow text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.4)]">[ 🤝 Aprobar Compra B2B y Bloquear en Aduana ]</button>`
                                     }
-                                    <button type="button" onclick="ui.rejectOrder('${this.escapeHTML(order.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all">
-                                        Descartar
+                                    <button type="button" onclick="ui.modalRejectOrderWithDoc('${this.escapeHTML(order.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all">
+                                        Denegar Compra B2B
                                     </button>
                                 ` : `
                                     ${isFinBankrupt
@@ -1648,11 +1672,15 @@ Object.assign(ui, {
         this.render();
     },
 
-    approvePhaseBalanceByCEO(phaseKey) {
+    approvePhaseBalanceByCEO(phaseKey, skipReadCheck = false) {
         if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const coId = state.user.coId;
         const co = state.data.companies[coId];
         if (!co || !co.phaseBalances || !co.phaseBalances[phaseKey]) return;
+        const docUrl = String(co.phaseBalances[phaseKey].driveUrl || '').trim();
+        if (!skipReadCheck && typeof this.confirmDocOpenedBeforeAction === 'function') {
+            return this.confirmDocOpenedBeforeAction(docUrl, () => this.approvePhaseBalanceByCEO(phaseKey, true), 'Sí, Visar Balance');
+        }
 
         co.phaseBalances[phaseKey].status = 'DELIVERED_TO_TEACHER';
         co.phaseBalances[phaseKey].ceoValidatedAt = Date.now();
@@ -1910,24 +1938,24 @@ Object.assign(ui, {
         const html = `
             <div class="space-y-3 font-mono text-xs">
                 <p class="text-slate-300 font-sans leading-relaxed">
-                    Vas a denegar la Orden #${this.escapeHTML(order.id)} (${Number(order.total).toFixed(2)} €v). Para cumplir con la política Zero-Text, selecciona el motivo tipificado y adjunta el enlace al Google Doc oficial:
+                    Vas a denegar la Orden #${this.escapeHTML(order.id)} (${Number(order.total).toFixed(2)} €v). Para cumplir con la política Zero-Text, selecciona el motivo tipificado (y si lo deseas, adjunta el enlace al Google Doc):
                 </p>
                 <div>
-                    <label for="reject-order-reason" class="text-mars-yellow font-bold uppercase block mb-1">Motivo Tipificado</label>
+                    <label for="reject-order-reason" class="text-mars-yellow font-bold uppercase block mb-1">Motivo Tipificado *</label>
                     <select id="reject-order-reason" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-xs text-white outline-none">
                         ${reasons.map(r => `<option value="${this.escapeHTML(r)}">${this.escapeHTML(r)}</option>`).join('')}
                     </select>
                 </div>
                 <div>
-                    <label for="reject-order-drive-url" class="text-mars-magenta font-bold uppercase block mb-1">Enlace a Google Docs con Justificación de Denegación (Obligatorio)</label>
+                    <label for="reject-order-drive-url" class="text-mars-cyan font-bold uppercase block mb-1">Enlace a Google Docs con Justificación (Opcional)</label>
                     <div class="flex flex-col sm:flex-row gap-2">
-                        <input type="url" id="reject-order-drive-url" placeholder="https://docs.google.com/document/d/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-slate-900 border border-mars-magenta p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
+                        <input type="url" id="reject-order-drive-url" placeholder="Opcional: https://docs.google.com/document/d/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan/60 p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono">
                         ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('reject-order-drive-url') : ''}
                     </div>
                 </div>
             </div>
         `;
-        const actions = `<button type="button" onclick="ui.confirmRejectOrderWithDoc('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-magenta text-white font-black uppercase text-xs px-5 py-2.5 hover:bg-white hover:text-mars-magenta transition-all w-full sm:w-auto">Confirmar Denegación en Docs</button>`;
+        const actions = `<button type="button" onclick="ui.confirmRejectOrderWithDoc('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-magenta text-white font-black uppercase text-xs px-5 py-2.5 hover:bg-white hover:text-mars-magenta transition-all w-full sm:w-auto">Confirmar Denegación</button>`;
         this.showModal(`Denegar Orden #${order.id}`, html, actions);
     },
 
@@ -1941,22 +1969,27 @@ Object.assign(ui, {
         const elReason = document.getElementById('reject-order-reason');
         const reason = elReason ? this.cleanInput(elReason.value) : 'Justificación presupuestaria';
         const elDrive = document.getElementById('reject-order-drive-url');
-        const urlCheck = this.validateStudentDriveUrl
-            ? this.validateStudentDriveUrl(elDrive ? elDrive.value : '', elDrive, { required: true, label: 'la justificación de denegación en Docs' })
-            : { valid: Boolean(elDrive && this.cleanInput(elDrive.value).trim()), url: elDrive ? this.cleanInput(elDrive.value).trim() : '' };
-        if (!urlCheck.valid) return;
+        const rawDrive = elDrive ? this.cleanInput(elDrive.value).trim() : '';
+        let safeDriveUrl = '';
+        if (rawDrive) {
+            const urlCheck = this.validateStudentDriveUrl
+                ? this.validateStudentDriveUrl(rawDrive, elDrive, { required: false, label: 'la justificación de denegación en Docs' })
+                : { valid: true, url: rawDrive };
+            if (!urlCheck.valid) return;
+            safeDriveUrl = urlCheck.url;
+        }
         if (this.acquireActionLock && !this.acquireActionLock('fin-reject-' + orderId, 1500)) return;
 
         order.status = 'RECHAZADO';
         order.rejectReason = reason;
-        order.responseDriveUrl = urlCheck.url;
+        if (safeDriveUrl) order.responseDriveUrl = safeDriveUrl;
         order.rejectedAt = Date.now();
         co.updatedAt = Date.now();
 
         state.save(state.user.coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
-        ui.pushNotification(state.user.coId, 'TECNICO', `❌ Finanzas ha DENEGADO la orden #${order.id} ("${reason}"). Consulta el informe justificativo en Google Docs.`, 'error', { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' });
+        ui.pushNotification(state.user.coId, 'TECNICO', `❌ Finanzas ha DENEGADO la orden #${order.id} ("${reason}").${safeDriveUrl ? ' Consulta el informe en Google Docs.' : ''}`, 'error', { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' });
         this.closeModal();
         this.notify(`❌ Orden #${order.id} denegada.`, "info");
         this.render();

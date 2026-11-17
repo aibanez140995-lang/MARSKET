@@ -12,7 +12,10 @@ Object.assign(ui, {
         if (!isNaN(c) && c > 0 && !isNaN(h) && h >= 0) {
             const eVal = h / c;
             const eCls = eVal > 0 ? 'text-mars-yellow' : 'text-amber-400';
-            elOut.innerHTML = `⚡ Pre-cálculo en vivo: <strong class="${eCls} font-orbitron">E = ${eVal.toFixed(2)} mm/€v</strong> <span class="text-slate-400">(${h.toFixed(0)} mm / ${c.toFixed(2)} €v)</span>`;
+            const unitHint = (h > 0 && h < 100)
+                ? `<span class="block text-[10px] text-amber-300 mt-1">⚠️ ¿Seguro que son ${h} mm (&lt; 10 cm)? Recuerda: 1 metro = 1000 mm (ej. 6,5 m = 6500 mm).</span>`
+                : '';
+            elOut.innerHTML = `⚡ Pre-cálculo en vivo: <strong class="${eCls} font-orbitron">E = ${eVal.toFixed(2)} mm/€v</strong> <span class="text-slate-400">(${h.toFixed(0)} mm / ${c.toFixed(2)} €v)</span>${unitHint}`;
         } else {
             elOut.innerHTML = `⚡ Pre-cálculo en vivo: <span class="text-slate-400">Introduce Coste (&gt; 0) y Altura (mm) para estimar E = H / C</span>`;
         }
@@ -20,6 +23,10 @@ Object.assign(ui, {
 
     techSendHojaTaller() {
         if (!state.user) return;
+        const co = state.data.companies?.[state.user.coId];
+        if (this.getEffectiveRole(co) !== 'TECNICO' && !state.user.admin) {
+            return this.notify("Solo el Departamento Técnico (I+D) puede enviar iteraciones de la Hoja de Taller.", "warning");
+        }
         const el = document.getElementById('tech-hoja-taller-drive-url');
         if (!el) return;
         const urlCheck = this.validateStudentDriveUrl
@@ -122,141 +129,20 @@ Object.assign(ui, {
             </tr>`;
         }).join('') || `<tr><td colspan="7" class="p-4"><div class="terminal-border bg-slate-950 p-4 text-center border-dashed border-mars-yellow/40"><p class="text-xs text-mars-yellow font-bold uppercase mb-1">🚀 Banco de Pruebas sin Ensayos</p><p class="text-[11px] text-slate-400">Introduce los reactivos y la altura arriba para registrar el primer vuelo de tu prototipo.</p></div></td></tr>`;
 
-        // --- Panel de Seguimiento de Órdenes I+D (Técnico) ---
-        const techFilter = this.techOrdersFilter || 'EN_PROCESO';
+        // --- Contadores de Órdenes I+D (Técnico) ---
         const techOrders = co.orders || [];
-        const techPendingCount = techOrders.filter(o => o.status === 'PENDIENTE_FINANZAS' || o.status === 'APROBADO_FINANZAS' || o.status === 'PENDIENTE_DOCENTE' || o.status === 'APROBADO_DOCENTE').length;
-        const techCompletedCount = techOrders.filter(o => o.status === 'EJECUTADO').length;
-        const techRejectedCount = techOrders.filter(o => o.status === 'RECHAZADO' || o.status === 'DENEGADO_DOCENTE' || o.status === 'CANCELADO_OTRA_EMPRESA').length;
-
-        const filteredTechOrders = techOrders.filter(o => {
-            if (techFilter === 'EN_PROCESO') return (o.status === 'PENDIENTE_FINANZAS' || o.status === 'APROBADO_FINANZAS' || o.status === 'PENDIENTE_DOCENTE' || o.status === 'APROBADO_DOCENTE');
-            if (techFilter === 'COMPLETADAS') return o.status === 'EJECUTADO';
-            if (techFilter === 'DENEGADAS') return (o.status === 'RECHAZADO' || o.status === 'DENEGADO_DOCENTE' || o.status === 'CANCELADO_OTRA_EMPRESA');
-            return true;
-        });
-
-        const techOrdersHtml = filteredTechOrders.length === 0
-            ? `<div class="terminal-border border-dashed p-6 text-center text-slate-400 italic text-xs uppercase">No hay órdenes en esta vista.</div>`
-            : filteredTechOrders.map(order => {
-                const st = order.status || 'PENDIENTE_FINANZAS';
-                const isB2B = order.type === 'B2B_BUY_REQUEST' || !!order.offerId;
-                let stBadge = 'bg-amber-950/40 text-amber-400 border border-amber-500';
-                let stLabel = st;
-                let trackerHtml = '';
-
-                if (isB2B) {
-                    let b2bTrackerIdx = 0;
-                    if (st === 'PENDIENTE_DOCENTE') b2bTrackerIdx = 2;
-                    else if (st === 'APROBADO_DOCENTE') b2bTrackerIdx = 3;
-                    else if (st === 'EJECUTADO') b2bTrackerIdx = 3;
-                    else if (st === 'PENDIENTE_FINANZAS') b2bTrackerIdx = 1;
-
-                    trackerHtml = ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Aduana Docente', '4. Taller (Ejecuta)'], b2bTrackerIdx);
-
-                    if (st === 'PENDIENTE_FINANZAS') {
-                        stBadge = 'bg-amber-950/40 text-amber-300 border-amber-500 animate-pulse';
-                        stLabel = 'PENDIENTE FINANZAS';
-                    } else if (st === 'PENDIENTE_DOCENTE') {
-                        stBadge = 'bg-purple-950/40 text-purple-300 border-purple-400 animate-pulse';
-                        stLabel = '⏳ PENDIENTE DE DOCENTE (ADUANA)';
-                    } else if (st === 'APROBADO_DOCENTE') {
-                        stBadge = 'bg-blue-950/40 text-blue-300 border-blue-400';
-                        stLabel = '✓ APROBADO EN ADUANA (EN TALLER)';
-                    } else if (st === 'EJECUTADO') {
-                        stBadge = 'bg-emerald-950/40 text-emerald-400 border-emerald-500';
-                        stLabel = '✓ EJECUTADO EN TALLER';
-                    } else if (st === 'DENEGADO_DOCENTE') {
-                        stBadge = 'bg-rose-950/40 text-rose-400 border-rose-500';
-                        stLabel = '❌ DENEGADO EN ADUANA (REEMBOLSADO)';
-                    } else if (st === 'CANCELADO_OTRA_EMPRESA') {
-                        stBadge = 'bg-slate-900 text-slate-400 border-slate-700';
-                        stLabel = 'ADJUDICADO A OTRA STARTUP';
-                    }
-                } else {
-                    let trackerIdx = 0;
-                    if (st === 'APROBADO_FINANZAS') {
-                        stBadge = 'bg-blue-950/40 text-blue-400 border border-blue-500';
-                        trackerIdx = 1;
-                    } else if (st === 'EJECUTADO') {
-                        stBadge = 'bg-emerald-950/40 text-emerald-400 border border-emerald-500';
-                        trackerIdx = 2;
-                    } else if (st === 'RECHAZADO') {
-                        stBadge = 'bg-rose-950/40 text-rose-400 border border-rose-500';
-                        trackerIdx = 0;
-                    }
-                    trackerHtml = ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Logística (Ejecuta)'], trackerIdx);
+        const techPendingCount = techOrders.filter(o => o.type !== 'MARKETING' && (o.status === 'PENDIENTE_FINANZAS' || o.status === 'APROBADO_FINANZAS' || o.status === 'PENDIENTE_DOCENTE' || o.status === 'APROBADO_DOCENTE')).length;
+        const techCompletedCount = techOrders.filter(o => o.type !== 'MARKETING' && o.status === 'EJECUTADO').length;
+        const techRejectedCount = techOrders.filter(o => o.type !== 'MARKETING' && (o.status === 'RECHAZADO' || o.status === 'DENEGADO_DOCENTE' || o.status === 'CANCELADO_OTRA_EMPRESA')).length;
+        let currentBomCost = 0;
+        const bomKeysSet = new Set(Array.isArray(co.bom) ? co.bom : []);
+        techOrders.filter(o => o && (o.status === 'EJECUTADO' || ((o.status === 'APROBADO_FINANZAS' || o.status === 'APROBADO_DOCENTE') && o.partialExecuted))).forEach(o => {
+            (o.items || []).forEach((it, idx) => {
+                if ((o.status === 'EJECUTADO' || (it && it.executed)) && bomKeysSet.has(`${o.id}-${idx}`)) {
+                    currentBomCost += (Number(it.price) || 0) * (Number(it.qty) || 1);
                 }
-
-                return `
-                <div class="terminal-border bg-slate-900/90 border border-mars-border/80 p-4 mb-4">
-                    ${trackerHtml}
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-2 mb-3 gap-2">
-                        <div>
-                            <span class="text-xs font-black uppercase px-2 py-0.5 rounded ${stBadge}">${this.escapeHTML(stLabel)}</span>
-                            <h3 class="text-white font-orbitron font-bold uppercase text-xs sm:text-sm mt-1.5">${isB2B ? 'Orden B2B #' : 'Orden #'}${this.escapeHTML(order.id)}</h3>
-                        </div>
-                        <div class="text-left sm:text-right">
-                            <span class="text-mars-green font-mono font-bold text-sm sm:text-base">${Number(order.total).toFixed(2)} €v</span>
-                            <span class="block text-xs text-slate-400 font-mono">${this.escapeHTML(order.date || '--')}</span>
-                        </div>
-                    </div>
-
-                    ${(order.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(order.driveUrl))
-                        ? `<div class="mb-2">
-                            <a href="${encodeURI(order.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono">
-                                <span>📄 Ver Justificación Técnica DOC_9 en Docs ↗</span>
-                            </a>
-                        </div>`
-                        : ''
-                    }
-                    ${(order.sellerDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(order.sellerDriveUrl))
-                        ? `<div class="mb-2">
-                            <a href="${encodeURI(order.sellerDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-amber-950/40 text-amber-300 border border-amber-500/30 rounded hover:bg-amber-900/50 transition-colors font-mono">
-                                <span>📄 Memoria Vendedor en Docs ↗</span>
-                            </a>
-                        </div>`
-                        : ''
-                    }
-                    ${st === 'PENDIENTE_DOCENTE' ? `<p class="text-xs text-purple-300 font-mono mt-1 mb-2 p-2 bg-purple-950/30 border border-purple-500/30 rounded">🛃 Compra autorizada por Finanzas. Retenida en Aduana Docente a la espera de validación oficial.</p>` : ''}
-                    ${st === 'DENEGADO_DOCENTE' ? `<p class="text-xs text-rose-300 font-mono mt-1 mb-2 p-2 bg-rose-950/30 border border-rose-500/30 rounded">❌ Traspaso denegado por Aduana Docente. El 100% del importe ha sido reembolsado a Finanzas.</p>` : ''}
-
-                    <div class="space-y-1.5 bg-black/60 p-2.5 border border-slate-800 rounded">
-                        <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Partidas Solicitadas:</p>
-                        ${(order.items || []).map(it => `
-                            <div class="flex justify-between text-xs text-slate-300 gap-2">
-                                <span class="break-words">${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
-                                <span class="font-mono text-white shrink-0">${Number(it.price).toFixed(2)} €v</span>
-                            </div>
-                        `).join('')}
-                    </div>
-
-                    ${(st === 'EJECUTADO') ? `
-                    <div class="mt-3 pt-2.5 border-t border-slate-800 bg-black/50 p-2.5 rounded text-xs space-y-1.5">
-                        <div class="flex justify-between items-center text-[11px] font-bold text-mars-green uppercase">
-                            <span>📦 Ejecución y Ensamble en Taller:</span>
-                            <span class="font-mono ${state.user.admin ? 'text-white' : 'text-mars-green'}">${state.user.admin ? `Coste Real Total: ${(order.items || []).reduce((s, it) => s + (Number(it.realEur) || 0), 0).toFixed(2)} €` : 'COMPRA FÍSICA EJECUTADA'}</span>
-                        </div>
-                        <div class="space-y-1">
-                            ${(order.items || []).map(it => `
-                                <div class="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-300 gap-1 border-b border-slate-900 pb-1 last:border-0 font-mono">
-                                    <span class="text-white">${this.escapeHTML(it.name)} (x${Number(it.qty) || 1})</span>
-                                    <div class="flex items-center gap-2">
-                                        ${state.user.admin ? `<span>Real: <strong class="text-mars-yellow">${it.realEur !== undefined ? Number(it.realEur).toFixed(2) : '--'} €</strong></span>` : ''}
-                                        <span>Comercio: <strong class="text-slate-200">${this.escapeHTML(it.realShop || 'Comercio')}</strong></span>
-                                        ${(state.user.admin && it.ticketUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(it.ticketUrl))
-                                            ? `<a href="${encodeURI(it.ticketUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-mars-cyan hover:underline font-bold">[Ticket Drive ↗]</a>`
-                                            : ''
-                                        }
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>` : ''}
-                </div>`;
-            }).join('');
-
-        const trackingSectionHtml = '';
+            });
+        });
 
         const myHistoryCustom = Array.isArray(co.specialItemRequests) ? co.specialItemRequests : [];
         const legacyCustom = (state.data.pendingCustom || []).filter(p => p && p.company === state.user.coId && !myHistoryCustom.some(m => m.id === p.id));
@@ -433,7 +319,10 @@ Object.assign(ui, {
                                 <input type="number" id="ft-vinegar" placeholder="Vinagre (ml)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan w-full" step="1">
                             </div>
                             <div>
-                                <label for="ft-cost" class="text-xs text-slate-300 uppercase block mb-1">Coste Ensayo (€v)</label>
+                                <div class="flex justify-between items-center gap-1 mb-1">
+                                    <label for="ft-cost" class="text-xs text-slate-300 uppercase">Coste Ensayo (€v)</label>
+                                    ${currentBomCost > 0 ? `<button type="button" onclick="const el=document.getElementById('ft-cost'); if(el){el.value='${currentBomCost.toFixed(2)}'; ui.previewFlightEfficiency();}" class="text-[10px] font-mono px-1.5 py-0.5 bg-cyan-950/60 border border-mars-cyan/50 text-mars-cyan hover:bg-mars-cyan hover:text-black rounded font-bold transition-colors">[⚡ BOM: ${currentBomCost.toFixed(2)}]</button>` : ''}
+                                </div>
                                 <input type="number" id="ft-cost" oninput="ui.previewFlightEfficiency()" placeholder="Coste (€v)" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-magenta w-full" step="0.1">
                             </div>
                             <div>
@@ -489,7 +378,12 @@ Object.assign(ui, {
                     <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-amber-400">
                         <div class="flex justify-between items-center mb-2 border-b border-mars-border pb-2">
                             <h3 class="font-orbitron text-amber-400 text-xs sm:text-sm uppercase tracking-tight">Órdenes de Compra I+D</h3>
-                            <span class="text-xs font-mono text-slate-400">${(co.orders || []).length} Órdenes</span>
+                            <span class="text-xs font-mono text-slate-400">${(co.orders || []).filter(o => o.type !== 'MARKETING').length} Órdenes</span>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 mb-2.5 text-[11px] font-mono">
+                            <span class="px-2 py-0.5 bg-amber-950/40 border border-amber-500/40 text-amber-300 rounded">⏳ ${techPendingCount} en trámite</span>
+                            <span class="px-2 py-0.5 bg-emerald-950/40 border border-emerald-500/40 text-mars-green rounded">✓ ${techCompletedCount} en taller</span>
+                            ${techRejectedCount > 0 ? `<span class="px-2 py-0.5 bg-rose-950/40 border border-rose-500/40 text-rose-300 rounded">❌ ${techRejectedCount} denegadas</span>` : ''}
                         </div>
                         <p class="text-xs text-slate-300 mb-3">Consulta el estado de tramitación financiera y logística de todas las solicitudes de materiales.</p>
                         <button type="button" onclick="ui.navigate('orders')" class="w-full min-h-[44px] bg-slate-900 border border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-black font-black uppercase text-xs py-2 px-3 transition-all flex items-center justify-center gap-2">
@@ -538,12 +432,15 @@ Object.assign(ui, {
         co.bom = co.bom || [];
         co.orders = co.orders || [];
         
+        const canEditWorkshop = this.getEffectiveRole(co) === 'TECNICO' || Boolean(state.user?.admin);
         const wrapper = document.createElement('div');
 
         let executedItems = [];
-        co.orders.filter(o => o.status === 'EJECUTADO').forEach(o => {
+        co.orders.filter(o => o && (o.status === 'EJECUTADO' || ((o.status === 'APROBADO_FINANZAS' || o.status === 'APROBADO_DOCENTE') && o.partialExecuted))).forEach(o => {
             (o.items || []).forEach((item, idx) => {
-                executedItems.push({ ...item, orderId: o.id, itemIdx: idx, itemKey: `${o.id}-${idx}` });
+                if (o.status === 'EJECUTADO' || (item && item.executed === true)) {
+                    executedItems.push({ ...item, orderId: o.id, itemIdx: idx, itemKey: `${o.id}-${idx}` });
+                }
             });
         });
 
@@ -573,8 +470,14 @@ Object.assign(ui, {
             </div>
             <div class="space-y-1 font-mono text-[11px]">
                 ${inTransitOrders.map(o => {
-                    const stTxt = o.status === 'PENDIENTE_FINANZAS' ? '⏳ Turno de Finanzas' : (o.status === 'PENDIENTE_DOCENTE' ? '⏳ Aduana Docente' : '📦 En Taller de Operaciones');
-                    return `<div class="flex justify-between items-center gap-2 text-slate-200"><span class="truncate">Orden #${this.escapeHTML(o.id)} (${(o.items || []).length} uds)</span><span class="text-amber-300 shrink-0">${stTxt}</span></div>`;
+                    const itemsArr = Array.isArray(o.items) ? o.items : [];
+                    const doneCnt = itemsArr.filter(it => it && it.executed).length;
+                    const stTxt = o.status === 'PENDIENTE_FINANZAS'
+                        ? '⏳ Turno de Finanzas'
+                        : (o.status === 'PENDIENTE_DOCENTE'
+                            ? '⏳ Aduana Docente'
+                            : (doneCnt > 0 ? `📦 Parcial en Taller (${doneCnt}/${itemsArr.length} compradas)` : '📦 En Taller de Operaciones'));
+                    return `<div class="flex justify-between items-center gap-2 text-slate-200"><span class="truncate">Orden #${this.escapeHTML(o.id)} (${itemsArr.length} part.)</span><span class="text-amber-300 shrink-0">${stTxt}</span></div>`;
                 }).join('')}
             </div>
         </div>` : '';
@@ -619,16 +522,18 @@ Object.assign(ui, {
                     statusAction = `
                     <div class="flex items-center gap-1.5 flex-wrap">
                         <span class="text-[10px] bg-red-950/60 text-red-300 border border-red-500/40 px-2 py-0.5 font-bold uppercase">REVISAR PRECIO</span>
-                        <button type="button" onclick="ui.modalSellB2B('${this.escapeHTML(item.orderId)}', ${Number(item.itemIdx)})" class="min-h-[44px] bg-amber-500/20 border border-amber-500 text-amber-300 px-2.5 py-1 text-xs font-bold uppercase hover:bg-amber-500 hover:text-black transition-colors" title="Ajustar precio y reproponer a Finanzas">[REEDITAR B2B]</button>
+                        ${canEditWorkshop ? `<button type="button" onclick="ui.modalSellB2B('${this.escapeHTML(item.orderId)}', ${Number(item.itemIdx)})" class="min-h-[44px] bg-amber-500/20 border border-amber-500 text-amber-300 px-2.5 py-1 text-xs font-bold uppercase hover:bg-amber-500 hover:text-black transition-colors" title="Ajustar precio y reproponer a Finanzas">[REEDITAR B2B]</button>` : ''}
                     </div>`;
                 } else {
-                    statusAction = `<button type="button" onclick="ui.modalSellB2B('${this.escapeHTML(item.orderId)}', ${Number(item.itemIdx)})" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-3 py-1.5 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors whitespace-nowrap" title="Proponer venta B2B a Finanzas">[VENDER B2B]</button>`;
+                    statusAction = canEditWorkshop
+                        ? `<button type="button" onclick="ui.modalSellB2B('${this.escapeHTML(item.orderId)}', ${Number(item.itemIdx)})" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-3 py-1.5 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors whitespace-nowrap" title="Proponer venta B2B a Finanzas">[VENDER B2B]</button>`
+                        : `<span class="text-[10px] font-mono text-slate-500 uppercase">En stock I+D</span>`;
                 }
 
                 return `
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-900 p-2.5 border ${isSold ? 'border-slate-800 opacity-60' : (isListed ? 'border-mars-yellow/50' : (isPendingFin ? 'border-cyan-500/50' : 'border-mars-border'))} text-xs mb-2 gap-2.5">
-                    <label class="mars-checkbox-label flex items-center gap-2.5 text-white ${isLocked ? 'cursor-not-allowed line-through text-slate-400' : 'cursor-pointer'} min-w-0 flex-1 min-h-[44px]">
-                        <input type="checkbox" class="mars-touch-input" ${isChecked ? 'checked' : ''} ${isLocked ? 'disabled' : ''} onchange="ui.toggleBomItem('${this.escapeHTML(item.itemKey)}', this.checked)">
+                    <label class="mars-checkbox-label flex items-center gap-2.5 text-white ${(isLocked || !canEditWorkshop) ? 'cursor-not-allowed text-slate-300' : 'cursor-pointer'} ${isLocked ? 'line-through text-slate-400' : ''} min-w-0 flex-1 min-h-[44px]">
+                        <input type="checkbox" class="mars-touch-input" ${isChecked ? 'checked' : ''} ${(isLocked || !canEditWorkshop) ? 'disabled' : ''} onchange="ui.toggleBomItem('${this.escapeHTML(item.itemKey)}', this.checked)">
                         <span class="mars-checkbox-visual"></span>
                         <span class="break-words min-w-0 flex-1">${this.escapeHTML(item.name)} (x${itemQty})</span>
                     </label>
@@ -641,7 +546,7 @@ Object.assign(ui, {
             }).join('');
         }
 
-        const totalDevCost = co.orders.filter(o => o.status === 'EJECUTADO').reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+        const totalDevCost = executedItems.reduce((sum, it) => sum + ((Number(it.price) || 0) * (Number(it.qty) || 1)), 0);
         const grossCosts = state.getCompanyGrossOperatingCosts ? state.getCompanyGrossOperatingCosts(co) : 0;
         const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
         const opCosts = state.getCompanyOperatingCosts ? state.getCompanyOperatingCosts(co) : { gross: grossCosts, sponsorReduction: sponsorAmt, net: grossCosts };
@@ -684,7 +589,9 @@ Object.assign(ui, {
                     ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('tech-hoja-taller-drive-url') : ''}
                 </div>
                 <div class="flex justify-end pt-1">
-                    <button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ 🚀 ENVIAR ITERACIÓN A TALLER ]</button>
+                    ${canEditWorkshop
+                        ? `<button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ 🚀 ENVIAR ITERACIÓN A TALLER ]</button>`
+                        : `<span class="text-[11px] font-mono text-slate-400 uppercase">🔒 Envío reservado al Dpto. Técnico</span>`}
                 </div>
             </div>`;
         } else if (hojaStatus === 'EN_TALLER_OPERARIO') {
@@ -724,7 +631,9 @@ Object.assign(ui, {
                     ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('tech-hoja-taller-drive-url') : ''}
                 </div>
                 <div class="flex justify-end pt-1">
-                    <button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-amber-400 text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ 🔄 REENVIAR A TALLER ]</button>
+                    ${canEditWorkshop
+                        ? `<button type="button" onclick="ui.techSendHojaTaller()" class="min-h-[44px] bg-amber-400 text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ 🔄 REENVIAR A TALLER ]</button>`
+                        : `<span class="text-[11px] font-mono text-slate-400 uppercase">🔒 Subsanación reservada al Dpto. Técnico</span>`}
                 </div>
             </div>`;
         } else if (hojaStatus === 'SUBMITTED_TO_CEO') {
@@ -786,6 +695,8 @@ Object.assign(ui, {
 
         wrapper.innerHTML = `
         <div class="space-y-6">
+            ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
+            ${!canEditWorkshop ? `<div class="bg-slate-950 border border-slate-700 p-3 text-xs font-mono text-slate-300 rounded">🔒 Vista de solo lectura: La edición del BOM, ventas B2B y envíos de Hoja de Taller corresponden al Dpto. Técnico (I+D).</div>` : ''}
             <!-- Cabecera Taller -->
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
@@ -871,6 +782,9 @@ Object.assign(ui, {
         if (!state.user) return;
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
+        if (this.getEffectiveRole(co) !== 'TECNICO' && !state.user.admin) {
+            return this.notify("Solo el Departamento Técnico (I+D) puede modificar el desglose BOM.", "warning");
+        }
         co.bom = co.bom || [];
         
         if (isChecked) {

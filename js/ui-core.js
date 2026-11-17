@@ -1253,7 +1253,7 @@ const ui = {
         this.applyFocusMode(nextMode);
         this.notify(
             nextMode === 'calm'
-                ? '🧘 Modo Calma activado: animaciones y avisos sonoros pausados.'
+                ? 'Modo Calma activado: animaciones y avisos sonoros pausados.'
                 : '✨ Modo Estándar activado: efectos visuales espaciales restaurados.',
             'info'
         );
@@ -1290,7 +1290,7 @@ const ui = {
         }
         const loginBtn = document.getElementById('login-btn-calm');
         if (loginBtn) {
-            loginBtn.innerText = isCalm ? '🧘 Calma ON' : '🧘 Calma';
+            loginBtn.innerText = isCalm ? 'Calma ON' : 'Calma';
             loginBtn.className = isCalm
                 ? 'min-h-[44px] px-2.5 py-1.5 bg-emerald-950/70 border border-emerald-400 text-emerald-300 font-mono font-bold text-[11px] uppercase rounded-sm transition-all'
                 : 'min-h-[44px] px-2.5 py-1.5 bg-black/60 border border-slate-700 hover:border-mars-cyan text-slate-300 hover:text-mars-cyan font-mono font-bold text-[11px] uppercase rounded-sm transition-all';
@@ -1563,14 +1563,10 @@ const ui = {
             return { view: 'news' };
         }
 
-        // Licencia de Lanzamiento AESA
+        // Licencia de Lanzamiento AESA (Trámite común visible para toda la empresa)
         if (msg.includes('licencia') || msg.includes('aesa')) {
-            if (msg.includes('aprobada') || msg.includes('desbloqueado')) {
-                if (role === 'TECNICO') return { view: 'tech' };
-                if (role === 'CEO') return { view: 'dashboard' };
-                return { view: 'role_deliverables', section: 'deliverables' };
-            }
-            return role === 'CEO' ? { view: 'dashboard' } : { view: 'role_deliverables', section: 'deliverables' };
+            if (isAdmin) return { view: 'coordination' };
+            return { view: 'resolutions', anchorId: 'aesa-license-tramite-panel' };
         }
 
         // Balance de Cierre de Fase (DOC_17)
@@ -2378,6 +2374,22 @@ const ui = {
                     missionValue = `Tienes ${pendingOrders} pedido(s) esperando tu visto bueno financiero.`;
                     directActionView = 'orders';
                     directActionLabel = `⚡ Ir a Bóveda de Órdenes (${pendingOrders}) ➔`;
+                }
+            } else if (effectiveRole === 'MARKETING') {
+                const brandSt = co?.brandApproval?.status;
+                const returnedBrand = (brandSt === 'DEVUELTO_CEO' || brandSt === 'RECHAZADO');
+                const rejectedAction = (co?.marketingCampaigns || []).some(c => (c.executedActions || []).some(a => a.status === 'RECHAZADO_CEO'));
+                const rejectedPack = (co?.marketingCampaigns || []).some(c => c.status === 'DENEGADO');
+                if (returnedBrand) {
+                    missionLabel = brandSt === 'RECHAZADO' ? 'Propuesta de Marca Rechazada' : 'Slogan DOC_11 Devuelto por CEO';
+                    missionValue = 'Revisa las observaciones sobre el Slogan/Logo en DOC_11 y vuelve a presentar la propuesta.';
+                    directActionView = 'brand';
+                    directActionLabel = '⚡ Subsanar Slogan DOC_11 ➔';
+                } else if (rejectedAction || rejectedPack) {
+                    missionLabel = 'Acción o Pack de Campaña por Subsanar';
+                    missionValue = rejectedAction ? 'El CEO ha devuelto una acción DOC_12 con observaciones.' : 'Finanzas ha denegado un paquete de campaña; consulta el motivo.';
+                    directActionView = 'campaigns';
+                    directActionLabel = '⚡ Revisar en Campañas ➔';
                 }
             }
 
@@ -4063,18 +4075,26 @@ const ui = {
         this._openedDocUrls.add(String(url).trim());
     },
 
+    confirmDocOpenedBeforeAction(url, onProceed, actionLabel = 'Sí, Visar y Elevar') {
+        const cleanUrl = String(url || '').trim();
+        if (cleanUrl && (!this._openedDocUrls || !this._openedDocUrls.has(cleanUrl)) && typeof this.confirmAction === 'function') {
+            return this.confirmAction(
+                '📄 Confirmar Revisión del Documento',
+                'Aún no has abierto el enlace de Google Drive de este documento en esta sesión. ¿Confirmas que ya lo revisaste o deseas abrirlo antes?',
+                onProceed,
+                actionLabel
+            );
+        }
+        if (typeof onProceed === 'function') onProceed();
+    },
+
     approveDeliverableByCEO(docKey, skipReadCheck = false) {
         if (!state.user || this.getEffectiveRole() !== 'CEO') return;
         const co = state.data.companies?.[state.user.coId];
         const doc = co?.deliverables?.[docKey];
         const url = String(doc?.driveUrl || (typeof doc === 'string' ? doc : '') || '').trim();
-        if (!skipReadCheck && url && (!this._openedDocUrls || !this._openedDocUrls.has(url)) && typeof this.confirmAction === 'function') {
-            return this.confirmAction(
-                '📄 Confirmar Revisión del Documento',
-                'Aún no has abierto el enlace de Google Drive de este entregable en esta sesión. ¿Confirmas que ya lo revisaste o deseas abrirlo antes?',
-                () => this.approveDeliverableByCEO(docKey, true),
-                'Sí, Visar y Elevar'
-            );
+        if (!skipReadCheck) {
+            return this.confirmDocOpenedBeforeAction(url, () => this.approveDeliverableByCEO(docKey, true), 'Sí, Visar y Elevar');
         }
         state.approveDeliverableByCEO(docKey);
     },

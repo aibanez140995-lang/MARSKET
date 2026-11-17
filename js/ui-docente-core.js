@@ -1225,7 +1225,7 @@ Object.assign(ui, {
         state.save(coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
-        ui.pushNotification(coId, 'ALL', '🚀 ¡Licencia de Lanzamiento AESA aprobada por Coordinación Docente! El banco de pruebas de vuelo ha quedado desbloqueado.', 'success', { view: 'tech' });
+        ui.pushNotification(coId, 'ALL', '🚀 ¡Licencia de Lanzamiento AESA aprobada por Coordinación Docente! El banco de pruebas de vuelo ha quedado desbloqueado.', 'success', { view: 'resolutions', anchorId: 'aesa-license-tramite-panel' });
         this.notify(`✅ Licencia AESA aprobada para "${co.name}". Banco de pruebas desbloqueado.`, "success");
         this.render();
     },
@@ -1292,7 +1292,7 @@ Object.assign(ui, {
 
         const resubFee = (typeof LAUNCH_LICENSE_RESUBMISSION_FEE !== 'undefined') ? LAUNCH_LICENSE_RESUBMISSION_FEE : 10;
         const reportNote = reportUrl ? ' Incluye informe adjunto en Drive.' : '';
-        ui.pushNotification(coId, 'CEO', `❌ Licencia de Lanzamiento AESA denegada por Coordinación. Motivo: "${reason}".${reportNote} El CEO debe subsanar y reenviar la solicitud (tasa de subsanación: ${resubFee} €v).`, 'error', { view: 'dashboard' });
+        ui.pushNotification(coId, 'ALL', `❌ Licencia de Lanzamiento AESA denegada por Coordinación. Motivo: "${reason}".${reportNote} El CEO debe subsanar y reenviar la solicitud (tasa de subsanación: ${resubFee} €v).`, 'error', { view: 'resolutions', anchorId: 'aesa-license-tramite-panel' });
         this.closeModal();
         this.notify(`Licencia AESA denegada para "${co.name}".`, "info");
         this.render();
