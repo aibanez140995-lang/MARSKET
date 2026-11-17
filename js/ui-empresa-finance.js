@@ -507,7 +507,7 @@ Object.assign(ui, {
                                     <span class="block text-xs text-slate-300 font-mono">${this.escapeHTML(String(hoja.updatedAt || '').slice(0, 10))}</span>
                                 </div>
                             </div>
-                            ${hoja.driveUrl ? `<div class="mb-2"><a href="${encodeURI(hoja.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>📄 Ver Hoja de Taller en Docs ↗</span></a></div>` : ''}
+                            ${hoja.driveUrl ? `<div class="mb-2"><a href="${encodeURI(hoja.driveUrl).replace(/"/g, '&quot;')}" data-doc-url="${this.escapeAttr(hoja.driveUrl)}" onclick="ui.markDocOpened(this.dataset.docUrl)" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono min-h-[44px]"><span>📄 Ver Hoja de Taller en Docs ↗</span></a></div>` : ''}
                             ${(isCEO && hst === 'SUBMITTED_TO_CEO') ? `
                             <div class="flex flex-col sm:flex-row gap-2 mt-3 pt-2 border-t border-slate-800">
                                 <button type="button" onclick="ui.approveDeliverableByCEO('hoja_taller_fyq')" class="min-h-[44px] bg-mars-green text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1">[ ✓ VISAR HOJA TALLER ]</button>
@@ -533,15 +533,19 @@ Object.assign(ui, {
                     📦
                 </div>
                 <h4 class="font-orbitron text-mars-cyan text-xs sm:text-sm font-bold uppercase tracking-wider mb-1.5">BÓVEDA DE ÓRDENES VACÍA</h4>
-                <p class="text-xs text-slate-300 max-w-md mx-auto mb-4 leading-relaxed">No hay órdenes registradas con este filtro. Explora el SUPER-MARSKET o revisa las solicitudes de compras de los departamentos.</p>
+                <p class="text-xs text-slate-300 max-w-md mx-auto mb-4 leading-relaxed">No hay órdenes registradas con este filtro.</p>
                 <div class="flex flex-wrap justify-center gap-2">
-                    <button type="button" onclick="ui.navigate('market')" class="min-h-[44px] px-4 py-2 bg-mars-cyan text-black font-bold text-xs uppercase tracking-wider hover:bg-white transition-all shadow-sm">
-                        🛒 Explorar SUPER-MARSKET
-                    </button>
+                    ${effectiveRole === 'TECNICO' ? `
+                        <button type="button" onclick="ui.navigate('market')" class="min-h-[44px] px-4 py-2 bg-mars-cyan text-black font-bold text-xs uppercase tracking-wider hover:bg-white transition-all shadow-sm">
+                            🛒 Explorar SUPER-MARSKET
+                        </button>` : ''}
                     ${isFinanzas ? `
-                    <button type="button" onclick="ui.navigate('finance')" class="min-h-[44px] px-4 py-2 bg-slate-900 border border-slate-700 text-slate-200 hover:text-white font-bold text-xs uppercase tracking-wider transition-all">
-                        💰 Consultar Libro Mayor
+                    <button type="button" onclick="ui.navigate('finance')" class="min-h-[44px] px-4 py-2 bg-mars-cyan text-black font-bold text-xs uppercase tracking-wider hover:bg-white transition-all shadow-sm">
+                        💰 Ir a Finanzas & Movimientos
                     </button>` : ''}
+                    <button type="button" onclick="ui.navigate('role_deliverables')" class="min-h-[44px] px-4 py-2 bg-slate-900 border border-slate-700 text-slate-200 hover:text-white font-bold text-xs uppercase tracking-wider transition-all">
+                        📤 Ver Mis Entregables
+                    </button>
                 </div>
             </div>`
             : allUnifiedItems.slice(0, visibleLimit).map(it => it.html).join('');
@@ -594,16 +598,18 @@ Object.assign(ui, {
         co.cart.forEach(item => {
             const sum = item.price * item.qty;
             total += sum;
+            const isConsumable = this.isConsumableCatalogItem ? this.isConsumableCatalogItem(item) : false;
             html += `
             <div data-cart-item="${this.escapeHTML(item.id)}" class="flex flex-wrap justify-between items-center gap-2 text-xs bg-black p-2.5 border border-slate-800 transition-all duration-300">
                 <div class="flex-grow min-w-0">
                     <span class="text-mars-cyan font-bold uppercase block break-words">${this.escapeHTML(item.name)}</span>
                     <span class="text-slate-300 block">${Number(item.price).toFixed(2)} €v / ${this.escapeHTML(item.unit)}</span>
                 </div>
-                <div class="flex items-center gap-2 shrink-0">
+                <div class="flex items-center gap-1.5 shrink-0">
                     <button type="button" aria-label="Disminuir cantidad de ${this.escapeHTML(item.name)}" onclick="ui.removeFromCart('${this.escapeHTML(item.id)}')" class="min-h-[44px] min-w-[44px] border border-mars-magenta/50 text-mars-magenta font-black px-2 hover:bg-mars-magenta/20 flex items-center justify-center">-</button>
                     <span class="cart-item-qty text-white font-mono w-6 text-center font-bold">${Number(item.qty)}</span>
-                    <button type="button" aria-label="Aumentar cantidad de ${this.escapeHTML(item.name)}" onclick="ui.addToCart('${this.escapeHTML(item.id)}'); ui.modalCheckout()" class="min-h-[44px] min-w-[44px] border border-mars-green/50 text-mars-green font-black px-2 hover:bg-mars-green/20 flex items-center justify-center">+</button>
+                    <button type="button" aria-label="Aumentar 1 de ${this.escapeHTML(item.name)}" onclick="ui.addToCart('${this.escapeHTML(item.id)}', 1, true)" class="min-h-[44px] min-w-[44px] border border-mars-green/50 text-mars-green font-black px-2 hover:bg-mars-green/20 flex items-center justify-center">+</button>
+                    ${isConsumable ? `<button type="button" aria-label="Aumentar 5 de ${this.escapeHTML(item.name)}" onclick="ui.addToCart('${this.escapeHTML(item.id)}', 5, true)" class="min-h-[44px] min-w-[44px] border border-mars-cyan/50 text-mars-cyan font-black px-2 hover:bg-mars-cyan/20 flex items-center justify-center font-mono">+5</button>` : ''}
                     <span class="cart-item-subtotal text-mars-green font-mono font-bold w-20 text-right">${sum.toFixed(2)} €v</span>
                 </div>
             </div>`;
@@ -652,12 +658,13 @@ Object.assign(ui, {
         if (btnCart) btnCart.disabled = true;
 
         co.orders = co.orders || [];
+        const computedTotal = co.cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.qty) || 1), 0);
         const orderNum = ui.getNextOrderNumber ? ui.getNextOrderNumber(co) : String(Date.now()).slice(-3);
         const newOrder = {
             id: orderNum,
             type: 'B2C_ORDER',
             items: JSON.parse(JSON.stringify(co.cart)),
-            total: total,
+            total: computedTotal,
             driveUrl: driveUrl,
             status: 'PENDIENTE_FINANZAS',
             date: new Date().toLocaleString()
@@ -667,7 +674,7 @@ Object.assign(ui, {
         co.cart = [];
         this._lastOrderDriveUrl = '';
         
-        ui.pushNotification(state.user.coId, 'FINANZAS', `Nueva orden #${newOrder.id} (${total.toFixed(2)} €v) recibida de I+D. Requiere validación urgente.`, 'warning', { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' });
+        ui.pushNotification(state.user.coId, 'FINANZAS', `Nueva orden #${newOrder.id} (${computedTotal.toFixed(2)} €v) recibida de I+D. Requiere validación urgente.`, 'warning', { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' });
         telemetry.log("ORDEN ENVIADA", `I+D generó orden #${newOrder.id}`);
         state.save();
         this.closeModal();
@@ -1236,6 +1243,19 @@ Object.assign(ui, {
         const totalPendingFinCount = pendingOrdersList.length + pendingB2BSales.length + pendingMktPacks.length;
 
         const isFinBankrupt = Boolean(this.isCompanyBankrupt && this.isCompanyBankrupt(co));
+        const finStatusBannerHtml = isFinanzas ? (totalPendingFinCount > 0 ? `
+            <div class="mb-4 p-3.5 bg-amber-950/50 border border-amber-500/60 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
+                <span class="font-bold text-mars-yellow uppercase">👉 Tienes ${totalPendingFinCount} solicitud(es) pendiente(s) de tu firma en la Bandeja inferior.</span>
+                <span class="text-[11px] text-slate-300 font-sans">Revisa las partidas o aprueba con 1 clic para desbloquear al equipo.</span>
+            </div>` : `
+            <div class="mb-4 p-3.5 bg-emerald-950/30 border border-emerald-500/40 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
+                <div>
+                    <span class="font-bold text-emerald-300 uppercase block">🟢 Todo al día en Finanzas (0 solicitudes pendientes)</span>
+                    <span class="text-[11px] text-slate-300 font-sans">Cuando Técnico o Marketing envíen compras o packs de campaña, aparecerán aquí para tu visto bueno.</span>
+                </div>
+                <button type="button" onclick="ui.navigate('role_deliverables')" class="min-h-[44px] shrink-0 px-3.5 py-2 bg-slate-900 border border-emerald-500/50 text-emerald-300 hover:bg-emerald-500 hover:text-black font-bold text-xs uppercase rounded">📤 Mis Entregables ➔</button>
+            </div>`) : '';
+
         let pendingAuthorizationsHtml = '';
         if (isFinanzas && totalPendingFinCount > 0) {
             pendingAuthorizationsHtml = `
@@ -1252,6 +1272,7 @@ Object.assign(ui, {
                 <div class="space-y-3">
                     ${pendingOrdersList.map(order => {
                         const isB2BBuy = order.type === 'B2B_BUY_REQUEST';
+                        const itemsSummary = (order.items || []).map(i => `${this.escapeHTML(i.name)} ×${Number(i.qty) || 1}`).join(' · ');
                         return `
                         <div class="bg-black/70 border border-amber-500/50 p-3.5 rounded flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                             <div class="min-w-0 flex-1">
@@ -1264,12 +1285,13 @@ Object.assign(ui, {
                                 <h4 class="text-white font-bold text-xs sm:text-sm uppercase">
                                     ${isB2BBuy ? `${this.escapeHTML(order.items[0]?.name || 'Pieza B2B')} (Vendedor: ${this.escapeHTML(order.sellerName || 'Otra Empresa')})` : `${(order.items || []).length} Partidas solicitadas por I+D`}
                                 </h4>
+                                ${(!isB2BBuy && itemsSummary) ? `<p class="text-[11px] text-slate-300 font-sans mt-0.5 break-words">${itemsSummary}</p>` : ''}
                                 <div class="flex items-center gap-2 mt-1">
                                     <span class="text-mars-green font-mono font-bold text-sm">${Number(order.total).toFixed(2)} €v</span>
-                                    ${order.driveUrl ? `<a href="${encodeURI(order.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-mars-cyan underline font-mono text-[11px]">[Docs ↗]</a>` : ''}
+                                    ${order.driveUrl ? `<a href="${encodeURI(order.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-2 py-1 text-mars-cyan underline font-mono text-xs">[Docs ↗]</a>` : ''}
                                 </div>
                             </div>
-                            <div class="flex items-center gap-2 shrink-0 w-full md:w-auto">
+                            <div class="flex flex-wrap items-center gap-2 shrink-0 w-full md:w-auto">
                                 ${isB2BBuy ? `
                                     ${isFinBankrupt
                                         ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] flex-1 md:flex-initial bg-slate-900 border border-rose-500/60 text-rose-300 px-4 py-2 text-xs font-black uppercase cursor-not-allowed">🔒 Bloqueado (≤ 0 €v)</button>`
@@ -1281,7 +1303,8 @@ Object.assign(ui, {
                                 ` : `
                                     ${isFinBankrupt
                                         ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] flex-1 md:flex-initial bg-slate-900 border border-rose-500/60 text-rose-300 px-4 py-2 text-xs font-black uppercase cursor-not-allowed">🔒 Bloqueado (≤ 0 €v)</button>`
-                                        : `<button type="button" onclick="ui.modalReviewOrderFinanzas('${this.escapeHTML(order.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-green text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">Revisar y Autorizar Partidas</button>`
+                                        : `<button type="button" onclick="ui.approveOrder('${this.escapeHTML(order.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-green text-black px-3.5 py-2 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">[ ✓ Aprobar Todo ]</button>
+                                           <button type="button" onclick="ui.modalReviewOrderFinanzas('${this.escapeHTML(order.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-slate-800 border border-mars-cyan text-mars-cyan px-3 py-2 text-xs font-bold uppercase hover:bg-mars-cyan hover:text-black transition-all">⚙️ Revisar Partidas</button>`
                                     }
                                     <button type="button" onclick="ui.modalRejectOrderWithDoc('${this.escapeHTML(order.id)}')" class="min-h-[44px] flex-1 md:flex-initial bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-3 py-2 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all">
                                         Denegar Orden
@@ -1352,6 +1375,7 @@ Object.assign(ui, {
 
         wrapper.innerHTML = `
         ${debtAlertHtml}
+        ${finStatusBannerHtml}
         ${pendingAuthorizationsHtml}
         ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
         ${this.renderRoleActivePhaseDeliverableBanner ? this.renderRoleActivePhaseDeliverableBanner(co) : ''}
@@ -1378,10 +1402,10 @@ Object.assign(ui, {
                 <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-cyan">
                     <div class="flex flex-wrap justify-between items-center mb-3 border-b border-mars-border pb-2 gap-2">
                         <div>
-                            <h3 class="font-orbitron text-mars-cyan text-sm uppercase tracking-tighter">Libro Mayor (Ledger Inmutable)</h3>
-                            <p class="text-xs text-slate-300 uppercase mt-0.5">Asientos contables ordenados cronológicamente.</p>
+                            <h3 class="font-orbitron text-mars-cyan text-sm uppercase tracking-tighter">Historial de Cobros y Pagos</h3>
+                            <p class="text-xs text-slate-300 uppercase mt-0.5">Movimientos de €v ordenados cronológicamente (del más reciente al más antiguo).</p>
                         </div>
-                        <span class="text-xs bg-slate-800 text-slate-200 font-mono px-2.5 py-1 border border-slate-700">${co.ledger.length} Asientos</span>
+                        <span class="text-xs bg-slate-800 text-slate-200 font-mono px-2.5 py-1 border border-slate-700">${co.ledger.length} Movimientos</span>
                     </div>
                     <div class="max-h-80 overflow-x-auto overflow-y-auto pr-1">
                         <table class="w-full text-left text-xs font-mono whitespace-nowrap min-w-max">

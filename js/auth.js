@@ -526,11 +526,12 @@ const auth = (function() {
                 return;
             }
 
+            const isCeoNav = (role === 'CEO') || (role === 'AUXILIAR' && auxDept === 'CEO');
             const tabDefs = {
                 'dashboard': { id: 'dashboard', label: '🎖️ Sala de Mando', badge: 'badge-dashboard' },
                 'contracts': { id: 'contracts', label: '🤝 Contratos & Patrocinios' },
                 'orders': { id: 'orders', label: '📡 Seguimiento de Órdenes', badge: 'badge-orders' },
-                'role_deliverables': { id: 'role_deliverables', label: '📤 Entregables & Dossier', badge: 'badge-deliverables' },
+                'role_deliverables': { id: 'role_deliverables', label: isCeoNav ? '📋 Supervisión Entregas' : '📤 Entregables & Dossier', badge: 'badge-deliverables' },
                 'finance': { id: 'finance', label: '💰 Finanzas & ECO', badge: 'badge-finance' },
                 'tech': { id: 'tech', label: '🧪 Banco I+D' },
                 'tech_workshop': { id: 'tech_workshop', label: '🔧 Taller', badge: 'badge-workshop' },

@@ -578,7 +578,7 @@ Object.assign(ui, {
                             <button type="button" onclick="ui.inspectDeliverableDrawer('${this.escapeHTML(targetCoId)}', '${this.escapeHTML(def.key)}')" class="min-h-[44px] flex-1 sm:flex-initial bg-slate-800 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-black uppercase text-xs px-3 py-2 transition-all">
                                 [ 🔍 INSPECCIONAR ]
                             </button>
-                            ${docObj ? `<a href="${this.escapeHTML(docObj.driveUrl || docObj.url || docObj.dataUrl || '#')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs px-3 py-2 hover:bg-white transition-all flex items-center justify-center">🔗 ABRIR</a>` : ''}
+                            ${docObj ? `<a href="${this.escapeHTML(docObj.driveUrl || docObj.url || docObj.dataUrl || '#')}" data-doc-url="${this.escapeAttr(docObj.driveUrl || docObj.url || docObj.dataUrl || '')}" onclick="ui.markDocOpened(this.dataset.docUrl)" target="_blank" rel="noopener noreferrer" class="min-h-[44px] bg-mars-cyan text-black font-black uppercase text-xs px-3 py-2 hover:bg-white transition-all flex items-center justify-center">🔗 ABRIR</a>` : ''}
                         </div>
                     </div>`;
                 }).join('');
@@ -746,15 +746,28 @@ Object.assign(ui, {
                     </div>
                 ` : ''}
                 ${totalTrayPendingItems === 0 ? `
-                    <div class="p-5 bg-slate-900/60 border border-slate-800 text-center rounded">
+                    <div class="p-5 bg-slate-900/60 border border-slate-800 text-center rounded space-y-2.5">
                         ${clockMetrics.phaseDeliveredCount >= clockMetrics.phaseTotalCount && clockMetrics.phaseTotalCount > 0 ? `
                             <p class="text-xs font-mono text-emerald-400 uppercase font-bold">✨ Todos los entregables de Fase ${this.escapeHTML(clockMetrics.phaseInfo.key)} están entregados al Claustro.</p>
                         ` : `
                             <p class="text-xs font-mono text-cyan-300 uppercase font-bold">⏳ Sin visados en espera ahora mismo (${clockMetrics.phaseDeliveredCount}/${clockMetrics.phaseTotalCount} hitos completados en Fase ${this.escapeHTML(clockMetrics.phaseInfo.key)}).</p>
-                            <p class="text-[11px] text-slate-300 mt-1 font-sans">Faltan ${Math.max(0, clockMetrics.phaseTotalCount - clockMetrics.phaseDeliveredCount)} hito(s) en elaboración por tus departamentos. Cuando los suban, aparecerán aquí para tu firma.</p>
+                            <p class="text-[11px] text-slate-300 font-sans">Faltan ${Math.max(0, clockMetrics.phaseTotalCount - clockMetrics.phaseDeliveredCount)} hito(s) en elaboración por tus departamentos. Cuando los suban, aparecerán aquí para tu firma.</p>
                         `}
+                        ${(() => {
+                            const hasPhaseContract = Object.values(co.contracts || {}).some(c => c && c.phase === clockMetrics.phaseInfo.key);
+                            const openMotions = (co.votingMotions || []).filter(m => m && m.status === 'ABIERTA').length;
+                            const unreadCris = (co.crisisAlerts || []).some(a => a && !a.read);
+                            if (unreadCris) {
+                                return `<p class="text-xs font-sans text-rose-300 font-bold">👉 Siguiente acción prioritaria: Comunicar la alerta disciplinaria AEE superior.</p>`;
+                            } else if (openMotions > 0) {
+                                return `<div class="pt-1 flex justify-center"><button type="button" onclick="ui.navigate('resolutions')" class="min-h-[44px] px-4 py-2 bg-slate-800 border border-mars-yellow/60 text-mars-yellow hover:bg-mars-yellow hover:text-black font-bold text-xs uppercase rounded">⚖️ Siguiente acción: Revisar ${openMotions} moción(es) en Asamblea ➔</button></div>`;
+                            } else if (!hasPhaseContract) {
+                                return `<div class="pt-1 flex justify-center"><button type="button" onclick="ui.navigate('contracts')" class="min-h-[44px] px-4 py-2 bg-slate-800 border border-mars-cyan/60 text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold text-xs uppercase rounded">🤝 Siguiente acción: Elegir Contrato Comercial de Fase ${this.escapeHTML(clockMetrics.phaseInfo.key)} ➔</button></div>`;
+                            }
+                            return '';
+                        })()}
                         ${pendingSpecialItemsCount > 0 ? `
-                            <p class="text-xs font-mono text-mars-magenta mt-2 font-bold">🔬 Tienes ${pendingSpecialItemsCount} solicitud(es) de material especial I+D pendiente(s) en el panel inferior.</p>
+                            <p class="text-xs font-mono text-mars-magenta pt-1 font-bold">🔬 Tienes ${pendingSpecialItemsCount} solicitud(es) de material especial I+D pendiente(s) en el panel inferior.</p>
                         ` : ''}
                     </div>
                 ` : (visibleTotalCount === 0 ? `
@@ -861,7 +874,7 @@ Object.assign(ui, {
                                     <div class="mt-2.5 flex flex-wrap items-center gap-2">
                                         ${this.renderDocTemplateBtn(d.key)}
                                         ${doc?.driveUrl ? `
-                                            <a href="${encodeURI(doc.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                            <a href="${encodeURI(doc.driveUrl).replace(/"/g, '&quot;')}" data-doc-url="${this.escapeAttr(doc.driveUrl)}" onclick="ui.markDocOpened(this.dataset.docUrl)" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
                                                 <span>📄 Abrir Documento en Docs ↗</span>
                                             </a>
                                         ` : ''}
@@ -2076,7 +2089,7 @@ Object.assign(ui, {
                     <div class="flex flex-wrap items-center gap-2 pt-1">
                         ${this.renderDocTemplateBtn(def.key) || `<span class="min-h-[44px] inline-flex items-center px-3 py-1.5 text-[11px] bg-slate-900/70 text-slate-400 border border-slate-800 rounded font-mono">📄 Plantilla Google Docs aún no adjuntada por Coordinación</span>`}
                         ${docObj?.driveUrl ? `
-                            <a href="${encodeURI(docObj.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/50 text-cyan-300 border border-cyan-500/40 rounded font-mono hover:bg-cyan-900/60 transition-colors">
+                            <a href="${encodeURI(docObj.driveUrl).replace(/"/g, '&quot;')}" data-doc-url="${this.escapeAttr(docObj.driveUrl)}" onclick="ui.markDocOpened(this.dataset.docUrl)" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/50 text-cyan-300 border border-cyan-500/40 rounded font-mono hover:bg-cyan-900/60 transition-colors">
                                 <span>📄 Abrir Mi Documento en Google Docs ↗</span>
                             </a>
                         ` : ''}

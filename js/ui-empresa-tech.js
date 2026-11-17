@@ -260,6 +260,17 @@ Object.assign(ui, {
                         ${(() => {
                             const license = co.launchLicense;
                             const isLicenseApproved = Boolean(state.user?.admin || (license && license.status === 'APROBADA'));
+                            const prelimDoc = co.deliverables?.preliminaryReport;
+                            const isPrelimDelivered = Boolean(prelimDoc && ((prelimDoc.status === 'DELIVERED_TO_TEACHER' && prelimDoc.driveUrl) || (typeof prelimDoc === 'string' && prelimDoc.length > 0)));
+                            const isPrelimAtCeo = Boolean(prelimDoc && prelimDoc.status === 'SUBMITTED_TO_CEO');
+                            let aesaStepIdx = 0;
+                            if (license && license.status === 'PENDIENTE_DOCENTE') aesaStepIdx = 3;
+                            else if (license && license.status === 'DENEGADA') aesaStepIdx = 2;
+                            else if (isPrelimDelivered) aesaStepIdx = 2;
+                            else if (isPrelimAtCeo) aesaStepIdx = 1;
+                            const aesaTracker = (!isLicenseApproved && this.renderWorkflowTracker)
+                                ? this.renderWorkflowTracker(['1. Preliminar I+D', '2. Visado CEO', '3. AESA (50 €v)', '4. Claustro'], aesaStepIdx)
+                                : '';
                             if (isLicenseApproved) {
                                 return `
                                     <div class="p-3 mb-4 bg-emerald-950/40 border border-emerald-500 rounded text-xs flex items-center justify-between gap-2">
@@ -272,7 +283,8 @@ Object.assign(ui, {
                             }
                             if (license && license.status === 'PENDIENTE_DOCENTE') {
                                 return `
-                                    <div class="p-3.5 mb-4 bg-amber-950/60 border border-amber-500 rounded text-xs space-y-1">
+                                    <div class="p-3.5 mb-4 bg-amber-950/60 border border-amber-500 rounded text-xs space-y-2">
+                                        ${aesaTracker}
                                         <div class="flex items-center gap-2 text-amber-400 font-bold uppercase">
                                             <span>⏳ LICENCIA AESA TRAMITADA // PENDIENTE DE VALIDACIÓN DOCENTE</span>
                                         </div>
@@ -286,6 +298,7 @@ Object.assign(ui, {
                                 const hasReportUrl = Boolean(license.rejectReportUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(license.rejectReportUrl));
                                 return `
                                     <div class="p-3.5 mb-4 bg-red-950/70 border border-red-500 rounded text-xs space-y-2">
+                                        ${aesaTracker}
                                         <div class="flex items-center gap-2 text-red-400 font-bold uppercase">
                                             <span>❌ LICENCIA AESA DENEGADA POR COORDINACIÓN</span>
                                         </div>
@@ -305,17 +318,28 @@ Object.assign(ui, {
                                     </div>`;
                             }
                             return `
-                                <div class="p-3.5 mb-4 bg-red-950/60 border border-red-500 rounded text-xs space-y-1">
+                                <div class="p-3.5 mb-4 bg-red-950/60 border border-red-500 rounded text-xs space-y-2">
+                                    ${aesaTracker}
                                     <div class="flex items-center gap-2 text-red-400 font-bold uppercase">
                                         <span>🔒 BANCO DE PRUEBAS BLOQUEADO // LICENCIA AESA REQUERIDA (FASE II)</span>
                                     </div>
                                     <p class="text-slate-200">
-                                        Para registrar vuelos, el <strong>CEO</strong> debe tramitar la <strong>Solicitud de Permiso Oficial AESA (DOC_14)</strong> con tasa de 50 €v en la Sala de Mando (habilitada tras la entrega del Informe Técnico Preliminar al Claustro Docente).
+                                        ${isPrelimDelivered
+                                            ? '¡Informe Técnico Preliminar ya entregado! Ahora el <strong>CEO</strong> debe tramitar la <strong>Licencia Oficial AESA (DOC_14, 50 €v)</strong> en su Sala de Mando.'
+                                            : (isPrelimAtCeo
+                                                ? 'Tu <strong>Informe Técnico Preliminar</strong> está pendiente de visado en la Sala de Mando del <strong>CEO</strong> para desbloquear la Licencia AESA.'
+                                                : 'Para desbloquear los lanzamientos, primero sube el <strong>Informe Técnico Preliminar (FYQ)</strong> desde <em>Mis Entregables</em> y luego el CEO tramitará la Licencia AESA (50 €v).')}
                                     </p>
                                 </div>`;
                         })()}
 
-                        <div class="bg-black border border-mars-border p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                        ${(() => {
+                            const canFlyNow = Boolean(state.user?.admin || (co.launchLicense && co.launchLicense.status === 'APROBADA'));
+                            const formFieldsHtml = `
+                        <div class="bg-black border border-mars-border p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                            <div class="sm:col-span-2 md:col-span-3 text-[11px] font-sans text-cyan-200 bg-cyan-950/30 border border-cyan-500/30 px-2.5 py-1.5 rounded">
+                                ℹ️ <strong>Nota:</strong> El <em>Coste Ensayo (€v)</em> introducido abajo <strong>solo calcula E = H / C</strong>; no descuenta dinero real ni virtual del saldo.
+                            </div>
                             <div>
                                 <label for="ft-bottle" class="text-xs text-slate-300 uppercase block mb-1">Fuselaje / Botella</label>
                                 <select id="ft-bottle" class="min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow w-full">
@@ -353,13 +377,23 @@ Object.assign(ui, {
                                 </div>
                             </div>
                             <div class="flex items-end">
-                                ${Boolean(state.user?.admin || (co.launchLicense && co.launchLicense.status === 'APROBADA')) ? `
+                                ${canFlyNow ? `
                                     <button type="button" onclick="ui.submitFlightTest()" class="min-h-[44px] bg-mars-yellow text-black font-black uppercase tracking-wider hover:bg-white transition-all py-2.5 px-3 w-full">Registrar Vuelo</button>
                                 ` : `
                                     <button type="button" onclick="ui.notify('⛔ Banco bloqueado: Requiere Licencia de Lanzamiento AESA (DOC_14) tramitada por el CEO y aprobada por Coordinación.', 'error')" class="min-h-[44px] bg-slate-800 text-slate-500 border border-slate-700 font-black uppercase tracking-wider cursor-not-allowed py-2.5 px-3 w-full">🔒 Vuelos Bloqueados</button>
                                 `}
                             </div>
-                        </div>
+                        </div>`;
+                            return canFlyNow
+                                ? `<div class="mb-6">${formFieldsHtml}</div>`
+                                : `<details class="mb-6 bg-slate-950 border border-slate-800 rounded">
+                                    <summary class="min-h-[44px] px-4 py-2.5 cursor-pointer flex items-center justify-between gap-2 text-xs font-mono text-slate-300 hover:text-white select-none">
+                                        <span>🔒 Ver campos del formulario de ensayo (Se desbloquea con Licencia AESA)</span>
+                                        <span class="text-mars-cyan shrink-0">▼ Ver</span>
+                                    </summary>
+                                    <div class="p-2 pt-0">${formFieldsHtml}</div>
+                                   </details>`;
+                        })()}
                         <div class="overflow-x-auto w-full max-h-60 overflow-y-auto">
                             <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
                                 <thead class="text-slate-300 uppercase border-b border-mars-border sticky top-0 bg-mars-card">
@@ -449,13 +483,40 @@ Object.assign(ui, {
             if (isListed || isPendingFin) b2bCount++;
         });
 
+        const inTransitOrders = (co.orders || []).filter(o => o.type !== 'MARKETING' && (o.status === 'PENDIENTE_FINANZAS' || o.status === 'APROBADO_FINANZAS' || o.status === 'PENDIENTE_DOCENTE' || o.status === 'APROBADO_DOCENTE'));
         let bomTotal = 0;
         let bomHtml = '';
 
+        const transitBannerHtml = inTransitOrders.length > 0 ? `
+        <div class="bg-cyan-950/30 border border-cyan-500/40 p-3 rounded mb-3 space-y-1.5 text-xs">
+            <div class="flex justify-between items-center gap-2 flex-wrap">
+                <span class="font-bold text-mars-cyan uppercase">🚚 Órdenes en tránsito hacia Taller (${inTransitOrders.length})</span>
+                <button type="button" onclick="ui.navigate('orders')" class="min-h-[44px] px-3 py-1 bg-slate-900 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-900/50 font-mono text-xs uppercase rounded">Ver detalle ↗</button>
+            </div>
+            <div class="space-y-1 font-mono text-[11px]">
+                ${inTransitOrders.map(o => {
+                    const stTxt = o.status === 'PENDIENTE_FINANZAS' ? '⏳ Turno de Finanzas' : (o.status === 'PENDIENTE_DOCENTE' ? '⏳ Aduana Docente' : '📦 En Taller de Operaciones');
+                    return `<div class="flex justify-between items-center gap-2 text-slate-200"><span class="truncate">Orden #${this.escapeHTML(o.id)} (${(o.items || []).length} uds)</span><span class="text-amber-300 shrink-0">${stTxt}</span></div>`;
+                }).join('')}
+            </div>
+        </div>` : '';
+
         if (executedItems.length === 0) {
-            bomHtml = `<p class="text-slate-300 italic text-xs">No hay componentes adquiridos y ejecutados físicamente en inventario.</p>`;
+            const hasCart = Array.isArray(co.cart) && co.cart.length > 0;
+            bomHtml = transitBannerHtml + `
+            <div class="bg-black/50 border border-dashed border-slate-700 p-4 rounded text-xs space-y-2.5 font-sans">
+                <p class="font-bold text-white uppercase font-mono">👉 ¿Quién tiene la pelota ahora?</p>
+                <p class="text-slate-300">
+                    ${inTransitOrders.length > 0
+                        ? 'Ya habéis pedido material: espera a que Finanzas autorice (o Operaciones recepcione la compra física en Taller) para marcar aquí las piezas del BOM.'
+                        : (hasCart
+                            ? `Tienes <strong>${co.cart.length} partida(s) en el Carrito</strong> sin enviar a Finanzas. Ábrelo desde SUPER-MARSKET y remítelo con DOC_9.`
+                            : 'Aún no hay piezas compradas. El primer paso de I+D es entrar en <strong>SUPER-MARSKET</strong>, elegir materiales y enviar el pedido a Finanzas.')}
+                </p>
+                <button type="button" onclick="ui.navigate('market')" class="min-h-[44px] px-4 py-2 bg-mars-cyan text-black font-black uppercase text-xs hover:bg-white transition-all rounded-sm">🛒 Ir a SUPER-MARSKET ➔</button>
+            </div>`;
         } else {
-            bomHtml = executedItems.map(item => {
+            bomHtml = transitBannerHtml + executedItems.map(item => {
                 const isSold = item.b2bStatus === 'VENDIDO';
                 const isListed = item.b2bStatus === 'EN_VENTA';
                 const isPendingFin = item.b2bStatus === 'PENDIENTE_FINANZAS';

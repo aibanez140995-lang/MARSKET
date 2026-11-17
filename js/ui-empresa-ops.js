@@ -6,6 +6,14 @@ Object.assign(ui, {
         return this.modalReportAI();
     },
 
+    applyShopToOrder(orderId, shopName) {
+        if (!orderId || !shopName) return;
+        const selects = document.querySelectorAll(`[id^="real-shop-${CSS.escape(String(orderId))}-"]`);
+        selects.forEach(sel => {
+            sel.value = shopName;
+        });
+    },
+
     viewCart(el) {
         if (!el || !state.user) return; 
         const co = state.data.companies[state.user.coId];
@@ -44,7 +52,26 @@ Object.assign(ui, {
                             <p class="text-xs text-slate-300 uppercase">${this.escapeHTML(order.date)}</p>
                         </div>
                     </div>
-                    <p class="text-xs text-mars-yellow uppercase font-bold mb-3">${isB2B ? 'Registra la recepción física de la pieza B2B de segunda mano en taller:' : 'Registra el coste real físico (€) y el comercio oficial de adquisición:'}</p>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                        <p class="text-xs text-mars-yellow uppercase font-bold">${isB2B ? 'Registra la recepción física de la pieza B2B de segunda mano en taller:' : 'Registra el coste real físico (€) y el comercio oficial de adquisición:'}</p>
+                        ${(!isB2B && isOperario && (order.items || []).length >= 2) ? `
+                            <div class="flex items-center gap-2 w-full sm:w-auto">
+                                <label for="master-shop-${this.escapeHTML(order.id)}" class="text-[11px] font-mono text-mars-cyan uppercase whitespace-nowrap">Comercio común:</label>
+                                <select id="master-shop-${this.escapeHTML(order.id)}" onchange="ui.applyShopToOrder('${this.escapeAttr(order.id)}', this.value)" class="min-h-[44px] flex-1 sm:w-44 bg-black border border-mars-cyan/60 p-2 text-base sm:text-xs text-white outline-none focus:border-mars-cyan">
+                                    <option value="">Aplicar a toda la orden...</option>
+                                    ${(typeof COMMERCIAL_SHOPS_DEF !== 'undefined' ? COMMERCIAL_SHOPS_DEF : [
+                                        { id: 'mercadona', name: 'Mercadona' },
+                                        { id: 'carrefour', name: 'Carrefour' },
+                                        { id: 'eroski', name: 'Eroski' },
+                                        { id: 'dia', name: 'Dia' },
+                                        { id: 'ferreteria', name: 'Ferretería' },
+                                        { id: 'bazar', name: 'Bazar' },
+                                        { id: 'comercio_generico', name: 'Comercio genérico' }
+                                    ]).map(shop => `<option value="${this.escapeHTML(shop.name)}">${this.escapeHTML(shop.name)}</option>`).join('')}
+                                </select>
+                            </div>
+                        ` : ''}
+                    </div>
                     <div class="space-y-3 mb-6">
                         ${(order.items || []).map((item, idx) => `
                             <div class="border border-slate-800 bg-slate-900/90 p-3 mb-3 rounded flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
@@ -83,9 +110,15 @@ Object.assign(ui, {
                 </div>`;
             }).join('');
         } else {
+            const pendFinCount = allOrders.filter(o => o.type !== 'MARKETING' && o.status === 'PENDIENTE_FINANZAS').length;
+            const pendDocCount = allOrders.filter(o => o.type !== 'MARKETING' && o.status === 'PENDIENTE_DOCENTE').length;
+            let turnoDiag = '🟢 Aún no hay compras enviadas por el Dpto. Técnico (I+D) en SUPER-MARSKET.';
+            if (pendFinCount > 0) turnoDiag = `👉 Turno de Finanzas: hay ${pendFinCount} orden(es) esperando autorización presupuestaria antes de llegar a Taller.`;
+            else if (pendDocCount > 0) turnoDiag = `⏳ Turno de Aduana Docente: hay ${pendDocCount} compra(s) B2B esperando validación de Coordinación.`;
             ordersTabContentHtml = `
-            <div class="terminal-border border-dashed p-8 text-center text-slate-400 italic text-xs uppercase bg-black/40">
-                <p class="mb-3">No hay órdenes aprobadas pendientes de ejecución logística o ensamble.</p>
+            <div class="terminal-border border-dashed p-6 sm:p-8 text-center text-xs bg-black/40 space-y-3">
+                <p class="text-slate-200 font-mono font-bold uppercase">Sin órdenes aprobadas esperando recepción en Taller</p>
+                <p class="text-slate-300 font-sans max-w-lg mx-auto">${turnoDiag}</p>
                 <button type="button" onclick="ui.navigate('orders')" class="min-h-[44px] inline-flex items-center gap-2 px-4 py-2 bg-slate-900 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold uppercase text-xs transition-colors">
                     <span>📡 Consultar Estado en "Seguimiento de Órdenes" ↗</span>
                 </button>
@@ -235,17 +268,6 @@ Object.assign(ui, {
         const hasPendingLogistics = (co.orders || []).some(o => (o.status === 'APROBADO_FINANZAS' || o.status === 'APROBADO_DOCENTE') && o.type !== 'MARKETING');
         const hasActiveHojaIteration = Boolean(currentHoja && (hojaStatus !== 'DRAFT_TECNICO' || (Array.isArray(currentHoja.history) && currentHoja.history.length > 0)));
         const isPhaseIOpsQuiet = (curOpsPhase === 'I' && !hasActiveHojaIteration && !hasPendingLogistics);
-        const phaseIAiMissionHtml = isPhaseIOpsQuiet ? `
-        <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-mars-cyan mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <div class="min-w-0 flex-1">
-                <span class="text-[10px] font-mono uppercase px-2 py-0.5 bg-mars-cyan/15 border border-mars-cyan text-mars-cyan font-bold">Tu Misión Activa • Fase I</span>
-                <h3 class="font-orbitron text-white text-sm sm:text-base font-black uppercase mt-1">🤖 Cuaderno de Bitácora Ética de IA (DOC_4)</h3>
-                <p class="text-xs text-slate-300 font-sans mt-0.5">En Fase I aún no hay piezas aprobadas en taller. Registra los usos de IA del equipo y prepara tu Diario de Decisiones de Diciembre.</p>
-            </div>
-            <button type="button" onclick="ui.navigate('ailog')" class="min-h-[44px] w-full sm:w-auto bg-mars-cyan text-black hover:bg-white font-black uppercase text-xs px-4 py-2 transition-all shrink-0 rounded-sm">
-                🤖 Ir a Bitácora IA ➔
-            </button>
-        </div>` : '';
 
         const hojaHtml = isPhaseIOpsQuiet ? `
         <details class="terminal-border bg-mars-card/80 border border-slate-800 rounded mb-6">
@@ -265,7 +287,6 @@ Object.assign(ui, {
         wrapper.innerHTML = `
             ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
             ${this.renderRoleActivePhaseDeliverableBanner ? this.renderRoleActivePhaseDeliverableBanner(co) : ''}
-            ${phaseIAiMissionHtml}
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
                 <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">Logística de Despliegue Físico</h2>
             </div>
@@ -489,7 +510,7 @@ Object.assign(ui, {
 
         wrapper.innerHTML = `
             ${this.renderActiveContractTacticalBanner ? this.renderActiveContractTacticalBanner(co) : ''}
-            ${this.renderRoleActivePhaseDeliverableBanner ? this.renderRoleActivePhaseDeliverableBanner(co) : ''}
+            ${(curPhaseKey !== 'I' && curPhaseKey !== 'IV' && this.renderRoleActivePhaseDeliverableBanner) ? this.renderRoleActivePhaseDeliverableBanner(co) : ''}
             <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
                 <h2 class="font-orbitron text-mars-cyan text-lg sm:text-xl uppercase tracking-tighter">Bitácora y Auditoría de Inteligencia Artificial</h2>
                 <button type="button" onclick="ui.modalReportAI()" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_12px_rgba(0,240,255,0.3)]">[🤖 Nuevo Reporte IA]</button>

@@ -409,6 +409,16 @@ Object.assign(ui, {
                                     <span>Quórum: ${total}/${totalRoles}</span>
                                     <span class="text-red-500">✗ ${n} En Contra</span>
                                 </div>
+                                ${m.status === 'ABIERTA' ? (() => {
+                                    const allRoleKeys = Object.keys(co.roles || {});
+                                    const votedKeys = allRoleKeys.filter(rk => Boolean(m.votes && m.votes[rk]));
+                                    const missingKeys = allRoleKeys.filter(rk => !(m.votes && m.votes[rk]));
+                                    const fmtR = (rk) => this.escapeHTML(this.getDeptDisplayName ? this.getDeptDisplayName(rk) : rk);
+                                    return `<div class="mt-2 pt-2 border-t border-slate-800/80 text-[11px] font-sans flex flex-col gap-0.5">
+                                        <span class="text-emerald-300"><strong>✓ Votaron:</strong> ${votedKeys.length ? votedKeys.map(fmtR).join(', ') : 'Nadie todavía'}</span>
+                                        <span class="text-amber-300"><strong>⏳ Faltan por votar:</strong> ${missingKeys.length ? missingKeys.map(fmtR).join(', ') : 'Quórum completo'}</span>
+                                    </div>`;
+                                })() : ''}
                                 ${actions}
                             </div>`;
                         }).join('') || '<div class="terminal-border border-dashed p-6 text-center text-slate-300 italic text-xs">No hay mociones asamblearias registradas en la startup.</div>'}
@@ -1073,7 +1083,7 @@ Object.assign(ui, {
 
                 return `
                 <div class="bg-slate-900/90 border border-slate-800 p-3 text-xs flex flex-col gap-2">
-                    ${ui.renderWorkflowTracker(['1. Creatividad MKT', '2. CEO (Valida)', '3. Docente Liderazgo'], actStatus === 'PENDIENTE_CEO' ? 0 : (actStatus === 'VALIDADO_CEO' ? 2 : 0))}
+                    ${ui.renderWorkflowTracker(['1. Creatividad MKT', '2. CEO (Valida)', '3. Docente Liderazgo'], actStatus === 'PENDIENTE_CEO' ? 1 : (actStatus === 'VALIDADO_CEO' ? 2 : 0))}
                     <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
                     <div class="overflow-hidden min-w-0 space-y-1">
                         <div class="flex items-center gap-2 flex-wrap">
@@ -1337,6 +1347,7 @@ Object.assign(ui, {
                             <li><strong class="text-white">CEO ➔ Coordinación:</strong> El CEO revisa, avala la propuesta y la eleva a Coordinación Docente para su resolución final.</li>
                             <li><strong class="text-white">Coordinación Docente:</strong> Emite la resolución oficial (Aprobado/Denegado) y registra el slogan oficial en el expediente de la empresa.</li>
                         </ol>
+                        <p class="text-[11px] text-cyan-300 font-sans pt-1 border-t border-slate-800/80">ℹ️ <strong>Diferencia clave:</strong> DOC_11 sirve para inscribir vuestro Slogan y Logo en la cabecera del HUD; el entregable evaluable de Lengua (<strong>1A. Marca Dic</strong>) se sube aparte en <em>Mis Entregables</em>.</p>
                     </div>
 
                     ${co.slogan ? `

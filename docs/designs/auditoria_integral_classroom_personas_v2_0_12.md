@@ -126,14 +126,19 @@ Al revisar [config.js](file:///c:/Users/aiban/OneDrive/MARSKET/js/config.js#L861
    - Packs de Marketing rechazados (`DENEGADO` / `RECHAZADO`) visibles en Órdenes con motivo tipificado; estado real `SIN_PROPUESTA` en Eslogan; confirmación previa en Taller parcial; rechazo IA sin borrado; previsualización de **Saldo Libre (`€v`)** en Finanzas + candados preventivos por bancarrota (`<= 0 €v`).
    - Lectura individual por credencial (`readBy[rawRole]`) entre titular y Auxiliar, etiqueta legible en Login, firma `getActorRoleLabel(co)` en AESA/Prensa/Estatutos, y conservación de `Modo Calma` + `Zoom` tras `auth.logout()`.
 
-### ✨ Fase B (Versión `v2.0.14` — Claridad en 5 Segundos, Velocidad Operativa, Telemetría `€v` y Móvil BYOD)
-1. **Claridad "¿Quién tiene la pelota?" y Cero Duplicidades:**
-   - Tarjeta de estado en `Finanzas` cuando hay 0 pendientes y eliminación del botón trampa a `SUPER-MARSKET` en Bóveda vacía.
-   - Diagnóstico de turno en `Taller` vacío (Operaciones y Técnico), eliminación de la doble tarjeta `DOC_4`, mini-tracker de 4 pasos de Licencia AESA en `Banco I+D`, y siguiente acción sugerida en Bandeja CEO vacía + quién falta por votar en Asamblea (`Trámites`).
-2. **Atajos de Velocidad Operativa:**
-   - Botones **`+5`** y **`+10`** para reactivos en el Carrito + buscador persistente.
+### ✅ Fase B — Bloque B1 (Versión `v2.0.14` — COMPLETADA: Claridad en 5 Segundos y Atajos de Velocidad)
+> **Estado:** ✅ **COMPLETADA Y VALIDADA (`v2.0.14`)** por `@feature-reviewer` (`[APROBADO_FUNCIONAL]`), `@qa-validator` (`[PASS]`) y `node tools/audit-integrity.mjs` (`PASS`).
+
+1. **[x] Claridad "¿Quién tiene la pelota?" y Cero Duplicidades:**
+   - Tarjeta de estado en `Finanzas` (`0` vs `N` pendientes), eliminación del botón trampa a `SUPER-MARSKET` en Bóveda vacía y traducción de jerga (`Historial de Cobros y Pagos` / `Movimientos`).
+   - Diagnóstico de turno en `Taller` vacío (Operaciones y Técnico), tira de «Órdenes en Tránsito» en Taller Técnico, eliminación de la doble tarjeta `DOC_4` en Operaciones, mini-tracker de 4 pasos AESA + plegado en `<details>` en `Banco I+D` + nota de que `Coste Ensayo` solo calcula `E = H / C`.
+   - Siguiente acción sugerida en Bandeja CEO vacía, confirmación anti-visado a ciegas (`markDocOpened` con `data-doc-url`), pestaña `'📋 Supervisión Entregas'` para el CEO, quórum nominal (`✓ Votaron` / `⏳ Faltan`) en Asamblea (`Trámites`), aclaración entre `DOC_11` y `1A. Marca Dic`, tracker `DOC_12` corregido y avisos en `#badge-campaigns`.
+2. **[x] Atajos de Velocidad Operativa:**
+   - Botones **`+1` / `+5` / `+10`** solo en reactivos y consumibles (`isConsumableCatalogItem`) tanto en tarjeta del catálogo como `+5` dentro del Carrito, sin salto de scroll ni pérdida del buscador (`catalogSearchQuery`).
    - Botón `[✓ Aprobar Todo]` en 1 clic junto a `[⚙️ Revisar Partidas]` en Finanzas + desglose de piezas en la tarjeta de la Bandeja.
-   - Selector maestro *"Aplicar comercio a toda la orden"* en Taller de Operaciones *(sin botón de `0.00 €` reciclado)*.
+   - Selector maestro *"Aplicar comercio a toda la orden"* (`applyShopToOrder`) en Taller de Operaciones *(sin botón de `0.00 €` reciclado, manteniendo coste real `> 0 €`)*.
+
+### ✨ Fase B — Bloque B2 (Versión `v2.0.15` — Telemetría `€v`/`E` y Pulido Móvil `360px`)
 3. **Telemetría Científica/Estratégica (en `€v` y `E`) + Pulido Móvil `360px`:**
-   - Mini-KPIs de vuelo (`Mejor E`, `Altura Récord`, `Ratio g/10ml` y pre-cálculo en vivo de `E`), `Saldo Comprometido en Taller (€v)` y filtros en el Libro Mayor, chips de cobertura IA por departamento, y marcador de acciones `DOC_12` + auto-ajuste de URL Drive del Logo en Marketing.
-   - Ajustes móviles `360px`: `max-h-[90dvh]` en modales, `.mars-checkbox-label`, `flex-wrap` en cabeceras, `min-h-[44px]` en todos los enlaces Drive y lupa de Noticias, filtros compactos en Noticias y vista de tarjetas para la tabla de vuelos en móvil.
+   - Mini-KPIs de vuelo (`Mejor E`, `Altura Récord`, `Ratio g/10ml` y pre-cálculo en vivo de `E`), `Saldo Comprometido en Taller (€v)` y filtros en el Historial de Movimientos, chips de cobertura IA por departamento, marcador de acciones `DOC_12` + `€v` MKT + desglose `I+D vs MKT` + previsualización de saldo + acceso Patrocinios/Fase V + auto-ajuste de URL Drive del Logo para el HUD, clic Tesorería CEO ➔ Historial, `Nota Acumulada` en Dossier, chip cumplimiento Contrato y detalle al tocar ficha Radar.
+   - Ajustes móviles `360px`: `max-h-[90dvh]` en modales, `.mars-checkbox-label`, `flex-wrap` en cabeceras, `min-h-[44px]` en todos los enlaces Drive y lupa de Noticias, 2 `<select>` compactos en Noticias móvil y vista de tarjetas para la tabla de vuelos en móvil.

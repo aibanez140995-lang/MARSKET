@@ -4,6 +4,14 @@
 Object.assign(ui, {
     marketTab: 'B2C',
     catalogCategoryFilter: 'ALL',
+    catalogSearchQuery: '',
+
+    isConsumableCatalogItem(item) {
+        if (!item) return false;
+        const cat = String(item.category || '').toLowerCase();
+        const unit = String(item.unit || '').toLowerCase();
+        return cat.includes('reactivo') || cat.includes('propuls') || ['gramo', '10 ml', 'ml', 'cm', 'decímetro', 'decimetro', 'uso'].some(u => unit.includes(u));
+    },
 
     setCatalogCategory(cat) {
         this.catalogCategoryFilter = cat;
@@ -54,6 +62,9 @@ Object.assign(ui, {
         
         wrapper.appendChild(content);
         el.appendChild(wrapper);
+        if (this.marketTab === 'B2C' && this.catalogSearchQuery) {
+            this.filterCatalog(this.catalogSearchQuery);
+        }
     },
 
     renderCatalog() {
@@ -103,10 +114,17 @@ Object.assign(ui, {
             : filteredCategories.map(cat => {
             const items = visibleItems.filter(i => i.category === cat);
             const itemsHtml = items.map(item => {
+                const isConsumable = this.isConsumableCatalogItem ? this.isConsumableCatalogItem(item) : false;
                 let actionBtn = canBuy 
                     ? (isBankrupt
                         ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="w-full min-h-[44px] bg-slate-800 text-slate-400 border border-red-500/40 cursor-not-allowed font-black py-2 px-3 text-xs uppercase tracking-wider">🔒 Bloqueado Saldo ≤ 0</button>`
-                        : `<button type="button" onclick="ui.addToCart('${this.escapeHTML(item.id)}')" class="w-full min-h-[44px] bg-slate-800 text-mars-cyan border border-mars-cyan hover:bg-mars-cyan hover:text-black font-black py-2 px-3 text-xs uppercase tracking-wider transition-all">🛒 Añadir al Carrito</button>`) 
+                        : (isConsumable
+                            ? `<div class="flex gap-1.5 w-full">
+                                <button type="button" onclick="ui.addToCart('${this.escapeHTML(item.id)}', 1)" class="flex-1 min-h-[44px] bg-slate-800 text-mars-cyan border border-mars-cyan hover:bg-mars-cyan hover:text-black font-black py-2 px-2 text-xs uppercase tracking-wider transition-all">🛒 +1</button>
+                                <button type="button" onclick="ui.addToCart('${this.escapeHTML(item.id)}', 5)" aria-label="Añadir 5 de ${this.escapeAttr(item.name)}" class="min-h-[44px] min-w-[44px] bg-slate-900 text-mars-green border border-mars-green/60 hover:bg-mars-green hover:text-black font-black py-2 px-2.5 text-xs font-mono transition-all">+5</button>
+                                <button type="button" onclick="ui.addToCart('${this.escapeHTML(item.id)}', 10)" aria-label="Añadir 10 de ${this.escapeAttr(item.name)}" class="min-h-[44px] min-w-[44px] bg-slate-900 text-mars-yellow border border-mars-yellow/60 hover:bg-mars-yellow hover:text-black font-black py-2 px-2.5 text-xs font-mono transition-all">+10</button>
+                               </div>`
+                            : `<button type="button" onclick="ui.addToCart('${this.escapeHTML(item.id)}')" class="w-full min-h-[44px] bg-slate-800 text-mars-cyan border border-mars-cyan hover:bg-mars-cyan hover:text-black font-black py-2 px-3 text-xs uppercase tracking-wider transition-all">🛒 Añadir al Carrito</button>`)) 
                     : (isDocente ? `<span class="block text-center text-slate-300 text-xs uppercase font-bold py-2 border border-slate-800 bg-black/40">Modo Supervisión</span>` : `<span class="block text-center text-slate-300 text-xs uppercase font-bold border border-slate-700 p-2.5 bg-black/40">Solo Dpto. Técnico</span>`);
 
                 return `
@@ -152,7 +170,7 @@ Object.assign(ui, {
 
         const searchBarHtml = `
         <div class="mb-3">
-            <input type="text" id="catalog-search-input" oninput="ui.filterCatalog(this.value)" placeholder="🔍 Buscar material o reactivo (ej: Manómetro, Bicarbonato, Válvula...)" class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan/50 p-2.5 text-xs text-white uppercase outline-none focus:border-mars-cyan font-mono">
+            <input type="text" id="catalog-search-input" value="${this.escapeAttr(this.catalogSearchQuery || '')}" oninput="ui.catalogSearchQuery = this.value; ui.filterCatalog(this.value)" placeholder="🔍 Buscar material o reactivo (ej: Manómetro, Bicarbonato, Válvula...)" class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan/50 p-2.5 text-base sm:text-xs text-white uppercase outline-none focus:border-mars-cyan font-mono">
         </div>`;
 
         const catalogFooterHtml = canBuy ? `
@@ -280,7 +298,7 @@ Object.assign(ui, {
         </div>`;
     },
 
-    addToCart(itemId) {
+    addToCart(itemId, qty = 1, fromModal = false) {
         if (!state.user || this.getEffectiveRole() !== 'TECNICO') return;
         const co = state.data.companies[state.user.coId];
         if (!co) return;
@@ -290,15 +308,21 @@ Object.assign(ui, {
 
         const itemDef = state.data.catalog.find(i => i.id === itemId);
         if(!itemDef) return;
+        const addQty = Math.max(1, Math.min(100, parseInt(qty, 10) || 1));
 
         co.cart = co.cart || [];
         const exist = co.cart.find(i => i.id === itemId);
-        if (exist) { exist.qty++; } 
-        else { co.cart.push({ ...itemDef, qty: 1 }); }
+        if (exist) { exist.qty = (Number(exist.qty) || 0) + addQty; } 
+        else { co.cart.push({ ...itemDef, qty: addQty }); }
 
         state.save();
-        this.notify(`Añadido al carrito de la compra: ${itemDef.name}`, 'info');
-        this.render();
+        this.notify(`Añadido al carrito (+${addQty}): ${itemDef.name}`, 'info');
+        const toggleBtn = document.getElementById('btn-cart-toggle');
+        if (toggleBtn) toggleBtn.textContent = `🛒 Carrito (${co.cart.length})`;
+        if (typeof this.updateBadges === 'function') this.updateBadges();
+        if (fromModal && typeof this.modalCheckout === 'function') {
+            this.modalCheckout();
+        }
     },
 
     removeFromCart(itemId) {
@@ -344,8 +368,9 @@ Object.assign(ui, {
 
             const marketBtn = document.getElementById('btn-cart-toggle');
             if (marketBtn) {
-                marketBtn.textContent = `🛒 Carrito de la compra (${co.cart.length})`;
+                marketBtn.textContent = `🛒 Carrito (${co.cart.length})`;
             }
+            if (typeof this.updateBadges === 'function') this.updateBadges();
             const btnTrans = document.getElementById('btn-transmit-cart');
             if (btnTrans) {
                 btnTrans.setAttribute('onclick', `ui.confirmCart(${newTotal})`);

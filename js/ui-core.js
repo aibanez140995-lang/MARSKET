@@ -3139,10 +3139,19 @@ const ui = {
         if (elCampaigns) {
             let pendingCampaigns = 0;
             if (effectiveRole === 'MARKETING') {
-                (co.marketingCampaigns || []).forEach(c => {
+                const camps = Array.isArray(co.marketingCampaigns) ? co.marketingCampaigns : [];
+                camps.forEach((c, idx) => {
+                    if (!c) return;
                     (c.executedActions || []).forEach(a => {
                         if (a && a.status === 'RECHAZADO_CEO') pendingCampaigns++;
                     });
+                    if (c.status === 'ACTIVO' && (c.executedActions || []).length === 0) {
+                        pendingCampaigns++;
+                    }
+                    if (c.status === 'DENEGADO') {
+                        const hasNewerAttempt = camps.slice(0, idx).some(newer => newer && (newer.status === 'PENDIENTE_FINANZAS' || newer.status === 'ACTIVO'));
+                        if (!hasNewerAttempt) pendingCampaigns++;
+                    }
                 });
             }
             if (pendingCampaigns > 0) { elCampaigns.innerText = pendingCampaigns; elCampaigns.classList.remove('hidden'); }
@@ -4037,8 +4046,25 @@ const ui = {
         state.returnDeliverableByTeacher(coId, docKey, reasonId, returnDriveUrl);
     },
 
-    approveDeliverableByCEO(docKey) {
+    markDocOpened(url) {
+        if (!url) return;
+        this._openedDocUrls = this._openedDocUrls || new Set();
+        this._openedDocUrls.add(String(url).trim());
+    },
+
+    approveDeliverableByCEO(docKey, skipReadCheck = false) {
         if (!state.user || this.getEffectiveRole() !== 'CEO') return;
+        const co = state.data.companies?.[state.user.coId];
+        const doc = co?.deliverables?.[docKey];
+        const url = String(doc?.driveUrl || (typeof doc === 'string' ? doc : '') || '').trim();
+        if (!skipReadCheck && url && (!this._openedDocUrls || !this._openedDocUrls.has(url)) && typeof this.confirmAction === 'function') {
+            return this.confirmAction(
+                '📄 Confirmar Revisión del Documento',
+                'Aún no has abierto el enlace de Google Drive de este entregable en esta sesión. ¿Confirmas que ya lo revisaste o deseas abrirlo antes?',
+                () => this.approveDeliverableByCEO(docKey, true),
+                'Sí, Visar y Elevar'
+            );
+        }
         state.approveDeliverableByCEO(docKey);
     },
 
@@ -4132,7 +4158,7 @@ const ui = {
                     </div>
                     ${status === 'CEO_REVISION' && (item.returnReason || item.returnReasonId) ? `<div class="bg-red-950/40 border border-red-500/40 p-2 text-xs text-red-300 mb-2 rounded"><strong class="uppercase">Motivo:</strong> ${this.escapeHTML(item.returnReason || item.returnReasonId)}</div>` : ''}
                     <div class="mt-2 flex items-center gap-2 flex-wrap">
-                        <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors">
+                        <a href="${safeHref}" data-doc-url="${this.escapeAttr(item.driveUrl)}" onclick="ui.markDocOpened(this.dataset.docUrl)" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors">
                             <span>Abrir ${tipoDoc} ↗</span>
                         </a>
                         ${(state.user && this.getEffectiveRole(co) === 'CEO' && status === 'SUBMITTED_TO_CEO') ? `

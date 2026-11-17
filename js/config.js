@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.13) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.14) ---
 
-const APP_VERSION = "2.0.13";
+const APP_VERSION = "2.0.14";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1154,8 +1154,24 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.13
+// Changelog Oficial de Producción v2.0.14
 const APP_CHANGELOG = [
+    {
+      version: "2.0.14",
+      date: "2026-11-17",
+      title: "Fase B1: Claridad «¿Quién tiene la pelota?» y Atajos de Velocidad Operativa en los 5 Roles",
+      items: [
+        "Catálogo I+D (+1 / +5 / +10) sin Saltos de Scroll: Botones rápidos +5 y +10 en reactivos y consumibles (bicarbonato, vinagre, hilo, celo y pegamento) tanto en tarjeta como en el carrito, conservando el texto del buscador y la posición en pantalla al añadir.",
+        "Banco I+D y Taller Técnico más Claros: Mini-tracker visual de 4 pasos hacia la Licencia AESA, plegado ordenado del formulario mientras esté bloqueado, aclaración de que el coste de ensayo solo calcula E = H / C, tira de «Órdenes en Tránsito» en Taller y diagnóstico en vacío.",
+        "Agilidad y Claridad en Finanzas y Operaciones: Tarjeta fija de estado en Finanzas, desglose de piezas y botón [✓ Aprobar Todo] en 1 clic junto a la auditoría por partidas, lenguaje claro (Historial de Cobros y Pagos / Movimientos), selector maestro de comercio común por orden en Taller y eliminación de tarjetas DOC_4 duplicadas.",
+        "Supervisión CEO, Asamblea y Marketing: Siguiente acción sugerida cuando la Bandeja del CEO está vacía, confirmación ligera al visar si aún no abriste el Google Doc, desglose en Asamblea de qué departamentos ya votaron y cuáles faltan, aclaración entre DOC_11 y 1A Marca Dic, tracker corregido en DOC_12 y avisos en Campañas."
+      ],
+      highlights: [
+        { type: "VELOCIDAD", text: "Atajos +5/+10 en reactivos sin saltar el scroll, [✓ Aprobar Todo] en Finanzas y comercio común en Taller." },
+        { type: "CLARIDAD", text: "Mini-tracker AESA de 4 pasos, diagnóstico «¿Quién tiene la pelota?» y quórum nominal en Asamblea." },
+        { type: "COORDINACIÓN", text: "Confirmación anti-visado a ciegas del CEO y aclaración entre DOC_11 y 1A Marca Dic." }
+      ]
+    },
     {
       version: "2.0.13",
       date: "2026-11-17",
