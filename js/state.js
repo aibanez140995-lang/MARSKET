@@ -82,13 +82,13 @@ const DEFAULT_STATE = {
     companies: {
         astra: {
             name: "Astra Dynamics", balance: 2400, classGroup: 'A', logo: null, slogan: "", valueProposition: "",
-            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "" }, sponsorAwarded: null, sponsorData: { name: null, logo: null },
+            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "", updatedAt: 0 }, sponsorAwarded: null, sponsorData: { name: null, logo: null },
             aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
             deliverables: {}, contracts: {}
         },
         sandbox_master: {
             name: "MARS-X SANDBOX (PRUEBAS)", balance: 2400, classGroup: 'TEST', isTestCompany: true, unlockAllContracts: true, logo: null, slogan: "BANCO MAESTRO DE PRUEBAS", valueProposition: "Entorno de evaluación y pruebas",
-            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "" }, sponsorAwarded: null, sponsorData: { name: null, logo: null },
+            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "", updatedAt: 0 }, sponsorAwarded: null, sponsorData: { name: null, logo: null },
             aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [],
             ledger: [],
             realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
@@ -96,7 +96,7 @@ const DEFAULT_STATE = {
         },
         sandbox_student: {
             name: "MARS-X ALUMNO (ESTÁNDAR)", balance: 2400, classGroup: 'TEST', isTestCompany: true, unlockAllContracts: false, logo: null, slogan: "", valueProposition: "",
-            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "" }, sponsorAwarded: null, sponsorData: { name: null, logo: null },
+            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "", updatedAt: 0 }, sponsorAwarded: null, sponsorData: { name: null, logo: null },
             aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [],
             realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
             deliverables: {}, contracts: {}
@@ -673,7 +673,7 @@ const state = {
             co.loginStats = co.loginStats || { totalLogins: 0, roles: {} };
             co.loginStats.roles = co.loginStats.roles || {};
             co.classGroup = co.classGroup || 'A';
-            co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "" };
+            co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "", updatedAt: 0 };
             co.brandApproval.driveUrl = co.brandApproval.driveUrl || "";
             co.brandApproval.expId = co.brandApproval.expId || "";
             co.pendingSlogan = co.pendingSlogan || null;
@@ -794,6 +794,90 @@ const state = {
         return JSON.parse(JSON.stringify(lTime > sTime ? lReq : sReq));
     },
 
+    mergeBrandApproval(lBrand, sBrand, lTime = 0, sTime = 0) {
+        if (!lBrand && !sBrand) return undefined;
+        if (!lBrand) return JSON.parse(JSON.stringify(sBrand));
+        if (!sBrand) return JSON.parse(JSON.stringify(lBrand));
+
+        const isPlaceholderApproved = (b) => Boolean(
+            b && b.status === 'APROBADO' &&
+            !b.pendingLogo && !b.pendingSlogan && !b.driveUrl && !b.expId && !b.feedback &&
+            !(Number(b.updatedAt) > 0) && !(Number(b.endorsedAt) > 0) && !(Number(b.date) > 0)
+        );
+        if (isPlaceholderApproved(lBrand) && !isPlaceholderApproved(sBrand)) {
+            return JSON.parse(JSON.stringify(sBrand));
+        }
+        if (isPlaceholderApproved(sBrand) && !isPlaceholderApproved(lBrand)) {
+            return JSON.parse(JSON.stringify(lBrand));
+        }
+
+        const getBrTs = (b) => Math.max(Number(b?.updatedAt || 0), Number(b?.endorsedAt || 0), Number(b?.date || 0));
+        const lTs = getBrTs(lBrand);
+        const sTs = getBrTs(sBrand);
+        if (lTs !== sTs) {
+            return JSON.parse(JSON.stringify(lTs > sTs ? lBrand : sBrand));
+        }
+
+        return JSON.parse(JSON.stringify(lTime > sTime ? lBrand : sBrand));
+    },
+
+    mergeNameChangeRequest(lReq, sReq, lTime = 0, sTime = 0) {
+        if (!lReq && !sReq) return undefined;
+        if (!lReq) return JSON.parse(JSON.stringify(sReq));
+        if (!sReq) return JSON.parse(JSON.stringify(lReq));
+
+        const getNcTs = (r) => Math.max(Number(r?.updatedAt || 0), Number(r?.resolvedAt || 0), Number(r?.timestamp || 0));
+        const lTs = getNcTs(lReq);
+        const sTs = getNcTs(sReq);
+        if (lTs !== sTs) {
+            return JSON.parse(JSON.stringify(lTs > sTs ? lReq : sReq));
+        }
+
+        if (lReq.status === 'PENDIENTE' && sReq.status && sReq.status !== 'PENDIENTE') {
+            return JSON.parse(JSON.stringify(sReq));
+        }
+        if (sReq.status === 'PENDIENTE' && lReq.status && lReq.status !== 'PENDIENTE') {
+            return JSON.parse(JSON.stringify(lReq));
+        }
+
+        return JSON.parse(JSON.stringify(lTime > sTime ? lReq : sReq));
+    },
+
+    mergePhaseDict(lDict, sDict, localWinsOnTie = false) {
+        if (!lDict && !sDict) return undefined;
+        const lObj = (lDict && typeof lDict === 'object') ? lDict : {};
+        const sObj = (sDict && typeof sDict === 'object') ? sDict : {};
+        const keys = new Set([...Object.keys(sObj), ...Object.keys(lObj)]);
+        const out = {};
+
+        const getPhTs = (item) => Math.max(
+            Number(item?.updatedAt || 0),
+            Number(item?.ceoValidatedAt || 0),
+            Number(item?.returnedAt || 0),
+            Number(item?.publishedAt || 0),
+            Number(item?.timestamp || 0)
+        );
+
+        keys.forEach(ph => {
+            const lItem = lObj[ph];
+            const sItem = sObj[ph];
+            if (lItem && !sItem) {
+                out[ph] = JSON.parse(JSON.stringify(lItem));
+            } else if (sItem && !lItem) {
+                out[ph] = JSON.parse(JSON.stringify(sItem));
+            } else if (lItem && sItem) {
+                const lTs = getPhTs(lItem);
+                const sTs = getPhTs(sItem);
+                if (lTs !== sTs) {
+                    out[ph] = JSON.parse(JSON.stringify(lTs > sTs ? lItem : sItem));
+                } else {
+                    out[ph] = JSON.parse(JSON.stringify(localWinsOnTie ? lItem : sItem));
+                }
+            }
+        });
+        return out;
+    },
+
     mergeData(serverData, localData) {
         if (!serverData) return localData;
         if (!localData) return serverData;
@@ -852,6 +936,143 @@ const state = {
             });
 
             return result;
+        };
+
+        const reconcileCompanyArray = (arrServer, arrLocal, arrName = '', localWinsOnTie = false) => {
+            if (!Array.isArray(arrServer)) arrServer = [];
+            if (!Array.isArray(arrLocal)) arrLocal = [];
+
+            const getItemTs = (it) => Math.max(
+                Number(it?.updatedAt || 0),
+                Number(it?.executedAt || 0),
+                Number(it?.lastPartialAt || 0),
+                Number(it?.approvedAt || 0),
+                Number(it?.rejectedAt || 0),
+                Number(it?.resolvedAt || 0),
+                Number(it?.reviewedAt || 0),
+                Number(it?.endorsedAt || 0),
+                Number(it?.timestamp || 0)
+            );
+
+            const combinePair = (sItem, lItem) => {
+                const sTs = getItemTs(sItem);
+                const lTs = getItemTs(lItem);
+                const pickLocal = (lTs !== sTs) ? (lTs > sTs) : localWinsOnTie;
+                const newer = pickLocal ? lItem : sItem;
+                const older = pickLocal ? sItem : lItem;
+
+                const isRead = Boolean(sItem.read || lItem.read);
+                const mergedReadBy = (sItem.readBy || lItem.readBy)
+                    ? { ...(sItem.readBy || {}), ...(lItem.readBy || {}) }
+                    : undefined;
+
+                let status = newer.status;
+                if (lTs === sTs && typeof newer.status === 'string' && newer.status.startsWith('PENDIENTE') && older.status && !String(older.status).startsWith('PENDIENTE')) {
+                    status = older.status;
+                }
+
+                let executedActions = newer.executedActions;
+                if (arrName === 'marketingCampaigns' || sItem.executedActions || lItem.executedActions) {
+                    executedActions = reconcileExecutedActions(lItem.executedActions, sItem.executedActions);
+                }
+
+                let mergedVotes = undefined;
+                if (arrName === 'votingMotions' && (sItem.votes || lItem.votes)) {
+                    mergedVotes = { ...(sItem.votes || {}), ...(lItem.votes || {}) };
+                    if (sItem.status === 'CERRADA' || lItem.status === 'CERRADA') {
+                        status = 'CERRADA';
+                    }
+                }
+
+                let mergedItems = Array.isArray(newer.items) ? JSON.parse(JSON.stringify(newer.items)) : newer.items;
+                if (arrName === 'orders' && Array.isArray(mergedItems) && Array.isArray(older.items)) {
+                    mergedItems = mergedItems.map((nIt, idx) => {
+                        const oIt = older.items[idx];
+                        if (oIt && oIt.executed && nIt && !nIt.executed && String(oIt.id || oIt.name) === String(nIt.id || nIt.name)) {
+                            return { ...nIt, ...oIt };
+                        }
+                        return nIt;
+                    });
+                    if (sItem.status === 'EJECUTADO' || lItem.status === 'EJECUTADO') {
+                        status = 'EJECUTADO';
+                    }
+                }
+
+                return {
+                    ...older,
+                    ...newer,
+                    read: isRead,
+                    ...(mergedReadBy ? { readBy: mergedReadBy } : {}),
+                    ...(mergedVotes ? { votes: mergedVotes } : {}),
+                    ...(mergedItems !== undefined ? { items: mergedItems } : {}),
+                    status: status || newer.status || older.status,
+                    ...(executedActions ? { executedActions } : {})
+                };
+            };
+
+            let combined;
+            if (localWinsOnTie) {
+                const serverMap = new Map();
+                arrServer.forEach(i => { if (i && i.id) serverMap.set(String(i.id), i); });
+                const localIds = new Set(arrLocal.map(i => String(i?.id)));
+                const mergedPrimary = arrLocal.map(lItem => {
+                    if (!lItem || !lItem.id) return lItem;
+                    const sItem = serverMap.get(String(lItem.id));
+                    return sItem ? combinePair(sItem, lItem) : lItem;
+                });
+                const missingFromLocal = arrServer.filter(i => i && i.id && !localIds.has(String(i.id)));
+                combined = [...mergedPrimary, ...missingFromLocal];
+            } else {
+                const localMap = new Map();
+                arrLocal.forEach(i => { if (i && i.id) localMap.set(String(i.id), i); });
+                const serverIds = new Set(arrServer.map(i => String(i?.id)));
+                const mergedPrimary = arrServer.map(sItem => {
+                    if (!sItem || !sItem.id) return sItem;
+                    const lItem = localMap.get(String(sItem.id));
+                    return lItem ? combinePair(sItem, lItem) : sItem;
+                });
+                const missingFromServer = arrLocal.filter(i => i && i.id && !serverIds.has(String(i.id)));
+                combined = [...missingFromServer, ...mergedPrimary];
+            }
+
+            if (arrName === 'notifications') {
+                const dismissedIds = new Set([
+                    ...(Array.isArray(serverData.dismissedNotificationIds) ? serverData.dismissedNotificationIds.map(String) : []),
+                    ...(Array.isArray(localData.dismissedNotificationIds) ? localData.dismissedNotificationIds.map(String) : [])
+                ]);
+                combined = combined.filter(n => n && n.id && !dismissedIds.has(String(n.id)));
+            }
+            return combined;
+        };
+
+        const companyArraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'meetingMinutes', 'specialItemRequests', 'cart', 'bom', 'coordinatorReports'];
+        const applyResetWinner = (target, winner) => {
+            companyArraysToMerge.forEach(arrName => {
+                target[arrName] = Array.isArray(winner[arrName]) ? JSON.parse(JSON.stringify(winner[arrName])) : [];
+            });
+            target.deliverables = JSON.parse(JSON.stringify(winner.deliverables || {}));
+            target.contracts = JSON.parse(JSON.stringify(winner.contracts || {}));
+            target.grades = JSON.parse(JSON.stringify(winner.grades || {}));
+            target.phaseBalances = JSON.parse(JSON.stringify(winner.phaseBalances || {}));
+            target.pressReleases = JSON.parse(JSON.stringify(winner.pressReleases || {}));
+            target.brandApproval = JSON.parse(JSON.stringify(winner.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "", updatedAt: 0 }));
+            if (winner.brandStatus !== undefined) target.brandStatus = winner.brandStatus;
+            else delete target.brandStatus;
+            target.name = winner.name || target.name;
+            target.slogan = winner.slogan || '';
+            target.valueProposition = winner.valueProposition || '';
+            target.logo = winner.logo || null;
+            target.sponsorAwarded = winner.sponsorAwarded || null;
+            target.sponsorData = JSON.parse(JSON.stringify(winner.sponsorData || { name: null, logo: null }));
+            target.auxRoleDept = winner.auxRoleDept || null;
+            target.auxRoleRequest = JSON.parse(JSON.stringify(winner.auxRoleRequest || { status: 'INACTIVO', dept: '', pin: '', updatedAt: 0 }));
+            if (winner.launchLicense) target.launchLicense = JSON.parse(JSON.stringify(winner.launchLicense));
+            else delete target.launchLicense;
+            if (winner.nameChangeRequest) target.nameChangeRequest = JSON.parse(JSON.stringify(winner.nameChangeRequest));
+            else delete target.nameChangeRequest;
+            if (winner.nameChangeStatus !== undefined) target.nameChangeStatus = winner.nameChangeStatus;
+            else delete target.nameChangeStatus;
+            target.loginStats = JSON.parse(JSON.stringify(winner.loginStats || { totalLogins: 0, roles: {} }));
         };
 
         // Al recibir serverData de la red:
@@ -1069,69 +1290,16 @@ const state = {
                             }
                         }
                     }
-                    const mergeArraysLocalDominant = (arrLocal, arrServer, arrName = '') => {
-                        if (!Array.isArray(arrLocal)) arrLocal = [];
-                        if (!Array.isArray(arrServer)) arrServer = [];
-                        const serverMap = new Map();
-                        arrServer.forEach(i => { if (i && i.id) serverMap.set(String(i.id), i); });
-                        
-                        const mergedLocal = arrLocal.map(lItem => {
-                            if (!lItem || !lItem.id) return lItem;
-                            const sItem = serverMap.get(String(lItem.id));
-                            if (!sItem) return lItem;
-                            const isRead = Boolean(lItem.read || sItem.read);
-                            const mergedReadBy = (lItem.readBy || sItem.readBy)
-                                ? { ...(sItem.readBy || {}), ...(lItem.readBy || {}) }
-                                : undefined;
-                            let status = lItem.status;
-                            if (lItem.status === 'PENDIENTE' && sItem.status && sItem.status !== 'PENDIENTE') {
-                                status = sItem.status;
-                            }
-                            let executedActions = lItem.executedActions;
-                            if (arrName === 'marketingCampaigns' || lItem.executedActions || sItem.executedActions) {
-                                executedActions = reconcileExecutedActions(lItem.executedActions, sItem.executedActions);
-                            }
-                            return { ...sItem, ...lItem, read: isRead, ...(mergedReadBy ? { readBy: mergedReadBy } : {}), status: status || lItem.status, ...(executedActions ? { executedActions } : {}) };
-                        });
-                        const localIds = new Set(arrLocal.map(i => String(i?.id)));
-                        const missingInLocal = arrServer.filter(i => i && i.id && !localIds.has(String(i.id)));
-                        let finalMerged = [...mergedLocal, ...missingInLocal];
-                        if (arrName === 'notifications') {
-                            const dismissedIds = new Set([
-                                ...(Array.isArray(serverData.dismissedNotificationIds) ? serverData.dismissedNotificationIds.map(String) : []),
-                                ...(Array.isArray(localData.dismissedNotificationIds) ? localData.dismissedNotificationIds.map(String) : [])
-                            ]);
-                            finalMerged = finalMerged.filter(n => n && n.id && !dismissedIds.has(String(n.id)));
-                        }
-                        return finalMerged;
-                    };
-                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'meetingMinutes', 'specialItemRequests', 'cart', 'bom', 'coordinatorReports'];
                     const sResetAt = Number(sCo.resetAt) || 0;
                     const lResetAt = Number(lCo.resetAt) || 0;
-                    const isTestCo = (k === 'sandbox_master' || k === 'sandbox_student' || merged.companies[k].isTestCompany);
-                    if (isTestCo && (lResetAt > sTime || sResetAt > lTime)) {
+                    const isTestCo = (k === 'sandbox_master' || k === 'sandbox_student' || merged.companies[k].isTestCompany || sCo.isTestCompany || lCo.isTestCompany);
+                    const isTestResetL = Boolean(isTestCo && (lResetAt > sTime || sResetAt > lTime));
+                    if (isTestResetL) {
                         merged.companies[k].resetAt = Math.max(sResetAt, lResetAt);
-                        if (lResetAt >= sResetAt) {
-                            arraysToMerge.forEach(arrName => {
-                                merged.companies[k][arrName] = Array.isArray(lCo[arrName]) ? JSON.parse(JSON.stringify(lCo[arrName])) : [];
-                            });
-                            merged.companies[k].deliverables = JSON.parse(JSON.stringify(lCo.deliverables || {}));
-                            merged.companies[k].contracts = JSON.parse(JSON.stringify(lCo.contracts || {}));
-                            merged.companies[k].grades = JSON.parse(JSON.stringify(lCo.grades || {}));
-                            if (!lCo.launchLicense) delete merged.companies[k].launchLicense;
-                        } else {
-                            arraysToMerge.forEach(arrName => {
-                                merged.companies[k][arrName] = Array.isArray(sCo[arrName]) ? JSON.parse(JSON.stringify(sCo[arrName])) : [];
-                            });
-                            merged.companies[k].deliverables = JSON.parse(JSON.stringify(sCo.deliverables || {}));
-                            merged.companies[k].contracts = JSON.parse(JSON.stringify(sCo.contracts || {}));
-                            merged.companies[k].grades = JSON.parse(JSON.stringify(sCo.grades || {}));
-                            if (sCo.launchLicense) merged.companies[k].launchLicense = JSON.parse(JSON.stringify(sCo.launchLicense));
-                            else delete merged.companies[k].launchLicense;
-                        }
+                        applyResetWinner(merged.companies[k], lResetAt >= sResetAt ? lCo : sCo);
                     } else {
-                        arraysToMerge.forEach(arrName => {
-                            merged.companies[k][arrName] = mergeArraysLocalDominant(lCo[arrName], sCo[arrName], arrName);
+                        companyArraysToMerge.forEach(arrName => {
+                            merged.companies[k][arrName] = reconcileCompanyArray(sCo[arrName], lCo[arrName], arrName, true);
                         });
                         if (sCo.launchLicense && typeof sCo.launchLicense === 'object') {
                             const lLic = merged.companies[k].launchLicense;
@@ -1141,18 +1309,19 @@ const state = {
                                 merged.companies[k].launchLicense = JSON.parse(JSON.stringify(sCo.launchLicense));
                             }
                         }
-                    }
-                    merged.companies[k].balance = this.calculateBalance(merged.companies[k]);
-                    if (lCo.nameChangeRequest && sCo.nameChangeRequest) {
-                        const lReq = lCo.nameChangeRequest;
-                        const sReq = sCo.nameChangeRequest;
-                        if (lReq.status === 'PENDIENTE' && sReq.status !== 'PENDIENTE') {
-                            merged.companies[k].nameChangeRequest = JSON.parse(JSON.stringify(sReq));
+                        const mergedPB = this.mergePhaseDict(lCo.phaseBalances, sCo.phaseBalances, true);
+                        if (mergedPB) merged.companies[k].phaseBalances = mergedPB;
+                        const mergedPR = this.mergePhaseDict(lCo.pressReleases, sCo.pressReleases, true);
+                        if (mergedPR) merged.companies[k].pressReleases = mergedPR;
+                        const chosenBrandL = this.mergeBrandApproval(lCo.brandApproval, sCo.brandApproval, lTime, sTime);
+                        if (chosenBrandL) merged.companies[k].brandApproval = chosenBrandL;
+                        const chosenNcL = this.mergeNameChangeRequest(lCo.nameChangeRequest, sCo.nameChangeRequest, lTime, sTime);
+                        if (chosenNcL) merged.companies[k].nameChangeRequest = chosenNcL;
+                        if (merged.companies[k].nameChangeRequest?.status === 'APROBADO' && merged.companies[k].nameChangeRequest.proposedName) {
+                            merged.companies[k].name = merged.companies[k].nameChangeRequest.proposedName;
                         }
                     }
-                    if (merged.companies[k].nameChangeRequest?.status === 'APROBADO' && merged.companies[k].nameChangeRequest.proposedName) {
-                        merged.companies[k].name = merged.companies[k].nameChangeRequest.proposedName;
-                    }
+                    merged.companies[k].balance = this.calculateBalance(merged.companies[k]);
                 } else {
                     if (lAuthTime > sAuthTime) {
                         if (lCo.authVault) sCo.authVault = JSON.parse(JSON.stringify(lCo.authVault));
@@ -1160,146 +1329,76 @@ const state = {
                         sCo.auxRoleDept = lCo.auxRoleDept || null;
                         sCo.authUpdatedAt = lAuthTime;
                     }
-                    // Preservar resolución de solicitudes de cambio de nombre frente a estados pendientes desactualizados
-                    if (lCo.nameChangeRequest) {
-                        const lSt = lCo.nameChangeRequest.status;
-                        const sSt = sCo.nameChangeRequest ? sCo.nameChangeRequest.status : null;
-                        if (!sSt || (sSt === 'PENDIENTE' && lSt && lSt !== 'PENDIENTE') || (lCo.nameChangeRequest.updatedAt || 0) > (sCo.nameChangeRequest?.updatedAt || 0)) {
-                            sCo.nameChangeRequest = JSON.parse(JSON.stringify(lCo.nameChangeRequest));
-                        }
-                    }
-                    if (sCo.nameChangeRequest?.status === 'APROBADO' && sCo.nameChangeRequest.proposedName) {
-                        sCo.name = sCo.nameChangeRequest.proposedName;
-                    }
-                    if (lCo.brandApproval) {
-                        const lSt = lCo.brandApproval.status;
-                        const sSt = sCo.brandApproval ? sCo.brandApproval.status : null;
-                        if (!sSt || (sSt === 'PENDIENTE' && lSt && lSt !== 'PENDIENTE') || (lCo.brandApproval.updatedAt || 0) > (sCo.brandApproval?.updatedAt || 0)) {
-                            sCo.brandApproval = JSON.parse(JSON.stringify(lCo.brandApproval));
-                        }
-                    }
-                    const chosenAuxReqElse = this.mergeAuxRoleRequest(lCo.auxRoleRequest, sCo.auxRoleRequest, lTime, sTime);
-                    if (chosenAuxReqElse) {
-                        sCo.auxRoleRequest = chosenAuxReqElse;
-                        if (chosenAuxReqElse.status === 'APROBADO' && chosenAuxReqElse.dept && !sCo.auxRoleDept) {
-                            sCo.auxRoleDept = chosenAuxReqElse.dept;
-                        }
-                    }
-                    // Preservar calificaciones locales si son más recientes o el servidor no las tiene (LWW)
-                    if (lCo.grades) {
-                        sCo.grades = sCo.grades || {};
-                        for (const subj in lCo.grades) {
-                            const lG = lCo.grades[subj];
-                            const sG = sCo.grades[subj];
-                            if (lG && lG.final !== undefined && lG.final !== null) {
-                                const lGTime = Number(lG.updatedAt) || lTime;
-                                const sGTime = Number(sG?.updatedAt) || sTime;
-                                if (!sG || lGTime >= sGTime) {
-                                    sCo.grades[subj] = JSON.parse(JSON.stringify(lG));
-                                }
-                            }
-                        }
-                    }
-                    // Preservar patrocinio local si fuera posterior
-                    if (lCo.sponsorAwarded && (!sCo.sponsorAwarded || (lCo.sponsorData?.date || 0) > (sCo.sponsorData?.date || 0))) {
-                        sCo.sponsorAwarded = lCo.sponsorAwarded;
-                        sCo.sponsorData = JSON.parse(JSON.stringify(lCo.sponsorData || {}));
-                    }
-                    // Preservar entregables locales si no están en servidor o tienen entrega más reciente
-                    sCo.deliverables = sCo.deliverables || {};
-                    if (lCo.deliverables) {
-                        for (const dKey in lCo.deliverables) {
-                            const lDoc = lCo.deliverables[dKey];
-                            const sDoc = sCo.deliverables[dKey];
-                            if (!sDoc && lDoc) {
-                                sCo.deliverables[dKey] = JSON.parse(JSON.stringify(lDoc));
-                            } else if (lDoc && sDoc) {
-                                const lDocTime = new Date(lDoc.updatedAt || 0).getTime();
-                                const sDocTime = new Date(sDoc.updatedAt || 0).getTime();
-                                let mergedHist = undefined;
-                                if (dKey === 'hoja_taller_fyq' && (Array.isArray(lDoc.history) || Array.isArray(sDoc.history))) {
-                                    const histMap = new Map();
-                                    [...(Array.isArray(sDoc.history) ? sDoc.history : []), ...(Array.isArray(lDoc.history) ? lDoc.history : [])].forEach(ev => {
-                                        if (ev && ev.id) histMap.set(String(ev.id), ev);
-                                    });
-                                    mergedHist = Array.from(histMap.values()).sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0));
-                                }
-                                if (lDocTime > sDocTime) {
-                                    sCo.deliverables[dKey] = JSON.parse(JSON.stringify(lDoc));
-                                }
-                                if (mergedHist && typeof sCo.deliverables[dKey] === 'object' && sCo.deliverables[dKey]) {
-                                    sCo.deliverables[dKey].history = mergedHist;
-                                }
-                            }
-                        }
-                    }
-                    const mergeArrays = (arrServer, arrLocal, arrName = '') => {
-                        if (!Array.isArray(arrServer)) arrServer = [];
-                        if (!Array.isArray(arrLocal)) arrLocal = [];
-                        const localMap = new Map();
-                        arrLocal.forEach(i => { if (i && i.id) localMap.set(String(i.id), i); });
-                        
-                        const mergedServer = arrServer.map(sItem => {
-                            if (!sItem || !sItem.id) return sItem;
-                            const lItem = localMap.get(String(sItem.id));
-                            if (!lItem) return sItem;
-                            
-                            // Preservar estado leído de notificaciones (una vez leída, nunca vuelve a no leída)
-                            const isRead = Boolean(sItem.read || lItem.read);
-                            const mergedReadBy = (sItem.readBy || lItem.readBy)
-                                ? { ...(sItem.readBy || {}), ...(lItem.readBy || {}) }
-                                : undefined;
-                            let status = sItem.status;
-                            if (sItem.status === 'PENDIENTE' && lItem.status && lItem.status !== 'PENDIENTE') {
-                                status = lItem.status;
-                            }
-                            let executedActions = sItem.executedActions;
-                            if (arrName === 'marketingCampaigns' || sItem.executedActions || lItem.executedActions) {
-                                executedActions = reconcileExecutedActions(lItem.executedActions, sItem.executedActions);
-                            }
-                            return { ...sItem, ...lItem, read: isRead, ...(mergedReadBy ? { readBy: mergedReadBy } : {}), status: status || sItem.status, ...(executedActions ? { executedActions } : {}) };
-                        });
-                        
-                        const serverIds = new Set(arrServer.map(i => String(i?.id)));
-                        const missingInServer = arrLocal.filter(i => i && i.id && !serverIds.has(String(i.id)));
-                        let finalMerged = [...missingInServer, ...mergedServer];
-                        if (arrName === 'notifications') {
-                            const dismissedIds = new Set([
-                                ...(Array.isArray(serverData.dismissedNotificationIds) ? serverData.dismissedNotificationIds.map(String) : []),
-                                ...(Array.isArray(localData.dismissedNotificationIds) ? localData.dismissedNotificationIds.map(String) : [])
-                            ]);
-                            finalMerged = finalMerged.filter(n => n && n.id && !dismissedIds.has(String(n.id)));
-                        }
-                        return finalMerged;
-                    };
-
-                    const arraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'meetingMinutes', 'specialItemRequests', 'cart', 'bom', 'coordinatorReports'];
                     const sResetAt = Number(sCo.resetAt) || 0;
                     const lResetAt = Number(lCo.resetAt) || 0;
-                    const isTestCo = (k === 'sandbox_master' || k === 'sandbox_student' || sCo.isTestCompany);
-                    if (isTestCo && (sResetAt > lTime || lResetAt > sTime)) {
+                    const isTestCo = (k === 'sandbox_master' || k === 'sandbox_student' || sCo.isTestCompany || lCo.isTestCompany);
+                    const isTestResetElse = Boolean(isTestCo && (sResetAt > lTime || lResetAt > sTime));
+
+                    if (isTestResetElse) {
                         sCo.resetAt = Math.max(sResetAt, lResetAt);
-                        if (sResetAt >= lResetAt) {
-                            arraysToMerge.forEach(arrName => {
-                                sCo[arrName] = Array.isArray(sCo[arrName]) ? JSON.parse(JSON.stringify(sCo[arrName])) : [];
-                            });
-                            sCo.deliverables = JSON.parse(JSON.stringify(sCo.deliverables || {}));
-                            sCo.contracts = JSON.parse(JSON.stringify(sCo.contracts || {}));
-                            sCo.grades = JSON.parse(JSON.stringify(sCo.grades || {}));
-                            if (!sCo.launchLicense) delete sCo.launchLicense;
-                        } else {
-                            arraysToMerge.forEach(arrName => {
-                                sCo[arrName] = Array.isArray(lCo[arrName]) ? JSON.parse(JSON.stringify(lCo[arrName])) : [];
-                            });
-                            sCo.deliverables = JSON.parse(JSON.stringify(lCo.deliverables || {}));
-                            sCo.contracts = JSON.parse(JSON.stringify(lCo.contracts || {}));
-                            sCo.grades = JSON.parse(JSON.stringify(lCo.grades || {}));
-                            if (lCo.launchLicense) sCo.launchLicense = JSON.parse(JSON.stringify(lCo.launchLicense));
-                            else delete sCo.launchLicense;
-                        }
+                        applyResetWinner(sCo, sResetAt >= lResetAt ? sCo : lCo);
                     } else {
-                        arraysToMerge.forEach(arrName => {
-                            sCo[arrName] = mergeArrays(sCo[arrName], lCo[arrName], arrName);
+                        const chosenNcS = this.mergeNameChangeRequest(lCo.nameChangeRequest, sCo.nameChangeRequest, lTime, sTime);
+                        if (chosenNcS) sCo.nameChangeRequest = chosenNcS;
+                        if (sCo.nameChangeRequest?.status === 'APROBADO' && sCo.nameChangeRequest.proposedName) {
+                            sCo.name = sCo.nameChangeRequest.proposedName;
+                        }
+                        const chosenBrandS = this.mergeBrandApproval(lCo.brandApproval, sCo.brandApproval, lTime, sTime);
+                        if (chosenBrandS) sCo.brandApproval = chosenBrandS;
+                        const chosenAuxReqElse = this.mergeAuxRoleRequest(lCo.auxRoleRequest, sCo.auxRoleRequest, lTime, sTime);
+                        if (chosenAuxReqElse) {
+                            sCo.auxRoleRequest = chosenAuxReqElse;
+                            if (chosenAuxReqElse.status === 'APROBADO' && chosenAuxReqElse.dept && !sCo.auxRoleDept) {
+                                sCo.auxRoleDept = chosenAuxReqElse.dept;
+                            }
+                        }
+                        if (lCo.grades) {
+                            sCo.grades = sCo.grades || {};
+                            for (const subj in lCo.grades) {
+                                const lG = lCo.grades[subj];
+                                const sG = sCo.grades[subj];
+                                if (lG && lG.final !== undefined && lG.final !== null) {
+                                    const lGTime = Number(lG.updatedAt) || lTime;
+                                    const sGTime = Number(sG?.updatedAt) || sTime;
+                                    if (!sG || lGTime >= sGTime) {
+                                        sCo.grades[subj] = JSON.parse(JSON.stringify(lG));
+                                    }
+                                }
+                            }
+                        }
+                        if (lCo.sponsorAwarded && (!sCo.sponsorAwarded || (lCo.sponsorData?.date || 0) > (sCo.sponsorData?.date || 0))) {
+                            sCo.sponsorAwarded = lCo.sponsorAwarded;
+                            sCo.sponsorData = JSON.parse(JSON.stringify(lCo.sponsorData || {}));
+                        }
+                        sCo.deliverables = sCo.deliverables || {};
+                        if (lCo.deliverables) {
+                            for (const dKey in lCo.deliverables) {
+                                const lDoc = lCo.deliverables[dKey];
+                                const sDoc = sCo.deliverables[dKey];
+                                if (!sDoc && lDoc) {
+                                    sCo.deliverables[dKey] = JSON.parse(JSON.stringify(lDoc));
+                                } else if (lDoc && sDoc) {
+                                    const lDocTime = new Date(lDoc.updatedAt || 0).getTime();
+                                    const sDocTime = new Date(sDoc.updatedAt || 0).getTime();
+                                    let mergedHist = undefined;
+                                    if (dKey === 'hoja_taller_fyq' && (Array.isArray(lDoc.history) || Array.isArray(sDoc.history))) {
+                                        const histMap = new Map();
+                                        [...(Array.isArray(sDoc.history) ? sDoc.history : []), ...(Array.isArray(lDoc.history) ? lDoc.history : [])].forEach(ev => {
+                                            if (ev && ev.id) histMap.set(String(ev.id), ev);
+                                        });
+                                        mergedHist = Array.from(histMap.values()).sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0));
+                                    }
+                                    if (lDocTime > sDocTime) {
+                                        sCo.deliverables[dKey] = JSON.parse(JSON.stringify(lDoc));
+                                    }
+                                    if (mergedHist && typeof sCo.deliverables[dKey] === 'object' && sCo.deliverables[dKey]) {
+                                        sCo.deliverables[dKey].history = mergedHist;
+                                    }
+                                }
+                            }
+                        }
+                        companyArraysToMerge.forEach(arrName => {
+                            sCo[arrName] = reconcileCompanyArray(sCo[arrName], lCo[arrName], arrName, false);
                         });
                         if (lCo.launchLicense && typeof lCo.launchLicense === 'object') {
                             const sLic = sCo.launchLicense;
@@ -1309,13 +1408,21 @@ const state = {
                                 sCo.launchLicense = JSON.parse(JSON.stringify(lCo.launchLicense));
                             }
                         }
+                        const mergedPBElse = this.mergePhaseDict(lCo.phaseBalances, sCo.phaseBalances, false);
+                        if (mergedPBElse) sCo.phaseBalances = mergedPBElse;
+                        const mergedPRElse = this.mergePhaseDict(lCo.pressReleases, sCo.pressReleases, false);
+                        if (mergedPRElse) sCo.pressReleases = mergedPRElse;
                     }
                     sCo.balance = this.calculateBalance(sCo);
                 }
 
                 // Conciliación de contratos comerciales por fase con Last-Write-Wins (LWW)
+                const sResetOuter = Number(sCo.resetAt) || 0;
+                const lResetOuter = Number(lCo.resetAt) || 0;
+                const isTestCoOuter = (k === 'sandbox_master' || k === 'sandbox_student' || sCo.isTestCompany || lCo.isTestCompany);
+                const isResetOuter = Boolean(isTestCoOuter && (sResetOuter > lTime || lResetOuter > sTime));
                 const targetCo = merged.companies[k] || sCo;
-                if (targetCo) {
+                if (targetCo && !isResetOuter) {
                     const sCont = (sCo?.contracts && typeof sCo.contracts === 'object') ? sCo.contracts : {};
                     const lCont = (lCo?.contracts && typeof lCo.contracts === 'object') ? lCo.contracts : {};
                     targetCo.contracts = { ...sCont, ...lCont };
@@ -1989,9 +2096,11 @@ const state = {
                 const remoteUpdated = Number(info.updatedAt || 0);
                 const configUpdated = Number(info.configUpdatedAt || 0);
                 const localConfigUpdated = Number(this.data.config?.updatedAt || 0);
+                const remoteVersion = Number(info.version || 0);
+                const localVersion = Number(this.data.version || 0);
 
-                // Si la versión remota o la configuración docente es posterior a la local, sincronizar estado completo
-                if (remoteUpdated > localUpdated || configUpdated > localConfigUpdated || !this.lastETag) {
+                // Si la versión remota, la empresa o la configuración docente es posterior a la local, sincronizar estado completo
+                if (remoteUpdated > localUpdated || configUpdated > localConfigUpdated || remoteVersion > localVersion || !this.lastETag) {
                     await this.fetchFromCloud(true);
                 }
                 return true;
@@ -3007,6 +3116,7 @@ const state = {
             this.syncTimer = setTimeout(() => this.pushToCloud(false), 800);
             return true;
         }
+        clearTimeout(this.syncTimer);
         this.isSyncing = true;
         try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
         let pushSuccess = false;

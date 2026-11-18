@@ -689,24 +689,26 @@ Object.assign(ui, {
         co.balance -= 50;
         state.addToLedger(coId, `Tasa Registro Mercantil — Trámite Modificación Estatutaria (DOC_1: ${reason})`, 'REGISTRO_MERCANTIL', -50);
 
+        const nowTs = Date.now();
         co.nameChangeRequest = {
-            id: 'STAT-' + Date.now(),
+            id: 'STAT-' + nowTs,
             status: 'PENDIENTE',
             reason: reason,
             driveUrl: driveUrl,
             proposedName: 'Propuesta en Documento Drive',
             date: new Date().toLocaleDateString(),
-            timestamp: Date.now(),
+            timestamp: nowTs,
+            updatedAt: nowTs,
             feePaid: 50,
             requestedBy: this.getActorRoleLabel ? this.getActorRoleLabel(co) : 'CEO'
         };
-        co.updatedAt = Date.now();
-
-        state.save(coId);
-        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        co.updatedAt = nowTs;
 
         ui.pushNotification(coId, 'ALL', `🏛️ Modificación Estatutaria: El CEO ha tramitado solicitud de renombramiento en el Registro Mercantil. Tasa de 50 €v abonada.`, 'info', { view: 'resolutions' });
         ui.pushNotification('ADMIN', 'ALL', `🏛️ [Modificación Estatutaria] "${co.name}" ha abonado tasa de 50 €v y solicitado cambio de denominación social. Pendiente de resolución.`, 'info');
+
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
         this.closeModal();
         this.notify(`✅ Solicitud de Modificación Estatutaria tramitada con éxito. Tasa mercantil de 50 €v devengada y remitida al Registro Mercantil (Coordinación).`, "success");
@@ -1038,13 +1040,18 @@ Object.assign(ui, {
 
         const m = co.votingMotions.find(x => x.id === id);
         if(m) {
+            const nowTs = Date.now();
             m.votes = m.votes || {};
             m.votes[state.user.role] = vote;
-            state.save();
+            m.updatedAt = nowTs;
+            co.updatedAt = nowTs;
+            state.saveLocalOnly();
             this.render();
             try {
-                state.executeAction('VOTE_MOTION', { id, vote });
-            } catch(e) {}
+                state.executeAction('VOTE_MOTION', { id, vote }).then(res => {
+                    if (!res || !res.success) state.pushToCloud(true);
+                }).catch(() => state.pushToCloud(true));
+            } catch(e) { state.save(); }
         }
     },
 
@@ -1064,10 +1071,12 @@ Object.assign(ui, {
             else {
                 return this.promptTieBreaker(id);
             }
-            
+            const nowTs = Date.now();
+            m.updatedAt = nowTs;
             ui.pushNotification(state.user.coId, m.authorRole, `Tu moción ha sido ${m.result}.`, m.result === 'APROBADA' ? 'success' : 'error', { view: 'resolutions' });
-            co.updatedAt = Date.now();
-            state.save(state.user.coId); 
+            co.updatedAt = nowTs;
+            state.save(state.user.coId);
+            if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
             this.render();
         }
     },
@@ -1092,11 +1101,14 @@ Object.assign(ui, {
         
         const m = co.votingMotions.find(x => x.id === id);
         if(m) {
+            const nowTs = Date.now();
             m.result = result;
             m.status = 'CERRADA';
+            m.updatedAt = nowTs;
             ui.pushNotification(state.user.coId, m.authorRole, `Tu moción ha sido ${m.result} (Voto de Calidad).`, m.result === 'APROBADA' ? 'success' : 'error', { view: 'resolutions' });
-            co.updatedAt = Date.now();
+            co.updatedAt = nowTs;
             state.save(state.user.coId);
+            if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
             this.closeModal();
             this.render();
         }
@@ -2013,13 +2025,17 @@ Object.assign(ui, {
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
 
+        const nowTs = Date.now();
         co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
         co.brandApproval.pendingLogo = driveUrl;
         if (!co.brandApproval.pendingSlogan) co.brandApproval.pendingSlogan = co.slogan || "";
         co.brandApproval.status = 'PENDIENTE';
         co.brandApproval.feedback = '';
+        co.brandApproval.updatedAt = nowTs;
+        co.updatedAt = nowTs;
 
-        state.save();
+        state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.render();
         this.notify("⏳ Enlace de logotipo registrado y enviado a Coordinación Docente.", "info");
     },
@@ -2036,13 +2052,17 @@ Object.assign(ui, {
             const co = state.data.companies[state.user.coId];
             if (!co) return auth.logout();
             
+            const nowTs = Date.now();
             co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
             co.brandApproval.pendingLogo = ev.target.result;
             if (!co.brandApproval.pendingSlogan) co.brandApproval.pendingSlogan = co.slogan || "";
             co.brandApproval.status = 'PENDIENTE';
             co.brandApproval.feedback = '';
+            co.brandApproval.updatedAt = nowTs;
+            co.updatedAt = nowTs;
 
-            state.save();
+            state.save(state.user.coId);
+            if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
             this.render();
             this.notify("⏳ Logotipo enviado a Coordinación Docente. Aparecerá en vuestro HUD en cuanto sea aprobado.", "info");
         };
@@ -2056,10 +2076,13 @@ Object.assign(ui, {
         if (co.brandApproval.status !== 'PENDIENTE_CEO') {
             return this.notify("Solo puedes retirar una propuesta antes de que el CEO la avale.", "info");
         }
+        const nowTs = Date.now();
         co.brandApproval.status = 'DEVUELTO_CEO';
         co.brandApproval.feedback = 'Retirada por Marketing para edición antes del visado CEO.';
-        co.updatedAt = Date.now();
-        state.save();
+        co.brandApproval.updatedAt = nowTs;
+        co.updatedAt = nowTs;
+        state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.notify("✏️ Propuesta desbloqueada para edición.", "info");
         this.render();
     },
@@ -2090,6 +2113,7 @@ Object.assign(ui, {
 
         const coCode = co.code || state.user.coId;
         const expId = 'PROP-SLOGAN-' + coCode + '-001';
+        const nowTs = Date.now();
 
         co.brandApproval = {
             expId: expId,
@@ -2098,20 +2122,24 @@ Object.assign(ui, {
             pendingLogo: logoUrl || co.brandApproval?.pendingLogo || co.logo || null,
             pendingSlogan: '',
             driveUrl: driveUrl,
-            date: Date.now(),
+            date: nowTs,
+            updatedAt: nowTs,
             feedback: ''
         };
+        co.updatedAt = nowTs;
 
         ui.pushNotification(state.user.coId, 'CEO', `Marketing ha presentado la propuesta de Slogan Corporativo (${expId}) para aval y elevación a Coordinación.`, 'info', { view: 'dashboard', anchorId: 'ceo-slogan-approval-panel-dash' });
 
-        state.save();
+        state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.render();
         this.notify("✅ Propuesta presentada al CEO exitosamente. En espera de su aval.", "success");
     },
 
     endorseBrandProposal(cid, skipReadCheck = false) {
         if (!state.user || this.getEffectiveRole() !== 'CEO') return this.notify("Solo Dirección General (CEO) puede avalar esta propuesta.", "warning");
-        const co = state.data.companies[cid || state.user.coId];
+        const targetCid = cid || state.user.coId;
+        const co = state.data.companies[targetCid];
         if (!co || !co.brandApproval) return;
         if (co.brandApproval.status !== 'PENDIENTE_CEO') {
             return this.notify("Esta propuesta de marca ya fue avalada o procesada.", "info");
@@ -2120,14 +2148,18 @@ Object.assign(ui, {
         if (!skipReadCheck && typeof this.confirmDocOpenedBeforeAction === 'function') {
             return this.confirmDocOpenedBeforeAction(docUrl, () => this.endorseBrandProposal(cid, true), 'Sí, Avalar y Elevar');
         }
-        if (this.acquireActionLock && !this.acquireActionLock('endorse-brand-' + (cid || state.user.coId), 1500)) return;
+        if (this.acquireActionLock && !this.acquireActionLock('endorse-brand-' + targetCid, 1500)) return;
 
+        const nowTs = Date.now();
         co.brandApproval.status = 'PENDIENTE';
-        co.brandApproval.endorsedAt = Date.now();
+        co.brandApproval.endorsedAt = nowTs;
+        co.brandApproval.updatedAt = nowTs;
+        co.updatedAt = nowTs;
         
-        ui.pushNotification(state.user.coId, 'MARKETING', `El CEO ha avalado la propuesta de Slogan (${co.brandApproval.expId || ''}) y la ha elevado a Coordinación Docente.`, 'success', { view: 'brand', anchorId: 'brand-slogan-section' });
+        ui.pushNotification(targetCid, 'MARKETING', `El CEO ha avalado la propuesta de Slogan (${co.brandApproval.expId || ''}) y la ha elevado a Coordinación Docente.`, 'success', { view: 'brand', anchorId: 'brand-slogan-section' });
 
-        state.save();
+        state.save(targetCid);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.render();
         this.notify("✅ Propuesta de Slogan avalada y elevada a Coordinación Docente.", "success");
     },
@@ -2184,13 +2216,18 @@ Object.assign(ui, {
         const returnDriveUrl = urlCheck.url;
         this.closeModal();
 
+        const nowTs = Date.now();
         co.brandApproval.status = 'DEVUELTO_CEO';
         co.brandApproval.feedback = feedback;
         co.brandApproval.returnDriveUrl = returnDriveUrl || '';
+        co.brandApproval.updatedAt = nowTs;
+        co.updatedAt = nowTs;
 
-        ui.pushNotification(state.user.coId, 'MARKETING', `El CEO ha devuelto la propuesta de Slogan: "${feedback}".`, 'warning', { view: 'brand', anchorId: 'brand-slogan-section' });
+        const targetCid = cid || state.user.coId;
+        ui.pushNotification(targetCid, 'MARKETING', `El CEO ha devuelto la propuesta de Slogan: "${feedback}".`, 'warning', { view: 'brand', anchorId: 'brand-slogan-section' });
 
-        state.save();
+        state.save(targetCid);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.render();
         this.notify("Propuesta devuelta al Departamento de Marketing.", "info");
     }

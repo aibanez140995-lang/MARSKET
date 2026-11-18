@@ -1635,6 +1635,7 @@ Object.assign(ui, {
         const sponsorAmt = state.getCompanySponsorAmount ? state.getCompanySponsorAmount(co) : 0;
         const virtualSpend = (co.ledger || []).filter(l => l.delta < 0).reduce((acc, l) => acc + Math.abs(Number(l.delta) || 0), 0);
 
+        const nowTs = Date.now();
         co.phaseBalances = co.phaseBalances || {};
         co.phaseBalances[phaseKey] = {
             id: 'BAL-' + coId + '-' + phaseKey,
@@ -1651,14 +1652,12 @@ Object.assign(ui, {
             authorRole: (effectiveRole !== state.user.role) ? `${state.user.role} (${effectiveRole})` : state.user.role,
             authorName: state.user.name || 'Finanzas',
             date: new Date().toLocaleDateString(),
-            timestamp: Date.now()
+            timestamp: nowTs,
+            updatedAt: nowTs
         };
         delete co.phaseBalances[phaseKey].returnReason;
         delete co.phaseBalances[phaseKey].returnDriveUrl;
-        co.updatedAt = Date.now();
-
-        state.save(coId);
-        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        co.updatedAt = nowTs;
 
         if (isAdminCoord) {
             ui.pushNotification(coId, 'ALL', `📊 Balance de Cierre de Fase ${phaseKey} formalizado y elevado al Claustro para Economía.`, 'success');
@@ -1667,6 +1666,9 @@ Object.assign(ui, {
             ui.pushNotification(coId, 'CEO', `📊 Finanzas ha formalizado el Balance de Cierre de Fase ${phaseKey} (DOC_17). Pendiente de tu visado para Economía.`, 'warning', { view: 'dashboard', anchorId: 'ceo-balance-approval-panel' });
             this.notify(`✅ Balance registrado y enviado a Dirección General (CEO) para visado.`, "success");
         }
+
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
         this.closeModal();
         this.render();
@@ -1682,14 +1684,15 @@ Object.assign(ui, {
             return this.confirmDocOpenedBeforeAction(docUrl, () => this.approvePhaseBalanceByCEO(phaseKey, true), 'Sí, Visar Balance');
         }
 
+        const nowTs = Date.now();
         co.phaseBalances[phaseKey].status = 'DELIVERED_TO_TEACHER';
-        co.phaseBalances[phaseKey].ceoValidatedAt = Date.now();
-        co.updatedAt = Date.now();
-
-        state.save(coId);
-        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        co.phaseBalances[phaseKey].ceoValidatedAt = nowTs;
+        co.phaseBalances[phaseKey].updatedAt = nowTs;
+        co.updatedAt = nowTs;
 
         ui.pushNotification(coId, 'FINANZAS', `✅ El CEO ha VISADO el Balance de Cierre de Fase ${phaseKey}. Ya está elevado al docente de Economía.`, 'success', { view: 'finance' });
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.notify(`✅ Balance de Cierre de Fase ${phaseKey} visado y elevado a Economía.`, "success");
         this.render();
     },
@@ -1741,15 +1744,17 @@ Object.assign(ui, {
         if (!urlCheck.valid) return;
         const driveUrl = urlCheck.url;
 
+        const nowTs = Date.now();
         co.phaseBalances[phaseKey].status = 'RETURNED_BY_CEO';
         co.phaseBalances[phaseKey].returnReason = reason;
         if (driveUrl) co.phaseBalances[phaseKey].returnDriveUrl = driveUrl;
-        co.updatedAt = Date.now();
-
-        state.save(coId);
-        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        co.phaseBalances[phaseKey].returnedAt = nowTs;
+        co.phaseBalances[phaseKey].updatedAt = nowTs;
+        co.updatedAt = nowTs;
 
         ui.pushNotification(coId, 'FINANZAS', `⚠️ El CEO ha devuelto el Balance de Fase ${phaseKey}: "${reason}". Subsanar y reenviar.`, 'warning', { view: 'finance' });
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
         this.notify(`⚠️ Balance devuelto al Departamento Financiero para corrección.`, "warning");
         this.render();
@@ -1904,11 +1909,10 @@ Object.assign(ui, {
             order.partialApproval = true;
             order.responseDriveUrl = partialDriveUrl;
         }
-        order.approvedAt = Date.now();
-
-        co.updatedAt = Date.now();
-        state.save(coId);
-        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        const nowTs = Date.now();
+        order.approvedAt = nowTs;
+        order.updatedAt = nowTs;
+        co.updatedAt = nowTs;
 
         if (rejectedItems.length > 0) {
             ui.pushNotification(coId, 'TECNICO', `⚠️ Finanzas ha APROBADO PARCIALMENTE la orden #${order.id} (${newTotal.toFixed(2)} €v). Partidas denegadas justificadas en Docs.`, 'warning', { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' });
@@ -1916,6 +1920,9 @@ Object.assign(ui, {
             ui.pushNotification(coId, 'TECNICO', `✅ Finanzas ha APROBADO la orden #${order.id} (${newTotal.toFixed(2)} €v). Ya está en Logística.`, 'success', { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' });
         }
         ui.pushNotification(coId, 'OPERACIONES_IA', `📦 Orden #${order.id} autorizada por Finanzas (${newTotal.toFixed(2)} €v) lista para compra física y ensamble.`, 'info', { view: 'cart', anchorId: 'ops-orders-tracking-panel' });
+
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
         this.closeModal();
         this.notify(`✅ Orden #${order.id} autorizada (${newTotal.toFixed(2)} €v). Pasa a Operaciones.`, "success");
@@ -1980,16 +1987,17 @@ Object.assign(ui, {
         }
         if (this.acquireActionLock && !this.acquireActionLock('fin-reject-' + orderId, 1500)) return;
 
+        const nowTs = Date.now();
         order.status = 'RECHAZADO';
         order.rejectReason = reason;
         if (safeDriveUrl) order.responseDriveUrl = safeDriveUrl;
-        order.rejectedAt = Date.now();
-        co.updatedAt = Date.now();
-
-        state.save(state.user.coId);
-        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        order.rejectedAt = nowTs;
+        order.updatedAt = nowTs;
+        co.updatedAt = nowTs;
 
         ui.pushNotification(state.user.coId, 'TECNICO', `❌ Finanzas ha DENEGADO la orden #${order.id} ("${reason}").${safeDriveUrl ? ' Consulta el informe en Google Docs.' : ''}`, 'error', { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' });
+        state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
         this.notify(`❌ Orden #${order.id} denegada.`, "info");
         this.render();

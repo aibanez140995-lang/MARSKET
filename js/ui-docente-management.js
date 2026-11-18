@@ -2143,7 +2143,7 @@ Object.assign(ui, {
 
         const newCo = { 
             name, balance: cap, logo: null, sponsorAwarded: null, sponsorData: {name: null, logo: null}, valueProposition: "", slogan: "", classGroup,
-            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" },
+            brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "", updatedAt: 0 },
             auxRoleRequest: { status: 'INACTIVO', dept: '', pin: '', updatedAt: 0 },
             roles: {}, authVault: { code: '', roles: {} },
             aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
@@ -2323,7 +2323,10 @@ Object.assign(ui, {
         co.classGroup = 'TEST';
         co.isTestCompany = true;
         co.unlockAllContracts = isStudentSandbox ? false : (isMasterSandbox ? true : Boolean(co.unlockAllContracts));
-        co.brandApproval = { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "" };
+        co.brandApproval = { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "", updatedAt: now };
+        co.brandStatus = 'APPROVED';
+        co.auxRoleDept = null;
+        co.auxRoleRequest = { status: 'INACTIVO', dept: '', pin: '', updatedAt: now };
         co.sponsorAwarded = null;
         co.sponsorData = { name: null, logo: null };
         co.aiPrompts = [];
@@ -2364,6 +2367,7 @@ Object.assign(ui, {
         });
 
         state.save(cid);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.notify(`Empresa de pruebas "${coName}" reseteada a estado limpio de fábrica (2400 €v).`, "success");
         this.render();
     },
@@ -2632,8 +2636,10 @@ Object.assign(ui, {
                     const ord = sellerCo.orders.find(o => String(o.id) === String(ordId));
                     if (ord && ord.items && ord.items[Number(itemIdx)]) {
                         ord.items[Number(itemIdx)].b2bStatus = 'VENDIDO';
+                        ord.updatedAt = now;
                     }
                 }
+                sellerCo.updatedAt = now;
                 ui.pushNotification(c.sellerCoId, 'TECNICO', `Aduana B2B aprobó la venta de "${c.itemName}". Ingreso: +${price.toFixed(2)} €v.`, 'success', { view: 'tech_workshop' });
             }
 
@@ -2647,6 +2653,7 @@ Object.assign(ui, {
                 if (existingBuyerOrder) {
                     existingBuyerOrder.status = 'APROBADO_DOCENTE';
                     existingBuyerOrder.approvedByDocenteAt = now;
+                    existingBuyerOrder.updatedAt = now;
                     existingBuyerOrder.b2bContractId = c.id;
                 } else {
                     const orderNum = ui.getNextOrderNumber ? ui.getNextOrderNumber(buyerCo) : String(now).slice(-3);
@@ -2670,7 +2677,8 @@ Object.assign(ui, {
                         justification: `Adquisición en Mercado Secundario B2B a ${c.sellerName}.`,
                         status: 'APROBADO_DOCENTE',
                         date: new Date().toLocaleString(),
-                        approvedByDocenteAt: now
+                        approvedByDocenteAt: now,
+                        updatedAt: now
                     });
                 }
                 buyerCo.updatedAt = now;
@@ -2699,8 +2707,10 @@ Object.assign(ui, {
                     if (dupOrder) {
                         dupOrder.status = 'CANCELADO_OTRA_EMPRESA';
                         dupOrder.cancelledAt = now;
+                        dupOrder.updatedAt = now;
                         dupBuyerCo.updatedAt = now;
                     }
+                    dupBuyerCo.updatedAt = now;
                     ui.pushNotification(dup.buyerCoId, 'FINANZAS', `Aduana B2B: El lote único de "${dup.itemName}" ya fue adjudicado a ${c.buyerName}. Importe de ${dupPrice.toFixed(2)} €v reembolsado íntegramente.`, 'warning', { view: 'finance' });
                     ui.pushNotification(dup.buyerCoId, 'TECNICO', `Aduana B2B: El lote de "${dup.itemName}" fue adjudicado a ${c.buyerName}. Orden cancelada y reembolsada.`, 'warning', { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' });
                 }
@@ -2725,8 +2735,9 @@ Object.assign(ui, {
                 if (existingBuyerOrder) {
                     existingBuyerOrder.status = 'DENEGADO_DOCENTE';
                     existingBuyerOrder.rejectedByDocenteAt = now;
-                    buyerCo.updatedAt = now;
+                    existingBuyerOrder.updatedAt = now;
                 }
+                buyerCo.updatedAt = now;
                 const reasonTxt = customReason ? ` Motivo: ${customReason}` : '';
                 ui.pushNotification(c.buyerCoId, 'FINANZAS', `Aduana B2B rechazó el contrato #${c.id}. Reembolso: +${price.toFixed(2)} €v.${reasonTxt}`, 'warning', { view: 'finance' });
                 ui.pushNotification(c.buyerCoId, 'TECNICO', `Aduana B2B rechazó el contrato #${c.id}. Reembolso tramitado.${reasonTxt}`, 'warning', { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' });
@@ -2744,6 +2755,7 @@ Object.assign(ui, {
                     const ord = sellerCo.orders.find(o => String(o.id) === String(ordId));
                     if (ord && ord.items && ord.items[Number(itemIdx)]) {
                         delete ord.items[Number(itemIdx)].b2bStatus;
+                        ord.updatedAt = now;
                     }
                 }
                 const off = (state.data.b2bMarket || []).find(o => (c.offerId && o.id === c.offerId) || (o.sourceOrderKey && c.sourceOrderKey && o.sourceOrderKey === c.sourceOrderKey));
@@ -2752,6 +2764,7 @@ Object.assign(ui, {
                     off.updatedAt = now;
                 }
                 if (sellerCo) {
+                    sellerCo.updatedAt = now;
                     ui.pushNotification(c.sellerCoId, 'TECNICO', `Aduana B2B denegó la venta de "${c.itemName}". El componente ha vuelto a tu inventario.`, 'warning', { view: 'tech_workshop' });
                 }
             }

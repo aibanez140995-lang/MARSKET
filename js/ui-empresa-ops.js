@@ -431,13 +431,15 @@ Object.assign(ui, {
         });
 
         const remainingPendingAfter = (order.items || []).filter(it => !it || !it.executed).length;
+        const nowTs = Date.now();
         if (remainingPendingAfter === 0) {
             order.status = 'EJECUTADO';
-            order.executedAt = Date.now();
+            order.executedAt = nowTs;
         } else {
             order.partialExecuted = true;
-            order.lastPartialAt = Date.now();
+            order.lastPartialAt = nowTs;
         }
+        order.updatedAt = nowTs;
 
         if (!isB2B) {
             const ledgerDesc = remainingPendingAfter === 0
@@ -446,11 +448,9 @@ Object.assign(ui, {
             state.addToLedger(state.user.coId, ledgerDesc, 'OPERACIONES_IA', -chargeNowEurV);
         }
         co.realCosts.push(...realCostsToLog);
-        co.updatedAt = Date.now();
+        co.updatedAt = nowTs;
 
         telemetry.log("EJECUCIÓN LOGÍSTICA", `Orden ${isB2B ? 'B2B ' : ''}#${order.id} (${remainingPendingAfter === 0 ? 'completada' : `parcial, quedan ${remainingPendingAfter}`}) por ${chargeNowEurV.toFixed(2)}€v`);
-        state.save(state.user.coId);
-        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
         if (remainingPendingAfter === 0) {
             ui.pushNotification(state.user.coId, 'TECNICO', `📦 Orden #${order.id} (${isB2B ? 'Pieza B2B' : 'Material'}) completada y disponible en Taller & BOM.`, 'success', { view: 'orders', filter: 'COMPLETADAS', dept: 'TECNICO' });
@@ -465,6 +465,9 @@ Object.assign(ui, {
             }
             this.notify(`✅ Registradas ${checkedEntries.length} partida(s). Quedan ${remainingPendingAfter} pendiente(s) en esta misma orden hasta que las compréis.`, "success");
         }
+
+        state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.render();
     },
 

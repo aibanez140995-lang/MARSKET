@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.19) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.20) ---
 
-const APP_VERSION = "2.0.19";
+const APP_VERSION = "2.0.20";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1154,8 +1154,23 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.19
+// Changelog Oficial de Producción v2.0.20
 const APP_CHANGELOG = [
+    {
+      version: "2.0.20",
+      date: "2026-11-18",
+      title: "Blindaje Integral Multi-Ordenador BYOD en Tiempo Real (Nube ⇄ Aula)",
+      items: [
+        "Fusión LWW Real para Marca (DOC_11) y Denominación Social (DOC_1): El estado vacío de fábrica ('APROBADO' con updatedAt: 0) en el ordenador del Coordinador ya no sobreescribe las propuestas 'PENDIENTE' enviadas por Marketing/CEO desde otros dispositivos.",
+        "Reconciliación Inteligente de Listas (Órdenes, Votaciones y Campañas): Corregida la mezcla en state.js para conservar siempre el ítem más reciente por sello temporal, proteger las piezas ya recepcionadas en Taller (recepción parcial de Operaciones) y sumar automáticamente los votos de Asamblea emitidos a la vez desde distintos ordenadores.",
+        "Sincronización de Balances DOC_17 y Notas de Prensa DOC_15: Incorporada la fusión fase a fase (mergePhaseDict) de phaseBalances y pressReleases para evitar que otro dispositivo pise envíos o devoluciones.",
+        "Aduana B2B, Sondeo Global y Notificaciones sin Retrasos: Actualización de timestamp en compradora y vendedora al validar Aduana B2B, detección de cambios globales por versión en checkFastVersion(), cancelación de timers redundantes y generación de avisos antes de empujar a la nube."
+      ],
+      highlights: [
+        { type: "BYOD AULA", text: "Marca, órdenes parciales, votos de asamblea y balances DOC_17 ya no se pisan entre PCs." },
+        { type: "PUSH ATÓMICO", text: "Notificaciones y cambios de Aduana B2B llegan al instante al resto de compañeros." }
+      ]
+    },
     {
       version: "2.0.19",
       date: "2026-11-18",

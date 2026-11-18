@@ -2827,17 +2827,19 @@ Object.assign(ui, {
             return this.notify(`🔒 La Nota de Prensa de Fase ${phaseKey} permanece bloqueada hasta el cierre oficial de la fase.`, "warning");
         }
 
+        const nowTs = Date.now();
         co.pressReleases = co.pressReleases || {};
         co.pressReleases[phaseKey] = {
             id: 'PR-' + coId + '-' + phaseKey,
             phase: phaseKey,
             title: `Nota de Prensa Oficial Fase ${phaseKey} — ${co.name}`,
             driveUrl: driveUrl,
-            publishedAt: Date.now(),
+            publishedAt: nowTs,
+            updatedAt: nowTs,
             publishedDate: new Date().toLocaleDateString(),
             author: this.getActorRoleLabel ? this.getActorRoleLabel(co) : 'CEO'
         };
-        co.updatedAt = Date.now();
+        co.updatedAt = nowTs;
 
         // Registro en listado global para el Tablón de Noticias
         state.data.pressReleases = Array.isArray(state.data.pressReleases) ? state.data.pressReleases : [];
@@ -2850,7 +2852,8 @@ Object.assign(ui, {
             phase: phaseKey,
             title: `Nota de Prensa Oficial — Cierre Fase ${phaseKey} (${co.name})`,
             driveUrl: driveUrl,
-            publishedAt: Date.now(),
+            publishedAt: nowTs,
+            updatedAt: nowTs,
             publishedDate: new Date().toLocaleDateString()
         };
         if (existingIdx >= 0) {
@@ -2859,11 +2862,11 @@ Object.assign(ui, {
             state.data.pressReleases.unshift(item);
         }
 
-        state.save(coId);
-        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
-
         ui.pushNotification(coId, 'ALL', `📰 El CEO ha publicado la Nota de Prensa Oficial de Fase ${phaseKey} en el Tablón de Noticias.`, 'success', { view: 'news' });
         ui.pushNotification('ADMIN', 'ALL', `📰 [${co.name}] Nota de Prensa Oficial de Fase ${phaseKey} publicada en el Tablón.`, 'info', { view: 'news' });
+
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
         this.closeModal();
         this.notify("✅ Nota de Prensa Oficial publicada en el Tablón de Noticias.", "success");
