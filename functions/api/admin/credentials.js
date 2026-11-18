@@ -191,9 +191,16 @@ export async function handleCredentials(context) {
                     if (role === 'AUXILIAR' && cleanPin === '') {
                         delete co.authVault.roles['AUXILIAR'];
                         if (co.roles) delete co.roles['AUXILIAR'];
-                        if (co.auxRoleRequest) {
+                        if (body.auxRoleDept !== undefined) {
+                            const d = String(body.auxRoleDept || '').trim().toUpperCase();
+                            co.auxRoleDept = d || null;
+                        }
+                        if (body.auxRoleRequest && typeof body.auxRoleRequest === 'object') {
+                            co.auxRoleRequest = { ...body.auxRoleRequest, updatedAt: Number(body.auxRoleRequest.updatedAt) || now };
+                        } else if (co.auxRoleRequest) {
                             co.auxRoleRequest.pin = '';
                             co.auxRoleRequest.status = 'INACTIVO';
+                            co.auxRoleRequest.updatedAt = now;
                         }
                     } else {
                         if (!/^\d{4}$/.test(cleanPin)) {
@@ -202,15 +209,26 @@ export async function handleCredentials(context) {
                         co.authVault.roles[role] = encodeSecret(cleanPin, VAULT_KEY);
                         co.roles = co.roles || {};
                         co.roles[role] = 'PROTECTED';
-                        if (role === 'AUXILIAR' && co.auxRoleRequest) {
-                            co.auxRoleRequest.pin = cleanPin;
-                            co.auxRoleRequest.status = 'APROBADO';
+                        if (role === 'AUXILIAR') {
+                            if (body.auxRoleDept !== undefined) {
+                                const d = String(body.auxRoleDept || '').trim().toUpperCase();
+                                co.auxRoleDept = d || null;
+                            }
+                            if (body.auxRoleRequest && typeof body.auxRoleRequest === 'object') {
+                                co.auxRoleRequest = { ...body.auxRoleRequest, pin: cleanPin, updatedAt: Number(body.auxRoleRequest.updatedAt) || now };
+                            } else if (co.auxRoleRequest) {
+                                co.auxRoleRequest.pin = cleanPin;
+                                co.auxRoleRequest.status = 'APROBADO';
+                                co.auxRoleRequest.updatedAt = now;
+                            }
                         }
                     }
                 }
 
                 co.updatedAt = now;
-                co.authUpdatedAt = now;
+                if (!body.skipAuthStamp || role !== 'AUXILIAR') {
+                    co.authUpdatedAt = now;
+                }
             }
 
             // Incremento estricto de versión en servidor
@@ -227,16 +245,26 @@ export async function handleCredentials(context) {
             if (type === 'company') {
                 const co = currentState.companies[id];
                 if (co) {
+                    const coAuthStamp = Number(co.authUpdatedAt) || now;
                     await env.MARSKET_DB.prepare(`
                         UPDATE company_state 
                         SET data = json_set(
                             data,
                             '$.authVault', json(?),
+                            '$.auxRoleDept', ?,
+                            '$.auxRoleRequest', json(?),
                             '$.authUpdatedAt', ?,
                             '$.updatedAt', ?
                         )
                         WHERE company_id = ?
-                    `).bind(JSON.stringify(co.authVault), now, now, id).run().catch(() => null);
+                    `).bind(
+                        JSON.stringify(co.authVault),
+                        co.auxRoleDept || null,
+                        JSON.stringify(co.auxRoleRequest || { status: 'INACTIVO', dept: '', pin: '', updatedAt: now }),
+                        coAuthStamp,
+                        now,
+                        id
+                    ).run().catch(() => null);
                 }
             }
 

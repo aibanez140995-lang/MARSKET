@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.18
+// Versión: v2.0.19
 
 declare(strict_types=1);
 
@@ -1640,6 +1640,30 @@ try {
                 }
                 break;
 
+            case 'REQUEST_AUX_ROLE':
+                $inner = (isset($payload['payload']) && is_array($payload['payload'])) ? $payload['payload'] : $payload;
+                $reqDept = strtoupper(trim((string)($inner['dept'] ?? ($payload['dept'] ?? ''))));
+                $reqPin = trim((string)($inner['pin'] ?? ($payload['pin'] ?? '')));
+                $allowedDepts = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA'];
+                if (!in_array($reqDept, $allowedDepts, true)) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'INVALID_DEPT', 'message' => 'Departamento auxiliar no válido.']);
+                    exit;
+                }
+                if (!preg_match('/^\d{4}$/', $reqPin)) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'INVALID_PIN', 'message' => 'El PIN debe tener 4 dígitos.']);
+                    exit;
+                }
+                $co['auxRoleRequest'] = [
+                    'status' => 'PENDIENTE',
+                    'dept' => $reqDept,
+                    'pin' => $reqPin,
+                    'date' => (string)($inner['date'] ?? ($payload['date'] ?? date('d/m/Y, H:i:s'))),
+                    'updatedAt' => $now
+                ];
+                break;
+
             case 'GENERIC_PATCH':
                 $allowed = ['slogan', 'valueProposition', 'cart', 'votingMotions', 'flightTests', 'bom', 'brandApproval', 'pendingSlogan', 'pendingMission', 'brandStatus', 'executiveResolutions'];
                 foreach ($allowed as $k) {
@@ -2075,10 +2099,26 @@ try {
                         $co['authVault']['roles'][$role] = encodeSecret($cleanPin);
                         $co['roles'][$role] = 'PROTECTED';
                     }
+                    if ($role === 'AUXILIAR') {
+                        if (isset($body['auxRoleDept'])) {
+                            $d = strtoupper(trim((string)$body['auxRoleDept']));
+                            $co['auxRoleDept'] = $d !== '' ? $d : null;
+                        }
+                        if (isset($body['auxRoleRequest']) && is_array($body['auxRoleRequest'])) {
+                            $co['auxRoleRequest'] = $body['auxRoleRequest'];
+                            $co['auxRoleRequest']['updatedAt'] = (int)($co['auxRoleRequest']['updatedAt'] ?? $now);
+                        } elseif (isset($co['auxRoleRequest']) && is_array($co['auxRoleRequest'])) {
+                            $co['auxRoleRequest']['pin'] = $cleanPin;
+                            $co['auxRoleRequest']['status'] = $cleanPin === '' ? 'INACTIVO' : 'APROBADO';
+                            $co['auxRoleRequest']['updatedAt'] = $now;
+                        }
+                    }
                 }
 
                 $co['updatedAt'] = $now;
-                $co['authUpdatedAt'] = $now;
+                if (empty($body['skipAuthStamp']) || $role !== 'AUXILIAR') {
+                    $co['authUpdatedAt'] = $now;
+                }
             }
 
             $currentState['version'] = ((int)($currentState['version'] ?? 0)) + 1;
@@ -2089,12 +2129,15 @@ try {
 
             if ($type === 'company' && isset($currentState['companies'][$id])) {
                 $upCo = $currentState['companies'][$id];
+                $coAuthStamp = (int)($upCo['authUpdatedAt'] ?? $now);
                 try {
                     $upCoStmt = $pdo->prepare("
                         UPDATE company_state 
                         SET data = json_set(
                             data,
                             '$.authVault', json(:vlt),
+                            '$.auxRoleDept', :ard,
+                            '$.auxRoleRequest', json(:arr),
                             '$.authUpdatedAt', :au,
                             '$.updatedAt', :up
                         )
@@ -2102,7 +2145,9 @@ try {
                     ");
                     $upCoStmt->execute([
                         ':vlt' => json_encode($upCo['authVault'] ?? [], JSON_UNESCAPED_UNICODE),
-                        ':au' => $now,
+                        ':ard' => $upCo['auxRoleDept'] ?? null,
+                        ':arr' => json_encode($upCo['auxRoleRequest'] ?? ['status' => 'INACTIVO', 'dept' => '', 'pin' => '', 'updatedAt' => $now], JSON_UNESCAPED_UNICODE),
+                        ':au' => $coAuthStamp,
                         ':up' => $now,
                         ':cid' => $id
                     ]);

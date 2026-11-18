@@ -679,7 +679,7 @@ const state = {
             co.pendingSlogan = co.pendingSlogan || null;
             co.pendingMission = co.pendingMission || null;
             co.brandStatus = co.brandStatus || 'APPROVED';
-            co.auxRoleRequest = co.auxRoleRequest || { status: co.roles['AUXILIAR'] ? 'APROBADO' : 'INACTIVO', dept: co.auxRoleDept || '', pin: this.getRolePin(co, 'AUXILIAR') || '' };
+            co.auxRoleRequest = co.auxRoleRequest || { status: co.roles['AUXILIAR'] ? 'APROBADO' : 'INACTIVO', dept: co.auxRoleDept || '', pin: this.getRolePin(co, 'AUXILIAR') || '', updatedAt: 0 };
             co.deliverables = co.deliverables || {};
             
             const validHojaStatuses = ['DRAFT_TECNICO', 'EN_TALLER_OPERARIO', 'DEVUELTO_A_TECNICO', 'CEO_REVISION', 'SUBMITTED_TO_CEO', 'DELIVERED_TO_TEACHER'];
@@ -763,6 +763,35 @@ const state = {
             co.specialItemRequests = Array.isArray(co.specialItemRequests) ? co.specialItemRequests : [];
         }
         return d;
+    },
+
+    mergeAuxRoleRequest(lReq, sReq, lTime = 0, sTime = 0) {
+        if (!lReq && !sReq) return undefined;
+        if (!lReq) return JSON.parse(JSON.stringify(sReq));
+        if (!sReq) return JSON.parse(JSON.stringify(lReq));
+
+        const isPlaceholderInactive = (r) => Boolean(r && r.status === 'INACTIVO' && !r.dept && !r.date && !(Number(r.updatedAt) > 0));
+        if (isPlaceholderInactive(lReq) && !isPlaceholderInactive(sReq)) {
+            return JSON.parse(JSON.stringify(sReq));
+        }
+        if (isPlaceholderInactive(sReq) && !isPlaceholderInactive(lReq)) {
+            return JSON.parse(JSON.stringify(lReq));
+        }
+
+        const lUpd = Number(lReq.updatedAt) || 0;
+        const sUpd = Number(sReq.updatedAt) || 0;
+        if (lUpd !== sUpd) {
+            return JSON.parse(JSON.stringify(lUpd > sUpd ? lReq : sReq));
+        }
+
+        if (sReq.status === 'PENDIENTE' && lReq.status === 'INACTIVO') {
+            return JSON.parse(JSON.stringify(sReq));
+        }
+        if (lReq.status === 'PENDIENTE' && sReq.status === 'INACTIVO') {
+            return JSON.parse(JSON.stringify(lReq));
+        }
+
+        return JSON.parse(JSON.stringify(lTime > sTime ? lReq : sReq));
     },
 
     mergeData(serverData, localData) {
@@ -959,10 +988,14 @@ const state = {
                         merged.companies[k].authVault = JSON.parse(JSON.stringify(sCo.authVault));
                         merged.companies[k].roles = JSON.parse(JSON.stringify(sCo.roles || {}));
                         merged.companies[k].auxRoleDept = sCo.auxRoleDept || null;
-                        if (sCo.auxRoleRequest) {
-                            merged.companies[k].auxRoleRequest = JSON.parse(JSON.stringify(sCo.auxRoleRequest));
-                        }
                         merged.companies[k].authUpdatedAt = sAuthTime;
+                    }
+                    const chosenAuxReq = this.mergeAuxRoleRequest(lCo.auxRoleRequest, sCo.auxRoleRequest, lTime, sTime);
+                    if (chosenAuxReq) {
+                        merged.companies[k].auxRoleRequest = chosenAuxReq;
+                        if (chosenAuxReq.status === 'APROBADO' && chosenAuxReq.dept && !merged.companies[k].auxRoleDept) {
+                            merged.companies[k].auxRoleDept = chosenAuxReq.dept;
+                        }
                     }
                     // Preservar siempre calificaciones docentes usando Last-Write-Wins (LWW) por asignatura
                     if (sCo.grades) {
@@ -1125,9 +1158,6 @@ const state = {
                         if (lCo.authVault) sCo.authVault = JSON.parse(JSON.stringify(lCo.authVault));
                         if (lCo.roles) sCo.roles = JSON.parse(JSON.stringify(lCo.roles || {}));
                         sCo.auxRoleDept = lCo.auxRoleDept || null;
-                        if (lCo.auxRoleRequest) {
-                            sCo.auxRoleRequest = JSON.parse(JSON.stringify(lCo.auxRoleRequest));
-                        }
                         sCo.authUpdatedAt = lAuthTime;
                     }
                     // Preservar resolución de solicitudes de cambio de nombre frente a estados pendientes desactualizados
@@ -1148,11 +1178,11 @@ const state = {
                             sCo.brandApproval = JSON.parse(JSON.stringify(lCo.brandApproval));
                         }
                     }
-                    if (lCo.auxRoleRequest) {
-                        const lSt = lCo.auxRoleRequest.status;
-                        const sSt = sCo.auxRoleRequest ? sCo.auxRoleRequest.status : null;
-                        if (!sSt || (sSt === 'PENDIENTE' && lSt && lSt !== 'PENDIENTE') || (lCo.auxRoleRequest.updatedAt || 0) > (sCo.auxRoleRequest?.updatedAt || 0)) {
-                            sCo.auxRoleRequest = JSON.parse(JSON.stringify(lCo.auxRoleRequest));
+                    const chosenAuxReqElse = this.mergeAuxRoleRequest(lCo.auxRoleRequest, sCo.auxRoleRequest, lTime, sTime);
+                    if (chosenAuxReqElse) {
+                        sCo.auxRoleRequest = chosenAuxReqElse;
+                        if (chosenAuxReqElse.status === 'APROBADO' && chosenAuxReqElse.dept && !sCo.auxRoleDept) {
+                            sCo.auxRoleDept = chosenAuxReqElse.dept;
                         }
                     }
                     // Preservar calificaciones locales si son más recientes o el servidor no las tiene (LWW)
@@ -1501,18 +1531,26 @@ const state = {
         }
     },
 
-    async updatePin(coId, role, newPin) {
+    async updatePin(coId, role, newPin, extra = {}) {
         const co = this.data.companies?.[coId];
         if (!co) return false;
         clearTimeout(this.syncTimer);
         this.pausePolling = true;
         const clean = String(newPin || '').trim();
-        this.setRolePin(co, role, clean, true);
-        if (role === 'AUXILIAR' && co.auxRoleRequest) {
-            co.auxRoleRequest.pin = clean;
-            if (!clean) co.auxRoleRequest.status = 'INACTIVO';
+        const now = Date.now();
+        this.setRolePin(co, role, clean, !extra.skipAuthStamp);
+        co.updatedAt = now;
+        if (role === 'AUXILIAR') {
+            if (extra.auxRoleDept !== undefined) co.auxRoleDept = extra.auxRoleDept;
+            if (extra.auxRoleRequest && typeof extra.auxRoleRequest === 'object') {
+                co.auxRoleRequest = { ...extra.auxRoleRequest, updatedAt: Number(extra.auxRoleRequest.updatedAt) || now };
+            } else if (co.auxRoleRequest) {
+                co.auxRoleRequest.pin = clean;
+                if (!clean && co.auxRoleRequest.status !== 'RECHAZADO') co.auxRoleRequest.status = 'INACTIVO';
+                co.auxRoleRequest.updatedAt = now;
+            }
         }
-        this.data.lastUpdated = Date.now();
+        this.data.lastUpdated = now;
 
         if (this.user && !this.user.admin && this.user.coId === coId && this.user.role === role) {
             const refreshed = { ...this.user, authToken: this.getAuthToken(this.user, this.data) };
@@ -1526,13 +1564,17 @@ const state = {
         let ok = false;
         try {
             const token = this.getAuthToken(this.user, this.data);
+            const patchBody = { type: 'company', id: coId, role, newPin: clean };
+            if (extra.auxRoleDept !== undefined) patchBody.auxRoleDept = extra.auxRoleDept;
+            if (extra.auxRoleRequest) patchBody.auxRoleRequest = co.auxRoleRequest;
+            if (extra.skipAuthStamp) patchBody.skipAuthStamp = true;
             const res = await fetch('/api/admin/credentials', {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
                     ...(token ? { 'X-Marsket-Auth': token } : {})
                 },
-                body: JSON.stringify({ type: 'company', id: coId, role, newPin: clean })
+                body: JSON.stringify(patchBody)
             });
             if (res.ok) {
                 const resJson = await res.json().catch(() => null);

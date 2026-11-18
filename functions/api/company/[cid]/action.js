@@ -643,6 +643,26 @@ export async function onRequestPost(context) {
                 break;
             }
 
+            case 'REQUEST_AUX_ROLE': {
+                const reqDept = String(p.dept || '').trim().toUpperCase();
+                const reqPin = String(p.pin || '').trim();
+                const allowedDepts = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA'];
+                if (!allowedDepts.includes(reqDept)) {
+                    return new Response(JSON.stringify({ error: 'INVALID_DEPT', message: 'Departamento auxiliar no válido.' }), { status: 400, headers: CORS_HEADERS });
+                }
+                if (!/^\d{4}$/.test(reqPin)) {
+                    return new Response(JSON.stringify({ error: 'INVALID_PIN', message: 'El PIN debe tener 4 dígitos.' }), { status: 400, headers: CORS_HEADERS });
+                }
+                co.auxRoleRequest = {
+                    status: 'PENDIENTE',
+                    dept: reqDept,
+                    pin: reqPin,
+                    date: String(p.date || new Date().toLocaleString()),
+                    updatedAt: now
+                };
+                break;
+            }
+
             case 'GENERIC_PATCH': {
                 const allowed = ['slogan', 'valueProposition', 'cart', 'votingMotions', 'flightTests', 'bom', 'brandApproval', 'pendingSlogan', 'pendingMission', 'brandStatus', 'executiveResolutions'];
                 for (const k of allowed) {

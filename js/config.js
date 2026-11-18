@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.18) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.19) ---
 
-const APP_VERSION = "2.0.18";
+const APP_VERSION = "2.0.19";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1154,8 +1154,22 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.18
+// Changelog Oficial de Producción v2.0.19
 const APP_CHANGELOG = [
+    {
+      version: "2.0.19",
+      date: "2026-11-18",
+      title: "Sincronización Multi-Dispositivo de Solicitudes de Rol Auxiliar (CEO ⇄ Coordinación)",
+      items: [
+        "Fin del Borrado Silencioso en Coordinación (mergeAuxRoleRequest en state.js): Corregido el fallo por el que la memoria local del ordenador del Coordinador ('INACTIVO') machacaba las solicitudes 'PENDIENTE' enviadas por los CEOs desde otros dispositivos.",
+        "Acción Atómica REQUEST_AUX_ROLE en Tiempo Real: Al solicitar el alta del Rol Auxiliar (submitAuxRole), el CEO envía inmediatamente la petición atómica a CDMON / Cloudflare D1 con sello de tiempo (updatedAt) además de sincronizar el estado global.",
+        "Alta y Denegación Completas en Coordinación: resolveAuxRoleRequest y PATCH /api/admin/credentials persisten el PIN, auxRoleDept, auxRoleRequest y envían al instante la notificación oficial al CEO en todos los navegadores."
+      ],
+      highlights: [
+        { type: "ROL AUXILIAR", text: "Las solicitudes del CEO desde cualquier dispositivo llegan ya al instante a Coordinación." },
+        { type: "SYNC LWW", text: "Resolución por updatedAt evitando que estados vacíos locales pisen altas pendientes." }
+      ]
+    },
     {
       version: "2.0.18",
       date: "2026-11-18",

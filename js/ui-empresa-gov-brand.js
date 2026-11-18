@@ -62,7 +62,7 @@ Object.assign(ui, {
         this.showModal("Solicitud de Rol Observador (Auxiliar)", html, actions);
     },
 
-    submitAuxRole() {
+    async submitAuxRole() {
         if (!state.user) return;
         const elPin = document.getElementById('aux-pin-input');
         const elDept = document.getElementById('aux-dept-select');
@@ -74,22 +74,54 @@ Object.assign(ui, {
         if (!/^\d{4}$/.test(pin)) return this.notify("El PIN propuesto debe tener exactamente 4 dígitos numéricos.", "warning");
         if (!dept) return this.notify("Debes seleccionar un departamento vinculado.", "warning");
         
-        const co = state.data.companies[state.user.coId];
+        const coId = state.user.coId;
+        const co = state.data.companies[coId];
         if (!co) return auth.logout();
         
-        co.auxRoleRequest = {
+        const nowTs = Date.now();
+        const reqObj = {
             status: 'PENDIENTE',
             dept: dept,
             pin: pin,
-            date: new Date().toLocaleString()
+            date: new Date().toLocaleString(),
+            updatedAt: nowTs
         };
-        
-        state.save();
-        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
-        
+        co.auxRoleRequest = reqObj;
+        co.updatedAt = nowTs;
+        state.data.lastUpdated = nowTs;
+        state.saveLocalOnly();
+        try { if (typeof ui.updateHUD === 'function') ui.updateHUD(); } catch(e) {}
+
         this.closeModal();
         this.notify(`⏳ Solicitud enviada a Coordinación Docente. Una vez aprobada, el PIN quedará habilitado.`, "info");
         this.render();
+
+        let actionSynced = false;
+        try {
+            const token = state.getAuthToken(state.user, state.data);
+            if (token) {
+                const actRes = await fetch(`/api/company/${encodeURIComponent(coId)}/action`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Marsket-Auth': token
+                    },
+                    body: JSON.stringify({
+                        action: 'REQUEST_AUX_ROLE',
+                        payload: reqObj
+                    })
+                });
+                if (actRes && actRes.ok) {
+                    actionSynced = true;
+                    if (typeof state.fetchFromCloud === 'function') {
+                        await state.fetchFromCloud(true).catch(() => {});
+                    }
+                }
+            }
+        } catch(e) {}
+        if (!actionSynced && typeof state.pushToCloud === 'function') {
+            await state.pushToCloud(false);
+        }
     },
 
     viewResolutions(el) {

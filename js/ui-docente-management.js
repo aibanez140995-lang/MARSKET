@@ -1422,6 +1422,7 @@ Object.assign(ui, {
         const co = state.data.companies[cid];
         if (!co || !co.auxRoleRequest) return;
 
+        const now = Date.now();
         if (isApproved) {
             const pinInput = document.getElementById(`approve-aux-pin-${cid}`);
             const finalPin = pinInput ? this.cleanInput(pinInput.value) : co.auxRoleRequest.pin;
@@ -1431,14 +1432,24 @@ Object.assign(ui, {
             co.auxRoleDept = co.auxRoleRequest.dept;
             co.auxRoleRequest.status = 'APROBADO';
             co.auxRoleRequest.pin = finalPin;
+            co.auxRoleRequest.updatedAt = now;
+            co.updatedAt = now;
 
             ui.pushNotification(cid, 'CEO', `Coordinación ha APROBADO el Rol Auxiliar vinculado a ${co.auxRoleDept}. PIN de acceso activado: ${finalPin}`, 'success', { view: 'resolutions' });
-            await state.updatePin(cid, 'AUXILIAR', finalPin);
+            await state.updatePin(cid, 'AUXILIAR', finalPin, { auxRoleDept: co.auxRoleDept, auxRoleRequest: co.auxRoleRequest, skipAuthStamp: true });
+            state.save(cid);
+            clearTimeout(state.syncTimer);
+            if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
             this.notify(`✅ Rol Auxiliar activado en ${co.name} con PIN ${finalPin}.`, "success");
         } else {
             co.auxRoleRequest.status = 'RECHAZADO';
+            co.auxRoleRequest.updatedAt = now;
+            co.updatedAt = now;
             ui.pushNotification(cid, 'CEO', `Tu solicitud de alta para el Rol Auxiliar ha sido DENEGADA por Coordinación.`, 'error', { view: 'resolutions' });
-            await state.updatePin(cid, 'AUXILIAR', '');
+            await state.updatePin(cid, 'AUXILIAR', '', { auxRoleDept: co.auxRoleDept || '', auxRoleRequest: co.auxRoleRequest, skipAuthStamp: true });
+            state.save(cid);
+            clearTimeout(state.syncTimer);
+            if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
             this.notify(`Solicitud de Rol Auxiliar denegada para ${co.name}.`, "warning");
         }
         this.render();
@@ -2133,7 +2144,7 @@ Object.assign(ui, {
         const newCo = { 
             name, balance: cap, logo: null, sponsorAwarded: null, sponsorData: {name: null, logo: null}, valueProposition: "", slogan: "", classGroup,
             brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" },
-            auxRoleRequest: { status: 'INACTIVO', dept: '', pin: '' },
+            auxRoleRequest: { status: 'INACTIVO', dept: '', pin: '', updatedAt: 0 },
             roles: {}, authVault: { code: '', roles: {} },
             aiPrompts: [], executiveResolutions: [], flightTests: [], votingMotions: [], cart: [], orders: [], ledger: [], realCosts: [], grades: {}, marketingCampaigns: [], inactivityReports: [], notifications: [], sanctions: [], crisisAlerts: [], bom: [],
             loginStats: { totalLogins: 0, roles: { CEO:{count:0}, TECNICO:{count:0}, FINANZAS:{count:0}, MARKETING:{count:0}, OPERACIONES_IA:{count:0} } },
