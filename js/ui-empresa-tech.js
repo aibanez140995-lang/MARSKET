@@ -688,7 +688,7 @@ Object.assign(ui, {
                 </div>
                 <span class="text-xs font-mono font-bold px-2.5 py-1 uppercase border ${isHojaLocked ? 'text-cyan-300 bg-cyan-950/50 border-cyan-500/40' : 'text-mars-green bg-mars-green/10 border-mars-green/40'}">${isHojaLocked ? '🛠️ Canal I+D ⇄ Taller Activo' : '📤 Entrega Fase III Abierta'}</span>
             </div>
-            ${this.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval · Fase III)', '4. Docente FyQ'], trackerIdx)}
+            ${this.renderWorkflowTracker(['I+D (BOM)', 'Taller (Montaje)', 'CEO (Aval · Fase III)', 'Docente FyQ'], trackerIdx)}
             ${hojaInnerHtml}
             ${historyTimelineHtml}
         </div>`;

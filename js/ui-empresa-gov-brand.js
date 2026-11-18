@@ -1212,7 +1212,7 @@ Object.assign(ui, {
 
                 return `
                 <div class="bg-slate-900/90 border border-slate-800 p-3 text-xs flex flex-col gap-2">
-                    ${ui.renderWorkflowTracker(['1. Creatividad MKT', '2. CEO (Valida)', '3. Docente Liderazgo'], actStatus === 'PENDIENTE_CEO' ? 1 : (actStatus === 'VALIDADO_CEO' ? 2 : 0))}
+                    ${ui.renderWorkflowTracker(['Creatividad MKT', 'CEO (Valida)', 'Docente Liderazgo'], actStatus === 'PENDIENTE_CEO' ? 1 : (actStatus === 'VALIDADO_CEO' ? 2 : 0))}
                     <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
                     <div class="overflow-hidden min-w-0 space-y-1">
                         <div class="flex items-center gap-2 flex-wrap">

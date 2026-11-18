@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.20) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.21) ---
 
-const APP_VERSION = "2.0.20";
+const APP_VERSION = "2.0.21";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1154,8 +1154,23 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.20
+// Changelog Oficial de Producción v2.0.21
 const APP_CHANGELOG = [
+    {
+      version: "2.0.21",
+      date: "2026-11-18",
+      title: "Fase 1 · Blindaje Multi-PC Marketing (DOC_12), Paridad SQL y Claridad de Fase",
+      items: [
+        "Subsanación de Acciones Marketing DOC_12 Multi-PC: Incorporado reloj lógico causal (resubmittedAt vs reviewedAt) en cliente y backends (CDMON PHP y Cloudflare D1) para impedir que un caché con rechazo antiguo pise una creatividad corregida y reenviada desde otro ordenador.",
+        "Paridad SQL company_state y Reset de TEST: Actualización conjunta de version y updated_at en /api/admin/credentials y unificación de las tres ramas de reset de sandbox TEST en mergeData() para evitar resurrecciones de contratos antiguos.",
+        "Chip de Cuenta Atrás en Todos los Roles: El banner superior de Técnico, Finanzas, Marketing, Operaciones y CEO muestra ahora si el rol lleva la «Fase al día» en verde o los días restantes para el cierre.",
+        "Trackers de Pasos Limpios en Móvil: Retirada la numeración duplicada ('1. ', '2. '...) en los trackers de Órdenes, Hoja de Taller y Marketing para ganar espacio horizontal."
+      ],
+      highlights: [
+        { type: "BYOD SYNC", text: "Subsanaciones DOC_12, contratos TEST y company_state protegidos entre PCs." },
+        { type: "ALUMNADO UI", text: "Chip «✓ Fase al día» / cuenta atrás en todos los roles y trackers limpios." }
+      ]
+    },
     {
       version: "2.0.20",
       date: "2026-11-18",

@@ -1760,6 +1760,7 @@ const ui = {
         html += `</div>`;
         
         steps.forEach((step, idx) => {
+            const cleanStep = String(step || '').replace(/^\d+\.\s*/, '');
             const isCompleted = idx <= currentIndex;
             const colorClass = isCompleted ? 'bg-mars-green text-black border-mars-green shadow-[0_0_10px_#00ff66]' : 'bg-slate-900 text-slate-300 border-slate-700';
             const textClass = isCompleted ? 'text-mars-green font-bold' : 'text-slate-300';
@@ -1768,7 +1769,7 @@ const ui = {
                 <div class="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-full border-2 flex items-center justify-center text-xs font-black transition-all duration-300 ${colorClass}">
                     ${isCompleted ? '✓' : idx + 1}
                 </div>
-                <span class="text-[10px] sm:text-xs font-sans uppercase tracking-normal sm:tracking-wide text-center leading-tight break-normal w-full ${textClass}">${this.escapeHTML(step)}</span>
+                <span class="text-[10px] sm:text-xs font-sans uppercase tracking-normal sm:tracking-wide text-center leading-tight break-normal w-full ${textClass}">${this.escapeHTML(cleanStep)}</span>
             </div>`;
         });
         html += `</div>`;

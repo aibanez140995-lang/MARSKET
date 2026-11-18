@@ -347,10 +347,13 @@ export async function onRequestPost(context) {
                     if (camp && Array.isArray(camp.executedActions)) {
                         const act = camp.executedActions.find(a => String(a.id) === String(actId));
                         if (act) {
+                            const revTs = Math.max(now, (Number(act.resubmittedAt) || 0) + 1);
                             act.status = approved ? 'VALIDADO_CEO' : 'RECHAZADO_CEO';
                             act.feedback = feedback || '';
                             act.returnDriveUrl = (!approved && returnDriveUrl) ? String(returnDriveUrl).trim() : '';
-                            act.reviewedAt = now;
+                            act.reviewedAt = revTs;
+                            act.updatedAt = revTs;
+                            camp.updatedAt = revTs;
                         }
                     }
                 }
@@ -371,12 +374,29 @@ export async function onRequestPost(context) {
                             const totalAllowed = camp.totalActions || 3;
                             const existingIdx = camp.executedActions.findIndex(a => String(a.id) === String(p.actionItem.id));
                             if (existingIdx >= 0) {
-                                camp.executedActions[existingIdx] = Object.assign({}, camp.executedActions[existingIdx], p.actionItem);
+                                const exAct = camp.executedActions[existingIdx];
+                                const exTs = Math.max(Number(exAct.resubmittedAt) || 0, Number(exAct.reviewedAt) || 0, Number(exAct.updatedAt) || 0);
+                                const inTs = Math.max(Number(p.actionItem.resubmittedAt) || 0, Number(p.actionItem.reviewedAt) || 0, Number(p.actionItem.updatedAt) || 0);
+                                if (inTs === 0 || inTs >= exTs) {
+                                    const mergedItem = Object.assign({}, exAct, p.actionItem);
+                                    if (mergedItem.status === 'PENDIENTE_CEO') {
+                                        const resubTs = Math.max(now, (Number(exAct.reviewedAt) || 0) + 1);
+                                        mergedItem.resubmittedAt = resubTs;
+                                        mergedItem.updatedAt = resubTs;
+                                        mergedItem.feedback = '';
+                                        mergedItem.returnDriveUrl = '';
+                                        camp.updatedAt = resubTs;
+                                    } else {
+                                        camp.updatedAt = now;
+                                    }
+                                    camp.executedActions[existingIdx] = mergedItem;
+                                }
                             } else {
                                 if (camp.executedActions.length >= totalAllowed) {
                                     return new Response(JSON.stringify({ error: 'CAMPAIGN_QUOTA_EXCEEDED', message: 'Cupo de acciones publicitarias agotado para este paquete.' }), { status: 400, headers: CORS_HEADERS });
                                 }
                                 camp.executedActions.push(p.actionItem);
+                                camp.updatedAt = now;
                             }
                         }
                     }

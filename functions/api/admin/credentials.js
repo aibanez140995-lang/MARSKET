@@ -248,16 +248,20 @@ export async function handleCredentials(context) {
                     const coAuthStamp = Number(co.authUpdatedAt) || now;
                     await env.MARSKET_DB.prepare(`
                         UPDATE company_state 
-                        SET data = json_set(
-                            data,
-                            '$.authVault', json(?),
-                            '$.auxRoleDept', ?,
-                            '$.auxRoleRequest', json(?),
-                            '$.authUpdatedAt', ?,
-                            '$.updatedAt', ?
-                        )
+                        SET version = MAX(COALESCE(version, 0) + 1, ?),
+                            updated_at = ?,
+                            data = json_set(
+                                data,
+                                '$.authVault', json(?),
+                                '$.auxRoleDept', ?,
+                                '$.auxRoleRequest', json(?),
+                                '$.authUpdatedAt', ?,
+                                '$.updatedAt', ?
+                            )
                         WHERE company_id = ?
                     `).bind(
+                        currentState.version,
+                        now,
                         JSON.stringify(co.authVault),
                         co.auxRoleDept || null,
                         JSON.stringify(co.auxRoleRequest || { status: 'INACTIVO', dept: '', pin: '', updatedAt: now }),

@@ -33,8 +33,8 @@ Object.assign(ui, {
             ordersTabContentHtml = approvedOrders.map(order => {
                 const isB2B = order.type === 'B2B_BUY_REQUEST' || !!order.offerId;
                 const tracker = isB2B
-                    ? ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Aduana Docente', '4. Taller (Ejecuta)'], 3)
-                    : ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Logística (Ejecuta)'], 1);
+                    ? ui.renderWorkflowTracker(['I+D (Solicita)', 'Finanzas (Audita)', 'Aduana Docente', 'Taller (Ejecuta)'], 3)
+                    : ui.renderWorkflowTracker(['I+D (Solicita)', 'Finanzas (Audita)', 'Logística (Ejecuta)'], 1);
                 const statusBadge = isB2B
                     ? `<span class="text-xs font-bold uppercase text-mars-cyan bg-cyan-950/60 border border-cyan-500/50 px-2.5 py-1 tracking-wider">[AUTORIZADO POR ADUANA DOCENTE]</span>`
                     : `<span class="text-xs font-bold uppercase text-mars-green bg-mars-green/10 border border-mars-green/40 px-2.5 py-1 tracking-wider">[APROBADO POR FINANZAS]</span>`;
@@ -202,7 +202,7 @@ Object.assign(ui, {
                     </div>
                     <span class="text-xs font-mono font-bold ${currentHoja?.lastWorkshopCheckAt ? 'text-mars-green bg-mars-green/10 border border-mars-green/40' : 'text-slate-300 bg-slate-900 border border-slate-700'} px-2.5 py-1 rounded">${currentHoja?.lastWorkshopCheckAt ? '✓ ÚLTIMA ITERACIÓN OK' : '⏳ EN DISEÑO POR TÉCNICO'}</span>
                 </div>
-                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval · Fase III)', '4. Docente FyQ'], 0)}
+                ${ui.renderWorkflowTracker(['I+D (BOM)', 'Taller (Montaje)', 'CEO (Aval · Fase III)', 'Docente FyQ'], 0)}
                 <p class="text-xs text-slate-300 font-sans">El departamento Técnico (I+D) está configurando el BOM y la especificación en Google Docs. En cuanto envíe una iteración a Taller, podrás verificar el montaje o registrar incidencias en el histórico.</p>
                 ${historyTimelineHtml}
             </div>`;
@@ -216,7 +216,7 @@ Object.assign(ui, {
                     </div>
                     <span class="text-xs font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-500 px-2.5 py-1 rounded">⚠️ DEVUELTO A TÉCNICO</span>
                 </div>
-                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval · Fase III)', '4. Docente FyQ'], 0)}
+                ${ui.renderWorkflowTracker(['I+D (BOM)', 'Taller (Montaje)', 'CEO (Aval · Fase III)', 'Docente FyQ'], 0)}
                 <div class="bg-amber-950/40 border border-amber-500/50 p-2.5 my-2 text-xs text-amber-300 font-mono">
                     <strong>Incidencia reportada a I+D:</strong> ${this.escapeHTML(currentHoja.returnReason || currentHoja.returnReasonId || 'Incidencia de taller')}
                 </div>
@@ -239,7 +239,7 @@ Object.assign(ui, {
                     </div>
                     <span class="text-xs font-mono font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-500 px-2.5 py-1 rounded">⚙️ EN TALLER (OPERARIO)</span>
                 </div>
-                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval · Fase III)', '4. Docente FyQ'], 1)}
+                ${ui.renderWorkflowTracker(['I+D (BOM)', 'Taller (Montaje)', 'CEO (Aval · Fase III)', 'Docente FyQ'], 1)}
                 <p class="text-xs text-slate-300 font-sans mb-3">Revisa el montaje físico del cohete respecto al BOM documentado por Técnico. Cada validación o incidencia queda guardada en el histórico para elaborar la entrega final en Fase III.</p>
                 <div class="mb-4">
                     <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/60 transition-colors">
@@ -263,7 +263,7 @@ Object.assign(ui, {
                     </div>
                     <span class="text-xs font-mono font-bold text-purple-300 bg-purple-950/60 border border-purple-500 px-2.5 py-1 rounded">⏳ REMITIDO AL CEO</span>
                 </div>
-                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval · Fase III)', '4. Docente FyQ'], 2)}
+                ${ui.renderWorkflowTracker(['I+D (BOM)', 'Taller (Montaje)', 'CEO (Aval · Fase III)', 'Docente FyQ'], 2)}
                 <p class="text-xs text-slate-300 font-sans mb-2">Has validado el ensamble físico en taller. El entregable está pendiente de visado formal por el CEO hacia el profesor de FyQ.</p>
                 <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-purple-950/40 text-purple-300 border border-purple-500/30 rounded font-mono"><span>Ver Documento Drive ↗</span></a>
                 ${historyTimelineHtml}
@@ -278,7 +278,7 @@ Object.assign(ui, {
                     </div>
                     <span class="text-xs font-mono font-bold text-mars-magenta bg-mars-magenta/20 border border-mars-magenta px-2.5 py-1 rounded">⚠️ DEVUELTO POR CEO</span>
                 </div>
-                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval · Fase III)', '4. Docente FyQ'], 2)}
+                ${ui.renderWorkflowTracker(['I+D (BOM)', 'Taller (Montaje)', 'CEO (Aval · Fase III)', 'Docente FyQ'], 2)}
                 <div class="bg-red-950/40 border border-red-500/50 p-2.5 my-2 text-xs text-red-300 font-mono">
                     <strong>Motivo de Devolución CEO:</strong> ${this.escapeHTML(currentHoja?.returnReason || currentHoja?.returnReasonId || 'Requiere subsanación')}
                 </div>
@@ -299,7 +299,7 @@ Object.assign(ui, {
                     </div>
                     <span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2.5 py-1 rounded">✓ VISADO Y ENTREGADO A FYQ</span>
                 </div>
-                ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval · Fase III)', '4. Docente FyQ'], 3)}
+                ${ui.renderWorkflowTracker(['I+D (BOM)', 'Taller (Montaje)', 'CEO (Aval · Fase III)', 'Docente FyQ'], 3)}
                 <p class="text-xs text-slate-300 font-sans mb-2">El CEO ha visado y remitido la Hoja de Taller al profesor de Física y Química para su evaluación oficial.</p>
                 <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Abrir Documento Oficial Drive ↗</span></a>
                 ${historyTimelineHtml}

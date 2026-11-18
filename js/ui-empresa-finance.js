@@ -135,7 +135,7 @@ Object.assign(ui, {
                         else if (st === 'EJECUTADO') b2bTrackerIdx = 3;
                         else if (st === 'PENDIENTE_FINANZAS') b2bTrackerIdx = 1;
 
-                        trackerHtml = ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Aduana Docente', '4. Taller (Ejecuta)'], b2bTrackerIdx);
+                        trackerHtml = ui.renderWorkflowTracker(['I+D (Solicita)', 'Finanzas (Audita)', 'Aduana Docente', 'Taller (Ejecuta)'], b2bTrackerIdx);
 
                         if (st === 'PENDIENTE_FINANZAS') {
                             stBadge = 'bg-amber-950/40 text-amber-300 border-amber-500 animate-pulse';
@@ -161,7 +161,7 @@ Object.assign(ui, {
                         if (st === 'APROBADO_FINANZAS') b2cTrackerIdx = 1;
                         else if (st === 'EJECUTADO') b2cTrackerIdx = 2;
 
-                        trackerHtml = ui.renderWorkflowTracker(['1. I+D (Solicita)', '2. Finanzas (Audita)', '3. Logística (Ejecuta)'], b2cTrackerIdx);
+                        trackerHtml = ui.renderWorkflowTracker(['I+D (Solicita)', 'Finanzas (Audita)', 'Logística (Ejecuta)'], b2cTrackerIdx);
 
                         if (st === 'PENDIENTE_FINANZAS') stBadge = 'bg-mars-yellow/20 text-mars-yellow border-mars-yellow animate-pulse';
                         else if (st === 'APROBADO_FINANZAS') stBadge = 'bg-blue-500/20 text-blue-300 border-blue-500';
@@ -351,7 +351,7 @@ Object.assign(ui, {
                             <div class="flex items-center gap-2 mb-2">
                                 <span class="text-[10px] font-black uppercase px-2 py-0.5 bg-yellow-950 text-mars-yellow border border-mars-yellow/40">MERCADO B2B: DESINVERSIÓN I+D</span>
                             </div>
-                            ${ui.renderWorkflowTracker(['1. Propuesta I+D', '2. Finanzas (Audita)', '3. Mercado B2B'], trackerIdx)}
+                            ${ui.renderWorkflowTracker(['Propuesta I+D', 'Finanzas (Audita)', 'Mercado B2B'], trackerIdx)}
                             <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
                                 <div>
                                     <span class="text-xs font-black uppercase px-2 py-0.5 border ${b2bBadge}">${b2bStatusLabel}</span>
@@ -400,7 +400,7 @@ Object.assign(ui, {
                             <div class="flex items-center gap-2 mb-2">
                                 <span class="text-[10px] font-black uppercase px-2 py-0.5 bg-yellow-950 text-mars-yellow border border-mars-yellow/40">DEPTO: MARKETING (PAQUETE)</span>
                             </div>
-                            ${ui.renderWorkflowTracker(['1. Solicitud MKT', '2. Finanzas (Audita)', '3. Activo / Pack'], cst === 'PENDIENTE_FINANZAS' ? 1 : 2)}
+                            ${ui.renderWorkflowTracker(['Solicitud MKT', 'Finanzas (Audita)', 'Activo / Pack'], cst === 'PENDIENTE_FINANZAS' ? 1 : 2)}
                             <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
                                 <div>
                                     <span class="text-xs font-black uppercase px-2 py-0.5 border ${campBadge}">${this.escapeHTML(cst)}</span>
@@ -450,7 +450,7 @@ Object.assign(ui, {
                                 <div class="flex items-center gap-2 mb-2">
                                     <span class="text-[10px] font-black uppercase px-2 py-0.5 bg-purple-950 text-mars-magenta border border-mars-magenta/40">DEPTO: MARKETING (ACCIÓN ESPECÍFICA)</span>
                                 </div>
-                                ${ui.renderWorkflowTracker(['1. Creatividad MKT', '2. CEO (Valida)', '3. Docente Liderazgo'], ast === 'PENDIENTE_CEO' ? 1 : (ast === 'VALIDADO_CEO' ? 2 : 0))}
+                                ${ui.renderWorkflowTracker(['Creatividad MKT', 'CEO (Valida)', 'Docente Liderazgo'], ast === 'PENDIENTE_CEO' ? 1 : (ast === 'VALIDADO_CEO' ? 2 : 0))}
                                 <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
                                     <div>
                                         <span class="text-xs font-black uppercase px-2 py-0.5 border ${actBadge}">${this.escapeHTML(ast)}</span>
@@ -511,7 +511,7 @@ Object.assign(ui, {
                             <div class="flex items-center gap-2 mb-2">
                                 <span class="text-[10px] font-black uppercase px-2 py-0.5 bg-blue-950 text-blue-300 border border-blue-500/40">DEPTO: TALLER / OPERACIONES</span>
                             </div>
-                            ${ui.renderWorkflowTracker(['1. I+D (BOM)', '2. Taller (Montaje)', '3. CEO (Aval)', '4. Docente FyQ'], (hst === 'DELIVERED_TO_TEACHER' ? 3 : (hst === 'SUBMITTED_TO_CEO' || hst === 'CEO_REVISION' ? 2 : 1)))}
+                            ${ui.renderWorkflowTracker(['I+D (BOM)', 'Taller (Montaje)', 'CEO (Aval)', 'Docente FyQ'], (hst === 'DELIVERED_TO_TEACHER' ? 3 : (hst === 'SUBMITTED_TO_CEO' || hst === 'CEO_REVISION' ? 2 : 1)))}
                             <div class="flex justify-between items-start border-b border-slate-800 pb-2 mb-2 flex-wrap gap-2">
                                 <div>
                                     <span class="text-xs font-black uppercase px-2 py-0.5 border ${hojaBadge}">${this.escapeHTML(hst)}</span>

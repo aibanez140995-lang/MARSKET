@@ -904,34 +904,61 @@ const state = {
                 } else if (lAct && !sAct) {
                     result.push({ ...lAct });
                 } else {
-                    // Precedencia estricta: Las decisiones de servidor (VALIDADO_CEO o RECHAZADO_CEO) tienen precedencia sobre estados locales obsoletos (PENDIENTE_CEO)
-                    let status = lAct.status || sAct.status || 'PENDIENTE_CEO';
-                    let feedback = lAct.feedback || sAct.feedback || '';
-                    let returnDriveUrl = lAct.returnDriveUrl || sAct.returnDriveUrl || '';
-                    let reviewedAt = lAct.reviewedAt || sAct.reviewedAt || null;
+                    const lSub = Number(lAct.resubmittedAt) || 0;
+                    const sSub = Number(sAct.resubmittedAt) || 0;
+                    const lRev = Number(lAct.reviewedAt) || 0;
+                    const sRev = Number(sAct.reviewedAt) || 0;
+                    const lEff = Math.max(lSub, lRev, Number(lAct.updatedAt || lAct.createdAt || 0));
+                    const sEff = Math.max(sSub, sRev, Number(sAct.updatedAt || sAct.createdAt || 0));
 
-                    if (sAct.status === 'VALIDADO_CEO' || sAct.status === 'RECHAZADO_CEO') {
-                        status = sAct.status;
-                        feedback = sAct.feedback || '';
-                        returnDriveUrl = sAct.returnDriveUrl || '';
-                        reviewedAt = sAct.reviewedAt || null;
-                    } else if (lAct.status === 'VALIDADO_CEO' || lAct.status === 'RECHAZADO_CEO') {
-                        status = lAct.status;
-                        feedback = lAct.feedback || '';
-                        returnDriveUrl = lAct.returnDriveUrl || '';
-                        reviewedAt = lAct.reviewedAt || null;
+                    const maxSub = Math.max(lSub, sSub);
+                    const maxRev = Math.max(lRev, sRev);
+                    const isDecided = (st) => st === 'VALIDADO_CEO' || st === 'RECHAZADO_CEO';
+
+                    let winner = sAct;
+                    let loser = lAct;
+                    let forceResubmitPending = false;
+
+                    if (maxSub > maxRev) {
+                        // Subsanación causalmente posterior al último dictamen del CEO
+                        winner = (lSub >= sSub) ? lAct : sAct;
+                        loser = (winner === lAct) ? sAct : lAct;
+                        forceResubmitPending = true;
+                    } else if (maxRev > maxSub && maxRev > 0) {
+                        // Dictamen del CEO causalmente posterior
+                        winner = (lRev > sRev) ? lAct : sAct;
+                        loser = (winner === lAct) ? sAct : lAct;
+                    } else if (lEff !== sEff) {
+                        winner = (lEff > sEff) ? lAct : sAct;
+                        loser = (winner === lAct) ? sAct : lAct;
+                    } else if (isDecided(sAct.status) && !isDecided(lAct.status)) {
+                        winner = sAct;
+                        loser = lAct;
+                    } else if (isDecided(lAct.status) && !isDecided(sAct.status)) {
+                        winner = lAct;
+                        loser = sAct;
                     }
 
-                    result.push({
-                        ...sAct,
-                        ...lAct,
+                    const status = forceResubmitPending ? 'PENDIENTE_CEO' : (winner.status || loser.status || 'PENDIENTE_CEO');
+                    const feedback = forceResubmitPending ? '' : (winner.feedback || '');
+                    const returnDriveUrl = forceResubmitPending ? '' : (winner.returnDriveUrl || '');
+                    const reviewedAt = (maxRev > 0) ? maxRev : (winner.reviewedAt || loser.reviewedAt || null);
+                    const resubmittedAt = (maxSub > 0) ? maxSub : (winner.resubmittedAt || loser.resubmittedAt || undefined);
+                    const finalUrl = winner.url || winner.driveUrl || loser.url || loser.driveUrl || '';
+                    const finalDriveUrl = winner.driveUrl || winner.url || loser.driveUrl || loser.url || '';
+
+                    const mergedAct = {
+                        ...loser,
+                        ...winner,
                         status,
                         feedback,
                         returnDriveUrl,
                         reviewedAt,
-                        url: lAct.url || sAct.url || lAct.driveUrl || sAct.driveUrl || '',
-                        driveUrl: lAct.driveUrl || sAct.driveUrl || lAct.url || sAct.url || ''
-                    });
+                        url: finalUrl,
+                        driveUrl: finalDriveUrl
+                    };
+                    if (resubmittedAt !== undefined) mergedAct.resubmittedAt = resubmittedAt;
+                    result.push(mergedAct);
                 }
             });
 
@@ -1175,6 +1202,17 @@ const state = {
             delete merged.companies[delId];
         });
 
+        const isTestCompanyReset = (coKey, sCoObj, lCoObj, sGlobalTime, lGlobalTime) => {
+            const isTest = (coKey === 'sandbox_master' || coKey === 'sandbox_student' || Boolean(sCoObj?.isTestCompany) || Boolean(lCoObj?.isTestCompany));
+            if (!isTest) return false;
+            const sR = Number(sCoObj?.resetAt) || 0;
+            const lR = Number(lCoObj?.resetAt) || 0;
+            if (sR === lR) return false;
+            const winR = Math.max(sR, lR);
+            const loseT = (sR >= lR) ? lGlobalTime : sGlobalTime;
+            return winR >= loseT;
+        };
+
         for (let k in localData.companies) {
             if (allDeletedCompanyIds.has(k)) continue;
             const sCo = merged.companies[k];
@@ -1185,6 +1223,7 @@ const state = {
                 const lTime = lCo.updatedAt || 0;
                 const sAuthTime = sCo.authUpdatedAt || 0;
                 const lAuthTime = lCo.authUpdatedAt || 0;
+                const isTestResetPair = isTestCompanyReset(k, sCo, lCo, sTime, lTime);
 
                 // Protección de memoria local: nunca sobreescribir secretos con nulos de la sanitización
                 if (lCo.authVault && lCo.authVault.code) {
@@ -1292,9 +1331,7 @@ const state = {
                     }
                     const sResetAt = Number(sCo.resetAt) || 0;
                     const lResetAt = Number(lCo.resetAt) || 0;
-                    const isTestCo = (k === 'sandbox_master' || k === 'sandbox_student' || merged.companies[k].isTestCompany || sCo.isTestCompany || lCo.isTestCompany);
-                    const isTestResetL = Boolean(isTestCo && (lResetAt > sTime || sResetAt > lTime));
-                    if (isTestResetL) {
+                    if (isTestResetPair) {
                         merged.companies[k].resetAt = Math.max(sResetAt, lResetAt);
                         applyResetWinner(merged.companies[k], lResetAt >= sResetAt ? lCo : sCo);
                     } else {
@@ -1331,10 +1368,8 @@ const state = {
                     }
                     const sResetAt = Number(sCo.resetAt) || 0;
                     const lResetAt = Number(lCo.resetAt) || 0;
-                    const isTestCo = (k === 'sandbox_master' || k === 'sandbox_student' || sCo.isTestCompany || lCo.isTestCompany);
-                    const isTestResetElse = Boolean(isTestCo && (sResetAt > lTime || lResetAt > sTime));
 
-                    if (isTestResetElse) {
+                    if (isTestResetPair) {
                         sCo.resetAt = Math.max(sResetAt, lResetAt);
                         applyResetWinner(sCo, sResetAt >= lResetAt ? sCo : lCo);
                     } else {
@@ -1417,12 +1452,8 @@ const state = {
                 }
 
                 // Conciliación de contratos comerciales por fase con Last-Write-Wins (LWW)
-                const sResetOuter = Number(sCo.resetAt) || 0;
-                const lResetOuter = Number(lCo.resetAt) || 0;
-                const isTestCoOuter = (k === 'sandbox_master' || k === 'sandbox_student' || sCo.isTestCompany || lCo.isTestCompany);
-                const isResetOuter = Boolean(isTestCoOuter && (sResetOuter > lTime || lResetOuter > sTime));
                 const targetCo = merged.companies[k] || sCo;
-                if (targetCo && !isResetOuter) {
+                if (targetCo && !isTestResetPair) {
                     const sCont = (sCo?.contracts && typeof sCo.contracts === 'object') ? sCo.contracts : {};
                     const lCont = (lCo?.contracts && typeof lCo.contracts === 'object') ? lCo.contracts : {};
                     targetCo.contracts = { ...sCont, ...lCont };
@@ -2197,7 +2228,7 @@ const state = {
             co.nameChangeStatus = 'REJECTED';
         }
 
-        this.save();
+        this.save(coId);
     },
 
     isDeliverableLocked(docKey, co) {
@@ -2296,7 +2327,7 @@ const state = {
             });
         }
 
-        this.save();
+        this.save(coId);
         if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
             ui.render();
             if (isCEO) {
@@ -2392,7 +2423,7 @@ const state = {
         ui.pushNotification(this.user.coId, 'OPERACIONES_IA', 'Técnico ha enviado una actualización de la Hoja de Taller (BOM) para configurar y revisar el cohete.', 'info', {
             view: 'cart'
         });
-        this.save();
+        this.save(this.user.coId);
         if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
             ui.render();
             ui.notify("🚀 Hoja de Taller registrada en el Histórico y remitida al Operario de Taller.", "success");
@@ -2435,7 +2466,7 @@ const state = {
             view: 'tech_workshop',
             anchorId: 'tech-hoja-taller-panel'
         });
-        this.save();
+        this.save(this.user.coId);
 
         try {
             await this.executeAction('SUBMIT_DELIVERABLE', {
@@ -2481,7 +2512,7 @@ const state = {
             section: 'deliverables',
             docKey: 'hoja_taller_fyq'
         });
-        this.save();
+        this.save(this.user.coId);
 
         try {
             await this.executeAction('SUBMIT_DELIVERABLE', {
@@ -2524,7 +2555,7 @@ const state = {
             view: 'tech_workshop',
             anchorId: 'tech-hoja-taller-panel'
         });
-        this.save();
+        this.save(this.user.coId);
 
         try {
             await this.executeAction('SUBMIT_DELIVERABLE', {
@@ -2582,7 +2613,7 @@ const state = {
             });
         }
 
-        this.save();
+        this.save(coId);
         if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
             ui.render();
             ui.notify("✅ Entregable validado por el CEO y elevado a evaluación docente.", "success");
@@ -2645,7 +2676,7 @@ const state = {
             });
         }
 
-        this.save();
+        this.save(coId);
         if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
             ui.render();
             ui.notify("↩️ Entregable devuelto al departamento para subsanación.", "warning");
@@ -2738,10 +2769,14 @@ const state = {
         const act = camp.executedActions.find(a => String(a.id) === String(actId));
         if (!act) return;
 
+        const revTs = Math.max(Date.now(), (Number(act.resubmittedAt) || 0) + 1);
         act.status = approved ? 'VALIDADO_CEO' : 'RECHAZADO_CEO';
-        act.reviewedAt = Date.now();
+        act.reviewedAt = revTs;
+        act.updatedAt = revTs;
         act.feedback = approved ? '' : (feedback || 'Revisión requerida por CEO');
         act.returnDriveUrl = approved ? '' : (returnDriveUrl || '');
+        camp.updatedAt = revTs;
+        co.updatedAt = revTs;
 
         if (typeof telemetry !== 'undefined' && telemetry.log) {
             telemetry.log(approved ? "CEO_MKT_ACCION_APROBADA" : "CEO_MKT_ACCION_RECHAZADA", `Acción publicitaria ${act.title}: ${approved ? 'Aprobada y elevada a Liderazgo' : 'Devuelta a Marketing'}`);
@@ -2761,7 +2796,7 @@ const state = {
             }
         }
 
-        this.save();
+        this.save(coId);
         if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
             ui.render();
             ui.notify(approved ? "✅ Acción publicitaria validada y elevada a Liderazgo y Coordinación." : "↩️ Acción publicitaria devuelta a Marketing para subsanación.", approved ? "success" : "warning");
@@ -2794,11 +2829,17 @@ const state = {
             return;
         }
 
+        const subTs = Math.max(Date.now(), (Number(act.reviewedAt) || 0) + 1);
         act.url = newDriveUrl;
         act.driveUrl = newDriveUrl;
         act.status = 'PENDIENTE_CEO';
         act.date = new Date().toLocaleDateString();
-        act.resubmittedAt = Date.now();
+        act.resubmittedAt = subTs;
+        act.updatedAt = subTs;
+        act.feedback = '';
+        act.returnDriveUrl = '';
+        camp.updatedAt = subTs;
+        co.updatedAt = subTs;
 
         if (typeof telemetry !== 'undefined' && telemetry.log) {
             telemetry.log("MKT_ACCION_SUBSANADA", `Marketing ha subsanado y reenviado al CEO la acción: ${act.title}`);
@@ -2812,7 +2853,7 @@ const state = {
             });
         }
 
-        this.save();
+        this.save(coId);
         if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
             ui.render();
             ui.notify("✅ Acción publicitaria subsanada y reenviada al CEO.", "success");
@@ -3349,7 +3390,7 @@ const state = {
             ledgerTxId: null
         };
         co.updatedAt = now;
-        this.save();
+        this.save(coId);
         return { ok: true, contract: co.contracts[phase] };
     },
 
@@ -3506,7 +3547,7 @@ const state = {
             co.ledger[0].final = co.balance;
         }
         co.updatedAt = now;
-        this.save();
+        this.save(coId);
         return tx;
     }
 };

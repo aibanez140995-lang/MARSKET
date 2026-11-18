@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.20
+// Versión: v2.0.21
 
 declare(strict_types=1);
 
@@ -1375,14 +1375,33 @@ try {
                 if (!empty($payload['actionItem']) && !empty($payload['campaignId'])) {
                     $incomingItem = $payload['actionItem'];
                     $incomingId = (string)($incomingItem['id'] ?? '');
+                    $isCeoOrCoordMkt = ($effectiveRole === 'CEO' || !empty($auth['isCoordinator']) || !empty($auth['isAdmin']));
+                    if (!$isCeoOrCoordMkt || empty($incomingItem['status'])) {
+                        $incomingItem['status'] = 'PENDIENTE_CEO';
+                    }
                     foreach ($co['marketingCampaigns'] as &$c) {
                         if ((string)($c['id'] ?? '') === (string)($payload['campaignId'])) {
                             $c['executedActions'] = is_array($c['executedActions'] ?? null) ? $c['executedActions'] : [];
+                            $totalAllowedMkt = (int)($c['totalActions'] ?? 3);
                             $updated = false;
                             if ($incomingId !== '') {
                                 foreach ($c['executedActions'] as &$exAct) {
                                     if ((string)($exAct['id'] ?? '') === $incomingId) {
-                                        $exAct = array_merge($exAct, $incomingItem);
+                                        $exTs = max((int)($exAct['resubmittedAt'] ?? 0), (int)($exAct['reviewedAt'] ?? 0), (int)($exAct['updatedAt'] ?? 0));
+                                        $inTs = max((int)($incomingItem['resubmittedAt'] ?? 0), (int)($incomingItem['reviewedAt'] ?? 0), (int)($incomingItem['updatedAt'] ?? 0));
+                                        if ($inTs === 0 || $inTs >= $exTs) {
+                                            $exAct = array_merge($exAct, $incomingItem);
+                                            if (($exAct['status'] ?? '') === 'PENDIENTE_CEO') {
+                                                $resubTs = max($now, (int)($exAct['reviewedAt'] ?? 0) + 1);
+                                                $exAct['resubmittedAt'] = $resubTs;
+                                                $exAct['updatedAt'] = $resubTs;
+                                                $exAct['feedback'] = '';
+                                                $exAct['returnDriveUrl'] = '';
+                                                $c['updatedAt'] = $resubTs;
+                                            } else {
+                                                $c['updatedAt'] = $now;
+                                            }
+                                        }
                                         $updated = true;
                                         break;
                                     }
@@ -1390,7 +1409,13 @@ try {
                                 unset($exAct);
                             }
                             if (!$updated) {
+                                if (count($c['executedActions']) >= $totalAllowedMkt) {
+                                    http_response_code(400);
+                                    echo json_encode(['error' => 'CAMPAIGN_QUOTA_EXCEEDED', 'message' => 'Cupo de acciones publicitarias agotado para este paquete.']);
+                                    exit;
+                                }
                                 $c['executedActions'][] = $incomingItem;
+                                $c['updatedAt'] = $now;
                             }
                         }
                     }
@@ -1405,10 +1430,13 @@ try {
                         if ((string)($c['id'] ?? '') === $campIdDa && is_array($c['executedActions'] ?? null)) {
                             foreach ($c['executedActions'] as &$exAct) {
                                 if ((string)($exAct['id'] ?? '') === $actIdDa) {
+                                    $revTs = max($now, (int)($exAct['resubmittedAt'] ?? 0) + 1);
                                     $exAct['status'] = $approvedDa ? 'VALIDADO_CEO' : 'RECHAZADO_CEO';
-                                    $exAct['reviewedAt'] = $now;
+                                    $exAct['reviewedAt'] = $revTs;
+                                    $exAct['updatedAt'] = $revTs;
                                     $exAct['feedback'] = $approvedDa ? '' : (string)($da['feedback'] ?? 'Revisión requerida por CEO');
                                     $exAct['returnDriveUrl'] = $approvedDa ? '' : (string)($da['returnDriveUrl'] ?? '');
+                                    $c['updatedAt'] = $revTs;
                                     break;
                                 }
                             }
@@ -2133,17 +2161,21 @@ try {
                 try {
                     $upCoStmt = $pdo->prepare("
                         UPDATE company_state 
-                        SET data = json_set(
-                            data,
-                            '$.authVault', json(:vlt),
-                            '$.auxRoleDept', :ard,
-                            '$.auxRoleRequest', json(:arr),
-                            '$.authUpdatedAt', :au,
-                            '$.updatedAt', :up
-                        )
+                        SET version = MAX(COALESCE(version, 0) + 1, :ver),
+                            updated_at = :upsql,
+                            data = json_set(
+                                data,
+                                '$.authVault', json(:vlt),
+                                '$.auxRoleDept', :ard,
+                                '$.auxRoleRequest', json(:arr),
+                                '$.authUpdatedAt', :au,
+                                '$.updatedAt', :up
+                            )
                         WHERE company_id = :cid
                     ");
                     $upCoStmt->execute([
+                        ':ver' => (int)$currentState['version'],
+                        ':upsql' => $now,
                         ':vlt' => json_encode($upCo['authVault'] ?? [], JSON_UNESCAPED_UNICODE),
                         ':ard' => $upCo['auxRoleDept'] ?? null,
                         ':arr' => json_encode($upCo['auxRoleRequest'] ?? ['status' => 'INACTIVO', 'dept' => '', 'pin' => '', 'updatedAt' => $now], JSON_UNESCAPED_UNICODE),

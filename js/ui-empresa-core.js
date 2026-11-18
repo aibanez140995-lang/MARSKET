@@ -3963,6 +3963,27 @@ Object.assign(ui, {
 
         const primaryHtml = renderBannerCard(sortedActiveDeliverables[0]);
         const restDeliverables = sortedActiveDeliverables.slice(1);
+        const allRoleDone = myActiveDeliverables.every(d => {
+            const docItem = docs[d.key];
+            const st = (typeof docItem === 'object' && docItem) ? docItem.status : (typeof docItem === 'string' && docItem ? 'DELIVERED_TO_TEACHER' : 'PENDING');
+            return st === 'DELIVERED_TO_TEACHER' || st === 'REVIEWED' || st === 'ACCEPTED';
+        });
+        let countdownChipHtml = '';
+        if (allRoleDone) {
+            countdownChipHtml = `<span class="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/60 text-emerald-300 whitespace-nowrap">✓ Fase al día</span>`;
+        } else if (typeof this.getPhaseClockMetrics === 'function') {
+            const clock = this.getPhaseClockMetrics(co);
+            if (clock) {
+                if (clock.isDeadlinePassed) {
+                    countdownChipHtml = `<span class="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded bg-rose-950/70 border border-rose-500/70 text-rose-300 whitespace-nowrap">⌛ Plazo vencido</span>`;
+                } else if (clock.daysRemaining <= 3) {
+                    const urgencyText = clock.daysRemaining <= 1 ? '🚨 ¡Último día!' : `🚨 ¡Últimos ${clock.daysRemaining} días!`;
+                    countdownChipHtml = `<span class="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded bg-red-950/70 border border-red-500 text-red-300 animate-pulse whitespace-nowrap">${urgencyText}</span>`;
+                } else {
+                    countdownChipHtml = `<span class="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-amber-300 whitespace-nowrap">⏱️ Cierre en ${clock.daysRemaining} días</span>`;
+                }
+            }
+        }
         const itemsHtml = restDeliverables.length > 0 ? `
             ${primaryHtml}
             <details class="mt-2 bg-black/40 border border-slate-800 rounded">
@@ -3986,9 +4007,12 @@ Object.assign(ui, {
                     </span>
                     ${isAuxInParity ? `<span class="text-[10px] font-mono px-2 py-0.5 bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 rounded">🤝 Paridad Auxiliar (tu voto en Trámites es propio)</span>` : ''}
                 </div>
-                <button type="button" onclick="ui.current = 'role_deliverables'; ui.roleDeliverablesPhase = '${curPhase}'; ui.roleDeliverablesScope = 'ALL'; ui.render();" class="text-[11px] text-mars-cyan hover:underline font-mono min-h-[44px] inline-flex items-center">
-                    🗺️ Mapa del Equipo ↗
-                </button>
+                <div class="flex items-center gap-2.5 flex-wrap">
+                    ${countdownChipHtml}
+                    <button type="button" onclick="ui.current = 'role_deliverables'; ui.roleDeliverablesPhase = '${curPhase}'; ui.roleDeliverablesScope = 'ALL'; ui.render();" class="text-[11px] text-mars-cyan hover:underline font-mono min-h-[44px] inline-flex items-center">
+                        🗺️ Mapa del Equipo ↗
+                    </button>
+                </div>
             </div>
             <div class="space-y-2">
                 ${itemsHtml}
