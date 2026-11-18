@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.17) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.18) ---
 
-const APP_VERSION = "2.0.17";
+const APP_VERSION = "2.0.18";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1154,8 +1154,22 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.17
+// Changelog Oficial de Producción v2.0.18
 const APP_CHANGELOG = [
+    {
+      version: "2.0.18",
+      date: "2026-11-18",
+      title: "Alineación Simétrica del Tracker AESA / Flujos y Blindaje del Footer Institucional",
+      items: [
+        "Tracker de Pasos Simétrico en toda la App (renderWorkflowTracker): Barra conectora anclada al centro exacto de los círculos sin pisar las etiquetas inferiores, columnas equitativas que mantienen los círculos siempre alineados y tipografía sans nítida que impide partir palabras como «Coordinación».",
+        "Trámite Licencia AESA (DOC_14) Limpio: Unificación sin numeración duplicada («Preliminar I+D», «Visado CEO», «Solicitud DOC_14», «Coordinación») y suavizado tipográfico en el título.",
+        "Footer Institucional sin Cortes de Año: Ensanchado del contenedor a flex-wrap centrado con whitespace-nowrap en «2026-2027» para impedir saltos partidos de «2026- / 2027» en cualquier pantalla."
+      ],
+      highlights: [
+        { type: "TRACKER AESA", text: "Círculos alineados, barra limpia sin solapes y palabras enteras en una sola línea." },
+        { type: "FOOTER", text: "Bloque académico centrado sin partir el curso escolar 2026-2027." }
+      ]
+    },
     {
       version: "2.0.17",
       date: "2026-11-17",

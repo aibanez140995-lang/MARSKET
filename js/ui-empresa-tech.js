@@ -226,7 +226,7 @@ Object.assign(ui, {
                             else if (isPrelimDelivered) aesaStepIdx = 2;
                             else if (isPrelimAtCeo) aesaStepIdx = 1;
                             const aesaTracker = (!isLicenseApproved && this.renderWorkflowTracker)
-                                ? this.renderWorkflowTracker(['1. Preliminar I+D', '2. Visado CEO', '3. AESA (50 €v)', '4. Claustro'], aesaStepIdx)
+                                ? this.renderWorkflowTracker(['Preliminar I+D', 'Visado CEO', 'AESA (50 €v)', 'Coordinación'], aesaStepIdx)
                                 : '';
                             if (isLicenseApproved) {
                                 return `

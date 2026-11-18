@@ -1750,21 +1750,25 @@ const ui = {
 
     renderWorkflowTracker(steps, currentIndex) {
         if (!steps || !steps.length) return '';
-        let html = `<div class="flex items-center justify-between w-full relative mb-6 mt-4 px-2 sm:px-4" role="list" aria-label="Progreso del flujo operativo">`;
-        html += `<div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-800 z-0"></div>`;
-        const activeWidth = currentIndex > 0 ? (currentIndex / (steps.length - 1)) * 100 : 0;
-        html += `<div class="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-mars-green z-0 transition-all duration-500" style="width: ${activeWidth}%"></div>`;
+        const n = steps.length;
+        const edgePct = (100 / (n * 2)).toFixed(4);
+        const activeWidth = n > 1 ? Math.min(100, Math.max(0, (currentIndex / (n - 1)) * 100)) : 0;
+
+        let html = `<div class="relative flex items-start w-full mt-4 mb-5" role="list" aria-label="Progreso del flujo operativo">`;
+        html += `<div class="pointer-events-none absolute top-3 sm:top-3.5 -translate-y-1/2 h-1 bg-slate-800 z-0" style="left: ${edgePct}%; right: ${edgePct}%;">`;
+        html += `<div class="h-full bg-mars-green transition-all duration-500" style="width: ${activeWidth}%"></div>`;
+        html += `</div>`;
         
         steps.forEach((step, idx) => {
             const isCompleted = idx <= currentIndex;
             const colorClass = isCompleted ? 'bg-mars-green text-black border-mars-green shadow-[0_0_10px_#00ff66]' : 'bg-slate-900 text-slate-300 border-slate-700';
             const textClass = isCompleted ? 'text-mars-green font-bold' : 'text-slate-300';
             html += `
-            <div role="listitem" class="relative z-10 flex flex-col items-center gap-2">
-                <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 flex items-center justify-center text-xs font-black transition-all duration-300 ${colorClass}">
+            <div role="listitem" class="relative z-10 flex-1 min-w-0 flex flex-col items-center gap-2 px-0.5 sm:px-1.5">
+                <div class="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-full border-2 flex items-center justify-center text-xs font-black transition-all duration-300 ${colorClass}">
                     ${isCompleted ? '✓' : idx + 1}
                 </div>
-                <span class="text-xs uppercase tracking-wider text-center w-20 sm:w-24 leading-tight ${textClass}">${this.escapeHTML(step)}</span>
+                <span class="text-[10px] sm:text-xs font-sans uppercase tracking-normal sm:tracking-wide text-center leading-tight break-normal w-full ${textClass}">${this.escapeHTML(step)}</span>
             </div>`;
         });
         html += `</div>`;

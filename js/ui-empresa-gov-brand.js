@@ -516,10 +516,10 @@ Object.assign(ui, {
                     const cardBody = `
                     <div ${isCollapsedPhaseIAesa ? '' : 'id="aesa-license-tramite-panel" '}class="terminal-border bg-mars-card p-5 border-t-4 ${aesaSt === 'APROBADA' ? 'border-t-mars-green' : (aesaSt === 'DENEGADA' ? 'border-t-red-500' : 'border-t-mars-cyan')}">
                         <div class="flex flex-wrap justify-between items-center gap-2 border-b border-mars-border pb-2.5 mb-3">
-                            <h3 class="font-orbitron text-white text-sm sm:text-base uppercase tracking-tighter">🚀 Licencia de Vuelo AESA (DOC_14)</h3>
+                            <h3 class="font-orbitron font-bold text-white text-sm sm:text-base uppercase tracking-wide">🚀 Licencia de Vuelo AESA (DOC_14)</h3>
                             ${aesaBadge}
                         </div>
-                        ${this.renderWorkflowTracker ? this.renderWorkflowTracker(['1. Preliminar I+D', '2. Visado CEO', '3. CEO (DOC_14)', '4. Coordinación'], aesaTrackerIdx) : ''}
+                        ${this.renderWorkflowTracker ? this.renderWorkflowTracker(['Preliminar I+D', 'Visado CEO', 'Solicitud DOC_14', 'Coordinación'], aesaTrackerIdx) : ''}
                         <p class="text-xs text-slate-300 font-sans mt-2 mb-3 leading-relaxed">${aesaMsg}</p>
                         <div class="flex flex-wrap items-center gap-2">
                             ${(aesaLic?.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(aesaLic.driveUrl)) ? `
