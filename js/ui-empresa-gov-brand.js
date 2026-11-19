@@ -159,9 +159,9 @@ Object.assign(ui, {
                         </p>
                     </div>
                     <div class="w-full pt-2 border-t border-slate-800/80">
-                        <button type="button" onclick="ui.modalStatutoryNameChange()" class="min-h-[44px] w-full bg-amber-400 text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white transition-all text-center shadow-[0_0_10px_rgba(255,204,0,0.3)]">
-                            [ 🏛️ Modificación Estatutaria (-50 €v) ]
-                        </button>
+                        ${(this.isCompanyBankrupt && this.isCompanyBankrupt(co))
+                            ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] w-full bg-slate-800 border border-rose-500/60 text-rose-300 font-black uppercase text-xs px-4 py-2.5 text-center cursor-not-allowed">[ 🔒 Bloqueado: Números Rojos (≤ 0 €v) ]</button>`
+                            : `<button type="button" onclick="ui.modalStatutoryNameChange()" class="min-h-[44px] w-full bg-amber-400 text-black font-black uppercase text-xs px-4 py-2.5 hover:bg-white transition-all text-center shadow-[0_0_10px_rgba(255,204,0,0.3)]">[ 🏛️ Modificación Estatutaria (-50 €v) ]</button>`}
                     </div>
                 </div>
                 ${hasPendingName ? `
@@ -568,7 +568,7 @@ Object.assign(ui, {
                                 </a>
                             ` : ''}
                             ${(isCeoRes && isAesaUnlocked && (aesaSt === 'SIN_SOLICITAR' || aesaSt === 'DENEGADA')) ? `
-                                ${(this.isCompanyBankrupt && this.isCompanyBankrupt(co))
+                                ${(feeToPay > 0 && this.isCompanyBankrupt && this.isCompanyBankrupt(co))
                                     ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] flex-1 bg-slate-900 border border-rose-500/60 text-rose-300 font-black uppercase text-xs px-4 py-2 cursor-not-allowed">🔒 Bloqueado (Saldo ≤ 0 €v)</button>`
                                     : `<button type="button" onclick="ui.modalLaunchLicense()" class="min-h-[44px] flex-1 ${aesaSt === 'DENEGADA' ? 'bg-red-600 text-white hover:bg-white hover:text-red-700' : 'bg-mars-yellow text-black hover:bg-white'} font-black uppercase text-xs px-4 py-2 transition-all">${isResub ? `[ 🔄 Subsanar AESA (${feeToPay} €v) ]` : `[ 🚀 Tramitar AESA (${feeToPay} €v) ]`}</button>`
                                 }
@@ -922,7 +922,7 @@ Object.assign(ui, {
         const effRole = this.getEffectiveRole();
         const roleLabel = (state.user.role !== effRole) ? `${state.user.role} (${effRole})` : effRole;
         if(!dept || !reason) return this.notify("Debes seleccionar un departamento y el motivo tipificado.", "warning");
-        if(dept === String(state.user.role || '').toUpperCase()) return this.notify("No puedes reportarte a tu propio puesto de acceso.", "warning");
+        if(dept === String(effRole || state.user.role || '').toUpperCase()) return this.notify("No puedes reportar a tu propio departamento.", "warning");
         const urlCheck = this.validateStudentDriveUrl
             ? this.validateStudentDriveUrl(elUrl.value, elUrl, { required: true, label: 'el expediente HR (DOC_2)' })
             : { valid: Boolean(this.cleanInput(elUrl.value)), url: this.cleanInput(elUrl.value) };
@@ -1264,12 +1264,16 @@ Object.assign(ui, {
                 ${(status === 'DENEGADO' || status === 'RECHAZADO') ? `
                 <div class="bg-red-950/40 border border-red-500/50 p-3 mt-2 rounded text-xs space-y-2">
                     <p class="text-red-200 font-sans"><strong class="text-mars-magenta uppercase">Motivo de Finanzas:</strong> "${this.escapeHTML(c.rejectReason || 'Ajustar presupuesto o justificación ROI antes de volver a solicitar.')}"</p>
-                    <button type="button" onclick="ui.modalRequestMktPackage('${this.escapeAttr(c.packageId || '')}')" class="min-h-[44px] bg-amber-400 text-black px-3.5 py-2 text-xs font-black uppercase hover:bg-white transition-colors">[ 🔄 Volver a Solicitar Pack ]</button>
+                    ${(this.getEffectiveRole(co) === 'MARKETING' || state.user?.admin) ? (
+                        (this.isCompanyBankrupt && this.isCompanyBankrupt(co))
+                            ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] bg-slate-800 border border-rose-500/60 text-rose-300 px-3.5 py-2 text-xs font-black uppercase cursor-not-allowed">[ 🔒 Bloqueado: Números Rojos (≤ 0 €v) ]</button>`
+                            : `<button type="button" onclick="ui.modalRequestMktPackage('${this.escapeAttr(c.packageId || '')}')" class="min-h-[44px] bg-amber-400 text-black px-3.5 py-2 text-xs font-black uppercase hover:bg-white transition-colors">[ 🔄 Volver a Solicitar Pack ]</button>`
+                    ) : ''}
                 </div>` : ''}
                 ${status === 'ACTIVO' ? `
                 <div class="bg-slate-950 border border-slate-800 p-3 mt-2">
                     <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
-                        <span class="text-xs font-bold uppercase text-mars-yellow">Acciones Consumidas: ${usedActions} / ${totalActions}</span>${remaining > 0 ? `<button type="button" onclick="ui.modalConsumeMktAction('${this.escapeHTML(c.id)}')" class="min-h-[44px] bg-mars-cyan text-black px-3.5 py-2 text-xs font-black uppercase hover:bg-white transition-colors">+ Publicar Acción (${remaining} disp.)</button>` : `<span class="text-xs text-mars-green font-bold uppercase">✓ Cupo Completado</span>`}
+                        <span class="text-xs font-bold uppercase text-mars-yellow">Acciones Consumidas: ${usedActions} / ${totalActions}</span>${remaining > 0 ? ((this.getEffectiveRole(co) === 'MARKETING' || state.user?.admin) ? `<button type="button" onclick="ui.modalConsumeMktAction('${this.escapeHTML(c.id)}')" class="min-h-[44px] bg-mars-cyan text-black px-3.5 py-2 text-xs font-black uppercase hover:bg-white transition-colors">+ Publicar Acción (${remaining} disp.)</button>` : `<span class="text-xs text-slate-400 font-mono uppercase">Solo Dpto. Marketing (${remaining} disp.)</span>`) : `<span class="text-xs text-mars-green font-bold uppercase">✓ Cupo Completado</span>`}
                     </div>
                     <div class="space-y-2 mt-2">
                         ${executedListHtml || '<p class="text-xs text-slate-400 italic">Aún no has registrado acciones dentro de este paquete.</p>'}
@@ -1503,15 +1507,25 @@ Object.assign(ui, {
                     <!-- Paso 1: Formulación de Propuesta (Marketing) -->
                     <div class="bg-slate-950 p-4 border border-slate-800 space-y-3">
                         <span class="text-xs text-mars-cyan font-bold uppercase block">Paso 1: Formulación de Propuesta (Dpto. Marketing)</span>
-                        ${isBrandLockedInReview ? `
-                            <div class="bg-black/60 border border-amber-500/40 p-3 rounded text-xs text-slate-200 space-y-2 font-sans">
-                                <p>🔒 Propuesta actualmente en trámite (<strong>${this.escapeHTML(estadoBadgeLabel)}</strong>). Para evitar sobrescrituras accidentales, el envío está bloqueado mientras se revisa.</p>
-                                ${co.brandApproval?.driveUrl ? `<a href="${encodeURI(co.brandApproval.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/40 rounded font-mono"><span>📄 Ver Propuesta Enviada ↗</span></a>` : ''}
-                                ${estadoActual === 'PENDIENTE_CEO' ? `
-                                    <button type="button" onclick="ui.withdrawBrandProposalByMkt()" class="min-h-[44px] w-full bg-slate-900 border border-amber-400 text-amber-300 hover:bg-amber-400 hover:text-black px-4 py-2 text-xs font-bold uppercase transition-all">[ ✏️ Retirar del CEO para Editar ]</button>
-                                ` : ''}
-                            </div>
-                        ` : `
+                        ${(() => {
+                            const isMktBrand = this.getEffectiveRole(co) === 'MARKETING' || Boolean(state.user?.admin);
+                            if (isBrandLockedInReview) {
+                                return `
+                                <div class="bg-black/60 border border-amber-500/40 p-3 rounded text-xs text-slate-200 space-y-2 font-sans">
+                                    <p>🔒 Propuesta actualmente en trámite (<strong>${this.escapeHTML(estadoBadgeLabel)}</strong>). Para evitar sobrescrituras accidentales, el envío está bloqueado mientras se revisa.</p>
+                                    ${co.brandApproval?.driveUrl ? `<a href="${encodeURI(co.brandApproval.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/40 rounded font-mono"><span>📄 Ver Propuesta Enviada ↗</span></a>` : ''}
+                                    ${(estadoActual === 'PENDIENTE_CEO' && isMktBrand) ? `
+                                        <button type="button" onclick="ui.withdrawBrandProposalByMkt()" class="min-h-[44px] w-full bg-slate-900 border border-amber-400 text-amber-300 hover:bg-amber-400 hover:text-black px-4 py-2 text-xs font-bold uppercase transition-all">[ ✏️ Retirar del CEO para Editar ]</button>
+                                    ` : ''}
+                                </div>`;
+                            }
+                            if (!isMktBrand) {
+                                return `
+                                <div class="bg-black/60 border border-slate-800 p-3 rounded text-xs text-slate-300 font-sans">
+                                    Solo el <strong>Departamento de Marketing</strong> puede formular y enviar propuestas de Logo y Slogan al CEO.
+                                </div>`;
+                            }
+                            return `
                             <div class="mb-2">
                                 ${doc11Btn}
                             </div>
@@ -1531,8 +1545,8 @@ Object.assign(ui, {
                                 </div>
                                 <p class="text-[10px] text-slate-400 mt-1">Usa primero [📋 Hacer Copia en Drive]. El Google Doc oficial debe tener permisos públicos de lectura.</p>
                             </div>
-                            <button type="button" onclick="ui.submitBrandProposalToCEO()" class="w-full min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)]">[ 📤 1. Presentar Propuesta al CEO ]</button>
-                        `}
+                            <button type="button" onclick="ui.submitBrandProposalToCEO()" class="w-full min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)]">[ 📤 1. Presentar Propuesta al CEO ]</button>`;
+                        })()}
                     </div>
                 </div>
             </div>
@@ -1572,10 +1586,11 @@ Object.assign(ui, {
                         </div>`;
                     })()}
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        ${isBrandBankrupt
-                            ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] bg-slate-900 border border-rose-500/60 text-rose-300 px-4 py-2.5 text-xs font-black uppercase tracking-wider cursor-not-allowed flex items-center justify-center gap-1.5"><span>🔒 Bloqueado (Saldo ≤ 0 €v)</span></button>`
-                            : `<button type="button" onclick="ui.modalRequestMktPackage()" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_12px_rgba(255,204,0,0.3)] flex items-center justify-center gap-1.5"><span>+ Contratar Paquete</span></button>`
-                        }
+                        ${(this.getEffectiveRole(co) === 'MARKETING' || state.user?.admin) ? (
+                            isBrandBankrupt
+                                ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] bg-slate-900 border border-rose-500/60 text-rose-300 px-4 py-2.5 text-xs font-black uppercase tracking-wider cursor-not-allowed flex items-center justify-center gap-1.5"><span>🔒 Bloqueado (Saldo ≤ 0 €v)</span></button>`
+                                : `<button type="button" onclick="ui.modalRequestMktPackage()" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_12px_rgba(255,204,0,0.3)] flex items-center justify-center gap-1.5"><span>+ Contratar Paquete</span></button>`
+                        ) : `<span class="min-h-[44px] bg-slate-900/60 border border-slate-800 text-slate-400 px-3 py-2 text-xs font-mono flex items-center justify-center">Solo Dpto. Marketing</span>`}
                         <button type="button" onclick="ui.navigate('campaigns')" class="min-h-[44px] bg-slate-900 text-mars-yellow border border-mars-yellow/60 px-4 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-mars-yellow hover:text-black transition-all flex items-center justify-center gap-1.5">
                             <span>📡 Ver Mis Campañas ➔</span>
                         </button>
@@ -1636,6 +1651,9 @@ Object.assign(ui, {
 
     modalRequestMktPackage(pkgId = null) {
         if (!state.user) return;
+        if (this.getEffectiveRole() !== 'MARKETING' && !state.user.admin) {
+            return this.notify("Solo el Departamento de Marketing puede contratar paquetes publicitarios.", "warning");
+        }
         const mktPackages = typeof MARKETING_PACKAGES !== 'undefined' ? MARKETING_PACKAGES : [];
         const selectedId = pkgId || mktPackages[0]?.id;
         const selectedPkg = mktPackages.find(p => p.id === selectedId) || mktPackages[0];
@@ -1692,6 +1710,9 @@ Object.assign(ui, {
 
     confirmRequestMktPackage(pkgId = null) {
         if (!state.user) return;
+        if (this.getEffectiveRole() !== 'MARKETING' && !state.user.admin) {
+            return this.notify("Solo el Departamento de Marketing puede solicitar paquetes publicitarios.", "warning");
+        }
         const mktPackages = typeof MARKETING_PACKAGES !== 'undefined' ? MARKETING_PACKAGES : [];
         const elTier = document.getElementById('campaign-tier');
         const elUrl = document.getElementById('campaign-drive-url');
@@ -1715,8 +1736,9 @@ Object.assign(ui, {
         }
         co.marketingCampaigns = co.marketingCampaigns || [];
 
+        const nowMktTs = Date.now();
         const newCamp = {
-            id: 'MKT-' + Date.now(),
+            id: 'MKT-' + nowMktTs,
             packageId: pkg.id,
             packageName: pkg.name,
             packageTier: pkg.type,
@@ -1726,10 +1748,13 @@ Object.assign(ui, {
             title: `Campaña ${pkg.name} (${pkg.type})`,
             driveUrl: driveUrl,
             status: 'PENDIENTE_FINANZAS',
-            date: new Date().toLocaleString()
+            date: new Date().toLocaleString(),
+            timestamp: nowMktTs,
+            updatedAt: nowMktTs
         };
 
         co.marketingCampaigns.unshift(newCamp);
+        co.updatedAt = nowMktTs;
         ui.pushNotification(state.user.coId, 'FINANZAS', `Marketing solicita aprobar el paquete "${pkg.name}" por ${budget} €v.`, 'warning', { view: 'finance' });
         state.save();
         this.closeModal();
@@ -1749,6 +1774,9 @@ Object.assign(ui, {
         if (!state.user) return;
         const co = state.data.companies[state.user.coId];
         if (!co || !co.marketingCampaigns) return;
+        if (this.getEffectiveRole(co) !== 'MARKETING' && !state.user.admin) {
+            return this.notify("Solo el Departamento de Marketing puede entregar acciones publicitarias.", "warning");
+        }
 
         const camp = co.marketingCampaigns.find(c => String(c.id) === String(campId));
         if (!camp || camp.status !== 'ACTIVO') return this.notify("El paquete no está activo.", "warning");
@@ -1834,6 +1862,9 @@ Object.assign(ui, {
 
     confirmConsumeMktAction(campId) {
         if (!state.user) return;
+        if (this.getEffectiveRole() !== 'MARKETING' && !state.user.admin) {
+            return this.notify("Solo el Departamento de Marketing puede entregar acciones publicitarias.", "warning");
+        }
         const elType = document.getElementById('mkt-action-type');
         const elUrl = document.getElementById('mkt-drive-url');
         if (!elType || !elUrl) return;
@@ -1857,8 +1888,9 @@ Object.assign(ui, {
         const totalAllowed = camp.totalActions || 3;
         if (currentUsed >= totalAllowed) return this.notify("Ya has agotado el cupo de acciones de este paquete.", "warning");
 
+        const nowActTs = Date.now();
         const newAction = {
-            id: 'ACT-' + Date.now(),
+            id: 'ACT-' + nowActTs,
             title: actionType,
             desc: 'Acción oficial de marketing: ' + actionType,
             url: url,
@@ -1866,11 +1898,14 @@ Object.assign(ui, {
             date: new Date().toLocaleDateString(),
             status: 'PENDIENTE_CEO',
             feedback: '',
-            createdAt: Date.now()
+            createdAt: nowActTs,
+            updatedAt: nowActTs
         };
 
         camp.executedActions = camp.executedActions || [];
         camp.executedActions.push(newAction);
+        camp.updatedAt = nowActTs;
+        co.updatedAt = nowActTs;
 
         ui.pushNotification(state.user.coId, 'CEO', `Marketing ha presentado la acción "${actionType}" para su revisión y validación.`, 'info', { view: 'dashboard' });
 
@@ -1961,6 +1996,9 @@ Object.assign(ui, {
         if (!state.user) return;
         const co = state.data.companies[state.user.coId];
         if (!co || !Array.isArray(co.marketingCampaigns)) return;
+        if (this.getEffectiveRole(co) !== 'MARKETING' && !state.user.admin) {
+            return this.notify("Solo el Departamento de Marketing puede subsanar acciones publicitarias.", "warning");
+        }
         const camp = co.marketingCampaigns.find(c => String(c.id) === String(campId));
         if (!camp || !Array.isArray(camp.executedActions)) return;
         const act = camp.executedActions.find(a => String(a.id) === String(actId));
@@ -2002,6 +2040,10 @@ Object.assign(ui, {
     },
 
     confirmResubmitMktAction(campId, actId) {
+        if (!state.user) return;
+        if (this.getEffectiveRole() !== 'MARKETING' && !state.user.admin) {
+            return this.notify("Solo el Departamento de Marketing puede subsanar acciones publicitarias.", "warning");
+        }
         const el = document.getElementById('resubmit-mkt-drive-url');
         if (!el) return;
         const urlCheck = this.validateStudentDriveUrl
@@ -2017,65 +2059,20 @@ Object.assign(ui, {
     },
 
     saveCompanyLogoDrive() {
-        if (!state.user) return;
-        const el = document.getElementById('company-logo-drive');
-        if (!el) return;
-        const driveUrl = this.cleanInput(el.value);
-        if (!driveUrl) return this.notify("Introduce la URL de Google Drive para el logotipo.", "warning");
-        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(driveUrl)) {
-            return this.notify("El enlace debe ser una URL válida de Google Drive.", "error");
-        }
-        const co = state.data.companies[state.user.coId];
-        if (!co) return auth.logout();
-
-        const nowTs = Date.now();
-        co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
-        co.brandApproval.pendingLogo = driveUrl;
-        if (!co.brandApproval.pendingSlogan) co.brandApproval.pendingSlogan = co.slogan || "";
-        co.brandApproval.status = 'PENDIENTE';
-        co.brandApproval.feedback = '';
-        co.brandApproval.updatedAt = nowTs;
-        co.updatedAt = nowTs;
-
-        state.save(state.user.coId);
-        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
-        this.render();
-        this.notify("⏳ Enlace de logotipo registrado y enviado a Coordinación Docente.", "info");
+        return this.submitBrandProposalToCEO();
     },
 
     handleLogoUpload(e) {
-        if (!state.user) return;
-        const file = e.target.files[0];
-        if (!file) return;
-        if (!file.type.startsWith('image/')) return this.notify("Solo formatos de imagen PNG o JPG para el escudo corporativo.", "warning");
-        if (file.size > 1024 * 1024) return this.notify("Máximo 1MB para el logotipo.", "warning");
-        
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const co = state.data.companies[state.user.coId];
-            if (!co) return auth.logout();
-            
-            const nowTs = Date.now();
-            co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "" };
-            co.brandApproval.pendingLogo = ev.target.result;
-            if (!co.brandApproval.pendingSlogan) co.brandApproval.pendingSlogan = co.slogan || "";
-            co.brandApproval.status = 'PENDIENTE';
-            co.brandApproval.feedback = '';
-            co.brandApproval.updatedAt = nowTs;
-            co.updatedAt = nowTs;
-
-            state.save(state.user.coId);
-            if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
-            this.render();
-            this.notify("⏳ Logotipo enviado a Coordinación Docente. Aparecerá en vuestro HUD en cuanto sea aprobado.", "info");
-        };
-        reader.readAsDataURL(file);
+        this.notify("Sube tu logotipo a Google Drive y preséntalo junto al Slogan mediante [ 📤 1. Presentar Propuesta al CEO ].", "info");
     },
 
     withdrawBrandProposalByMkt() {
         if (!state.user) return;
         const co = state.data.companies[state.user.coId];
         if (!co || !co.brandApproval) return;
+        if (this.getEffectiveRole(co) !== 'MARKETING' && !state.user.admin) {
+            return this.notify("Solo el Departamento de Marketing puede retirar su propuesta de marca.", "warning");
+        }
         if (co.brandApproval.status !== 'PENDIENTE_CEO') {
             return this.notify("Solo puedes retirar una propuesta antes de que el CEO la avale.", "info");
         }
@@ -2094,6 +2091,9 @@ Object.assign(ui, {
         if (!state.user) return;
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
+        if (this.getEffectiveRole(co) !== 'MARKETING' && !state.user.admin) {
+            return this.notify("Solo el Departamento de Marketing puede presentar propuestas de marca.", "warning");
+        }
         if (co.brandApproval && (co.brandApproval.status === 'PENDIENTE_CEO' || co.brandApproval.status === 'PENDIENTE')) {
             return this.notify("La propuesta ya se encuentra en revisión. Retírala primero si necesitas modificarla.", "warning");
         }

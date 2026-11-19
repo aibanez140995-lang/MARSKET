@@ -175,6 +175,24 @@ const state = {
         co.balance = this.calculateBalance(co);
     },
 
+    calculateBomCost(co) {
+        if (!co) return 0;
+        const bomKeysSet = new Set(Array.isArray(co.bom) ? co.bom.map(String) : []);
+        if (bomKeysSet.size === 0) return 0;
+        const blockedB2B = new Set(['VENDIDO', 'EN_VENTA', 'PENDIENTE_FINANZAS', 'RECHAZADO_FINANZAS']);
+        let total = 0;
+        (co.orders || []).filter(o => o && (o.status === 'EJECUTADO' || ((o.status === 'APROBADO_FINANZAS' || o.status === 'APROBADO_DOCENTE') && o.partialExecuted))).forEach(o => {
+            (o.items || []).forEach((it, idx) => {
+                if (!it) return;
+                const isReceived = (o.status === 'EJECUTADO' || it.executed === true);
+                if (isReceived && !blockedB2B.has(it.b2bStatus) && bomKeysSet.has(`${o.id}-${idx}`)) {
+                    total += (Number(it.price) || 0) * (Number(it.qty) || 1);
+                }
+            });
+        });
+        return Math.round((total + Number.EPSILON) * 100) / 100;
+    },
+
     getCompanySponsorAmount(co) {
         if (!co) return 0;
         if (co.sponsorData && !isNaN(Number(co.sponsorData.amount)) && Number(co.sponsorData.amount) > 0) {
@@ -1053,6 +1071,7 @@ const state = {
 
             const getItemTs = (it) => Math.max(
                 this._parseSafeTs(it?.updatedAt),
+                this._parseSafeTs(it?.resubmittedAt),
                 this._parseSafeTs(it?.executedAt),
                 this._parseSafeTs(it?.lastPartialAt),
                 this._parseSafeTs(it?.approvedAt),
@@ -1060,6 +1079,7 @@ const state = {
                 this._parseSafeTs(it?.resolvedAt),
                 this._parseSafeTs(it?.reviewedAt),
                 this._parseSafeTs(it?.endorsedAt),
+                this._parseSafeTs(it?.createdAt),
                 this._parseSafeTs(it?.timestamp)
             );
 

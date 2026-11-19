@@ -171,16 +171,21 @@ Object.assign(ui, {
 
                     let finActions = '';
                     if (isFinanzas && isPending) {
+                        const isFinBankrupt = Boolean(this.isCompanyBankrupt && this.isCompanyBankrupt(co));
                         if (order.type === 'B2B_BUY_REQUEST') {
                             finActions = `
                             <div class="flex flex-col sm:flex-row gap-2 mt-4 pt-3 border-t border-slate-800">
-                                <button type="button" onclick="ui.approveB2BBuyByFinanzas('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1 shadow-[0_0_10px_rgba(255,204,0,0.3)]">[ 🤝 Aprobar Compra B2B y Bloquear en Aduana ]</button>
+                                ${isFinBankrupt
+                                    ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] bg-slate-800 border border-rose-500/60 text-rose-300 px-4 py-2.5 text-xs font-black uppercase flex-1 cursor-not-allowed">🔒 Bloqueado: Números Rojos (≤ 0 €v)</button>`
+                                    : `<button type="button" onclick="ui.approveB2BBuyByFinanzas('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-yellow text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1 shadow-[0_0_10px_rgba(255,204,0,0.3)]">[ 🤝 Aprobar Compra B2B y Bloquear en Aduana ]</button>`}
                                 <button type="button" onclick="ui.modalRejectOrderWithDoc('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Denegar Compra B2B</button>
                             </div>`;
                         } else {
                             finActions = `
                             <div class="flex flex-col sm:flex-row gap-2 mt-4 pt-3 border-t border-slate-800">
-                                <button type="button" onclick="ui.modalReviewOrderFinanzas('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1 shadow-[0_0_10px_rgba(0,255,102,0.3)]">Revisar y Autorizar Partidas</button>
+                                ${isFinBankrupt
+                                    ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] bg-slate-800 border border-rose-500/60 text-rose-300 px-4 py-2.5 text-xs font-black uppercase flex-1 cursor-not-allowed">🔒 Bloqueado: Números Rojos (≤ 0 €v)</button>`
+                                    : `<button type="button" onclick="ui.modalReviewOrderFinanzas('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1 shadow-[0_0_10px_rgba(0,255,102,0.3)]">Revisar y Autorizar Partidas</button>`}
                                 <button type="button" onclick="ui.modalRejectOrderWithDoc('${this.escapeHTML(order.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Denegar Orden</button>
                             </div>`;
                         }
@@ -422,7 +427,9 @@ Object.assign(ui, {
                             <button type="button" onclick="ui.inspectMktCampDrawer('${this.escapeHTML(camp.id)}')" class="sm:hidden w-full min-h-[44px] mb-2 bg-slate-950 border border-mars-yellow/60 text-mars-yellow font-black uppercase text-xs py-2 px-3">[ 🔍 VER JUSTIFICACIÓN ROI ]</button>
                             ${(isFinanzas && cst === 'PENDIENTE_FINANZAS') ? `
                             <div class="flex flex-col sm:flex-row gap-2 mt-3 pt-2 border-t border-slate-800">
-                                <button type="button" onclick="ui.approveMktCamp('${this.escapeHTML(camp.id)}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1">Aprobar Paquete MKT</button>
+                                ${(this.isCompanyBankrupt && this.isCompanyBankrupt(co))
+                                    ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] bg-slate-800 border border-rose-500/60 text-rose-300 px-4 py-2.5 text-xs font-black uppercase flex-1 cursor-not-allowed">🔒 Bloqueado: Números Rojos (≤ 0 €v)</button>`
+                                    : `<button type="button" onclick="ui.approveMktCamp('${this.escapeHTML(camp.id)}')" class="min-h-[44px] bg-mars-green text-black px-4 py-2.5 text-xs font-black uppercase hover:bg-white transition-all flex-1">Aprobar Paquete MKT</button>`}
                                 <button type="button" onclick="ui.rejectMktCamp('${this.escapeHTML(camp.id)}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta px-4 py-2.5 text-xs font-black uppercase hover:bg-mars-magenta hover:text-white transition-all flex-1">Rechazar</button>
                             </div>` : ''}
                         </div>`
@@ -669,6 +676,9 @@ Object.assign(ui, {
 
         const co = state.data.companies[state.user.coId];
         if (!co) return;
+        if (this.getEffectiveRole(co) !== 'TECNICO' && !state.user?.admin) {
+            return this.notify("Solo el Departamento Técnico (I+D) puede enviar pedidos al carrito.", "warning");
+        }
         if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
             return this.notifyBankruptcyLock();
         }
@@ -682,6 +692,7 @@ Object.assign(ui, {
         co.orders = co.orders || [];
         const computedTotal = co.cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.qty) || 1), 0);
         const orderNum = ui.getNextOrderNumber ? ui.getNextOrderNumber(co) : String(Date.now()).slice(-3);
+        const nowTs = Date.now();
         const newOrder = {
             id: orderNum,
             type: 'B2C_ORDER',
@@ -689,7 +700,9 @@ Object.assign(ui, {
             total: computedTotal,
             driveUrl: driveUrl,
             status: 'PENDIENTE_FINANZAS',
-            date: new Date().toLocaleString()
+            date: new Date().toLocaleString(),
+            timestamp: nowTs,
+            updatedAt: nowTs
         };
 
         co.orders.unshift(newOrder);
@@ -732,12 +745,15 @@ Object.assign(ui, {
         if (this.acquireActionLock && !this.acquireActionLock('fin-approve-order-' + order.id, 1500)) return;
 
         order.status = 'APROBADO_FINANZAS';
+        order.approvedAt = Date.now();
+        order.updatedAt = Date.now();
         ui.pushNotification(state.user.coId, 'TECNICO', `Finanzas ha APROBADO la orden #${order.id} (${order.total.toFixed(2)} €v). Ya está en Logística.`, 'success', { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' });
         ui.pushNotification(state.user.coId, 'OPERACIONES_IA', `Nueva orden #${order.id} aprobada lista para ensamblaje físico.`, 'info', { view: 'cart', anchorId: 'ops-orders-tracking-panel' });
         
         telemetry.log("ORDEN APROBADA", `Finanzas aprobó orden #${order.id} por ${order.total}€v`);
         co.updatedAt = Date.now();
         state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.notify(`✅ Orden #${order.id} aprobada. Pasa a Logística de Despliegue Físico.`, "success");
         this.render();
     },
@@ -751,11 +767,14 @@ Object.assign(ui, {
         if (!order || order.status !== 'PENDIENTE_FINANZAS') return;
 
         order.status = 'RECHAZADO';
+        order.rejectedAt = Date.now();
+        order.updatedAt = Date.now();
         ui.pushNotification(state.user.coId, 'TECNICO', `Finanzas ha RECHAZADO la orden #${order.id}. Revisa justificación o presupuesto.`, 'error', { view: 'orders', filter: 'DENEGADAS', dept: 'TECNICO' });
         
         telemetry.log("ORDEN RECHAZADA", `Finanzas rechazó orden #${order.id}`);
         co.updatedAt = Date.now();
         state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.notify(`❌ Orden #${order.id} rechazada.`, "info");
         this.render();
     },
@@ -783,12 +802,15 @@ Object.assign(ui, {
         if (this.acquireActionLock && !this.acquireActionLock('fin-approve-mkt-' + campId, 1500)) return;
 
         camp.status = 'ACTIVO';
+        camp.approvedAt = Date.now();
+        camp.updatedAt = Date.now();
         state.addToLedger(state.user.coId, `[PUBLICIDAD] Contratación de ${camp.packageName}`, 'MARKETING', -price);
         
         ui.pushNotification(state.user.coId, 'MARKETING', `Finanzas autorizó el paquete "${camp.packageName}". Ya puedes publicar tus ${camp.totalActions} acciones.`, 'success', { view: 'campaigns', anchorId: 'mkt-campaigns-section' });
         telemetry.log("MKT APROBADO", `Aprobado ${camp.packageName} (-${price}€v)`);
         co.updatedAt = Date.now();
         state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.notify(`✅ Paquete publicitario activado y fondos descontados del Ledger.`, "success");
         this.render();
     },
@@ -816,10 +838,12 @@ Object.assign(ui, {
         camp.status = 'DENEGADO';
         camp.rejectReason = directReason;
         camp.rejectedAt = Date.now();
+        camp.updatedAt = Date.now();
         ui.pushNotification(state.user.coId, 'MARKETING', `Finanzas denegó el paquete "${camp.packageName}". Motivo: ${directReason}`, 'error', { view: 'campaigns', anchorId: 'mkt-campaigns-section' });
         telemetry.log("MKT RECHAZADO", `Denegado ${camp.packageName} (${directReason})`);
         co.updatedAt = Date.now();
         state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.notify(`❌ Solicitud de paquete de marketing denegada.`, "info");
         this.render();
     },
@@ -885,6 +909,7 @@ Object.assign(ui, {
         telemetry.log("OFERTA B2B APROBADA", `Finanzas aprobó venta B2B: ${offer.itemName} por ${offer.price}€v`);
         co.updatedAt = Date.now();
         state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.notify(`✅ Oferta B2B de "${offer.itemName}" aprobada y publicada en el mercado.`, "success");
         this.render();
     },
@@ -914,7 +939,7 @@ Object.assign(ui, {
                 </div>
                 <div>
                     <label for="b2b-counter-price" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Contraoferta / Precio Sugerido por Finanzas (€v)</label>
-                    <input type="number" id="b2b-counter-price" value="${Number(offer.price).toFixed(0)}" min="1" step="1" class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold outline-none">
+                    <input type="number" id="b2b-counter-price" value="${Number(offer.price).toFixed(2)}" min="0.10" step="0.01" class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold outline-none">
                     <p class="text-[10px] text-slate-400 mt-1">El Dpto. Técnico recibirá esta recomendación de precio para ajustar la propuesta.</p>
                 </div>
             </div>
@@ -960,6 +985,7 @@ Object.assign(ui, {
         telemetry.log("PROPUESTA B2B RECHAZADA", `Finanzas devolvió venta B2B: ${offer.itemName}. Motivo: ${reason}. Sugerido: ${counterPrice}€v`);
         co.updatedAt = Date.now();
         state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
         this.notify(`↩ Propuesta devuelta a Técnico con precio sugerido de ${counterPrice.toFixed(2)} €v.`, "info");
         this.render();
@@ -1003,6 +1029,7 @@ Object.assign(ui, {
         telemetry.log("OFERTA B2B RETIRADA", `Finanzas retiró del mercado B2B: ${offer.itemName}`);
         co.updatedAt = Date.now();
         state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.notify(`🗑️ Oferta de "${offer.itemName}" retirada del mercado. Pieza devuelta al taller.`, "success");
         this.render();
     },

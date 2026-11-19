@@ -350,7 +350,7 @@ Object.assign(ui, {
 
     removeFromCart(itemId) {
         const co = state.data.companies[state.user.coId];
-        if (!co) return;
+        if (!co || (this.getEffectiveRole(co) !== 'TECNICO' && !state.user?.admin)) return;
         const idx = co.cart.findIndex(i => i.id === itemId);
         if(idx > -1) {
             const unitPrice = Number(co.cart[idx].price) || 0;
@@ -419,86 +419,11 @@ Object.assign(ui, {
     },
 
     modalPublishB2B(orderId, itemIndex) {
-        if (!state.user || this.getEffectiveRole() !== 'TECNICO') return;
-        const co = state.data.companies[state.user.coId];
-        const ord = (co.orders||[]).find(o => String(o.id) === String(orderId));
-        if(!ord || !ord.items[itemIndex]) return;
-        const item = ord.items[itemIndex];
-
-        const html = `
-            <div class="bg-black border border-mars-yellow p-3 mb-4 flex justify-between items-center text-xs gap-2">
-                <span class="text-white font-bold uppercase break-words">${this.escapeHTML(item.name)} (x${Number(item.qty)||1})</span>
-                <span class="text-slate-300 line-through shrink-0">${Number(item.price).toFixed(2)} €v (Base)</span>
-            </div>
-            <label for="market-category" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Segmento de Mercado</label>
-            <select id="market-category" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-xs text-white mb-3 outline-none focus:border-mars-yellow">
-                <option value="B2B" selected>B2B (Mercado Secundario entre Startups)</option>
-                <option value="B2C">B2C (Catálogo Oficial)</option>
-            </select>
-            <label for="input-unit-price" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Precio de Venta Propuesto (€v)</label>
-            <input type="number" id="input-unit-price" min="0.01" max="1000000" step="0.01" required value="${(item.price * 0.8).toFixed(2)}" oninput="ui.validateB2BPrice(this)" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow/50 p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold mb-3 outline-none focus:border-mars-yellow">
-            <label for="b2b-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Enlace Drive a Ficha Técnica / Estado (Opcional · DOC_7)</label>
-            <div class="flex flex-col sm:flex-row gap-2 mb-2">
-                <input type="url" id="b2b-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." class="flex-1 min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-yellow">
-                ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('b2b-drive-url') : ''}
-            </div>
-        `;
-        const actions = `<button type="button" id="btn-confirm-b2b" onclick="ui.confirmPublishB2B('${this.escapeHTML(orderId)}', ${Number(itemIndex)})" class="min-h-[44px] bg-mars-yellow text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all w-full sm:w-auto">Publicar Oferta B2B</button>`;
-        this.showModal("Venta en Mercado Secundario", html, actions);
+        return this.modalSellB2B(orderId, itemIndex);
     },
 
     confirmPublishB2B(orderId, itemIndex) {
-        const elCat = document.getElementById('market-category');
-        const selectedMarket = (elCat && elCat.value) ? elCat.value.trim() : '';
-        const allowedMarkets = ['B2B', 'B2C'];
-        if (!allowedMarkets.includes(selectedMarket)) {
-            return this.notify("Segmento de mercado no autorizado.", "warning");
-        }
-        const elPrice = document.getElementById('input-unit-price');
-        const rawPrice = elPrice ? elPrice.value.trim().replace(',', '.') : '';
-        const price = parseFloat(rawPrice);
-        if (!rawPrice || isNaN(price) || !Number.isFinite(price) || price <= 0 || price > 1000000 || !/^\d+(\.\d{1,2})?$/.test(rawPrice)) {
-            return this.notify("Precio unitario inválido. Debe ser un número estrictamente positivo (máx. 2 decimales, hasta 1.000.000 €v).", "warning");
-        }
-        const elDrive = document.getElementById('b2b-drive-url');
-        const urlCheck = this.validateStudentDriveUrl
-            ? this.validateStudentDriveUrl(elDrive ? elDrive.value : '', elDrive, { required: false, label: 'la ficha técnica B2B' })
-            : { valid: true, url: elDrive ? elDrive.value.trim() : '' };
-        if (!urlCheck.valid) return;
-        const driveUrl = urlCheck.url;
-        if (this.acquireActionLock && !this.acquireActionLock('pub-b2b-' + orderId + '-' + itemIndex, 1500)) return;
-
-        const co = state.data.companies[state.user.coId];
-        const ord = co.orders.find(o => String(o.id) === String(orderId));
-        const item = ord.items[itemIndex];
-
-        item.b2bStatus = 'PENDIENTE_FINANZAS';
-        item.b2bProposedPrice = price;
-        item.b2bDriveUrl = driveUrl || null;
-        
-        state.data.b2bMarket = state.data.b2bMarket || [];
-        state.data.b2bMarket.unshift({
-            id: 'OFF-' + Date.now().toString().slice(-4),
-            sellerCoId: state.user.coId,
-            sellerName: co.name,
-            sourceOrderKey: `${orderId}-${itemIndex}`,
-            itemName: item.name,
-            qty: item.qty || 1,
-            category: item.category,
-            price: price,
-            driveUrl: driveUrl || null,
-            status: 'PENDIENTE_FINANZAS',
-            date: new Date().toLocaleString(),
-            timestamp: Date.now(),
-            updatedAt: Date.now()
-        });
-
-        ui.pushNotification(state.user.coId, 'FINANZAS', `I+D propone venta B2B de "${item.name}" por ${price.toFixed(2)} €v. Revisa la propuesta en Finanzas.`, 'info', { view: 'finance' });
-        state.save(state.user.coId);
-        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
-        this.closeModal();
-        this.render();
-        this.notify(`✅ Propuesta B2B enviada a Finanzas por ${price.toFixed(2)} €v.`, "success");
+        return this.confirmSellB2B(orderId, itemIndex);
     },
 
     modalBuyB2B(offerId) {
@@ -600,8 +525,8 @@ Object.assign(ui, {
             driveUrl: driveUrl,
             items: [{
                 name: `[B2B] ${offer.itemName}`,
-                qty: offer.qty || 1,
-                price: Number(offer.price) || 0,
+                qty: Number(offer.qty) || 1,
+                price: Math.round((((Number(offer.price) || 0) / (Number(offer.qty) || 1)) + Number.EPSILON) * 100) / 100,
                 category: offer.category || 'Componente'
             }],
             total: Number(offer.price) || 0,

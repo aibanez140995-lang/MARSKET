@@ -1,27 +1,27 @@
-// sw.js — MARS-KET 2.0 Service Worker (Caché estática versionada v2.0.27, excluyendo /api/*)
-const CACHE_NAME = 'marsket-cache-v2.0.27';
+// sw.js — MARS-KET 2.0 Service Worker (Caché estática versionada v2.0.28, excluyendo /api/*)
+const CACHE_NAME = 'marsket-cache-v2.0.28';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './logo.png',
   './logo.jpg',
-  './manifest.json?v=2.0.27',
-  './css/tailwind.css?v=2.0.27',
-  './js/lexicon-data.js?v=2.0.27',
-  './js/config.js?v=2.0.27',
-  './js/state.js?v=2.0.27',
-  './js/auth.js?v=2.0.27',
-  './js/ui-core.js?v=2.0.27',
-  './js/ui-empresa-core.js?v=2.0.27',
-  './js/ui-empresa-market.js?v=2.0.27',
-  './js/ui-empresa-tech.js?v=2.0.27',
-  './js/ui-empresa-finance.js?v=2.0.27',
-  './js/ui-empresa-ops.js?v=2.0.27',
-  './js/ui-empresa-gov-brand.js?v=2.0.27',
-  './js/ui-docente-core.js?v=2.0.27',
-  './js/ui-docente-eval.js?v=2.0.27',
-  './js/ui-docente-management.js?v=2.0.27',
-  './js/ui-docente-contest.js?v=2.0.27'
+  './manifest.json?v=2.0.28',
+  './css/tailwind.css?v=2.0.28',
+  './js/lexicon-data.js?v=2.0.28',
+  './js/config.js?v=2.0.28',
+  './js/state.js?v=2.0.28',
+  './js/auth.js?v=2.0.28',
+  './js/ui-core.js?v=2.0.28',
+  './js/ui-empresa-core.js?v=2.0.28',
+  './js/ui-empresa-market.js?v=2.0.28',
+  './js/ui-empresa-tech.js?v=2.0.28',
+  './js/ui-empresa-finance.js?v=2.0.28',
+  './js/ui-empresa-ops.js?v=2.0.28',
+  './js/ui-empresa-gov-brand.js?v=2.0.28',
+  './js/ui-docente-core.js?v=2.0.28',
+  './js/ui-docente-eval.js?v=2.0.28',
+  './js/ui-docente-management.js?v=2.0.28',
+  './js/ui-docente-contest.js?v=2.0.28'
 ].map((path) => new URL(path, self.registration.scope).toString());
 
 self.addEventListener('install', (event) => {

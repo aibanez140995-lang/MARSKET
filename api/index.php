@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.27
+// Versión: v2.0.28
 
 declare(strict_types=1);
 
@@ -1502,6 +1502,24 @@ try {
                         // Preservar sanciones docentes
                         if (!empty($sCo['sanctions']) && is_array($sCo['sanctions'])) {
                             $co['sanctions'] = $sCo['sanctions'];
+                        }
+                        // Preservar solicitudes especiales DOC_13 resueltas por docente/CEO (LWW por id)
+                        if (!empty($sCo['specialItemRequests']) && is_array($sCo['specialItemRequests'])) {
+                            $coSpMap = [];
+                            foreach (($co['specialItemRequests'] ?? []) as $cSp) {
+                                if (is_array($cSp) && !empty($cSp['id'])) $coSpMap[(string)$cSp['id']] = $cSp;
+                            }
+                            $getSpTs = function ($r) {
+                                return max((int)($r['resolvedAt'] ?? 0), (int)($r['updatedAt'] ?? 0), (int)($r['resubmittedAt'] ?? 0), (int)($r['rejectedAt'] ?? 0), (int)($r['approvedAt'] ?? 0), (int)($r['createdAt'] ?? 0));
+                            };
+                            foreach ($sCo['specialItemRequests'] as $sSp) {
+                                if (!is_array($sSp) || empty($sSp['id'])) continue;
+                                $spId = (string)$sSp['id'];
+                                if (!isset($coSpMap[$spId]) || $getSpTs($sSp) >= $getSpTs($coSpMap[$spId])) {
+                                    $coSpMap[$spId] = $sSp;
+                                }
+                            }
+                            $co['specialItemRequests'] = array_values($coSpMap);
                         }
                     }
                 }

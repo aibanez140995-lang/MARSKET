@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.27) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.28) ---
 
-const APP_VERSION = "2.0.27";
+const APP_VERSION = "2.0.28";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1156,6 +1156,21 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.28",
+      date: "2026-11-19",
+      title: "Saneamiento Alumnado 2B · Venta Parcial B2B, BOM Unificado y Guardas de Rol",
+      items: [
+        "Venta Parcial B2B y Separación de Lotes en Taller (Punto #15): El Técnico puede separar unidades de un lote (p. ej. comprar 4 aletas, usar 3 en el BOM y vender 1) tanto con [✂️ Separar] como eligiendo cuántas unidades vender directamente en [VENDER B2B], conservando intacto el resto en el BOM y calculando el precio unitario exacto en Aduana.",
+        "Coste BOM Canónico y Consolidación de Modales: Unificado state.calculateBomCost(co) en Dashboard, Taller y Contratos para excluir artículos en venta, pendientes, rechazados o retirados; modalPublishB2B redirige a modalSellB2B con DOC_7.",
+        "Sincronización LWW en Tiempo Real: Sellado de timestamps (timestamp, updatedAt, approvedAt, rejectedAt) y pushToCloud(false) en vuelos, solicitudes I+D especiales (con rescate en /action del servidor CDMON), órdenes, paquetes MKT y mercado B2B.",
+        "Guardas Estrictos de Rol, Saldo ≤ 0 €v y Zero-Text: Verificación de rol efectivo (TECNICO/MARKETING) en todas las acciones, ocultación/bloqueo de botones de gasto cuando el saldo es ≤ 0 €v (Números Rojos), campo de coste real en tienda bloqueado (readonly) en recepciones B2B y reporte HR confidencial ajustado al rol efectivo."
+      ],
+      highlights: [
+        { type: "TALLER & B2B", text: "Venta parcial de lotes xN sin romper el BOM del prototipo." },
+        { type: "SEGURIDAD & LWW", text: "Guardas de rol, bloqueo Números Rojos y rescate I+D en servidor." }
+      ]
+    },
     {
       version: "2.0.27",
       date: "2026-11-19",

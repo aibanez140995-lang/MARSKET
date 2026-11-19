@@ -1039,7 +1039,7 @@ Object.assign(ui, {
                         </div>
                         <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center flex-wrap gap-2">
                             <span class="text-[11px] text-slate-400 font-mono">DOC_14 AESA</span>
-                            ${(this.isCompanyBankrupt && this.isCompanyBankrupt(co))
+                            ${(feeToPay > 0 && this.isCompanyBankrupt && this.isCompanyBankrupt(co))
                                 ? `<button type="button" onclick="ui.notifyBankruptcyLock()" class="min-h-[44px] bg-slate-900 border border-rose-500/60 text-rose-300 font-black uppercase text-xs px-4 py-2 cursor-not-allowed">🔒 Bloqueado (Saldo ≤ 0 €v)</button>`
                                 : `<button type="button" onclick="ui.modalLaunchLicense()" class="min-h-[44px] ${isAesaDenied ? 'bg-red-600 text-white hover:bg-white hover:text-red-700' : 'bg-mars-yellow text-black hover:bg-white'} font-black uppercase text-xs px-4 py-2 transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">${isResubmission ? `[ 🔄 Subsanar Licencia AESA (${feeToPay} €v) ]` : `[ 🚀 Tramitar Licencia AESA (${feeToPay} €v) ]`}</button>`
                             }
@@ -1136,14 +1136,7 @@ Object.assign(ui, {
                     </div>
                     <div class="mt-2.5 flex flex-wrap items-center gap-2 text-[11px] font-mono">
                         ${(() => {
-                            const bomList = Array.isArray(co.bom) ? co.bom : [];
-                            let bomCostEv = 0;
-                            bomList.forEach(k => {
-                                const [oid, idx] = String(k).split('-');
-                                const ord = (co.orders || []).find(o => String(o.id) === String(oid));
-                                const it = ord?.items?.[Number(idx)];
-                                if (it) bomCostEv += (Number(it.price) || 0) * (Number(it.qty) || 1);
-                            });
+                            const bomCostEv = typeof state.calculateBomCost === 'function' ? state.calculateBomCost(co) : 0;
                             const actaC = this.getCompanyActaSummary ? this.getCompanyActaSummary(co) : { bestE: null };
                             return `<span class="px-2 py-0.5 bg-black/60 border border-slate-700 text-cyan-300 rounded">Coste BOM: ${bomCostEv.toFixed(2)} €v</span>
                                     <span class="px-2 py-0.5 bg-black/60 border border-slate-700 text-mars-yellow rounded">Mejor E: ${actaC.bestE !== null ? actaC.bestE.toFixed(2) : '--'}</span>`;
@@ -2510,6 +2503,7 @@ Object.assign(ui, {
         req.status = 'PENDIENTE_COORDINACION';
         req.approvedByCEO = true;
         req.approvedAt = Date.now();
+        req.updatedAt = Date.now();
 
         state.data.pendingCustom = state.data.pendingCustom || [];
         const existingIdx = state.data.pendingCustom.findIndex(p => p.id === req.id);
@@ -2587,6 +2581,7 @@ Object.assign(ui, {
         req.status = 'DEVUELTO_CEO';
         req.returnReason = reason;
         req.rejectedAt = Date.now();
+        req.updatedAt = Date.now();
 
         co.updatedAt = Date.now();
         state.save(coId);
@@ -2696,22 +2691,24 @@ Object.assign(ui, {
         const isResubmission = Boolean(co.launchLicense && co.launchLicense.status === 'DENEGADA' && Number(co.launchLicense.feePaid || 0) >= initFee);
         const feeToPay = isResubmission ? resubFee : initFee;
 
-        if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
+        if (feeToPay > 0 && this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
             return this.notifyBankruptcyLock();
         }
-        if (Number(co.balance || 0) < feeToPay) {
+        if (feeToPay > 0 && Number(co.balance || 0) < feeToPay) {
             return this.notify(`Saldo insuficiente: se requieren ${feeToPay} €v de tesorería para la ${isResubmission ? 'tasa de subsanación' : 'tasa administrativa'} de la licencia AESA.`, "error");
         }
 
-        co.balance -= feeToPay;
-        state.addToLedger(
-            coId,
-            isResubmission
-                ? 'Tasa Administrativa de Subsanación // Licencia AESA (DOC_14)'
-                : 'Tasa Administrativa AESA // Licencia de Lanzamiento (DOC_14)',
-            'TASAS_ADMINISTRATIVAS',
-            -feeToPay
-        );
+        if (feeToPay > 0) {
+            co.balance -= feeToPay;
+            state.addToLedger(
+                coId,
+                isResubmission
+                    ? 'Tasa Administrativa de Subsanación // Licencia AESA (DOC_14)'
+                    : 'Tasa Administrativa AESA // Licencia de Lanzamiento (DOC_14)',
+                'TASAS_ADMINISTRATIVAS',
+                -feeToPay
+            );
+        }
 
         const prevFeePaid = Number(co.launchLicense?.feePaid || 0);
         const prevResubCount = Number(co.launchLicense?.resubmissionCount || 0);
@@ -4418,15 +4415,7 @@ Object.assign(ui, {
                 <!-- Chips de Referencia Táctica para comparar licitaciones -->
                 ${(() => {
                     const freeContractBal = state.getFreeVirtualBalance ? state.getFreeVirtualBalance(co) : Number(co.balance || 0);
-                    let bomContractCost = 0;
-                    const bomSet = new Set(Array.isArray(co.bom) ? co.bom : []);
-                    (co.orders || []).filter(o => o && (o.status === 'EJECUTADO' || ((o.status === 'APROBADO_FINANZAS' || o.status === 'APROBADO_DOCENTE') && o.partialExecuted))).forEach(o => {
-                        (o.items || []).forEach((it, idx) => {
-                            if ((o.status === 'EJECUTADO' || it.executed) && it.b2bStatus !== 'VENDIDO' && it.b2bStatus !== 'EN_VENTA' && it.b2bStatus !== 'PENDIENTE_FINANZAS' && it.b2bStatus !== 'RECHAZADO_FINANZAS' && bomSet.has(`${o.id}-${idx}`)) {
-                                bomContractCost += (Number(it.price) || 0) * (Number(it.qty) || 1);
-                            }
-                        });
-                    });
+                    const bomContractCost = typeof state.calculateBomCost === 'function' ? state.calculateBomCost(co) : 0;
                     const bestContractE = (co.flightTests || []).reduce((mx, f) => Math.max(mx, Number(f.efficiency) || 0), 0);
                     return `
                     <div class="grid grid-cols-3 gap-2 text-center font-mono text-xs">

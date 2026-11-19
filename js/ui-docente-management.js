@@ -2149,7 +2149,8 @@ Object.assign(ui, {
                 date: req.date || new Date().toLocaleDateString('es-ES'),
                 status: 'DENEGADA',
                 responseDriveUrl: responseUrl,
-                resolvedAt: Date.now()
+                resolvedAt: Date.now(),
+                updatedAt: Date.now()
             };
             if (existingIdx >= 0) specList[existingIdx] = Object.assign({}, specList[existingIdx], updatedReq);
             else specList.unshift(updatedReq);
@@ -2219,7 +2220,8 @@ Object.assign(ui, {
                 status: 'APROBADA',
                 price: price,
                 responseDriveUrl: '',
-                resolvedAt: Date.now()
+                resolvedAt: Date.now(),
+                updatedAt: Date.now()
             };
             if (existingIdx >= 0) specList[existingIdx] = Object.assign({}, specList[existingIdx], updatedReq);
             else specList.unshift(updatedReq);
@@ -2796,6 +2798,10 @@ Object.assign(ui, {
                     existingBuyerOrder.approvedByDocenteAt = now;
                     existingBuyerOrder.updatedAt = now;
                     existingBuyerOrder.b2bContractId = c.id;
+                    if (Array.isArray(existingBuyerOrder.items) && existingBuyerOrder.items[0]) {
+                        existingBuyerOrder.items[0].qty = Number(c.qty) || 1;
+                        existingBuyerOrder.items[0].price = Math.round(((price / (Number(c.qty) || 1)) + Number.EPSILON) * 100) / 100;
+                    }
                 } else {
                     const orderNum = ui.getNextOrderNumber ? ui.getNextOrderNumber(buyerCo) : String(now).slice(-3);
                     buyerCo.orders.unshift({
@@ -2808,8 +2814,8 @@ Object.assign(ui, {
                         items: [{
                             id: 'B2B-ITEM',
                             name: `[B2B] ${c.itemName}`,
-                            qty: c.qty || 1,
-                            price: price,
+                            qty: Number(c.qty) || 1,
+                            price: Math.round(((price / (Number(c.qty) || 1)) + Number.EPSILON) * 100) / 100,
                             category: c.category || 'B2B',
                             realEur: 0,
                             realShop: `B2B (${c.sellerName})`

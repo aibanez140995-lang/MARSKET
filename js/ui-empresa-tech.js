@@ -134,15 +134,7 @@ Object.assign(ui, {
         const techPendingCount = techOrders.filter(o => o.type !== 'MARKETING' && (o.status === 'PENDIENTE_FINANZAS' || o.status === 'APROBADO_FINANZAS' || o.status === 'PENDIENTE_DOCENTE' || o.status === 'APROBADO_DOCENTE')).length;
         const techCompletedCount = techOrders.filter(o => o.type !== 'MARKETING' && o.status === 'EJECUTADO').length;
         const techRejectedCount = techOrders.filter(o => o.type !== 'MARKETING' && (o.status === 'RECHAZADO' || o.status === 'DENEGADO_DOCENTE' || o.status === 'CANCELADO_OTRA_EMPRESA')).length;
-        let currentBomCost = 0;
-        const bomKeysSet = new Set(Array.isArray(co.bom) ? co.bom : []);
-        techOrders.filter(o => o && (o.status === 'EJECUTADO' || ((o.status === 'APROBADO_FINANZAS' || o.status === 'APROBADO_DOCENTE') && o.partialExecuted))).forEach(o => {
-            (o.items || []).forEach((it, idx) => {
-                if ((o.status === 'EJECUTADO' || (it && it.executed)) && bomKeysSet.has(`${o.id}-${idx}`)) {
-                    currentBomCost += (Number(it.price) || 0) * (Number(it.qty) || 1);
-                }
-            });
-        });
+        const currentBomCost = state.calculateBomCost ? state.calculateBomCost(co) : 0;
 
         const myHistoryCustom = Array.isArray(co.specialItemRequests) ? co.specialItemRequests : [];
         const legacyCustom = (state.data.pendingCustom || []).filter(p => p && p.company === state.user.coId && !myHistoryCustom.some(m => m.id === p.id));
@@ -525,8 +517,11 @@ Object.assign(ui, {
                         ${canEditWorkshop ? `<button type="button" onclick="ui.modalSellB2B('${this.escapeHTML(item.orderId)}', ${Number(item.itemIdx)})" class="min-h-[44px] bg-amber-500/20 border border-amber-500 text-amber-300 px-2.5 py-1 text-xs font-bold uppercase hover:bg-amber-500 hover:text-black transition-colors" title="Ajustar precio y reproponer a Finanzas">[REEDITAR B2B]</button>` : ''}
                     </div>`;
                 } else {
+                    const splitBtn = (canEditWorkshop && itemQty > 1)
+                        ? `<button type="button" onclick="ui.modalSplitOrderItem('${this.escapeHTML(item.orderId)}', ${Number(item.itemIdx)})" class="min-h-[44px] bg-slate-800 border border-slate-600 text-slate-200 px-2.5 py-1.5 text-xs font-bold uppercase hover:border-mars-cyan hover:text-mars-cyan transition-colors whitespace-nowrap" title="Separar unidades para usar unas en el BOM y dejar otras en stock">[✂️ Separar]</button>`
+                        : '';
                     statusAction = canEditWorkshop
-                        ? `<button type="button" onclick="ui.modalSellB2B('${this.escapeHTML(item.orderId)}', ${Number(item.itemIdx)})" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-3 py-1.5 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors whitespace-nowrap" title="Proponer venta B2B a Finanzas">[VENDER B2B]</button>`
+                        ? `<div class="flex items-center gap-1.5 flex-wrap">${splitBtn}<button type="button" onclick="ui.modalSellB2B('${this.escapeHTML(item.orderId)}', ${Number(item.itemIdx)})" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow px-3 py-1.5 text-xs font-bold uppercase hover:bg-mars-yellow hover:text-black transition-colors whitespace-nowrap" title="Proponer venta B2B a Finanzas">[VENDER B2B]</button></div>`
                         : `<span class="text-[10px] font-mono text-slate-500 uppercase">En stock I+D</span>`;
                 }
 
@@ -797,10 +792,89 @@ Object.assign(ui, {
         this.render();
     },
 
+    modalSplitOrderItem(orderId, itemIdx) {
+        if (!state.user || state.user.admin) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co || !co.orders) return;
+        if (this.getEffectiveRole(co) !== 'TECNICO') {
+            return this.notify("Solo el Departamento Técnico (I+D) puede separar lotes del inventario.", "warning");
+        }
+        const ord = co.orders.find(o => String(o.id) === String(orderId));
+        const item = ord?.items?.[itemIdx];
+        if (!item) return this.notify("Componente no localizado.", "error");
+        const qty = Number(item.qty) || 1;
+        if (qty <= 1) return this.notify("Este componente solo tiene 1 unidad.", "info");
+        if (['EN_VENTA', 'VENDIDO', 'PENDIENTE_FINANZAS'].includes(item.b2bStatus)) {
+            return this.notify("No puedes separar un lote que está actualmente en venta o revisión B2B.", "warning");
+        }
+
+        const unitPrice = Number(item.price) || 0;
+        const html = `
+            <p class="text-xs text-slate-200 mb-3 leading-relaxed">Tienes <strong class="text-white">${this.escapeHTML(item.name)} (x${qty})</strong> (${unitPrice.toFixed(2)} €v/ud). Puedes separar unidades en una línea independiente para asignar solo unas al prototipo (BOM) y vender o guardar el resto.</p>
+            <div>
+                <label for="split-item-qty" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Unidades a separar en nueva línea (1 – ${qty - 1})</label>
+                <input type="number" id="split-item-qty" value="1" min="1" max="${qty - 1}" step="1" class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-sm text-white font-mono font-bold outline-none">
+                <p class="text-[10px] text-slate-400 mt-1">Se conservarán <strong>${qty} − N</strong> unidades en la línea actual y se creará una nueva línea con <strong>N</strong> unidades.</p>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.confirmSplitOrderItem('${this.escapeHTML(orderId)}', ${Number(itemIdx)})" class="min-h-[44px] bg-mars-cyan text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-all">✂️ Separar Unidades</button>`;
+        this.showModal("Separar Lote de Inventario", html, actions);
+    },
+
+    confirmSplitOrderItem(orderId, itemIdx) {
+        if (!state.user || state.user.admin) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co || !co.orders) return;
+        if (this.getEffectiveRole(co) !== 'TECNICO') return;
+
+        const ord = co.orders.find(o => String(o.id) === String(orderId));
+        const item = ord?.items?.[itemIdx];
+        if (!item) return;
+        const totalQty = Number(item.qty) || 1;
+        const elQty = document.getElementById('split-item-qty');
+        const splitQty = parseInt(elQty ? elQty.value : '0', 10);
+        if (isNaN(splitQty) || splitQty < 1 || splitQty >= totalQty) {
+            return this.notify(`Introduce una cantidad entera entre 1 y ${totalQty - 1}.`, "warning");
+        }
+        if (this.acquireActionLock && !this.acquireActionLock(`split-item-${orderId}-${itemIdx}`, 1000)) return;
+
+        item.qty = totalQty - splitQty;
+        const cloned = { ...item, qty: splitQty };
+        delete cloned.b2bStatus;
+        delete cloned.b2bProposedPrice;
+        delete cloned.b2bSuggestedPrice;
+        delete cloned.b2bRejectReason;
+        delete cloned.b2bBuyerCoId;
+        delete cloned.b2bBuyerName;
+        ord.items.push(cloned);
+
+        co.updatedAt = Date.now();
+        state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.closeModal();
+        this.notify(`✂️ Separadas ${splitQty} ud(s) de "${item.name}". Quedan ${item.qty} ud(s) en la línea original.`, "success");
+        this.render();
+    },
+
+    updateSellB2BPreview(unitOrigCost) {
+        const elQty = document.getElementById('b2b-sell-qty');
+        const elPrice = document.getElementById('b2b-sell-price');
+        const elPrev = document.getElementById('b2b-sell-preview');
+        if (!elPrice || !elPrev) return;
+        const q = elQty ? Math.max(1, parseInt(elQty.value, 10) || 1) : 1;
+        const p = parseFloat(String(elPrice.value).replace(',', '.')) || 0;
+        const origSub = (Number(unitOrigCost) || 0) * q;
+        const unitSell = p / q;
+        elPrev.innerHTML = `Coste original (${q} ud): <strong class="text-mars-cyan">${origSub.toFixed(2)} €v</strong> · Precio unitario B2B: <strong class="text-mars-green">${unitSell.toFixed(2)} €v/ud</strong>`;
+    },
+
     modalSellB2B(orderId, itemIdx) {
         if (!state.user || state.user.admin) return;
         const co = state.data.companies[state.user.coId];
         if (!co || !co.orders) return;
+        if (this.getEffectiveRole(co) !== 'TECNICO') {
+            return this.notify("Solo el Departamento Técnico (I+D) puede proponer ventas de material B2B.", "warning");
+        }
 
         const ord = co.orders.find(o => String(o.id) === String(orderId));
         if (!ord || !ord.items || !ord.items[itemIdx]) return this.notify("Componente no localizado en el inventario.", "error");
@@ -813,7 +887,8 @@ Object.assign(ui, {
             return this.notify("Esta propuesta ya está en revisión por el Dpto. de Finanzas.", "info");
         }
         const qty = Number(item.qty) || 1;
-        const totalOrigCost = (Number(item.price) || 0) * qty;
+        const unitCost = Number(item.price) || 0;
+        const totalOrigCost = unitCost * qty;
         const defaultPrice = (item.b2bSuggestedPrice && Number(item.b2bSuggestedPrice) > 0)
             ? Number(item.b2bSuggestedPrice)
             : totalOrigCost;
@@ -828,13 +903,22 @@ Object.assign(ui, {
             </div>`;
         }
 
+        const qtySelectorHtml = qty > 1 ? `
+            <div>
+                <label for="b2b-sell-qty" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Unidades a Vender (de ${qty} disponibles)</label>
+                <input type="number" id="b2b-sell-qty" value="${qty}" min="1" max="${qty}" step="1" oninput="const q = Math.max(1, Math.min(${qty}, parseInt(this.value,10) || 1)); const pEl = document.getElementById('b2b-sell-price'); if (pEl && !pEl.dataset.edited) pEl.value = (${unitCost.toFixed(4)} * q).toFixed(2); ui.updateSellB2BPreview(${unitCost.toFixed(4)});" class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-sm text-white font-mono font-bold outline-none">
+                <p class="text-[10px] text-slate-400 mt-1">Si vendes menos de ${qty} unidades, las restantes seguirán intactas en tu Taller y en tu BOM.</p>
+            </div>` : '';
+
         const html = `
             ${rejectionNotice}
-            <p class="text-xs text-slate-200 mb-4 leading-relaxed">Vas a proponer internamente a Finanzas la venta de <strong>${this.escapeHTML(item.name)} (x${qty})</strong> en el Mercado Secundario B2B. El coste original de adquisición del lote fue de <span class="text-mars-cyan font-bold">${totalOrigCost.toFixed(2)} €v</span>${qty > 1 ? ` (${Number(item.price).toFixed(2)} €v c/u)` : ''}.</p>
+            <p class="text-xs text-slate-200 mb-4 leading-relaxed">Vas a proponer internamente a Finanzas la venta de <strong>${this.escapeHTML(item.name)} (x${qty})</strong> en el Mercado Secundario B2B. El coste original de adquisición del lote fue de <span class="text-mars-cyan font-bold">${totalOrigCost.toFixed(2)} €v</span>${qty > 1 ? ` (${unitCost.toFixed(2)} €v c/u)` : ''}.</p>
             <div class="space-y-3">
+                ${qtySelectorHtml}
                 <div>
-                    <label for="b2b-sell-price" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Precio de Venta Sugerido para el Lote (€v)</label>
-                    <input type="number" id="b2b-sell-price" value="${defaultPrice.toFixed(0)}" min="1" step="1" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold outline-none">
+                    <label for="b2b-sell-price" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Precio Total de Venta Propuesto (€v)</label>
+                    <input type="number" id="b2b-sell-price" value="${defaultPrice.toFixed(2)}" min="0.10" step="0.01" oninput="this.dataset.edited='1'; ui.updateSellB2BPreview(${unitCost.toFixed(4)}); ui.validateB2BPrice(this);" class="w-full min-h-[44px] bg-slate-900 border border-mars-yellow p-2.5 text-base sm:text-sm text-mars-green font-mono font-bold outline-none">
+                    <p id="b2b-sell-preview" class="text-[11px] text-slate-300 font-mono mt-1">Coste original (${qty} ud): <strong class="text-mars-cyan">${totalOrigCost.toFixed(2)} €v</strong> · Precio unitario B2B: <strong class="text-mars-green">${(defaultPrice / qty).toFixed(2)} €v/ud</strong></p>
                 </div>
                 <div>
                     <label for="b2b-drive-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1.5">Informe Técnico de Excedentes (Google Drive / Docs)</label>
@@ -849,18 +933,35 @@ Object.assign(ui, {
                 </div>
             </div>
         `;
-        const actions = `<button type="button" onclick="ui.confirmSellB2B('${this.escapeHTML(orderId)}', ${Number(itemIdx)})" class="min-h-[44px] bg-mars-yellow text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-all">Proponer Venta a Finanzas</button>`;
+        const actions = `<button type="button" id="btn-confirm-b2b" onclick="ui.confirmSellB2B('${this.escapeHTML(orderId)}', ${Number(itemIdx)})" class="min-h-[44px] bg-mars-yellow text-black px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-all">Proponer Venta a Finanzas</button>`;
         this.showModal(item.b2bStatus === 'RECHAZADO_FINANZAS' ? "Reajustar Propuesta B2B" : "Proponer Venta B2B a Finanzas", html, actions);
     },
 
     confirmSellB2B(orderId, itemIdx) {
         if (!state.user || state.user.admin) return;
+        const co = state.data.companies[state.user.coId];
+        if (!co || !co.orders) return;
+        if (this.getEffectiveRole(co) !== 'TECNICO') {
+            return this.notify("Solo el Departamento Técnico (I+D) puede proponer ventas B2B.", "warning");
+        }
+
         const elPrice = document.getElementById('b2b-sell-price');
+        const elQty = document.getElementById('b2b-sell-qty');
         const elDriveUrl = document.getElementById('b2b-drive-url');
         if (!elPrice) return;
 
         const price = parseFloat(String(elPrice.value).replace(',', '.'));
         if (isNaN(price) || price <= 0) return this.notify("Introduce un precio en €v válido mayor que cero.", "warning");
+
+        const ord = co.orders.find(o => String(o.id) === String(orderId));
+        if (!ord || !ord.items || !ord.items[itemIdx]) return;
+        const origItem = ord.items[itemIdx];
+        const totalQty = Number(origItem.qty) || 1;
+        const sellQty = elQty ? parseInt(elQty.value, 10) : totalQty;
+        if (isNaN(sellQty) || sellQty < 1 || sellQty > totalQty) {
+            return this.notify(`Cantidad a vender inválida (1–${totalQty}).`, "warning");
+        }
+
         const urlCheck = this.validateStudentDriveUrl
             ? this.validateStudentDriveUrl(elDriveUrl ? elDriveUrl.value : '', elDriveUrl, { required: true, label: 'el informe técnico de excedentes DOC_7' })
             : { valid: Boolean(elDriveUrl && this.cleanInput(elDriveUrl.value) && (typeof GOOGLE_DRIVE_REGEX === 'undefined' || GOOGLE_DRIVE_REGEX.test(this.cleanInput(elDriveUrl.value)))), url: elDriveUrl ? this.cleanInput(elDriveUrl.value) : '' };
@@ -868,21 +969,36 @@ Object.assign(ui, {
         const driveUrl = urlCheck.url;
         if (this.acquireActionLock && !this.acquireActionLock(`tech-sell-b2b-${orderId}-${itemIdx}`, 1500)) return;
 
-        const co = state.data.companies[state.user.coId];
-        if (!co || !co.orders) return;
+        let targetItem = origItem;
+        let targetIdx = Number(itemIdx);
 
-        const ord = co.orders.find(o => String(o.id) === String(orderId));
-        if (!ord || !ord.items || !ord.items[itemIdx]) return;
+        if (sellQty < totalQty) {
+            // Venta parcial: conservar las unidades restantes en su línea original (y en el BOM si estaban marcadas)
+            origItem.qty = totalQty - sellQty;
+            const splitItem = {
+                ...origItem,
+                qty: sellQty
+            };
+            delete splitItem.b2bStatus;
+            delete splitItem.b2bProposedPrice;
+            delete splitItem.b2bSuggestedPrice;
+            delete splitItem.b2bRejectReason;
+            delete splitItem.b2bBuyerCoId;
+            delete splitItem.b2bBuyerName;
+            ord.items.push(splitItem);
+            targetIdx = ord.items.length - 1;
+            targetItem = splitItem;
+        }
 
-        const item = ord.items[itemIdx];
-        const itemKey = `${orderId}-${itemIdx}`;
-
-        co.bom = (co.bom || []).filter(k => k !== itemKey);
-        co.bomUpdatedAt = Date.now();
-        item.b2bStatus = 'PENDIENTE_FINANZAS';
-        item.b2bProposedPrice = price;
-        item.b2bDriveUrl = driveUrl;
-        delete item.b2bRejectReason;
+        const itemKey = `${orderId}-${targetIdx}`;
+        if (sellQty === totalQty) {
+            co.bom = (co.bom || []).filter(k => k !== itemKey);
+            co.bomUpdatedAt = Date.now();
+        }
+        targetItem.b2bStatus = 'PENDIENTE_FINANZAS';
+        targetItem.b2bProposedPrice = price;
+        targetItem.b2bDriveUrl = driveUrl;
+        delete targetItem.b2bRejectReason;
 
         state.data.b2bMarket = state.data.b2bMarket || [];
         let offer = state.data.b2bMarket.find(o => o.sourceOrderKey === itemKey && o.sellerCoId === state.user.coId);
@@ -891,9 +1007,9 @@ Object.assign(ui, {
                 id: 'LST-' + Date.now(),
                 sellerCoId: state.user.coId,
                 sellerName: co.name,
-                itemName: item.name,
-                category: item.category || 'Componente',
-                qty: item.qty || 1,
+                itemName: targetItem.name,
+                category: targetItem.category || 'Componente',
+                qty: sellQty,
                 price: price,
                 driveUrl: driveUrl,
                 obs: 'Propuesta de excedente I+D: ' + driveUrl,
@@ -906,6 +1022,7 @@ Object.assign(ui, {
             };
             state.data.b2bMarket.unshift(offer);
         } else {
+            offer.qty = sellQty;
             offer.price = price;
             offer.driveUrl = driveUrl;
             offer.obs = 'Propuesta de excedente I+D: ' + driveUrl;
@@ -915,13 +1032,13 @@ Object.assign(ui, {
             offer.updatedAt = Date.now();
         }
 
-        ui.pushNotification(state.user.coId, 'FINANZAS', `I+D propone venta B2B de "${item.name}" por ${price.toFixed(2)} €v. Revisa la propuesta en Órdenes.`, 'info', { view: 'finance' });
-        telemetry.log("PROPUESTA B2B", `I+D propone venta B2B: ${item.name} por ${price}€v`);
+        ui.pushNotification(state.user.coId, 'FINANZAS', `I+D propone venta B2B de "${targetItem.name}" (x${sellQty}) por ${price.toFixed(2)} €v. Revisa la propuesta en Órdenes.`, 'info', { view: 'finance' });
+        telemetry.log("PROPUESTA B2B", `I+D propone venta B2B: ${targetItem.name} (x${sellQty}) por ${price}€v`);
         co.updatedAt = Date.now();
         state.save(state.user.coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
-        this.notify(`✅ Propuesta de venta de "${item.name}" enviada a Finanzas por ${price.toFixed(2)} €v.`, "success");
+        this.notify(`✅ Propuesta de venta de "${targetItem.name}" (x${sellQty}) enviada a Finanzas por ${price.toFixed(2)} €v.`, "success");
         this.render();
     },
 
@@ -929,6 +1046,9 @@ Object.assign(ui, {
         if (!state.user) return;
         const co = state.data.companies[state.user.coId];
         if (!co) return auth.logout();
+        if (this.getEffectiveRole(co) !== 'TECNICO' && !state.user.admin) {
+            return this.notify("Solo el Departamento Técnico (I+D) puede registrar ensayos de vuelo.", "warning");
+        }
 
         if (!state.user?.admin && (!co.launchLicense || co.launchLicense.status !== 'APROBADA')) {
             return this.notify("⛔ Lanzamiento bloqueado: Se requiere Licencia de Lanzamiento AESA (DOC_14) tramitada por el CEO y validada por Coordinación Docente.", "error");
@@ -988,11 +1108,14 @@ Object.assign(ui, {
 
         // Eficiencia: Milímetros por cada € virtual gastado
         const efficiency = heightMm / costEurV;
+        const nowTs = Date.now();
         
         co.flightTests = co.flightTests || [];
         co.flightTests.unshift({
-            id: 'FLT-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+            id: 'FLT-' + nowTs + '-' + Math.random().toString(36).slice(2, 6),
             date: new Date().toLocaleDateString(),
+            timestamp: nowTs,
+            updatedAt: nowTs,
             bottle,
             naHCO3,
             vinegar,
@@ -1001,9 +1124,11 @@ Object.assign(ui, {
             efficiency,
             videoUrl: rawVideoUrl || ''
         });
+        co.updatedAt = nowTs;
         
         telemetry.log("PRUEBA VUELO", `Registrado H=${heightMm}mm, E=${efficiency.toFixed(2)}${rawVideoUrl ? ' (+Vídeo E)' : ''}`);
-        state.save();
+        state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.notify("✅ Ensayo de vuelo registrado en el banco de pruebas.", "success");
         this.render();
     },
@@ -1012,6 +1137,9 @@ Object.assign(ui, {
         if (!state.user) return;
         const co = state.data.companies?.[state.user.coId];
         if (!co || !Array.isArray(co.flightTests)) return;
+        if (this.getEffectiveRole(co) !== 'TECNICO' && !state.user.admin) {
+            return this.notify("Solo el Departamento Técnico (I+D) puede editar vídeos de ensayos.", "warning");
+        }
         const f = co.flightTests.find(x => String(x.id) === String(flightId));
         if (!f) return this.notify("Ensayo de vuelo no localizado.", "error");
 
@@ -1045,6 +1173,7 @@ Object.assign(ui, {
         if (!state.user) return;
         const co = state.data.companies?.[state.user.coId];
         if (!co || !Array.isArray(co.flightTests)) return;
+        if (this.getEffectiveRole(co) !== 'TECNICO' && !state.user.admin) return;
         const f = co.flightTests.find(x => String(x.id) === String(flightId));
         if (!f) return this.notify("Ensayo de vuelo no localizado.", "error");
 
@@ -1056,8 +1185,10 @@ Object.assign(ui, {
         if (!urlCheck.valid) return;
         const videoUrl = urlCheck.url;
 
+        const nowTs = Date.now();
         f.videoUrl = videoUrl;
-        co.updatedAt = Date.now();
+        f.updatedAt = nowTs;
+        co.updatedAt = nowTs;
         state.save(state.user.coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
@@ -1067,6 +1198,10 @@ Object.assign(ui, {
 
     modalSpecialItem() {
         if (!state.user) return;
+        const co = state.data.companies?.[state.user.coId];
+        if (!co || (this.getEffectiveRole(co) !== 'TECNICO' && !state.user.admin)) {
+            return this.notify("Solo el Departamento Técnico (I+D) puede solicitar material especial.", "warning");
+        }
         const html = `
             <div class="space-y-4 font-mono">
                 <div class="bg-mars-cyan/10 border border-mars-cyan/40 p-3">
@@ -1100,6 +1235,12 @@ Object.assign(ui, {
 
     submitSpecialItem() {
         if (!state.user) return;
+        const coId = state.user.coId;
+        const co = state.data.companies?.[coId];
+        if (!co) return auth.logout();
+        if (this.getEffectiveRole(co) !== 'TECNICO' && !state.user.admin) {
+            return this.notify("Solo el Departamento Técnico (I+D) puede solicitar material especial.", "warning");
+        }
         const elUrl = document.getElementById('special-item-drive-url');
         if (!elUrl) return; 
         
@@ -1110,9 +1251,6 @@ Object.assign(ui, {
         const driveUrl = urlCheck.url;
         if (this.acquireActionLock && !this.acquireActionLock('submit-special-' + state.user.coId, 1500)) return;
         
-        const coId = state.user.coId;
-        const co = state.data.companies?.[coId];
-        if (!co) return auth.logout();
         if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
             return this.notifyBankruptcyLock();
         }
@@ -1120,7 +1258,8 @@ Object.assign(ui, {
         const defaultName = `Componente Especial I+D (${coName})`;
         
         co.specialItemRequests = co.specialItemRequests || [];
-        const reqId = 'SP-' + Date.now();
+        const nowTs = Date.now();
+        const reqId = 'SP-' + nowTs;
         co.specialItemRequests.unshift({ 
             id: reqId, 
             companyId: coId, 
@@ -1129,13 +1268,15 @@ Object.assign(ui, {
             driveUrl: driveUrl, 
             date: new Date().toLocaleDateString(), 
             status: 'PENDIENTE_CEO',
-            createdAt: Date.now()
+            createdAt: nowTs,
+            updatedAt: nowTs
         });
         
         ui.pushNotification(coId, 'CEO', `🔬 Solicitud de Material I+D fuera de catálogo remitida por el Dpto. Técnico para visado.`, 'info', { view: 'dashboard', anchorId: 'ceo-special-items-panel' });
         
-        co.updatedAt = Date.now();
+        co.updatedAt = nowTs;
         state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
         this.notify("✅ Solicitud de material I+D enviada al CEO para su aprobación previa.", "success");
         this.render();
@@ -1145,6 +1286,9 @@ Object.assign(ui, {
         if (!state.user) return;
         const co = state.data.companies?.[state.user.coId];
         if (!co || !Array.isArray(co.specialItemRequests)) return;
+        if (this.getEffectiveRole(co) !== 'TECNICO' && !state.user.admin) {
+            return this.notify("Solo el Departamento Técnico (I+D) puede subsanar solicitudes I+D.", "warning");
+        }
         const req = co.specialItemRequests.find(r => r.id === reqId);
         if (!req) return;
 
@@ -1175,6 +1319,12 @@ Object.assign(ui, {
 
     resubmitSpecialItem(reqId) {
         if (!state.user) return;
+        const coId = state.user.coId;
+        const co = state.data.companies?.[coId];
+        if (!co || !Array.isArray(co.specialItemRequests)) return;
+        if (this.getEffectiveRole(co) !== 'TECNICO' && !state.user.admin) {
+            return this.notify("Solo el Departamento Técnico (I+D) puede subsanar solicitudes I+D.", "warning");
+        }
         const elUrl = document.getElementById('resubmit-special-item-url');
         if (!elUrl) return;
         const urlCheck = this.validateStudentDriveUrl
@@ -1184,24 +1334,25 @@ Object.assign(ui, {
         const driveUrl = urlCheck.url;
         if (this.acquireActionLock && !this.acquireActionLock('resubmit-special-' + reqId, 1500)) return;
 
-        const coId = state.user.coId;
-        const co = state.data.companies?.[coId];
-        if (!co || !Array.isArray(co.specialItemRequests)) return;
         if (this.isCompanyBankrupt && this.isCompanyBankrupt(co)) {
             return this.notifyBankruptcyLock();
         }
         const req = co.specialItemRequests.find(r => r.id === reqId);
         if (!req) return;
 
+        const nowTs = Date.now();
         req.driveUrl = driveUrl;
         req.status = 'PENDIENTE_CEO';
         delete req.returnReason;
-        req.resubmittedAt = Date.now();
+        delete req.rejectedAt;
+        req.resubmittedAt = nowTs;
+        req.updatedAt = nowTs;
 
         ui.pushNotification(coId, 'CEO', `🔬 El Dpto. Técnico ha subsanado y reenviado la solicitud de Material I+D "${req.name || 'Componente'}" para visado.`, 'info', { view: 'dashboard', anchorId: 'ceo-special-items-panel' });
 
-        co.updatedAt = Date.now();
+        co.updatedAt = nowTs;
         state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
         this.notify("✅ Solicitud subsanada y reenviada al CEO.", "success");
         this.render();
