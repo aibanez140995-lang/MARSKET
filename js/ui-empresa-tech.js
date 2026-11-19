@@ -792,7 +792,8 @@ Object.assign(ui, {
         } else {
             co.bom = co.bom.filter(k => k !== itemKey);
         }
-        state.save();
+        co.bomUpdatedAt = Date.now();
+        state.save(state.user.coId);
         this.render();
     },
 
@@ -877,6 +878,7 @@ Object.assign(ui, {
         const itemKey = `${orderId}-${itemIdx}`;
 
         co.bom = (co.bom || []).filter(k => k !== itemKey);
+        co.bomUpdatedAt = Date.now();
         item.b2bStatus = 'PENDIENTE_FINANZAS';
         item.b2bProposedPrice = price;
         item.b2bDriveUrl = driveUrl;
@@ -917,6 +919,7 @@ Object.assign(ui, {
         telemetry.log("PROPUESTA B2B", `I+D propone venta B2B: ${item.name} por ${price}€v`);
         co.updatedAt = Date.now();
         state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
         this.notify(`✅ Propuesta de venta de "${item.name}" enviada a Finanzas por ${price.toFixed(2)} €v.`, "success");
         this.render();
@@ -1056,6 +1059,7 @@ Object.assign(ui, {
         f.videoUrl = videoUrl;
         co.updatedAt = Date.now();
         state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
         this.notify(videoUrl ? "✅ Enlace al vídeo de cálculo de E adjuntado al ensayo." : "🗑️ Enlace de vídeo retirado del ensayo.", "success");
         this.render();

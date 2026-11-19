@@ -1,5 +1,5 @@
 // js/ui-docente-core.js
-// --- MÓDULO DOCENTE CORE: ENRUTADOR, AJUSTES DE PLAZOS Y BACKUPS D1 (v1.1.28) ---
+// --- MÓDULO DOCENTE CORE: ENRUTADOR, AJUSTES DE PLAZOS Y BACKUPS SQLite CDMON (v2.0.26) ---
 
 Object.assign(ui, {
     currentClassFilter: 'ALL',

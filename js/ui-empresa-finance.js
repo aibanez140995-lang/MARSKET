@@ -694,11 +694,13 @@ Object.assign(ui, {
 
         co.orders.unshift(newOrder);
         co.cart = [];
+        co.cartUpdatedAt = Date.now();
         this._lastOrderDriveUrl = '';
         
         ui.pushNotification(state.user.coId, 'FINANZAS', `Nueva orden #${newOrder.id} (${computedTotal.toFixed(2)} €v) recibida de I+D. Requiere validación urgente.`, 'warning', { view: 'orders', filter: 'EN_PROCESO', dept: 'TECNICO' });
         telemetry.log("ORDEN ENVIADA", `I+D generó orden #${newOrder.id}`);
-        state.save();
+        state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
         this.notify(`✅ Orden #${newOrder.id} transmitida al Departamento Financiero.`, "success");
         this.render();

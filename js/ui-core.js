@@ -1514,6 +1514,7 @@ const ui = {
     },
 
     pushNotification(coId, targetRole, message, type = 'info', targetMeta = null) {
+        if (!coId || coId === 'ADMIN') return;
         if (coId === 'ALL') {
             const companies = state.data?.companies || {};
             let touched = false;
@@ -1976,7 +1977,7 @@ const ui = {
                                 <li>• <strong>Cronograma Maestro:</strong> Abre o bloquea fechas límite para los 18 hitos y responde sugerencias del alumnado.</li>
                                 <li>• <strong>Catálogo Oficial Imprimible:</strong> Descarga el catálogo limpio en PDF A4 o CSV sin piezas especiales de I+D.</li>
                                 <li>• <strong>Crónicas Nano Banana 3:</strong> Publica noticias con texto enriquecido y portadas de IA.</li>
-                                <li>• <strong>Copias Cloud D1:</strong> Descarga snapshots JSON de seguridad o fuerza sincronización en la nube.</li>
+                                <li>• <strong>Copias Cloud CDMON:</strong> Descarga snapshots JSON de seguridad o fuerza sincronización en la nube.</li>
                             </ul>
                         </div>` : ''}
                     </div>
@@ -3395,7 +3396,7 @@ const ui = {
         if (loginNotice) {
             if (!state.isCloudOnline) {
                 loginNotice.className = 'mt-3 pt-2 border-t border-mars-yellow/30 text-center';
-                loginNotice.innerHTML = '<p class="text-xs text-mars-yellow font-mono tracking-wider">⚠️ MODO LOCAL // SIN CONEXIÓN CON NUBE D1</p>';
+                loginNotice.innerHTML = '<p class="text-xs text-mars-yellow font-mono tracking-wider">⚠️ MODO LOCAL // SIN CONEXIÓN CON NUBE CDMON</p>';
             } else {
                 loginNotice.className = 'hidden';
                 loginNotice.innerHTML = '';

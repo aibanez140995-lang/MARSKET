@@ -314,8 +314,9 @@ Object.assign(ui, {
         const exist = co.cart.find(i => i.id === itemId);
         if (exist) { exist.qty = (Number(exist.qty) || 0) + addQty; } 
         else { co.cart.push({ ...itemDef, qty: addQty }); }
+        co.cartUpdatedAt = Date.now();
 
-        state.save();
+        state.save(state.user.coId);
         const toggleBtn = document.getElementById('btn-cart-toggle');
         if (toggleBtn) toggleBtn.textContent = `🛒 Carrito (${co.cart.length})`;
         if (typeof this.updateBadges === 'function') this.updateBadges();
@@ -356,7 +357,8 @@ Object.assign(ui, {
             co.cart[idx].qty--;
             const remainingQty = co.cart[idx].qty;
             if(co.cart[idx].qty <= 0) co.cart.splice(idx, 1);
-            state.save();
+            co.cartUpdatedAt = Date.now();
+            state.save(state.user.coId);
             // Localizar la fila en el DOM sin cerrar ni reabrir el modal
             const row = document.querySelector(`[data-cart-item="${itemId}"]`);
             if (row) {
@@ -492,7 +494,8 @@ Object.assign(ui, {
         });
 
         ui.pushNotification(state.user.coId, 'FINANZAS', `I+D propone venta B2B de "${item.name}" por ${price.toFixed(2)} €v. Revisa la propuesta en Finanzas.`, 'info', { view: 'finance' });
-        state.save();
+        state.save(state.user.coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
         this.render();
         this.notify(`✅ Propuesta B2B enviada a Finanzas por ${price.toFixed(2)} €v.`, "success");

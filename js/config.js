@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.25) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.26) ---
 
-const APP_VERSION = "2.0.25";
+const APP_VERSION = "2.0.26";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1154,8 +1154,23 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.25
+// Changelog Oficial de Producción v2.0.26
 const APP_CHANGELOG = [
+    {
+      version: "2.0.26",
+      date: "2026-11-19",
+      title: "Saneamiento CDMON 1B · Sondeo Global, Tombstones Multi-PC, LWW Blindado y Estabilidad de Red",
+      items: [
+        "Sondeo Rápido Alineado (checkFastVersion + ETags): El sondeo de 12 segundos ya recibe la versión global real del servidor (globalVersion), permitiendo que Crónicas, cambios de Catálogo o resoluciones externas lleguen al alumnado en tiempo real sin pulsar F5.",
+        "Anti-Resurrección Multi-Dispositivo (Tombstones Sincronizados): Catálogo oficial, solicitudes especiales I+D (pendingCustom), asientos contables rectificados en contratos (deletedLedgerTxIds) y artefactos de empresas TEST reseteadas ya no reaparecen al sincronizar otro ordenador.",
+        "Fusión LWW Determinista (BOM, Carrito, Fase V y Calificaciones): Separada la resolución temporal de BOM y Carrito (bomUpdatedAt / cartUpdatedAt), protegidos los campos de identidad de marca frente a ruido de notificaciones, fusionado Concurso Final Fase V de forma granular y unificado loginStats en ambas ramas.",
+        "Mutex en pushToCloud y Estabilidad Auth: Evitadas carreras de subida simultánea, añadido guardado seguro al salir (pagehide), distinción HTTP 404 en código de empresa, limpieza completa de RAM al cerrar sesión y retirada total de avisos legacy D1."
+      ],
+      highlights: [
+        { type: "SINCRONIZACIÓN", text: "Sondeo global 12s reparado, mutex anti-409 y BOM/Carrito sin pises." },
+        { type: "ANTI-RESURRECCIÓN", text: "Tombstones sincronizados en Catálogo, I+D Especial y Ledger." }
+      ]
+    },
     {
       version: "2.0.25",
       date: "2026-11-19",

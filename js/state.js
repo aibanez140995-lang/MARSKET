@@ -7,6 +7,8 @@ const DEFAULT_STATE = {
     officialNews: [],
     deletedOfficialNewsIds: [],
     deletedCompanyIds: [],
+    deletedCatalogIds: [],
+    deletedPendingCustomIds: [],
     pressReleases: [],
     b2bMarket: [],
     b2bContracts: [],
@@ -109,7 +111,8 @@ const state = {
     storageKey: 'marsket_v10_PWA',
     sessionKey: 'marsket_session_v1',
     isCloudOnline: false, isSyncing: false, syncTimer: null, heartbeatTimer: null,
-    pausePolling: false, _broadcastChannel: null, lastETag: null, lastCompanyETag: null,
+    pausePolling: false, _broadcastChannel: null, lastETag: null, lastCompanyETag: null, lastCompanyVersion: 0,
+    _activePushPromise: null, _pushDirty: false, _warnedStorageQuota: false,
     consecutiveNetworkFailures: 0, isOfflineContained: false, _listenersAttached: false,
     _hasWarnedCloudNetwork: false,
     _clockInterval: null,
@@ -146,15 +149,18 @@ const state = {
 
     calculateBalance(co) {
         if (!co) return 2400.0;
-        const INITIAL_CAPITAL = 2400.0;
+        const INITIAL_CAPITAL = (co.initialBalance !== undefined && co.initialBalance !== null && !isNaN(Number(co.initialBalance)))
+            ? Number(co.initialBalance)
+            : 2400.0;
         if (!Array.isArray(co.ledger) || co.ledger.length === 0) {
             return INITIAL_CAPITAL;
         }
+        const delTxSet = new Set(Array.isArray(co.deletedLedgerTxIds) ? co.deletedLedgerTxIds.map(String) : []);
         const seenTx = new Set();
         let totalDelta = 0;
         for (const tx of co.ledger) {
             const id = String(tx?.id || tx?.tx_id || '');
-            if (!id || seenTx.has(id)) continue;
+            if (!id || seenTx.has(id) || delTxSet.has(id)) continue;
             seenTx.add(id);
             const delta = Number(tx.delta);
             if (!isNaN(delta)) {
@@ -387,7 +393,17 @@ const state = {
         d.securityIncidents = Array.isArray(d.securityIncidents) ? d.securityIncidents : [];
         
                 d.deletedSuggestionIds = Array.isArray(d.deletedSuggestionIds) ? d.deletedSuggestionIds : [];
-        d.deletedCompanyIds = Array.isArray(d.deletedCompanyIds) ? d.deletedCompanyIds : [];
+        d.deletedCompanyIds = Array.isArray(d.deletedCompanyIds) ? d.deletedCompanyIds.map(String) : [];
+        d.deletedCatalogIds = Array.isArray(d.deletedCatalogIds) ? d.deletedCatalogIds.map(String) : [];
+        d.deletedPendingCustomIds = Array.isArray(d.deletedPendingCustomIds) ? d.deletedPendingCustomIds.map(String) : [];
+        if (d.deletedCatalogIds.length > 0 && Array.isArray(d.catalog)) {
+            const delCatSet = new Set(d.deletedCatalogIds);
+            d.catalog = d.catalog.filter(it => it && it.id && !delCatSet.has(String(it.id)));
+        }
+        if (d.deletedPendingCustomIds.length > 0 && Array.isArray(d.pendingCustom)) {
+            const delPcSet = new Set(d.deletedPendingCustomIds);
+            d.pendingCustom = d.pendingCustom.filter(p => p && !delPcSet.has(String(p.id)));
+        }
         if (d.companies && d.deletedCompanyIds.length > 0) {
             d.deletedCompanyIds.forEach(delId => {
                 delete d.companies[delId];
@@ -730,15 +746,24 @@ const state = {
             }));
             co.votingMotions = Array.isArray(co.votingMotions) ? co.votingMotions : [];
             co.aiPrompts = Array.isArray(co.aiPrompts) ? co.aiPrompts : [];
+            co.deletedLedgerTxIds = Array.isArray(co.deletedLedgerTxIds) ? co.deletedLedgerTxIds.map(String) : [];
             co.ledger = Array.isArray(co.ledger) ? co.ledger : [];
+            if (co.deletedLedgerTxIds.length > 0) {
+                const delTxSet = new Set(co.deletedLedgerTxIds);
+                co.ledger = co.ledger.filter(tx => tx && !delTxSet.has(String(tx.id || tx.tx_id || '')));
+                co.balance = this.calculateBalance(co);
+            }
             co.realCosts = Array.isArray(co.realCosts) ? co.realCosts : [];
             co.cart = Array.isArray(co.cart) ? co.cart : [];
+            co.cartUpdatedAt = Number(co.cartUpdatedAt) || 0;
             co.orders = Array.isArray(co.orders) ? co.orders : [];
             co.grades = (co.grades && typeof co.grades === 'object' && !Array.isArray(co.grades)) ? co.grades : {};
             co.slogan = co.slogan || "";
             co.valueProposition = co.valueProposition || "";
             co.logo = co.logo || null;
             co.bom = Array.isArray(co.bom) ? co.bom : [];
+            co.bomUpdatedAt = Number(co.bomUpdatedAt) || 0;
+            co.brandUpdatedAt = Number(co.brandUpdatedAt) || 0;
             co.sponsorAwarded = co.sponsorAwarded || null;
             co.marketingCampaigns = Array.isArray(co.marketingCampaigns) ? co.marketingCampaigns : [];
             co.marketingCampaigns.forEach(c => {
@@ -802,6 +827,15 @@ const state = {
         return JSON.parse(JSON.stringify(lTime > sTime ? lReq : sReq));
     },
 
+    _parseSafeTs(val) {
+        if (val === null || val === undefined || val === '') return 0;
+        if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+        const asNum = Number(val);
+        if (Number.isFinite(asNum)) return asNum;
+        const parsed = Date.parse(String(val));
+        return Number.isFinite(parsed) ? parsed : 0;
+    },
+
     mergeBrandApproval(lBrand, sBrand, lTime = 0, sTime = 0) {
         if (!lBrand && !sBrand) return undefined;
         if (!lBrand) return JSON.parse(JSON.stringify(sBrand));
@@ -810,7 +844,7 @@ const state = {
         const isPlaceholderApproved = (b) => Boolean(
             b && b.status === 'APROBADO' &&
             !b.pendingLogo && !b.pendingSlogan && !b.driveUrl && !b.expId && !b.feedback &&
-            !(Number(b.updatedAt) > 0) && !(Number(b.endorsedAt) > 0) && !(Number(b.date) > 0)
+            !(this._parseSafeTs(b.updatedAt) > 0) && !(this._parseSafeTs(b.endorsedAt) > 0) && !(this._parseSafeTs(b.date) > 0)
         );
         if (isPlaceholderApproved(lBrand) && !isPlaceholderApproved(sBrand)) {
             return JSON.parse(JSON.stringify(sBrand));
@@ -819,7 +853,7 @@ const state = {
             return JSON.parse(JSON.stringify(lBrand));
         }
 
-        const getBrTs = (b) => Math.max(Number(b?.updatedAt || 0), Number(b?.endorsedAt || 0), Number(b?.date || 0));
+        const getBrTs = (b) => Math.max(this._parseSafeTs(b?.updatedAt), this._parseSafeTs(b?.endorsedAt), this._parseSafeTs(b?.date));
         const lTs = getBrTs(lBrand);
         const sTs = getBrTs(sBrand);
         if (lTs !== sTs) {
@@ -834,7 +868,7 @@ const state = {
         if (!lReq) return JSON.parse(JSON.stringify(sReq));
         if (!sReq) return JSON.parse(JSON.stringify(lReq));
 
-        const getNcTs = (r) => Math.max(Number(r?.updatedAt || 0), Number(r?.resolvedAt || 0), Number(r?.timestamp || 0));
+        const getNcTs = (r) => Math.max(this._parseSafeTs(r?.updatedAt), this._parseSafeTs(r?.resolvedAt), this._parseSafeTs(r?.timestamp));
         const lTs = getNcTs(lReq);
         const sTs = getNcTs(sReq);
         if (lTs !== sTs) {
@@ -859,11 +893,11 @@ const state = {
         const out = {};
 
         const getPhTs = (item) => Math.max(
-            Number(item?.updatedAt || 0),
-            Number(item?.ceoValidatedAt || 0),
-            Number(item?.returnedAt || 0),
-            Number(item?.publishedAt || 0),
-            Number(item?.timestamp || 0)
+            this._parseSafeTs(item?.updatedAt),
+            this._parseSafeTs(item?.ceoValidatedAt),
+            this._parseSafeTs(item?.returnedAt),
+            this._parseSafeTs(item?.publishedAt),
+            this._parseSafeTs(item?.timestamp)
         );
 
         keys.forEach(ph => {
@@ -884,6 +918,46 @@ const state = {
             }
         });
         return out;
+    },
+
+    mergeFinalContest(sFc, lFc, companies = {}, deletedCompanyIds = [], isCoordUser = false) {
+        if (!sFc && !lFc) return this.createDefaultFinalContest();
+        if (!sFc) return this.normalizeFinalContest(lFc, companies, deletedCompanyIds);
+        if (!lFc) return this.normalizeFinalContest(sFc, companies, deletedCompanyIds);
+
+        const sTime = this._parseSafeTs(sFc.updatedAt);
+        const lTime = this._parseSafeTs(lFc.updatedAt);
+        const preferLocal = Boolean(isCoordUser && lTime > sTime);
+
+        const mergedRaw = JSON.parse(JSON.stringify(preferLocal ? lFc : sFc));
+        const classes = typeof CONTEST_CLASSES !== 'undefined' ? CONTEST_CLASSES : ['A', 'B', 'C', 'D', 'E', 'F'];
+        mergedRaw.finalists = mergedRaw.finalists || {};
+        classes.forEach(cls => {
+            const sFin = sFc.finalists?.[cls] || null;
+            const lFin = lFc.finalists?.[cls] || null;
+            if (preferLocal) mergedRaw.finalists[cls] = lFin || (lTime === 0 ? sFin : lFin);
+            else mergedRaw.finalists[cls] = sFin || (isCoordUser && !sFin && lFin && sTime === 0 ? lFin : sFin);
+        });
+
+        const mergedLaunches = {};
+        const sLaunches = (sFc.launches && typeof sFc.launches === 'object') ? sFc.launches : {};
+        const lLaunches = (lFc.launches && typeof lFc.launches === 'object') ? lFc.launches : {};
+        const allLaunchCids = new Set([...Object.keys(sLaunches), ...Object.keys(lLaunches)]);
+        allLaunchCids.forEach(cid => {
+            const sL = sLaunches[cid];
+            const lL = lLaunches[cid];
+            if (sL && !lL) mergedLaunches[cid] = JSON.parse(JSON.stringify(sL));
+            else if (lL && !sL && isCoordUser) mergedLaunches[cid] = JSON.parse(JSON.stringify(lL));
+            else if (sL && lL) {
+                const sRec = this._parseSafeTs(sL.recordedAt);
+                const lRec = this._parseSafeTs(lL.recordedAt);
+                const pickLocalLaunch = isCoordUser && (lRec > sRec || (lRec === sRec && lTime > sTime));
+                mergedLaunches[cid] = JSON.parse(JSON.stringify(pickLocalLaunch ? lL : sL));
+            }
+        });
+        mergedRaw.launches = mergedLaunches;
+        mergedRaw.updatedAt = Math.max(sTime, lTime);
+        return this.normalizeFinalContest(mergedRaw, companies, deletedCompanyIds);
     },
 
     mergeData(serverData, localData) {
@@ -973,20 +1047,20 @@ const state = {
             return result;
         };
 
-        const reconcileCompanyArray = (arrServer, arrLocal, arrName = '', localWinsOnTie = false) => {
+        const reconcileCompanyArray = (arrServer, arrLocal, arrName = '', localWinsOnTie = false, deletedLedgerTxIds = []) => {
             if (!Array.isArray(arrServer)) arrServer = [];
             if (!Array.isArray(arrLocal)) arrLocal = [];
 
             const getItemTs = (it) => Math.max(
-                Number(it?.updatedAt || 0),
-                Number(it?.executedAt || 0),
-                Number(it?.lastPartialAt || 0),
-                Number(it?.approvedAt || 0),
-                Number(it?.rejectedAt || 0),
-                Number(it?.resolvedAt || 0),
-                Number(it?.reviewedAt || 0),
-                Number(it?.endorsedAt || 0),
-                Number(it?.timestamp || 0)
+                this._parseSafeTs(it?.updatedAt),
+                this._parseSafeTs(it?.executedAt),
+                this._parseSafeTs(it?.lastPartialAt),
+                this._parseSafeTs(it?.approvedAt),
+                this._parseSafeTs(it?.rejectedAt),
+                this._parseSafeTs(it?.resolvedAt),
+                this._parseSafeTs(it?.reviewedAt),
+                this._parseSafeTs(it?.endorsedAt),
+                this._parseSafeTs(it?.timestamp)
             );
 
             const combinePair = (sItem, lItem) => {
@@ -1077,14 +1151,24 @@ const state = {
                 ]);
                 combined = combined.filter(n => n && n.id && !dismissedIds.has(String(n.id)));
             }
+            if (arrName === 'ledger' && Array.isArray(deletedLedgerTxIds) && deletedLedgerTxIds.length > 0) {
+                const delTxSet = new Set(deletedLedgerTxIds.map(String));
+                combined = combined.filter(tx => tx && !delTxSet.has(String(tx.id || tx.tx_id || '')));
+            }
             return combined;
         };
 
-        const companyArraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'meetingMinutes', 'specialItemRequests', 'cart', 'bom', 'coordinatorReports'];
+        const companyArraysToMerge = ['orders', 'ledger', 'realCosts', 'flightTests', 'votingMotions', 'aiPrompts', 'marketingCampaigns', 'inactivityReports', 'notifications', 'sanctions', 'crisisAlerts', 'executiveResolutions', 'meetingMinutes', 'specialItemRequests', 'coordinatorReports'];
         const applyResetWinner = (target, winner) => {
             companyArraysToMerge.forEach(arrName => {
                 target[arrName] = Array.isArray(winner[arrName]) ? JSON.parse(JSON.stringify(winner[arrName])) : [];
             });
+            target.cart = Array.isArray(winner.cart) ? JSON.parse(JSON.stringify(winner.cart)) : [];
+            target.cartUpdatedAt = this._parseSafeTs(winner.cartUpdatedAt);
+            target.bom = Array.isArray(winner.bom) ? JSON.parse(JSON.stringify(winner.bom)) : [];
+            target.bomUpdatedAt = this._parseSafeTs(winner.bomUpdatedAt);
+            target.deletedLedgerTxIds = Array.isArray(winner.deletedLedgerTxIds) ? winner.deletedLedgerTxIds.map(String) : [];
+            target.brandUpdatedAt = this._parseSafeTs(winner.brandUpdatedAt);
             target.deliverables = JSON.parse(JSON.stringify(winner.deliverables || {}));
             target.contracts = JSON.parse(JSON.stringify(winner.contracts || {}));
             target.grades = JSON.parse(JSON.stringify(winner.grades || {}));
@@ -1110,31 +1194,12 @@ const state = {
             target.loginStats = JSON.parse(JSON.stringify(winner.loginStats || { totalLogins: 0, roles: {} }));
         };
 
-        // Al recibir serverData de la red:
-        const localEpoch = parseInt(localStorage.getItem('marsket_reset_epoch') || '0', 10);
+        // Al recibir serverData de la red con Reset Epoch superior: retorno puro migrado sin mutar UI directamente aquí
+        const localEpoch = parseInt((typeof localStorage !== 'undefined' ? localStorage.getItem('marsket_reset_epoch') : '0') || '0', 10);
         const serverEpoch = serverData.resetEpoch || 0;
 
         if (serverEpoch > localEpoch) {
-            console.warn('[SECURITY] Reset Epoch superior detectado. Destruyendo caché huérfana local.');
-            
-            const savedSession = localStorage.getItem('marsket_session');
-            const savedRole = localStorage.getItem('marsket_user_role');
-            const savedV1Session = this.sessionKey ? localStorage.getItem(this.sessionKey) : null;
-            
-            localStorage.clear(); // Purga masiva
-            
-            if (savedSession) localStorage.setItem('marsket_session', savedSession);
-            if (savedRole) localStorage.setItem('marsket_user_role', savedRole);
-            if (savedV1Session && this.sessionKey) localStorage.setItem(this.sessionKey, savedV1Session);
-            localStorage.setItem('marsket_reset_epoch', serverEpoch.toString());
-            
-            // Reemplazo destructivo directo, omitiendo cualquier merge aditivo
-            this.data = JSON.parse(JSON.stringify(serverData));
-            this.saveToLocal();
-            if (typeof ui !== 'undefined' && ui.renderAll) ui.renderAll();
-            else if (typeof ui !== 'undefined' && ui.render) ui.render();
-            
-            return this.data; // ABORTAR ejecución posterior de mergeData
+            return this.migrate(JSON.parse(JSON.stringify(serverData)));
         }
 
         const merged = JSON.parse(JSON.stringify(serverData)); 
@@ -1221,6 +1286,87 @@ const state = {
             return winR >= loseT;
         };
 
+        const mergeLoginStats = (sStatsIn, lStatsIn) => {
+            const sStats = sStatsIn || { totalLogins: 0, roles: {} };
+            const lStats = lStatsIn || { totalLogins: 0, roles: {} };
+            const out = {
+                totalLogins: Math.max(Number(sStats.totalLogins) || 0, Number(lStats.totalLogins) || 0),
+                roles: {}
+            };
+            const allLoginRoles = new Set([...Object.keys(sStats.roles || {}), ...Object.keys(lStats.roles || {})]);
+            allLoginRoles.forEach(r => {
+                const sR = sStats.roles?.[r] || { count: 0, lastLogin: null };
+                const lR = lStats.roles?.[r] || { count: 0, lastLogin: null };
+                const sLoginTs = this._parseSafeTs(sR.lastLogin);
+                const lLoginTs = this._parseSafeTs(lR.lastLogin);
+                out.roles[r] = {
+                    count: Math.max(Number(sR.count) || 0, Number(lR.count) || 0),
+                    lastLogin: (sR.lastLogin && lR.lastLogin)
+                        ? (sLoginTs >= lLoginTs ? sR.lastLogin : lR.lastLogin)
+                        : (sR.lastLogin || lR.lastLogin || null)
+                };
+            });
+            return out;
+        };
+
+        const syncWinningBrandIdentity = (targetCo, sCo, lCo, lTime, sTime) => {
+            const getBrTs = (b) => Math.max(this._parseSafeTs(b?.updatedAt), this._parseSafeTs(b?.endorsedAt), this._parseSafeTs(b?.date));
+            const sBrTs = Math.max(this._parseSafeTs(sCo.brandUpdatedAt), getBrTs(sCo.brandApproval));
+            const lBrTs = Math.max(this._parseSafeTs(lCo.brandUpdatedAt), getBrTs(lCo.brandApproval));
+            const srcCo = (sBrTs !== lBrTs) ? (sBrTs > lBrTs ? sCo : lCo) : (lTime > sTime ? lCo : sCo);
+            targetCo.logo = srcCo.logo !== undefined ? srcCo.logo : null;
+            targetCo.slogan = srcCo.slogan || '';
+            targetCo.valueProposition = srcCo.valueProposition || '';
+            if (srcCo.mission !== undefined) targetCo.mission = srcCo.mission;
+            if (srcCo.brandStatus !== undefined) targetCo.brandStatus = srcCo.brandStatus;
+            else delete targetCo.brandStatus;
+            if (srcCo.pendingSlogan !== undefined) targetCo.pendingSlogan = srcCo.pendingSlogan;
+            else delete targetCo.pendingSlogan;
+            if (srcCo.pendingMission !== undefined) targetCo.pendingMission = srcCo.pendingMission;
+            else delete targetCo.pendingMission;
+            targetCo.brandUpdatedAt = Math.max(sBrTs, lBrTs);
+        };
+
+        const mergeGradesDict = (targetCo, sCo, lCo) => {
+            targetCo.grades = targetCo.grades || {};
+            const sGrades = (sCo.grades && typeof sCo.grades === 'object') ? sCo.grades : {};
+            const lGrades = (lCo.grades && typeof lCo.grades === 'object') ? lCo.grades : {};
+            const allSubj = new Set([...Object.keys(sGrades), ...Object.keys(lGrades)]);
+            allSubj.forEach(subj => {
+                const sG = sGrades[subj];
+                const lG = lGrades[subj];
+                if (sG && !lG) targetCo.grades[subj] = JSON.parse(JSON.stringify(sG));
+                else if (lG && !sG) targetCo.grades[subj] = JSON.parse(JSON.stringify(lG));
+                else if (sG && lG) {
+                    const sGTime = this._parseSafeTs(sG.updatedAt);
+                    const lGTime = this._parseSafeTs(lG.updatedAt);
+                    if (sGTime !== lGTime) {
+                        targetCo.grades[subj] = JSON.parse(JSON.stringify(sGTime > lGTime ? sG : lG));
+                    } else {
+                        const sHasFinal = sG.final !== undefined && sG.final !== null;
+                        const lHasFinal = lG.final !== undefined && lG.final !== null;
+                        targetCo.grades[subj] = JSON.parse(JSON.stringify((lHasFinal && !sHasFinal) ? lG : sG));
+                    }
+                }
+            });
+        };
+
+        const reconcileBomAndCart = (targetCo, sCo, lCo, lTime, sTime) => {
+            const sBomTs = this._parseSafeTs(sCo.bomUpdatedAt);
+            const lBomTs = this._parseSafeTs(lCo.bomUpdatedAt);
+            const pickLocalBom = (lBomTs !== sBomTs) ? (lBomTs > sBomTs) : (lTime > sTime);
+            const chosenBom = pickLocalBom ? lCo.bom : sCo.bom;
+            targetCo.bom = Array.isArray(chosenBom) ? [...chosenBom] : [];
+            targetCo.bomUpdatedAt = Math.max(sBomTs, lBomTs);
+
+            const sCartTs = this._parseSafeTs(sCo.cartUpdatedAt);
+            const lCartTs = this._parseSafeTs(lCo.cartUpdatedAt);
+            const pickLocalCart = (lCartTs !== sCartTs) ? (lCartTs > sCartTs) : (lTime > sTime);
+            const chosenCart = pickLocalCart ? lCo.cart : sCo.cart;
+            targetCo.cart = Array.isArray(chosenCart) ? JSON.parse(JSON.stringify(chosenCart)) : [];
+            targetCo.cartUpdatedAt = Math.max(sCartTs, lCartTs);
+        };
+
         for (let k in localData.companies) {
             if (allDeletedCompanyIds.has(k)) continue;
             const sCo = merged.companies[k];
@@ -1232,6 +1378,10 @@ const state = {
                 const sAuthTime = sCo.authUpdatedAt || 0;
                 const lAuthTime = lCo.authUpdatedAt || 0;
                 const isTestResetPair = isTestCompanyReset(k, sCo, lCo, sTime, lTime);
+                const mergedDelLedgerTxIds = Array.from(new Set([
+                    ...(Array.isArray(sCo.deletedLedgerTxIds) ? sCo.deletedLedgerTxIds.map(String) : []),
+                    ...(Array.isArray(lCo.deletedLedgerTxIds) ? lCo.deletedLedgerTxIds.map(String) : [])
+                ]));
 
                 // Protección de memoria local: nunca sobreescribir secretos con nulos de la sanitización
                 if (lCo.authVault && lCo.authVault.code) {
@@ -1252,11 +1402,13 @@ const state = {
                 
                 if (lTime > sTime) {
                     merged.companies[k] = JSON.parse(JSON.stringify(lCo));
-                    if (sAuthTime > lAuthTime && sCo.authVault && sCo.authVault.code) {
-                        merged.companies[k].authVault = JSON.parse(JSON.stringify(sCo.authVault));
-                        merged.companies[k].roles = JSON.parse(JSON.stringify(sCo.roles || {}));
+                    if (sAuthTime > lAuthTime) {
                         merged.companies[k].auxRoleDept = sCo.auxRoleDept || null;
                         merged.companies[k].authUpdatedAt = sAuthTime;
+                        if (sCo.authVault && sCo.authVault.code) {
+                            merged.companies[k].authVault = JSON.parse(JSON.stringify(sCo.authVault));
+                            merged.companies[k].roles = JSON.parse(JSON.stringify(sCo.roles || {}));
+                        }
                     }
                     const chosenAuxReq = this.mergeAuxRoleRequest(lCo.auxRoleRequest, sCo.auxRoleRequest, lTime, sTime);
                     if (chosenAuxReq) {
@@ -1265,49 +1417,18 @@ const state = {
                             merged.companies[k].auxRoleDept = chosenAuxReq.dept;
                         }
                     }
-                    // Preservar siempre calificaciones docentes usando Last-Write-Wins (LWW) por asignatura
-                    if (sCo.grades) {
-                        merged.companies[k].grades = merged.companies[k].grades || {};
-                        for (const subj in sCo.grades) {
-                            const sG = sCo.grades[subj];
-                            const lG = merged.companies[k].grades[subj];
-                            if (sG && sG.final !== undefined && sG.final !== null) {
-                                const sGTime = Number(sG.updatedAt) || sTime;
-                                const lGTime = Number(lG?.updatedAt) || lTime;
-                                if (!lG || sGTime >= lGTime) {
-                                    merged.companies[k].grades[subj] = JSON.parse(JSON.stringify(sG));
-                                }
-                            }
-                        }
-                    }
+                    // Preservar siempre calificaciones docentes usando LWW por asignatura sin depender del updatedAt de alumnos
+                    mergeGradesDict(merged.companies[k], sCo, lCo);
                     // Preservar asignación docente de patrocinio si el servidor la tiene
                     if (sCo.sponsorAwarded) {
-                        const sSpDate = sCo.sponsorData?.date || 0;
-                        const lSpDate = lCo.sponsorData?.date || 0;
+                        const sSpDate = this._parseSafeTs(sCo.sponsorData?.date);
+                        const lSpDate = this._parseSafeTs(lCo.sponsorData?.date);
                         if (!lCo.sponsorAwarded || sSpDate >= lSpDate) {
                             merged.companies[k].sponsorAwarded = sCo.sponsorAwarded;
                             merged.companies[k].sponsorData = JSON.parse(JSON.stringify(sCo.sponsorData || {}));
                         }
                     }
-                    // Fusión de estadísticas de login (Math.max para evitar pérdidas de telemetría entre sesiones)
-                    const sStats = sCo.loginStats || { totalLogins: 0, roles: {} };
-                    const lStats = lCo.loginStats || { totalLogins: 0, roles: {} };
-                    const mergedLoginStats = {
-                        totalLogins: Math.max(Number(sStats.totalLogins) || 0, Number(lStats.totalLogins) || 0),
-                        roles: {}
-                    };
-                    const allLoginRoles = new Set([...Object.keys(sStats.roles || {}), ...Object.keys(lStats.roles || {})]);
-                    allLoginRoles.forEach(r => {
-                        const sR = sStats.roles?.[r] || { count: 0, lastLogin: null };
-                        const lR = lStats.roles?.[r] || { count: 0, lastLogin: null };
-                        mergedLoginStats.roles[r] = {
-                            count: Math.max(Number(sR.count) || 0, Number(lR.count) || 0),
-                            lastLogin: (sR.lastLogin && lR.lastLogin)
-                                ? (new Date(sR.lastLogin) > new Date(lR.lastLogin) ? sR.lastLogin : lR.lastLogin)
-                                : (sR.lastLogin || lR.lastLogin || null)
-                        };
-                    });
-                    merged.companies[k].loginStats = mergedLoginStats;
+                    merged.companies[k].loginStats = mergeLoginStats(sCo.loginStats, lCo.loginStats);
 
                     // Fusión de entregables: no pisar entregables docentes ni estados más recientes
                     merged.companies[k].deliverables = merged.companies[k].deliverables || {};
@@ -1318,8 +1439,8 @@ const state = {
                             if (!lDoc && sDoc) {
                                 merged.companies[k].deliverables[dKey] = JSON.parse(JSON.stringify(sDoc));
                             } else if (sDoc && lDoc) {
-                                const sDocTime = new Date(sDoc.updatedAt || 0).getTime();
-                                const lDocTime = new Date(lDoc.updatedAt || 0).getTime();
+                                const sDocTime = this._parseSafeTs(sDoc.updatedAt);
+                                const lDocTime = this._parseSafeTs(lDoc.updatedAt);
                                 let mergedHist = undefined;
                                 if (dKey === 'hoja_taller_fyq' && (Array.isArray(lDoc.history) || Array.isArray(sDoc.history))) {
                                     const histMap = new Map();
@@ -1343,9 +1464,11 @@ const state = {
                         merged.companies[k].resetAt = Math.max(sResetAt, lResetAt);
                         applyResetWinner(merged.companies[k], lResetAt >= sResetAt ? lCo : sCo);
                     } else {
+                        merged.companies[k].deletedLedgerTxIds = mergedDelLedgerTxIds;
                         companyArraysToMerge.forEach(arrName => {
-                            merged.companies[k][arrName] = reconcileCompanyArray(sCo[arrName], lCo[arrName], arrName, true);
+                            merged.companies[k][arrName] = reconcileCompanyArray(sCo[arrName], lCo[arrName], arrName, true, mergedDelLedgerTxIds);
                         });
+                        reconcileBomAndCart(merged.companies[k], sCo, lCo, lTime, sTime);
                         if (sCo.launchLicense && typeof sCo.launchLicense === 'object') {
                             const lLic = merged.companies[k].launchLicense;
                             const sLicTime = Math.max(Number(sCo.launchLicense.approvedAt || 0), Number(sCo.launchLicense.rejectedAt || 0), Number(sCo.launchLicense.appliedAt || 0));
@@ -1360,10 +1483,17 @@ const state = {
                         if (mergedPR) merged.companies[k].pressReleases = mergedPR;
                         const chosenBrandL = this.mergeBrandApproval(lCo.brandApproval, sCo.brandApproval, lTime, sTime);
                         if (chosenBrandL) merged.companies[k].brandApproval = chosenBrandL;
+                        syncWinningBrandIdentity(merged.companies[k], sCo, lCo, lTime, sTime);
                         const chosenNcL = this.mergeNameChangeRequest(lCo.nameChangeRequest, sCo.nameChangeRequest, lTime, sTime);
                         if (chosenNcL) merged.companies[k].nameChangeRequest = chosenNcL;
                         if (merged.companies[k].nameChangeRequest?.status === 'APROBADO' && merged.companies[k].nameChangeRequest.proposedName) {
                             merged.companies[k].name = merged.companies[k].nameChangeRequest.proposedName;
+                        }
+                        if (sCo.classGroup && !this.user?.admin && sCo.classGroup !== merged.companies[k].classGroup) {
+                            merged.companies[k].classGroup = sCo.classGroup;
+                        }
+                        if (sCo.unlockAllContracts !== undefined && !this.user?.admin) {
+                            merged.companies[k].unlockAllContracts = sCo.unlockAllContracts;
                         }
                     }
                     merged.companies[k].balance = this.calculateBalance(merged.companies[k]);
@@ -1388,6 +1518,7 @@ const state = {
                         }
                         const chosenBrandS = this.mergeBrandApproval(lCo.brandApproval, sCo.brandApproval, lTime, sTime);
                         if (chosenBrandS) sCo.brandApproval = chosenBrandS;
+                        syncWinningBrandIdentity(sCo, sCo, lCo, lTime, sTime);
                         const chosenAuxReqElse = this.mergeAuxRoleRequest(lCo.auxRoleRequest, sCo.auxRoleRequest, lTime, sTime);
                         if (chosenAuxReqElse) {
                             sCo.auxRoleRequest = chosenAuxReqElse;
@@ -1395,24 +1526,12 @@ const state = {
                                 sCo.auxRoleDept = chosenAuxReqElse.dept;
                             }
                         }
-                        if (lCo.grades) {
-                            sCo.grades = sCo.grades || {};
-                            for (const subj in lCo.grades) {
-                                const lG = lCo.grades[subj];
-                                const sG = sCo.grades[subj];
-                                if (lG && lG.final !== undefined && lG.final !== null) {
-                                    const lGTime = Number(lG.updatedAt) || lTime;
-                                    const sGTime = Number(sG?.updatedAt) || sTime;
-                                    if (!sG || lGTime >= sGTime) {
-                                        sCo.grades[subj] = JSON.parse(JSON.stringify(lG));
-                                    }
-                                }
-                            }
-                        }
-                        if (lCo.sponsorAwarded && (!sCo.sponsorAwarded || (lCo.sponsorData?.date || 0) > (sCo.sponsorData?.date || 0))) {
+                        mergeGradesDict(sCo, sCo, lCo);
+                        if (lCo.sponsorAwarded && (!sCo.sponsorAwarded || this._parseSafeTs(lCo.sponsorData?.date) > this._parseSafeTs(sCo.sponsorData?.date))) {
                             sCo.sponsorAwarded = lCo.sponsorAwarded;
                             sCo.sponsorData = JSON.parse(JSON.stringify(lCo.sponsorData || {}));
                         }
+                        sCo.loginStats = mergeLoginStats(sCo.loginStats, lCo.loginStats);
                         sCo.deliverables = sCo.deliverables || {};
                         if (lCo.deliverables) {
                             for (const dKey in lCo.deliverables) {
@@ -1421,8 +1540,8 @@ const state = {
                                 if (!sDoc && lDoc) {
                                     sCo.deliverables[dKey] = JSON.parse(JSON.stringify(lDoc));
                                 } else if (lDoc && sDoc) {
-                                    const lDocTime = new Date(lDoc.updatedAt || 0).getTime();
-                                    const sDocTime = new Date(sDoc.updatedAt || 0).getTime();
+                                    const lDocTime = this._parseSafeTs(lDoc.updatedAt);
+                                    const sDocTime = this._parseSafeTs(sDoc.updatedAt);
                                     let mergedHist = undefined;
                                     if (dKey === 'hoja_taller_fyq' && (Array.isArray(lDoc.history) || Array.isArray(sDoc.history))) {
                                         const histMap = new Map();
@@ -1440,9 +1559,11 @@ const state = {
                                 }
                             }
                         }
+                        sCo.deletedLedgerTxIds = mergedDelLedgerTxIds;
                         companyArraysToMerge.forEach(arrName => {
-                            sCo[arrName] = reconcileCompanyArray(sCo[arrName], lCo[arrName], arrName, false);
+                            sCo[arrName] = reconcileCompanyArray(sCo[arrName], lCo[arrName], arrName, false, mergedDelLedgerTxIds);
                         });
+                        reconcileBomAndCart(sCo, sCo, lCo, lTime, sTime);
                         if (lCo.launchLicense && typeof lCo.launchLicense === 'object') {
                             const sLic = sCo.launchLicense;
                             const lLicTime = Math.max(Number(lCo.launchLicense.approvedAt || 0), Number(lCo.launchLicense.rejectedAt || 0), Number(lCo.launchLicense.appliedAt || 0));
@@ -1469,9 +1590,9 @@ const state = {
                         const sC = sCont[ph];
                         const lC = lCont[ph];
                         if (sC && lC) {
-                            const sTime = Number(sC.settledAt || sC.signedAt) || 0;
-                            const lTime = Number(lC.settledAt || lC.signedAt) || 0;
-                            targetCo.contracts[ph] = (lTime >= sTime) ? JSON.parse(JSON.stringify(lC)) : JSON.parse(JSON.stringify(sC));
+                            const sCTime = Math.max(this._parseSafeTs(sC.settledAt), this._parseSafeTs(sC.signedAt));
+                            const lCTime = Math.max(this._parseSafeTs(lC.settledAt), this._parseSafeTs(lC.signedAt));
+                            targetCo.contracts[ph] = (lCTime > sCTime) ? JSON.parse(JSON.stringify(lC)) : JSON.parse(JSON.stringify(sC));
                         } else if (lC) {
                             targetCo.contracts[ph] = JSON.parse(JSON.stringify(lC));
                         } else if (sC) {
@@ -1479,7 +1600,7 @@ const state = {
                         }
                     });
                 }
-            } else if (lCo && !sCo && !localData._deletedCompanies?.[k]) {
+            } else if (lCo && !sCo) {
                 merged.companies[k] = lCo;
                 merged.companies[k].balance = this.calculateBalance(merged.companies[k]);
             }
@@ -1488,6 +1609,15 @@ const state = {
         const mergeArraysGlobal = (arrS, arrL) => {
             if(!Array.isArray(arrS)) arrS = [];
             if(!Array.isArray(arrL)) arrL = [];
+            const getGlobalTs = (it) => Math.max(
+                this._parseSafeTs(it?.updatedAt),
+                this._parseSafeTs(it?.resolvedAt),
+                this._parseSafeTs(it?.approvedAt),
+                this._parseSafeTs(it?.rejectedAt),
+                this._parseSafeTs(it?.releasedAt),
+                this._parseSafeTs(it?.createdAt),
+                this._parseSafeTs(it?.timestamp)
+            );
             const localMap = new Map();
             arrL.forEach(i => {
                 const id = String(i?.id || i?.sessionId || '');
@@ -1498,22 +1628,23 @@ const state = {
                 if (!id) return sItem;
                 const lItem = localMap.get(id);
                 if (!lItem) return sItem;
+                const sTs = getGlobalTs(sItem);
+                const lTs = getGlobalTs(lItem);
                 const isResolved = Boolean(sItem.resolved || lItem.resolved);
+
+                if (lTs > sTs) {
+                    return { ...sItem, ...lItem, resolved: isResolved };
+                }
+                if (sTs > lTs) {
+                    return { ...lItem, ...sItem, resolved: isResolved };
+                }
                 let status = sItem.status;
-                if (sItem.status && sItem.status.includes('PENDIENTE') && lItem.status && !lItem.status.includes('PENDIENTE')) {
-                    status = lItem.status;
-                } else if (sItem.status === 'EN_VENTA' && (lItem.status === 'EN_ADUANA' || lItem.status === 'VENDIDO')) {
+                if (sItem.status === 'EN_VENTA' && (lItem.status === 'EN_ADUANA' || lItem.status === 'VENDIDO')) {
                     status = lItem.status;
                 } else if (sItem.status === 'EN_ADUANA' && lItem.status === 'VENDIDO') {
                     status = lItem.status;
-                } else if (lItem.updatedAt && sItem.updatedAt && lItem.updatedAt > sItem.updatedAt && lItem.status) {
-                    status = lItem.status;
                 }
-                // Si sItem tiene un updatedAt más reciente que lItem, el servidor manda (LWW)
-                if ((sItem.updatedAt || 0) > (lItem.updatedAt || 0)) {
-                    return { ...lItem, ...sItem, resolved: isResolved, status: status || sItem.status };
-                }
-                return { ...sItem, ...lItem, resolved: isResolved, status: status || sItem.status };
+                return { ...lItem, ...sItem, resolved: isResolved, status: status || sItem.status || lItem.status };
             });
             const ids = new Set(arrS.map(i => String(i?.id || i?.sessionId)));
             const missing = arrL.filter(i => i && (i.id || i.sessionId) && !ids.has(String(i.id || i.sessionId)));
@@ -1522,8 +1653,10 @@ const state = {
 
         if (localData.telemetry && localData.telemetry.sessions) {
             merged.telemetry = merged.telemetry || { sessions: [] };
-            merged.telemetry.sessions = mergeArraysGlobal(merged.telemetry.sessions, localData.telemetry.sessions);
+            merged.telemetry.sessions = mergeArraysGlobal(merged.telemetry.sessions, localData.telemetry.sessions).slice(0, 100);
             merged.telemetry.totalLogins = Math.max(merged.telemetry.totalLogins || 0, localData.telemetry.totalLogins || 0);
+        } else if (merged.telemetry && Array.isArray(merged.telemetry.sessions) && merged.telemetry.sessions.length > 100) {
+            merged.telemetry.sessions = merged.telemetry.sessions.slice(0, 100);
         }
         
         const allDeletedSuggestionIds = new Set([
@@ -1544,45 +1677,79 @@ const state = {
         ]);
         merged.deletedOfficialNewsIds = Array.from(allDeletedOfficialNewsIds);
 
+        const allDeletedPendingCustomIds = new Set([
+            ...(Array.isArray(serverData.deletedPendingCustomIds) ? serverData.deletedPendingCustomIds.map(String) : []),
+            ...(Array.isArray(localData.deletedPendingCustomIds) ? localData.deletedPendingCustomIds.map(String) : [])
+        ]);
+        merged.deletedPendingCustomIds = Array.from(allDeletedPendingCustomIds);
+
+        const allDeletedCatalogIds = new Set([
+            ...(Array.isArray(serverData.deletedCatalogIds) ? serverData.deletedCatalogIds.map(String) : []),
+            ...(Array.isArray(localData.deletedCatalogIds) ? localData.deletedCatalogIds.map(String) : []),
+            ...(this.getDeletedCatalogItems ? this.getDeletedCatalogItems().map(String) : [])
+        ]);
+        merged.deletedCatalogIds = Array.from(allDeletedCatalogIds);
+
+        const testResetCutoff = (coId) => {
+            const co = merged.companies?.[coId];
+            if (!co || (!co.isTestCompany && coId !== 'sandbox_master' && coId !== 'sandbox_student')) return 0;
+            return Number(co.resetAt) || 0;
+        };
+        const isStaleTestArtifact = (coId, item) => {
+            const rAt = testResetCutoff(coId);
+            if (!rAt) return false;
+            const iTs = Math.max(this._parseSafeTs(item?.updatedAt), this._parseSafeTs(item?.createdAt), this._parseSafeTs(item?.timestamp), this._parseSafeTs(item?.publishedAt));
+            return iTs > 0 && iTs < rAt;
+        };
+
         merged.officialNews = mergeArraysGlobal(merged.officialNews, localData.officialNews)
             .filter(n => n && n.id && !allDeletedOfficialNewsIds.has(String(n.id)));
         merged.pressReleases = mergeArraysGlobal(merged.pressReleases, localData.pressReleases)
-            .filter(pr => pr && !allDeletedCompanyIds.has(String(pr.coId)) && !allDeletedCompanyIds.has(String(pr.authorCoId)));
+            .filter(pr => pr && !allDeletedCompanyIds.has(String(pr.coId)) && !allDeletedCompanyIds.has(String(pr.authorCoId)) && !isStaleTestArtifact(pr.authorCoId || pr.coId, pr));
         merged.suggestionsToAlex = mergeArraysGlobal(merged.suggestionsToAlex, localData.suggestionsToAlex)
             .filter(s => s && s.id && !allDeletedSuggestionIds.has(String(s.id)) && !allDeletedCompanyIds.has(String(s.coId)));
         merged.pendingCustom = mergeArraysGlobal(merged.pendingCustom, localData.pendingCustom)
-            .filter(p => p && !allDeletedCompanyIds.has(String(p.coId)));
+            .filter(p => p && !allDeletedPendingCustomIds.has(String(p.id)) && !allDeletedCompanyIds.has(String(p.company || p.coId || '')) && !isStaleTestArtifact(p.company || p.coId, p));
         merged.b2bMarket = mergeArraysGlobal(merged.b2bMarket, localData.b2bMarket)
-            .filter(i => i && !allDeletedCompanyIds.has(String(i.sellerCoId)));
+            .filter(i => i && !allDeletedCompanyIds.has(String(i.sellerCoId)) && !isStaleTestArtifact(i.sellerCoId, i));
         merged.b2bContracts = mergeArraysGlobal(merged.b2bContracts, localData.b2bContracts)
-            .filter(c => c && !allDeletedCompanyIds.has(String(c.sellerCoId)) && !allDeletedCompanyIds.has(String(c.buyerCoId)));
+            .filter(c => c && !allDeletedCompanyIds.has(String(c.sellerCoId)) && !allDeletedCompanyIds.has(String(c.buyerCoId)) && (!isStaleTestArtifact(c.sellerCoId, c) || c.status === 'EJECUTADO'));
         merged.securityIncidents = mergeArraysGlobal(merged.securityIncidents, localData.securityIncidents);
 
         const isCoordUser = Boolean(this.user && this.user.admin && this.user.role && String(this.user.role).startsWith('COORD'));
-        const sFc = serverData?.finalContest;
-        const lFc = localData?.finalContest;
-        const sFcTime = Number(sFc?.updatedAt) || 0;
-        const lFcTime = Number(lFc?.updatedAt) || 0;
-        const chosenFc = (isCoordUser && lFc && (!sFc || lFcTime > sFcTime))
-            ? lFc
-            : (sFc || lFc || null);
-        merged.finalContest = this.normalizeFinalContest(chosenFc, merged.companies, merged.deletedCompanyIds);
+        merged.finalContest = this.mergeFinalContest(serverData?.finalContest, localData?.finalContest, merged.companies, merged.deletedCompanyIds, isCoordUser);
 
-        if (Array.isArray(localData.catalog) && Array.isArray(merged.catalog)) {
-            const deletedIds = new Set(this.getDeletedCatalogItems ? this.getDeletedCatalogItems() : []);
-            const localMap = new Map();
-            localData.catalog.forEach(item => {
-                if (item && item.id && !deletedIds.has(String(item.id))) {
-                    localMap.set(String(item.id), item);
+        if (Array.isArray(localData.catalog) || Array.isArray(merged.catalog)) {
+            const sCatalog = Array.isArray(merged.catalog) ? merged.catalog : [];
+            const lCatalog = Array.isArray(localData.catalog) ? localData.catalog : [];
+            const sMap = new Map();
+            const lMap = new Map();
+            sCatalog.forEach(item => {
+                if (item && item.id && !allDeletedCatalogIds.has(String(item.id))) {
+                    sMap.set(String(item.id), item);
                 }
             });
-            merged.catalog = merged.catalog
-                .filter(sItem => sItem && sItem.id && !deletedIds.has(String(sItem.id)))
-                .map(sItem => {
-                    const lItem = localMap.get(String(sItem.id));
-                    if (!lItem) return sItem;
-                    return { ...sItem, price: lItem.price !== undefined ? lItem.price : sItem.price };
-                });
+            lCatalog.forEach(item => {
+                if (item && item.id && !allDeletedCatalogIds.has(String(item.id))) {
+                    lMap.set(String(item.id), item);
+                }
+            });
+            const allCatIds = new Set([...sMap.keys(), ...lMap.keys()]);
+            const mergedCat = [];
+            allCatIds.forEach(cid => {
+                const sItem = sMap.get(cid);
+                const lItem = lMap.get(cid);
+                if (sItem && !lItem) {
+                    mergedCat.push(sItem);
+                } else if (lItem && !sItem) {
+                    mergedCat.push(lItem);
+                } else if (sItem && lItem) {
+                    const sUpd = this._parseSafeTs(sItem.updatedAt);
+                    const lUpd = this._parseSafeTs(lItem.updatedAt);
+                    mergedCat.push(lUpd > sUpd ? { ...sItem, ...lItem } : { ...lItem, ...sItem });
+                }
+            });
+            merged.catalog = mergedCat;
         }
 
         return merged;
@@ -1625,14 +1792,14 @@ const state = {
 
         // 3. Comprobar si Coordinación modificó las credenciales después del inicio de sesión
         if (isDocente) {
-            const serverPinStamp = serverOrMergedData?.config?.teachers?.[this.user.role]?.pinUpdatedAt || 0;
-            if (this.user.pinStamp && serverPinStamp > this.user.pinStamp) {
+            const serverPinStamp = Number(serverOrMergedData?.config?.teachers?.[this.user.role]?.pinUpdatedAt || 0);
+            if (this.user.pinStamp !== undefined && this.user.pinStamp !== null && serverPinStamp > Number(this.user.pinStamp)) {
                 this.revokeSession("Sesión finalizada: Las credenciales de acceso han sido modificadas por coordinación.");
                 return false;
             }
         } else {
-            const serverAuthStamp = serverOrMergedData?.companies?.[this.user.coId]?.authUpdatedAt || 0;
-            if (this.user.authStamp && serverAuthStamp > this.user.authStamp) {
+            const serverAuthStamp = Number(serverOrMergedData?.companies?.[this.user.coId]?.authUpdatedAt || 0);
+            if (this.user.authStamp !== undefined && this.user.authStamp !== null && serverAuthStamp > Number(this.user.authStamp)) {
                 this.revokeSession("Sesión finalizada: Las credenciales de acceso han sido modificadas por coordinación.");
                 return false;
             }
@@ -1648,6 +1815,7 @@ const state = {
         this.pin = '';
         this.lastETag = null;
         this.lastCompanyETag = null;
+        this.lastCompanyVersion = 0;
         this._adminCredentialsFetched = false;
         if (typeof auth !== 'undefined') auth.verifiedCoId = null;
         try { localStorage.removeItem(this.sessionKey); } catch(e) {}
@@ -1699,7 +1867,11 @@ const state = {
         this.data.lastUpdated = now;
 
         if (this.user && !this.user.admin && this.user.coId === coId && this.user.role === role) {
-            const refreshed = { ...this.user, authToken: this.getAuthToken(this.user, this.data) };
+            const refreshed = {
+                ...this.user,
+                authStamp: Number(co.authUpdatedAt || now),
+                authToken: this.getAuthToken(this.user, this.data)
+            };
             this.user = Object.freeze(refreshed);
             this.currentUser = this.user;
             try { sessionStorage.setItem(this.sessionKey, JSON.stringify(refreshed)); } catch(e) {}
@@ -1726,7 +1898,7 @@ const state = {
                 const resJson = await res.json().catch(() => null);
                 if (resJson && resJson.newVersion) {
                     this.data.version = resJson.newVersion;
-                    this.lastETag = 'W/"v-' + resJson.newVersion + '"';
+                    this.lastETag = resJson.etag || null;
                     this.saveLocalOnly();
                 }
                 ok = true;
@@ -1774,7 +1946,7 @@ const state = {
                 const resJson = await res.json().catch(() => null);
                 if (resJson && resJson.newVersion) {
                     this.data.version = resJson.newVersion;
-                    this.lastETag = 'W/"v-' + resJson.newVersion + '"';
+                    this.lastETag = resJson.etag || null;
                     this.saveLocalOnly();
                 }
                 ok = true;
@@ -1799,9 +1971,9 @@ const state = {
         this.data.config.updatedAt = now;
         this.data.lastUpdated = now;
 
-        // Blindaje del Coordinador Activo: si edita su propio PIN, refresca su authToken en el mismo ciclo
+        // Blindaje del Coordinador Activo: si edita su propio PIN, refresca pinStamp y authToken en el mismo ciclo
         if (this.user && this.user.admin && this.user.role === teacherKey) {
-            const refreshed = { ...this.user, authToken: this.getAuthToken(this.user, this.data) };
+            const refreshed = { ...this.user, pinStamp: now, authToken: this.getAuthToken(this.user, this.data) };
             this.user = Object.freeze(refreshed);
             this.currentUser = this.user;
             try { sessionStorage.setItem(this.sessionKey, JSON.stringify(refreshed)); } catch(e) {}
@@ -1824,7 +1996,7 @@ const state = {
                 const resJson = await res.json().catch(() => null);
                 if (resJson && resJson.newVersion) {
                     this.data.version = resJson.newVersion;
-                    this.lastETag = 'W/"v-' + resJson.newVersion + '"';
+                    this.lastETag = resJson.etag || null;
                     this.saveLocalOnly();
                 }
                 ok = true;
@@ -1847,7 +2019,11 @@ const state = {
         this.data.lastUpdated = Date.now();
 
         if (this.user && !this.user.admin && this.user.coId === coId) {
-            const refreshed = { ...this.user, authToken: this.getAuthToken(this.user, this.data) };
+            const refreshed = {
+                ...this.user,
+                authStamp: Number(co.authUpdatedAt || Date.now()),
+                authToken: this.getAuthToken(this.user, this.data)
+            };
             this.user = Object.freeze(refreshed);
             this.currentUser = this.user;
             try { sessionStorage.setItem(this.sessionKey, JSON.stringify(refreshed)); } catch(e) {}
@@ -1870,7 +2046,7 @@ const state = {
                 const resJson = await res.json().catch(() => null);
                 if (resJson && resJson.newVersion) {
                     this.data.version = resJson.newVersion;
-                    this.lastETag = 'W/"v-' + resJson.newVersion + '"';
+                    this.lastETag = resJson.etag || null;
                     this.saveLocalOnly();
                 }
                 ok = true;
@@ -2014,7 +2190,7 @@ const state = {
                     auth.buildNav(this.user.admin);
                 }
             } catch(e) {
-                // NOTA TÉCNICA G4b: La vulnerabilidad G4b (falsificar leyendo /api/state) sigue abierta transitoriamente hasta la aprobación e implantación del servidor D2 (GS1–GS4).
+                // Sesión no válida o corrupta al arrancar
                 this.user = null;
                 this.currentUser = null;
                 try { sessionStorage.removeItem(this.sessionKey); } catch(err) {}
@@ -2062,6 +2238,15 @@ const state = {
                     const ok = await this.fetchFromCloud();
                     if (ok && this.verifySessionIntegrity(this.data)) {
                         this.setOfflineContainment(false);
+                    }
+                });
+
+                window.addEventListener('pagehide', () => {
+                    if (this.syncTimer && this.user && !this.isOfflineContained) {
+                        clearTimeout(this.syncTimer);
+                        this.syncTimer = null;
+                        this.saveLocalOnly();
+                        this.pushToCloud(false);
                     }
                 });
             }
@@ -2135,11 +2320,20 @@ const state = {
                 const remoteUpdated = Number(info.updatedAt || 0);
                 const configUpdated = Number(info.configUpdatedAt || 0);
                 const localConfigUpdated = Number(this.data.config?.updatedAt || 0);
-                const remoteVersion = Number(info.version || 0);
-                const localVersion = Number(this.data.version || 0);
+                const remoteCompanyVersion = Number(info.version || 0);
+                const prevCompanyVersion = Number(this.lastCompanyVersion || 0);
+                this.lastCompanyVersion = remoteCompanyVersion;
+                const remoteGlobalVersion = Number(info.globalVersion || 0);
+                const localGlobalVersion = Number(this.data.version || 0);
 
-                // Si la versión remota, la empresa o la configuración docente es posterior a la local, sincronizar estado completo
-                if (remoteUpdated > localUpdated || configUpdated > localConfigUpdated || remoteVersion > localVersion || !this.lastETag) {
+                // Si la versión global, de empresa o la configuración docente es posterior a la local, sincronizar estado completo
+                if (
+                    remoteUpdated > localUpdated ||
+                    configUpdated > localConfigUpdated ||
+                    (remoteGlobalVersion > 0 && remoteGlobalVersion > localGlobalVersion) ||
+                    (prevCompanyVersion > 0 && remoteCompanyVersion > prevCompanyVersion) ||
+                    !this.lastETag
+                ) {
                     await this.fetchFromCloud(true);
                 }
                 return true;
@@ -2161,6 +2355,15 @@ const state = {
         if (!coId) {
             console.warn("[ACTION] executeAction requiere una sesión activa con startup asociada o coId explícito.");
             return { success: false, error: 'NO_ACTIVE_COMPANY' };
+        }
+
+        const hadPendingSave = Boolean(this.syncTimer);
+        if (hadPendingSave) {
+            clearTimeout(this.syncTimer);
+            this.syncTimer = null;
+        }
+        if (this._activePushPromise) {
+            try { await this._activePushPromise; } catch(e) {}
         }
 
         const endpoint = `/api/company/${encodeURIComponent(coId)}/action`;
@@ -2192,8 +2395,12 @@ const state = {
                 if (data.balance !== undefined && this.data.companies?.[coId]) {
                     this.data.companies[coId].updatedAt = data.updatedAt || Date.now();
                 }
-                this.lastCompanyETag = `W/"co-${coId}-${data.version}-${data.updatedAt}"`;
+                if (data.version) this.lastCompanyVersion = Number(data.version) || this.lastCompanyVersion;
+                this.lastCompanyETag = res.headers.get('ETag') || data.etag || null;
                 await this.fetchFromCloud(true);
+                if (hadPendingSave) {
+                    this.pushToCloud(true);
+                }
                 return { success: true, data };
             } else {
                 const errData = await res.json().catch(() => ({}));
@@ -2212,28 +2419,39 @@ const state = {
     discardPendingProposal(coId, proposalType, proposalId = null) {
         if (!coId || !this.data.companies?.[coId]) return;
         const co = this.data.companies[coId];
+        const now = Date.now();
 
         if (proposalType === 'BRAND') {
             delete co.pendingSlogan;
             delete co.pendingMission;
             co.brandStatus = 'REJECTED';
+            co.brandUpdatedAt = now;
             if (co.brandApproval) {
                 co.brandApproval.status = 'RECHAZADO';
                 delete co.brandApproval.pendingSlogan;
                 delete co.brandApproval.pendingLogo;
                 co.brandApproval.feedback = 'Propuesta de marca rechazada por Coordinación.';
+                co.brandApproval.updatedAt = now;
             }
         } else if (proposalType === 'DELIVERABLE' && proposalId) {
             if (co.deliverables?.[proposalId]) {
                 co.deliverables[proposalId].status = 'CEO_REVISION';
+                co.deliverables[proposalId].updatedAt = new Date(now).toISOString();
             }
         } else if (proposalType === 'MARKETING' && proposalId) {
             const camp = (co.marketingCampaigns || []).find(c => c.id === proposalId);
-            if (camp) camp.status = 'DENEGADO';
+            if (camp) {
+                camp.status = 'DENEGADO';
+                camp.updatedAt = now;
+            }
         } else if (proposalType === 'NAME_CHANGE') {
             delete co.pendingName;
             delete co.nameChangeReason;
             co.nameChangeStatus = 'REJECTED';
+            if (co.nameChangeRequest) {
+                co.nameChangeRequest.status = 'RECHAZADO';
+                co.nameChangeRequest.updatedAt = now;
+            }
         }
 
         this.save(coId);
@@ -2924,12 +3142,16 @@ const state = {
                         const savedSession = localStorage.getItem('marsket_session');
                         const savedRole = localStorage.getItem('marsket_user_role');
                         const savedV1Session = this.sessionKey ? localStorage.getItem(this.sessionKey) : null;
+                        const savedFocusMode = localStorage.getItem('marsket_focus_mode');
+                        const savedTextZoom = localStorage.getItem('marsket_text_zoom');
                         
                         localStorage.clear(); // Purga masiva
                         
                         if (savedSession) localStorage.setItem('marsket_session', savedSession);
                         if (savedRole) localStorage.setItem('marsket_user_role', savedRole);
                         if (savedV1Session && this.sessionKey) localStorage.setItem(this.sessionKey, savedV1Session);
+                        if (savedFocusMode !== null) localStorage.setItem('marsket_focus_mode', savedFocusMode);
+                        if (savedTextZoom !== null) localStorage.setItem('marsket_text_zoom', savedTextZoom);
                         localStorage.setItem('marsket_reset_epoch', serverEpoch.toString());
                         
                         // Reemplazo destructivo directo tras resetEpoch, preservando migración de sandbox y estructuras
@@ -2977,7 +3199,7 @@ const state = {
                 if (typeof telemetry !== 'undefined' && typeof telemetry.log === 'function') {
                     telemetry.log("NETWORK", "Conexión /api/state no disponible actualmente (modo sin conexión)");
                 }
-                console.debug("[D1: OFFLINE] Modo sin conexión activado (/api/state no alcanzable).");
+                console.debug("[CDMON: OFFLINE] Modo sin conexión activado (/api/state no alcanzable).");
             }
             this.isCloudOnline = false;
             this.consecutiveNetworkFailures++;
@@ -2989,7 +3211,7 @@ const state = {
             try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
         }
 
-        // Renderizado separado del bloque de red para que nunca tumbe la conexión D1
+        // Renderizado separado del bloque de red para que nunca bloquee la sincronización con el servidor
         if (shouldRender && typeof ui !== 'undefined' && ui.render) {
             try {
                 const activeEl = typeof document !== 'undefined' ? document.activeElement : null;
@@ -3018,23 +3240,55 @@ const state = {
 
     recordDeletedCatalogItem(itemId) {
         if (!itemId) return;
+        const strId = String(itemId);
+        if (this.data) {
+            this.data.deletedCatalogIds = Array.isArray(this.data.deletedCatalogIds) ? this.data.deletedCatalogIds : [];
+            if (!this.data.deletedCatalogIds.includes(strId)) {
+                this.data.deletedCatalogIds.push(strId);
+            }
+        }
         try {
             const raw = localStorage.getItem('marsket_deleted_catalog_ids');
             const list = raw ? JSON.parse(raw) : [];
-            const strId = String(itemId);
             if (!list.includes(strId)) {
                 list.push(strId);
                 localStorage.setItem('marsket_deleted_catalog_ids', JSON.stringify(list));
+            }
+        } catch(e) {
+            if (!this._warnedStorageQuota) {
+                this._warnedStorageQuota = true;
+                if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
+                    ui.notify("⚠️ Almacenamiento local del navegador lleno. Los cambios seguirán sincronizándose con el servidor.", "warning");
+                }
+            }
+        }
+    },
+
+    unrecordDeletedCatalogItem(itemId) {
+        if (!itemId) return;
+        const strId = String(itemId);
+        if (this.data && Array.isArray(this.data.deletedCatalogIds)) {
+            this.data.deletedCatalogIds = this.data.deletedCatalogIds.filter(x => String(x) !== strId);
+        }
+        try {
+            const raw = localStorage.getItem('marsket_deleted_catalog_ids');
+            if (raw) {
+                const list = JSON.parse(raw);
+                if (Array.isArray(list) && list.includes(strId)) {
+                    localStorage.setItem('marsket_deleted_catalog_ids', JSON.stringify(list.filter(x => String(x) !== strId)));
+                }
             }
         } catch(e) {}
     },
 
     getDeletedCatalogItems() {
+        const memList = Array.isArray(this.data?.deletedCatalogIds) ? this.data.deletedCatalogIds.map(String) : [];
         try {
             const raw = localStorage.getItem('marsket_deleted_catalog_ids');
-            return raw ? JSON.parse(raw) : [];
+            const lsList = raw ? JSON.parse(raw) : [];
+            return Array.from(new Set([...memList, ...(Array.isArray(lsList) ? lsList.map(String) : [])]));
         } catch(e) {
-            return [];
+            return memList;
         }
     },
 
@@ -3077,6 +3331,10 @@ const state = {
                             if (d && typeof d === 'object') {
                                 co.deliverables[dKey] = {
                                     driveUrl: String(d.driveUrl || d.dataUrl || d.url || '').trim(),
+                                    ...(d.url ? { url: String(d.url).trim() } : {}),
+                                    ...(d.submittedBy ? { submittedBy: String(d.submittedBy) } : {}),
+                                    ...(d.lastWorkshopCheckAt ? { lastWorkshopCheckAt: d.lastWorkshopCheckAt } : {}),
+                                    ...(Array.isArray(d.history) ? { history: d.history } : {}),
                                     status: d.status || 'DELIVERED_TO_TEACHER',
                                     returnReasonId: d.returnReasonId || null,
                                     returnReason: d.returnReason || null,
@@ -3110,14 +3368,22 @@ const state = {
             localStorage.setItem(this.storageKey, JSON.stringify(clean));
         } catch (e) {
             console.error("Aviso: almacenamiento local lleno o restringido:", e);
+            if (!this._warnedStorageQuota) {
+                this._warnedStorageQuota = true;
+                if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
+                    ui.notify("⚠️ Espacio local del navegador lleno: usa conexión estable al servidor para no perder trabajo.", "warning");
+                }
+            }
         }
     },
 
     save(targetCid = null) { 
-        if (this.user && !this.user.admin && this.data.companies[this.user.coId]) {
-            this.data.companies[this.user.coId].updatedAt = Date.now();
-        } else if (targetCid && this.data.companies && this.data.companies[targetCid]) {
-            this.data.companies[targetCid].updatedAt = Date.now();
+        if (targetCid !== '__GLOBAL__') {
+            if (this.user && !this.user.admin && this.data.companies?.[this.user.coId]) {
+                this.data.companies[this.user.coId].updatedAt = Date.now();
+            } else if (targetCid && this.data.companies && this.data.companies[targetCid]) {
+                this.data.companies[targetCid].updatedAt = Date.now();
+            }
         }
         this.data.lastUpdated = Date.now();
         
@@ -3160,85 +3426,108 @@ const state = {
         if (!this.verifySessionIntegrity(this.data)) {
             return false;
         }
-        if(debounced) {
+        if (debounced) {
             clearTimeout(this.syncTimer);
             this.syncTimer = setTimeout(() => this.pushToCloud(false), 800);
             return true;
         }
         clearTimeout(this.syncTimer);
-        this.isSyncing = true;
-        try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
-        let pushSuccess = false;
-        let shouldRenderConflict = false;
-        
-        try {
-            const payload = JSON.parse(JSON.stringify(this.data));
-            if (this.user?.coId) {
-                payload.coId = this.user.coId;
-            }
-            payload.version = (Number(this.data.version) || 0) + 1;
-            const res = await this.pushWithBackoff(payload);
-            
-            if (res.ok) {
-                const json = await res.json().catch(() => null);
-                if (json && json.version) {
-                    this.data.version = json.version; 
-                    this.saveLocalOnly();
-                }
-                const etag = res.headers.get('ETag') || (json && json.etag);
-                if (etag) {
-                    this.lastETag = etag;
-                } else if (json && json.version) {
-                    const cfgUpd = this.data?.config?.updatedAt || 0;
-                    this.lastETag = 'W/"v-' + json.version + '-' + cfgUpd + '"';
-                }
-                this.isCloudOnline = true;
-                this.consecutiveNetworkFailures = 0;
-                if (this.isOfflineContained) this.setOfflineContainment(false);
-                pushSuccess = true;
-            } else if (res.status === 409) {
-                shouldRenderConflict = true;
-                if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
-                    ui.notify("⚠️ Conflicto de concurrencia detectado. Se ha sincronizado el registro más reciente de la nube sin sobrescribir datos ajenos.", "warning");
-                }
-                await this.fetchFromCloud(true);
-                this.isCloudOnline = true;
-            } else {
-                this.isCloudOnline = false;
-                this.consecutiveNetworkFailures = 0;
-                if (res.status === 401 || res.status === 403) {
-                    console.warn(`[SECURITY] Petición pushToCloud rechazada por permisos (HTTP ${res.status}). Ejecutando purga total de sesión.`);
-                    if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
-                        ui.notify(`⛔ Error de autenticación (HTTP ${res.status}): Sesión no autorizada o expirada.`, "error");
-                    }
-                    if (typeof auth !== 'undefined' && typeof auth.logout === 'function') {
-                        auth.logout();
-                    }
-                }
-            }
-        } catch(err) { 
-            // G9: Contingencia de red esperada en pushToCloud -> telemetry + console.debug (rate-limited a 1 vez)
-            if (!this._hasWarnedCloudNetwork) {
-                this._hasWarnedCloudNetwork = true;
-                if (typeof telemetry !== 'undefined' && typeof telemetry.log === 'function') {
-                    telemetry.log("NETWORK", "Conexión /api/state no disponible para push (guardado local)");
-                }
-                console.debug("[D1: OFFLINE] Modo sin conexión activado (push no alcanzable).");
-            }
-            this.isCloudOnline = false;
-            this.consecutiveNetworkFailures++;
-            if (this.consecutiveNetworkFailures >= 2 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
-                this.setOfflineContainment(true);
-            }
-        } finally { 
-            this.isSyncing = false; 
-            try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
+        this.syncTimer = null;
+
+        if (this._activePushPromise) {
+            this._pushDirty = true;
+            return await this._activePushPromise;
         }
 
-        if (shouldRenderConflict && typeof ui !== 'undefined' && ui.render) {
-            try { ui.render(); } catch(uiErr) { console.error("Excepción visual aislada tras reconciliación:", uiErr); }
-        }
-        return pushSuccess;
+        const runPushCycle = async () => {
+            let finalSuccess = false;
+            let shouldRenderConflict = false;
+
+            this.isSyncing = true;
+            try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
+
+            try {
+                do {
+                    this._pushDirty = false;
+                    const payload = JSON.parse(JSON.stringify(this.data));
+                    if (this.user?.coId) {
+                        payload.coId = this.user.coId;
+                    }
+                    payload.version = (Number(this.data.version) || 0) + 1;
+                    const res = await this.pushWithBackoff(payload);
+
+                    if (res.ok) {
+                        const json = await res.json().catch(() => null);
+                        if (json && json.version) {
+                            this.data.version = json.version;
+                            this.saveLocalOnly();
+                        }
+                        const etag = res.headers.get('ETag') || (json && json.etag);
+                        if (etag) {
+                            this.lastETag = etag;
+                        } else if (json && json.version) {
+                            const cfgUpd = this.data?.config?.updatedAt || 0;
+                            const roleSuffix = (this.user?.admin && String(this.user?.role || '').startsWith('COORD')) ? 'coord' : 'pub';
+                            this.lastETag = 'W/"v-' + json.version + '-' + cfgUpd + '-' + roleSuffix + '"';
+                        }
+                        this.isCloudOnline = true;
+                        this.consecutiveNetworkFailures = 0;
+                        if (this.isOfflineContained) this.setOfflineContainment(false);
+                        finalSuccess = true;
+                    } else if (res.status === 409) {
+                        this._pushDirty = false;
+                        shouldRenderConflict = true;
+                        if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
+                            ui.notify("⚠️ Conflicto de concurrencia detectado. Se ha sincronizado el registro más reciente de la nube sin sobrescribir datos ajenos.", "warning");
+                        }
+                        await this.fetchFromCloud(true);
+                        this.isCloudOnline = true;
+                        finalSuccess = false;
+                    } else {
+                        this._pushDirty = false;
+                        this.isCloudOnline = false;
+                        this.consecutiveNetworkFailures = 0;
+                        finalSuccess = false;
+                        if (res.status === 401 || res.status === 403) {
+                            console.warn(`[SECURITY] Petición pushToCloud rechazada por permisos (HTTP ${res.status}). Ejecutando purga total de sesión.`);
+                            if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
+                                ui.notify(`⛔ Error de autenticación (HTTP ${res.status}): Sesión no autorizada o expirada.`, "error");
+                            }
+                            if (typeof auth !== 'undefined' && typeof auth.logout === 'function') {
+                                auth.logout();
+                            }
+                        }
+                    }
+                } while (this._pushDirty);
+            } catch(err) {
+                this._pushDirty = false;
+                if (!this._hasWarnedCloudNetwork) {
+                    this._hasWarnedCloudNetwork = true;
+                    if (typeof telemetry !== 'undefined' && typeof telemetry.log === 'function') {
+                        telemetry.log("NETWORK", "Conexión /api/state no disponible para push (guardado local)");
+                    }
+                    console.debug("[CDMON: OFFLINE] Modo sin conexión activado (push no alcanzable).");
+                }
+                this.isCloudOnline = false;
+                this.consecutiveNetworkFailures++;
+                if (this.consecutiveNetworkFailures >= 2 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+                    this.setOfflineContainment(true);
+                }
+                finalSuccess = false;
+            } finally {
+                this.isSyncing = false;
+                this._activePushPromise = null;
+                try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
+            }
+
+            if (shouldRenderConflict && typeof ui !== 'undefined' && ui.render) {
+                try { ui.render(); } catch(uiErr) { console.error("Excepción visual aislada tras reconciliación:", uiErr); }
+            }
+            return finalSuccess;
+        };
+
+        this._activePushPromise = runPushCycle();
+        return await this._activePushPromise;
     },
 
     isContractPhaseUnlocked(phase, co) {
@@ -3399,6 +3688,7 @@ const state = {
         };
         co.updatedAt = now;
         this.save(coId);
+        if (typeof this.pushToCloud === 'function') this.pushToCloud(false);
         return { ok: true, contract: co.contracts[phase] };
     },
 
@@ -3423,13 +3713,27 @@ const state = {
             : `[CONTRATO_COMERCIAL] Penalización por incumplimiento de misión: ${cRecord.company} — ${cRecord.title}`;
 
         // Rectificación si ya estaba liquidado previamente:
-        // Eliminar asiento previo en el Ledger para evitar dobles cobros o penalizaciones duplicadas
+        // Eliminar asiento previo en el Ledger y registrarlo en deletedLedgerTxIds para evitar resurrecciones multi-dispositivo
         if (cRecord.settledAt && Array.isArray(co.ledger)) {
+            co.deletedLedgerTxIds = Array.isArray(co.deletedLedgerTxIds) ? co.deletedLedgerTxIds : [];
+            const removedIds = [];
             if (cRecord.ledgerTxId) {
-                co.ledger = co.ledger.filter(tx => tx.id !== cRecord.ledgerTxId && tx.tx_id !== cRecord.ledgerTxId);
+                co.ledger = co.ledger.filter(tx => {
+                    const match = tx && (tx.id === cRecord.ledgerTxId || tx.tx_id === cRecord.ledgerTxId);
+                    if (match) removedIds.push(String(tx.id || tx.tx_id));
+                    return !match;
+                });
+                removedIds.push(String(cRecord.ledgerTxId));
             } else {
-                co.ledger = co.ledger.filter(tx => !(tx.dept === 'CONTRATO_COMERCIAL' && tx.concept && tx.concept.includes(cRecord.title)));
+                co.ledger = co.ledger.filter(tx => {
+                    const match = tx && tx.dept === 'CONTRATO_COMERCIAL' && tx.concept && tx.concept.includes(cRecord.title);
+                    if (match && (tx.id || tx.tx_id)) removedIds.push(String(tx.id || tx.tx_id));
+                    return !match;
+                });
             }
+            removedIds.forEach(rid => {
+                if (rid && !co.deletedLedgerTxIds.includes(rid)) co.deletedLedgerTxIds.push(rid);
+            });
         }
 
         cRecord.status = isCompleted ? 'CUMPLIDO' : 'NO_CUMPLIDO';
@@ -3443,6 +3747,7 @@ const state = {
         if (newTx && newTx.id) {
             cRecord.ledgerTxId = newTx.id;
         }
+        if (typeof this.pushToCloud === 'function') this.pushToCloud(false);
 
         return { ok: true, contract: cRecord, delta };
     },
@@ -3570,12 +3875,12 @@ const telemetry = {
         state.sessionData = { sessionId: 'SESS-' + Date.now().toString().slice(-6), timestamp: new Date().toISOString(), entity, role, events: [] };
         state.data.telemetry.sessions.unshift(state.sessionData);
         if(state.data.telemetry.sessions.length > 100) state.data.telemetry.sessions.pop();
-        state.save();
+        state.save('__GLOBAL__');
     },
     log(action, details) {
         if(!state.sessionData) return;
         state.sessionData.events = state.sessionData.events || [];
         state.sessionData.events.push({ time: new Date().toLocaleTimeString(), action, details });
-        state.save();
+        state.save('__GLOBAL__');
     }
 };

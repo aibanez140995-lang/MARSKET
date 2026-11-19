@@ -65,6 +65,7 @@ Object.assign(ui, {
         if (!state.data.config) state.data.config = {};
         state.data.config.updatedAt = now;
         state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         return normalized;
     },
 

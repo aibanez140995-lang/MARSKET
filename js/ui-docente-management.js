@@ -503,7 +503,7 @@ Object.assign(ui, {
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-mars-border pb-2 gap-2">
                     <div>
                         <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase tracking-widest font-bold">🔐 Credenciales del Claustro Docente</h3>
-                        <p class="text-xs text-slate-400 uppercase mt-0.5">Gestión desacoplada y persistencia atómica en servidor D1.</p>
+                        <p class="text-xs text-slate-400 uppercase mt-0.5">Gestión desacoplada y persistencia atómica en servidor CDMON.</p>
                     </div>
                     ${isCoord ? `<button onclick="ui.exportTeacherBadgesPDF()" class="min-h-[44px] bg-[#00F0FF] text-black px-4 py-1.5 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">[🪪 Credenciales Claustro PDF]</button>` : ''}
                 </div>
@@ -1318,9 +1318,9 @@ Object.assign(ui, {
             try {
                 const ok = await state.updateTeacherPin(tk, clean);
                 if (ok) {
-                    this.notify(`✅ PIN actualizado y sincronizado en D1 para ${tk}.`, "success");
+                    this.notify(`✅ PIN actualizado y sincronizado en el servidor para ${tk}.`, "success");
                 } else {
-                    this.notify(`⚠️ PIN de ${tk} guardado localmente; pendiente de sincronización D1.`, "warning");
+                    this.notify(`⚠️ PIN de ${tk} guardado localmente; pendiente de sincronización con la nube.`, "warning");
                 }
             } finally {
                 if (inputEl) inputEl.disabled = false;
@@ -1340,9 +1340,9 @@ Object.assign(ui, {
             const ok = await state.updateCompanyCode(cid, clean);
             this.render();
             if (ok) {
-                this.notify(`✅ Código de empresa actualizado a ${clean} y sincronizado en D1.`, "success");
+                this.notify(`✅ Código de empresa actualizado a ${clean} y sincronizado en el servidor.`, "success");
             } else {
-                this.notify(`⚠️ Código ${clean} guardado localmente; pendiente de sincronización D1.`, "warning");
+                this.notify(`⚠️ Código ${clean} guardado localmente; pendiente de sincronización con la nube.`, "warning");
             }
         } finally {
             if (inputEl) inputEl.disabled = false;
@@ -1360,9 +1360,9 @@ Object.assign(ui, {
             const ok = await state.updateCompanyCode(cid, newCode);
             this.render();
             if (ok) {
-                this.notify(`✅ Nuevo código ${newCode} generado y sincronizado en D1.`, "success");
+                this.notify(`✅ Nuevo código ${newCode} generado y sincronizado en el servidor.`, "success");
             } else {
-                this.notify(`⚠️ Código ${newCode} generado localmente; pendiente de D1.`, "warning");
+                this.notify(`⚠️ Código ${newCode} generado localmente; pendiente de sincronización.`, "warning");
             }
         } finally {
             if (btnEl) btnEl.disabled = false;
@@ -1394,7 +1394,7 @@ Object.assign(ui, {
                 }, 2000);
             }
             if (ok) {
-                this.notify(`✅ Nuevo PIN para ${role} (${co.name}): ${newPin} sincronizado en D1.`, "success", 7000);
+                this.notify(`✅ Nuevo PIN para ${role} (${co.name}): ${newPin} sincronizado en el servidor.`, "success", 7000);
             } else {
                 this.notify(`⚠️ Nuevo PIN para ${role} (${co.name}): ${newPin} guardado localmente.`, "warning", 7000);
             }
@@ -1419,7 +1419,7 @@ Object.assign(ui, {
             if (ok) {
                 this.notify(`✅ Nuevos PINs de flota generados y sincronizados para ${co.name}.`, "success");
             } else {
-                this.notify(`⚠️ Nuevos PINs generados localmente para ${co.name}; pendiente de D1.`, "warning");
+                this.notify(`⚠️ Nuevos PINs generados localmente para ${co.name}; pendiente de sincronización.`, "warning");
             }
         } finally {
             if (btnEl) btnEl.disabled = false;
@@ -1882,8 +1882,8 @@ Object.assign(ui, {
         }
 
         try {
-            // 2. Esperar confirmación res.ok de D1 antes de manipular el estado en memoria
-            let d1Ok = false;
+            // 2. Esperar confirmación res.ok del servidor antes de manipular el estado en memoria
+            let serverOk = false;
             try {
                 const token = state.getAuthToken(state.user, state.data);
                 const headers = {
@@ -1920,25 +1920,26 @@ Object.assign(ui, {
                 if (res.ok) {
                     const resJson = await res.json().catch(() => ({}));
                     if (resJson.version) state.data.version = resJson.version;
-                    d1Ok = true;
+                    serverOk = true;
                 }
             } catch(e) {}
 
             if (state.data.catalog && state.data.catalog[idx]) {
                 state.data.catalog[idx].price = normalizedPrice;
+                state.data.catalog[idx].updatedAt = Date.now();
             }
             state.saveLocalOnly();
 
-            if (!d1Ok) {
+            if (!serverOk) {
                 const pushed = await state.pushToCloud(false);
                 if (!pushed) {
-                    this.notify("Precio actualizado localmente (pendiente de persistir en D1).", "warning");
+                    this.notify("Precio actualizado localmente (pendiente de persistir en el servidor).", "warning");
                     this.render();
                     return;
                 }
             }
 
-            this.notify(`Precio de "${itemId}" sincronizado y persistido en D1 (${normalizedPrice} €v).`, "success");
+            this.notify(`Precio de "${itemId}" sincronizado y persistido en el servidor (${normalizedPrice} €v).`, "success");
             this.render();
         } finally {
             // 3. Reanudar ciclo de polling
@@ -1952,6 +1953,7 @@ Object.assign(ui, {
         const normalized = Math.round((p + Number.EPSILON) * 100) / 100;
         if (state.data.catalog && state.data.catalog[idx]) {
             state.data.catalog[idx].price = normalized;
+            state.data.catalog[idx].updatedAt = Date.now();
             state.save();
         }
     },
@@ -1986,8 +1988,8 @@ Object.assign(ui, {
         }
 
         try {
-            // 2. Esperar confirmación res.ok de D1 antes de manipular el estado en memoria
-            let d1Ok = false;
+            // 2. Esperar confirmación res.ok del servidor antes de manipular el estado en memoria
+            let serverOk = false;
             try {
                 const token = state.getAuthToken(state.user, state.data);
                 const headers = {
@@ -2022,11 +2024,11 @@ Object.assign(ui, {
                 if (res.ok) {
                     const resJson = await res.json().catch(() => ({}));
                     if (resJson.version) state.data.version = resJson.version;
-                    d1Ok = true;
+                    serverOk = true;
                 }
             } catch(e) {}
 
-            // Registrar en lista negra persistente local para evitar cualquier resurrección
+            // Registrar en lista negra persistente local y global para evitar cualquier resurrección
             if (typeof state.recordDeletedCatalogItem === 'function') {
                 state.recordDeletedCatalogItem(itemId);
             }
@@ -2035,16 +2037,16 @@ Object.assign(ui, {
             state.data.catalog = state.data.catalog.filter(i => String(i?.id) !== String(itemId));
             state.saveLocalOnly();
 
-            if (!d1Ok) {
+            if (!serverOk) {
                 const pushed = await state.pushToCloud(false);
                 if (!pushed) {
-                    this.notify(`Artículo "${itemId}" purgado en local (pendiente de D1).`, "warning");
+                    this.notify(`Artículo "${itemId}" purgado en local (pendiente de subir al servidor).`, "warning");
                     this.render();
                     return;
                 }
             }
 
-            this.notify(`Artículo "${itemId}" purgado y confirmado en D1.`, "info");
+            this.notify(`Artículo "${itemId}" purgado y confirmado en el servidor.`, "info");
             this.render();
         } finally {
             // 3. Reanudar ciclo de polling
@@ -2072,8 +2074,15 @@ Object.assign(ui, {
         if(!id || !name || isNaN(price) || !unit || !origin) return this.notify("Rellene todos los campos correctamente.", "warning");
         if(state.data.catalog.find(i => i.id === id)) return this.notify("El ID ya existe en el catálogo.", "error");
 
-        state.data.catalog.push({ id, name, price, unit, category, origin });
+        const wasPreviouslyDeleted = typeof state.getDeletedCatalogItems === 'function' && state.getDeletedCatalogItems().includes(String(id));
+        if (typeof state.unrecordDeletedCatalogItem === 'function') {
+            state.unrecordDeletedCatalogItem(id);
+        } else if (Array.isArray(state.data.deletedCatalogIds)) {
+            state.data.deletedCatalogIds = state.data.deletedCatalogIds.filter(x => String(x) !== String(id));
+        }
+        state.data.catalog.push({ id, name, price, unit, category, origin, updatedAt: Date.now(), ...(wasPreviouslyDeleted ? { recreatedAt: Date.now() } : {}) });
         state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.notify("Artículo añadido al catálogo global.", "success");
         this.render();
     },
@@ -2149,9 +2158,14 @@ Object.assign(ui, {
 
         ui.pushNotification(coId, 'TECNICO', `Tu solicitud de I+D Especial "${req.name || 'Componente'}" ha sido DENEGADA. Puedes revisar el dictamen técnico adjunto en tu Banco de I+D.`, 'error', { view: 'tech', anchorId: 'tech-special-items-panel' });
 
+        state.data.deletedPendingCustomIds = Array.isArray(state.data.deletedPendingCustomIds) ? state.data.deletedPendingCustomIds : [];
+        if (req.id !== undefined && req.id !== null && !state.data.deletedPendingCustomIds.includes(String(req.id))) {
+            state.data.deletedPendingCustomIds.push(String(req.id));
+        }
         state.data.pendingCustom.splice(reqIdx, 1);
         this.closeModal();
-        await state.save(coId);
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') await state.pushToCloud(false);
         this.notify("Solicitud de I+D denegada y dictamen adjuntado.", "info");
         this.render();
     },
@@ -2175,15 +2189,22 @@ Object.assign(ui, {
         const rawOfficialName = elName && elName.value.trim() ? elName.value.trim() : (req.name || 'Componente Especial I+D');
         const cleanOfficialName = this.cleanInput(rawOfficialName);
         
+        const custId = 'CUST-' + pid;
+        if (typeof state.unrecordDeletedCatalogItem === 'function') {
+            state.unrecordDeletedCatalogItem(custId);
+        } else if (Array.isArray(state.data.deletedCatalogIds)) {
+            state.data.deletedCatalogIds = state.data.deletedCatalogIds.filter(x => String(x) !== custId);
+        }
         state.data.catalog.unshift({ 
-            id: 'CUST-' + pid, 
+            id: custId, 
             name: `[ESP] ${cleanOfficialName}`, 
             price: price, 
             unit: 'Especial', 
             category: 'Externo',
             origin: 'I+D Local',
             exclusiveFor: coId,
-            driveUrl: req.driveUrl || ''
+            driveUrl: req.driveUrl || '',
+            updatedAt: Date.now()
         });
 
         if (state.data.companies && state.data.companies[coId]) {
@@ -2210,8 +2231,13 @@ Object.assign(ui, {
         if (state.data.companies && state.data.companies[coId]) {
             state.data.companies[coId].updatedAt = Date.now();
         }
+        state.data.deletedPendingCustomIds = Array.isArray(state.data.deletedPendingCustomIds) ? state.data.deletedPendingCustomIds : [];
+        if (req.id !== undefined && req.id !== null && !state.data.deletedPendingCustomIds.includes(String(req.id))) {
+            state.data.deletedPendingCustomIds.push(String(req.id));
+        }
         state.data.pendingCustom.splice(reqIdx, 1); 
-        state.save(coId); 
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.render();
     },
 
@@ -2232,7 +2258,7 @@ Object.assign(ui, {
         const generatedCode = state.generateCompanyCode(name);
 
         const newCo = { 
-            name, balance: cap, logo: null, sponsorAwarded: null, sponsorData: {name: null, logo: null}, valueProposition: "", slogan: "", classGroup,
+            name, initialBalance: cap, balance: cap, logo: null, sponsorAwarded: null, sponsorData: {name: null, logo: null}, valueProposition: "", slogan: "", classGroup,
             brandApproval: { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "", updatedAt: 0 },
             auxRoleRequest: { status: 'INACTIVO', dept: '', pin: '', updatedAt: 0 },
             roles: {}, authVault: { code: '', roles: {} },
@@ -2267,7 +2293,7 @@ Object.assign(ui, {
                 const resJson = await res.json().catch(() => null);
                 if (resJson && resJson.newVersion) {
                     state.data.version = resJson.newVersion;
-                    state.lastETag = 'W/"v-' + resJson.newVersion + '"';
+                    state.lastETag = resJson.etag || null;
                     state.saveLocalOnly();
                 }
             }
@@ -2318,6 +2344,14 @@ Object.assign(ui, {
 
         // 3. Limpieza de solicitudes especiales de I+D (pendingCustom)
         if (Array.isArray(state.data.pendingCustom)) {
+            state.data.deletedPendingCustomIds = Array.isArray(state.data.deletedPendingCustomIds) ? state.data.deletedPendingCustomIds : [];
+            state.data.pendingCustom.forEach(req => {
+                if (req && (req.company === cid || req.coId === cid) && req.id !== undefined && req.id !== null) {
+                    if (!state.data.deletedPendingCustomIds.includes(String(req.id))) {
+                        state.data.deletedPendingCustomIds.push(String(req.id));
+                    }
+                }
+            });
             state.data.pendingCustom = state.data.pendingCustom.filter(req => req && req.company !== cid && req.coId !== cid);
         }
 
@@ -2358,6 +2392,7 @@ Object.assign(ui, {
         }
 
         state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.notify(`Startup "${coName}" eliminada completamente del sistema.`, "success");
         this.render(); 
     },
@@ -2395,6 +2430,14 @@ Object.assign(ui, {
             state.data.b2bMarket = state.data.b2bMarket.filter(item => item && item.sellerCoId !== cid);
         }
         if (Array.isArray(state.data.pendingCustom)) {
+            state.data.deletedPendingCustomIds = Array.isArray(state.data.deletedPendingCustomIds) ? state.data.deletedPendingCustomIds : [];
+            state.data.pendingCustom.forEach(req => {
+                if (req && (req.company === cid || req.coId === cid) && req.id !== undefined && req.id !== null) {
+                    if (!state.data.deletedPendingCustomIds.includes(String(req.id))) {
+                        state.data.deletedPendingCustomIds.push(String(req.id));
+                    }
+                }
+            });
             state.data.pendingCustom = state.data.pendingCustom.filter(req => req && req.company !== cid && req.coId !== cid);
         }
         if (Array.isArray(state.data.pressReleases)) {
@@ -2424,8 +2467,10 @@ Object.assign(ui, {
         co.flightTests = [];
         co.votingMotions = [];
         co.cart = [];
+        co.cartUpdatedAt = now;
         co.orders = [];
         co.ledger = [];
+        co.deletedLedgerTxIds = [];
         co.realCosts = [];
         co.grades = {};
         co.marketingCampaigns = [];
@@ -2435,6 +2480,8 @@ Object.assign(ui, {
         co.crisisAlerts = [];
         co.meetingMinutes = [];
         co.bom = [];
+        co.bomUpdatedAt = now;
+        co.brandUpdatedAt = now;
         co.deliverables = {};
         co.contracts = {};
         co.phaseBalances = {};
@@ -2473,7 +2520,7 @@ Object.assign(ui, {
                 try {
                     const ok = await state.updatePin(coId, 'AUXILIAR', '');
                     this.render();
-                    if (ok) this.notify(`✅ Rol Auxiliar desactivado en ${co.name} y sincronizado en D1.`, "success");
+                    if (ok) this.notify(`✅ Rol Auxiliar desactivado en ${co.name} y sincronizado en el servidor.`, "success");
                     else this.notify(`⚠️ Rol Auxiliar desactivado localmente en ${co.name}.`, "warning");
                 } finally {
                     if (inputEl) inputEl.disabled = false;
@@ -2488,9 +2535,9 @@ Object.assign(ui, {
             try {
                 const ok = await state.updatePin(coId, role, clean);
                 if (ok) {
-                    this.notify(`✅ PIN de ${role} (${co.name}) actualizado a ${clean} y sincronizado en D1.`, "success");
+                    this.notify(`✅ PIN de ${role} (${co.name}) actualizado a ${clean} y sincronizado en el servidor.`, "success");
                 } else {
-                    this.notify(`⚠️ PIN de ${role} (${co.name}) guardado localmente; pendiente de D1.`, "warning");
+                    this.notify(`⚠️ PIN de ${role} (${co.name}) guardado localmente; pendiente de sincronización.`, "warning");
                 }
             } finally {
                 if (inputEl) inputEl.disabled = false;
@@ -2589,8 +2636,10 @@ Object.assign(ui, {
         co.brandApproval.status = 'RECHAZADO';
         co.brandApproval.feedback = reason;
         if (driveUrl) co.brandApproval.returnDriveUrl = driveUrl;
-        co.brandApproval.updatedAt = Date.now();
-        co.updatedAt = Date.now();
+        const nowBrandRej = Date.now();
+        co.brandApproval.updatedAt = nowBrandRej;
+        co.brandUpdatedAt = nowBrandRej;
+        co.updatedAt = nowBrandRej;
 
         const notifMsg = driveUrl ? `Tu propuesta de marca (Logo/Eslogan) ha sido RECHAZADA por Coordinación. Motivo: ${reason}. Consulta el documento de Drive adjunto.` : `Tu propuesta de marca (Logo/Eslogan) ha sido RECHAZADA por Coordinación. Motivo: ${reason}`;
         ui.pushNotification(cid, 'MARKETING', notifMsg, 'error', { view: 'brand', anchorId: 'brand-slogan-section' });
@@ -2634,8 +2683,10 @@ Object.assign(ui, {
         co.brandApproval.pendingLogo = null;
         co.brandApproval.pendingSlogan = "";
         co.brandApproval.feedback = "";
-        co.brandApproval.updatedAt = Date.now();
-        co.updatedAt = Date.now();
+        const nowBrandOk = Date.now();
+        co.brandApproval.updatedAt = nowBrandOk;
+        co.brandUpdatedAt = nowBrandOk;
+        co.updatedAt = nowBrandOk;
 
         ui.pushNotification(cid, 'MARKETING', `¡Enhorabuena! El logotipo y el eslogan oficial ("${co.slogan}") han sido APROBADOS por Coordinación y ya son públicos en el HUD.`, 'success', { view: 'brand', anchorId: 'brand-slogan-section' });
         ui.pushNotification(cid, 'CEO', `Identidad corporativa aprobada y visible para toda la flota. Slogan: "${co.slogan}".`, 'success', { view: 'dashboard' });

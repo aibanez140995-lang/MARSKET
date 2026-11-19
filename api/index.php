@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.25
+// Versión: v2.0.26
 
 declare(strict_types=1);
 
@@ -853,6 +853,26 @@ try {
                 exit;
             }
 
+            // Unión de tombstones globales en servidor (nunca perder borrados entre docentes)
+            foreach (['deletedCatalogIds', 'deletedOfficialNewsIds', 'deletedSuggestionIds', 'deletedPendingCustomIds'] as $gTombKey) {
+                $currTomb = is_array($currentState[$gTombKey] ?? null) ? $currentState[$gTombKey] : [];
+                $incTomb = ($isTeacher && is_array($payload[$gTombKey] ?? null)) ? $payload[$gTombKey] : [];
+                $payload[$gTombKey] = array_values(array_unique(array_map('strval', array_merge($currTomb, $incTomb))));
+            }
+            if ($isTeacher && is_array($payload['catalog'] ?? null) && !empty($payload['deletedCatalogIds'])) {
+                $recreatedCatIds = [];
+                foreach ($payload['catalog'] as $cIt) {
+                    if (is_array($cIt) && !empty($cIt['recreatedAt']) && !empty($cIt['id'])) {
+                        $recreatedCatIds[(string)$cIt['id']] = true;
+                    }
+                }
+                if (!empty($recreatedCatIds)) {
+                    $payload['deletedCatalogIds'] = array_values(array_filter($payload['deletedCatalogIds'], function ($did) use ($recreatedCatIds) {
+                        return !isset($recreatedCatIds[(string)$did]);
+                    }));
+                }
+            }
+
             // Si es un Alumno/Empresa (NO docente), blindar la configuración global, tombstones globales y resto de empresas
             if (!$isTeacher) {
                 // 1. Prohibir a alumnos alterar la configuración, fechas límite, resetEpoch ni listas globales de borrado/noticias
@@ -865,10 +885,8 @@ try {
                 if (isset($currentState['officialNews'])) {
                     $payload['officialNews'] = $currentState['officialNews'];
                 }
-                foreach (['deletedCompanyIds', 'deletedCatalogIds', 'deletedOfficialNewsIds', 'deletedSuggestionIds', 'deletedPendingCustomIds'] as $gTomb) {
-                    if (isset($currentState[$gTomb])) {
-                        $payload[$gTomb] = $currentState[$gTomb];
-                    }
+                if (isset($currentState['deletedCompanyIds'])) {
+                    $payload['deletedCompanyIds'] = $currentState['deletedCompanyIds'];
                 }
                 // 2. Prohibir a alumnos alterar el catálogo oficial
                 if (isset($currentState['catalog'])) {
@@ -876,6 +894,27 @@ try {
                 }
                 // 3. Si el alumno tiene empresa fijada, aislar el resto de empresas competidoras y proteger campos docentes propios
                 $studentCoId = $auth['coId'] ?? null;
+                if ($studentCoId) {
+                    // Preservar solicitudes I+D especiales (pendingCustom) de otras startups y filtrar eliminadas
+                    $delPcSet = array_flip($payload['deletedPendingCustomIds'] ?? []);
+                    $currPc = is_array($currentState['pendingCustom'] ?? null) ? $currentState['pendingCustom'] : [];
+                    $incPc = is_array($payload['pendingCustom'] ?? null) ? $payload['pendingCustom'] : [];
+                    $otherPc = array_filter($currPc, function ($it) use ($studentCoId, $delPcSet) {
+                        if (!is_array($it)) return false;
+                        $pid = (string)($it['id'] ?? '');
+                        if ($pid !== '' && isset($delPcSet[$pid])) return false;
+                        $owner = (string)($it['company'] ?? $it['coId'] ?? '');
+                        return $owner !== '' && $owner !== (string)$studentCoId;
+                    });
+                    $ownPc = array_filter($incPc, function ($it) use ($studentCoId, $delPcSet) {
+                        if (!is_array($it)) return false;
+                        $pid = (string)($it['id'] ?? '');
+                        if ($pid !== '' && isset($delPcSet[$pid])) return false;
+                        $owner = (string)($it['company'] ?? $it['coId'] ?? '');
+                        return $owner === (string)$studentCoId;
+                    });
+                    $payload['pendingCustom'] = array_values(array_merge($otherPc, $ownPc));
+                }
                 if ($studentCoId && isset($currentState['companies']) && is_array($currentState['companies'])) {
                     foreach ($currentState['companies'] as $otherCid => $otherCo) {
                         if ($otherCid !== $studentCoId) {
@@ -886,8 +925,40 @@ try {
                                     $payload['companies'][$studentCoId][$docField] = $otherCo[$docField];
                                 }
                             }
+                            if (isset($otherCo['launchLicense']) && is_array($otherCo['launchLicense'])) {
+                                $sLic = $otherCo['launchLicense'];
+                                $lLic = is_array($payload['companies'][$studentCoId]['launchLicense'] ?? null) ? $payload['companies'][$studentCoId]['launchLicense'] : [];
+                                $sLicDecTs = max((int)($sLic['approvedAt'] ?? 0), (int)($sLic['rejectedAt'] ?? 0));
+                                $lLicAppTs = (int)($lLic['appliedAt'] ?? 0);
+                                if (($sLic['status'] ?? '') === 'APROBADO' || ($sLicDecTs > 0 && $sLicDecTs >= $lLicAppTs)) {
+                                    $payload['companies'][$studentCoId]['launchLicense'] = $sLic;
+                                }
+                            }
+                            if (isset($otherCo['contracts']) && is_array($otherCo['contracts'])) {
+                                $incCont = is_array($payload['companies'][$studentCoId]['contracts'] ?? null) ? $payload['companies'][$studentCoId]['contracts'] : [];
+                                foreach ($otherCo['contracts'] as $ph => $sC) {
+                                    if (is_array($sC) && !empty($sC['settledAt'])) {
+                                        $incCont[$ph] = $sC;
+                                    }
+                                }
+                                $payload['companies'][$studentCoId]['contracts'] = $incCont;
+                            }
                         }
                     }
+                }
+            } else {
+                // Filtrar borrados definitivos de catálogo y solicitudes especiales en guardados docentes
+                if (is_array($payload['catalog'] ?? null) && !empty($payload['deletedCatalogIds'])) {
+                    $delCatSet = array_flip($payload['deletedCatalogIds']);
+                    $payload['catalog'] = array_values(array_filter($payload['catalog'], function ($it) use ($delCatSet) {
+                        return is_array($it) && !isset($delCatSet[(string)($it['id'] ?? '')]);
+                    }));
+                }
+                if (is_array($payload['pendingCustom'] ?? null) && !empty($payload['deletedPendingCustomIds'])) {
+                    $delPcSet = array_flip($payload['deletedPendingCustomIds']);
+                    $payload['pendingCustom'] = array_values(array_filter($payload['pendingCustom'], function ($it) use ($delPcSet) {
+                        return is_array($it) && !isset($delPcSet[(string)($it['id'] ?? '')]);
+                    }));
                 }
             }
 
@@ -1040,6 +1111,37 @@ try {
                             if (!empty($sCo['roles'])) $co['roles'] = $sCo['roles'];
                             if (!empty($sCo['authUpdatedAt'])) $co['authUpdatedAt'] = $sCo['authUpdatedAt'];
                         }
+                        // Unión e imposición de tombstones contables (deletedLedgerTxIds) para impedir resurrección de asientos rectificados
+                        $sDelTx = is_array($sCo['deletedLedgerTxIds'] ?? null) ? $sCo['deletedLedgerTxIds'] : [];
+                        $iDelTx = ($isTeacher && is_array($co['deletedLedgerTxIds'] ?? null)) ? $co['deletedLedgerTxIds'] : [];
+                        $mergedDelTx = array_values(array_unique(array_map('strval', array_merge($sDelTx, $iDelTx))));
+                        if (!empty($mergedDelTx)) {
+                            $co['deletedLedgerTxIds'] = $mergedDelTx;
+                            if (isset($co['ledger']) && is_array($co['ledger'])) {
+                                $delTxSet = array_flip($mergedDelTx);
+                                $origCount = count($co['ledger']);
+                                $filteredLedger = [];
+                                $seenTx = [];
+                                $baseInit = (isset($co['initialBalance']) && is_numeric($co['initialBalance']))
+                                    ? (float)$co['initialBalance']
+                                    : ((isset($sCo['initialBalance']) && is_numeric($sCo['initialBalance'])) ? (float)$sCo['initialBalance'] : 2400.0);
+                                $sumDelta = 0.0;
+                                foreach ($co['ledger'] as $tx) {
+                                    if (!is_array($tx)) continue;
+                                    $txId = (string)($tx['id'] ?? $tx['tx_id'] ?? '');
+                                    if ($txId !== '' && isset($delTxSet[$txId])) continue;
+                                    $filteredLedger[] = $tx;
+                                    if ($txId !== '' && !isset($seenTx[$txId])) {
+                                        $seenTx[$txId] = true;
+                                        $sumDelta += (float)($tx['delta'] ?? 0);
+                                    }
+                                }
+                                if (count($filteredLedger) !== $origCount) {
+                                    $co['ledger'] = $filteredLedger;
+                                    $co['balance'] = round($baseInit + $sumDelta, 2);
+                                }
+                            }
+                        }
                     }
                 }
             } elseif (isset($currentState['companies'])) {
@@ -1156,27 +1258,31 @@ try {
         }
 
         $configUpdatedAt = 0;
+        $globalVersion = 1;
+        $globalUpdatedAt = 0;
         try {
-            $stmtCfg = $pdo->query("SELECT json_extract(data, '$.config.updatedAt') AS cu FROM state WHERE id = 'current'");
+            $stmtCfg = $pdo->query("SELECT json_extract(data, '$.config.updatedAt') AS cu, json_extract(data, '$.version') AS gv, json_extract(data, '$.lastUpdated') AS gu FROM state WHERE id = 'current'");
             $cRow = $stmtCfg ? $stmtCfg->fetch() : null;
-            if ($cRow && isset($cRow['cu'])) {
-                $configUpdatedAt = (int)$cRow['cu'];
+            if ($cRow) {
+                $configUpdatedAt = (int)($cRow['cu'] ?? 0);
+                $globalVersion = (int)($cRow['gv'] ?? 1);
+                $globalUpdatedAt = (int)($cRow['gu'] ?? 0);
             }
         } catch (\Exception $e) {}
 
-        $serverETag = 'W/"co-' . $cid . '-' . $version . '-' . $updatedAt . '-' . $configUpdatedAt . '"';
+        $serverETag = 'W/"co-' . $cid . '-' . $version . '-' . $updatedAt . '-' . $configUpdatedAt . '-g' . $globalVersion . '"';
         $clientETag = $_SERVER['HTTP_IF_NONE_MATCH'] ?? '';
 
         if ($clientETag === $serverETag) {
             header('ETag: ' . $serverETag);
-            header('Cache-Control: public, no-cache');
+            header('Cache-Control: private, no-cache');
             http_response_code(304);
             exit;
         }
 
         header('Content-Type: application/json; charset=utf-8');
         header('ETag: ' . $serverETag);
-        header('Cache-Control: public, no-cache');
+        header('Cache-Control: private, no-cache');
         if ($method === 'HEAD') { exit; }
 
         echo json_encode([
@@ -1184,6 +1290,8 @@ try {
             'version' => $version,
             'updatedAt' => $updatedAt,
             'configUpdatedAt' => $configUpdatedAt,
+            'globalVersion' => $globalVersion,
+            'globalUpdatedAt' => $globalUpdatedAt,
             'etag' => $serverETag
         ], JSON_UNESCAPED_UNICODE);
         exit;
@@ -1894,13 +2002,22 @@ try {
             ':co_json' => json_encode($co, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             ':lu' => $now
         ]);
+        $stmtGlobalMeta = $pdo->query("SELECT json_extract(data, '$.version') AS gv, json_extract(data, '$.config.updatedAt') AS cu FROM state WHERE id = 'current'");
+        $gMeta = $stmtGlobalMeta ? $stmtGlobalMeta->fetch() : null;
+        $newGlobalVersion = (int)($gMeta['gv'] ?? 1);
+        $cfgUpdAct = (int)($gMeta['cu'] ?? 0);
         commitTx($pdo);
 
+        $coETag = 'W/"co-' . $cid . '-' . $newVersion . '-' . $now . '-' . $cfgUpdAct . '-g' . $newGlobalVersion . '"';
         header('Content-Type: application/json; charset=utf-8');
+        header('ETag: ' . $coETag);
         echo json_encode([
             'success' => true,
             'companyId' => $cid,
             'version' => $newVersion,
+            'globalVersion' => $newGlobalVersion,
+            'configUpdatedAt' => $cfgUpdAct,
+            'etag' => $coETag,
             'balance' => $co['balance'],
             'action' => $action,
             'updatedAt' => $now

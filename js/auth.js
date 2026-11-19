@@ -282,7 +282,7 @@ const auth = (function() {
                             matchedCoId = data.matchedCoId;
                             _serverCompanyMeta = data.companyMeta;
                         }
-                    } else {
+                    } else if (res.status !== 404 && res.status !== 400 && res.status !== 401 && res.status !== 403) {
                         networkFailed = true;
                     }
                 } catch(e) {
@@ -313,6 +313,7 @@ const auth = (function() {
 
         resetCompanyStep() {
             _verifiedCoId = null;
+            _serverCompanyMeta = null;
             state.pin = '';
             ui.render();
         },
@@ -586,10 +587,17 @@ const auth = (function() {
             state.currentUser = null;
             state.pin = '';
             _verifiedCoId = null;
+            _serverCompanyMeta = null;
             if (typeof state !== 'undefined') {
+                clearTimeout(state.syncTimer);
                 state.lastETag = null;
                 state.lastCompanyETag = null;
+                state.lastCompanyVersion = 0;
+                state._pushDirty = false;
                 state._adminCredentialsFetched = false;
+                if (state.data && typeof state.sanitizeForLocalStorage === 'function') {
+                    state.data = state.sanitizeForLocalStorage(state.data);
+                }
             }
             // WP1: Purga total inmediata de sesiones y almacenamiento en cliente (preservando epoch de reset y catálogo)
             try { sessionStorage.clear(); } catch(e) {}
