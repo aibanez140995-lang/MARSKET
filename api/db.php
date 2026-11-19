@@ -49,6 +49,89 @@ function decodeSecret(?string $enc, string $key = MARS_VAULT_KEY): string {
 /**
  * Obtiene la conexión PDO a SQLite con configuración de alta concurrencia WAL (180 alumnos)
  */
+function base64UrlEncodeStr(string $raw): string {
+    return rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
+}
+
+function base64UrlDecodeStr(string $b64): string {
+    $pad = strlen($b64) % 4;
+    if ($pad > 0) {
+        $b64 .= str_repeat('=', 4 - $pad);
+    }
+    $res = base64_decode(strtr($b64, '-_', '+/'), true);
+    return $res === false ? '' : $res;
+}
+
+/**
+ * Obtiene o inicializa el secreto HMAC-SHA256 privado del servidor en SQLite (nunca expuesto por API)
+ */
+function getServerSigningSecret(PDO $pdo): string {
+    static $cached = null;
+    if ($cached !== null && $cached !== '') {
+        return $cached;
+    }
+    try {
+        $stmt = $pdo->query("SELECT data FROM state WHERE id = '_server_hmac_secret'");
+        $row = $stmt ? $stmt->fetch() : null;
+        if ($row && !empty($row['data']) && strlen((string)$row['data']) >= 32) {
+            $cached = (string)$row['data'];
+            return $cached;
+        }
+        $generated = bin2hex(random_bytes(32));
+        $ins = $pdo->prepare("INSERT OR IGNORE INTO state (id, data, updated_at) VALUES ('_server_hmac_secret', :sec, CURRENT_TIMESTAMP)");
+        $ins->execute([':sec' => $generated]);
+        $stmt2 = $pdo->query("SELECT data FROM state WHERE id = '_server_hmac_secret'");
+        $row2 = $stmt2 ? $stmt2->fetch() : null;
+        $cached = ($row2 && !empty($row2['data'])) ? (string)$row2['data'] : $generated;
+        return $cached;
+    } catch (\Throwable $e) {
+        return hash('sha256', MARS_VAULT_KEY . '|' . __DIR__);
+    }
+}
+
+/**
+ * Emite un token de sesión firmado HMAC-SHA256 (formato MKT2.<payload>.<sig>)
+ */
+function issueSignedSessionToken(PDO $pdo, array $claims): string {
+    $now = time();
+    $payload = array_merge([
+        'ver' => 2,
+        'iat' => $now,
+        'exp' => $now + 43200
+    ], $claims);
+    $b64Payload = base64UrlEncodeStr((string)json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    $secret = getServerSigningSecret($pdo);
+    $sig = hash_hmac('sha256', $b64Payload, $secret, true);
+    return 'MKT2.' . $b64Payload . '.' . base64UrlEncodeStr($sig);
+}
+
+/**
+ * Verifica firma HMAC-SHA256 y expiración de un token MKT2
+ */
+function verifySignedSessionToken(PDO $pdo, string $token): ?array {
+    if (strpos($token, 'MKT2.') !== 0) {
+        return null;
+    }
+    $parts = explode('.', $token);
+    if (count($parts) !== 3 || $parts[1] === '' || $parts[2] === '') {
+        return null;
+    }
+    $secret = getServerSigningSecret($pdo);
+    $expectedSig = base64UrlEncodeStr(hash_hmac('sha256', $parts[1], $secret, true));
+    if (!hash_equals($expectedSig, $parts[2])) {
+        return null;
+    }
+    $decodedJson = base64UrlDecodeStr($parts[1]);
+    if ($decodedJson === '') {
+        return null;
+    }
+    $claims = json_decode($decodedJson, true);
+    if (!is_array($claims) || empty($claims['exp']) || (int)$claims['exp'] < time()) {
+        return null;
+    }
+    return $claims;
+}
+
 function getDatabaseConnection(): PDO {
     static $pdo = null;
     if ($pdo !== null) {

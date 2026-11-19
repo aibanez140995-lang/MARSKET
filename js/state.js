@@ -310,8 +310,11 @@ const state = {
         if (co.authVault && co.authVault.roles && co.authVault.roles[role]) {
             return this.decodeSecret(co.authVault.roles[role]);
         }
-        if (co.roles && co.roles[role] && !String(co.roles[role]).startsWith('VLT_')) {
-            return co.roles[role];
+        if (co.roles && co.roles[role]) {
+            const rawRolePin = String(co.roles[role]).trim();
+            if (!rawRolePin.startsWith('VLT_') && rawRolePin.toUpperCase() !== 'PROTECTED') {
+                return rawRolePin;
+            }
         }
         return '';
     },
@@ -670,8 +673,10 @@ const state = {
                 }
             });
 
-            co.loginStats = co.loginStats || { totalLogins: 0, roles: {} };
-            co.loginStats.roles = co.loginStats.roles || {};
+            const asPlainDict = (val) => (val && typeof val === 'object' && !Array.isArray(val)) ? val : {};
+            co.roles = asPlainDict(co.roles);
+            co.loginStats = (co.loginStats && typeof co.loginStats === 'object' && !Array.isArray(co.loginStats)) ? co.loginStats : { totalLogins: 0, roles: {} };
+            co.loginStats.roles = asPlainDict(co.loginStats.roles);
             co.classGroup = co.classGroup || 'A';
             co.brandApproval = co.brandApproval || { status: 'APROBADO', pendingLogo: null, pendingSlogan: "", feedback: "", driveUrl: "", expId: "", updatedAt: 0 };
             co.brandApproval.driveUrl = co.brandApproval.driveUrl || "";
@@ -680,7 +685,10 @@ const state = {
             co.pendingMission = co.pendingMission || null;
             co.brandStatus = co.brandStatus || 'APPROVED';
             co.auxRoleRequest = co.auxRoleRequest || { status: co.roles['AUXILIAR'] ? 'APROBADO' : 'INACTIVO', dept: co.auxRoleDept || '', pin: this.getRolePin(co, 'AUXILIAR') || '', updatedAt: 0 };
-            co.deliverables = co.deliverables || {};
+            co.deliverables = asPlainDict(co.deliverables);
+            co.contracts = asPlainDict(co.contracts);
+            co.phaseBalances = asPlainDict(co.phaseBalances);
+            co.pressReleases = asPlainDict(co.pressReleases);
             
             const validHojaStatuses = ['DRAFT_TECNICO', 'EN_TALLER_OPERARIO', 'DEVUELTO_A_TECNICO', 'CEO_REVISION', 'SUBMITTED_TO_CEO', 'DELIVERED_TO_TEACHER'];
             for (let docKey in defDocs) {
@@ -726,7 +734,7 @@ const state = {
             co.realCosts = Array.isArray(co.realCosts) ? co.realCosts : [];
             co.cart = Array.isArray(co.cart) ? co.cart : [];
             co.orders = Array.isArray(co.orders) ? co.orders : [];
-            co.grades = co.grades || {};
+            co.grades = (co.grades && typeof co.grades === 'object' && !Array.isArray(co.grades)) ? co.grades : {};
             co.slogan = co.slogan || "";
             co.valueProposition = co.valueProposition || "";
             co.logo = co.logo || null;

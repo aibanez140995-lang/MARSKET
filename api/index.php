@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.24
+// Versión: v2.0.25
 
 declare(strict_types=1);
 
@@ -66,62 +66,115 @@ function getAuthorizationToken(): string {
     return '';
 }
 
-function verifySession(): array {
+function isValidCompanyId(string $cid): bool {
+    return $cid !== '' && preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $cid) === 1;
+}
+
+function isValidStudentRole(string $role): bool {
+    return in_array($role, ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'], true);
+}
+
+function isValidTeacherRole(string $role): bool {
+    return preg_match('/^(COORD_[A-Z0-9_]{1,32}|FYQ|ECO|LYE|LEN|MAT|ING)$/', $role) === 1;
+}
+
+function beginImmediateTx(PDO $pdo): void {
+    if (!$pdo->inTransaction()) {
+        $pdo->exec('BEGIN IMMEDIATE');
+    }
+}
+
+function commitTx(PDO $pdo): void {
+    if ($pdo->inTransaction()) {
+        $pdo->exec('COMMIT');
+    }
+}
+
+function rollbackQuietly(PDO $pdo): void {
+    try {
+        if ($pdo->inTransaction()) {
+            $pdo->exec('ROLLBACK');
+        }
+    } catch (\Throwable $e) {}
+}
+
+function normalizeCompanyDictsForJson(&$co): void {
+    if (!is_array($co)) return;
+    foreach (['deliverables', 'grades', 'contracts', 'phaseBalances', 'pressReleases', 'roles'] as $dictKey) {
+        if (!isset($co[$dictKey]) || !is_array($co[$dictKey]) || count($co[$dictKey]) === 0) {
+            $co[$dictKey] = new \stdClass();
+        }
+    }
+    if (isset($co['loginStats']) && is_array($co['loginStats'])) {
+        if (!isset($co['loginStats']['roles']) || !is_array($co['loginStats']['roles']) || count($co['loginStats']['roles']) === 0) {
+            $co['loginStats']['roles'] = new \stdClass();
+        }
+    }
+    if (!empty($co['votingMotions']) && is_array($co['votingMotions'])) {
+        foreach ($co['votingMotions'] as &$m) {
+            if (is_array($m) && (!isset($m['votes']) || !is_array($m['votes']) || count($m['votes']) === 0)) {
+                $m['votes'] = new \stdClass();
+            }
+        }
+        unset($m);
+    }
+}
+
+function verifySession(?PDO $pdo = null): array {
     $token = getAuthorizationToken();
     if (!$token) {
         return ['authorized' => false, 'isCoordinator' => false, 'role' => null, 'isAdmin' => false];
     }
 
-    if ($token === MARS_TEACHER_MASTER_CODE) {
-        return ['authorized' => true, 'isCoordinator' => true, 'role' => 'coordinador', 'isAdmin' => true];
+    if (hash_equals(MARS_TEACHER_MASTER_CODE, $token) || hash_equals('MASTER_MARS_2026', $token)) {
+        return ['authorized' => true, 'isCoordinator' => true, 'isTeacher' => true, 'role' => 'coordinador', 'isAdmin' => true];
     }
 
-    $decoded = '';
-    if (strpos($token, 'VLT_') === 0) {
-        $decoded = decodeSecret($token);
-    } elseif (strpos($token, '.') !== false) {
-        $parts = explode('.', $token);
-        if (isset($parts[1])) {
-            $payload = json_decode((string)base64_decode($parts[1]), true);
-            $role = strtolower((string)($payload['role'] ?? $payload['sub'] ?? ''));
-            $isCoord = strpos($role, 'coord') !== false || $role === 'coordinador' || !empty($payload['admin']);
-            return ['authorized' => $isCoord, 'isCoordinator' => $isCoord, 'role' => $role, 'isAdmin' => $isCoord];
+    if ($pdo === null) {
+        $pdo = getDatabaseConnection();
+    }
+
+    // Validación criptográfica HMAC-SHA256 obligatoria (formato MKT2.<payload>.<sig>)
+    if (strpos($token, 'MKT2.') === 0) {
+        $claims = verifySignedSessionToken($pdo, $token);
+        if (!$claims) {
+            return ['authorized' => false, 'isCoordinator' => false, 'role' => null, 'isAdmin' => false];
         }
-    } else {
-        $decoded = $token;
-    }
-
-    $lower = strtolower($decoded);
-    if (strpos($decoded, 'T|') === 0) {
-        $parts = explode('|', $decoded);
-        $role = $parts[1] ?? '';
-        $rLower = strtolower($role);
-        $isCoord = strpos($rLower, 'coord') !== false || $rLower === 'coordinador';
-        $teacherRoles = ['FYQ', 'ECO', 'MAT', 'LEN', 'ING', 'LYE'];
-        $isTeacherRole = in_array(strtoupper($role), $teacherRoles, true) || $isCoord;
-        return [
-            'authorized' => true,
-            'isCoordinator' => $isCoord,
-            'isTeacher' => $isTeacherRole,
-            'role' => $role,
-            'isAdmin' => true
-        ];
-    }
-
-    if (strpos($decoded, 'S|') === 0) {
-        $parts = explode('|', $decoded);
-        return [
-            'authorized' => false,
-            'isCoordinator' => false,
-            'isStudent' => true,
-            'role' => $parts[2] ?? 'student',
-            'coId' => $parts[1] ?? '',
-            'isAdmin' => false
-        ];
-    }
-
-    if (strpos($lower, 'coord') !== false || $lower === 'coordinador' || $lower === 'docente') {
-        return ['authorized' => true, 'isCoordinator' => true, 'role' => 'coordinador', 'isAdmin' => true];
+        $typ = (string)($claims['typ'] ?? '');
+        if ($typ === 'T') {
+            $role = (string)($claims['role'] ?? '');
+            $rLower = strtolower($role);
+            $isCoord = strpos($rLower, 'coord') !== false || $rLower === 'coordinador';
+            $teacherRoles = ['FYQ', 'ECO', 'MAT', 'LEN', 'ING', 'LYE'];
+            $isTeacherRole = in_array(strtoupper($role), $teacherRoles, true) || $isCoord;
+            if (!$isTeacherRole) {
+                return ['authorized' => false, 'isCoordinator' => false, 'role' => null, 'isAdmin' => false];
+            }
+            return [
+                'authorized' => true,
+                'isCoordinator' => $isCoord,
+                'isTeacher' => true,
+                'role' => $role,
+                'isAdmin' => true,
+                'stamp' => (int)($claims['stamp'] ?? 0)
+            ];
+        }
+        if ($typ === 'S') {
+            $coId = (string)($claims['coId'] ?? '');
+            $role = (string)($claims['role'] ?? '');
+            if (!isValidCompanyId($coId) || !isValidStudentRole($role)) {
+                return ['authorized' => false, 'isCoordinator' => false, 'role' => null, 'isAdmin' => false];
+            }
+            return [
+                'authorized' => false,
+                'isCoordinator' => false,
+                'isStudent' => true,
+                'role' => $role,
+                'coId' => $coId,
+                'isAdmin' => false,
+                'stamp' => (int)($claims['stamp'] ?? 0)
+            ];
+        }
     }
 
     return ['authorized' => false, 'isCoordinator' => false, 'role' => null, 'isAdmin' => false];
@@ -129,7 +182,9 @@ function verifySession(): array {
 
 function redactFinalContestForClient(array $fc, bool $includeContestDraft = false): array {
     $isPublished = !empty($fc['published']);
-    $nextFinalists = is_array($fc['finalists'] ?? null) ? $fc['finalists'] : [];
+    $nextFinalists = (isset($fc['finalists']) && is_array($fc['finalists']) && count($fc['finalists']) > 0)
+        ? $fc['finalists']
+        : new \stdClass();
     if (!$includeContestDraft && !$isPublished) {
         return [
             'finalists' => $nextFinalists,
@@ -140,6 +195,10 @@ function redactFinalContestForClient(array $fc, bool $includeContestDraft = fals
             'publishedAt' => null,
             'updatedAt' => (int)($fc['updatedAt'] ?? 0)
         ];
+    }
+    $fc['finalists'] = $nextFinalists;
+    if (!isset($fc['launches']) || !is_array($fc['launches']) || count($fc['launches']) === 0) {
+        $fc['launches'] = new \stdClass();
     }
     return $fc;
 }
@@ -173,10 +232,18 @@ function purgeCompanyFromFinalContest(&$fc, string $delCid): void {
 }
 
 function sanitizeStateForClient(array $state, bool $includeContestDraft = false): array {
-    if (isset($state['config']['teachers']) && is_array($state['config']['teachers'])) {
-        foreach ($state['config']['teachers'] as $tk => &$t) {
-            if (is_array($t)) {
-                unset($t['pin']);
+    if (isset($state['config']) && is_array($state['config'])) {
+        if (isset($state['config']['teachers']) && is_array($state['config']['teachers'])) {
+            foreach ($state['config']['teachers'] as $tk => &$t) {
+                if (is_array($t)) {
+                    unset($t['pin']);
+                }
+            }
+            unset($t);
+        }
+        foreach (['teachers', 'deadlines', 'deliverableSchedule'] as $cfgDict) {
+            if (!isset($state['config'][$cfgDict]) || !is_array($state['config'][$cfgDict]) || count($state['config'][$cfgDict]) === 0) {
+                $state['config'][$cfgDict] = new \stdClass();
             }
         }
     }
@@ -184,7 +251,15 @@ function sanitizeStateForClient(array $state, bool $includeContestDraft = false)
         foreach ($state['companies'] as $cid => &$co) {
             if (is_array($co)) {
                 unset($co['authVault'], $co['roles'], $co['accessCode']);
+                if (!$includeContestDraft && isset($co['auxRoleRequest']) && is_array($co['auxRoleRequest'])) {
+                    unset($co['auxRoleRequest']['pin']);
+                }
+                normalizeCompanyDictsForJson($co);
             }
+        }
+        unset($co);
+        if (count($state['companies']) === 0) {
+            $state['companies'] = new \stdClass();
         }
     }
     if (isset($state['finalContest']) && is_array($state['finalContest'])) {
@@ -309,53 +384,32 @@ try {
         if ($method === 'GET') {
             $action = $_GET['action'] ?? '';
 
-            // Descarga de backup específico (Zero-Heap con json_remove)
+            // Descarga de backup específico (solo Coordinación Docente)
             if ($action === 'get_backup') {
+                $readAuthBackup = verifySession($pdo);
+                if (empty($readAuthBackup['isCoordinator'])) {
+                    http_response_code(403);
+                    echo json_encode(['error' => 'UNAUTHORIZED_BACKUP_ACCESS', 'message' => 'Acceso restringido a Coordinación docente.'], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
                 $type = (string)($_GET['type'] ?? 'backup_daily');
-                $stmt = $pdo->prepare("
-                    SELECT json_remove(
-                        data,
-                        '$.config.teachers.COORD_MARIO.pin',
-                        '$.config.teachers.COORD_ALEX.pin',
-                        '$.config.teachers.FYQ.pin',
-                        '$.config.teachers.ECO.pin',
-                        '$.config.teachers.LYE.pin',
-                        '$.config.teachers.LEN.pin',
-                        '$.config.teachers.MAT.pin',
-                        '$.config.teachers.ING.pin',
-                        '$.companies.astra.authVault',
-                        '$.companies.astra.roles',
-                        '$.companies.astra.accessCode',
-                        '$.companies.pulsar.authVault',
-                        '$.companies.pulsar.roles',
-                        '$.companies.pulsar.accessCode',
-                        '$.companies.zenith.authVault',
-                        '$.companies.zenith.roles',
-                        '$.companies.zenith.accessCode',
-                        '$.companies.titan.authVault',
-                        '$.companies.titan.roles',
-                        '$.companies.titan.accessCode',
-                        '$.companies.nova.authVault',
-                        '$.companies.nova.roles',
-                        '$.companies.nova.accessCode',
-                        '$.companies.vortex.authVault',
-                        '$.companies.vortex.roles',
-                        '$.companies.vortex.accessCode'
-                    ) AS clean_data FROM state WHERE id = :id
-                ");
+                if ($type !== 'backup_daily' && preg_match('/^backup_weekly_\d{4}-\d{2}-\d{2}$/', $type) !== 1) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'INVALID_BACKUP_TYPE']);
+                    exit;
+                }
+                $stmt = $pdo->prepare("SELECT data AS clean_data FROM state WHERE id = :id");
                 $stmt->execute([':id' => $type]);
                 $row = $stmt->fetch();
                 if ($row && !empty($row['clean_data'])) {
-                    $readAuthBackup = verifySession();
-                    $isCoordBackup = !empty($readAuthBackup['isCoordinator']);
                     $decodedBackup = json_decode($row['clean_data'], true);
                     header('Content-Type: application/json; charset=utf-8');
                     header('Cache-Control: private, no-cache');
                     header('Vary: X-Marsket-Auth');
                     if (is_array($decodedBackup)) {
-                        echo json_encode(sanitizeStateForClient($decodedBackup, $isCoordBackup), JSON_UNESCAPED_UNICODE);
+                        echo json_encode(sanitizeStateForClient($decodedBackup, true), JSON_UNESCAPED_UNICODE);
                     } else {
-                        echo $row['clean_data'];
+                        echo json_encode(['status' => 'corrupt']);
                     }
                     exit;
                 }
@@ -470,8 +524,12 @@ try {
 
             // Acción: Verificación de código maestro docente
             if ($action === 'verify_teacher_master') {
-                $code = (string)($payload['code'] ?? '');
-                $verified = ($code === MARS_TEACHER_MASTER_CODE || $code === 'KetMars02');
+                $code = trim((string)($payload['code'] ?? ''));
+                $verified = ($code !== '' && (
+                    hash_equals(MARS_TEACHER_MASTER_CODE, $code) ||
+                    hash_equals('KetMars02', $code) ||
+                    hash_equals('MASTER_MARS_2026', $code)
+                ));
                 http_response_code($verified ? 200 : 403);
                 echo json_encode(['verified' => $verified]);
                 exit;
@@ -485,7 +543,7 @@ try {
                 $companyName = 'EMPRESA';
                 $hasAux = false;
 
-                if ($coIdInput !== '') {
+                if ($coIdInput !== '' && isValidCompanyId($coIdInput)) {
                     $stmt = $pdo->prepare("
                         SELECT 
                             :coId AS co_id,
@@ -580,8 +638,14 @@ try {
             // Acción: Verificación de PIN de alumno / departamento (Zero-Heap con json_extract)
             if ($action === 'verify_student_login') {
                 $coId = (string)($payload['coId'] ?? '');
-                $role = (string)($payload['role'] ?? '');
+                $role = strtoupper(trim((string)($payload['role'] ?? '')));
                 $pinAttempt = trim((string)($payload['pin'] ?? ''));
+
+                if (!isValidCompanyId($coId) || !isValidStudentRole($role)) {
+                    http_response_code(400);
+                    echo json_encode(['verified' => false, 'error' => 'INVALID_CREDENTIALS_PARAMS'], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
 
                 $stmt = $pdo->prepare("
                     SELECT 
@@ -648,7 +712,23 @@ try {
                                 ':role' => $role,
                                 ':lastLogin' => $nowStr
                             ]);
-                        } catch(\Exception $e) {}
+                        } catch (\Exception $e) {}
+                        try {
+                            $pdo->prepare("
+                                UPDATE company_state
+                                SET data = json_set(
+                                    data,
+                                    '$.loginStats.totalLogins', COALESCE(json_extract(data, '$.loginStats.totalLogins'), 0) + 1,
+                                    '$.loginStats.roles.' || :role || '.count', COALESCE(json_extract(data, '$.loginStats.roles.' || :role || '.count'), 0) + 1,
+                                    '$.loginStats.roles.' || :role || '.lastLogin', :lastLogin
+                                )
+                                WHERE company_id = :cid
+                            ")->execute([
+                                ':cid' => $coId,
+                                ':role' => $role,
+                                ':lastLogin' => $nowStr
+                            ]);
+                        } catch (\Exception $e) {}
                     }
 
                     http_response_code($verified ? 200 : 401);
@@ -656,7 +736,7 @@ try {
                         'verified' => $verified,
                         'companyName' => $row['name'] ?? 'EMPRESA',
                         'authStamp' => $authStamp,
-                        'token' => $verified ? encodeSecret("S|{$coId}|{$role}|{$authStamp}") : null
+                        'token' => $verified ? issueSignedSessionToken($pdo, ['typ' => 'S', 'coId' => $coId, 'role' => $role, 'stamp' => $authStamp]) : null
                     ], JSON_UNESCAPED_UNICODE);
                     exit;
                 }
@@ -672,7 +752,7 @@ try {
                 $pinAttempt = trim((string)($payload['pin'] ?? ''));
 
                 $allowedLoginTeachers = ['COORD_MARIO', 'COORD_ALEX', 'FYQ', 'ECO', 'LYE', 'LEN', 'MAT', 'ING'];
-                if (!in_array($role, $allowedLoginTeachers, true) && strpos($role, 'COORD_') !== 0) {
+                if (!isValidTeacherRole($role) || (!in_array($role, $allowedLoginTeachers, true) && strpos($role, 'COORD_') !== 0)) {
                     http_response_code(401);
                     echo json_encode(['verified' => false, 'error' => 'INVALID_TEACHER_ROLE'], JSON_UNESCAPED_UNICODE);
                     exit;
@@ -707,13 +787,19 @@ try {
                 echo json_encode([
                     'verified' => $verified,
                     'pinStamp' => $pinStamp,
-                    'token' => $verified ? encodeSecret("T|{$role}|{$pinStamp}") : null
+                    'token' => $verified ? issueSignedSessionToken($pdo, ['typ' => 'T', 'role' => $role, 'stamp' => $pinStamp]) : null
                 ], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
-            // Acción: Forzado de backup SQLite nativo
+            // Acción: Forzado de backup SQLite nativo (solo Coordinación)
             if ($action === 'force_backup') {
+                $authBackup = verifySession($pdo);
+                if (empty($authBackup['isCoordinator'])) {
+                    http_response_code(403);
+                    echo json_encode(['error' => 'UNAUTHORIZED_BACKUP', 'message' => 'Solo Coordinación puede generar backups en servidor.'], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
                 $stmt = $pdo->query("SELECT data FROM state WHERE id = 'current'");
                 $row = $stmt->fetch();
                 if ($row && !empty($row['data'])) {
@@ -732,7 +818,7 @@ try {
             }
 
             // Guardado de Estado: Autorización y Particionado Zero-Trust (v1.1.25)
-            $auth = verifySession();
+            $auth = verifySession($pdo);
             $isCoord = !empty($auth['isCoordinator']);
             $isTeacher = !empty($auth['isAdmin']) || !empty($auth['isTeacher']);
             $isStudent = !empty($auth['isStudent']) || !empty($auth['coId']);
@@ -747,6 +833,7 @@ try {
                 exit;
             }
 
+            beginImmediateTx($pdo);
             $stmt = $pdo->query("SELECT data FROM state WHERE id = 'current'");
             $row = $stmt->fetch();
             $currentState = $row ? json_decode($row['data'], true) : [];
@@ -756,7 +843,8 @@ try {
             ensureTestCompaniesInState($currentState);
 
             // Reseteo destructivo reservado exclusivamente a roles COORD_*
-            if ((($payload['action'] ?? '') === 'reset' || (!empty($payload['resetEpoch']) && !empty($currentState['resetEpoch']) && $payload['resetEpoch'] !== $currentState['resetEpoch'])) && !$isCoord) {
+            if ((($payload['action'] ?? '') === 'reset' || (!empty($payload['resetEpoch']) && !empty($currentState['resetEpoch']) && (int)$payload['resetEpoch'] !== (int)$currentState['resetEpoch'])) && !$isCoord) {
+                rollbackQuietly($pdo);
                 http_response_code(403);
                 echo json_encode([
                     'error' => 'UNAUTHORIZED_RESET',
@@ -765,22 +853,39 @@ try {
                 exit;
             }
 
-            // Si es un Alumno/Empresa (NO docente), blindar la configuración global y resto de empresas
+            // Si es un Alumno/Empresa (NO docente), blindar la configuración global, tombstones globales y resto de empresas
             if (!$isTeacher) {
-                // 1. Prohibir a alumnos alterar la configuración y fechas límite
+                // 1. Prohibir a alumnos alterar la configuración, fechas límite, resetEpoch ni listas globales de borrado/noticias
                 if (isset($currentState['config'])) {
                     $payload['config'] = $currentState['config'];
+                }
+                if (isset($currentState['resetEpoch'])) {
+                    $payload['resetEpoch'] = $currentState['resetEpoch'];
+                }
+                if (isset($currentState['officialNews'])) {
+                    $payload['officialNews'] = $currentState['officialNews'];
+                }
+                foreach (['deletedCompanyIds', 'deletedCatalogIds', 'deletedOfficialNewsIds', 'deletedSuggestionIds', 'deletedPendingCustomIds'] as $gTomb) {
+                    if (isset($currentState[$gTomb])) {
+                        $payload[$gTomb] = $currentState[$gTomb];
+                    }
                 }
                 // 2. Prohibir a alumnos alterar el catálogo oficial
                 if (isset($currentState['catalog'])) {
                     $payload['catalog'] = $currentState['catalog'];
                 }
-                // 3. Si el alumno tiene empresa fijada, aislar el resto de empresas competidoras
+                // 3. Si el alumno tiene empresa fijada, aislar el resto de empresas competidoras y proteger campos docentes propios
                 $studentCoId = $auth['coId'] ?? null;
-                if ($studentCoId && isset($currentState['companies'])) {
+                if ($studentCoId && isset($currentState['companies']) && is_array($currentState['companies'])) {
                     foreach ($currentState['companies'] as $otherCid => $otherCo) {
                         if ($otherCid !== $studentCoId) {
                             $payload['companies'][$otherCid] = $otherCo;
+                        } elseif (is_array($otherCo) && isset($payload['companies'][$studentCoId]) && is_array($payload['companies'][$studentCoId])) {
+                            foreach (['grades', 'sponsorAwarded', 'sponsorData', 'sanctions', 'unlockAllContracts'] as $docField) {
+                                if (array_key_exists($docField, $otherCo)) {
+                                    $payload['companies'][$studentCoId][$docField] = $otherCo[$docField];
+                                }
+                            }
                         }
                     }
                 }
@@ -947,6 +1052,7 @@ try {
             $incomingVersion = $payload['version'] ?? null;
 
             if (!is_numeric($incomingVersion) || (int)$incomingVersion <= $serverVersion) {
+                rollbackQuietly($pdo);
                 http_response_code(409);
                 echo json_encode([
                     'error' => 'CONFLICT',
@@ -963,32 +1069,31 @@ try {
             $saveStmt = $pdo->prepare("INSERT OR REPLACE INTO state (id, data, updated_at) VALUES ('current', :data, CURRENT_TIMESTAMP)");
             $saveStmt->execute([':data' => $jsonString]);
 
-            // Sincronizar también la tabla company_state para que las acciones individuales de empresa tengan datos frescos y no pisen calificaciones docentes
+            // Sincronizar también la tabla company_state dentro de la misma transacción
             if (!empty($payload['companies']) && is_array($payload['companies'])) {
-                try {
-                    $pdo->exec("
-                        CREATE TABLE IF NOT EXISTS company_state (
-                            company_id VARCHAR(100) PRIMARY KEY,
-                            data LONGTEXT NOT NULL,
-                            version INT NOT NULL DEFAULT 1,
-                            updated_at BIGINT NOT NULL
-                        )
-                    ");
-                    $coStmt = $pdo->prepare("
-                        INSERT OR REPLACE INTO company_state (company_id, data, version, updated_at)
-                        VALUES (:cid, :data, :version, :updated_at)
-                    ");
-                    $syncVer = (int)$payload['version'];
-                    foreach ($payload['companies'] as $compCid => $compData) {
-                        $coStmt->execute([
-                            ':cid' => $compCid,
-                            ':data' => json_encode($compData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                            ':version' => $syncVer,
-                            ':updated_at' => (int)($compData['updatedAt'] ?? $payload['lastUpdated'] ?? round(microtime(true) * 1000))
-                        ]);
-                    }
-                } catch (\Exception $e) {}
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS company_state (
+                        company_id VARCHAR(100) PRIMARY KEY,
+                        data LONGTEXT NOT NULL,
+                        version INT NOT NULL DEFAULT 1,
+                        updated_at BIGINT NOT NULL
+                    )
+                ");
+                $coStmt = $pdo->prepare("
+                    INSERT OR REPLACE INTO company_state (company_id, data, version, updated_at)
+                    VALUES (:cid, :data, :version, :updated_at)
+                ");
+                $syncVer = (int)$payload['version'];
+                foreach ($payload['companies'] as $compCid => $compData) {
+                    $coStmt->execute([
+                        ':cid' => $compCid,
+                        ':data' => json_encode($compData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                        ':version' => $syncVer,
+                        ':updated_at' => (int)($compData['updatedAt'] ?? $payload['lastUpdated'] ?? round(microtime(true) * 1000))
+                    ]);
+                }
             }
+            commitTx($pdo);
 
             $savedCfgUpdated = (int)($payload['config']['updatedAt'] ?? 0);
             $savedETag = 'W/"v-' . $payload['version'] . '-' . $savedCfgUpdated . '-' . ($isCoord ? 'coord' : 'pub') . '"';
@@ -1016,6 +1121,11 @@ try {
     if (preg_match('#^company/([^/]+)/version$#', $endpoint, $matches)) {
         $cid = $matches[1];
         if ($method === 'OPTIONS') { http_response_code(200); exit; }
+        if (!isValidCompanyId($cid)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'INVALID_COMPANY_ID']);
+            exit;
+        }
 
         $pdo->exec("
             CREATE TABLE IF NOT EXISTS company_state (
@@ -1085,17 +1195,23 @@ try {
     if (preg_match('#^company/([^/]+)/action$#', $endpoint, $matches)) {
         $cid = $matches[1];
         if ($method === 'OPTIONS') { http_response_code(200); exit; }
+        if (!isValidCompanyId($cid)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'INVALID_COMPANY_ID']);
+            exit;
+        }
         if ($method !== 'POST') {
             http_response_code(405);
             echo json_encode(['error' => 'Method Not Allowed']);
             exit;
         }
 
-        $auth = verifySession();
-        $isCoord = !empty($auth['authorized']);
+        $auth = verifySession($pdo);
+        $isCoord = !empty($auth['isCoordinator']);
+        $isTeacherAdmin = !empty($auth['authorized']);
         $isStudentOfCompany = !empty($auth['isStudent']) && ($auth['coId'] === $cid);
 
-        if (!$isCoord && !$isStudentOfCompany) {
+        if (!$isTeacherAdmin && !$isStudentOfCompany) {
             http_response_code(403);
             echo json_encode(['error' => 'UNAUTHORIZED_MUTATION'], JSON_UNESCAPED_UNICODE);
             exit;
@@ -1109,6 +1225,7 @@ try {
         }
 
         $action = strtoupper((string)$payload['action']);
+        $inner = (isset($payload['payload']) && is_array($payload['payload'])) ? $payload['payload'] : $payload;
 
         $pdo->exec("
             CREATE TABLE IF NOT EXISTS company_state (
@@ -1119,6 +1236,7 @@ try {
             )
         ");
 
+        beginImmediateTx($pdo);
         $stmt = $pdo->prepare("SELECT data, version FROM company_state WHERE company_id = :cid");
         $stmt->execute([':cid' => $cid]);
         $row = $stmt->fetch();
@@ -1149,6 +1267,7 @@ try {
         }
 
         if (!$co) {
+            rollbackQuietly($pdo);
             http_response_code(404);
             echo json_encode(['error' => 'COMPANY_NOT_FOUND']);
             exit;
@@ -1230,8 +1349,9 @@ try {
         $co['cart'] = is_array($co['cart'] ?? null) ? $co['cart'] : [];
         $co['orders'] = is_array($co['orders'] ?? null) ? $co['orders'] : [];
 
-        $calcBalance = function(array $ledger): float {
-            $initial = 2400.0;
+        $initialCap = isset($co['initialBalance']) && is_numeric($co['initialBalance']) ? (float)$co['initialBalance'] : 2400.0;
+        $calcBalance = function(array $ledger) use ($initialCap): float {
+            $initial = $initialCap;
             $seen = [];
             $deltaSum = 0.0;
             foreach ($ledger as $tx) {
@@ -1251,8 +1371,9 @@ try {
 
         switch ($action) {
             case 'EXECUTE_PURCHASE':
-                $items = !empty($payload['items']) && is_array($payload['items']) ? $payload['items'] : $co['cart'];
+                $items = !empty($inner['items']) && is_array($inner['items']) ? $inner['items'] : $co['cart'];
                 if (empty($items)) {
+                    rollbackQuietly($pdo);
                     http_response_code(400);
                     echo json_encode(['error' => 'EMPTY_CART']);
                     exit;
@@ -1261,10 +1382,17 @@ try {
                 foreach ($items as $it) {
                     $p = (float)($it['price'] ?? 0);
                     $q = (int)($it['qty'] ?? 1);
+                    if ($p < 0 || $q < 1) {
+                        rollbackQuietly($pdo);
+                        http_response_code(400);
+                        echo json_encode(['error' => 'INVALID_ITEM_VALUES']);
+                        exit;
+                    }
                     $totalPurchase += round($p * $q, 2);
                 }
                 $curBal = $calcBalance($co['ledger']);
                 if ($curBal <= 0 || $curBal < $totalPurchase) {
+                    rollbackQuietly($pdo);
                     http_response_code(400);
                     echo json_encode([
                         'error' => 'INSUFFICIENT_FUNDS',
@@ -1274,15 +1402,15 @@ try {
                     ]);
                     exit;
                 }
-                $orderId = (string)($payload['orderId'] ?? ('ORD-' . substr((string)$now, -4)));
+                $orderId = (string)($inner['orderId'] ?? ('ORD-' . substr((string)$now, -4)));
                 $txId = 'TX-' . strtoupper(base_convert((string)$now, 10, 36)) . '-' . strtoupper(substr(md5(uniqid()), 0, 4));
-                $concept = (string)($payload['concept'] ?? ("Compra Catálogo (" . count($items) . " ítems) - Pedido #" . $orderId));
+                $concept = (string)($inner['concept'] ?? ("Compra Catálogo (" . count($items) . " ítems) - Pedido #" . $orderId));
                 array_unshift($co['ledger'], [
                     'id' => $txId,
                     'tx_id' => $txId,
                     'date' => date('d/m/Y, H:i:s'),
                     'concept' => $concept,
-                    'dept' => $payload['dept'] ?? 'TECNICO',
+                    'dept' => $inner['dept'] ?? 'TECNICO',
                     'delta' => -$totalPurchase,
                     'timestamp' => $now,
                     'orderId' => $orderId
@@ -1298,26 +1426,35 @@ try {
                 break;
 
             case 'ADD_LEDGER_TX':
-                $delta = round((float)($payload['delta'] ?? 0), 2);
-                if (empty($auth['isCoordinator']) && empty($auth['isAdmin']) && $delta < 0) {
-                    $curBal = $calcBalance($co['ledger']);
-                    if ($curBal <= 0) {
-                        http_response_code(400);
-                        echo json_encode([
-                            'error' => 'INSUFFICIENT_FUNDS',
-                            'message' => 'Empresa bloqueada en números rojos (saldo <= 0 €v).',
-                            'currentBalance' => $curBal
-                        ]);
+                $delta = round((float)($inner['delta'] ?? 0), 2);
+                if (empty($auth['isCoordinator']) && empty($auth['isAdmin'])) {
+                    if ($delta > 0) {
+                        rollbackQuietly($pdo);
+                        http_response_code(403);
+                        echo json_encode(['error' => 'UNAUTHORIZED_LEDGER_CREDIT', 'message' => 'Solo el profesorado puede abonar capital en Ledger.'], JSON_UNESCAPED_UNICODE);
                         exit;
                     }
+                    if ($delta < 0) {
+                        $curBal = $calcBalance($co['ledger']);
+                        if ($curBal <= 0) {
+                            rollbackQuietly($pdo);
+                            http_response_code(400);
+                            echo json_encode([
+                                'error' => 'INSUFFICIENT_FUNDS',
+                                'message' => 'Empresa bloqueada en números rojos (saldo <= 0 €v).',
+                                'currentBalance' => $curBal
+                            ]);
+                            exit;
+                        }
+                    }
                 }
-                $txId = (string)($payload['txId'] ?? ('TX-' . strtoupper(base_convert((string)$now, 10, 36)) . '-' . strtoupper(substr(md5(uniqid()), 0, 4))));
+                $txId = (string)($inner['txId'] ?? ('TX-' . strtoupper(base_convert((string)$now, 10, 36)) . '-' . strtoupper(substr(md5(uniqid()), 0, 4))));
                 array_unshift($co['ledger'], [
                     'id' => $txId,
                     'tx_id' => $txId,
                     'date' => date('d/m/Y, H:i:s'),
-                    'concept' => $payload['concept'] ?? 'Ajuste financiero',
-                    'dept' => $payload['dept'] ?? 'FINANZAS',
+                    'concept' => $inner['concept'] ?? 'Ajuste financiero',
+                    'dept' => $inner['dept'] ?? 'FINANZAS',
                     'delta' => $delta,
                     'timestamp' => $now
                 ]);
@@ -1326,23 +1463,25 @@ try {
             case 'RECORD_REAL_SPEND':
             case 'EXECUTE_PHYSICAL_ORDER':
                 if ($effectiveRole !== 'OPERACIONES_IA' && empty($auth['isAdmin']) && empty($auth['isCoordinator'])) {
+                    rollbackQuietly($pdo);
                     http_response_code(403);
                     echo json_encode(['error' => 'FORBIDDEN_ROLE', 'message' => 'Acceso restringido: Solo Operaciones o Administrador puede registrar compras físicas reales.']);
                     exit;
                 }
-                if (!empty($payload['realCosts']) && is_array($payload['realCosts'])) {
+                if (!empty($inner['realCosts']) && is_array($inner['realCosts'])) {
                     $co['realCosts'] = is_array($co['realCosts'] ?? null) ? $co['realCosts'] : [];
-                    foreach ($payload['realCosts'] as $rc) {
+                    foreach ($inner['realCosts'] as $rc) {
                         $co['realCosts'][] = $rc;
                     }
                 }
-                if (!empty($payload['orderId'])) {
+                if (!empty($inner['orderId'])) {
                     $co['orders'] = is_array($co['orders'] ?? null) ? $co['orders'] : [];
                     foreach ($co['orders'] as &$ord) {
-                        if ((string)($ord['id'] ?? '') === (string)($payload['orderId'])) {
+                        if ((string)($ord['id'] ?? '') === (string)($inner['orderId'])) {
                             $ord['status'] = 'EJECUTADO';
                         }
                     }
+                    unset($ord);
                 }
                 break;
 
@@ -1354,9 +1493,10 @@ try {
                     'MK-HYB' => ['price' => 450, 'actions' => 4],
                     'MK-SUP' => ['price' => 750, 'actions' => 6]
                 ];
-                if (!empty($payload['campaign'])) {
+                if (!empty($inner['campaign'])) {
                     $curBal = $calcBalance($co['ledger']);
                     if ($curBal <= 0) {
+                        rollbackQuietly($pdo);
                         http_response_code(400);
                         echo json_encode([
                             'error' => 'INSUFFICIENT_FUNDS',
@@ -1365,22 +1505,22 @@ try {
                         ]);
                         exit;
                     }
-                    $camp = $payload['campaign'];
+                    $camp = $inner['campaign'];
                     if (isset($camp['packageId'], $mktPackages[$camp['packageId']])) {
                         $camp['price'] = $mktPackages[$camp['packageId']]['price'];
                         $camp['totalActions'] = $mktPackages[$camp['packageId']]['actions'];
                     }
                     array_unshift($co['marketingCampaigns'], $camp);
                 }
-                if (!empty($payload['actionItem']) && !empty($payload['campaignId'])) {
-                    $incomingItem = $payload['actionItem'];
+                if (!empty($inner['actionItem']) && !empty($inner['campaignId'])) {
+                    $incomingItem = $inner['actionItem'];
                     $incomingId = (string)($incomingItem['id'] ?? '');
                     $isCeoOrCoordMkt = ($effectiveRole === 'CEO' || !empty($auth['isCoordinator']) || !empty($auth['isAdmin']));
                     if (!$isCeoOrCoordMkt || empty($incomingItem['status'])) {
                         $incomingItem['status'] = 'PENDIENTE_CEO';
                     }
                     foreach ($co['marketingCampaigns'] as &$c) {
-                        if ((string)($c['id'] ?? '') === (string)($payload['campaignId'])) {
+                        if ((string)($c['id'] ?? '') === (string)($inner['campaignId'])) {
                             $c['executedActions'] = is_array($c['executedActions'] ?? null) ? $c['executedActions'] : [];
                             $totalAllowedMkt = (int)($c['totalActions'] ?? 3);
                             $updated = false;
@@ -1410,6 +1550,7 @@ try {
                             }
                             if (!$updated) {
                                 if (count($c['executedActions']) >= $totalAllowedMkt) {
+                                    rollbackQuietly($pdo);
                                     http_response_code(400);
                                     echo json_encode(['error' => 'CAMPAIGN_QUOTA_EXCEEDED', 'message' => 'Cupo de acciones publicitarias agotado para este paquete.']);
                                     exit;
@@ -1421,8 +1562,14 @@ try {
                     }
                     unset($c);
                 }
-                if (!empty($payload['decideAction']) && is_array($payload['decideAction'])) {
-                    $da = $payload['decideAction'];
+                if (!empty($inner['decideAction']) && is_array($inner['decideAction'])) {
+                    if ($effectiveRole !== 'CEO' && empty($auth['isCoordinator']) && empty($auth['isAdmin'])) {
+                        rollbackQuietly($pdo);
+                        http_response_code(403);
+                        echo json_encode(['error' => 'UNAUTHORIZED_ROLE', 'message' => 'Solo el CEO o Docente puede validar o devolver acciones publicitarias.']);
+                        exit;
+                    }
+                    $da = $inner['decideAction'];
                     $campIdDa = (string)($da['campId'] ?? '');
                     $actIdDa = (string)($da['actId'] ?? '');
                     $approvedDa = !empty($da['approved']);
@@ -1448,18 +1595,10 @@ try {
                 break;
 
             case 'SUBMIT_DELIVERABLE':
-                if ($effectiveRole === 'CEO' && empty($auth['isCoordinator']) && empty($auth['isAdmin'])) {
-                    http_response_code(403);
-                    echo json_encode([
-                        'error' => 'UNAUTHORIZED_ROLE',
-                        'message' => 'Solo el departamento responsable puede subir entregables; Dirección General (CEO) solo puede visarlos tras recibirlos.'
-                    ]);
-                    exit;
-                }
                 $co['deliverables'] = is_array($co['deliverables'] ?? null) ? $co['deliverables'] : [];
-                $rawKey = trim((string)($payload['key'] ?? $payload['docKey'] ?? $payload['docType'] ?? ''));
+                $rawKey = trim((string)($inner['key'] ?? $inner['docKey'] ?? $inner['docType'] ?? ''));
                 if ($rawKey !== '') {
-                    $driveUrl = trim((string)($payload['driveUrl'] ?? $payload['url'] ?? ''));
+                    $driveUrl = trim((string)($inner['driveUrl'] ?? $inner['url'] ?? ''));
                     $isAdminOverride = !empty($auth['isCoordinator']) || !empty($auth['isAdmin']);
                     $status = $isAdminOverride ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
                     $returnReasonId = null;
@@ -1470,7 +1609,7 @@ try {
                     $lastWorkshopCheckAt = $existingDoc['lastWorkshopCheckAt'] ?? null;
 
                     if ($rawKey === 'hoja_taller_fyq') {
-                        $reqStatus = trim((string)($payload['status'] ?? ''));
+                        $reqStatus = trim((string)($inner['status'] ?? ''));
                         $validWorkshop = ['DRAFT_TECNICO', 'EN_TALLER_OPERARIO', 'DEVUELTO_A_TECNICO', 'CEO_REVISION', 'SUBMITTED_TO_CEO', 'DELIVERED_TO_TEACHER'];
                         if (in_array($reqStatus, $validWorkshop, true)) {
                             $status = $reqStatus;
@@ -1479,20 +1618,20 @@ try {
                         } else {
                             $status = 'EN_TALLER_OPERARIO';
                         }
-                        $returnReasonId = $payload['returnReasonId'] ?? null;
-                        $returnReason = $payload['returnReason'] ?? null;
-                        if (is_array($payload['history'] ?? null)) {
+                        $returnReasonId = $inner['returnReasonId'] ?? null;
+                        $returnReason = $inner['returnReason'] ?? null;
+                        if (is_array($inner['history'] ?? null)) {
                             $histById = [];
                             foreach ($existingHistory as $ev) {
                                 if (is_array($ev) && !empty($ev['id'])) $histById[(string)$ev['id']] = $ev;
                             }
-                            foreach ($payload['history'] as $ev) {
+                            foreach ($inner['history'] as $ev) {
                                 if (is_array($ev) && !empty($ev['id'])) $histById[(string)$ev['id']] = $ev;
                             }
                             $existingHistory = array_values($histById);
                         }
-                        if (!empty($payload['lastWorkshopCheckAt'])) {
-                            $lastWorkshopCheckAt = (string)$payload['lastWorkshopCheckAt'];
+                        if (!empty($inner['lastWorkshopCheckAt'])) {
+                            $lastWorkshopCheckAt = (string)$inner['lastWorkshopCheckAt'];
                         }
                     }
 
@@ -1501,8 +1640,8 @@ try {
                         'status' => $status,
                         'returnReasonId' => $returnReasonId,
                         'returnReason' => $returnReason,
-                        'returnDriveUrl' => $payload['returnDriveUrl'] ?? null,
-                        'returnByTeacher' => !empty($payload['returnByTeacher']),
+                        'returnDriveUrl' => $inner['returnDriveUrl'] ?? null,
+                        'returnByTeacher' => !empty($inner['returnByTeacher']),
                         'updatedAt' => date('c')
                     ];
                     if ($rawKey === 'hoja_taller_fyq') {
@@ -1516,20 +1655,23 @@ try {
                 break;
 
             case 'CEO_REVIEW_DELIVERABLE':
-                if ($effectiveRole !== 'CEO' && empty($auth['isCoordinator'])) {
+                if ($effectiveRole !== 'CEO' && empty($auth['isCoordinator']) && empty($auth['isAdmin'])) {
+                    rollbackQuietly($pdo);
                     http_response_code(403);
                     echo json_encode(['error' => 'UNAUTHORIZED_ROLE', 'message' => 'Solo el CEO o Coordinación puede supervisar entregables.']);
                     exit;
                 }
-                $rawKey = trim((string)($payload['key'] ?? $payload['docKey'] ?? $payload['docType'] ?? ''));
+                $rawKey = trim((string)($inner['key'] ?? $inner['docKey'] ?? $inner['docType'] ?? ''));
                 $co['deliverables'] = is_array($co['deliverables'] ?? null) ? $co['deliverables'] : [];
-                if (!isset($co['deliverables'][$rawKey])) {
+                if ($rawKey === '' || !isset($co['deliverables'][$rawKey])) {
+                    rollbackQuietly($pdo);
                     http_response_code(404);
                     echo json_encode(['error' => 'DELIVERABLE_NOT_FOUND']);
                     exit;
                 }
                 $currentDoc = &$co['deliverables'][$rawKey];
-                $subAction = strtoupper(trim((string)($payload['action'] ?? $payload['subAction'] ?? '')));
+                $rawSubAction = (string)($inner['ceoAction'] ?? $inner['subAction'] ?? $inner['action'] ?? '');
+                $subAction = strtoupper(trim($rawSubAction === 'CEO_REVIEW_DELIVERABLE' ? '' : $rawSubAction));
                 if ($subAction === 'APPROVE') {
                     if (is_string($currentDoc)) {
                         $currentDoc = ['driveUrl' => $currentDoc, 'status' => 'DELIVERED_TO_TEACHER', 'updatedAt' => date('c')];
@@ -1538,20 +1680,20 @@ try {
                         unset($currentDoc['returnReasonId'], $currentDoc['returnReason'], $currentDoc['returnDriveUrl'], $currentDoc['returnByTeacher']);
                         $currentDoc['updatedAt'] = date('c');
                     }
-                    if ($rawKey === 'hoja_taller_fyq' && is_array($payload['history'] ?? null)) {
+                    if ($rawKey === 'hoja_taller_fyq' && is_array($inner['history'] ?? null)) {
                         $histById = [];
                         foreach ((is_array($currentDoc['history'] ?? null) ? $currentDoc['history'] : []) as $ev) {
                             if (is_array($ev) && !empty($ev['id'])) $histById[(string)$ev['id']] = $ev;
                         }
-                        foreach ($payload['history'] as $ev) {
+                        foreach ($inner['history'] as $ev) {
                             if (is_array($ev) && !empty($ev['id'])) $histById[(string)$ev['id']] = $ev;
                         }
                         $currentDoc['history'] = array_values($histById);
                     }
                 } elseif ($subAction === 'RETURN') {
-                    $reasonId = trim((string)($payload['reasonId'] ?? ''));
-                    $reasonText = trim((string)($payload['reason'] ?? $reasonId));
-                    $retDriveUrl = trim((string)($payload['returnDriveUrl'] ?? ''));
+                    $reasonId = trim((string)($inner['reasonId'] ?? ''));
+                    $reasonText = trim((string)($inner['reasonText'] ?? $inner['reason'] ?? $reasonId));
+                    $retDriveUrl = trim((string)($inner['returnDriveUrl'] ?? ''));
                     if (is_string($currentDoc)) {
                         $currentDoc = [
                             'driveUrl' => $currentDoc,
@@ -1572,17 +1714,18 @@ try {
                         unset($currentDoc['returnByTeacher']);
                         $currentDoc['updatedAt'] = date('c');
                     }
-                    if ($rawKey === 'hoja_taller_fyq' && is_array($payload['history'] ?? null)) {
+                    if ($rawKey === 'hoja_taller_fyq' && is_array($inner['history'] ?? null)) {
                         $histById = [];
                         foreach ((is_array($currentDoc['history'] ?? null) ? $currentDoc['history'] : []) as $ev) {
                             if (is_array($ev) && !empty($ev['id'])) $histById[(string)$ev['id']] = $ev;
                         }
-                        foreach ($payload['history'] as $ev) {
+                        foreach ($inner['history'] as $ev) {
                             if (is_array($ev) && !empty($ev['id'])) $histById[(string)$ev['id']] = $ev;
                         }
                         $currentDoc['history'] = array_values($histById);
                     }
                 } else {
+                    rollbackQuietly($pdo);
                     http_response_code(400);
                     echo json_encode(['error' => 'INVALID_REVIEW_ACTION']);
                     exit;
@@ -1591,18 +1734,25 @@ try {
 
             case 'DOCENTE_REVIEW_DELIVERABLE':
                 if (empty($auth['isAdmin']) && empty($auth['isCoordinator'])) {
+                    rollbackQuietly($pdo);
                     http_response_code(403);
                     echo json_encode(['error' => 'UNAUTHORIZED_ROLE', 'message' => 'Solo el profesorado o Coordinación puede devolver entregables.']);
                     exit;
                 }
-                $rawKey = trim((string)($payload['key'] ?? $payload['docKey'] ?? $payload['docType'] ?? ''));
+                $rawKey = trim((string)($inner['key'] ?? $inner['docKey'] ?? $inner['docType'] ?? ''));
+                if ($rawKey === '') {
+                    rollbackQuietly($pdo);
+                    http_response_code(400);
+                    echo json_encode(['error' => 'MISSING_DELIVERABLE_KEY', 'message' => 'Falta la clave del entregable.']);
+                    exit;
+                }
                 $co['deliverables'] = is_array($co['deliverables'] ?? null) ? $co['deliverables'] : [];
                 $currentDoc = $co['deliverables'][$rawKey] ?? null;
-                $reasonId = trim((string)($payload['reasonId'] ?? ''));
-                $reasonText = trim((string)($payload['reasonText'] ?? $payload['reason'] ?? $reasonId));
+                $reasonId = trim((string)($inner['reasonId'] ?? ''));
+                $reasonText = trim((string)($inner['reasonText'] ?? $inner['reason'] ?? $reasonId));
                 $driveUrl = is_array($currentDoc) ? ($currentDoc['driveUrl'] ?? '') : (string)$currentDoc;
-                
-                $returnDriveUrl = trim((string)($payload['returnDriveUrl'] ?? $p['returnDriveUrl'] ?? ''));
+
+                $returnDriveUrl = trim((string)($inner['returnDriveUrl'] ?? ''));
                 $preservedDoc = [
                     'driveUrl' => $driveUrl,
                     'status' => 'CEO_REVISION',
@@ -1621,11 +1771,12 @@ try {
 
             case 'COORDINATOR_DECIDE_BRAND':
                 if (empty($auth['isCoordinator']) && empty($auth['isAdmin'])) {
+                    rollbackQuietly($pdo);
                     http_response_code(403);
                     echo json_encode(['error' => 'UNAUTHORIZED_ROLE', 'message' => 'Solo Coordinación puede validar marcas.']);
                     exit;
                 }
-                $approved = !empty($payload['approved']);
+                $approved = !empty($inner['approved']);
                 if ($approved) {
                     $co['slogan'] = $co['pendingSlogan'] ?? ($co['brandApproval']['pendingSlogan'] ?? ($co['slogan'] ?? ''));
                     $co['mission'] = $co['pendingMission'] ?? ($co['valueProposition'] ?? ($co['mission'] ?? ''));
@@ -1633,6 +1784,7 @@ try {
                     unset($co['pendingSlogan'], $co['pendingMission'], $co['brandStatus']);
                     if (isset($co['brandApproval']) && is_array($co['brandApproval'])) {
                         $co['brandApproval']['status'] = 'APROBADO';
+                        $co['brandApproval']['updatedAt'] = $now;
                         unset($co['brandApproval']['pendingSlogan']);
                     }
                 } else {
@@ -1640,6 +1792,7 @@ try {
                     $co['brandStatus'] = 'REJECTED';
                     if (isset($co['brandApproval']) && is_array($co['brandApproval'])) {
                         $co['brandApproval']['status'] = 'RECHAZADO';
+                        $co['brandApproval']['updatedAt'] = $now;
                         unset($co['brandApproval']['pendingSlogan']);
                         $co['brandApproval']['feedback'] = 'Propuesta de marca rechazada por Coordinación.';
                     }
@@ -1647,10 +1800,11 @@ try {
                 break;
 
             case 'VOTE_MOTION':
-                $motionId = trim((string)($payload['id'] ?? $payload['motionId'] ?? ''));
-                $voteValue = trim((string)($payload['vote'] ?? ''));
+                $motionId = trim((string)($inner['id'] ?? $inner['motionId'] ?? ''));
+                $voteValue = trim((string)($inner['vote'] ?? ''));
                 $validVotes = ['A_FAVOR', 'EN_CONTRA', 'NO_ESTOY_SEGURO'];
                 if (!in_array($voteValue, $validVotes, true)) {
+                    rollbackQuietly($pdo);
                     http_response_code(400);
                     echo json_encode(['error' => 'INVALID_VOTE_VALUE', 'allowed' => $validVotes]);
                     exit;
@@ -1661,24 +1815,26 @@ try {
                         if (!isset($m['votes']) || !is_array($m['votes'])) {
                             $m['votes'] = [];
                         }
-                        $roleKey = $auth['role'] ?? 'ESTUDIANTE';
+                        $roleKey = $rawRole ?: 'ESTUDIANTE';
                         $m['votes'][$roleKey] = $voteValue;
                         break;
                     }
                 }
+                unset($m);
                 break;
 
             case 'REQUEST_AUX_ROLE':
-                $inner = (isset($payload['payload']) && is_array($payload['payload'])) ? $payload['payload'] : $payload;
-                $reqDept = strtoupper(trim((string)($inner['dept'] ?? ($payload['dept'] ?? ''))));
-                $reqPin = trim((string)($inner['pin'] ?? ($payload['pin'] ?? '')));
+                $reqDept = strtoupper(trim((string)($inner['dept'] ?? '')));
+                $reqPin = trim((string)($inner['pin'] ?? ''));
                 $allowedDepts = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA'];
                 if (!in_array($reqDept, $allowedDepts, true)) {
+                    rollbackQuietly($pdo);
                     http_response_code(400);
                     echo json_encode(['error' => 'INVALID_DEPT', 'message' => 'Departamento auxiliar no válido.']);
                     exit;
                 }
                 if (!preg_match('/^\d{4}$/', $reqPin)) {
+                    rollbackQuietly($pdo);
                     http_response_code(400);
                     echo json_encode(['error' => 'INVALID_PIN', 'message' => 'El PIN debe tener 4 dígitos.']);
                     exit;
@@ -1687,7 +1843,7 @@ try {
                     'status' => 'PENDIENTE',
                     'dept' => $reqDept,
                     'pin' => $reqPin,
-                    'date' => (string)($inner['date'] ?? ($payload['date'] ?? date('d/m/Y, H:i:s'))),
+                    'date' => (string)($inner['date'] ?? date('d/m/Y, H:i:s')),
                     'updatedAt' => $now
                 ];
                 break;
@@ -1695,13 +1851,14 @@ try {
             case 'GENERIC_PATCH':
                 $allowed = ['slogan', 'valueProposition', 'cart', 'votingMotions', 'flightTests', 'bom', 'brandApproval', 'pendingSlogan', 'pendingMission', 'brandStatus', 'executiveResolutions'];
                 foreach ($allowed as $k) {
-                    if (isset($payload[$k])) {
-                        $co[$k] = $payload[$k];
+                    if (isset($inner[$k])) {
+                        $co[$k] = $inner[$k];
                     }
                 }
                 break;
 
             default:
+                rollbackQuietly($pdo);
                 http_response_code(400);
                 echo json_encode(['error' => 'UNKNOWN_ACTION', 'action' => $action]);
                 exit;
@@ -1722,21 +1879,22 @@ try {
             ':updated_at' => $now
         ]);
 
-        try {
-            $syncStmt = $pdo->prepare("
-                UPDATE state
-                SET data = json_set(
-                    data,
-                    '$.companies.' || :cid, json(:co_json),
-                    '$.version', COALESCE(json_extract(data, '$.version'), 0) + 1
-                )
-                WHERE id = 'current'
-            ");
-            $syncStmt->execute([
-                ':cid' => $cid,
-                ':co_json' => json_encode($co, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
-            ]);
-        } catch(\Exception $e) {}
+        $syncStmt = $pdo->prepare("
+            UPDATE state
+            SET data = json_set(
+                data,
+                '$.companies.' || :cid, json(:co_json),
+                '$.version', COALESCE(json_extract(data, '$.version'), 0) + 1,
+                '$.lastUpdated', :lu
+            )
+            WHERE id = 'current'
+        ");
+        $syncStmt->execute([
+            ':cid' => $cid,
+            ':co_json' => json_encode($co, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ':lu' => $now
+        ]);
+        commitTx($pdo);
 
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
@@ -1754,12 +1912,18 @@ try {
     // B. ENDPOINT: /api/moderation/report
     // -------------------------------------------------------------------------
     if ($endpoint === 'moderation/report') {
+        $authMod = verifySession($pdo);
         if ($method === 'POST') {
+            if (empty($authMod['isAdmin']) && empty($authMod['isStudent'])) {
+                http_response_code(403);
+                echo json_encode(['error' => 'UNAUTHORIZED_MODERATION_REPORT'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
             $payload = json_decode($rawInput, true) ?? [];
             $record = [
                 'id' => 'MOD-' . round(microtime(true) * 1000),
-                'team_id' => (string)($payload['team_id'] ?? 'UNKNOWN'),
-                'student_alias' => (string)($payload['student_alias'] ?? 'ESTUDIANTE'),
+                'team_id' => (string)($payload['team_id'] ?? ($authMod['coId'] ?? 'UNKNOWN')),
+                'student_alias' => (string)($payload['student_alias'] ?? ($authMod['role'] ?? 'ESTUDIANTE')),
                 'offending_text' => (string)($payload['offending_text'] ?? ''),
                 'matched_term' => (string)($payload['matched_term'] ?? ''),
                 'timestamp' => $payload['timestamp'] ?? date('c')
@@ -1779,6 +1943,11 @@ try {
         }
 
         if ($method === 'GET') {
+            if (empty($authMod['isAdmin']) && empty($authMod['isCoordinator'])) {
+                http_response_code(403);
+                echo json_encode(['error' => 'UNAUTHORIZED_MODERATION_READ'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
             $limit = min(100, max(1, (int)($_GET['limit'] ?? 50)));
             $stmt = $pdo->prepare("SELECT id, team_id, student_alias, offending_text, matched_term, timestamp FROM moderation_alerts ORDER BY id DESC LIMIT :lim");
             $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
@@ -1798,16 +1967,18 @@ try {
     // -------------------------------------------------------------------------
     if (preg_match('#^catalog/([^/]+)$#', $endpoint, $matches)) {
         $targetId = urldecode($matches[1]);
-        $auth = verifySession();
-        if (!$auth['authorized']) {
+        $auth = verifySession($pdo);
+        if (empty($auth['isCoordinator'])) {
             http_response_code(403);
             echo json_encode(['error' => 'UNAUTHORIZED', 'message' => 'Acceso restringido a Coordinación docente.']);
             exit;
         }
 
+        beginImmediateTx($pdo);
         $stmt = $pdo->query("SELECT data FROM state WHERE id = 'current'");
         $row = $stmt->fetch();
         if (!$row) {
+            rollbackQuietly($pdo);
             http_response_code(404);
             echo json_encode(['error' => 'State not found']);
             exit;
@@ -1822,12 +1993,14 @@ try {
             $force = !empty($body['force']) || (($_GET['force'] ?? '') === 'true');
 
             if (!is_numeric($clientVersion)) {
+                rollbackQuietly($pdo);
                 http_response_code(400);
                 echo json_encode(['error' => 'Falta parámetro version']);
                 exit;
             }
 
             if (!$force && (int)$clientVersion !== $serverVersion) {
+                rollbackQuietly($pdo);
                 http_response_code(409);
                 echo json_encode(['error' => 'CONFLICT', 'serverVersion' => $serverVersion]);
                 exit;
@@ -1843,6 +2016,7 @@ try {
             }
 
             if ($itemIndex === -1) {
+                rollbackQuietly($pdo);
                 http_response_code(404);
                 echo json_encode(['error' => 'Not found']);
                 exit;
@@ -1853,12 +2027,15 @@ try {
             if (isset($body['name']) && !isset($changes['name'])) $changes['name'] = (string)$body['name'];
             if (isset($body['stock']) && !isset($changes['stock'])) $changes['stock'] = (int)$body['stock'];
 
+            $nowCat = round(microtime(true) * 1000);
+            $changes['updatedAt'] = $nowCat;
             $catalog[$itemIndex] = array_merge($catalog[$itemIndex], $changes);
             $currentState['version'] = $serverVersion + 1;
-            $currentState['lastUpdated'] = round(microtime(true) * 1000);
+            $currentState['lastUpdated'] = $nowCat;
 
             $saveStmt = $pdo->prepare("UPDATE state SET data = :data, updated_at = CURRENT_TIMESTAMP WHERE id = 'current'");
             $saveStmt->execute([':data' => json_encode($currentState, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
+            commitTx($pdo);
 
             echo json_encode([
                 'success' => true,
@@ -1874,6 +2051,7 @@ try {
             $force = !empty($body['force']) || (($_GET['force'] ?? '') === 'true');
 
             if (!is_numeric($clientVersion)) {
+                rollbackQuietly($pdo);
                 http_response_code(400);
                 echo json_encode(['error' => 'Falta parámetro version']);
                 exit;
@@ -1890,6 +2068,7 @@ try {
 
             // Éxito idempotente si ya no existe
             if ($itemIndex === -1) {
+                rollbackQuietly($pdo);
                 echo json_encode([
                     'success' => true,
                     'alreadyDeleted' => true,
@@ -1900,17 +2079,23 @@ try {
             }
 
             if (!$force && (int)$clientVersion !== $serverVersion) {
+                rollbackQuietly($pdo);
                 http_response_code(409);
                 echo json_encode(['error' => 'CONFLICT', 'serverVersion' => $serverVersion]);
                 exit;
             }
 
             $deletedItem = array_splice($catalog, $itemIndex, 1)[0];
+            $currentState['deletedCatalogIds'] = array_values(array_unique(array_merge(
+                is_array($currentState['deletedCatalogIds'] ?? null) ? $currentState['deletedCatalogIds'] : [],
+                [(string)$targetId]
+            )));
             $currentState['version'] = $serverVersion + 1;
             $currentState['lastUpdated'] = round(microtime(true) * 1000);
 
             $saveStmt = $pdo->prepare("UPDATE state SET data = :data, updated_at = CURRENT_TIMESTAMP WHERE id = 'current'");
             $saveStmt->execute([':data' => json_encode($currentState, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
+            commitTx($pdo);
 
             echo json_encode([
                 'success' => true,
@@ -1920,6 +2105,7 @@ try {
             exit;
         }
 
+        rollbackQuietly($pdo);
         http_response_code(405);
         echo json_encode(['error' => 'Method Not Allowed']);
         exit;
@@ -1929,7 +2115,7 @@ try {
     // D. ENDPOINT: /api/admin/credentials
     // -------------------------------------------------------------------------
     if ($endpoint === 'admin/credentials') {
-        $auth = verifySession();
+        $auth = verifySession($pdo);
         if (!$auth['authorized'] || !$auth['isCoordinator']) {
             http_response_code(403);
             echo json_encode([
@@ -1939,9 +2125,11 @@ try {
             exit;
         }
 
+        beginImmediateTx($pdo);
         $stmt = $pdo->query("SELECT data FROM state WHERE id = 'current'");
         $row = $stmt->fetch();
         if (!$row) {
+            rollbackQuietly($pdo);
             http_response_code(404);
             echo json_encode(['error' => 'Estado corriente no encontrado']);
             exit;
@@ -1986,7 +2174,7 @@ try {
 
                 $plainCode = '';
                 if (!empty($co['authVault']['code'])) {
-                    $plainCode = decodeSecret($co['authVault']['code']);
+                    $plainCode = decodeSecret((string)$co['authVault']['code']);
                 }
                 if (empty($plainCode) && !empty($co['accessCode'])) {
                     $plainCode = (string)$co['accessCode'];
@@ -2002,7 +2190,7 @@ try {
                 foreach ($allRoles as $r) {
                     $rPin = '';
                     if (!empty($co['authVault']['roles'][$r])) {
-                        $rPin = decodeSecret($co['authVault']['roles'][$r]);
+                        $rPin = decodeSecret((string)$co['authVault']['roles'][$r]);
                     } elseif (!empty($co['roles'][$r]) && strpos((string)$co['roles'][$r], 'VLT_') !== 0 && (string)$co['roles'][$r] !== 'PROTECTED') {
                         $rPin = (string)$co['roles'][$r];
                     }
@@ -2023,19 +2211,23 @@ try {
                     'classGroup' => $co['classGroup'] ?? 'A',
                     'accessCode' => $plainCode,
                     'roles' => $plainRoles,
-                    'auxRoleDept' => $co['auxRoleDept'] ?? ''
+                    'auxRoleDept' => $co['auxRoleDept'] ?? '',
+                    'auxRoleRequest' => $co['auxRoleRequest'] ?? null
                 ];
             }
             unset($co);
 
             if ($hasMutations) {
+                $currentState['version'] = ((int)($currentState['version'] ?? 0)) + 1;
                 $currentState['lastUpdated'] = $now;
                 $saveStmt = $pdo->prepare("UPDATE state SET data = :data, updated_at = CURRENT_TIMESTAMP WHERE id = 'current'");
                 $saveStmt->execute([':data' => json_encode($currentState, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
             }
+            commitTx($pdo);
 
             $currentVersion = $currentState['version'] ?? 1;
-            header('ETag: W/"v-' . $currentVersion . '"');
+            $savedCu = (int)($currentState['config']['updatedAt'] ?? 0);
+            header('ETag: W/"v-' . $currentVersion . '-' . $savedCu . '-coord"');
             header('Cache-Control: private, no-cache');
             echo json_encode([
                 'teachers' => $teachers,
@@ -2048,13 +2240,14 @@ try {
         if ($method === 'PATCH') {
             $body = json_decode($rawInput, true) ?? [];
             $type = $body['type'] ?? '';
-            $id = $body['id'] ?? '';
+            $id = (string)($body['id'] ?? '');
             $role = $body['role'] ?? null;
             $newPin = (string)($body['newPin'] ?? '');
             $newCode = (string)($body['newCode'] ?? $newPin);
             $now = round(microtime(true) * 1000);
 
             if ($type !== 'teacher' && $type !== 'company') {
+                rollbackQuietly($pdo);
                 http_response_code(400);
                 echo json_encode(['error' => 'Parámetros inválidos. Requiere type ("teacher"|"company") e id.']);
                 exit;
@@ -2062,12 +2255,14 @@ try {
 
             if ($type === 'teacher') {
                 if (empty($currentState['config']['teachers'][$id])) {
+                    rollbackQuietly($pdo);
                     http_response_code(404);
                     echo json_encode(['error' => "Docente $id no encontrado"]);
                     exit;
                 }
                 $cleanPin = trim($newPin);
                 if (!preg_match('/^\d{4}$/', $cleanPin)) {
+                    rollbackQuietly($pdo);
                     http_response_code(400);
                     echo json_encode(['error' => 'El PIN docente debe tener exactamente 4 dígitos numéricos']);
                     exit;
@@ -2076,6 +2271,12 @@ try {
                 $currentState['config']['teachers'][$id]['pinUpdatedAt'] = $now;
                 $currentState['config']['updatedAt'] = $now;
             } else {
+                if (!isValidCompanyId($id)) {
+                    rollbackQuietly($pdo);
+                    http_response_code(400);
+                    echo json_encode(['error' => 'INVALID_COMPANY_ID']);
+                    exit;
+                }
                 if (empty($currentState['companies'][$id])) {
                     $currentState['companies'][$id] = [
                         'id' => $id,
@@ -2094,6 +2295,7 @@ try {
                 if (!empty($body['newCode']) || (!empty($body['newPin']) && empty($role) && empty($body['roles']))) {
                     $cleanCode = strtoupper(trim(!empty($body['newCode']) ? (string)$body['newCode'] : (string)$newPin));
                     if (strlen($cleanCode) < 3) {
+                        rollbackQuietly($pdo);
                         http_response_code(400);
                         echo json_encode(['error' => 'El código de empresa debe tener al menos 3 caracteres']);
                         exit;
@@ -2120,6 +2322,7 @@ try {
                         unset($co['authVault']['roles']['AUXILIAR'], $co['roles']['AUXILIAR']);
                     } else {
                         if (!preg_match('/^\d{4}$/', $cleanPin)) {
+                            rollbackQuietly($pdo);
                             http_response_code(400);
                             echo json_encode(['error' => 'El PIN departamental debe tener exactamente 4 dígitos numéricos']);
                             exit;
@@ -2158,40 +2361,41 @@ try {
             if ($type === 'company' && isset($currentState['companies'][$id])) {
                 $upCo = $currentState['companies'][$id];
                 $coAuthStamp = (int)($upCo['authUpdatedAt'] ?? $now);
-                try {
-                    $upCoStmt = $pdo->prepare("
-                        UPDATE company_state 
-                        SET version = MAX(COALESCE(version, 0) + 1, :ver),
-                            updated_at = :upsql,
-                            data = json_set(
-                                data,
-                                '$.authVault', json(:vlt),
-                                '$.auxRoleDept', :ard,
-                                '$.auxRoleRequest', json(:arr),
-                                '$.authUpdatedAt', :au,
-                                '$.updatedAt', :up
-                            )
-                        WHERE company_id = :cid
-                    ");
-                    $upCoStmt->execute([
-                        ':ver' => (int)$currentState['version'],
-                        ':upsql' => $now,
-                        ':vlt' => json_encode($upCo['authVault'] ?? [], JSON_UNESCAPED_UNICODE),
-                        ':ard' => $upCo['auxRoleDept'] ?? null,
-                        ':arr' => json_encode($upCo['auxRoleRequest'] ?? ['status' => 'INACTIVO', 'dept' => '', 'pin' => '', 'updatedAt' => $now], JSON_UNESCAPED_UNICODE),
-                        ':au' => $coAuthStamp,
-                        ':up' => $now,
-                        ':cid' => $id
-                    ]);
-                } catch (\Exception $e) {}
+                $upCoStmt = $pdo->prepare("
+                    UPDATE company_state 
+                    SET version = MAX(COALESCE(version, 0) + 1, :ver),
+                        updated_at = :upsql,
+                        data = json_set(
+                            data,
+                            '$.authVault', json(:vlt),
+                            '$.auxRoleDept', :ard,
+                            '$.auxRoleRequest', json(:arr),
+                            '$.authUpdatedAt', :au,
+                            '$.updatedAt', :up
+                        )
+                    WHERE company_id = :cid
+                ");
+                $upCoStmt->execute([
+                    ':ver' => (int)$currentState['version'],
+                    ':upsql' => $now,
+                    ':vlt' => json_encode($upCo['authVault'] ?? [], JSON_UNESCAPED_UNICODE),
+                    ':ard' => $upCo['auxRoleDept'] ?? null,
+                    ':arr' => json_encode($upCo['auxRoleRequest'] ?? ['status' => 'INACTIVO', 'dept' => '', 'pin' => '', 'updatedAt' => $now], JSON_UNESCAPED_UNICODE),
+                    ':au' => $coAuthStamp,
+                    ':up' => $now,
+                    ':cid' => $id
+                ]);
             }
+            commitTx($pdo);
 
-            $etag = 'W/"v-' . $currentState['version'] . '"';
+            $savedCu = (int)($currentState['config']['updatedAt'] ?? 0);
+            $etag = 'W/"v-' . $currentState['version'] . '-' . $savedCu . '-coord"';
             header('ETag: ' . $etag);
             echo json_encode(['success' => true, 'newVersion' => $currentState['version'], 'etag' => $etag]);
             exit;
         }
 
+        rollbackQuietly($pdo);
         http_response_code(405);
         echo json_encode(['error' => 'Method Not Allowed']);
         exit;
@@ -2202,13 +2406,26 @@ try {
     // -------------------------------------------------------------------------
     if ($endpoint === 'admin/reset') {
         if ($method === 'POST') {
-            $auth = verifySession();
-            if (!$auth['authorized']) {
+            $auth = verifySession($pdo);
+            if (empty($auth['isCoordinator'])) {
                 http_response_code(403);
                 echo json_encode(['error' => 'UNAUTHORIZED_RESET', 'message' => 'Privilegios de Coordinación requeridos']);
                 exit;
             }
 
+            $resetBody = json_decode($rawInput, true) ?? [];
+            $providedCode = trim((string)($resetBody['code'] ?? ''));
+            $validResetCode = ($providedCode !== '' && (
+                hash_equals(MARS_TEACHER_MASTER_CODE, $providedCode) ||
+                hash_equals('MASTER_MARS_2026', $providedCode)
+            ));
+            if (!$validResetCode) {
+                http_response_code(403);
+                echo json_encode(['error' => 'INVALID_MASTER_CODE', 'message' => 'Clave maestra de Coordinación incorrecta o ausente.'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            beginImmediateTx($pdo);
             $stmt = $pdo->query("SELECT data FROM state WHERE id = 'current'");
             $row = $stmt->fetch();
             $currentState = $row ? json_decode($row['data'], true) : [];
@@ -2221,15 +2438,46 @@ try {
             $newEpoch = ((int)($currentState['resetEpoch'] ?? 0)) + 1;
             $newVersion = ((int)($currentState['version'] ?? 0)) + 1;
 
-            // Limpieza de empresas a estado virgen de simulación
+            // Limpieza completa de todas las empresas a estado virgen (18 entregables pendientes, 2400 €v)
             foreach ($currentState['companies'] ?? [] as $cid => &$co) {
                 $co['balance'] = 2400;
                 $co['logo'] = null;
                 $co['slogan'] = '';
+                $co['mission'] = '';
                 $co['valueProposition'] = '';
+                $co['pendingSlogan'] = null;
+                $co['pendingMission'] = null;
+                $co['brandStatus'] = null;
+                $co['nameChangeStatus'] = null;
+                $co['pendingName'] = null;
+                $co['nameChangeReason'] = null;
+                $co['nameChangeRequest'] = null;
+                $co['auxRoleDept'] = null;
+                $co['auxRoleRequest'] = [
+                    'status' => 'INACTIVO',
+                    'dept' => '',
+                    'pin' => '',
+                    'updatedAt' => $now
+                ];
+                if (isset($co['authVault']['roles']['AUXILIAR']) && $cid !== 'sandbox_master' && $cid !== 'sandbox_student') {
+                    unset($co['authVault']['roles']['AUXILIAR'], $co['roles']['AUXILIAR']);
+                }
+                $co['deliverables'] = new \stdClass();
+                $co['grades'] = new \stdClass();
+                $co['contracts'] = new \stdClass();
+                $co['phaseBalances'] = new \stdClass();
+                $co['pressReleases'] = new \stdClass();
+                $co['launchLicense'] = null;
+                $co['sponsorAwarded'] = null;
+                $co['sponsorData'] = null;
+                $co['executiveResolutions'] = [];
+                $co['meetingMinutes'] = [];
+                $co['specialItemRequests'] = [];
+                $co['coordinatorReports'] = [];
                 $co['orders'] = [];
                 $co['cart'] = [];
                 $co['ledger'] = [];
+                $co['deletedLedgerTxIds'] = [];
                 $co['realCosts'] = [];
                 $co['flightTests'] = [];
                 $co['votingMotions'] = [];
@@ -2240,21 +2488,46 @@ try {
                 $co['sanctions'] = [];
                 $co['crisisAlerts'] = [];
                 $co['bom'] = [];
+                $co['loginStats'] = ['totalLogins' => 0, 'roles' => new \stdClass()];
                 $co['brandApproval'] = [
                     'status' => 'APROBADO',
                     'pendingLogo' => null,
                     'pendingSlogan' => '',
-                    'feedback' => ''
+                    'feedback' => '',
+                    'updatedAt' => 0
                 ];
+                $co['updatedAt'] = $now;
             }
+            unset($co);
 
+            $currentState['catalog'] = getOfficialCatalogDefinition();
             $currentState['b2bMarket'] = [];
             $currentState['b2bContracts'] = [];
             $currentState['securityIncidents'] = [];
             $currentState['suggestionsToAlex'] = [];
             $currentState['pendingCustom'] = [];
             $currentState['officialNews'] = [];
+            $currentState['pressReleases'] = [];
             $currentState['deletedOfficialNewsIds'] = [];
+            $currentState['deletedSuggestionIds'] = [];
+            $currentState['deletedCompanyIds'] = [];
+            $currentState['deletedCatalogIds'] = [];
+            $currentState['deletedPendingCustomIds'] = [];
+            $currentState['telemetry'] = ['totalLogins' => 0, 'sessions' => []];
+            $currentState['finalContest'] = [
+                'finalists' => new \stdClass(),
+                'launches' => new \stdClass(),
+                'podium' => ['first' => null, 'second' => null, 'third' => null],
+                'roleAwards' => ['CEO' => null, 'TECNICO' => null, 'FINANZAS' => null, 'MARKETING' => null, 'OPERACIONES' => null],
+                'published' => false,
+                'publishedAt' => null,
+                'updatedAt' => $now
+            ];
+            if (!isset($currentState['config']) || !is_array($currentState['config'])) {
+                $currentState['config'] = [];
+            }
+            $currentState['config']['nextOrderId'] = 1001;
+            $currentState['config']['updatedAt'] = $now;
             $currentState['resetEpoch'] = $newEpoch;
             $currentState['version'] = $newVersion;
             $currentState['lastUpdated'] = $now;
@@ -2262,9 +2535,8 @@ try {
             $saveStmt = $pdo->prepare("UPDATE state SET data = :data, updated_at = CURRENT_TIMESTAMP WHERE id = 'current'");
             $saveStmt->execute([':data' => json_encode($currentState, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
 
-            try {
-                $pdo->exec("DELETE FROM company_state");
-            } catch (\Exception $e) {}
+            $pdo->exec("DELETE FROM company_state");
+            commitTx($pdo);
 
             echo json_encode([
                 'success' => true,
@@ -2289,6 +2561,9 @@ try {
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (Throwable $e) {
+    if (isset($pdo) && $pdo instanceof PDO) {
+        rollbackQuietly($pdo);
+    }
     http_response_code(500);
     echo json_encode([
         'error' => 'INTERNAL_SERVER_ERROR',

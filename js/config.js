@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.24) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.25) ---
 
-const APP_VERSION = "2.0.24";
+const APP_VERSION = "2.0.25";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1154,8 +1154,23 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.24
+// Changelog Oficial de Producción v2.0.25
 const APP_CHANGELOG = [
+    {
+      version: "2.0.25",
+      date: "2026-11-19",
+      title: "Saneamiento CDMON 1A · Transacciones SQLite, Contratos API, F5 Alumnado y Seguridad HMAC",
+      items: [
+        "Acciones Atómicas CDMON Unificadas: Reparada la extracción del envoltorio payload en /api/company/:cid/action (aprobación de marca sin rechazos fantasma, subsanación docente sin claves vacías, visado CEO y votaciones), además de envolver todas las escrituras SQLite en transacciones BEGIN IMMEDIATE.",
+        "Preservación de Notas y Entregables ({} vs []): Corregida la conversión de diccionarios vacíos a array en respuestas PHP y blindada la normalización a objeto en state.migrate() para no perder nunca la primera nota o entrega.",
+        "Sesiones Firmadas HMAC-SHA256 y Permisos Estrictos: Tokens firmados en servidor CDMON, validación centralizada del código maestro (sin literales en JS público), ocultación de auxRoleRequest.pin a no-coordinadores y protección estricta en backups, moderación y reset global.",
+        "Backup/Restore, Reset Completo y F5 en Alumnos: Añadida autenticación y control HTTP en Restaurar JSON y Backup, Reset de Fábrica completo sobre todos los campos modernos (18 entregables, notas, AESA y Fase V) y corrección del cierre de sesión con 'PROTECTED' al recargar con F5."
+      ],
+      highlights: [
+        { type: "CDMON SQLite", text: "Transacciones atómicas, acciones reparadas y preservación {} en notas." },
+        { type: "SEGURIDAD & F5", text: "Tokens HMAC en servidor, backups/reset reparados y recarga F5 estable." }
+      ]
+    },
     {
       version: "2.0.24",
       date: "2026-11-19",

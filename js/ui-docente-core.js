@@ -360,7 +360,7 @@ Object.assign(ui, {
                             ? 'bg-blue-500 text-white border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]'
                             : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
                     }">
-                    💾 Copias de Seguridad (D1)
+                    💾 Copias de Seguridad (CDMON)
                 </button>
                 <button type="button" role="tab" aria-selected="${currentTab === 'hr'}"
                     onclick="ui.adminTab = 'hr'; ui.render();"
@@ -595,8 +595,8 @@ Object.assign(ui, {
         <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-blue-500 mb-6">
             <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-3 flex-wrap gap-2">
                 <div>
-                    <h2 class="font-orbitron text-blue-400 text-sm sm:text-base uppercase tracking-tighter">Centro de Seguridad D1 y Copias de Respaldo</h2>
-                    <p class="text-xs text-slate-300 uppercase mt-0.5">Control de estado global. Protegido mediante bindings nativos de Cloudflare.</p>
+                    <h2 class="font-orbitron text-blue-400 text-sm sm:text-base uppercase tracking-tighter">Centro de Seguridad SQLite y Copias de Respaldo</h2>
+                    <p class="text-xs text-slate-300 uppercase mt-0.5">Control de estado global en servidor CDMON con transacciones atómicas WAL.</p>
                 </div>
             </div>
             
@@ -614,7 +614,7 @@ Object.assign(ui, {
                     <div>
                         <div class="flex justify-end mb-2"><span class="bg-blue-500 text-white text-xs font-black px-2 py-0.5 uppercase">Sobreescribible</span></div>
                         <h4 class="text-blue-400 font-bold text-xs uppercase mb-2 text-center border-b border-blue-500/50 pb-2">2. Snapshot Diario (Cloud)</h4>
-                        <p class="text-xs text-slate-300 text-center mb-4 leading-relaxed">Fuerza un volcado del estado actual en el slot diario de la base de datos D1. Reemplaza el de ayer.</p>
+                        <p class="text-xs text-slate-300 text-center mb-4 leading-relaxed">Fuerza un volcado del estado actual en el slot diario de la base de datos SQLite en CDMON. Reemplaza el de ayer.</p>
                     </div>
                     <button onclick="ui.forceCloudBackup('daily')" class="min-h-[44px] w-full bg-blue-600/20 text-blue-400 border border-blue-500 font-black py-3 text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all">Generar Backup Diario</button>
                 </div>
@@ -753,18 +753,28 @@ Object.assign(ui, {
     },
 
     async forceCloudBackup(type) {
+        if (!state.user || !state.user.role || !state.user.role.startsWith('COORD')) {
+            return this.notify("Acceso restringido a Coordinación Docente.", "error");
+        }
         this.confirmAction(
             `Backup Cloud (${type === 'weekly' ? 'Semanal Inmutable' : 'Diario Sobreescribible'})`,
-            `¿Deseas generar un backup ${type === 'weekly' ? 'Semanal Inmutable' : 'Diario Sobreescribible'} en Cloudflare D1?`,
+            `¿Deseas generar un backup ${type === 'weekly' ? 'Semanal Inmutable' : 'Diario Sobreescribible'} en el servidor CDMON?`,
             async () => {
                 try {
+                    const token = state.getAuthToken(state.user, state.data);
                     const res = await fetch('/api/state', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Marsket-Auth': token
+                        },
                         body: JSON.stringify({ action: 'force_backup', type: type })
                     });
-                    if(res.ok) this.notify(`Backup ${type} generado con éxito en Cloudflare D1.`, "success");
-                    else this.notify("Error al generar el backup en el servidor.", "error");
+                    if (res.ok) this.notify(`Backup ${type} generado con éxito en el servidor CDMON.`, "success");
+                    else {
+                        const errJson = await res.json().catch(() => ({}));
+                        this.notify(`Error al generar el backup en el servidor: ${errJson.error || res.statusText}`, "error");
+                    }
                 } catch(e) {
                     this.notify("Error de conexión al generar el backup.", "error");
                 }
@@ -774,12 +784,15 @@ Object.assign(ui, {
     },
 
     restoreStateFromJSON() {
+        if (!state.user || !state.user.role || !state.user.role.startsWith('COORD')) {
+            return this.notify("Acceso restringido a Coordinación Docente.", "error");
+        }
         const fileInput = document.getElementById('restore-json-file');
         if (!fileInput || !fileInput.files.length) return this.notify("Selecciona un archivo JSON válido primero.", "warning");
 
         this.confirmAction(
             "Restauración de Emergencia",
-            "⚠ CUIDADO: Vas a SOBREESCRIBIR toda la base de datos de MARS-KET con los datos de este archivo. Esta acción no se puede deshacer. ¿Proceder?",
+            "⚠ CUIDADO: Vas a SOBREESCRIBIR toda la base de datos de MARS-KET en CDMON con los datos de este archivo. Esta acción no se puede deshacer. ¿Proceder?",
             () => {
                 const reader = new FileReader();
                 reader.onload = async (e) => {
@@ -791,13 +804,21 @@ Object.assign(ui, {
                         state.data.version = (Number(state.data.version) || 1) + 50; 
                         state.saveLocalOnly();
                         
-                        await fetch('/api/state', {
+                        const token = state.getAuthToken(state.user, state.data);
+                        const res = await fetch('/api/state', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Marsket-Auth': token
+                            },
                             body: JSON.stringify(state.data)
                         });
+                        if (!res.ok) {
+                            const errJson = await res.json().catch(() => ({}));
+                            throw new Error(errJson.message || errJson.error || `HTTP ${res.status}`);
+                        }
                         
-                        this.notify("Restauración completada. La base de datos D1 y el almacenamiento local han vuelto al estado del backup.", "success");
+                        this.notify("Restauración completada. El servidor CDMON y el almacenamiento local han vuelto al estado del backup.", "success");
                         location.reload(true);
                     } catch(err) {
                         this.notify("Error al leer o restaurar el archivo JSON: " + err.message, "error");
@@ -844,7 +865,7 @@ Object.assign(ui, {
         this.closeModal();
         this.confirmAction(
             "ÚLTIMA CONFIRMACIÓN CRÍTICA",
-            "¿Estás absolutamente seguro de ejecutar el RESET GENERAL DE FÁBRICA? Esta acción reescribirá la base de datos D1.",
+            "¿Estás absolutamente seguro de ejecutar el RESET GENERAL DE FÁBRICA? Esta acción reescribirá la base de datos SQLite en CDMON.",
             () => this.factoryResetLaunch(key),
             "EJECUTAR RESET DE FÁBRICA"
         );
@@ -855,7 +876,7 @@ Object.assign(ui, {
             this.notify("Acceso restringido.", "error");
             return;
         }
-        this.notify("Enviando orden de reset de fábrica a Cloudflare D1...", "info");
+        this.notify("Enviando orden de reset de fábrica al servidor CDMON...", "info");
         try {
             const token = state.getAuthToken(state.user, state.data);
             const res = await fetch('/api/admin/reset', {
@@ -941,7 +962,7 @@ Object.assign(ui, {
 
         const inputCode = authorizedCode;
 
-        this.notify("Ejecutando transacción D1 estricta de reset global...", "info");
+        this.notify("Ejecutando transacción estricta de reset global en CDMON...", "info");
 
         try {
             const token = state.getAuthToken(state.user, state.data);
@@ -960,7 +981,7 @@ Object.assign(ui, {
 
             if (!res.ok) {
                 const errJson = await res.json().catch(() => ({}));
-                return this.notify(`Error en el reset D1: ${errJson.error || res.statusText}`, "error");
+                return this.notify(`Error en el reset del servidor: ${errJson.error || res.statusText}`, "error");
             }
 
             // En el cliente: Vaciar localStorage selectivo (preservando sesión del coordinador)

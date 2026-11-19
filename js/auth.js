@@ -207,29 +207,7 @@ const auth = (function() {
                 return ui.notify("❌ CÓDIGO DE AUTORIZACIÓN REQUERIDO.", "error");
             }
 
-            // 1. Verificación directa si coincide con la clave maestra autorizada
-            if (inputCode === 'KetMars02' || inputCode === 'MASTER_MARS_2026') {
-                ui.closeModal();
-                this.activateTeacherLogin();
-                return true;
-            }
-
-            // 2. Verificación criptográfica Web Crypto (si está en HTTPS)
-            if (typeof crypto !== 'undefined' && crypto.subtle) {
-                try {
-                    const buffer = new TextEncoder().encode(inputCode + MASTER_SALT);
-                    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-                    const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-
-                    if (MASTER_TEACHER_DIGESTS.includes(hashHex)) {
-                        ui.closeModal();
-                        this.activateTeacherLogin();
-                        return true;
-                    }
-                } catch (e) {}
-            }
-
-            // 3. Fallback centralizado en servidor (Zero-Trust para entornos HTTP / CDMON)
+            // 1. Verificación centralizada en servidor CDMON (Zero-Trust, sin exponer literales en cliente)
             try {
                 const res = await fetch('/api/state', {
                     method: 'POST',
@@ -243,8 +221,27 @@ const auth = (function() {
                         this.activateTeacherLogin();
                         return true;
                     }
+                } else if (res.status === 403) {
+                    if (inputEl) ui.highlightInvalidField(inputCode, inputEl);
+                    ui.notify("❌ AUTORIZACIÓN DENEGADA // CREDENCIAL DE MISIÓN NO VÁLIDA.", "error");
+                    return false;
                 }
-            } catch(e) {}
+            } catch (e) {}
+
+            // 2. Fallback criptográfico local Web Crypto solo si el servidor no responde
+            if (typeof crypto !== 'undefined' && crypto.subtle) {
+                try {
+                    const buffer = new TextEncoder().encode(inputCode + MASTER_SALT);
+                    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+                    const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+                    if (MASTER_TEACHER_DIGESTS.includes(hashHex)) {
+                        ui.closeModal();
+                        this.activateTeacherLogin();
+                        return true;
+                    }
+                } catch (e) {}
+            }
 
             if (inputEl) {
                 ui.highlightInvalidField(inputCode, inputEl);
@@ -329,7 +326,7 @@ const auth = (function() {
                 roleSelect.innerHTML = `<option value="" disabled selected>[ 1. Elige tu perfil docente ]</option>` + Object.keys(teachers).map(k => `<option value="${ui.escapeHTML(k)}">${ui.escapeHTML(teachers[k].name)}</option>`).join('');
             } else {
                 const co = state.data.companies[_verifiedCoId];
-                const hasAux = !!state.getRolePin(co, 'AUXILIAR') || !!(_serverCompanyMeta && _serverCompanyMeta.hasAux);
+                const hasAux = !!(state.getRolePin(co, 'AUXILIAR') || co?.auxRoleDept || co?.auxRoleRequest?.status === 'APROBADO' || (_serverCompanyMeta && _serverCompanyMeta.hasAux));
                 let html = `
                     <option value="" disabled selected>[ Selecciona tu puesto en el equipo ]</option>
                     <option value="CEO">Dirección General (CEO)</option>

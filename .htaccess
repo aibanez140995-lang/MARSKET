@@ -1,7 +1,7 @@
 # ==============================================================================
 # MARS-KET OS - Configuración Apache (.htaccess) para Hosting CDMON
 # Servidor: Apache 2.4+ / PHP 8.x
-# Versión: v2.0.24
+# Versión: v2.0.25
 # ==============================================================================
 
 # EXENCIÓN LOADER.IO PARA VALIDACIÓN DE ESTRÉS
@@ -30,7 +30,9 @@
     # Pasar cabecera Authorization a PHP (imprescindible en entornos FastCGI / PHP-FPM de CDMON)
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    # Redirigir todas las llamadas /api/* hacia api/index.php preservando query string
+    # Redirigir todas las llamadas /api/* hacia api/index.php preservando query string (evitando bucles internos)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^api/(.*)$ api/index.php?endpoint=$1 [QSA,L]
 </IfModule>
 
@@ -97,12 +99,8 @@
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "DENY"
 
-    # Prevenir almacenamiento en caché estática pero permitir validación ETag / HTTP 304 en la API
-    <FilesMatch "index\.php$">
-        Header set Cache-Control "no-cache, must-revalidate"
-    </FilesMatch>
-
     # Service Worker, Manifest e index.html: validación estricta sin caché HTTP para actualizaciones inmediatas
+    # (Las cabeceras Cache-Control de api/index.php se gestionan directamente en PHP para preservar 'private')
     <FilesMatch "^(sw\.js|manifest\.json|index\.html)$">
         Header set Cache-Control "no-cache, no-store, must-revalidate"
     </FilesMatch>

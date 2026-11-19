@@ -946,10 +946,16 @@ const ui = {
 
         // Enviar payload silencioso: POST /api/moderation/report
         try {
-            if (typeof fetch !== 'undefined') {
+            const modToken = (typeof state !== 'undefined' && typeof state.getAuthToken === 'function')
+                ? state.getAuthToken(state.user, state.data)
+                : '';
+            if (typeof fetch !== 'undefined' && modToken) {
                 fetch('/api/moderation/report', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Marsket-Auth': modToken
+                    },
                     body: JSON.stringify({
                         team_id: teamId,
                         student_alias: studentAlias,
