@@ -380,11 +380,35 @@ Object.assign(ui, {
     suggestContestPodiumFromE() {
         if (!this.checkCoordinatorAccess()) return false;
         const fc = this.getContestState();
+        const companies = state.data?.companies || {};
+        const finalists = this.getContestActiveFinalistsList(fc);
+
+        // Auto-guardar todas las filas válidas rellenadas en el Paso 2 antes de calcular el podio por E
+        let autoSavedCount = 0;
+        const incompleteWarnings = [];
+        finalists.forEach(f => {
+            const parsed = this._readLaunchInputsForCompany(f.cid, companies);
+            if (parsed.error) {
+                incompleteWarnings.push(parsed.error);
+            } else if (!parsed.empty && parsed.launch) {
+                const prev = fc.launches[f.cid];
+                const changed = !prev ||
+                    Number(prev.heightMm) !== Number(parsed.launch.heightMm) ||
+                    Number(prev.costEurV) !== Number(parsed.launch.costEurV) ||
+                    String(prev.videoUrl || '') !== String(parsed.launch.videoUrl || '');
+                fc.launches[f.cid] = parsed.launch;
+                if (changed) autoSavedCount++;
+            }
+        });
+
         const rankedWithE = this.getContestRankedLaunches(fc).filter(
             item => item.launch && item.launch.efficiency !== null && item.launch.efficiency !== undefined
         );
         if (rankedWithE.length === 0) {
-            this.notify("Registra primero al menos un lanzamiento oficial con Altura y Coste para sugerir el podio por E.", "warning");
+            this.notify(
+                incompleteWarnings[0] || "Registra primero al menos un lanzamiento oficial con Altura y Coste para sugerir el podio por E.",
+                "warning"
+            );
             return false;
         }
 
@@ -400,12 +424,16 @@ Object.assign(ui, {
             third: rankedWithE[2]?.cid || null
         };
         this.persistContestState(fc);
-        this.notify("⚡ Podio ordenado automáticamente según la mayor eficiencia E en directo. Recuerda revisar y publicar cuando corresponda.", "success");
+        if (incompleteWarnings.length > 0) {
+            this.notify(`⚡ Podio ordenado con los vuelos válidos (${autoSavedCount > 0 ? autoSavedCount + ' auto-guardado(s); ' : ''}nota: ${incompleteWarnings[0]}).`, "warning");
+        } else {
+            this.notify(`⚡ ${autoSavedCount > 0 ? autoSavedCount + ' vuelo(s) auto-guardado(s) y p' : 'P'}odio ordenado según la mayor eficiencia E en directo.`, "success");
+        }
         this.render();
         return true;
     },
 
-    saveContestPodiumAndAwards() {
+    _collectAndPersistPodiumAndAwards(silentSuccess = false) {
         if (!this.checkCoordinatorAccess()) return false;
         const fc = this.getContestState();
         const activeIds = new Set(Object.values(fc.finalists || {}).filter(Boolean));
@@ -449,9 +477,15 @@ Object.assign(ui, {
         if (typeof telemetry !== 'undefined' && telemetry.log) {
             telemetry.log('FASE5_PREMIOS', `Podio y 6 galardones guardados (Publicado: ${fc.published ? 'Sí' : 'Borrador'})`);
         }
-        this.notify("🏆 Podio y los 6 galardones oficiales guardados correctamente.", "success");
+        if (!silentSuccess) {
+            this.notify("🏆 Podio y los 6 galardones oficiales guardados correctamente.", "success");
+        }
         this.render();
         return true;
+    },
+
+    saveContestPodiumAndAwards() {
+        return this._collectAndPersistPodiumAndAwards(false);
     },
 
     setContestPublished(targetState) {
@@ -482,6 +516,7 @@ Object.assign(ui, {
         if (!this.checkCoordinatorAccess()) return;
         const nextPub = Boolean(targetState);
         if (nextPub) {
+            if (!this._collectAndPersistPodiumAndAwards(true)) return;
             const fc = this.getContestState();
             if (!fc.podium?.first) {
                 this.notify("⚠️ Selecciona y guarda al menos el Campeón Absoluto (Trofeo «MarsKet Gold») antes de publicar los resultados.", "warning");
@@ -639,7 +674,7 @@ Object.assign(ui, {
                 ${bodyContent}
             </div>`;
         const actions = `<button type="button" onclick="ui.closeModal();" class="min-h-[44px] px-5 py-2 bg-slate-800 text-white font-bold uppercase text-xs hover:bg-slate-700">Cerrar Proyector</button>`;
-        this.showModal('🖥️ MODO PROYECTOR DE GALA // FASE V (19/05/2027)', html, actions);
+        this.showModal('🖥️ MODO PROYECTOR DE GALA // FASE V (19/05/2027)', html, actions, 'max-w-5xl');
     },
 
     openPrintContestWindow() {
@@ -925,42 +960,48 @@ Object.assign(ui, {
                 : '';
 
             return `
-            <tr class="hover:bg-slate-900/60">
-                <td class="p-3 align-top whitespace-nowrap">
+            <tr class="block md:table-row p-3.5 sm:p-4 md:p-0 hover:bg-slate-900/60 space-y-2.5 md:space-y-0">
+                <td class="block md:table-cell md:p-3 md:align-top whitespace-nowrap">
                     <span class="text-xs font-mono font-black text-mars-cyan px-2 py-0.5 bg-black border border-mars-cyan/40">Clase ${this.escapeHTML(item.cls)}</span>
                 </td>
-                <td class="p-3 align-top">
-                    <div class="font-orbitron font-black text-white text-xs sm:text-sm">${this.escapeHTML(item.co.name)}</div>
+                <td class="block md:table-cell md:p-3 md:align-top">
+                    <div class="font-orbitron font-black text-white text-sm md:text-xs lg:text-sm">${this.escapeHTML(item.co.name)}</div>
                     <div class="text-xs text-slate-400 font-mono mt-0.5 tabular-nums">Ref previo: ${item.acta.bestE !== null ? item.acta.bestE.toFixed(4) : '--'}</div>
                 </td>
-                <td class="p-3 align-top">
+                <td class="block md:table-cell md:p-3 md:align-top">
+                    <label for="contest-height-${this.escapeAttr(item.cid)}" class="md:hidden text-[10px] font-mono uppercase text-slate-400 font-bold block mb-1">Altura (mm)</label>
                     <input type="number" id="contest-height-${this.escapeAttr(item.cid)}" value="${this.escapeAttr(hVal)}" min="0" step="1" placeholder="Ej: 18500"
                         oninput="ui.previewContestEfficiency('${this.escapeAttr(item.cid)}')"
-                        class="min-h-[44px] w-28 sm:w-32 bg-black border border-slate-700 text-white px-2.5 py-2 text-base sm:text-xs font-mono tabular-nums outline-none focus:border-mars-cyan">
+                        class="min-h-[44px] w-full md:w-28 lg:w-32 bg-black border border-slate-700 text-white px-2.5 py-2 text-base md:text-xs font-mono tabular-nums outline-none focus:border-mars-cyan">
                 </td>
-                <td class="p-3 align-top">
+                <td class="block md:table-cell md:p-3 md:align-top">
+                    <label for="contest-cost-${this.escapeAttr(item.cid)}" class="md:hidden text-[10px] font-mono uppercase text-slate-400 font-bold block mb-1">Coste (€v)</label>
                     <input type="number" id="contest-cost-${this.escapeAttr(item.cid)}" value="${this.escapeAttr(cVal)}" min="0.01" step="0.01" placeholder="Ej: 450"
                         oninput="ui.previewContestEfficiency('${this.escapeAttr(item.cid)}')"
-                        class="min-h-[44px] w-28 sm:w-32 bg-black border border-slate-700 text-white px-2.5 py-2 text-base sm:text-xs font-mono tabular-nums outline-none focus:border-mars-cyan">
+                        class="min-h-[44px] w-full md:w-28 lg:w-32 bg-black border border-slate-700 text-white px-2.5 py-2 text-base md:text-xs font-mono tabular-nums outline-none focus:border-mars-cyan">
                 </td>
-                <td class="p-3 align-top text-right whitespace-nowrap">
-                    <div id="contest-eff-${this.escapeAttr(item.cid)}" class="text-base font-orbitron font-black tabular-nums ${hasEff ? 'text-mars-green' : 'text-slate-400'}">
-                        ${hasEff ? Number(l.efficiency).toFixed(4) : '--'}
+                <td class="flex items-center justify-between md:block md:table-cell md:p-3 md:align-top md:text-right whitespace-nowrap bg-black/50 md:bg-transparent px-3 py-2 md:py-3 rounded md:rounded-none border border-slate-800/80 md:border-0">
+                    <span class="md:hidden text-[10px] font-mono uppercase text-slate-400 font-bold">Eficiencia E (mm/€v):</span>
+                    <div class="text-right">
+                        <div id="contest-eff-${this.escapeAttr(item.cid)}" class="text-base font-orbitron font-black tabular-nums ${hasEff ? 'text-mars-green' : 'text-slate-400'}">
+                            ${hasEff ? Number(l.efficiency).toFixed(4) : '--'}
+                        </div>
+                        <span class="hidden md:inline text-[11px] font-mono text-slate-400">mm/€v</span>
                     </div>
-                    <span class="text-[11px] font-mono text-slate-400">mm/€v</span>
                 </td>
-                <td class="p-3 align-top min-w-[220px]">
+                <td class="block md:table-cell md:p-3 md:align-top md:min-w-[220px]">
+                    <label for="contest-video-${this.escapeAttr(item.cid)}" class="md:hidden text-[10px] font-mono uppercase text-slate-400 font-bold block mb-1">Vídeo Cálculo E (Drive · Opcional)</label>
                     <div class="flex items-center gap-1.5">
                         <input type="url" id="contest-video-${this.escapeAttr(item.cid)}" value="${this.escapeAttr(vVal)}"
                             placeholder="https://drive.google.com/..."
-                            class="min-h-[44px] w-full bg-black border border-slate-700 text-blue-300 px-2.5 py-2 text-base sm:text-xs font-mono outline-none focus:border-mars-cyan">
+                            class="min-h-[44px] w-full bg-black border border-slate-700 text-blue-300 px-2.5 py-2 text-base md:text-xs font-mono outline-none focus:border-mars-cyan">
                         ${safeVid ? `<a href="${safeVid}" target="_blank" rel="noopener noreferrer" title="Abrir vídeo" class="min-h-[44px] min-w-[44px] inline-flex items-center justify-center bg-blue-500/20 border border-blue-400 text-blue-300 text-xs hover:bg-blue-500 hover:text-black shrink-0">↗</a>` : ''}
                     </div>
                 </td>
-                <td class="p-3 align-top whitespace-nowrap">
+                <td class="block md:table-cell md:p-3 md:align-top whitespace-nowrap pt-1 md:pt-3">
                     <div class="flex items-center gap-1.5">
                         <button type="button" onclick="ui.saveContestLaunch('${this.escapeAttr(item.cid)}')"
-                            class="min-h-[44px] px-3 py-2 bg-mars-cyan text-black font-black text-xs uppercase hover:bg-white transition-all">
+                            class="flex-1 md:flex-initial min-h-[44px] px-3 py-2 bg-mars-cyan text-black font-black text-xs uppercase hover:bg-white transition-all">
                             💾 Guardar
                         </button>
                         ${hasEff || vVal ? `
@@ -1055,9 +1096,9 @@ Object.assign(ui, {
                     <div class="bg-slate-950 border border-dashed border-slate-700 p-6 text-center text-xs text-slate-400">
                         Selecciona al menos una empresa finalista en el Paso 1 para habilitar el marcador de lanzamientos en directo.
                     </div>` : `
-                    <div class="table-responsive-container border border-mars-border rounded">
-                        <table class="w-full text-left border-collapse text-xs">
-                            <thead class="bg-black text-slate-300 font-mono uppercase border-b border-mars-border sticky top-0 z-10">
+                    <div class="md:overflow-x-auto border border-mars-border rounded">
+                        <table class="w-full text-left border-collapse text-xs block md:table">
+                            <thead class="hidden md:table-header-group bg-black text-slate-300 font-mono uppercase border-b border-mars-border sticky top-0 z-10">
                                 <tr>
                                     <th class="p-3">Clase</th>
                                     <th class="p-3">Finalista</th>
@@ -1068,7 +1109,7 @@ Object.assign(ui, {
                                     <th class="p-3">Acción</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-800 bg-slate-950">
+                            <tbody class="block md:table-row-group divide-y divide-slate-800 bg-slate-950">
                                 ${step2RowsHtml}
                             </tbody>
                         </table>

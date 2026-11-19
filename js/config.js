@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.23) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.24) ---
 
-const APP_VERSION = "2.0.23";
+const APP_VERSION = "2.0.24";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1154,8 +1154,22 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.23
+// Changelog Oficial de Producción v2.0.24
 const APP_CHANGELOG = [
+    {
+      version: "2.0.24",
+      date: "2026-11-19",
+      title: "Fase 4 · Concurso Final (Fase V): Proyector Ancho, Auto-Guardado y Marcador Responsive",
+      items: [
+        "Modo Proyector de Gala Ancho (max-w-5xl): La vista de proyección en directo de Fase V (Finalistas, Marcador por E y Podio + 6 Galardones) aprovecha ahora todo el ancho en pantallas y proyectores del salón de actos.",
+        "Auto-Guardado de Vuelos y Premios en Directo: Al pulsar [⚡ Sugerir Podio por E], el sistema guarda automáticamente todos los lanzamientos válidos rellenados en el Paso 2; y al pulsar [🟢 Publicar Podio y Premios], persiste y valida las selecciones actuales antes de publicar.",
+        "Marcador Responsive con DOM Único: El Paso 2 de lanzamientos de Fase V se adapta de forma nativa a móvil (tarjetas apiladas sin scroll horizontal incómodo) y ordenador (tabla fija) compartiendo un único árbol DOM sin IDs duplicados."
+      ],
+      highlights: [
+        { type: "FASE V · GALA", text: "Proyector max-w-5xl y auto-guardado al sugerir podio o publicar." },
+        { type: "MÓVIL 100%", text: "Tabla de vuelos de gala con tarjetas nativas en pantallas pequeñas." }
+      ]
+    },
     {
       version: "2.0.23",
       date: "2026-11-19",
