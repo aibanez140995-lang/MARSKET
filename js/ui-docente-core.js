@@ -218,6 +218,9 @@ Object.assign(ui, {
         const coClass = (co && co.classGroup) || 'ALL';
         this.adminMode = 'aula';
         this.adminTab = 'eval';
+        if (state.user && String(state.user.role || '').startsWith('COORD') && (!this.coordEvalView || this.coordEvalView === 'ACTA' || this.coordEvalView === 'ARCHIVE')) {
+            this.coordEvalView = 'FYQ';
+        }
         this.currentClassFilter = coClass;
         this.evalClassFilter = coClass;
         this.evalSelectedCo = cid;

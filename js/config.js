@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.22) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.23) ---
 
-const APP_VERSION = "2.0.22";
+const APP_VERSION = "2.0.23";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1154,8 +1154,23 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.22
+// Changelog Oficial de Producción v2.0.23
 const APP_CHANGELOG = [
+    {
+      version: "2.0.23",
+      date: "2026-11-19",
+      title: "Fase 3 · Estudio Docente de Costes Reales (€) e Inspector In-Situ de Contratos",
+      items: [
+        "Estudio Docente de Precios Reales (€) y CSV Resumen (B3): Nuevo botón [🏪 Estudio Precios € / CSV] en Control Financiero con Resumen por Comercio Oficial y Comparativa Componente × Comercio (€/ud), excluyendo automáticamente Mercado B2B (0 €) y startups TEST en vista global.",
+        "Alerta de Gasto Familiar (> 25 €): La columna Físico(€) destaca con badge ⚠️ >25€ a las startups que superan el umbral docente de control económico real.",
+        "Inspector In-Situ de Contratos Comerciales (B4): Al pulsar cualquier startup en Contratos se abre un panel rápido con saldo libre, Coste BOM, Mejor E, vuelos y enlaces Drive de esa fase sin abandonar la pestaña ni perder los filtros.",
+        "Contratos por Fase Activa y Legibilidad: Filtro de fase preseleccionado en la fase en curso, conmutador [⚡ Solo con contrato activo] con contador de filas ocultas y salto de línea limpio en Requisitos Clave."
+      ],
+      highlights: [
+        { type: "COSTES REALES €", text: "Estudio por tienda, comparativa €/ud, CSV Excel y alerta >25€." },
+        { type: "CONTRATOS B2B", text: "Inspector de evidencias in-situ, filtro activo y texto completo." }
+      ]
+    },
     {
       version: "2.0.22",
       date: "2026-11-19",

@@ -214,6 +214,14 @@ const ui = {
             .replace(/>/g, '&gt;');
     },
 
+    escapeCSVCell(val) {
+        let s = String(val === null || val === undefined ? '' : val).replace(/[\r\n]+/g, ' ').trim();
+        if (/^[=+\-@\t]/.test(s)) {
+            s = `'${s}`;
+        }
+        return `"${s.replace(/"/g, '""')}"`;
+    },
+
     cleanInput(str) {
         if (str === null || str === undefined) return '';
         return String(str).replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
@@ -4321,12 +4329,17 @@ const ui = {
         this.openDrawer(`JUSTIFICACIÓN ROI // ${pkg}`, body);
     },
 
-    showModal(title, body, actions) {
+    showModal(title, body, actions, maxWidthClass = 'max-w-lg') {
         this._lastFocusedElement = document.activeElement;
         const elTitle = document.getElementById('modal-title');
         const elBody = document.getElementById('modal-body');
         const elActions = document.getElementById('modal-actions');
         const elOverlay = document.getElementById('modal-overlay');
+        const modalBox = document.querySelector('#modal-overlay > div');
+        if (modalBox) {
+            modalBox.classList.remove('max-w-lg', 'max-w-xl', 'max-w-2xl', 'max-w-3xl', 'max-w-4xl', 'max-w-5xl', 'max-w-6xl');
+            modalBox.classList.add(maxWidthClass || 'max-w-lg');
+        }
         
         if(elTitle) elTitle.innerText = title; 
         if(elBody) elBody.innerHTML = body; 
@@ -4390,8 +4403,8 @@ const ui = {
         const elOverlay = document.getElementById('modal-overlay');
         if(elOverlay) elOverlay.classList.add('hidden');
         const modalBox = document.querySelector('#modal-overlay > div');
-        if (modalBox && modalBox.classList.contains('max-w-5xl')) {
-            modalBox.classList.remove('max-w-5xl');
+        if (modalBox) {
+            modalBox.classList.remove('max-w-xl', 'max-w-2xl', 'max-w-3xl', 'max-w-4xl', 'max-w-5xl', 'max-w-6xl');
             modalBox.classList.add('max-w-lg');
         }
         if (this._lastFocusedElement && typeof this._lastFocusedElement.focus === 'function') {

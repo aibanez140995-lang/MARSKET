@@ -1122,7 +1122,10 @@ Object.assign(ui, {
 
     renderAdminContracts() {
         const classFilter = this.adminContractsClassFilter || this.currentClassFilter || 'ALL';
-        const phaseFilter = this.adminContractsPhaseFilter || 'I';
+        const rawPhase = typeof this.getCurrentPhaseKey === 'function' ? this.getCurrentPhaseKey() : 'I';
+        const defaultPhase = ['I', 'II', 'III', 'IV'].includes(rawPhase) ? rawPhase : 'IV';
+        const phaseFilter = this.adminContractsPhaseFilter || defaultPhase;
+        const onlySigned = Boolean(this.adminContractsOnlySigned);
         const companies = state.data.companies || {};
 
         const allClasses = ['ALL', 'A', 'B', 'C', 'D', 'E', 'F', 'TEST'];
@@ -1136,40 +1139,48 @@ Object.assign(ui, {
             return true;
         });
 
-        // Contabilidad de métricas
+        // Contabilidad de métricas y armado de filas según filtro activo
         let totalSigned = 0;
         let totalCompleted = 0;
         let totalFailed = 0;
         let totalPending = 0;
+        let unsignedCount = 0;
+        const phasesToList = phaseFilter === 'ALL' ? ['I', 'II', 'III', 'IV'] : [phaseFilter];
+        const contractRows = [];
 
         filteredCoIds.forEach(cid => {
             const co = companies[cid];
             const contracts = co.contracts || {};
-            const phasesToCheck = phaseFilter === 'ALL' ? ['I', 'II', 'III', 'IV'] : [phaseFilter];
-            phasesToCheck.forEach(ph => {
+            phasesToList.forEach(ph => {
                 const c = contracts[ph];
-                if (c && c.contractId) {
+                const isSigned = Boolean(c && c.contractId);
+                if (isSigned) {
                     totalSigned++;
                     if (c.status === 'CUMPLIDO') totalCompleted++;
                     else if (c.status === 'NO_CUMPLIDO') totalFailed++;
                     else totalPending++;
+                } else {
+                    unsignedCount++;
+                }
+                if (!onlySigned || isSigned) {
+                    contractRows.push({ cid, co, ph, c, isSigned });
                 }
             });
         });
 
         return `
         <div class="space-y-6">
-            <!-- Barra Superior de Filtros Rápidos (Clase y Fase) -->
-            <div class="terminal-border bg-mars-card p-4 border-t-4 border-t-amber-400 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <!-- Barra Superior de Filtros Rápidos (Clase, Fase y Solo con contrato) -->
+            <div class="terminal-border bg-mars-card p-4 border-t-4 border-t-amber-400 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <div>
                     <h3 class="font-orbitron font-bold text-white text-sm uppercase tracking-wider">
                         🤝 Auditoría Docente de Contratos Comerciales
                     </h3>
                     <p class="text-xs text-slate-300 mt-0.5">
-                        Supervisión de compromisos corporativos suscritos por los CEOs y liquidación automática en Ledger.
+                        Supervisión de compromisos corporativos suscritos por los CEOs. Pulsa el nombre de una startup para inspeccionar sus evidencias sin salir de esta vista.
                     </p>
                 </div>
-                <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                     <!-- Selector de Clase -->
                     <div class="flex items-center gap-1.5 bg-black border border-slate-700 p-1">
                         <span class="text-[10px] text-slate-400 font-mono uppercase px-1">Clase:</span>
@@ -1185,6 +1196,12 @@ Object.assign(ui, {
                             ${allPhases.map(ph => `<option value="${ph}" ${phaseFilter === ph ? 'selected' : ''}>${ph === 'ALL' ? 'Todas las Fases' : `Fase ${ph}`}</option>`).join('')}
                         </select>
                     </div>
+
+                    <!-- Conmutador Solo con contrato activo -->
+                    <button type="button" onclick="ui.adminContractsOnlySigned = !ui.adminContractsOnlySigned; ui.render();" class="min-h-[44px] px-3 py-1.5 border text-xs font-bold uppercase transition-colors rounded flex items-center gap-1.5 ${onlySigned ? 'bg-amber-400 text-black border-amber-300 shadow-sm' : 'bg-black text-slate-300 border-slate-700 hover:border-amber-400 hover:text-amber-300'}" title="Mostrar u ocultar startups sin contrato firmado en la fase seleccionada">
+                        <span>⚡ Solo con contrato activo</span>
+                        ${unsignedCount > 0 ? `<span class="text-[10px] font-mono ${onlySigned ? 'text-black/80' : 'text-slate-400'}">(${onlySigned ? `${unsignedCount} ocultas` : `${unsignedCount} sin contrato`})</span>` : ''}
+                    </button>
                 </div>
             </div>
 
@@ -1225,45 +1242,37 @@ Object.assign(ui, {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-800">
-                            ${filteredCoIds.map(cid => {
-                                const co = companies[cid];
-                                const contracts = co.contracts || {};
-                                const phasesToList = phaseFilter === 'ALL' ? ['I', 'II', 'III', 'IV'] : [phaseFilter];
-
-                                return phasesToList.map(ph => {
-                                    const c = contracts[ph];
-                                    const isSigned = c && c.contractId;
-
-                                    return `
+                            ${contractRows.length > 0 ? contractRows.map(({ cid, co, ph, c, isSigned }) => `
                                     <tr class="hover:bg-slate-900/60 transition-colors">
-                                        <td class="p-3 font-orbitron text-white font-bold">
-                                            <button type="button" onclick="ui.showCompanyLogins('${this.escapeHTML(cid)}')" class="min-h-[44px] text-mars-cyan hover:underline inline-flex items-center">
-                                                ${this.escapeHTML(co.name)}
+                                        <td class="p-3 font-orbitron text-white font-bold align-top">
+                                            <button type="button" onclick="ui.modalInspectContractEvidences('${this.escapeAttr(cid)}', '${this.escapeAttr(ph)}')" class="min-h-[44px] text-mars-cyan hover:text-white underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 inline-flex items-center gap-1.5 text-left" title="Inspeccionar evidencias de contrato in-situ (Fase ${this.escapeHTML(ph)})">
+                                                <span>${this.escapeHTML(co.name)}</span>
+                                                <span class="text-[10px] font-mono text-slate-400 no-underline">🔍</span>
                                             </button>
                                         </td>
-                                        <td class="p-3 font-mono">
+                                        <td class="p-3 font-mono align-top">
                                             <span class="px-2 py-0.5 bg-black border border-slate-700 text-slate-300">
                                                 ${this.escapeHTML(co.classGroup || 'A')}
                                             </span>
                                         </td>
-                                        <td class="p-3 font-mono font-bold text-amber-400">
+                                        <td class="p-3 font-mono font-bold text-amber-400 align-top">
                                             Fase ${ph}
                                         </td>
-                                        <td class="p-3 max-w-[200px] truncate" title="${isSigned ? `${c.company} — ${c.title}` : 'Sin contrato'}">
+                                        <td class="p-3 max-w-[220px] whitespace-normal align-top" title="${isSigned ? `${this.escapeAttr(c.company)} — ${this.escapeAttr(c.title)}` : 'Sin contrato'}">
                                             ${isSigned ? `
                                                 <div class="flex flex-col">
                                                     <span class="font-bold text-white uppercase text-xs">${this.escapeHTML(c.company)}</span>
-                                                    <span class="text-[10px] text-slate-400 truncate">${this.escapeHTML(c.title)}</span>
+                                                    <span class="text-[10px] text-slate-400 whitespace-normal break-words">${this.escapeHTML(c.title)}</span>
                                                 </div>
                                             ` : `<span class="text-slate-500 italic">-- Ninguno --</span>`}
                                         </td>
-                                        <td class="p-3 max-w-[280px] truncate" title="${isSigned ? c.requirements : ''}">
+                                        <td class="p-3 min-w-[240px] max-w-[340px] whitespace-normal align-top" title="${isSigned ? this.escapeAttr(c.requirements) : ''}">
                                             ${isSigned ? `
-                                                <span class="text-slate-300 font-sans text-xs truncate block">${this.escapeHTML(c.requirements)}</span>
-                                                <span class="text-[10px] text-indigo-300 italic block mt-0.5 truncate">${this.escapeHTML(c.verification || '')}</span>
+                                                <span class="text-slate-300 font-sans text-xs whitespace-normal break-words leading-snug block">${this.escapeHTML(c.requirements)}</span>
+                                                <span class="text-[10px] text-indigo-300 italic whitespace-normal break-words leading-snug block mt-1">${this.escapeHTML(c.verification || '')}</span>
                                             ` : `<span class="text-slate-600">--</span>`}
                                         </td>
-                                        <td class="p-3 font-mono">
+                                        <td class="p-3 font-mono align-top">
                                             ${isSigned ? `
                                                 <div class="flex items-center gap-1.5 font-bold">
                                                     <span class="text-emerald-400">+${c.reward} €v</span>
@@ -1272,7 +1281,7 @@ Object.assign(ui, {
                                                 </div>
                                             ` : `<span class="text-slate-600">--</span>`}
                                         </td>
-                                        <td class="p-3">
+                                        <td class="p-3 align-top">
                                             ${isSigned ? (
                                                 c.status === 'CUMPLIDO'
                                                     ? `<span class="px-2 py-1 bg-emerald-950/80 border border-emerald-500 text-emerald-300 font-mono text-xs font-bold rounded-sm">✅ CUMPLIDO</span>`
@@ -1281,35 +1290,207 @@ Object.assign(ui, {
                                                         : `<span class="px-2 py-1 bg-cyan-950/60 border border-cyan-400 text-cyan-300 font-mono text-xs animate-pulse rounded-sm">⏳ EN CURSO</span>`)
                                             ) : `<span class="text-slate-600 text-xs font-mono">SIN CONTRATO</span>`}
                                         </td>
-                                        <td class="p-3 text-right">
+                                        <td class="p-3 text-right align-top">
                                             ${isSigned ? (
                                                 c.status === 'EN_CURSO' ? `
                                                     <div class="flex items-center justify-end gap-2">
-                                                        <button type="button" onclick="ui.modalSettleContract('${this.escapeHTML(cid)}', '${ph}', true)" class="min-h-[44px] px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-black font-black uppercase text-xs transition-all shadow-sm">
+                                                        <button type="button" onclick="ui.modalSettleContract('${this.escapeAttr(cid)}', '${this.escapeAttr(ph)}', true)" class="min-h-[44px] px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-black font-black uppercase text-xs transition-all shadow-sm">
                                                             ✅ Cumplido (+${c.reward} €v)
                                                         </button>
-                                                        <button type="button" onclick="ui.modalSettleContract('${this.escapeHTML(cid)}', '${ph}', false)" class="min-h-[44px] px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-black uppercase text-xs transition-all shadow-sm">
+                                                        <button type="button" onclick="ui.modalSettleContract('${this.escapeAttr(cid)}', '${this.escapeAttr(ph)}', false)" class="min-h-[44px] px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-black uppercase text-xs transition-all shadow-sm">
                                                             ❌ No Cumplido (-${c.penalty} €v)
                                                         </button>
                                                     </div>
                                                 ` : `
                                                     <div class="flex items-center justify-end gap-2 text-xs">
                                                         <span class="text-[10px] text-slate-400 font-mono">Liquidado (${this.escapeHTML(c.settledDate || '')})</span>
-                                                        <button type="button" onclick="ui.modalSettleContract('${this.escapeHTML(cid)}', '${ph}', ${c.status !== 'CUMPLIDO'})" class="min-h-[44px] px-2.5 py-1 bg-slate-800 text-slate-200 hover:text-white border border-slate-700 text-xs uppercase" title="Modificar dictamen">
+                                                        <button type="button" onclick="ui.modalSettleContract('${this.escapeAttr(cid)}', '${this.escapeAttr(ph)}', ${c.status !== 'CUMPLIDO'})" class="min-h-[44px] px-2.5 py-1 bg-slate-800 text-slate-200 hover:text-white border border-slate-700 text-xs uppercase" title="Modificar dictamen">
                                                             ✏️ Rectificar
                                                         </button>
                                                     </div>
                                                 `
                                             ) : `<span class="text-slate-600 text-xs">--</span>`}
                                         </td>
-                                    </tr>`;
-                                }).join('');
-                            }).join('')}
+                                    </tr>`).join('') : `<tr><td colspan="8" class="p-6 text-center text-slate-400 italic">${onlySigned ? `Ninguna startup tiene contrato activo en este filtro (${unsignedCount} fila(s) sin contrato ocultas).` : 'No hay empresas registradas en este filtro.'}</td></tr>`}
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>`;
+    },
+
+    modalInspectContractEvidences(cid, ph) {
+        if (!state.user || !state.user.admin) {
+            return this.notify("Acceso restringido al Claustro Docente.", "error");
+        }
+        const co = state.data.companies?.[cid];
+        if (!co) return;
+
+        const targetPhase = ph || (typeof this.getCurrentPhaseKey === 'function' ? this.getCurrentPhaseKey() : 'I');
+        const signedContract = targetPhase !== 'ALL' ? co.contracts?.[targetPhase] : null;
+        const isSigned = Boolean(signedContract && signedContract.contractId);
+
+        const balance = Number(co.balance) || 0;
+        const committed = typeof state.getCommittedB2CBalance === 'function' ? Number(state.getCommittedB2CBalance(co) || 0) : 0;
+        const freeBalance = balance - committed;
+
+        const bomList = Array.isArray(co.bom) ? co.bom : [];
+        let bomCostEv = 0;
+        bomList.forEach(k => {
+            const [oid, idx] = String(k).split('-');
+            const ord = (co.orders || []).find(o => String(o.id) === String(oid));
+            const it = ord?.items?.[Number(idx)];
+            if (it) bomCostEv += (Number(it.price) || 0) * (Number(it.qty) || 1);
+        });
+
+        const flights = (Array.isArray(co.flightTests) ? co.flightTests : []).map(f => {
+            const hVal = !isNaN(Number(f.heightMm)) ? Number(f.heightMm) : (!isNaN(Number(f.heightM)) ? Number(f.heightM) * 1000 : (Number(f.height) || 0));
+            const cVal = !isNaN(Number(f.costEurV)) ? Number(f.costEurV) : (Number(f.cost) || 0);
+            const eVal = !isNaN(Number(f.efficiency)) ? Number(f.efficiency) : (cVal > 0 ? hVal / cVal : 0);
+            return { raw: f, hVal, cVal, eVal };
+        });
+        flights.sort((a, b) => b.eVal - a.eVal);
+        const bestE = flights.length > 0 ? Math.max(...flights.map(x => x.eVal)) : null;
+
+        const flightRowsHtml = flights.map(({ raw: f, hVal, cVal, eVal }) => {
+            const safeVideoHref = (this.sanitizeDriveUrl && f.videoUrl)
+                ? this.sanitizeDriveUrl(f.videoUrl)
+                : ((f.videoUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(f.videoUrl)) ? encodeURI(f.videoUrl).replace(/"/g, '&quot;') : '');
+            const hasVideo = Boolean(safeVideoHref);
+            return `
+            <tr class="border-b border-slate-800/80">
+                <td class="py-1.5 pr-2 text-slate-300 font-mono text-[11px]">${this.escapeHTML(f.date || '--')}</td>
+                <td class="py-1.5 pr-2 font-mono text-white font-bold">${Math.round(hVal)} mm</td>
+                <td class="py-1.5 pr-2 font-mono text-mars-cyan">${cVal.toFixed(2)} €v</td>
+                <td class="py-1.5 pr-2 font-mono font-black ${bestE !== null && eVal === bestE && bestE > 0 ? 'text-mars-yellow' : 'text-emerald-300'}">${eVal.toFixed(2)}</td>
+                <td class="py-1.5 text-right">${hasVideo ? `<a href="${safeVideoHref}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline font-mono text-[11px]">Vídeo Drive ↗</a>` : '<span class="text-slate-500 italic text-[11px]">Sin vídeo</span>'}</td>
+            </tr>`;
+        }).join('') || `<tr><td colspan="5" class="py-3 text-center text-slate-400 italic text-xs">Sin lanzamientos registrados en el Banco de Pruebas.</td></tr>`;
+
+        const allDefs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const phaseDefs = targetPhase === 'ALL'
+            ? allDefs
+            : allDefs.filter(d => (typeof this.getDeliverablePhase === 'function' ? this.getDeliverablePhase(d.key) : d.phase) === targetPhase);
+
+        const delivsHtml = phaseDefs.map(def => {
+            const rawDoc = co.deliverables?.[def.key];
+            const item = (rawDoc && typeof rawDoc === 'object') ? rawDoc : { driveUrl: String(rawDoc || '') };
+            const status = rawDoc ? (item.status || 'DELIVERED_TO_TEACHER') : 'PENDING';
+            const hasUrl = Boolean(item.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(item.driveUrl));
+            const safeUrl = hasUrl ? encodeURI(item.driveUrl).replace(/"/g, '&quot;') : '';
+            const subjGrade = co.grades?.[def.subject];
+            const gradeScore = (subjGrade && subjGrade.final !== null && subjGrade.final !== undefined) ? Number(subjGrade.final) : null;
+
+            let stBadge = `<span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono text-[10px]">Pendiente</span>`;
+            if (status === 'SUBMITTED_TO_CEO') stBadge = `<span class="px-1.5 py-0.5 rounded bg-amber-950/70 border border-amber-500/40 text-amber-300 font-mono text-[10px]">En CEO</span>`;
+            else if (status === 'CEO_REVISION') stBadge = `<span class="px-1.5 py-0.5 rounded bg-rose-950/70 border border-rose-500/40 text-rose-300 font-mono text-[10px]">Subsanación</span>`;
+            else if (rawDoc) stBadge = `<span class="px-1.5 py-0.5 rounded bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 font-mono text-[10px]">Entregado</span>`;
+
+            return `
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2 border-b border-slate-800/80 last:border-0">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="text-[10px] font-mono px-1.5 py-0.5 bg-slate-900 border border-slate-700 text-mars-cyan rounded">${this.escapeHTML(def.subject)}</span>
+                        <strong class="text-white text-xs">${this.escapeHTML(def.shortName || def.name)}</strong>
+                        ${stBadge}
+                        ${gradeScore !== null ? `<span class="text-[10px] font-mono font-bold text-mars-yellow px-1.5 py-0.5 bg-amber-950/40 border border-amber-500/40 rounded">${this.escapeHTML(def.subject)}: ${gradeScore.toFixed(2)}</span>` : ''}
+                    </div>
+                </div>
+                <div class="shrink-0">
+                    ${hasUrl
+                        ? `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 bg-blue-950/50 border border-blue-500/40 text-blue-300 hover:bg-blue-900/60 rounded text-[11px] font-mono font-bold">Abrir Drive ↗</a>`
+                        : `<span class="text-[11px] text-slate-500 italic">Sin enlace</span>`}
+                </div>
+            </div>`;
+        }).join('') || `<p class="text-xs text-slate-400 italic py-2">No hay entregables configurados para esta fase.</p>`;
+
+        const prEntry = targetPhase !== 'ALL' ? co.pressReleases?.[targetPhase] : null;
+        const prHasUrl = Boolean(prEntry?.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(prEntry.driveUrl));
+        const safePrUrl = prHasUrl ? encodeURI(prEntry.driveUrl).replace(/"/g, '&quot;') : '';
+        const aesaStatus = co.launchLicense?.status || 'SIN_SOLICITAR';
+
+        const html = `
+            <div class="space-y-4 font-sans text-xs">
+                <div class="bg-slate-900/90 border border-amber-500/50 p-3 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                        <span class="text-[10px] font-mono uppercase text-amber-300 font-bold">Startup · Clase ${this.escapeHTML(co.classGroup || 'A')} · Fase ${this.escapeHTML(targetPhase)}</span>
+                        <h4 class="font-orbitron text-sm font-black text-white uppercase">${this.escapeHTML(co.name || cid)}</h4>
+                    </div>
+                    <span class="text-[10px] font-mono px-2 py-1 bg-black border border-slate-700 rounded text-slate-300">
+                        Licencia AESA: <strong class="${aesaStatus.startsWith('APROBADA') ? 'text-emerald-400' : 'text-amber-300'}">${this.escapeHTML(aesaStatus)}</strong>
+                    </span>
+                </div>
+
+                ${isSigned ? `
+                <div class="bg-indigo-950/30 border border-indigo-500/40 p-3 rounded space-y-1">
+                    <div class="flex justify-between items-center gap-2 flex-wrap">
+                        <span class="text-xs font-orbitron font-bold text-indigo-300 uppercase">${this.escapeHTML(signedContract.company)} — ${this.escapeHTML(signedContract.title)}</span>
+                        <span class="font-mono text-[11px] font-bold"><span class="text-emerald-400">+${signedContract.reward} €v</span> / <span class="text-rose-400">-${signedContract.penalty} €v</span></span>
+                    </div>
+                    <p class="text-slate-200 leading-snug"><strong class="text-slate-400 uppercase text-[10px]">Requisitos:</strong> ${this.escapeHTML(signedContract.requirements)}</p>
+                    ${signedContract.verification ? `<p class="text-indigo-200 italic text-[11px]"><strong class="not-italic text-slate-400 uppercase text-[10px]">Verificación:</strong> ${this.escapeHTML(signedContract.verification)}</p>` : ''}
+                </div>` : ''}
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono text-center">
+                    <div class="bg-black/70 border border-slate-800 p-2.5 rounded">
+                        <span class="text-[10px] text-slate-400 uppercase block">Saldo Actual / Libre</span>
+                        <strong class="text-sm ${balance <= 0 ? 'text-rose-400' : 'text-mars-green'}">${balance.toFixed(2)} €v</strong>
+                        ${committed > 0 ? `<span class="block text-[10px] text-slate-400">Libre real: ${freeBalance.toFixed(2)} €v</span>` : ''}
+                    </div>
+                    <div class="bg-black/70 border border-slate-800 p-2.5 rounded">
+                        <span class="text-[10px] text-slate-400 uppercase block">Coste BOM Actual (${bomList.length} uds)</span>
+                        <strong class="text-sm text-mars-cyan">${bomCostEv.toFixed(2)} €v</strong>
+                    </div>
+                    <div class="bg-black/70 border border-slate-800 p-2.5 rounded">
+                        <span class="text-[10px] text-slate-400 uppercase block">Mejor Eficiencia E (${flights.length} vuelos)</span>
+                        <strong class="text-sm text-mars-yellow">${bestE !== null ? bestE.toFixed(2) : '--'}</strong>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <div class="terminal-border bg-black/60 border border-slate-800 p-3 rounded">
+                        <h5 class="font-orbitron text-[11px] text-mars-cyan uppercase font-bold mb-2">📄 Entregables Curriculares (Fase ${this.escapeHTML(targetPhase)})</h5>
+                        <div class="max-h-56 overflow-y-auto pr-1">
+                            ${delivsHtml}
+                            ${prEntry ? `
+                            <div class="flex items-center justify-between gap-2 pt-2 mt-1 border-t border-slate-700/70">
+                                <div>
+                                    <span class="text-[10px] font-mono px-1.5 py-0.5 bg-purple-950/60 border border-purple-500/40 text-purple-300 rounded">DOC_15</span>
+                                    <strong class="text-white text-xs ml-1">Nota de Prensa Fase ${this.escapeHTML(targetPhase)}</strong>
+                                    <span class="text-[10px] text-slate-400 ml-1">(${this.escapeHTML(prEntry.status || '')})</span>
+                                </div>
+                                ${prHasUrl ? `<a href="${safePrUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-300 hover:underline font-mono text-[11px] shrink-0">Abrir Drive ↗</a>` : ''}
+                            </div>` : ''}
+                        </div>
+                    </div>
+
+                    <div class="terminal-border bg-black/60 border border-slate-800 p-3 rounded">
+                        <h5 class="font-orbitron text-[11px] text-mars-yellow uppercase font-bold mb-2">🚀 Ensayos en Banco de Pruebas (${flights.length})</h5>
+                        <div class="overflow-x-auto max-h-56 overflow-y-auto">
+                            <table class="w-full text-left text-xs whitespace-nowrap">
+                                <thead class="text-[10px] text-slate-400 uppercase font-mono border-b border-slate-800 sticky top-0 bg-slate-950">
+                                    <tr>
+                                        <th class="py-1 pr-2">Fecha</th>
+                                        <th class="py-1 pr-2">Altura</th>
+                                        <th class="py-1 pr-2">Coste</th>
+                                        <th class="py-1 pr-2">E</th>
+                                        <th class="py-1 text-right">Vídeo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${flightRowsHtml}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const actions = `
+            <button type="button" onclick="ui.closeModal(); ui.goToCompanyEval('${this.escapeAttr(cid)}')" class="min-h-[44px] px-4 py-2 bg-mars-cyan text-black font-black uppercase text-xs hover:bg-white transition-colors rounded">
+                📝 Ir a Rúbricas ↗
+            </button>
+        `;
+        this.showModal(`🔍 Evidencias In-Situ: ${this.escapeHTML(co.name || cid)}`, html, actions, 'max-w-4xl');
     },
 
     modalSettleContract(coId, phase, isCompleted) {

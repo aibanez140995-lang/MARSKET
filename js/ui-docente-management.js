@@ -4,6 +4,16 @@
 Object.assign(ui, {
     pinsVisible: false,
     revealedPinCompanyIds: {},
+    getCompanyPhysicalSpendEur(co) {
+        if (!co || !Array.isArray(co.realCosts)) return 0;
+        return co.realCosts.reduce((s, i) => {
+            if (!i) return s;
+            const eur = Number(i.eur) || 0;
+            const normShop = String(i.shop || '').trim().toUpperCase();
+            if (eur <= 0 || normShop === 'MERCADO B2B') return s;
+            return s + eur;
+        }, 0);
+    },
     renderAdminDash() {
         const activeFilter = this.currentClassFilter || 'ALL';
 
@@ -11,10 +21,14 @@ Object.assign(ui, {
         let filteredReal = 0;
         for (let c in state.data.companies) {
             const co = state.data.companies[c];
+            if (!co) continue;
             co.realCosts = co.realCosts || [];
-            const r = co.realCosts.reduce((s, i) => s + (Number(i.eur) || 0), 0);
-            globalReal += r;
-            if (activeFilter === 'ALL' || (co.classGroup || 'A') === activeFilter) {
+            const r = this.getCompanyPhysicalSpendEur(co);
+            const isTestCo = Boolean(co.isTestCompany || (co.classGroup || 'A') === 'TEST');
+            if (!isTestCo) globalReal += r;
+            if (activeFilter === 'ALL') {
+                if (!isTestCo) filteredReal += r;
+            } else if ((co.classGroup || 'A') === activeFilter) {
                 filteredReal += r;
             }
         }
@@ -273,7 +287,10 @@ Object.assign(ui, {
             <div class="lg:col-span-1 terminal-border bg-mars-card p-6 text-center border-t-4 border-t-mars-magenta flex flex-col justify-center">
                 <h3 class="font-orbitron text-mars-magenta text-xs mb-4 uppercase tracking-widest">Inversión FÍSICA ${activeFilter === 'ALL' ? 'GLOBAL' : 'CLASE ' + activeFilter}</h3>
                 <p class="text-5xl font-orbitron text-white mb-2 tracking-tighter">${(activeFilter === 'ALL' ? globalReal : filteredReal).toFixed(2)} €</p>
-                <p class="text-xs text-slate-300 uppercase font-bold">${activeFilter === 'ALL' ? 'Impacto económico real total (todas las clases)' : 'Impacto real en Clase ' + activeFilter}</p>
+                <p class="text-xs text-slate-300 uppercase font-bold">${activeFilter === 'ALL' ? 'Impacto real Clases A–F (TEST excluida)' : 'Impacto real en Clase ' + activeFilter}</p>
+                <button type="button" onclick="ui.modalRealCostsStudy()" class="mt-4 min-h-[44px] px-3 py-2 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta hover:bg-mars-magenta hover:text-white font-bold uppercase text-xs rounded transition-colors inline-flex items-center justify-center gap-1.5 shadow-sm">
+                    <span>🏪 Estudio Precios € / CSV</span>
+                </button>
             </div>
             <div class="lg:col-span-3 terminal-border bg-mars-card p-4 sm:p-6 w-full overflow-hidden border-t-4 border-t-mars-cyan">
                 <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
@@ -308,7 +325,7 @@ Object.assign(ui, {
                                     c.realCosts = c.realCosts || []; 
                                     c.ledger = c.ledger || []; 
                                     
-                                    const r = c.realCosts.reduce((s,i)=>s+(Number(i.eur)||0),0);
+                                    const r = this.getCompanyPhysicalSpendEur(c);
                                     const opCosts = state.getCompanyOperatingCosts ? state.getCompanyOperatingCosts(c) : { gross: c.ledger.filter(l => l.delta < 0).reduce((s, l) => s + Math.abs(Number(l.delta)||0), 0), sponsorReduction: 0, net: c.ledger.filter(l => l.delta < 0).reduce((s, l) => s + Math.abs(Number(l.delta)||0), 0) };
                                     
                                     const tierStyles = {
@@ -370,8 +387,9 @@ Object.assign(ui, {
                                             </button>
                                         </td>
                                         <td class="py-3 font-mono pr-2.5 sm:pr-4">
-                                            <button onclick="ui.modalRealSpend('${this.escapeHTML(cid)}')" class="min-h-[44px] text-left text-mars-magenta hover:text-white transition-colors underline decoration-mars-magenta/50 decoration-dashed underline-offset-4 inline-flex items-center gap-1 font-bold" title="Auditar compras físicas y tickets">
+                                            <button onclick="ui.modalRealSpend('${this.escapeHTML(cid)}')" class="min-h-[44px] text-left text-mars-magenta hover:text-white transition-colors underline decoration-mars-magenta/50 decoration-dashed underline-offset-4 inline-flex items-center gap-1.5 font-bold" title="Auditar compras físicas y tickets">
                                                 <span>${r.toFixed(2)} €</span>
+                                                ${r > 25 ? `<span class="bg-amber-950/90 text-amber-300 border border-amber-500/60 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold whitespace-nowrap no-underline" title="Supera el umbral de gasto real familiar (25 €)">⚠️ &gt;25€</span>` : ''}
                                                 <span class="text-[10px] text-slate-400">🔍</span>
                                             </button>
                                         </td>
@@ -2944,6 +2962,212 @@ Object.assign(ui, {
         this.showModal(`Auditoría de Compras Físicas: ${this.escapeHTML(co.name)}`, html, `<button type="button" onclick="ui.closeModal();" class="min-h-[44px] px-5 py-2 bg-slate-800 text-white font-bold uppercase text-xs hover:bg-slate-700">Cerrar</button>`);
     },
 
+    getRealCostsStudyData() {
+        const activeFilter = this.currentClassFilter || 'ALL';
+        const companies = state.data?.companies || {};
+        const shopMap = {};
+        const compShopMap = {};
+        let totalPurchases = 0;
+        let totalUnits = 0;
+        let totalEur = 0;
+        let overThresholdCount = 0;
+        let companiesCount = 0;
+
+        Object.keys(companies).forEach(cid => {
+            const co = companies[cid];
+            if (!co) return;
+            const isTestCo = Boolean(co.isTestCompany || (co.classGroup || 'A') === 'TEST');
+            if (activeFilter === 'ALL') {
+                if (isTestCo) return;
+            } else if ((co.classGroup || 'A') !== activeFilter) {
+                return;
+            }
+
+            companiesCount++;
+            const records = Array.isArray(co.realCosts) ? co.realCosts : [];
+            let coPhysicalEur = 0;
+
+            records.forEach(rc => {
+                if (!rc) return;
+                const eur = Number(rc.eur) || 0;
+                const rawShop = String(rc.shop || '').trim();
+                const normShop = rawShop.toUpperCase();
+                // Excluir compras B2B (sin desembolso físico nuevo) o importes <= 0 €
+                if (eur <= 0 || normShop === 'MERCADO B2B') return;
+
+                const qty = Math.max(1, Number(rc.qty) || 1);
+                const shopLabel = rawShop || 'Comercio sin especificar';
+                const shopKey = shopLabel.toUpperCase();
+                const itemLabel = String(rc.item || '').trim() || 'Componente sin nombre';
+                const compKey = `${itemLabel.toUpperCase()}|||${shopKey}`;
+
+                coPhysicalEur += eur;
+                totalPurchases++;
+                totalUnits += qty;
+                totalEur += eur;
+
+                if (!shopMap[shopKey]) {
+                    shopMap[shopKey] = { shop: shopLabel, purchases: 0, totalUnits: 0, totalEur: 0 };
+                }
+                shopMap[shopKey].purchases += 1;
+                shopMap[shopKey].totalUnits += qty;
+                shopMap[shopKey].totalEur += eur;
+
+                if (!compShopMap[compKey]) {
+                    compShopMap[compKey] = { item: itemLabel, shop: shopLabel, purchases: 0, totalUnits: 0, totalEur: 0 };
+                }
+                compShopMap[compKey].purchases += 1;
+                compShopMap[compKey].totalUnits += qty;
+                compShopMap[compKey].totalEur += eur;
+            });
+
+            if (coPhysicalEur > 25) overThresholdCount++;
+        });
+
+        const shopSummary = Object.values(shopMap)
+            .map(row => ({
+                ...row,
+                avgTicket: row.purchases > 0 ? (row.totalEur / row.purchases) : 0
+            }))
+            .sort((a, b) => b.totalEur - a.totalEur || a.shop.localeCompare(b.shop));
+
+        const componentByShop = Object.values(compShopMap)
+            .map(row => ({
+                ...row,
+                avgUnitCost: row.totalUnits > 0 ? (row.totalEur / row.totalUnits) : 0
+            }))
+            .sort((a, b) => a.item.localeCompare(b.item) || a.avgUnitCost - b.avgUnitCost || a.shop.localeCompare(b.shop));
+
+        const filterLabel = activeFilter === 'ALL'
+            ? 'Global (Clases A–F · TEST excluida)'
+            : `Clase ${activeFilter}`;
+
+        return {
+            activeFilter,
+            filterLabel,
+            companiesCount,
+            overThresholdCount,
+            totalPurchases,
+            totalUnits,
+            totalEur,
+            shopSummary,
+            componentByShop
+        };
+    },
+
+    modalRealCostsStudy() {
+        if (!this.checkCoordinatorAccess()) return;
+        const study = this.getRealCostsStudyData();
+
+        const shopRowsHtml = study.shopSummary.map(row => `
+            <tr class="border-b border-slate-800/80 hover:bg-slate-900/60">
+                <td class="py-2 pr-3 font-bold text-mars-cyan uppercase">${this.escapeHTML(row.shop)}</td>
+                <td class="py-2 pr-3 font-mono text-center text-white">${row.purchases}</td>
+                <td class="py-2 pr-3 font-mono text-center text-slate-300">${row.totalUnits}</td>
+                <td class="py-2 pr-3 font-mono text-right text-mars-magenta font-bold">${row.totalEur.toFixed(2)} €</td>
+                <td class="py-2 font-mono text-right text-amber-300 font-bold">${row.avgTicket.toFixed(2)} €</td>
+            </tr>
+        `).join('') || `<tr><td colspan="5" class="py-4 text-center text-slate-400 italic">No hay compras físicas registradas (&gt; 0 €, excluyendo Mercado B2B) en este filtro.</td></tr>`;
+
+        const compRowsHtml = study.componentByShop.map(row => `
+            <tr class="border-b border-slate-800/80 hover:bg-slate-900/60">
+                <td class="py-2 pr-3 font-bold text-white break-words max-w-[240px]">${this.escapeHTML(row.item)}</td>
+                <td class="py-2 pr-3 text-mars-cyan uppercase">${this.escapeHTML(row.shop)}</td>
+                <td class="py-2 pr-3 font-mono text-center text-slate-300">${row.purchases}</td>
+                <td class="py-2 pr-3 font-mono text-center text-slate-300">${row.totalUnits}</td>
+                <td class="py-2 pr-3 font-mono text-right text-mars-magenta font-bold">${row.totalEur.toFixed(2)} €</td>
+                <td class="py-2 font-mono text-right text-emerald-300 font-bold">${row.avgUnitCost.toFixed(2)} €/ud</td>
+            </tr>
+        `).join('') || `<tr><td colspan="6" class="py-4 text-center text-slate-400 italic">Sin registros de componentes comparables por comercio todavía.</td></tr>`;
+
+        const html = `
+            <div class="space-y-4 font-sans text-xs">
+                <div class="bg-slate-900/90 border border-mars-magenta/50 p-3 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div>
+                        <span class="text-[10px] font-mono uppercase text-mars-magenta font-bold block">Alcance Analítico: ${this.escapeHTML(study.filterLabel)}</span>
+                        <p class="text-[11px] text-slate-300 mt-0.5">Se excluyen automáticamente recepciones de <strong>Mercado B2B (0,00 €)</strong>${study.activeFilter === 'ALL' ? ' y startups <strong>TEST</strong>' : ''} para obtener precios reales de mercado.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2 font-mono text-[11px] shrink-0">
+                        <span class="px-2.5 py-1 bg-black border border-slate-700 rounded text-white">Recepciones: <strong>${study.totalPurchases}</strong></span>
+                        <span class="px-2.5 py-1 bg-black border border-mars-magenta/50 rounded text-mars-magenta">Total: <strong>${study.totalEur.toFixed(2)} €</strong></span>
+                        <span class="px-2.5 py-1 bg-black border ${study.overThresholdCount > 0 ? 'border-amber-500 text-amber-300' : 'border-emerald-500/40 text-emerald-300'} rounded">Alerta &gt;25€: <strong>${study.overThresholdCount}/${study.companiesCount}</strong></span>
+                    </div>
+                </div>
+
+                <div class="terminal-border bg-black/60 border border-slate-800 p-3 rounded">
+                    <h4 class="font-orbitron text-xs text-mars-cyan uppercase font-bold mb-2">1. Resumen por Comercio Oficial</h4>
+                    <div class="overflow-x-auto max-h-56 overflow-y-auto">
+                        <table class="w-full text-left text-xs whitespace-nowrap">
+                            <thead class="text-[10px] text-slate-400 uppercase font-mono border-b border-slate-700 sticky top-0 bg-slate-950">
+                                <tr>
+                                    <th class="py-2 pr-3">Comercio Oficial</th>
+                                    <th class="py-2 pr-3 text-center">Nº Recepciones</th>
+                                    <th class="py-2 pr-3 text-center">Uds Totales</th>
+                                    <th class="py-2 pr-3 text-right">Gasto Total (€)</th>
+                                    <th class="py-2 text-right">Ticket Medio / Compra (€)</th>
+                                </tr>
+                            </thead>
+                            <tbody>${shopRowsHtml}</tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="terminal-border bg-black/60 border border-slate-800 p-3 rounded">
+                    <h4 class="font-orbitron text-xs text-emerald-400 uppercase font-bold mb-2">2. Comparativa Componente × Comercio (Coste Medio Unitario)</h4>
+                    <div class="overflow-x-auto max-h-72 overflow-y-auto">
+                        <table class="w-full text-left text-xs whitespace-nowrap">
+                            <thead class="text-[10px] text-slate-400 uppercase font-mono border-b border-slate-700 sticky top-0 bg-slate-950">
+                                <tr>
+                                    <th class="py-2 pr-3">Componente</th>
+                                    <th class="py-2 pr-3">Comercio</th>
+                                    <th class="py-2 pr-3 text-center">Compras</th>
+                                    <th class="py-2 pr-3 text-center">Uds Totales</th>
+                                    <th class="py-2 pr-3 text-right">Gasto Total (€)</th>
+                                    <th class="py-2 text-right">Coste Medio (€/ud)</th>
+                                </tr>
+                            </thead>
+                            <tbody>${compRowsHtml}</tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const actions = `
+            <button type="button" onclick="ui.exportRealCostsSummaryCSV()" class="min-h-[44px] px-4 py-2 bg-mars-green text-black font-black uppercase text-xs hover:bg-white transition-colors rounded">
+                📥 Exportar Tablas Resumen CSV (€)
+            </button>
+        `;
+        this.showModal('🏪 Estudio Docente de Costes Reales (€) por Comercio', html, actions, 'max-w-5xl');
+    },
+
+    exportRealCostsSummaryCSV() {
+        if (!this.checkCoordinatorAccess()) return;
+        const study = this.getRealCostsStudyData();
+        if (study.shopSummary.length === 0 && study.componentByShop.length === 0) {
+            return this.notify("No hay compras físicas válidas (> 0 €, sin B2B) para exportar en este filtro.", "warning");
+        }
+
+        let csv = '\uFEFF';
+        csv += `${this.escapeCSVCell(`TABLA 1: RESUMEN POR COMERCIO OFICIAL (${study.filterLabel})`)}\n`;
+        csv += 'Comercio;N_Recepciones;Unidades_Totales;Gasto_Total_EUR;Ticket_Medio_Compra_EUR\n';
+        study.shopSummary.forEach(row => {
+            csv += `${this.escapeCSVCell(row.shop)};${row.purchases};${row.totalUnits};${row.totalEur.toFixed(2)};${row.avgTicket.toFixed(2)}\n`;
+        });
+
+        csv += '\n';
+        csv += `${this.escapeCSVCell(`TABLA 2: COMPARATIVA COMPONENTE x COMERCIO (${study.filterLabel})`)}\n`;
+        csv += 'Componente;Comercio;Compras;Unidades_Totales;Gasto_Total_EUR;Coste_Medio_EUR_ud\n';
+        study.componentByShop.forEach(row => {
+            csv += `${this.escapeCSVCell(row.item)};${this.escapeCSVCell(row.shop)};${row.purchases};${row.totalUnits};${row.totalEur.toFixed(2)};${row.avgUnitCost.toFixed(2)}\n`;
+        });
+
+        const safeSuffix = String(study.activeFilter || 'ALL').toLowerCase().replace(/[^a-z0-9_-]/g, '');
+        const dateStr = new Date().toISOString().slice(0, 10);
+        this.downloadFile(csv, 'csv', `marsket_estudio_costes_reales_${safeSuffix}_${dateStr}.csv`);
+        this.notify(`✅ Estudio de costes reales (${study.filterLabel}) exportado a CSV.`, "success");
+    },
+
     modalAssignSponsor(cid) {
         const co = state.data.companies[cid];
         if (!co) return;
@@ -3602,20 +3826,13 @@ Object.assign(ui, {
             printArea.innerHTML = printCardsHtml || previewBody;
         }
 
-        // Expandir el contenedor modal a max-w-5xl
-        const modalBox = document.querySelector('#modal-overlay > div');
-        if (modalBox) {
-            modalBox.classList.remove('max-w-lg');
-            modalBox.classList.add('max-w-5xl');
-        }
-
         const actionButtons = `
             <button type="button" onclick="ui.printCredentialCards()" class="min-h-[44px] bg-mars-cyan text-black px-4 sm:px-5 py-2.5 text-xs font-black uppercase hover:bg-white transition-all shadow-[0_0_10px_#00f0ff] flex items-center gap-2">
                 <span>🖨️</span> <span>IMPRIMIR / DESCARGAR PDF</span>
             </button>
         `;
 
-        this.showModal(title, previewBody, actionButtons);
+        this.showModal(title, previewBody, actionButtons, 'max-w-5xl');
     },
 
     printCredentialCards() {
