@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.26) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.27) ---
 
-const APP_VERSION = "2.0.26";
+const APP_VERSION = "2.0.27";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1154,8 +1154,23 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.26
+// Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.27",
+      date: "2026-11-19",
+      title: "Saneamiento Alumnado 2A · Asamblea, Marca, Prensa DOC_15 y Bloqueo B2B Cross-Company",
+      items: [
+        "Quórum Real en Mociones de Asamblea: Corregido el cálculo de quórum y lista de votantes pendientes para no depender de co.roles sanitizado en el cliente, evitando cierres prematuros al primer voto y mostrando correctamente el estado activo del Rol Socio Auxiliar.",
+        "Identidad de Marca Sin Sobrescrituras (COORDINATOR_DECIDE_BRAND): Coordinación envía el eslogan oficial, el logo o el motivo tipificado y enlace Drive de rechazo directamente en la acción atómica del servidor CDMON.",
+        "Notas de Prensa (DOC_15) y Contrato Fase I: Las notas devueltas para subsanación (RETURNED) ya se ocultan del Tablón Público hasta su reenvío sin duplicarse, y el Contrato de Fase I exige que el Presupuesto Inicial (DOC_4) esté visado por el CEO y elevado al docente.",
+        "Propagación B2B Cross-Company y Paquetes MKT: Al aprobar Finanzas una compra B2B, el servidor propaga la notificación al vendedor y cancela solicitudes competidoras de otras empresas; además se deduplican paquetes de Marketing por id y se unifica el estado APROBADA en Licencia AESA."
+      ],
+      highlights: [
+        { type: "ASAMBLEA & MARCA", text: "Quórum completo de 5/6 socios y aprobación/rechazo de marca íntegros." },
+        { type: "B2B & PRENSA", text: "Bloqueo B2B entre empresas y notas RETURNED ocultas del tablón." }
+      ]
+    },
     {
       version: "2.0.26",
       date: "2026-11-19",

@@ -1120,6 +1120,19 @@ const state = {
             };
 
             let combined;
+            const dedupById = (arr) => {
+                const seen = new Set();
+                const res = [];
+                arr.forEach(item => {
+                    if (!item || !item.id) { res.push(item); return; }
+                    const k = String(item.id);
+                    if (!seen.has(k)) { seen.add(k); res.push(item); }
+                });
+                return res;
+            };
+            arrServer = dedupById(arrServer);
+            arrLocal = dedupById(arrLocal);
+
             if (localWinsOnTie) {
                 const serverMap = new Map();
                 arrServer.forEach(i => { if (i && i.id) serverMap.set(String(i.id), i); });
@@ -3628,8 +3641,9 @@ const state = {
         if (!p) return false;
         if (typeof p === 'string' && p.trim().length > 0) return true;
         if (typeof p === 'object' && p !== null) {
-            if (p.driveUrl && String(p.driveUrl).trim().length > 0) return true;
-            if (p.status === 'DELIVERED_TO_TEACHER' || p.status === 'ACCEPTED' || p.status === 'REVIEWED') return true;
+            const st = String(p.status || '');
+            if (st === 'ACCEPTED' || st === 'REVIEWED' || st === 'APPROVED' || st === 'APROBADO') return true;
+            if (st === 'DELIVERED_TO_TEACHER' && p.driveUrl && String(p.driveUrl).trim().length > 0) return true;
         }
         return false;
     },

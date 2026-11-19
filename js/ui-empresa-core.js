@@ -2832,6 +2832,9 @@ Object.assign(ui, {
         co.pressReleases[phaseKey] = {
             id: 'PR-' + coId + '-' + phaseKey,
             phase: phaseKey,
+            status: 'PUBLISHED',
+            returnReason: '',
+            returnDriveUrl: '',
             title: `Nota de Prensa Oficial Fase ${phaseKey} — ${co.name}`,
             driveUrl: driveUrl,
             publishedAt: nowTs,
@@ -2841,26 +2844,24 @@ Object.assign(ui, {
         };
         co.updatedAt = nowTs;
 
-        // Registro en listado global para el Tablón de Noticias
-        state.data.pressReleases = Array.isArray(state.data.pressReleases) ? state.data.pressReleases : [];
-        const existingIdx = state.data.pressReleases.findIndex(p => p.coId === coId && p.phase === phaseKey);
+        // Registro en listado global para el Tablón de Noticias (deduplicando por coId + phase)
+        state.data.pressReleases = Array.isArray(state.data.pressReleases)
+            ? state.data.pressReleases.filter(p => !(p && String(p.coId) === String(coId) && String(p.phase) === String(phaseKey)))
+            : [];
         const item = {
             id: 'PR-' + coId + '-' + phaseKey,
             coId: coId,
             companyName: co.name,
             classGroup: co.classGroup || 'A',
             phase: phaseKey,
+            status: 'PUBLISHED',
             title: `Nota de Prensa Oficial — Cierre Fase ${phaseKey} (${co.name})`,
             driveUrl: driveUrl,
             publishedAt: nowTs,
             updatedAt: nowTs,
             publishedDate: new Date().toLocaleDateString()
         };
-        if (existingIdx >= 0) {
-            state.data.pressReleases[existingIdx] = item;
-        } else {
-            state.data.pressReleases.unshift(item);
-        }
+        state.data.pressReleases.unshift(item);
 
         ui.pushNotification(coId, 'ALL', `📰 El CEO ha publicado la Nota de Prensa Oficial de Fase ${phaseKey} en el Tablón de Noticias.`, 'success', { view: 'news' });
         ui.pushNotification('ADMIN', 'ALL', `📰 [${co.name}] Nota de Prensa Oficial de Fase ${phaseKey} publicada en el Tablón.`, 'info', { view: 'news' });
@@ -3541,11 +3542,17 @@ Object.assign(ui, {
         // 2. Recopilación de Notas de Prensa de las Startups (DOC_15)
         const allReleases = [];
         const companies = state.data?.companies || {};
+        const returnedPrKeys = new Set();
         Object.keys(companies).forEach(cid => {
             const co = companies[cid];
             if (co && co.pressReleases) {
                 Object.keys(co.pressReleases).forEach(pk => {
                     const pr = co.pressReleases[pk];
+                    if (pr && pr.status === 'RETURNED') {
+                        returnedPrKeys.add(pr.id || `${cid}-${pk}`);
+                        returnedPrKeys.add(`PR-${cid}-${pk}`);
+                        return;
+                    }
                     if (pr && pr.driveUrl) {
                         allReleases.push({
                             id: pr.id || `${cid}-${pk}`,
@@ -3568,6 +3575,9 @@ Object.assign(ui, {
 
         if (Array.isArray(state.data?.pressReleases)) {
             state.data.pressReleases.forEach(pr => {
+                if (!pr || pr.status === 'RETURNED' || returnedPrKeys.has(pr.id) || returnedPrKeys.has(`PR-${pr.coId}-${pr.phase}`)) {
+                    return;
+                }
                 const exist = allReleases.find(r => r.id === pr.id);
                 if (!exist) {
                     allReleases.push({
@@ -4088,8 +4098,9 @@ Object.assign(ui, {
         if (!p) return false;
         if (typeof p === 'string' && p.trim().length > 0) return true;
         if (typeof p === 'object' && p !== null) {
-            if (p.driveUrl && String(p.driveUrl).trim().length > 0) return true;
-            if (p.status === 'DELIVERED_TO_TEACHER' || p.status === 'ACCEPTED' || p.status === 'REVIEWED') return true;
+            const st = String(p.status || '');
+            if (st === 'ACCEPTED' || st === 'REVIEWED' || st === 'APPROVED' || st === 'APROBADO') return true;
+            if (st === 'DELIVERED_TO_TEACHER' && p.driveUrl && String(p.driveUrl).trim().length > 0) return true;
         }
         return false;
     },

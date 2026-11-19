@@ -33,7 +33,7 @@ Object.assign(ui, {
                 <span class="text-mars-magenta font-black uppercase block mb-1">❌ Solicitud Denegada por Coordinación</span>
                 <p class="text-slate-200">La última solicitud de Rol Auxiliar fue rechazada. Puedes enviar una nueva propuesta corregida.</p>
             </div>`;
-        } else if (co.roles['AUXILIAR']) {
+        } else if (req.status === 'APROBADO' || Boolean(co.auxRoleDept) || Boolean(co.roles['AUXILIAR'])) {
             statusBanner = `
             <div class="bg-mars-green/15 border border-mars-green p-3 mb-4 text-xs">
                 <span class="text-mars-green font-black uppercase block mb-1">✓ Rol Auxiliar Activo y Autorizado</span>
@@ -397,7 +397,11 @@ Object.assign(ui, {
                             const abst = votes.filter(v => v === 'NO_ESTOY_SEGURO').length;
                             const total = y + n + abst;
                             const myVote = m.votes ? m.votes[state.user.role] : null;
-                            const totalRoles = Object.keys(co.roles || {}).length;
+                            const allRoleKeys = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA'];
+                            if (co.auxRoleDept || co.auxRoleRequest?.status === 'APROBADO' || co.roles?.AUXILIAR) {
+                                allRoleKeys.push('AUXILIAR');
+                            }
+                            const totalRoles = allRoleKeys.length;
                             
                             let actions = '';
                             if(m.status === 'ABIERTA') {
@@ -442,7 +446,6 @@ Object.assign(ui, {
                                     <span class="text-red-500">✗ ${n} En Contra</span>
                                 </div>
                                 ${m.status === 'ABIERTA' ? (() => {
-                                    const allRoleKeys = Object.keys(co.roles || {});
                                     const votedKeys = allRoleKeys.filter(rk => Boolean(m.votes && m.votes[rk]));
                                     const missingKeys = allRoleKeys.filter(rk => !(m.votes && m.votes[rk]));
                                     const fmtR = (rk) => this.escapeHTML(this.getDeptDisplayName ? this.getDeptDisplayName(rk) : rk);

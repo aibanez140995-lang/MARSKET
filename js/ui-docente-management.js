@@ -2656,7 +2656,7 @@ Object.assign(ui, {
                 fetch(`/api/company/${cid}/action`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Marsket-Auth': token },
-                    body: JSON.stringify({ action: 'COORDINATOR_DECIDE_BRAND', payload: { approved: false } })
+                    body: JSON.stringify({ action: 'COORDINATOR_DECIDE_BRAND', payload: { approved: false, reason, returnDriveUrl: driveUrl || '' } })
                 }).catch(() => {});
             }
         } catch(e) {}
@@ -2702,7 +2702,7 @@ Object.assign(ui, {
                 fetch(`/api/company/${cid}/action`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Marsket-Auth': token },
-                    body: JSON.stringify({ action: 'COORDINATOR_DECIDE_BRAND', payload: { approved: true } })
+                    body: JSON.stringify({ action: 'COORDINATOR_DECIDE_BRAND', payload: { approved: true, officialSlogan: co.slogan || '', logo: co.logo || null } })
                 }).catch(() => {});
             }
         } catch(e) {}

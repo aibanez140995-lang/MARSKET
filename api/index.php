@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.26
+// Versión: v2.0.27
 
 declare(strict_types=1);
 
@@ -930,7 +930,7 @@ try {
                                 $lLic = is_array($payload['companies'][$studentCoId]['launchLicense'] ?? null) ? $payload['companies'][$studentCoId]['launchLicense'] : [];
                                 $sLicDecTs = max((int)($sLic['approvedAt'] ?? 0), (int)($sLic['rejectedAt'] ?? 0));
                                 $lLicAppTs = (int)($lLic['appliedAt'] ?? 0);
-                                if (($sLic['status'] ?? '') === 'APROBADO' || ($sLicDecTs > 0 && $sLicDecTs >= $lLicAppTs)) {
+                                if (in_array($sLic['status'] ?? '', ['APROBADA', 'APROBADO'], true) || ($sLicDecTs > 0 && $sLicDecTs >= $lLicAppTs)) {
                                     $payload['companies'][$studentCoId]['launchLicense'] = $sLic;
                                 }
                             }
@@ -943,6 +943,70 @@ try {
                                 }
                                 $payload['companies'][$studentCoId]['contracts'] = $incCont;
                             }
+                        }
+                    }
+
+                    // Propagación controlada cross-company cuando Finanzas del comprador bloquea una compra B2B (EN_ADUANA)
+                    $currContractIds = [];
+                    foreach (($currentState['b2bContracts'] ?? []) as $cc) {
+                        if (is_array($cc) && !empty($cc['id'])) $currContractIds[(string)$cc['id']] = true;
+                    }
+                    $nowB2B = round(microtime(true) * 1000);
+                    foreach (($payload['b2bContracts'] ?? []) as $nc) {
+                        if (!is_array($nc) || empty($nc['id']) || isset($currContractIds[(string)$nc['id']])) continue;
+                        if ((string)($nc['buyerCoId'] ?? '') !== (string)$studentCoId || ($nc['status'] ?? '') !== 'PENDIENTE_ADUANA') continue;
+                        $offerId = (string)($nc['offerId'] ?? '');
+                        $sellerCid = (string)($nc['sellerCoId'] ?? '');
+                        $itemNameB2B = (string)($nc['itemName'] ?? 'Componente B2B');
+                        $buyerNameB2B = (string)($nc['buyerName'] ?? $studentCoId);
+                        $priceB2B = (float)($nc['price'] ?? 0);
+
+                        if ($sellerCid !== '' && $sellerCid !== (string)$studentCoId && isset($payload['companies'][$sellerCid]) && is_array($payload['companies'][$sellerCid])) {
+                            $sellerNotifs = is_array($payload['companies'][$sellerCid]['notifications'] ?? null) ? $payload['companies'][$sellerCid]['notifications'] : [];
+                            $alreadyNotified = false;
+                            foreach ($sellerNotifs as $sn) {
+                                if (is_array($sn) && ($sn['b2bOfferId'] ?? '') === $offerId && $offerId !== '') {
+                                    $alreadyNotified = true;
+                                    break;
+                                }
+                            }
+                            if (!$alreadyNotified) {
+                                array_unshift($sellerNotifs, [
+                                    'id' => 'NTF-B2B-' . $nowB2B . '-' . substr(md5($offerId . $sellerCid), 0, 5),
+                                    'b2bOfferId' => $offerId,
+                                    'role' => 'TECNICO',
+                                    'message' => "🤝 ¡Oferta adquirida! {$buyerNameB2B} ha bloqueado \"{$itemNameB2B}\" por " . number_format($priceB2B, 2, '.', '') . " €v. Pendiente de validación en Aduana Docente.",
+                                    'type' => 'info',
+                                    'target' => ['view' => 'market'],
+                                    'date' => date('d/m/Y, H:i:s'),
+                                    'timestamp' => $nowB2B,
+                                    'read' => false
+                                ]);
+                                $payload['companies'][$sellerCid]['notifications'] = array_slice($sellerNotifs, 0, 150);
+                                $payload['companies'][$sellerCid]['updatedAt'] = $nowB2B;
+                            }
+                        }
+
+                        if ($offerId !== '') {
+                            foreach ($payload['companies'] as $oCid => &$oCo) {
+                                if ((string)$oCid === (string)$studentCoId || !is_array($oCo)) continue;
+                                $changedComp = false;
+                                if (!empty($oCo['orders']) && is_array($oCo['orders'])) {
+                                    foreach ($oCo['orders'] as &$oOrd) {
+                                        if (is_array($oOrd) && ($oOrd['offerId'] ?? '') === $offerId && ($oOrd['status'] ?? '') === 'PENDIENTE_FINANZAS') {
+                                            $oOrd['status'] = 'CANCELADO_OTRA_EMPRESA';
+                                            $oOrd['cancelledAt'] = $nowB2B;
+                                            $oOrd['updatedAt'] = $nowB2B;
+                                            $changedComp = true;
+                                        }
+                                    }
+                                    unset($oOrd);
+                                }
+                                if ($changedComp) {
+                                    $oCo['updatedAt'] = $nowB2B;
+                                }
+                            }
+                            unset($oCo);
                         }
                     }
                 }
@@ -1584,12 +1648,42 @@ try {
                 }
                 if (!empty($inner['orderId'])) {
                     $co['orders'] = is_array($co['orders'] ?? null) ? $co['orders'] : [];
+                    $executedIndices = is_array($inner['executedIndices'] ?? null) ? array_map('intval', $inner['executedIndices']) : null;
+                    $chargeEurV = 0.0;
                     foreach ($co['orders'] as &$ord) {
                         if ((string)($ord['id'] ?? '') === (string)($inner['orderId'])) {
-                            $ord['status'] = 'EJECUTADO';
+                            $itemsArr = is_array($ord['items'] ?? null) ? $ord['items'] : [];
+                            $allDone = true;
+                            foreach ($itemsArr as $idx => &$it) {
+                                if (!empty($it['executed'])) continue;
+                                if ($executedIndices === null || in_array((int)$idx, $executedIndices, true)) {
+                                    $it['executed'] = true;
+                                    $chargeEurV += ((float)($it['price'] ?? 0)) * ((float)($it['qty'] ?? 1));
+                                } else {
+                                    $allDone = false;
+                                }
+                            }
+                            unset($it);
+                            $ord['items'] = $itemsArr;
+                            $ord['status'] = $allDone ? 'EJECUTADO' : ($ord['status'] ?? 'APROBADO_FINANZAS');
+                            if (!$allDone) $ord['partialExecuted'] = true;
+                            $ord['updatedAt'] = $now;
                         }
                     }
                     unset($ord);
+                    if ($chargeEurV > 0 && empty($inner['skipLedger'])) {
+                        $co['ledger'] = is_array($co['ledger'] ?? null) ? $co['ledger'] : [];
+                        $txId = 'TX-' . $now . '-' . substr(md5((string)$inner['orderId'] . $now), 0, 5);
+                        array_unshift($co['ledger'], [
+                            'id' => $txId,
+                            'tx_id' => $txId,
+                            'date' => date('d/m/Y, H:i:s'),
+                            'concept' => 'Recepción física Orden #' . $inner['orderId'],
+                            'dept' => 'OPERACIONES_IA',
+                            'delta' => -round($chargeEurV, 2),
+                            'timestamp' => $now
+                        ]);
+                    }
                 }
                 break;
 
@@ -1618,7 +1712,21 @@ try {
                         $camp['price'] = $mktPackages[$camp['packageId']]['price'];
                         $camp['totalActions'] = $mktPackages[$camp['packageId']]['actions'];
                     }
-                    array_unshift($co['marketingCampaigns'], $camp);
+                    $campIdStr = (string)($camp['id'] ?? '');
+                    $foundCampIdx = -1;
+                    if ($campIdStr !== '') {
+                        foreach ($co['marketingCampaigns'] as $cIdx => $existingCamp) {
+                            if ((string)($existingCamp['id'] ?? '') === $campIdStr) {
+                                $foundCampIdx = $cIdx;
+                                break;
+                            }
+                        }
+                    }
+                    if ($foundCampIdx >= 0) {
+                        $co['marketingCampaigns'][$foundCampIdx] = array_merge($co['marketingCampaigns'][$foundCampIdx], $camp);
+                    } else {
+                        array_unshift($co['marketingCampaigns'], $camp);
+                    }
                 }
                 if (!empty($inner['actionItem']) && !empty($inner['campaignId'])) {
                     $incomingItem = $inner['actionItem'];
@@ -1885,24 +1993,45 @@ try {
                     exit;
                 }
                 $approved = !empty($inner['approved']);
+                $co['brandUpdatedAt'] = $now;
                 if ($approved) {
-                    $co['slogan'] = $co['pendingSlogan'] ?? ($co['brandApproval']['pendingSlogan'] ?? ($co['slogan'] ?? ''));
+                    $incSlogan = trim((string)($inner['officialSlogan'] ?? ''));
+                    $pendingSl = trim((string)($co['pendingSlogan'] ?? ($co['brandApproval']['pendingSlogan'] ?? '')));
+                    $currSlogan = trim((string)($co['slogan'] ?? ''));
+                    $co['slogan'] = $incSlogan !== '' ? $incSlogan : ($pendingSl !== '' ? $pendingSl : $currSlogan);
+                    if (array_key_exists('logo', $inner) && $inner['logo']) {
+                        $co['logo'] = $inner['logo'];
+                    } elseif (!empty($co['brandApproval']['pendingLogo'])) {
+                        $co['logo'] = $co['brandApproval']['pendingLogo'];
+                    }
                     $co['mission'] = $co['pendingMission'] ?? ($co['valueProposition'] ?? ($co['mission'] ?? ''));
                     $co['valueProposition'] = $co['mission'];
-                    unset($co['pendingSlogan'], $co['pendingMission'], $co['brandStatus']);
+                    unset($co['pendingSlogan'], $co['pendingMission']);
+                    $co['brandStatus'] = 'APPROVED';
                     if (isset($co['brandApproval']) && is_array($co['brandApproval'])) {
                         $co['brandApproval']['status'] = 'APROBADO';
+                        $co['brandApproval']['pendingLogo'] = null;
+                        $co['brandApproval']['pendingSlogan'] = '';
+                        $co['brandApproval']['feedback'] = '';
                         $co['brandApproval']['updatedAt'] = $now;
-                        unset($co['brandApproval']['pendingSlogan']);
                     }
                 } else {
                     unset($co['pendingSlogan'], $co['pendingMission']);
                     $co['brandStatus'] = 'REJECTED';
+                    $rejReason = trim((string)($inner['reason'] ?? ''));
+                    $rejDrive = trim((string)($inner['returnDriveUrl'] ?? ''));
                     if (isset($co['brandApproval']) && is_array($co['brandApproval'])) {
                         $co['brandApproval']['status'] = 'RECHAZADO';
                         $co['brandApproval']['updatedAt'] = $now;
                         unset($co['brandApproval']['pendingSlogan']);
-                        $co['brandApproval']['feedback'] = 'Propuesta de marca rechazada por Coordinación.';
+                        if ($rejReason !== '') {
+                            $co['brandApproval']['feedback'] = $rejReason;
+                        } elseif (empty($co['brandApproval']['feedback'])) {
+                            $co['brandApproval']['feedback'] = 'Propuesta de marca rechazada por Coordinación.';
+                        }
+                        if ($rejDrive !== '') {
+                            $co['brandApproval']['returnDriveUrl'] = $rejDrive;
+                        }
                     }
                 }
                 break;
