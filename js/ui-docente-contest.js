@@ -196,6 +196,25 @@ Object.assign(ui, {
         this.navigate('news');
     },
 
+    _captureStep3SelectionsFromDOM(fc) {
+        if (!fc) return;
+        const pFirst = document.getElementById('contest-podium-first');
+        const pSecond = document.getElementById('contest-podium-second');
+        const pThird = document.getElementById('contest-podium-third');
+        if (pFirst || pSecond || pThird) {
+            fc.podium = {
+                first: pFirst ? (pFirst.value || null) : (fc.podium?.first || null),
+                second: pSecond ? (pSecond.value || null) : (fc.podium?.second || null),
+                third: pThird ? (pThird.value || null) : (fc.podium?.third || null)
+            };
+        }
+        const awardsDef = this.getContestAwardsDef();
+        awardsDef.ROLE_AWARDS.forEach(a => {
+            const sel = document.getElementById(`contest-award-${a.id}`);
+            if (sel) fc.roleAwards[a.id] = sel.value || null;
+        });
+    },
+
     setContestFinalist(cls, cid) {
         if (!this.checkCoordinatorAccess()) return false;
         const allowedClasses = this.getContestClasses();
@@ -219,6 +238,7 @@ Object.assign(ui, {
         }
 
         const fc = this.getContestState();
+        this._captureStep3SelectionsFromDOM(fc);
         fc.finalists[targetCls] = cleanCid;
         this.persistContestState(fc);
         if (typeof telemetry !== 'undefined' && telemetry.log) {
@@ -315,6 +335,7 @@ Object.assign(ui, {
             return false;
         }
 
+        this._captureStep3SelectionsFromDOM(fc);
         fc.launches[cid] = parsed.launch;
         this.persistContestState(fc);
         if (typeof telemetry !== 'undefined' && telemetry.log) {

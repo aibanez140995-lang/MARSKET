@@ -67,6 +67,7 @@ const DEFAULT_STATE = {
     config: {
         nextOrderId: 1000,
         scheduleBaselineVersion: 0,
+        catalogBaselineVersion: 1131,
         deadlines: typeof DEFAULT_DEADLINES !== 'undefined' ? DEFAULT_DEADLINES : {},
         deliverableSchedule: {},
         guidelines: { techReportDocUrl: "", techReportNotes: "Guía oficial redactada por FYQ." },
@@ -522,6 +523,10 @@ const state = {
                     }
                 }
             });
+            const postDelCatSet = new Set((d.deletedCatalogIds || []).map(String));
+            if (postDelCatSet.size > 0) {
+                d.catalog = d.catalog.filter(it => it && !postDelCatSet.has(String(it.id)));
+            }
         }
 
         d.config.guidelines = d.config.guidelines || { techReportDocUrl: "", techReportNotes: "" };
@@ -964,9 +969,15 @@ const state = {
         allLaunchCids.forEach(cid => {
             const sL = sLaunches[cid];
             const lL = lLaunches[cid];
-            if (sL && !lL) mergedLaunches[cid] = JSON.parse(JSON.stringify(sL));
-            else if (lL && !sL && isCoordUser) mergedLaunches[cid] = JSON.parse(JSON.stringify(lL));
-            else if (sL && lL) {
+            if (sL && !lL) {
+                if (!preferLocal || this._parseSafeTs(sL.recordedAt) > lTime) {
+                    mergedLaunches[cid] = JSON.parse(JSON.stringify(sL));
+                }
+            } else if (lL && !sL && isCoordUser) {
+                if (preferLocal || this._parseSafeTs(lL.recordedAt) > sTime) {
+                    mergedLaunches[cid] = JSON.parse(JSON.stringify(lL));
+                }
+            } else if (sL && lL) {
                 const sRec = this._parseSafeTs(sL.recordedAt);
                 const lRec = this._parseSafeTs(lL.recordedAt);
                 const pickLocalLaunch = isCoordUser && (lRec > sRec || (lRec === sRec && lTime > sTime));
@@ -1452,14 +1463,20 @@ const state = {
                     }
                     // Preservar siempre calificaciones docentes usando LWW por asignatura sin depender del updatedAt de alumnos
                     mergeGradesDict(merged.companies[k], sCo, lCo);
-                    // Preservar asignación docente de patrocinio si el servidor la tiene
-                    if (sCo.sponsorAwarded) {
-                        const sSpDate = this._parseSafeTs(sCo.sponsorData?.date);
-                        const lSpDate = this._parseSafeTs(lCo.sponsorData?.date);
-                        if (!lCo.sponsorAwarded || sSpDate >= lSpDate) {
-                            merged.companies[k].sponsorAwarded = sCo.sponsorAwarded;
-                            merged.companies[k].sponsorData = JSON.parse(JSON.stringify(sCo.sponsorData || {}));
-                        }
+                    // Preservar asignación docente de patrocinio por LWW (sponsorUpdatedAt)
+                    const sSpTs = Number(sCo.sponsorUpdatedAt || sCo.sponsorData?.updatedAt || this._parseSafeTs(sCo.sponsorData?.date) || 0);
+                    const lSpTs = Number(lCo.sponsorUpdatedAt || lCo.sponsorData?.updatedAt || this._parseSafeTs(lCo.sponsorData?.date) || 0);
+                    if ((sSpTs > 0 && sSpTs >= lSpTs) || (sCo.sponsorAwarded && !lCo.sponsorAwarded && lSpTs === 0)) {
+                        merged.companies[k].sponsorAwarded = sCo.sponsorAwarded || null;
+                        merged.companies[k].sponsorData = JSON.parse(JSON.stringify(sCo.sponsorData || {}));
+                        if (sSpTs > 0) merged.companies[k].sponsorUpdatedAt = sSpTs;
+                    }
+                    const sNameTsL = Number(sCo.nameUpdatedAt || 0);
+                    const lNameTsL = Number(lCo.nameUpdatedAt || 0);
+                    if (sNameTsL > lNameTsL && sCo.name) {
+                        merged.companies[k].name = sCo.name;
+                        if (Array.isArray(sCo.previousNames)) merged.companies[k].previousNames = JSON.parse(JSON.stringify(sCo.previousNames));
+                        merged.companies[k].nameUpdatedAt = sNameTsL;
                     }
                     merged.companies[k].loginStats = mergeLoginStats(sCo.loginStats, lCo.loginStats);
 
@@ -1560,9 +1577,19 @@ const state = {
                             }
                         }
                         mergeGradesDict(sCo, sCo, lCo);
-                        if (lCo.sponsorAwarded && (!sCo.sponsorAwarded || this._parseSafeTs(lCo.sponsorData?.date) > this._parseSafeTs(sCo.sponsorData?.date))) {
-                            sCo.sponsorAwarded = lCo.sponsorAwarded;
+                        const lSpTs2 = Number(lCo.sponsorUpdatedAt || lCo.sponsorData?.updatedAt || this._parseSafeTs(lCo.sponsorData?.date) || 0);
+                        const sSpTs2 = Number(sCo.sponsorUpdatedAt || sCo.sponsorData?.updatedAt || this._parseSafeTs(sCo.sponsorData?.date) || 0);
+                        if ((lSpTs2 > sSpTs2) || (lCo.sponsorAwarded && !sCo.sponsorAwarded && sSpTs2 === 0)) {
+                            sCo.sponsorAwarded = lCo.sponsorAwarded || null;
                             sCo.sponsorData = JSON.parse(JSON.stringify(lCo.sponsorData || {}));
+                            if (lSpTs2 > 0) sCo.sponsorUpdatedAt = lSpTs2;
+                        }
+                        const lNameTs2 = Number(lCo.nameUpdatedAt || 0);
+                        const sNameTs2 = Number(sCo.nameUpdatedAt || 0);
+                        if (lNameTs2 > sNameTs2 && lCo.name) {
+                            sCo.name = lCo.name;
+                            if (Array.isArray(lCo.previousNames)) sCo.previousNames = JSON.parse(JSON.stringify(lCo.previousNames));
+                            sCo.nameUpdatedAt = lNameTs2;
                         }
                         sCo.loginStats = mergeLoginStats(sCo.loginStats, lCo.loginStats);
                         sCo.deliverables = sCo.deliverables || {};
@@ -2449,12 +2476,12 @@ const state = {
                 this.consecutiveNetworkFailures = 0;
                 if (this.isOfflineContained) this.setOfflineContainment(false);
 
-                if (data.balance !== undefined && this.data.companies?.[coId]) {
-                    this.data.companies[coId].updatedAt = data.updatedAt || Date.now();
-                }
                 if (data.version) this.lastCompanyVersion = Number(data.version) || this.lastCompanyVersion;
                 this.lastCompanyETag = res.headers.get('ETag') || data.etag || null;
                 await this.fetchFromCloud(true);
+                if (data.balance !== undefined && this.data.companies?.[coId] && data.updatedAt) {
+                    this.data.companies[coId].updatedAt = Math.max(Number(this.data.companies[coId].updatedAt) || 0, Number(data.updatedAt) || 0);
+                }
                 if (hadPendingSave) {
                     this.pushToCloud(true);
                 }
@@ -2536,6 +2563,13 @@ const state = {
         const comp = co || (this.data?.companies?.[this.user?.coId]);
         if (comp?.unlockAllContracts === true) return true;
 
+        const sched = this.data?.config?.deliverableSchedule || {};
+        const defs = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).filter(d => (sched[d.key]?.phase || d.phase || 'I') === phaseId);
+        const hasExplicitOpenDate = defs.some(d => Boolean(sched[d.key]?.openDate));
+        if (defs.length > 0 && hasExplicitOpenDate) {
+            return defs.some(d => !this.isDeliverableLocked(d.key, comp));
+        }
+
         const pDefs = (typeof PROJECT_PHASES_DEF !== 'undefined') ? PROJECT_PHASES_DEF : {};
         const pDef = pDefs[phaseId];
         if (pDef && pDef.startDate) {
@@ -2545,8 +2579,6 @@ const state = {
             }
         }
         if (phaseId === 'I') return true;
-
-        const defs = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).filter(d => (d.phase || 'I') === phaseId);
         if (defs.length > 0 && defs.some(d => !this.isDeliverableLocked(d.key, comp))) {
             return true;
         }
@@ -3809,6 +3841,17 @@ const state = {
         if (newTx && newTx.id) {
             cRecord.ledgerTxId = newTx.id;
         }
+        co.updatedAt = now;
+        this.saveLocalOnly();
+
+        if (typeof ui !== 'undefined' && typeof ui.pushNotification === 'function') {
+            const msg = isCompleted
+                ? `🤝 Contrato de Fase ${phase} (${cRecord.company}) LIQUIDADO con éxito (+${Number(cRecord.reward).toFixed(2)} €v en el Ledger).`
+                : `⚠️ Contrato de Fase ${phase} (${cRecord.company}) marcado como NO CUMPLIDO (penalización de -${Number(cRecord.penalty).toFixed(2)} €v).`;
+            const nType = isCompleted ? 'success' : 'error';
+            ui.pushNotification(coId, 'CEO', msg, nType, { view: 'contracts' });
+            ui.pushNotification(coId, 'FINANZAS', msg, nType, { view: 'finance' });
+        }
         if (typeof this.pushToCloud === 'function') this.pushToCloud(false);
 
         return { ok: true, contract: cRecord, delta };
@@ -3891,8 +3934,8 @@ const state = {
             base.roleAwards[rKey] = (rawId && activeFinalists.has(rawId)) ? rawId : null;
         });
 
-        base.published = Boolean(src.published);
-        base.publishedAt = Number(src.publishedAt) || 0;
+        base.published = Boolean(src.published && base.podium.first);
+        base.publishedAt = base.published ? (Number(src.publishedAt) || 0) : 0;
         base.updatedAt = Number(src.updatedAt) || 0;
         return base;
     },

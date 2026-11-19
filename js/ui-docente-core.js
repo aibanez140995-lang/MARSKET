@@ -134,7 +134,7 @@ Object.assign(ui, {
         const getScopedPending = (s) => {
             if (!s) return 0;
             if (isCoord) return Number(s.totalPending || 0);
-            if (isFyq) return Number(s.pendingAesa || 0) + Number(s.pendingCustom || 0);
+            if (isFyq) return Number(s.pendingAesa || 0);
             return 0;
         };
         const classes = [
@@ -254,9 +254,16 @@ Object.assign(ui, {
 
         const activeStats = stats[this.currentClassFilter] || stats.ALL;
         let deliveredCount = activeStats?.deliveredDeliverables ?? stats.ALL.deliveredDeliverables;
+        if (!isCoord && typeof this.getPendingEvalDocsForSubject === 'function') {
+            const clsFilter = this.currentClassFilter || 'ALL';
+            deliveredCount = Object.values(state.data.companies || {}).reduce((sum, coItem) => {
+                if (!coItem || (clsFilter !== 'ALL' && (coItem.classGroup || 'A') !== clsFilter)) return sum;
+                return sum + (this.getPendingEvalDocsForSubject(coItem, state.user.role).pendingCount || 0);
+            }, 0);
+        }
         let customsPendingCount = isCoord
             ? (activeStats?.totalPending ?? 0)
-            : (isFyqTeacher ? (Number(activeStats?.pendingAesa || 0) + Number(activeStats?.pendingCustom || 0)) : 0);
+            : (isFyqTeacher ? Number(activeStats?.pendingAesa || 0) : 0);
         const pendingAuxAll = stats.ALL?.pendingAux || 0;
         const pendingHrAll = stats.ALL?.pendingHR || 0;
 
@@ -501,7 +508,13 @@ Object.assign(ui, {
         }
 
         if (!rows) {
-            return '';
+            const isCoordPanel = String(state.user?.role || '').startsWith('COORD');
+            if (isCoordPanel) return '';
+            return `
+            <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-cyan-400 mb-6">
+                <h3 class="font-orbitron text-cyan-400 text-xs sm:text-sm uppercase tracking-wider font-bold mb-1">Recepción de Entregables FyQ (Hoja de Taller BOM & Informes)</h3>
+                <p class="text-xs text-slate-300 font-sans">No hay entregables FyQ ni licencias AESA pendientes de recepción en la clase seleccionada.</p>
+            </div>`;
         }
 
         return `
@@ -575,7 +588,13 @@ Object.assign(ui, {
         }
 
         if (!rows) {
-            return '';
+            const isCoordPanel = String(state.user?.role || '').startsWith('COORD');
+            if (isCoordPanel) return '';
+            return `
+            <div class="terminal-border bg-mars-card p-4 sm:p-5 border-t-4 border-t-amber-400 mb-6">
+                <h3 class="font-orbitron text-amber-400 text-xs sm:text-sm uppercase tracking-wider font-bold mb-1">Recepción de Acciones Publicitarias (DOC_12)</h3>
+                <p class="text-xs text-slate-300 font-sans">Ninguna startup de la clase seleccionada ha elevado todavía acciones publicitarias validadas por su CEO.</p>
+            </div>`;
         }
 
         return `

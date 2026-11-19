@@ -1371,14 +1371,7 @@ Object.assign(ui, {
         const committed = typeof state.getCommittedB2CBalance === 'function' ? Number(state.getCommittedB2CBalance(co) || 0) : 0;
         const freeBalance = balance - committed;
 
-        const bomList = Array.isArray(co.bom) ? co.bom : [];
-        let bomCostEv = 0;
-        bomList.forEach(k => {
-            const [oid, idx] = String(k).split('-');
-            const ord = (co.orders || []).find(o => String(o.id) === String(oid));
-            const it = ord?.items?.[Number(idx)];
-            if (it) bomCostEv += (Number(it.price) || 0) * (Number(it.qty) || 1);
-        });
+        const bomCostEv = typeof state.calculateBomCost === 'function' ? state.calculateBomCost(co) : 0;
 
         const flights = (Array.isArray(co.flightTests) ? co.flightTests : []).map(f => {
             const hVal = !isNaN(Number(f.heightMm)) ? Number(f.heightMm) : (!isNaN(Number(f.heightM)) ? Number(f.heightM) * 1000 : (Number(f.height) || 0));

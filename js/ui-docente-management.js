@@ -454,12 +454,14 @@ Object.assign(ui, {
         }
         const rawClasses = Object.values(state.data.companies || {}).map(c => c.classGroup).filter(Boolean);
         const uniqueClasses = [...new Set(['A', 'B', 'C', 'D', 'E', 'F', 'TEST', ...rawClasses])].filter(c => c !== 'ALL').sort();
-        let currentKeychainClass = this.selectedKeychainClass || this.currentClassFilter || (uniqueClasses[0] || 'A');
+        const activeFilterSt = this.currentClassFilter || 'ALL';
+        let currentKeychainClass = this.selectedKeychainClass || (activeFilterSt !== 'ALL' ? activeFilterSt : (uniqueClasses[0] || 'A'));
         if (currentKeychainClass === 'ALL') currentKeychainClass = 'A';
         
         const pendingAuxCoIds = Object.keys(state.data.companies).filter(cid => {
             const co = state.data.companies[cid];
-            return co.auxRoleRequest && co.auxRoleRequest.status === 'PENDIENTE';
+            if (!co || !co.auxRoleRequest || co.auxRoleRequest.status !== 'PENDIENTE') return false;
+            return activeFilterSt === 'ALL' || (co.classGroup || 'A') === activeFilterSt;
         });
 
         let auxRequestsHtml = '';
@@ -940,9 +942,11 @@ Object.assign(ui, {
         state.data.config.deadlines = state.data.config.deadlines || {};
         state.data.config.deadlines[key] = val;
         state.data.config.deliverableSchedule = state.data.config.deliverableSchedule || {};
+        const nowDl = Date.now();
         state.data.config.deliverableSchedule[key] = state.data.config.deliverableSchedule[key] || {};
         state.data.config.deliverableSchedule[key].deadline = val;
-        state.data.config.updatedAt = Date.now();
+        state.data.config.deliverableSchedule[key].updatedAt = nowDl;
+        state.data.config.updatedAt = nowDl;
         state.save();
         this.notify("Plazo actualizado en el Cronograma Maestro.", "success");
     },
@@ -2286,9 +2290,10 @@ Object.assign(ui, {
         ['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA'].forEach(r => state.setRolePin(newCo, r, initialPins[r]));
 
         state.data.companies[cid] = newCo;
-        await state.pushToCloud(false).catch(() => {});
-
+        state.saveLocalOnly();
+        state.pausePolling = true;
         try {
+            await state.pushToCloud(false).catch(() => {});
             const token = state.getAuthToken(state.user, state.data);
             const res = await fetch('/api/admin/credentials', {
                 method: 'PATCH',
@@ -2313,6 +2318,8 @@ Object.assign(ui, {
             }
         } catch (e) {
             console.warn("[STARTUP] Error persistiendo credenciales iniciales en /api/admin/credentials:", e);
+        } finally {
+            state.pausePolling = false;
         }
 
         this.notify(`Startup "${name}" creada. Código Privado: ${generatedCode}`, "success");
@@ -2596,7 +2603,9 @@ Object.assign(ui, {
         const inc = (state.data.securityIncidents || []).find(i => i.id === id);
         if (inc) {
             inc.resolved = true;
+            inc.updatedAt = Date.now();
             state.save();
+            if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
             this.render();
         }
     },
@@ -2634,7 +2643,7 @@ Object.assign(ui, {
         this.showModal("Rechazar Identidad Corporativa", html, btn);
     },
 
-    finalizeDenyBrand(cid) {
+    async finalizeDenyBrand(cid) {
         const el = document.getElementById('deny-brand-reason');
         if(!el) return;
         const reason = this.cleanInput(el.value);
@@ -2663,14 +2672,14 @@ Object.assign(ui, {
         ui.pushNotification(cid, 'CEO', `Propuesta de identidad corporativa rechazada por Coordinación. Revisa el estado con Marketing.`, 'error', { view: 'dashboard' });
 
         state.save(cid);
-        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
         this.render();
+        if (typeof state.pushToCloud === 'function') await state.pushToCloud(false).catch(() => {});
 
         try {
             const token = state.getAuthToken(state.user, state.data);
             if (token) {
-                fetch(`/api/company/${cid}/action`, {
+                await fetch(`/api/company/${cid}/action`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Marsket-Auth': token },
                     body: JSON.stringify({ action: 'COORDINATOR_DECIDE_BRAND', payload: { approved: false, reason, returnDriveUrl: driveUrl || '' } })
@@ -2679,7 +2688,7 @@ Object.assign(ui, {
         } catch(e) {}
     },
 
-    resolveBrandApproval(cid) {
+    async resolveBrandApproval(cid) {
         const co = state.data.companies[cid];
         if(!co || !co.brandApproval) return;
 
@@ -2709,14 +2718,14 @@ Object.assign(ui, {
         ui.pushNotification(cid, 'CEO', `Identidad corporativa aprobada y visible para toda la flota. Slogan: "${co.slogan}".`, 'success', { view: 'dashboard' });
 
         state.save(cid);
-        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.notify(`Identidad corporativa de ${co.name} aprobada y registrada.`, "success");
         this.render();
+        if (typeof state.pushToCloud === 'function') await state.pushToCloud(false).catch(() => {});
 
         try {
             const token = state.getAuthToken(state.user, state.data);
             if (token) {
-                fetch(`/api/company/${cid}/action`, {
+                await fetch(`/api/company/${cid}/action`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Marsket-Auth': token },
                     body: JSON.stringify({ action: 'COORDINATOR_DECIDE_BRAND', payload: { approved: true, officialSlogan: co.slogan || '', logo: co.logo || null } })
@@ -2790,7 +2799,9 @@ Object.assign(ui, {
                 state.addToLedger(c.sellerCoId, `[VENTA B2B APROBADA] Traspaso de ${c.itemName} a ${c.buyerName}`, 'ADUANA_B2B', price);
                 
                 if (c.sourceOrderKey && sellerCo.orders) {
-                    const [ordId, itemIdx] = c.sourceOrderKey.split('-');
+                    const lastDash = String(c.sourceOrderKey).lastIndexOf('-');
+                    const ordId = lastDash !== -1 ? String(c.sourceOrderKey).slice(0, lastDash) : c.sourceOrderKey;
+                    const itemIdx = lastDash !== -1 ? Number(String(c.sourceOrderKey).slice(lastDash + 1)) : -1;
                     const ord = sellerCo.orders.find(o => String(o.id) === String(ordId));
                     if (ord && ord.items && ord.items[Number(itemIdx)]) {
                         ord.items[Number(itemIdx)].b2bStatus = 'VENDIDO';
@@ -2913,7 +2924,9 @@ Object.assign(ui, {
 
             if (!hasOtherPending) {
                 if (sellerCo && c.sourceOrderKey && sellerCo.orders) {
-                    const [ordId, itemIdx] = c.sourceOrderKey.split('-');
+                    const lastDash = String(c.sourceOrderKey).lastIndexOf('-');
+                    const ordId = lastDash !== -1 ? String(c.sourceOrderKey).slice(0, lastDash) : c.sourceOrderKey;
+                    const itemIdx = lastDash !== -1 ? Number(String(c.sourceOrderKey).slice(lastDash + 1)) : -1;
                     const ord = sellerCo.orders.find(o => String(o.id) === String(ordId));
                     if (ord && ord.items && ord.items[Number(itemIdx)]) {
                         delete ord.items[Number(itemIdx)].b2bStatus;
@@ -3278,6 +3291,7 @@ Object.assign(ui, {
     },
 
     confirmAssignSponsor(cid) {
+        if (!this.checkCoordinatorAccess()) return;
         const co = state.data.companies[cid];
         if (!co) return;
 
@@ -3295,16 +3309,26 @@ Object.assign(ui, {
         const finalizeSponsor = (logoDataUrl) => {
             const now = Date.now();
             co.sponsorAwarded = tier;
+            co.sponsorUpdatedAt = now;
             co.sponsorData = { 
                 name: spName, 
                 tier: tier, 
                 amount: amount, 
                 date: now, 
+                updatedAt: now,
                 logo: logoDataUrl !== undefined ? logoDataUrl : (co.sponsorData?.logo || null) 
             };
 
-            // Eliminar asientos previos de patrocinio en co.ledger para no duplicar saldo
-            co.ledger = Array.isArray(co.ledger) ? co.ledger.filter(tx => !(tx && typeof tx.concept === 'string' && tx.concept.startsWith('[PATROCINIO'))) : [];
+            // Eliminar asientos previos de patrocinio en co.ledger y registrarlos en deletedLedgerTxIds para no duplicar saldo
+            co.deletedLedgerTxIds = Array.isArray(co.deletedLedgerTxIds) ? co.deletedLedgerTxIds : [];
+            co.ledger = (Array.isArray(co.ledger) ? co.ledger : []).filter(tx => {
+                const isOldSponsor = tx && typeof tx.concept === 'string' && tx.concept.startsWith('[PATROCINIO');
+                if (isOldSponsor) {
+                    const oldId = String(tx.id || tx.tx_id || '');
+                    if (oldId && !co.deletedLedgerTxIds.includes(oldId)) co.deletedLedgerTxIds.push(oldId);
+                }
+                return !isOldSponsor;
+            });
 
             if (amount !== 0) {
                 const txId = 'TX-' + now.toString(36).toUpperCase() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
@@ -3326,6 +3350,7 @@ Object.assign(ui, {
 
             ui.pushNotification(cid, 'CEO', `¡Habéis obtenido el Patrocinio ${tier} de ${spName} (+${amount} €v)!`, 'success', { view: 'contracts' });
             state.save(cid);
+            if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
             this.closeModal();
             this.render();
         };
@@ -3362,14 +3387,21 @@ Object.assign(ui, {
 
         const co = state.data.companies[cid];
         if (!co) return;
+        const nowRen = Date.now();
         const oldName = co.name;
         co.name = newName;
+        co.nameUpdatedAt = nowRen;
         co.previousNames = Array.isArray(co.previousNames) ? co.previousNames : [];
         co.previousNames.unshift({ oldName, newName, date: new Date().toLocaleDateString('es-ES') });
+        if (co.nameChangeRequest && co.nameChangeRequest.status === 'APROBADO') {
+            co.nameChangeRequest.proposedName = newName;
+            co.nameChangeRequest.updatedAt = nowRen;
+        }
         
         ui.pushNotification(cid, 'CEO', `Coordinación ha forzado el cambio de denominación social a "${newName}".`, 'warning', { view: 'resolutions' });
-        co.updatedAt = Date.now();
+        co.updatedAt = nowRen;
         state.save(cid);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
         this.render();
     },
@@ -3438,10 +3470,12 @@ Object.assign(ui, {
             this.notify(`Solicitud de renombramiento denegada.`, "warning");
         }
         
+        const nowNcr = Date.now();
+        if (isApproved) co.nameUpdatedAt = nowNcr;
         co.nameChangeRequest.status = isApproved ? 'APROBADO' : 'RECHAZADO';
-        co.nameChangeRequest.resolvedAt = Date.now();
-        co.nameChangeRequest.updatedAt = Date.now();
-        co.updatedAt = Date.now();
+        co.nameChangeRequest.resolvedAt = nowNcr;
+        co.nameChangeRequest.updatedAt = nowNcr;
+        co.updatedAt = nowNcr;
         state.save(cid);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.render();
@@ -3504,17 +3538,20 @@ Object.assign(ui, {
         co.sanctions = co.sanctions || [];
         co.crisisAlerts = co.crisisAlerts || [];
         
+        const nowFine = Date.now();
         const sanctionObj = {
-            id: 'SANC-' + Date.now(),
+            id: 'SANC-' + nowFine,
             date: new Date().toLocaleString(),
             agency: agency,
             article: article,
             reason: reason,
-            amount: amount
+            amount: amount,
+            updatedAt: nowFine
         };
         
         co.sanctions.unshift(sanctionObj);
         co.crisisAlerts.unshift({ ...sanctionObj, read: false });
+        co.updatedAt = nowFine;
         
         const concept = `[MULTA] ${agency} - ${article}`;
         state.addToLedger(cid, concept, 'DOCENTE_AEE', amount);
@@ -3524,6 +3561,7 @@ Object.assign(ui, {
             modal: 'crisis',
             crisisId: sanctionObj.id
         });
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         
         this.closeModal();
         this.render();
@@ -4152,7 +4190,8 @@ Object.assign(ui, {
             ? state.data.catalog 
             : (typeof DEFAULT_STATE !== 'undefined' ? DEFAULT_STATE.catalog : []);
         
-        const officialItems = catalog.filter(item => !this.isCustomOrIdCatalogItem(item));
+        const delCatExport = new Set(typeof state.getDeletedCatalogItems === 'function' ? state.getDeletedCatalogItems().map(String) : (state.data.deletedCatalogIds || []).map(String));
+        const officialItems = catalog.filter(item => item && !delCatExport.has(String(item.id)) && !this.isCustomOrIdCatalogItem(item));
         if (officialItems.length === 0) return this.notify("No hay artículos oficiales para exportar.", "warning");
 
         let csv = '\uFEFF';
@@ -4186,7 +4225,8 @@ Object.assign(ui, {
             ? state.data.catalog 
             : (typeof DEFAULT_STATE !== 'undefined' ? DEFAULT_STATE.catalog : []);
 
-        const officialItems = catalog.filter(item => !this.isCustomOrIdCatalogItem(item));
+        const delCatExport = new Set(typeof state.getDeletedCatalogItems === 'function' ? state.getDeletedCatalogItems().map(String) : (state.data.deletedCatalogIds || []).map(String));
+        const officialItems = catalog.filter(item => item && !delCatExport.has(String(item.id)) && !this.isCustomOrIdCatalogItem(item));
 
         if (officialItems.length === 0) {
             return this.notify("No hay artículos oficiales en el catálogo.", "warning");

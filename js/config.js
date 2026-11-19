@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.29) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.30) ---
 
-const APP_VERSION = "2.0.29";
+const APP_VERSION = "2.0.30";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1156,6 +1156,21 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.30",
+      date: "2026-11-19",
+      title: "Saneamiento Docente 3B · Patrocinios, Contratos, Aduana B2B, Fases, Catálogo y Fase V",
+      items: [
+        "Patrocinios y Marca/Estatutos Sin Resurrecciones: confirmAssignSponsor registra en deletedLedgerTxIds los asientos antiguos al editar patrocinio y sella sponsorUpdatedAt; resolveBrandApproval/finalizeDenyBrand esperan a pushToCloud evitando carreras 409; y finalizeRenameStartup/resolveNameChangeRequest sellan nameUpdatedAt.",
+        "Contratos Comerciales y Aduana B2B: settleCommercialContract persiste ledgerTxId en localStorage y notifica a CEO y Finanzas; modalInspectContractEvidences usa state.calculateBomCost(co); y resolveB2BContract parsea claves con lastIndexOf('-') para soportar IDs de orden con guiones.",
+        "Fases y Catálogo Oficial: isPhaseUnlocked respeta el bloqueo docente de fase (batchSetPhaseState) y updateDeadline sella deliverableSchedule[key].updatedAt; migrate() y los PDF/CSV oficiales filtran deletedCatalogIds.",
+        "Radar Docente, Llavero y Concurso Final Fase V: Contadores exactos para FYQ y asignaturas, estados vacíos informativos para FYQ/LYE, filtro de clase en Auxiliares, y en Fase V mergeFinalContest impide resucitar lanzamientos eliminados y preserva selecciones del Paso 3."
+      ],
+      highlights: [
+        { type: "FINANZAS & B2B", text: "Patrocinios sin duplicados, contratos notificados y Aduana B2B segura." },
+        { type: "FASE V & FASES", text: "Bloqueo real de fases y Concurso Final sin resurrecciones de vuelos." }
+      ]
+    },
     {
       version: "2.0.29",
       date: "2026-11-19",
