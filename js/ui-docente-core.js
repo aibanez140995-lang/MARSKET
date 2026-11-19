@@ -231,14 +231,21 @@ Object.assign(ui, {
         if (!el || !state.user || !state.user.admin) return auth.logout();
         
         const wrapper = document.createElement('div');
-        const isCoord = state.user.role && String(state.user.role).startsWith('COORD_');
+        const isCoord = Boolean(state.user?.isCoordinator || String(state.user?.role || '').toUpperCase().startsWith('COORD') || String(state.user?.role || '').toLowerCase() === 'coordinador');
         const isFyqTeacher = state.user.role === 'FYQ';
         const isLyeTeacher = state.user.role === 'LYE';
         const canSeeAduanaTab = isCoord || isFyqTeacher || isLyeTeacher;
         this.adminMode = isCoord ? (this.adminMode || 'aula') : 'aula';
         let currentTab = this.adminTab || (this.adminMode === 'coord' ? 'startups' : (isCoord ? 'dash' : 'eval'));
-        if (!isCoord && currentTab === 'contest') currentTab = 'eval';
-        if (!canSeeAduanaTab && currentTab === 'dash') currentTab = 'eval';
+        const coordOnlyTabs = ['contest', 'startups', 'settings', 'backups', 'telemetry', 'catalog'];
+        if (!isCoord && coordOnlyTabs.includes(currentTab)) {
+            currentTab = 'eval';
+            this.adminTab = 'eval';
+        }
+        if (!canSeeAduanaTab && currentTab === 'dash') {
+            currentTab = 'eval';
+            this.adminTab = 'eval';
+        }
         const activeSuggsCount = (state.data.suggestionsToAlex || []).filter(s => s.status !== 'IMPLEMENTADO' && s.status !== 'RESUELTO' && !s.resolved).length;
         
         this.currentClassFilter = this.currentClassFilter || 'ALL';
@@ -316,6 +323,16 @@ Object.assign(ui, {
                             : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
                     }">
                     <span>🤝 Contratos & Misiones</span>
+                </button>
+                <button type="button" role="tab" aria-selected="${currentTab === 'hr'}"
+                    onclick="ui.adminTab = 'hr'; ui.render();"
+                    class="min-h-[44px] px-5 py-2.5 text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-2 ${
+                        currentTab === 'hr'
+                            ? 'bg-mars-magenta text-white border-mars-magenta shadow-[0_0_10px_rgba(255,0,102,0.3)]'
+                            : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
+                    }">
+                    <span>🕊️ Buzón HR (DOC_2)</span>
+                    ${pendingHrAll > 0 ? `<span class="bg-mars-magenta text-white px-2 py-0.5 text-xs font-black rounded-full">${pendingHrAll}</span>` : ''}
                 </button>
                 ${isCoord ? `
                 <button type="button" role="tab" aria-selected="${isContest}"
@@ -800,8 +817,11 @@ Object.assign(ui, {
                         const parsedData = JSON.parse(e.target.result);
                         if (!parsedData.companies || !parsedData.config) throw new Error("El archivo JSON no tiene la estructura válida de MARS-KET.");
                         
+                        const liveVer = Number(state.data?.version) || 1;
+                        const liveEpoch = Number(state.data?.resetEpoch) || 0;
                         state.data = state.migrate(parsedData);
-                        state.data.version = (Number(state.data.version) || 1) + 50; 
+                        state.data.version = Math.max(liveVer, Number(parsedData.version) || 1) + 1;
+                        state.data.resetEpoch = Math.max(liveEpoch, Number(parsedData.resetEpoch) || 0) + 1;
                         state.saveLocalOnly();
                         
                         const token = state.getAuthToken(state.user, state.data);
@@ -811,7 +831,7 @@ Object.assign(ui, {
                                 'Content-Type': 'application/json',
                                 'X-Marsket-Auth': token
                             },
-                            body: JSON.stringify(state.data)
+                            body: JSON.stringify({ ...state.data, action: 'restore_backup' })
                         });
                         if (!res.ok) {
                             const errJson = await res.json().catch(() => ({}));
@@ -952,7 +972,7 @@ Object.assign(ui, {
         if (!state.user || !state.user.admin) return;
         const cu = (typeof currentUser !== 'undefined' ? currentUser : null) || state.currentUser || state.user;
         const r = String(cu?.role || '').toLowerCase();
-        if (cu?.role !== 'coordinador' && r !== 'coordinador' && !r.includes('coord') && !cu?.admin) {
+        if (!cu || !cu.admin || (r !== 'coordinador' && !r.startsWith('coord'))) {
             return this.notify("Operación reservada exclusivamente para el rol de Coordinador.", "error");
         }
 

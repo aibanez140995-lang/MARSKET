@@ -2824,7 +2824,9 @@ Object.assign(ui, {
             return this.notify(`🔒 La Nota de Prensa de Fase ${phaseKey} permanece bloqueada hasta el cierre oficial de la fase.`, "warning");
         }
 
-        const nowTs = Date.now();
+        const prevPr = co.pressReleases?.[phaseKey];
+        const prevPrTs = prevPr ? Math.max(Number(prevPr.updatedAt) || 0, Number(prevPr.publishedAt) || 0, Number(prevPr.returnedAt) || 0) : 0;
+        const nowTs = Math.max(Date.now(), prevPrTs + 1);
         co.pressReleases = co.pressReleases || {};
         co.pressReleases[phaseKey] = {
             id: 'PR-' + coId + '-' + phaseKey,
@@ -3486,6 +3488,7 @@ Object.assign(ui, {
 
         let updated = false;
         const companies = state.data?.companies || {};
+        const nowNb = Date.now();
         Object.keys(companies).forEach(cid => {
             const co = companies[cid];
             if (co && co.pressReleases) {
@@ -3494,7 +3497,8 @@ Object.assign(ui, {
                     if (item.id === prId || `${cid}-${pk}` === prId) {
                         item.nanoBananaImage = imgUrl || null;
                         item.editorialNote = note || null;
-                        co.updatedAt = Date.now();
+                        item.updatedAt = Math.max(nowNb, (Number(item.updatedAt) || 0) + 1);
+                        co.updatedAt = nowNb;
                         updated = true;
                     }
                 });
@@ -3506,6 +3510,7 @@ Object.assign(ui, {
             if (pr) {
                 pr.nanoBananaImage = imgUrl || null;
                 pr.editorialNote = note || null;
+                pr.updatedAt = Math.max(nowNb, (Number(pr.updatedAt) || 0) + 1);
                 updated = true;
             }
         }

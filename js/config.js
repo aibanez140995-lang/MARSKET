@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.28) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.29) ---
 
-const APP_VERSION = "2.0.28";
+const APP_VERSION = "2.0.29";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1156,6 +1156,21 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.29",
+      date: "2026-11-19",
+      title: "Saneamiento Docente 3A · Blindaje LWW Servidor, Backups, Permisos y Rúbricas",
+      items: [
+        "Rescate LWW Completo en Servidor CDMON (api/index.php): Protección automática de devoluciones docentes (deliverables), Notas de Prensa DOC_15 y portadas Nano Banana 3, Modificación Estatutaria DOC_1, Marca DOC_11, Buzón HR DOC_2, resetAt en TEST-0000/1111, tombstones contables/notificaciones y contadores loginStats.",
+        "Seguridad de Roles y Buzón HR (checkCoordinatorAccess): Corregida la guarda de Coordinación (eliminando !cu.admin), blindadas las pestañas exclusivas TIC y habilitado el acceso al Buzón HR Confidencial (DOC_2) para todo el Claustro Docente en Modo Aula.",
+        "Backups Reales (restoreStateFromJSON) y Salto de Versión en Credenciales: La restauración envía action='restore_backup', incrementa resetEpoch y purga filas huérfanas de company_state; updatePin/updateTeacherPin descargan versiones intermedias si el servidor avanzó.",
+        "Rúbricas, Clock Skew y Acta 100%: Timestamps estrictamente monótonos al calificar y devolver entregables/prensa; rúbricas en blanco guardan null en vez de 0.00; alineación de LYE.c4 (Business Model Canvas en Fase IV), textos del asistente, borradores en Archivo Documental y escapeCSVCell en Acta."
+      ],
+      highlights: [
+        { type: "SERVIDOR & BACKUPS", text: "Rescate LWW completo en CDMON y rollback de backups sin conflictos 409." },
+        { type: "PERMISOS & RÚBRICAS", text: "Blindaje de Coordinación, HR en Modo Aula y Acta 100% protegida." }
+      ]
+    },
     {
       version: "2.0.28",
       date: "2026-11-19",

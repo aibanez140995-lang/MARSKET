@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.28
+// Versión: v2.0.29
 
 declare(strict_types=1);
 
@@ -72,6 +72,50 @@ function isValidCompanyId(string $cid): bool {
 
 function isValidStudentRole(string $role): bool {
     return in_array($role, ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'], true);
+}
+
+function parseMsTimestamp($val): int {
+    if (is_int($val) || is_float($val)) return (int)$val;
+    if (is_string($val)) {
+        $trim = trim($val);
+        if ($trim === '') return 0;
+        if (is_numeric($trim)) return (int)$trim;
+        $sec = strtotime($trim);
+        if ($sec === false) return 0;
+        $msPart = 0;
+        if (preg_match('/\.(\d{1,3})/', $trim, $m)) {
+            $msPart = (int)str_pad($m[1], 3, '0', STR_PAD_RIGHT);
+        }
+        return ($sec * 1000) + $msPart;
+    }
+    return 0;
+}
+
+function isoMsNow(int $minAfterMs = 0): string {
+    $ms = max((int)round(microtime(true) * 1000), $minAfterMs);
+    $sec = intdiv($ms, 1000);
+    $rem = $ms % 1000;
+    return gmdate('Y-m-d\TH:i:s', $sec) . '.' . sprintf('%03d', $rem) . 'Z';
+}
+
+function mergeLoginStatsArr(array $a, array $b): array {
+    $out = $a;
+    $out['totalLogins'] = max((int)($a['totalLogins'] ?? 0), (int)($b['totalLogins'] ?? 0));
+    $rolesA = is_array($a['roles'] ?? null) ? $a['roles'] : [];
+    $rolesB = is_array($b['roles'] ?? null) ? $b['roles'] : [];
+    $mergedRoles = $rolesA;
+    foreach ($rolesB as $rk => $rv) {
+        if (!is_array($rv)) continue;
+        $ra = is_array($mergedRoles[$rk] ?? null) ? $mergedRoles[$rk] : [];
+        $cA = (int)($ra['count'] ?? 0);
+        $cB = (int)($rv['count'] ?? 0);
+        $lA = (string)($ra['lastLogin'] ?? '');
+        $lB = (string)($rv['lastLogin'] ?? '');
+        $lastLogin = (parseMsTimestamp($lB) >= parseMsTimestamp($lA) && $lB !== '') ? $lB : $lA;
+        $mergedRoles[$rk] = ['count' => max($cA, $cB), 'lastLogin' => $lastLogin];
+    }
+    $out['roles'] = $mergedRoles;
+    return $out;
 }
 
 function isValidTeacherRole(string $role): bool {
@@ -853,28 +897,49 @@ try {
                 exit;
             }
 
-            // Unión de tombstones globales en servidor (nunca perder borrados entre docentes)
-            foreach (['deletedCatalogIds', 'deletedOfficialNewsIds', 'deletedSuggestionIds', 'deletedPendingCustomIds'] as $gTombKey) {
-                $currTomb = is_array($currentState[$gTombKey] ?? null) ? $currentState[$gTombKey] : [];
-                $incTomb = ($isTeacher && is_array($payload[$gTombKey] ?? null)) ? $payload[$gTombKey] : [];
-                $payload[$gTombKey] = array_values(array_unique(array_map('strval', array_merge($currTomb, $incTomb))));
-            }
-            if ($isTeacher && is_array($payload['catalog'] ?? null) && !empty($payload['deletedCatalogIds'])) {
-                $recreatedCatIds = [];
-                foreach ($payload['catalog'] as $cIt) {
-                    if (is_array($cIt) && !empty($cIt['recreatedAt']) && !empty($cIt['id'])) {
-                        $recreatedCatIds[(string)$cIt['id']] = true;
-                    }
+            $isRestoreBackup = $isCoord && (($payload['action'] ?? '') === 'restore_backup');
+            if ($isRestoreBackup) {
+                unset($payload['action']);
+                // Preservar credenciales maestras si el backup estaba sanitizado
+                if (!empty($currentState['config']['teachers']) && (empty($payload['config']['teachers']))) {
+                    $payload['config']['teachers'] = $currentState['config']['teachers'];
                 }
-                if (!empty($recreatedCatIds)) {
-                    $payload['deletedCatalogIds'] = array_values(array_filter($payload['deletedCatalogIds'], function ($did) use ($recreatedCatIds) {
-                        return !isset($recreatedCatIds[(string)$did]);
-                    }));
+                if (!empty($currentState['companies']) && is_array($currentState['companies']) && !empty($payload['companies']) && is_array($payload['companies'])) {
+                    foreach ($payload['companies'] as $bCid => &$bCo) {
+                        if (is_array($bCo) && empty($bCo['authVault']['code']) && !empty($currentState['companies'][$bCid]['authVault'])) {
+                            $bCo['authVault'] = $currentState['companies'][$bCid]['authVault'];
+                        }
+                    }
+                    unset($bCo);
+                }
+                $payload['resetEpoch'] = max((int)($currentState['resetEpoch'] ?? 0), (int)($payload['resetEpoch'] ?? 0)) + 1;
+            } else {
+                // Unión de tombstones globales en servidor (nunca perder borrados entre docentes ni descartes de avisos)
+                foreach (['deletedCatalogIds', 'deletedOfficialNewsIds', 'deletedSuggestionIds', 'deletedPendingCustomIds'] as $gTombKey) {
+                    $currTomb = is_array($currentState[$gTombKey] ?? null) ? $currentState[$gTombKey] : [];
+                    $incTomb = ($isTeacher && is_array($payload[$gTombKey] ?? null)) ? $payload[$gTombKey] : [];
+                    $payload[$gTombKey] = array_values(array_unique(array_map('strval', array_merge($currTomb, $incTomb))));
+                }
+                $currDismissed = is_array($currentState['dismissedNotificationIds'] ?? null) ? $currentState['dismissedNotificationIds'] : [];
+                $incDismissed = is_array($payload['dismissedNotificationIds'] ?? null) ? $payload['dismissedNotificationIds'] : [];
+                $payload['dismissedNotificationIds'] = array_values(array_unique(array_map('strval', array_merge($currDismissed, $incDismissed))));
+                if ($isTeacher && is_array($payload['catalog'] ?? null) && !empty($payload['deletedCatalogIds'])) {
+                    $recreatedCatIds = [];
+                    foreach ($payload['catalog'] as $cIt) {
+                        if (is_array($cIt) && !empty($cIt['recreatedAt']) && !empty($cIt['id'])) {
+                            $recreatedCatIds[(string)$cIt['id']] = true;
+                        }
+                    }
+                    if (!empty($recreatedCatIds)) {
+                        $payload['deletedCatalogIds'] = array_values(array_filter($payload['deletedCatalogIds'], function ($did) use ($recreatedCatIds) {
+                            return !isset($recreatedCatIds[(string)$did]);
+                        }));
+                    }
                 }
             }
 
             // Si es un Alumno/Empresa (NO docente), blindar la configuración global, tombstones globales y resto de empresas
-            if (!$isTeacher) {
+            if (!$isTeacher && !$isRestoreBackup) {
                 // 1. Prohibir a alumnos alterar la configuración, fechas límite, resetEpoch ni listas globales de borrado/noticias
                 if (isset($currentState['config'])) {
                     $payload['config'] = $currentState['config'];
@@ -920,29 +985,125 @@ try {
                         if ($otherCid !== $studentCoId) {
                             $payload['companies'][$otherCid] = $otherCo;
                         } elseif (is_array($otherCo) && isset($payload['companies'][$studentCoId]) && is_array($payload['companies'][$studentCoId])) {
-                            foreach (['grades', 'sponsorAwarded', 'sponsorData', 'sanctions', 'unlockAllContracts'] as $docField) {
+                            $incCo = &$payload['companies'][$studentCoId];
+                            foreach (['grades', 'sanctions', 'unlockAllContracts'] as $docField) {
                                 if (array_key_exists($docField, $otherCo)) {
-                                    $payload['companies'][$studentCoId][$docField] = $otherCo[$docField];
+                                    $incCo[$docField] = $otherCo[$docField];
                                 }
+                            }
+                            $sSpTs = (int)($otherCo['sponsorUpdatedAt'] ?? $otherCo['sponsorData']['updatedAt'] ?? 0);
+                            $lSpTs = (int)($incCo['sponsorUpdatedAt'] ?? $incCo['sponsorData']['updatedAt'] ?? 0);
+                            if (($sSpTs > 0 && $sSpTs >= $lSpTs) || (!empty($otherCo['sponsorAwarded']) && $lSpTs === 0)) {
+                                $incCo['sponsorAwarded'] = $otherCo['sponsorAwarded'] ?? null;
+                                if (array_key_exists('sponsorData', $otherCo)) $incCo['sponsorData'] = $otherCo['sponsorData'];
+                                if ($sSpTs > 0) $incCo['sponsorUpdatedAt'] = $sSpTs;
                             }
                             if (isset($otherCo['launchLicense']) && is_array($otherCo['launchLicense'])) {
                                 $sLic = $otherCo['launchLicense'];
-                                $lLic = is_array($payload['companies'][$studentCoId]['launchLicense'] ?? null) ? $payload['companies'][$studentCoId]['launchLicense'] : [];
+                                $lLic = is_array($incCo['launchLicense'] ?? null) ? $incCo['launchLicense'] : [];
                                 $sLicDecTs = max((int)($sLic['approvedAt'] ?? 0), (int)($sLic['rejectedAt'] ?? 0));
                                 $lLicAppTs = (int)($lLic['appliedAt'] ?? 0);
                                 if (in_array($sLic['status'] ?? '', ['APROBADA', 'APROBADO'], true) || ($sLicDecTs > 0 && $sLicDecTs >= $lLicAppTs)) {
-                                    $payload['companies'][$studentCoId]['launchLicense'] = $sLic;
+                                    $incCo['launchLicense'] = $sLic;
                                 }
                             }
                             if (isset($otherCo['contracts']) && is_array($otherCo['contracts'])) {
-                                $incCont = is_array($payload['companies'][$studentCoId]['contracts'] ?? null) ? $payload['companies'][$studentCoId]['contracts'] : [];
+                                $incCont = is_array($incCo['contracts'] ?? null) ? $incCo['contracts'] : [];
                                 foreach ($otherCo['contracts'] as $ph => $sC) {
                                     if (is_array($sC) && !empty($sC['settledAt'])) {
                                         $incCont[$ph] = $sC;
                                     }
                                 }
-                                $payload['companies'][$studentCoId]['contracts'] = $incCont;
+                                $incCo['contracts'] = $incCont;
                             }
+                            // Proteger entregables devueltos o revisados por docente (LWW)
+                            if (isset($otherCo['deliverables']) && is_array($otherCo['deliverables'])) {
+                                $incCo['deliverables'] = is_array($incCo['deliverables'] ?? null) ? $incCo['deliverables'] : [];
+                                foreach ($otherCo['deliverables'] as $dKey => $sDel) {
+                                    if (!is_array($sDel)) continue;
+                                    $lDel = is_array($incCo['deliverables'][$dKey] ?? null) ? $incCo['deliverables'][$dKey] : null;
+                                    $sDT = parseMsTimestamp($sDel['updatedAt'] ?? 0);
+                                    $lDT = $lDel ? parseMsTimestamp($lDel['updatedAt'] ?? 0) : 0;
+                                    if (!$lDel || $sDT > $lDT || (!empty($sDel['returnByTeacher']) && $sDT >= $lDT)) {
+                                        $incCo['deliverables'][$dKey] = $sDel;
+                                    }
+                                }
+                            }
+                            // Proteger Notas de Prensa DOC_15 (devoluciones docentes y portadas Nano Banana)
+                            if (isset($otherCo['pressReleases']) && is_array($otherCo['pressReleases'])) {
+                                $incCo['pressReleases'] = is_array($incCo['pressReleases'] ?? null) ? $incCo['pressReleases'] : [];
+                                $getPrTs = function ($p) {
+                                    return is_array($p) ? max((int)($p['updatedAt'] ?? 0), (int)($p['returnedAt'] ?? 0), (int)($p['publishedAt'] ?? 0), (int)($p['ceoValidatedAt'] ?? 0)) : 0;
+                                };
+                                foreach ($otherCo['pressReleases'] as $ph => $sPr) {
+                                    if (!is_array($sPr)) continue;
+                                    $lPr = $incCo['pressReleases'][$ph] ?? null;
+                                    if (!$lPr || $getPrTs($sPr) > $getPrTs($lPr) || (($sPr['status'] ?? '') === 'RETURNED' && $getPrTs($sPr) >= $getPrTs($lPr))) {
+                                        $incCo['pressReleases'][$ph] = $sPr;
+                                    }
+                                }
+                            }
+                            // Proteger Nombre Social / Modificación Estatutaria y Marca (DOC_1 / DOC_11)
+                            $sNameTs = (int)($otherCo['nameUpdatedAt'] ?? 0);
+                            $lNameTs = (int)($incCo['nameUpdatedAt'] ?? 0);
+                            if ($sNameTs > $lNameTs) {
+                                if (!empty($otherCo['name'])) $incCo['name'] = $otherCo['name'];
+                                if (isset($otherCo['previousNames'])) $incCo['previousNames'] = $otherCo['previousNames'];
+                                $incCo['nameUpdatedAt'] = $sNameTs;
+                            }
+                            if (isset($otherCo['nameChangeRequest']) && is_array($otherCo['nameChangeRequest'])) {
+                                $getNcrTs = function ($r) {
+                                    return is_array($r) ? max((int)($r['resolvedAt'] ?? 0), (int)($r['updatedAt'] ?? 0), (int)($r['requestedAt'] ?? 0), (int)($r['rejectedAt'] ?? 0), (int)($r['dismissedAt'] ?? 0)) : 0;
+                                };
+                                if (!isset($incCo['nameChangeRequest']) || $getNcrTs($otherCo['nameChangeRequest']) >= $getNcrTs($incCo['nameChangeRequest'])) {
+                                    $incCo['nameChangeRequest'] = $otherCo['nameChangeRequest'];
+                                }
+                            }
+                            $sBrandTs = max((int)($otherCo['brandUpdatedAt'] ?? 0), (int)($otherCo['brandApproval']['updatedAt'] ?? 0));
+                            $lBrandTs = max((int)($incCo['brandUpdatedAt'] ?? 0), (int)($incCo['brandApproval']['updatedAt'] ?? 0));
+                            if ($sBrandTs > $lBrandTs) {
+                                if (isset($otherCo['brandApproval'])) $incCo['brandApproval'] = $otherCo['brandApproval'];
+                                if (isset($otherCo['brandStatus'])) $incCo['brandStatus'] = $otherCo['brandStatus'];
+                                if (array_key_exists('logo', $otherCo)) $incCo['logo'] = $otherCo['logo'];
+                                if (array_key_exists('slogan', $otherCo)) $incCo['slogan'] = $otherCo['slogan'];
+                                $incCo['brandUpdatedAt'] = $sBrandTs;
+                            }
+                            // Proteger Buzón HR (DOC_2) resuelto por docente y Solicitudes I+D (DOC_13)
+                            if (isset($otherCo['inactivityReports']) && is_array($otherCo['inactivityReports'])) {
+                                $hrMap = [];
+                                foreach (($incCo['inactivityReports'] ?? []) as $h) {
+                                    if (is_array($h) && !empty($h['id'])) $hrMap[(string)$h['id']] = $h;
+                                }
+                                $getHrTs = function ($h) {
+                                    return max((int)($h['resolvedAt'] ?? 0), (int)($h['updatedAt'] ?? 0), (int)($h['warnedAt'] ?? 0), (int)($h['timestamp'] ?? 0));
+                                };
+                                foreach ($otherCo['inactivityReports'] as $sH) {
+                                    if (!is_array($sH) || empty($sH['id'])) continue;
+                                    $hid = (string)$sH['id'];
+                                    if (!isset($hrMap[$hid]) || $getHrTs($sH) >= $getHrTs($hrMap[$hid])) {
+                                        $hrMap[$hid] = $sH;
+                                    }
+                                }
+                                $incCo['inactivityReports'] = array_values($hrMap);
+                            }
+                            if (isset($otherCo['specialItemRequests']) && is_array($otherCo['specialItemRequests'])) {
+                                $spMap = [];
+                                foreach (($incCo['specialItemRequests'] ?? []) as $sp) {
+                                    if (is_array($sp) && !empty($sp['id'])) $spMap[(string)$sp['id']] = $sp;
+                                }
+                                $getSpTs2 = function ($r) {
+                                    return max((int)($r['resolvedAt'] ?? 0), (int)($r['updatedAt'] ?? 0), (int)($r['resubmittedAt'] ?? 0), (int)($r['rejectedAt'] ?? 0), (int)($r['approvedAt'] ?? 0), (int)($r['createdAt'] ?? 0));
+                                };
+                                foreach ($otherCo['specialItemRequests'] as $sSp) {
+                                    if (!is_array($sSp) || empty($sSp['id'])) continue;
+                                    $spId = (string)$sSp['id'];
+                                    if (!isset($spMap[$spId]) || $getSpTs2($sSp) >= $getSpTs2($spMap[$spId])) {
+                                        $spMap[$spId] = $sSp;
+                                    }
+                                }
+                                $incCo['specialItemRequests'] = array_values($spMap);
+                            }
+                            unset($incCo);
                         }
                     }
 
@@ -1162,7 +1323,7 @@ try {
                 } catch (\Exception $e) {}
             }
 
-            if (isset($payload['companies']) && is_array($payload['companies'])) {
+            if (!$isRestoreBackup && isset($payload['companies']) && is_array($payload['companies'])) {
                 foreach ($payload['companies'] as $cid => &$co) {
                     $sCo = $currentState['companies'][$cid] ?? null;
                     if ($sCo) {
@@ -1174,6 +1335,9 @@ try {
                             if (!empty($sCo['accessCode'])) $co['accessCode'] = $sCo['accessCode'];
                             if (!empty($sCo['roles'])) $co['roles'] = $sCo['roles'];
                             if (!empty($sCo['authUpdatedAt'])) $co['authUpdatedAt'] = $sCo['authUpdatedAt'];
+                        }
+                        if (!empty($sCo['loginStats']) && is_array($sCo['loginStats'])) {
+                            $co['loginStats'] = mergeLoginStatsArr($sCo['loginStats'], is_array($co['loginStats'] ?? null) ? $co['loginStats'] : []);
                         }
                         // Unión e imposición de tombstones contables (deletedLedgerTxIds) para impedir resurrección de asientos rectificados
                         $sDelTx = is_array($sCo['deletedLedgerTxIds'] ?? null) ? $sCo['deletedLedgerTxIds'] : [];
@@ -1217,7 +1381,7 @@ try {
             $serverVersion = isset($currentState['version']) ? (int)$currentState['version'] : 0;
             $incomingVersion = $payload['version'] ?? null;
 
-            if (!is_numeric($incomingVersion) || (int)$incomingVersion <= $serverVersion) {
+            if (!$isRestoreBackup && (!is_numeric($incomingVersion) || (int)$incomingVersion <= $serverVersion)) {
                 rollbackQuietly($pdo);
                 http_response_code(409);
                 echo json_encode([
@@ -1245,6 +1409,9 @@ try {
                         updated_at BIGINT NOT NULL
                     )
                 ");
+                if ($isRestoreBackup) {
+                    $pdo->exec("DELETE FROM company_state");
+                }
                 $coStmt = $pdo->prepare("
                     INSERT OR REPLACE INTO company_state (company_id, data, version, updated_at)
                     VALUES (:cid, :data, :version, :updated_at)
@@ -1461,6 +1628,10 @@ try {
                 if (!empty($aRow['state_co'])) {
                     $sCo = json_decode($aRow['state_co'], true);
                     if (is_array($sCo)) {
+                        // Si la empresa fue reseteada (TEST-0000 / TEST-1111) más recientemente en state, limpiar caché vieja de company_state
+                        if ((int)($sCo['resetAt'] ?? 0) > (int)($co['resetAt'] ?? 0)) {
+                            $co = $sCo;
+                        }
                         // Preservar siempre calificaciones docentes sCo.grades
                         if (!empty($sCo['grades']) && is_array($sCo['grades'])) {
                             $co['grades'] = is_array($co['grades'] ?? null) ? $co['grades'] : [];
@@ -1473,10 +1644,13 @@ try {
                                 }
                             }
                         }
-                        // Preservar patrocinio docente
-                        if (!empty($sCo['sponsorAwarded'])) {
-                            $co['sponsorAwarded'] = $sCo['sponsorAwarded'];
-                            if (isset($sCo['sponsorData'])) $co['sponsorData'] = $sCo['sponsorData'];
+                        // Preservar patrocinio docente (LWW por sponsorUpdatedAt)
+                        $sSpTs = (int)($sCo['sponsorUpdatedAt'] ?? $sCo['sponsorData']['updatedAt'] ?? 0);
+                        $lSpTs = (int)($co['sponsorUpdatedAt'] ?? $co['sponsorData']['updatedAt'] ?? 0);
+                        if (($sSpTs > 0 && $sSpTs >= $lSpTs) || (!empty($sCo['sponsorAwarded']) && $lSpTs === 0)) {
+                            $co['sponsorAwarded'] = $sCo['sponsorAwarded'] ?? null;
+                            if (array_key_exists('sponsorData', $sCo)) $co['sponsorData'] = $sCo['sponsorData'];
+                            if ($sSpTs > 0) $co['sponsorUpdatedAt'] = $sSpTs;
                         }
                         // Preservar licencia de vuelo AESA (LWW por marca de tiempo)
                         if (!empty($sCo['launchLicense']) && is_array($sCo['launchLicense'])) {
@@ -1503,6 +1677,76 @@ try {
                         if (!empty($sCo['sanctions']) && is_array($sCo['sanctions'])) {
                             $co['sanctions'] = $sCo['sanctions'];
                         }
+                        // Preservar entregables devueltos o revisados por docente (LWW)
+                        if (!empty($sCo['deliverables']) && is_array($sCo['deliverables'])) {
+                            $co['deliverables'] = is_array($co['deliverables'] ?? null) ? $co['deliverables'] : [];
+                            foreach ($sCo['deliverables'] as $dKey => $sDel) {
+                                if (!is_array($sDel)) continue;
+                                $lDel = is_array($co['deliverables'][$dKey] ?? null) ? $co['deliverables'][$dKey] : null;
+                                $sDT = parseMsTimestamp($sDel['updatedAt'] ?? 0);
+                                $lDT = $lDel ? parseMsTimestamp($lDel['updatedAt'] ?? 0) : 0;
+                                if (!$lDel || $sDT > $lDT || (!empty($sDel['returnByTeacher']) && $sDT >= $lDT)) {
+                                    $co['deliverables'][$dKey] = $sDel;
+                                }
+                            }
+                        }
+                        // Preservar Notas de Prensa DOC_15
+                        if (!empty($sCo['pressReleases']) && is_array($sCo['pressReleases'])) {
+                            $co['pressReleases'] = is_array($co['pressReleases'] ?? null) ? $co['pressReleases'] : [];
+                            $getPrTs = function ($p) {
+                                return is_array($p) ? max((int)($p['updatedAt'] ?? 0), (int)($p['returnedAt'] ?? 0), (int)($p['publishedAt'] ?? 0), (int)($p['ceoValidatedAt'] ?? 0)) : 0;
+                            };
+                            foreach ($sCo['pressReleases'] as $ph => $sPr) {
+                                if (!is_array($sPr)) continue;
+                                $lPr = $co['pressReleases'][$ph] ?? null;
+                                if (!$lPr || $getPrTs($sPr) > $getPrTs($lPr) || (($sPr['status'] ?? '') === 'RETURNED' && $getPrTs($sPr) >= $getPrTs($lPr))) {
+                                    $co['pressReleases'][$ph] = $sPr;
+                                }
+                            }
+                        }
+                        // Preservar Nombre Social / Estatutos y Marca
+                        $sNameTs = (int)($sCo['nameUpdatedAt'] ?? 0);
+                        $lNameTs = (int)($co['nameUpdatedAt'] ?? 0);
+                        if ($sNameTs > $lNameTs) {
+                            if (!empty($sCo['name'])) $co['name'] = $sCo['name'];
+                            if (isset($sCo['previousNames'])) $co['previousNames'] = $sCo['previousNames'];
+                            $co['nameUpdatedAt'] = $sNameTs;
+                        }
+                        if (isset($sCo['nameChangeRequest']) && is_array($sCo['nameChangeRequest'])) {
+                            $getNcrTs = function ($r) {
+                                return is_array($r) ? max((int)($r['resolvedAt'] ?? 0), (int)($r['updatedAt'] ?? 0), (int)($r['requestedAt'] ?? 0), (int)($r['rejectedAt'] ?? 0), (int)($r['dismissedAt'] ?? 0)) : 0;
+                            };
+                            if (!isset($co['nameChangeRequest']) || $getNcrTs($sCo['nameChangeRequest']) >= $getNcrTs($co['nameChangeRequest'])) {
+                                $co['nameChangeRequest'] = $sCo['nameChangeRequest'];
+                            }
+                        }
+                        $sBrandTs = max((int)($sCo['brandUpdatedAt'] ?? 0), (int)($sCo['brandApproval']['updatedAt'] ?? 0));
+                        $lBrandTs = max((int)($co['brandUpdatedAt'] ?? 0), (int)($co['brandApproval']['updatedAt'] ?? 0));
+                        if ($sBrandTs > $lBrandTs) {
+                            if (isset($sCo['brandApproval'])) $co['brandApproval'] = $sCo['brandApproval'];
+                            if (isset($sCo['brandStatus'])) $co['brandStatus'] = $sCo['brandStatus'];
+                            if (array_key_exists('logo', $sCo)) $co['logo'] = $sCo['logo'];
+                            if (array_key_exists('slogan', $sCo)) $co['slogan'] = $sCo['slogan'];
+                            $co['brandUpdatedAt'] = $sBrandTs;
+                        }
+                        // Preservar Buzón HR DOC_2
+                        if (!empty($sCo['inactivityReports']) && is_array($sCo['inactivityReports'])) {
+                            $hrMap = [];
+                            foreach (($co['inactivityReports'] ?? []) as $h) {
+                                if (is_array($h) && !empty($h['id'])) $hrMap[(string)$h['id']] = $h;
+                            }
+                            $getHrTs = function ($h) {
+                                return max((int)($h['resolvedAt'] ?? 0), (int)($h['updatedAt'] ?? 0), (int)($h['warnedAt'] ?? 0), (int)($h['timestamp'] ?? 0));
+                            };
+                            foreach ($sCo['inactivityReports'] as $sH) {
+                                if (!is_array($sH) || empty($sH['id'])) continue;
+                                $hid = (string)$sH['id'];
+                                if (!isset($hrMap[$hid]) || $getHrTs($sH) >= $getHrTs($hrMap[$hid])) {
+                                    $hrMap[$hid] = $sH;
+                                }
+                            }
+                            $co['inactivityReports'] = array_values($hrMap);
+                        }
                         // Preservar solicitudes especiales DOC_13 resueltas por docente/CEO (LWW por id)
                         if (!empty($sCo['specialItemRequests']) && is_array($sCo['specialItemRequests'])) {
                             $coSpMap = [];
@@ -1520,6 +1764,21 @@ try {
                                 }
                             }
                             $co['specialItemRequests'] = array_values($coSpMap);
+                        }
+                        // Preservar tombstones contables deletedLedgerTxIds y filtrar ledger antes del recálculo
+                        $sDelTx = is_array($sCo['deletedLedgerTxIds'] ?? null) ? $sCo['deletedLedgerTxIds'] : [];
+                        $cDelTx = is_array($co['deletedLedgerTxIds'] ?? null) ? $co['deletedLedgerTxIds'] : [];
+                        $mergedDelTx = array_values(array_unique(array_map('strval', array_merge($sDelTx, $cDelTx))));
+                        if (!empty($mergedDelTx)) {
+                            $co['deletedLedgerTxIds'] = $mergedDelTx;
+                            $delSet = array_flip($mergedDelTx);
+                            $co['ledger'] = array_values(array_filter(is_array($co['ledger'] ?? null) ? $co['ledger'] : [], function ($tx) use ($delSet) {
+                                $tid = (string)($tx['id'] ?? $tx['tx_id'] ?? '');
+                                return $tid === '' || !isset($delSet[$tid]);
+                            }));
+                        }
+                        if (!empty($sCo['loginStats']) && is_array($sCo['loginStats'])) {
+                            $co['loginStats'] = mergeLoginStatsArr($sCo['loginStats'], is_array($co['loginStats'] ?? null) ? $co['loginStats'] : []);
                         }
                     }
                 }
@@ -1869,6 +2128,7 @@ try {
                         }
                     }
 
+                    $prevDocMs = parseMsTimestamp($co['deliverables'][$rawKey]['updatedAt'] ?? 0);
                     $newDelivObj = [
                         'driveUrl' => $driveUrl,
                         'status' => $status,
@@ -1876,7 +2136,7 @@ try {
                         'returnReason' => $returnReason,
                         'returnDriveUrl' => $inner['returnDriveUrl'] ?? null,
                         'returnByTeacher' => !empty($inner['returnByTeacher']),
-                        'updatedAt' => date('c')
+                        'updatedAt' => isoMsNow($prevDocMs + 1)
                     ];
                     if ($rawKey === 'hoja_taller_fyq') {
                         $newDelivObj['history'] = $existingHistory;
@@ -1904,15 +2164,17 @@ try {
                     exit;
                 }
                 $currentDoc = &$co['deliverables'][$rawKey];
+                $prevDocMs = is_array($currentDoc) ? parseMsTimestamp($currentDoc['updatedAt'] ?? 0) : 0;
+                $monoIso = isoMsNow($prevDocMs + 1);
                 $rawSubAction = (string)($inner['ceoAction'] ?? $inner['subAction'] ?? $inner['action'] ?? '');
                 $subAction = strtoupper(trim($rawSubAction === 'CEO_REVIEW_DELIVERABLE' ? '' : $rawSubAction));
                 if ($subAction === 'APPROVE') {
                     if (is_string($currentDoc)) {
-                        $currentDoc = ['driveUrl' => $currentDoc, 'status' => 'DELIVERED_TO_TEACHER', 'updatedAt' => date('c')];
+                        $currentDoc = ['driveUrl' => $currentDoc, 'status' => 'DELIVERED_TO_TEACHER', 'updatedAt' => $monoIso];
                     } else {
                         $currentDoc['status'] = 'DELIVERED_TO_TEACHER';
                         unset($currentDoc['returnReasonId'], $currentDoc['returnReason'], $currentDoc['returnDriveUrl'], $currentDoc['returnByTeacher']);
-                        $currentDoc['updatedAt'] = date('c');
+                        $currentDoc['updatedAt'] = $monoIso;
                     }
                     if ($rawKey === 'hoja_taller_fyq' && is_array($inner['history'] ?? null)) {
                         $histById = [];
@@ -1936,7 +2198,7 @@ try {
                             'returnReason' => $reasonText,
                             'returnDriveUrl' => $retDriveUrl ?: null,
                             'returnByTeacher' => false,
-                            'updatedAt' => date('c')
+                            'updatedAt' => $monoIso
                         ];
                     } else {
                         $currentDoc['status'] = 'CEO_REVISION';
@@ -1946,7 +2208,7 @@ try {
                             $currentDoc['returnDriveUrl'] = $retDriveUrl;
                         }
                         unset($currentDoc['returnByTeacher']);
-                        $currentDoc['updatedAt'] = date('c');
+                        $currentDoc['updatedAt'] = $monoIso;
                     }
                     if ($rawKey === 'hoja_taller_fyq' && is_array($inner['history'] ?? null)) {
                         $histById = [];
@@ -1986,6 +2248,7 @@ try {
                 $reasonText = trim((string)($inner['reasonText'] ?? $inner['reason'] ?? $reasonId));
                 $driveUrl = is_array($currentDoc) ? ($currentDoc['driveUrl'] ?? '') : (string)$currentDoc;
 
+                $prevDocMs = is_array($currentDoc) ? parseMsTimestamp($currentDoc['updatedAt'] ?? 0) : 0;
                 $returnDriveUrl = trim((string)($inner['returnDriveUrl'] ?? ''));
                 $preservedDoc = [
                     'driveUrl' => $driveUrl,
@@ -1994,7 +2257,7 @@ try {
                     'returnReason' => $reasonText,
                     'returnDriveUrl' => !empty($returnDriveUrl) ? $returnDriveUrl : null,
                     'returnByTeacher' => true,
-                    'updatedAt' => date('c')
+                    'updatedAt' => isoMsNow($prevDocMs + 1)
                 ];
                 if (is_array($currentDoc)) {
                     if (is_array($currentDoc['history'] ?? null)) $preservedDoc['history'] = $currentDoc['history'];
@@ -2777,6 +3040,7 @@ try {
             $currentState['deletedCompanyIds'] = [];
             $currentState['deletedCatalogIds'] = [];
             $currentState['deletedPendingCustomIds'] = [];
+            $currentState['dismissedNotificationIds'] = [];
             $currentState['telemetry'] = ['totalLogins' => 0, 'sessions' => []];
             $currentState['finalContest'] = [
                 'finalists' => new \stdClass(),

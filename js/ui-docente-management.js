@@ -73,6 +73,18 @@ Object.assign(ui, {
                 ${isCoord ? `<button type="button" onclick="ui.adminMode='coord'; ui.adminTab='catalog'; ui.render();" class="min-h-[44px] bg-mars-cyan text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors shrink-0">Ir a Solicitudes DOC_13 ➔</button>` : `<span class="text-[11px] font-mono text-mars-cyan font-bold shrink-0">Pendiente en Gestión Catálogo (Coord.)</span>`}
             </div>`;
         }
+        const pendingHrDashCount = Object.values(state.data.companies || {}).filter(c => c && (activeFilter === 'ALL' || (c.classGroup || 'A') === activeFilter))
+            .reduce((sum, c) => sum + (c.inactivityReports || []).filter(r => r && r.status !== 'RESUELTO').length, 0);
+        if (pendingHrDashCount > 0) {
+            quickQueueBannersHtml += `
+            <div class="terminal-border bg-rose-950/30 border-l-4 border-l-mars-magenta p-4 mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                    <h4 class="font-orbitron text-mars-magenta text-xs uppercase font-bold tracking-wider">🕊️ Reportes HR Confidenciales · DOC_2 (${pendingHrDashCount})</h4>
+                    <p class="text-[11px] text-slate-300 mt-0.5">Avisos confidenciales de inactividad pendientes de revisión por el Claustro Docente.</p>
+                </div>
+                <button type="button" onclick="${isCoord ? "ui.adminMode='coord'; " : ''}ui.adminTab='hr'; ui.render();" class="min-h-[44px] bg-mars-magenta text-white px-4 py-2 text-xs font-black uppercase hover:bg-white hover:text-black transition-colors shrink-0">Abrir Buzón HR ➔</button>
+            </div>`;
+        }
 
         state.data.b2bContracts = state.data.b2bContracts || [];
         const pendingB2B = state.data.b2bContracts.filter(c => {
@@ -2481,6 +2493,9 @@ Object.assign(ui, {
         co.sanctions = [];
         co.crisisAlerts = [];
         co.meetingMinutes = [];
+        co.specialItemRequests = [];
+        co.coordinatorReports = [];
+        co.previousNames = [];
         co.bom = [];
         co.bomUpdatedAt = now;
         co.brandUpdatedAt = now;
@@ -2966,9 +2981,7 @@ Object.assign(ui, {
     },
 
     modalRealSpend(cid) {
-        if (!state.user || !state.user.admin) {
-            return this.notify("Acceso restringido al Claustro Docente.", "error");
-        }
+        if (!this.checkCoordinatorAccess()) return;
         const co = state.data.companies?.[cid];
         if (!co) return;
         co.realCosts = co.realCosts || [];
@@ -3588,8 +3601,8 @@ Object.assign(ui, {
         const cu = (typeof currentUser !== 'undefined' ? currentUser : null) || state.currentUser || state.user;
         if (!cu) return false;
         const r = String(cu.role || '').toLowerCase();
-        // Guarda de seguridad v1.1.02: Abortar inmediatamente si currentUser.role !== 'coordinador'
-        if (cu.role !== 'coordinador' && r !== 'coordinador' && !r.includes('coord') && !cu.admin) {
+        const isCoord = Boolean(cu.admin && (cu.isCoordinator || r === 'coordinador' || r.startsWith('coord')));
+        if (!isCoord) {
             if (typeof ui !== 'undefined' && ui.notify) {
                 ui.notify("ACCESO DENEGADO // Requiere privilegios de Coordinador.", "error");
             }

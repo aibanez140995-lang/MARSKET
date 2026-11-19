@@ -58,7 +58,7 @@ Object.assign(ui, {
 
     renderAdminEval() {
         this.evalClassFilter = this.evalClassFilter || this.currentClassFilter || 'ALL';
-        const isCoord = state.user.role.startsWith('COORD');
+        const isCoord = Boolean(state.user?.isCoordinator || String(state.user?.role || '').toUpperCase().startsWith('COORD') || String(state.user?.role || '').toLowerCase() === 'coordinador');
         const activeSubject = isCoord ? (this.coordEvalView === 'ACTA' || this.coordEvalView === 'ARCHIVE' ? null : this.coordEvalView) : state.user.role;
         const weights = typeof GLOBAL_WEIGHTS !== 'undefined' ? GLOBAL_WEIGHTS : { FYQ: 0.25, LYE: 0.40, LEN: 0.15, ECO: 0.10, MAT: 0.05, ING: 0.05 };
         
@@ -68,13 +68,13 @@ Object.assign(ui, {
             <select aria-label="Vista de evaluación de coordinación" onchange="ui.coordEvalView=this.value; ui.evalSelectedCo=''; ui.render()" class="min-h-[44px] w-full sm:w-auto max-w-full bg-black border border-mars-cyan text-mars-cyan text-xs p-2.5 uppercase font-bold outline-none cursor-pointer">
                 <option value="ACTA" ${this.coordEvalView==='ACTA'?'selected':''}>📊 Acta General Calificaciones (100% Ponderada)</option>
                 <option value="ARCHIVE" ${this.coordEvalView==='ARCHIVE'?'selected':''}>📁 Archivo Documental Central (Entregables Drive)</option>
-                ${['FYQ','LYE','LEN','ECO','MAT','ING'].map(s => `<option value="${s}" ${this.coordEvalView===s?'selected':''}>Evaluar: ${this.escapeHTML(RUBRIC_CONFIG[s].name)} (${Math.round((weights[s]||0)*100)}%)</option>`).join('')}
+                ${['FYQ','LYE','LEN','ECO','MAT','ING'].map(s => `<option value="${s}" ${this.coordEvalView===s?'selected':''}>Evaluar: ${this.escapeHTML(RUBRIC_CONFIG[s]?.name || s)} (${Math.round((weights[s]||0)*100)}%)</option>`).join('')}
             </select>
             ${this.coordEvalView === 'ACTA' ? `<button onclick="ui.exportActaCSV()" class="min-h-[44px] w-full sm:w-auto bg-mars-green text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors">Exportar Acta Ponderada CSV</button>` : ''}
             `;
         } else {
             const wPct = Math.round((weights[activeSubject] || 0) * 100);
-            adminHtml += `<h3 class="font-orbitron text-mars-cyan text-sm uppercase px-4 py-2">Módulo Calificador: <span class="text-white">${this.escapeHTML(RUBRIC_CONFIG[activeSubject].name)}</span> <span class="text-mars-yellow text-xs ml-2">[PESO PROYECTO: ${wPct}%]</span></h3>`;
+            adminHtml += `<h3 class="font-orbitron text-mars-cyan text-sm uppercase px-4 py-2">Módulo Calificador: <span class="text-white">${this.escapeHTML(RUBRIC_CONFIG[activeSubject]?.name || activeSubject)}</span> <span class="text-mars-yellow text-xs ml-2">[PESO PROYECTO: ${wPct}%]</span></h3>`;
         }
         
         if (isCoord && (this.coordEvalView === 'ACTA' || this.coordEvalView === 'ARCHIVE')) {
@@ -183,8 +183,9 @@ Object.assign(ui, {
                 const co = state.data.companies[cid];
                 const d = co?.deliverables || {};
                 const prs = co?.pressReleases || {};
-                const hasAnyPr = ['I','II','III','IV'].some(ph => !!prs[ph]?.driveUrl);
-                totalDelivered += docCols.filter(col => col.isPress ? hasAnyPr : !!d[col.key]).length;
+                const hasAnyPr = ['I','II','III','IV'].some(ph => Boolean(prs[ph]?.driveUrl && prs[ph]?.status !== 'RETURNED'));
+                const isDocDone = doc => Boolean(doc && (typeof doc === 'string' || (doc.status || 'DELIVERED_TO_TEACHER') === 'DELIVERED_TO_TEACHER'));
+                totalDelivered += docCols.filter(col => col.isPress ? hasAnyPr : isDocDone(d[col.key])).length;
             });
             const pctGlobal = totalPossible > 0 ? Math.round((totalDelivered / totalPossible) * 100) : 0;
 
@@ -221,21 +222,23 @@ Object.assign(ui, {
                                     const co = state.data.companies[cid];
                                     const d = co?.deliverables || {};
                                     const prs = co?.pressReleases || {};
-                                    const hasAnyPr = ['I','II','III','IV'].some(ph => !!prs[ph]?.driveUrl);
-                                    const deliveredTotal = docCols.filter(col => col.isPress ? hasAnyPr : !!d[col.key]).length;
+                                    const hasAnyPr = ['I','II','III','IV'].some(ph => Boolean(prs[ph]?.driveUrl && prs[ph]?.status !== 'RETURNED'));
+                                    const isDocDone = doc => Boolean(doc && (typeof doc === 'string' || (doc.status || 'DELIVERED_TO_TEACHER') === 'DELIVERED_TO_TEACHER'));
+                                    const deliveredTotal = docCols.filter(col => col.isPress ? hasAnyPr : isDocDone(d[col.key])).length;
                                     return deliveredTotal < docCols.length;
                                 })
                                 .map(cid => {
                                 const co = state.data.companies[cid];
                                 const d = co.deliverables || {}; 
                                 const prs = co.pressReleases || {};
-                                const hasAnyPr = ['I','II','III','IV'].some(ph => !!prs[ph]?.driveUrl);
+                                const hasAnyPr = ['I','II','III','IV'].some(ph => Boolean(prs[ph]?.driveUrl && prs[ph]?.status !== 'RETURNED'));
                                 const aiCount = (co.aiPrompts||[]).filter(p=>p.status==='APROBADO').length;
-                                const deliveredTotal = docCols.filter(col => col.isPress ? hasAnyPr : !!d[col.key]).length;
+                                const isDocDone = doc => Boolean(doc && (typeof doc === 'string' || (doc.status || 'DELIVERED_TO_TEACHER') === 'DELIVERED_TO_TEACHER'));
+                                const deliveredTotal = docCols.filter(col => col.isPress ? hasAnyPr : isDocDone(d[col.key])).length;
                                 
                                 const dLink = (doc, colKey, colObj) => {
                                     if (colObj?.isPress) {
-                                        const prPublished = ['I','II','III','IV'].filter(ph => prs[ph]?.driveUrl);
+                                        const prPublished = ['I','II','III','IV'].filter(ph => prs[ph]?.driveUrl && prs[ph]?.status !== 'RETURNED');
                                         if (prPublished.length > 0) {
                                             return `<div class="flex flex-col items-center gap-1"><span class="min-h-[44px] flex items-center justify-center bg-mars-cyan/15 text-mars-cyan border border-mars-cyan px-2 py-1 font-bold text-center font-mono">📰 ${prPublished.length}/4</span></div>`;
                                         }
@@ -245,7 +248,8 @@ Object.assign(ui, {
                                     const tplView = (tplRaw && this.isDocsEditorUrl && this.isDocsEditorUrl(tplRaw)) ? this.getGoogleViewUrl(tplRaw) : tplRaw;
                                     const templateBadge = tplView ? `<a href="${encodeURI(tplView).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-[9px] text-mars-cyan block hover:underline" title="Ver Plantilla Docente">📄 Plantilla ↗</a>` : '';
                                     if (doc) {
-                                        const docUrl = doc.driveUrl || doc.url || doc.dataUrl || '#';
+                                        const docUrlRaw = doc.driveUrl || doc.url || doc.dataUrl || '#';
+                                        const docUrl = (docUrlRaw !== '#' && typeof this.sanitizeDriveUrl === 'function') ? this.sanitizeDriveUrl(docUrlRaw) : encodeURI(String(docUrlRaw)).replace(/"/g, '&quot;');
                                         const st = (typeof doc === 'string') ? 'DELIVERED_TO_TEACHER' : (doc.status || 'DELIVERED_TO_TEACHER');
                                         let badgeCls = 'bg-mars-green/15 text-mars-green border border-mars-green hover:bg-mars-green hover:text-black';
                                         let badgeTxt = (doc.type === 'link' || doc.driveUrl || doc.url) ? '🔗 LINK' : '📁 FILE';
@@ -258,8 +262,11 @@ Object.assign(ui, {
                                         } else if (st === 'EN_TALLER_OPERARIO') {
                                             badgeCls = 'bg-blue-950/60 text-blue-300 border border-blue-500/60 hover:bg-blue-400 hover:text-black';
                                             badgeTxt = '⚙️ Taller';
+                                        } else if (st === 'DRAFT_TECNICO') {
+                                            badgeCls = 'bg-slate-900 text-slate-300 border border-slate-600 hover:border-mars-cyan';
+                                            badgeTxt = '📝 Borrador';
                                         }
-                                        return `<div class="flex flex-col items-center gap-1"><a href="${this.escapeHTML(docUrl)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] flex items-center justify-center ${badgeCls} px-2 py-1 font-bold transition-colors text-center text-[11px]">${badgeTxt}</a>${templateBadge}</div>`;
+                                        return `<div class="flex flex-col items-center gap-1"><a href="${docUrl || '#'}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] flex items-center justify-center ${badgeCls} px-2 py-1 font-bold transition-colors text-center text-[11px]">${badgeTxt}</a>${templateBadge}</div>`;
                                     }
                                     return `<div class="flex flex-col items-center gap-1"><span class="min-h-[44px] flex items-center justify-center text-slate-400 border border-slate-800 px-2 py-1 text-center">--</span>${templateBadge}</div>`;
                                 };
@@ -452,7 +459,7 @@ Object.assign(ui, {
         const map = {
             FYQ: { c1: 'I', c_ws: 'III', c2: 'IV', c3: 'II', c4: 'V' },
             ECO: { c1: 'I-IV', c2: 'I', c3: 'IV', c4: 'II', c5: 'III' },
-            LYE: { c1: 'I', c2: 'III', c3: 'III', c4: 'I', c5: 'I', c6: 'IV', c7: 'V' },
+            LYE: { c1: 'I', c2: 'III', c3: 'III', c4: 'IV', c5: 'I', c6: 'IV', c7: 'V' },
             LEN: { c1: 'V', c2: 'IV', c3: 'I-IV' },
             MAT: { c1: 'II', c2: 'II', c3: 'II', c4: 'II' },
             ING: { c1: 'I-IV', c2: 'V' }
@@ -584,8 +591,8 @@ Object.assign(ui, {
             LYE: {
                 I: "En la Fase I te corresponde calificar la <strong>Identidad y Misión Dic</strong> (10%) y el <strong>Diario de Decisiones e IA Dic</strong> (10%).",
                 II: "En la Fase II las startups consolidan su equipo y primer prototipo.",
-                III: "En la Fase III evalúa el <strong>Business Model Escrito</strong> (25% de tu materia).",
-                IV: "En la Fase IV evalúa la <strong>Identidad Abr</strong> (10%), el <strong>Business Model Canvas</strong> (15%) y el <strong>Diario Abr</strong> (10%).",
+                III: "En la Fase III evalúa la <strong>Identidad y Misión Abr</strong> (10%) y el <strong>Business Model Escrito</strong> (25% de tu materia).",
+                IV: "En la Fase IV evalúa el <strong>Business Model Canvas</strong> (15%) y el <strong>Diario de Decisiones e IA Abr</strong> (10%).",
                 V: "En la Fase V evalúa las <strong>Defensas Orales</strong> (20%)."
             },
             LEN: {
@@ -597,9 +604,9 @@ Object.assign(ui, {
             },
             MAT: {
                 I: "En la Fase I no hay entregables obligatorios de Matemáticas en la app. Tu primer bloque comienza en la <strong>Fase II</strong>.",
-                II: "En la Fase II evalúa la <strong>Construcción del Goniómetro</strong> (25%), el <strong>Informe de Distancia Conocida</strong> (25%) y el <strong>Informe de Dos Mediciones</strong> (25%).",
-                III: "En la Fase III los equipos preparan los datos trigonométricos de apogeo definitivo.",
-                IV: "En la Fase IV evalúa el <strong>Informe Técnico Final Comparativo</strong> (25%).",
+                II: "En la Fase II evalúa la <strong>Construcción del Goniómetro</strong> (25%), el <strong>Informe de Distancia Conocida</strong> (25%), el <strong>Informe de Dos Mediciones</strong> (25%) y el <strong>Informe Técnico Final Comparativo</strong> (25%).",
+                III: "En la Fase III los equipos aplican la trigonometría a los prototipos avanzados y optimizan el apogeo.",
+                IV: "En la Fase IV se consolidan las métricas finales de vuelo para el Dossier de Inversores.",
                 V: "En la Fase V se comprueban las mediciones reales en el concurso."
             },
             ING: {
@@ -925,6 +932,9 @@ Object.assign(ui, {
             }
         }
 
+        const scoredCount = Object.keys(scores).length;
+        const finalGradeVal = scoredCount > 0 ? total : null;
+
         // Capturar dictamen antes de cualquier apertura modal o redibujado de interfaz
         const elFeedback = document.getElementById('eval-feedback');
         const feedback = elFeedback ? this.cleanInput(elFeedback.value) : '';
@@ -934,21 +944,40 @@ Object.assign(ui, {
             const liveCo = state.data?.companies?.[targetCid];
             if (!liveCo) return;
 
+            let maxDocTs = 0;
+            const subjDefs = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).filter(d => d.subject === subject);
+            subjDefs.forEach(d => {
+                const docItem = liveCo.deliverables?.[d.key];
+                if (docItem && typeof docItem === 'object' && docItem.updatedAt) {
+                    const ts = Date.parse(docItem.updatedAt) || Number(docItem.updatedAt) || 0;
+                    if (ts > maxDocTs) maxDocTs = ts;
+                }
+            });
+            if (subject === 'LEN' && liveCo.pressReleases) {
+                Object.values(liveCo.pressReleases).forEach(pr => {
+                    const ts = pr ? Math.max(Number(pr.updatedAt) || 0, Number(pr.publishedAt) || 0) : 0;
+                    if (ts > maxDocTs) maxDocTs = ts;
+                });
+            }
             liveCo.grades = liveCo.grades || {};
+            const prevGradeTs = Number(liveCo.grades[subject]?.updatedAt) || 0;
+            const monoGradeTs = Math.max(Date.now(), maxDocTs + 1, prevGradeTs + 1);
             liveCo.grades[subject] = { 
                 scores, 
                 feedback, 
-                final: total,
-                updatedAt: Date.now(),
+                final: finalGradeVal,
+                updatedAt: monoGradeTs,
                 gradedBy: state.user?.role || 'DOCENTE'
             };
-            liveCo.updatedAt = Date.now();
+            liveCo.updatedAt = monoGradeTs;
             
-            telemetry.log("EVALUACIÓN", `Nota ${subject} registrada a ${liveCo.name}: ${total.toFixed(2)}`);
+            telemetry.log("EVALUACIÓN", `Nota ${subject} registrada a ${liveCo.name}: ${finalGradeVal !== null ? finalGradeVal.toFixed(2) : 'Sin nota (solo feedback)'}`);
 
             const subjectRoleMap = { FYQ: 'TECNICO', LYE: 'MARKETING', ECO: 'FINANZAS', MAT: 'TECNICO', LEN: 'MARKETING', ING: 'MARKETING' };
             const targetRole = subjectRoleMap[subject] || 'CEO';
-            const notifMsg = `Calificación de ${subject} registrada por el docente: ${total.toFixed(2)} / 10`;
+            const notifMsg = finalGradeVal !== null
+                ? `Calificación de ${subject} registrada por el docente: ${finalGradeVal.toFixed(2)} / 10`
+                : `Observación docente de ${subject} registrada (pendiente de calificación numérica).`;
             const targetMeta = { view: 'dossier', subTab: 'eval' };
             ui.pushNotification(targetCid, 'CEO', notifMsg, 'success', targetMeta);
             if (targetRole !== 'CEO') {
@@ -960,7 +989,12 @@ Object.assign(ui, {
                 state.pushToCloud(false);
             }
 
-            this.notify(`Calificación de ${subject} registrada para ${liveCo.name}: ${total.toFixed(2)}`, "success");
+            this.notify(
+                finalGradeVal !== null
+                    ? `Calificación de ${subject} registrada para ${liveCo.name}: ${finalGradeVal.toFixed(2)}`
+                    : `Observación de ${subject} guardada (sin computar 0.00 en Acta).`,
+                "success"
+            );
             if (goNext) {
                 const classFilter = this.evalClassFilter || this.currentClassFilter || 'ALL';
                 const nextPendingCid = Object.keys(state.data.companies || {}).find(cid => {
@@ -1020,7 +1054,9 @@ Object.assign(ui, {
 
             const pctEval = Math.round(evaluatedWeight * 100);
             const finalNote = evaluatedWeight > 0 ? weightedTotal.toFixed(2) : '';
-            csv += `"${(co.name || '').replace(/"/g, '""')}","${co.classGroup || 'A'}",${vals.join(',')},${pctEval}%,${finalNote}\n`;
+            const safeName = typeof this.escapeCSVCell === 'function' ? this.escapeCSVCell(co.name || '') : `"${(co.name || '').replace(/"/g, '""')}"`;
+            const safeClass = typeof this.escapeCSVCell === 'function' ? this.escapeCSVCell(co.classGroup || 'A') : `"${co.classGroup || 'A'}"`;
+            csv += `${safeName},${safeClass},${vals.join(',')},${pctEval}%,${finalNote}\n`;
         });
         const suffix = classFilter === 'ALL' ? 'oficial' : `clase_${classFilter}`;
         this.downloadFile(csv, 'csv', `marsket_acta_ponderada_${suffix}.csv`);
@@ -1088,7 +1124,8 @@ Object.assign(ui, {
             validatedUrl = urlCheck.url || '';
         }
 
-        const nowTs = Date.now();
+        const prevPrTs = Math.max(Number(pr.updatedAt) || 0, Number(pr.publishedAt) || 0, Number(pr.returnedAt) || 0);
+        const nowTs = Math.max(Date.now(), prevPrTs + 1);
         const teacherName = state.user?.role || 'DOCENTE';
         pr.status = 'RETURNED';
         pr.returnReason = reason;

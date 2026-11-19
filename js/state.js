@@ -1912,6 +1912,7 @@ const state = {
         }
 
         this.saveLocalOnly();
+        const prevVer = Number(this.data.version) || 0;
         let ok = false;
         try {
             const token = this.getAuthToken(this.user, this.data);
@@ -1930,9 +1931,14 @@ const state = {
             if (res.ok) {
                 const resJson = await res.json().catch(() => null);
                 if (resJson && resJson.newVersion) {
-                    this.data.version = resJson.newVersion;
-                    this.lastETag = resJson.etag || null;
-                    this.saveLocalOnly();
+                    if (Number(resJson.newVersion) === prevVer + 1) {
+                        this.data.version = resJson.newVersion;
+                        this.lastETag = resJson.etag || null;
+                        this.saveLocalOnly();
+                    } else {
+                        this.lastETag = null;
+                        await this.fetchFromCloud(true);
+                    }
                 }
                 ok = true;
             }
@@ -1965,6 +1971,7 @@ const state = {
         this.saveLocalOnly();
 
         let ok = false;
+        const prevVer = Number(this.data.version) || 0;
         try {
             const token = this.getAuthToken(this.user, this.data);
             const res = await fetch('/api/admin/credentials', {
@@ -1978,9 +1985,14 @@ const state = {
             if (res.ok) {
                 const resJson = await res.json().catch(() => null);
                 if (resJson && resJson.newVersion) {
-                    this.data.version = resJson.newVersion;
-                    this.lastETag = resJson.etag || null;
-                    this.saveLocalOnly();
+                    if (Number(resJson.newVersion) === prevVer + 1) {
+                        this.data.version = resJson.newVersion;
+                        this.lastETag = resJson.etag || null;
+                        this.saveLocalOnly();
+                    } else {
+                        this.lastETag = null;
+                        await this.fetchFromCloud(true);
+                    }
                 }
                 ok = true;
             }
@@ -2014,6 +2026,7 @@ const state = {
         }
 
         this.saveLocalOnly();
+        const prevVer = Number(this.data.version) || 0;
         let ok = false;
         try {
             const token = this.getAuthToken(this.user, this.data);
@@ -2028,9 +2041,14 @@ const state = {
             if (res.ok) {
                 const resJson = await res.json().catch(() => null);
                 if (resJson && resJson.newVersion) {
-                    this.data.version = resJson.newVersion;
-                    this.lastETag = resJson.etag || null;
-                    this.saveLocalOnly();
+                    if (Number(resJson.newVersion) === prevVer + 1) {
+                        this.data.version = resJson.newVersion;
+                        this.lastETag = resJson.etag || null;
+                        this.saveLocalOnly();
+                    } else {
+                        this.lastETag = null;
+                        await this.fetchFromCloud(true);
+                    }
                 }
                 ok = true;
             }
@@ -2064,6 +2082,7 @@ const state = {
         }
 
         this.saveLocalOnly();
+        const prevVer = Number(this.data.version) || 0;
         let ok = false;
         try {
             const token = this.getAuthToken(this.user, this.data);
@@ -2078,9 +2097,14 @@ const state = {
             if (res.ok) {
                 const resJson = await res.json().catch(() => null);
                 if (resJson && resJson.newVersion) {
-                    this.data.version = resJson.newVersion;
-                    this.lastETag = resJson.etag || null;
-                    this.saveLocalOnly();
+                    if (Number(resJson.newVersion) === prevVer + 1) {
+                        this.data.version = resJson.newVersion;
+                        this.lastETag = resJson.etag || null;
+                        this.saveLocalOnly();
+                    } else {
+                        this.lastETag = null;
+                        await this.fetchFromCloud(true);
+                    }
                 }
                 ok = true;
             }
@@ -2561,12 +2585,13 @@ const state = {
         const isCEO = Boolean(this.user.admin) || (effectiveRole === 'CEO' && def && def.role === 'CEO');
         const targetStatus = isCEO ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
 
+        const prevDelivMs = this._parseSafeTs ? this._parseSafeTs(co.deliverables[docType]?.updatedAt) : (Date.parse(co.deliverables[docType]?.updatedAt) || 0);
         const sanitizedItem = { 
             driveUrl, 
             status: targetStatus,
             returnReasonId: null,
             returnReason: null,
-            updatedAt: new Date().toISOString() 
+            updatedAt: new Date(Math.max(Date.now(), prevDelivMs + 1)).toISOString()
         };
         co.deliverables[docType] = sanitizedItem;
 
@@ -2846,7 +2871,8 @@ const state = {
         delete co.deliverables[docType].returnReason;
         delete co.deliverables[docType].returnDriveUrl;
         delete co.deliverables[docType].returnByTeacher;
-        co.deliverables[docType].updatedAt = new Date().toISOString();
+        const prevCeoApprMs = this._parseSafeTs ? this._parseSafeTs(co.deliverables[docType].updatedAt) : (Date.parse(co.deliverables[docType].updatedAt) || 0);
+        co.deliverables[docType].updatedAt = new Date(Math.max(Date.now(), prevCeoApprMs + 1)).toISOString();
         if (docType === 'hoja_taller_fyq') {
             this._appendHojaHistoryEntry(co.deliverables[docType], co, {
                 actor: (typeof ui !== 'undefined' && typeof ui.getActorRoleLabel === 'function') ? ui.getActorRoleLabel(co) : 'CEO',
@@ -2908,7 +2934,8 @@ const state = {
         co.deliverables[docType].returnReason = reasonText;
         co.deliverables[docType].returnDriveUrl = returnDriveUrl || null;
         delete co.deliverables[docType].returnByTeacher;
-        co.deliverables[docType].updatedAt = new Date().toISOString();
+        const prevCeoApprMs = this._parseSafeTs ? this._parseSafeTs(co.deliverables[docType].updatedAt) : (Date.parse(co.deliverables[docType].updatedAt) || 0);
+        co.deliverables[docType].updatedAt = new Date(Math.max(Date.now(), prevCeoApprMs + 1)).toISOString();
         if (docType === 'hoja_taller_fyq') {
             this._appendHojaHistoryEntry(co.deliverables[docType], co, {
                 actor: (typeof ui !== 'undefined' && typeof ui.getActorRoleLabel === 'function') ? ui.getActorRoleLabel(co) : 'CEO',
@@ -2969,7 +2996,8 @@ const state = {
         co.deliverables[docType].returnReason = reasonText;
         co.deliverables[docType].returnDriveUrl = returnDriveUrl || null;
         co.deliverables[docType].returnByTeacher = true;
-        co.deliverables[docType].updatedAt = new Date().toISOString();
+        const prevCeoApprMs = this._parseSafeTs ? this._parseSafeTs(co.deliverables[docType].updatedAt) : (Date.parse(co.deliverables[docType].updatedAt) || 0);
+        co.deliverables[docType].updatedAt = new Date(Math.max(Date.now(), prevCeoApprMs + 1)).toISOString();
 
         if (typeof telemetry !== 'undefined' && telemetry.log) {
             telemetry.log("DOCENTE_DEVOLUCION", `Entregable devuelto a startup por docente: ${coId} / ${docType} (${reasonId})`);
