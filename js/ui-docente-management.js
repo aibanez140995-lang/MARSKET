@@ -3,6 +3,7 @@
 
 Object.assign(ui, {
     pinsVisible: false,
+    revealedPinCompanyIds: {},
     renderAdminDash() {
         const activeFilter = this.currentClassFilter || 'ALL';
 
@@ -555,8 +556,9 @@ Object.assign(ui, {
                                 const coCode = state.getCompanyCode(co);
                                 const auxPin = state.getRolePin(co, 'AUXILIAR');
                                 const auxDept = co.auxRoleDept || '--';
+                                const isRowPinsVisible = Boolean(this.pinsVisible || (this.revealedPinCompanyIds && this.revealedPinCompanyIds[cid]));
                                 return `
-                                <tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
+                                <tr data-cid="${this.escapeHTML(cid)}" class="border-b border-mars-border/30 hover:bg-slate-900/50">
                                     <td class="py-3 font-orbitron text-white font-bold pr-3">
                                         <div class="flex flex-col items-start gap-0.5">
                                             <button onclick="ui.showCompanyLogins('${this.escapeHTML(cid)}')" class="min-h-[44px] text-mars-cyan hover:text-white transition-colors underline decoration-mars-cyan/50 decoration-dashed underline-offset-4 max-w-[200px] truncate inline-flex items-center" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)}</button>
@@ -580,7 +582,7 @@ Object.assign(ui, {
                                             <div class="flex flex-col items-center gap-1.5">
                                                 ${isCoord ? `
                                                 <div class="flex items-center gap-1">
-                                                    <input type="${this.pinsVisible ? 'text' : 'password'}" id="pin-input-${this.escapeHTML(cid)}-${rol}" aria-label="PIN ${rol} de ${this.escapeHTML(co.name)}" maxlength="4" value="${this.escapeHTML(pinVal)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', '${rol}', this.value)" class="min-h-[44px] w-14 bg-black border border-mars-border text-center text-mars-cyan font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">
+                                                    <input type="${isRowPinsVisible ? 'text' : 'password'}" id="pin-input-${this.escapeHTML(cid)}-${rol}" aria-label="PIN ${rol} de ${this.escapeHTML(co.name)}" maxlength="4" value="${this.escapeHTML(pinVal)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', '${rol}', this.value)" class="min-h-[44px] w-14 bg-black border border-mars-border text-center text-mars-cyan font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">
                                                     <button onclick="ui.regenerateRolePin('${this.escapeHTML(cid)}', '${rol}')" id="role-pin-regen-${this.escapeHTML(cid)}-${rol}" aria-label="Nuevo PIN aleatorio para ${rol}" title="Generar nuevo PIN aleatorio para ${rol}" class="min-h-[44px] min-w-[44px] bg-slate-800 text-slate-300 hover:text-black hover:bg-mars-yellow border border-slate-700 px-1 py-1 flex items-center justify-center transition-colors text-xs font-bold disabled:opacity-50">🎲</button>
                                                 </div>` : `<span class="text-slate-300">****</span>`}
                                                 ${isCoord ? `<button onclick="ui.generateRoleCredentialCard('${this.escapeHTML(cid)}', '${rol}')" aria-label="Credencial PDF ${rol}" title="Emitir Credencial PDF ${rol}" class="min-h-[44px] w-full inline-flex items-center justify-center text-xs font-mono font-bold bg-slate-900 border border-slate-700 hover:border-mars-cyan text-slate-300 hover:text-mars-cyan px-2 py-1 rounded-sm transition-colors whitespace-nowrap">🪪 ${rol}</button>` : ''}
@@ -591,7 +593,7 @@ Object.assign(ui, {
                                         <div class="flex flex-col items-center gap-1.5">
                                             ${isCoord ? `
                                             <div class="flex items-center gap-1">
-                                                <input type="${this.pinsVisible ? 'text' : 'password'}" id="pin-input-${this.escapeHTML(cid)}-AUXILIAR" aria-label="PIN AUXILIAR de ${this.escapeHTML(co.name)}" maxlength="4" placeholder="----" value="${this.escapeHTML(auxPin)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', 'AUXILIAR', this.value)" class="min-h-[44px] w-14 bg-black border ${auxPin ? 'border-mars-green text-mars-green' : 'border-slate-700 text-slate-400'} text-center font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">
+                                                <input type="${isRowPinsVisible ? 'text' : 'password'}" id="pin-input-${this.escapeHTML(cid)}-AUXILIAR" aria-label="PIN AUXILIAR de ${this.escapeHTML(co.name)}" maxlength="4" placeholder="----" value="${this.escapeHTML(auxPin)}" onchange="ui.updatePIN('${this.escapeHTML(cid)}', 'AUXILIAR', this.value)" class="min-h-[44px] w-14 bg-black border ${auxPin ? 'border-mars-green text-mars-green' : 'border-slate-700 text-slate-400'} text-center font-bold text-base sm:text-xs p-1 outline-none focus:border-mars-yellow disabled:opacity-50">
                                                 ${auxPin ? `<button onclick="ui.regenerateRolePin('${this.escapeHTML(cid)}', 'AUXILIAR')" id="role-pin-regen-${this.escapeHTML(cid)}-AUXILIAR" aria-label="Nuevo PIN aleatorio para AUXILIAR" title="Generar nuevo PIN aleatorio para AUXILIAR" class="min-h-[44px] min-w-[44px] bg-slate-800 text-slate-300 hover:text-black hover:bg-mars-yellow border border-slate-700 px-1 py-1 flex items-center justify-center transition-colors text-xs font-bold disabled:opacity-50">🎲</button>` : ''}
                                                 <span class="text-xs text-slate-300 uppercase">[${this.escapeHTML(auxDept)}]</span>
                                             </div>` : `<span class="text-slate-300">****</span>`}
@@ -600,6 +602,7 @@ Object.assign(ui, {
                                     </td>
                                     <td class="py-3">
                                         <div class="flex items-center gap-2">
+                                            ${isCoord ? `<button type="button" id="row-pin-toggle-${this.escapeHTML(cid)}" onclick="ui.toggleCompanyRowPins('${this.escapeHTML(cid)}')" aria-pressed="${isRowPinsVisible}" aria-label="${isRowPinsVisible ? 'Ocultar' : 'Revelar'} PINs de ${this.escapeHTML(co.name)}" title="${isRowPinsVisible ? 'Ocultar PINs de esta startup' : 'Revelar PINs solo de esta startup'}" class="min-h-[44px] min-w-[44px] ${isRowPinsVisible ? 'bg-mars-cyan text-black border-mars-cyan' : 'bg-slate-800 border-slate-600 text-mars-cyan hover:border-mars-cyan'} border font-bold text-xs px-2.5 py-1 transition-colors flex items-center justify-center">${isRowPinsVisible ? '🙈' : '👁️'}</button>` : ''}
                                             ${isCoord ? `<button onclick="ui.regenerateCompanyPins('${this.escapeHTML(cid)}')" id="co-pins-regen-${this.escapeHTML(cid)}" title="Generar nuevos PINs aleatorios de 4 dígitos para todos los roles de ${this.escapeHTML(co.name)}" class="min-h-[44px] bg-mars-yellow/20 border border-mars-yellow text-mars-yellow hover:bg-mars-yellow hover:text-black font-bold text-xs px-2.5 py-1 transition-colors whitespace-nowrap flex items-center gap-1">🎲 PINs</button>` : ''}
                                             ${isCoord ? `<button onclick="ui.generateCompanyCredentialCards('${this.escapeHTML(cid)}')" title="Emitir todas las credenciales de flota de ${this.escapeHTML(co.name)}" class="min-h-[44px] bg-mars-cyan/20 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold text-xs px-2.5 py-1 transition-colors whitespace-nowrap">🪪 Flota PDF</button>` : ''}
                                             ${isCoord ? (co.isTestCompany || cid === 'sandbox_master' || co.classGroup === 'TEST' ? `<button onclick="ui.confirmAction('Resetear Empresa TEST', '¿Resetear la empresa de pruebas TEST a su estado limpio de fábrica (2400 €v)? Se borrarán todos los ensayos, órdenes y entregables de prueba.', () => ui.resetTestCompany('${this.escapeHTML(cid)}'), 'Resetear')" class="min-h-[44px] text-mars-yellow font-bold hover:underline px-2 flex items-center gap-1">🔄 Resetear</button>` : `<button onclick="ui.confirmAction('Eliminar Startup', '¿Borrar startup irreversiblemente? Esta acción purgará la empresa y todas sus operaciones de forma permanente.', () => ui.deleteStartup('${this.escapeHTML(cid)}'), 'Eliminar')" class="min-h-[44px] text-mars-magenta font-bold hover:underline px-2">Eliminar</button>`) : `<span class="text-slate-400">Bloqueado</span>`}
@@ -620,11 +623,51 @@ Object.assign(ui, {
         this.selectedKeychainClass = cls;
         this.currentClassFilter = cls;
         this.evalClassFilter = cls;
+        this.revealedPinCompanyIds = {};
         this.render();
+    },
+
+    toggleCompanyRowPins(cid) {
+        if (!state.user || !state.user.role || !state.user.role.startsWith('COORD')) return;
+        if (!cid) return;
+        this.revealedPinCompanyIds = this.revealedPinCompanyIds || {};
+        if (this.pinsVisible) {
+            this.pinsVisible = false;
+            const gBtn = document.getElementById('toggle-pins-btn');
+            if (gBtn) gBtn.innerHTML = '[ 👁️ Revelar PINs ]';
+            document.querySelectorAll('input[id^="teacher-pin-"]').forEach(input => {
+                input.type = 'password';
+            });
+            this.revealedPinCompanyIds = { [cid]: true };
+        } else if (this.revealedPinCompanyIds[cid]) {
+            delete this.revealedPinCompanyIds[cid];
+        } else {
+            this.revealedPinCompanyIds[cid] = true;
+        }
+
+        const showRow = Boolean(this.pinsVisible || this.revealedPinCompanyIds[cid]);
+        document.querySelectorAll('tr[data-cid]').forEach(tr => {
+            const rowCid = tr.getAttribute('data-cid');
+            const rowShown = Boolean(this.pinsVisible || this.revealedPinCompanyIds[rowCid]);
+            tr.querySelectorAll('input[id^="pin-input-"]').forEach(inp => {
+                inp.type = rowShown ? 'text' : 'password';
+            });
+            const rowBtn = document.getElementById(`row-pin-toggle-${rowCid}`);
+            if (rowBtn) {
+                rowBtn.innerHTML = rowShown ? '🙈' : '👁️';
+                rowBtn.setAttribute('aria-pressed', String(rowShown));
+                rowBtn.className = `min-h-[44px] min-w-[44px] ${rowShown ? 'bg-mars-cyan text-black border-mars-cyan' : 'bg-slate-800 border-slate-600 text-mars-cyan hover:border-mars-cyan'} border font-bold text-xs px-2.5 py-1 transition-colors flex items-center justify-center`;
+            }
+        });
+        const coName = state.data.companies?.[cid]?.name || cid;
+        this.notify(showRow ? `PINs visibles solo para ${coName}.` : `PINs de ${coName} ocultados.`, "info");
     },
 
     togglePinsVisibility() {
         this.pinsVisible = !this.pinsVisible;
+        if (!this.pinsVisible) {
+            this.revealedPinCompanyIds = {};
+        }
         const btn = document.getElementById('toggle-pins-btn');
         if (btn) {
             btn.innerHTML = this.pinsVisible ? '[ 🔒 Ocultar PINs ]' : '[ 👁️ Revelar PINs ]';
@@ -632,6 +675,13 @@ Object.assign(ui, {
         const pinInputs = document.querySelectorAll('input[id^="pin-input-"], input[id^="teacher-pin-"]');
         pinInputs.forEach(input => {
             input.type = this.pinsVisible ? 'text' : 'password';
+        });
+        document.querySelectorAll('button[id^="row-pin-toggle-"]').forEach(rowBtn => {
+            const rowCid = rowBtn.id.replace('row-pin-toggle-', '');
+            const rowShown = Boolean(this.pinsVisible || (this.revealedPinCompanyIds && this.revealedPinCompanyIds[rowCid]));
+            rowBtn.innerHTML = rowShown ? '🙈' : '👁️';
+            rowBtn.setAttribute('aria-pressed', String(rowShown));
+            rowBtn.className = `min-h-[44px] min-w-[44px] ${rowShown ? 'bg-mars-cyan text-black border-mars-cyan' : 'bg-slate-800 border-slate-600 text-mars-cyan hover:border-mars-cyan'} border font-bold text-xs px-2.5 py-1 transition-colors flex items-center justify-center`;
         });
         this.notify(this.pinsVisible ? "PINs visibles temporalmente." : "PINs protegidos (modo contraseña).", "info");
     },
@@ -1470,13 +1520,18 @@ Object.assign(ui, {
         companies.forEach(cid => {
             const co = state.data.companies[cid];
             const s = co.loginStats || { totalLogins:0, roles:{} }; 
+            const hasAux = Boolean(co.auxRoleDept || co.auxRoleRequest?.status === 'APROBADO');
             matRows += `<tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
                 <td class="py-3 font-orbitron text-white font-bold pr-4 max-w-[220px] truncate" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)} <span class="text-[10px] text-slate-400 font-mono">[Clase ${this.escapeHTML(co.classGroup || 'A')}]</span></td>
                 <td class="py-3 font-mono text-mars-cyan font-bold pr-4 text-center border-r border-mars-border/50">${s.totalLogins}</td>`;
             ['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA','AUXILIAR'].forEach(r => {
                 const count = s.roles[r]?.count || 0;
-                const color = count > 4 ? 'text-mars-green' : (count > 0 ? 'text-mars-yellow' : 'text-mars-magenta animate-pulse');
-                matRows += `<td class="py-3 font-mono ${color} text-center font-bold px-2">${count}</td>`;
+                if (r === 'AUXILIAR' && !hasAux && count === 0) {
+                    matRows += `<td class="py-3 font-mono text-slate-500 text-center font-bold px-2" title="Startup sin rol Auxiliar activo">--</td>`;
+                } else {
+                    const color = count > 4 ? 'text-mars-green' : (count > 0 ? 'text-mars-yellow' : 'text-mars-magenta animate-pulse');
+                    matRows += `<td class="py-3 font-mono ${color} text-center font-bold px-2">${count}</td>`;
+                }
             });
             matRows += `</tr>`;
         });
@@ -1666,8 +1721,51 @@ Object.assign(ui, {
 
     renderAdminCatalog() {
         const cat = Array.isArray(state.data.catalog) ? state.data.catalog : [];
+        const pendingCustomList = Array.isArray(state.data.pendingCustom) ? state.data.pendingCustom : [];
+        const pendingCustomItemsHtml = pendingCustomList.map(p => `
+                <div class="bg-slate-900 border border-mars-border p-3 flex justify-between items-center text-xs flex-wrap gap-3">
+                    <div class="flex-grow min-w-[220px]">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-mars-yellow font-black uppercase text-xs">${this.escapeHTML(state.data.companies[p.company || p.coId]?.name || 'Desconocida')}</span>
+                            <span class="text-[10px] text-slate-400 font-mono">${this.escapeHTML(p.date || '')}</span>
+                        </div>
+                        <p class="text-white font-bold text-xs uppercase mb-1.5">${this.escapeHTML(p.name || 'Componente Especial I+D')}</p>
+                        ${p.driveUrl ? `
+                            <a href="${this.escapeHTML(p.driveUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-mars-cyan hover:underline font-mono bg-mars-cyan/10 px-2.5 py-1.5 border border-mars-cyan/40 min-h-[44px]">
+                                <span>📄 Abrir Memoria Técnica en Google Drive ↗</span>
+                            </a>
+                        ` : '<span class="text-slate-400 italic text-[11px]">Sin enlace de Drive adjunto</span>'}
+                    </div>
+                    <div class="flex gap-2 items-center flex-wrap sm:flex-nowrap flex-shrink-0">
+                        <input type="text" id="val-name-${this.escapeHTML(p.id)}" aria-label="Nombre oficial en catálogo" class="min-h-[44px] w-40 sm:w-48 bg-black border border-slate-700 p-2 text-white text-xs" placeholder="Nombre en Catálogo" value="${this.escapeAttr(p.name || 'Pieza Especial')}">
+                        <input type="number" id="val-price-${this.escapeHTML(p.id)}" aria-label="Precio €v" class="min-h-[44px] w-20 bg-black border border-mars-border p-2 text-mars-green text-center font-bold text-xs" placeholder="€v" min="1" step="0.5">
+                        <button onclick="ui.teacherValidate('${this.escapeHTML(p.id)}', true)" class="min-h-[44px] bg-mars-green text-black px-4 py-2 font-black text-xs hover:bg-white transition-colors" title="Aprobar e integrar en catálogo">OK</button>
+                        <button onclick="ui.modalDenySpecialItem('${this.escapeHTML(p.id)}')" class="min-h-[44px] text-mars-magenta font-bold px-3 py-2 text-xs border border-mars-magenta hover:bg-mars-magenta hover:text-white transition-colors" title="Denegar solicitud con dictamen">X</button>
+                    </div>
+                </div>`).join('');
+
+        const pendingCustomTopBlockHtml = pendingCustomList.length > 0 ? `
+        <div class="terminal-border bg-mars-card p-5 border-t-4 border-t-blue-500 mb-6 shadow-[0_0_15px_rgba(59,130,246,0.18)]">
+            <div class="flex justify-between items-center mb-4 border-b border-mars-border pb-2 flex-wrap gap-2">
+                <h3 class="font-orbitron text-blue-400 text-xs sm:text-sm uppercase tracking-widest font-bold">🛠️ Solicitudes de Material Externo / I+D</h3>
+                <span class="bg-blue-500/20 border border-blue-400 text-blue-300 px-3 py-1 text-xs font-black uppercase animate-pulse">${pendingCustomList.length} Pendiente(s)</span>
+            </div>
+            <div class="space-y-3">
+                ${pendingCustomItemsHtml}
+            </div>
+        </div>` : `
+        <details class="terminal-border bg-mars-card/80 border border-slate-800 mb-6 rounded">
+            <summary class="min-h-[44px] px-4 py-3 cursor-pointer flex items-center justify-between gap-2 text-xs font-mono text-slate-300 hover:text-blue-400 select-none">
+                <span>🛠️ Solicitudes de Material Externo / I+D (0 pendientes)</span>
+                <span class="text-blue-400 shrink-0">▼ Ver</span>
+            </summary>
+            <div class="p-4 pt-1 border-t border-slate-800/80">
+                <p class="text-slate-300 text-xs italic">Nada pendiente.</p>
+            </div>
+        </details>`;
 
         return `
+        ${pendingCustomTopBlockHtml}
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-1 terminal-border bg-mars-card p-6 h-fit border-t-4 border-t-mars-cyan">
                 <h3 class="font-orbitron text-mars-cyan text-xs mb-4 uppercase tracking-widest">Añadir Nuevo Artículo</h3>
@@ -1744,32 +1842,6 @@ Object.assign(ui, {
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
-        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-blue-500 mt-6">
-            <h3 class="font-orbitron text-blue-400 text-xs mb-4 uppercase tracking-widest">Solicitudes de Material Externo / I+D</h3>
-            <div class="space-y-3">
-                ${(state.data.pendingCustom || []).map(p => `
-                <div class="bg-slate-900 border border-mars-border p-3 flex justify-between items-center text-xs flex-wrap gap-3">
-                    <div class="flex-grow min-w-[220px]">
-                        <div class="flex items-center gap-2 mb-1">
-                            <span class="text-mars-yellow font-black uppercase text-xs">${this.escapeHTML(state.data.companies[p.company]?.name || 'Desconocida')}</span>
-                            <span class="text-[10px] text-slate-400 font-mono">${this.escapeHTML(p.date || '')}</span>
-                        </div>
-                        <p class="text-white font-bold text-xs uppercase mb-1.5">${this.escapeHTML(p.name || 'Componente Especial I+D')}</p>
-                        ${p.driveUrl ? `
-                            <a href="${this.escapeHTML(p.driveUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-mars-cyan hover:underline font-mono bg-mars-cyan/10 px-2.5 py-1.5 border border-mars-cyan/40 min-h-[44px]">
-                                <span>📄 Abrir Memoria Técnica en Google Drive ↗</span>
-                            </a>
-                        ` : '<span class="text-slate-400 italic text-[11px]">Sin enlace de Drive adjunto</span>'}
-                    </div>
-                    <div class="flex gap-2 items-center flex-wrap sm:flex-nowrap flex-shrink-0">
-                        <input type="text" id="val-name-${this.escapeHTML(p.id)}" aria-label="Nombre oficial en catálogo" class="min-h-[44px] w-40 sm:w-48 bg-black border border-slate-700 p-2 text-white text-xs" placeholder="Nombre en Catálogo" value="${this.escapeAttr(p.name || 'Pieza Especial')}">
-                        <input type="number" id="val-price-${this.escapeHTML(p.id)}" aria-label="Precio €v" class="min-h-[44px] w-20 bg-black border border-mars-border p-2 text-mars-green text-center font-bold text-xs" placeholder="€v" min="1" step="0.5">
-                        <button onclick="ui.teacherValidate('${this.escapeHTML(p.id)}', true)" class="min-h-[44px] bg-mars-green text-black px-4 py-2 font-black text-xs hover:bg-white transition-colors" title="Aprobar e integrar en catálogo">OK</button>
-                        <button onclick="ui.modalDenySpecialItem('${this.escapeHTML(p.id)}')" class="min-h-[44px] text-mars-magenta font-bold px-3 py-2 text-xs border border-mars-magenta hover:bg-mars-magenta hover:text-white transition-colors" title="Denegar solicitud con dictamen">X</button>
-                    </div>
-                </div>`).join('') || '<p class="text-slate-300 text-xs italic">Nada pendiente.</p>'}
             </div>
         </div>`;
     },
@@ -2228,7 +2300,7 @@ Object.assign(ui, {
 
         // 3. Limpieza de solicitudes especiales de I+D (pendingCustom)
         if (Array.isArray(state.data.pendingCustom)) {
-            state.data.pendingCustom = state.data.pendingCustom.filter(req => req && req.coId !== cid);
+            state.data.pendingCustom = state.data.pendingCustom.filter(req => req && req.company !== cid && req.coId !== cid);
         }
 
         // 4. Limpieza de notas de prensa publicadas
@@ -2305,7 +2377,7 @@ Object.assign(ui, {
             state.data.b2bMarket = state.data.b2bMarket.filter(item => item && item.sellerCoId !== cid);
         }
         if (Array.isArray(state.data.pendingCustom)) {
-            state.data.pendingCustom = state.data.pendingCustom.filter(req => req && req.coId !== cid);
+            state.data.pendingCustom = state.data.pendingCustom.filter(req => req && req.company !== cid && req.coId !== cid);
         }
         if (Array.isArray(state.data.pressReleases)) {
             state.data.pressReleases = state.data.pressReleases.filter(pr => pr && pr.authorCoId !== cid && pr.coId !== cid);

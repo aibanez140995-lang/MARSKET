@@ -208,6 +208,8 @@ Object.assign(ui, {
         this.evalClassFilter = cls;
         this.adminContractsClassFilter = cls;
         this.selectedKeychainClass = cls;
+        this.telemetryClassFilter = cls;
+        this.revealedPinCompanyIds = {};
         this.render();
     },
 
@@ -633,42 +635,27 @@ Object.assign(ui, {
                 <input type="file" id="restore-json-file" accept=".json" class="min-h-[44px] text-xs text-slate-300 bg-black border border-slate-700 p-2 w-full md:w-auto flex-grow">
                 <button onclick="ui.restoreStateFromJSON()" class="min-h-[44px] bg-mars-magenta text-white font-black px-6 py-2.5 text-xs uppercase tracking-widest hover:bg-white hover:text-mars-magenta transition-all border border-mars-magenta shadow-[0_0_10px_rgba(255,0,85,0.4)] whitespace-nowrap w-full md:w-auto">⚠ Ejecutar Restauración</button>
             </div>
+        </div>
+
         <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-red-600 mt-6 shadow-[0_0_20px_rgba(255,0,0,0.2)]">
             <div class="flex justify-between items-center mb-4 border-b border-red-900/50 pb-2 flex-wrap gap-2">
                 <div>
-                    <h3 class="font-orbitron text-red-500 text-xs sm:text-sm uppercase tracking-widest font-black">🚨 RESET GENERAL PRE-LANZAMIENTO (FÁBRICA)</h3>
-                    <p class="text-xs text-slate-300 uppercase mt-0.5">Inicialización limpia de simulación para el arranque oficial v1.1.00 en aula.</p>
+                    <h3 class="font-orbitron text-red-500 text-xs sm:text-sm uppercase tracking-widest font-black">🚨 RESET GENERAL DE FÁBRICA (2400 €v · 18 Entregables)</h3>
+                    <p class="text-xs text-slate-300 uppercase mt-0.5">Inicialización limpia de toda la simulación para un nuevo arranque oficial del curso.</p>
                 </div>
                 <span class="bg-red-950/80 border border-red-500 text-red-400 px-3 py-1 text-xs font-black uppercase">ACCIÓN DESTRUCTIVA PROTEGIDA</span>
             </div>
             <p class="text-xs text-slate-200 mb-4 leading-relaxed">
-                Restaura todas las startups al estado base de inicio: <strong>2400.00 €v de tesorería</strong>, libro mayor limpio, 19 entregables reseteados a pendiente, 0 multas, 0 transferencias, 0 mociones y telemetría purgada. <strong>Conserva intactas las empresas, sus nombres, códigos de acceso, PINs de roles, catálogo y docentes.</strong>
+                Restaura todas las startups al estado base de inicio: <strong>2400.00 €v de tesorería</strong>, libro mayor limpio, 18 entregables reseteados a pendiente, 0 multas, 0 transferencias, 0 mociones, catálogo por defecto y telemetría purgada. Fuerza recarga sincronizada en los navegadores conectados. <strong>Conserva intactas las empresas, sus nombres, códigos de acceso, PINs de roles y docentes.</strong>
             </p>
             <div class="bg-red-950/40 border border-red-600/40 p-4 mb-4 text-xs font-mono text-red-300 space-y-1">
-                <p>⚠️ Requiere clave de autorización docente maestra.</p>
-                <p>🔒 Incrementa la versión de sincronización Cloudflare D1 (+50) para forzar replicación inmediata.</p>
+                <p>⚠️ Requiere clave de autorización docente maestra y confirmación doble.</p>
+                <p>🔒 Incrementa la versión de sincronización en servidor (+50) para forzar replicación inmediata.</p>
             </div>
             <button type="button" onclick="ui.promptFactoryResetLaunch()" class="min-h-[44px] bg-red-600 hover:bg-red-500 text-white font-black px-6 py-2.5 text-xs uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(255,0,0,0.5)] border border-red-400">
-                [ 🚨 INICIALIZAR RESET DE FÁBRICA PRE-LANZAMIENTO ]
+                [ 🚨 INICIALIZAR RESET GENERAL DE FÁBRICA ]
             </button>
-        </div>
-
-        <div class="terminal-border bg-mars-card p-6 border-t-4 border-t-cyan-500 mt-6 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
-            <div class="flex justify-between items-center mb-4 border-b border-cyan-900/50 pb-2 flex-wrap gap-2">
-                <div>
-                    <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase tracking-widest font-black">⚡ RESET GLOBAL TRANSACCIONAL (RPC /api/admin/reset)</h3>
-                    <p class="text-xs text-slate-300 uppercase mt-0.5">Misión v1.1.02: Transacción estricta en Cloudflare D1 y sincronización multicliente por broadcast.</p>
-                </div>
-                <span class="bg-cyan-950/80 border border-mars-cyan text-mars-cyan px-3 py-1 text-xs font-black uppercase">TRANSACCIÓN D1 ATÓMICA</span>
-            </div>
-            <p class="text-xs text-slate-200 mb-4 leading-relaxed">
-                Ejecuta la purga transaccional D1 de pedidos, buzones, sugerencias e incidentes, restableciendo balances a <strong>1000.00 €v</strong> y catálogo a valores por defecto. Vacía el almacenamiento local selectivo (preservando la sesión del coordinador) y fuerza recarga de estado mediante broadcast en todos los navegadores conectados.
-            </p>
-            <button type="button" onclick="ui.globalTransactionalReset()" class="min-h-[44px] bg-mars-cyan hover:bg-white text-black font-black px-6 py-2.5 text-xs uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(0,240,255,0.4)] border border-mars-cyan">
-                [ ⚡ EJECUTAR RESET GLOBAL TRANSACCIONAL ]
-            </button>
-        </div>
-        `;
+        </div>`;
     },
 
     saveDeadlines() {
@@ -913,8 +900,8 @@ Object.assign(ui, {
         const html = `
             <div class="space-y-3 font-mono text-xs">
                 <div class="bg-red-950/40 border border-red-500/60 p-3 text-red-200">
-                    <p class="font-bold uppercase text-red-400 mb-1">⚠️ PROTOCOLO DE RESET GLOBAL TRANSACCIONAL (v1.1.02)</p>
-                    <p>Esta acción ejecutará una transacción estricta D1 (órdenes, buzón, sugerencias, balances a 1000.00 €v y catálogo por defecto) y forzará la recarga en todos los clientes.</p>
+                    <p class="font-bold uppercase text-red-400 mb-1">⚠️ PROTOCOLO DE RESET GLOBAL DE FÁBRICA</p>
+                    <p>Esta acción ejecutará una transacción estricta en servidor (órdenes, buzón, sugerencias, 18 entregables pendientes, balances a 2400.00 €v y catálogo por defecto) y forzará la recarga en todos los clientes.</p>
                 </div>
                 <div>
                     <label for="reset-master-code-input" class="text-xs text-mars-yellow font-bold uppercase block mb-1">Introduce el Código Maestro de Coordinador:</label>

@@ -85,7 +85,7 @@ async function handleReset(context) {
                 env.MARSKET_DB.prepare("DELETE FROM coordinator_inbox;"),
                 env.MARSKET_DB.prepare("DELETE FROM suggestions;"),
                 env.MARSKET_DB.prepare("DELETE FROM moderation_alerts;"),
-                env.MARSKET_DB.prepare("UPDATE teams SET balance = 1000.00, inventory = '{}';"),
+                env.MARSKET_DB.prepare("UPDATE teams SET balance = 2400.00, inventory = '{}';"),
                 env.MARSKET_DB.prepare("UPDATE supermarsket_catalog SET price = default_price, stock = default_stock;")
             ]);
         } catch (tableErr) {
@@ -106,7 +106,7 @@ async function handleReset(context) {
         if (currentState.companies) {
             for (const cid in currentState.companies) {
                 const co = currentState.companies[cid];
-                co.balance = 1000.00;
+                co.balance = 2400.00;
                 co.orders = [];
                 co.ledger = [];
                 co.cart = [];

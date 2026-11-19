@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.21) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.22) ---
 
-const APP_VERSION = "2.0.21";
+const APP_VERSION = "2.0.22";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1154,8 +1154,23 @@ const AEROSPACE_WHITELIST = [
     'clara', 'angel', 'marcos', 'cortes', 'rojas', 'mora', 'torres', 'castillo'
 ];
 
-// Changelog Oficial de Producción v2.0.21
+// Changelog Oficial de Producción v2.0.22
 const APP_CHANGELOG = [
+    {
+      version: "2.0.22",
+      date: "2026-11-19",
+      title: "Fase 2 · Llavero Maestro Individual (👁️), Telemetría Real, Catálogo I+D y Reset Único",
+      items: [
+        "Revelado Individual de PIN por Startup en Llavero Maestro: Nuevo botón 👁️/🙈 por fila para mostrar los PINs de una sola empresa sin exponer el resto de la clase en el proyector (conservado ante recargas de cada 12s).",
+        "Telemetría Sincronizada y AUX sin Falsos Alertas: El filtro por clase del Radar sincroniza también la pestaña Telemetría, y la columna AUX muestra '--' neutro en empresas sin Auxiliar aprobado en lugar de 0 rojo parpadeante.",
+        "Catálogo I+D y Limpieza de Solicitudes Huérfanas: Las solicitudes de material especial (pendingCustom) aparecen ahora en cabecera sobre el Catálogo con contador y se purgan por completo al eliminar startups o resetear empresas TEST.",
+        "Backups y Reset General Unificado: Corregido el cierre HTML en Rollback, unificadas las tarjetas redundantes en un único Reset General de Fábrica (2400.00 €v · 18 entregables) y alineado el backend Cloudflare D1."
+      ],
+      highlights: [
+        { type: "LLAVERO PROYECTOR", text: "Botón 👁️ por fila para mostrar solo el PIN de la startup atendida." },
+        { type: "GESTIÓN TIC", text: "Solicitudes I+D visibles arriba del Catálogo y Reset único 2400 €v." }
+      ]
+    },
     {
       version: "2.0.21",
       date: "2026-11-18",
