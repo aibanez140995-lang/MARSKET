@@ -499,7 +499,7 @@ Object.assign(ui, {
                                 <span class="bg-mars-green/20 text-mars-green border border-mars-green/40 px-2 py-0.5 text-[10px] font-black uppercase">[✓ RECIBIDO DOCENTE]</span>
                             </td>
                             <td class="p-2.5">
-                                <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50">Abrir Drive ↗</a>
+                                <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50">Abrir Drive ↗</a>
                             </td>
                         </tr>
                     `;
@@ -578,7 +578,7 @@ Object.assign(ui, {
                                     <span class="bg-mars-green/20 text-mars-green border border-mars-green/40 px-2 py-0.5 text-[10px] font-black uppercase">[✓ RECIBIDO DOCENTE]</span>
                                 </td>
                                 <td class="p-2.5">
-                                    ${safeHref ? `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50">Abrir Drive ↗</a>` : '<span class="text-slate-500 text-[10px] italic">Sin enlace</span>'}
+                                    ${safeHref ? `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50">Abrir Drive ↗</a>` : '<span class="text-slate-500 text-[10px] italic">Sin enlace</span>'}
                                 </td>
                             </tr>
                         `;

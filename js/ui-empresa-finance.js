@@ -223,15 +223,15 @@ Object.assign(ui, {
                             </div>
                             <div class="mb-2 flex flex-wrap gap-2">
                                 ${(order.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(order.driveUrl))
-                                    ? `<a href="${encodeURI(order.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>📄 Orden Adquisición DOC_9 en Docs ↗</span></a>`
+                                    ? `<a href="${encodeURI(order.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>📄 Orden Adquisición DOC_9 en Docs ↗</span></a>`
                                     : ''
                                 }
                                 ${(order.sellerDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(order.sellerDriveUrl))
-                                    ? `<a href="${encodeURI(order.sellerDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-amber-950/40 text-amber-300 border border-amber-500/30 rounded hover:bg-amber-900/50 transition-colors font-mono"><span>📄 Memoria Vendedor en Docs ↗</span></a>`
+                                    ? `<a href="${encodeURI(order.sellerDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-amber-950/40 text-amber-300 border border-amber-500/30 rounded hover:bg-amber-900/50 transition-colors font-mono"><span>📄 Memoria Vendedor en Docs ↗</span></a>`
                                     : ''
                                 }
                                 ${(order.responseDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(order.responseDriveUrl))
-                                    ? `<a href="${encodeURI(order.responseDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-amber-950/40 text-amber-300 border border-amber-500/40 rounded hover:bg-amber-900/50 transition-colors font-mono font-bold"><span>📄 Justificación Financiera en Docs ↗</span></a>`
+                                    ? `<a href="${encodeURI(order.responseDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-amber-950/40 text-amber-300 border border-amber-500/40 rounded hover:bg-amber-900/50 transition-colors font-mono font-bold"><span>📄 Justificación Financiera en Docs ↗</span></a>`
                                     : ''
                                 }
                             </div>
@@ -368,7 +368,7 @@ Object.assign(ui, {
                                 </div>
                             </div>
                             ${(offer.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(offer.driveUrl))
-                                ? `<div class="mb-2"><a href="${encodeURI(offer.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Informe Técnico de Excedentes en Docs ↗</span></a></div>`
+                                ? `<div class="mb-2"><a href="${encodeURI(offer.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Informe Técnico de Excedentes en Docs ↗</span></a></div>`
                                 : ''
                             }
                             ${reasonBlock}
@@ -420,7 +420,7 @@ Object.assign(ui, {
                             ${(cst === 'DENEGADO' || cst === 'RECHAZADO') && camp.rejectReason ? `<p class="text-rose-300 font-sans text-xs bg-rose-950/30 border border-rose-500/40 p-2 rounded my-1.5"><strong>Motivo Finanzas:</strong> ${this.escapeHTML(camp.rejectReason)}</p>` : ''}
                             <div class="hidden sm:block mb-2">
                                 ${(camp.driveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(camp.driveUrl))
-                                    ? `<a href="${encodeURI(camp.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Dossier ROI en Docs ↗</span></a>`
+                                    ? `<a href="${encodeURI(camp.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Dossier ROI en Docs ↗</span></a>`
                                     : `<span class="text-xs text-amber-500/80 font-mono italic">[Justificación ROI legacy archivada por protocolo RGPD]</span>`
                                 }
                             </div>
@@ -476,7 +476,7 @@ Object.assign(ui, {
                                 ${(ast === 'RECHAZADO_CEO') ? `
                                      <div class="bg-red-950/40 border border-red-500/40 p-2.5 text-xs text-red-300 mb-2 rounded space-y-1.5">
                                          <div><strong class="uppercase">Motivo Devolución CEO:</strong> ${this.escapeHTML(act.feedback || 'Revisión requerida por CEO')}</div>
-                                         ${act.returnDriveUrl ? `<div><a href="${encodeURI(act.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-mono font-bold"><span>📄 Ver Correcciones del CEO en Drive ↗</span></a></div>` : ''}
+                                         ${act.returnDriveUrl ? `<div><a href="${encodeURI(act.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-mono font-bold"><span>📄 Ver Correcciones del CEO en Drive ↗</span></a></div>` : ''}
                                      </div>` : ''}
                                  ${(isMarketing && ast === 'RECHAZADO_CEO') ? `
                                  <div class="flex flex-col sm:flex-row gap-2 mt-3 pt-2 border-t border-slate-800">

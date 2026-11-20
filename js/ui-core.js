@@ -61,15 +61,9 @@ const ui = {
         const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
         const templates = typeof OFFICIAL_DOC_TEMPLATES !== 'undefined' ? OFFICIAL_DOC_TEMPLATES : {};
 
-        const curPhase = this.getCurrentPhaseKey ? this.getCurrentPhaseKey() : 'I';
-        const preferredDiary = curPhase === 'IV' ? 'decisionDiary_apr' : 'decisionDiary_dec';
-        const secondaryDiary = preferredDiary === 'decisionDiary_apr' ? 'decisionDiary_dec' : 'decisionDiary_apr';
-
         let candidateKeys = [docKey];
         if (docKey === 'DOC_10_HOJA_TALLER') candidateKeys = ['DOC_10_HOJA_TALLER', 'hoja_taller_fyq'];
         else if (docKey === 'hoja_taller_fyq') candidateKeys = ['hoja_taller_fyq', 'DOC_10_HOJA_TALLER'];
-        else if (docKey === 'DOC_4_BITACORA_IA') candidateKeys = ['DOC_4_BITACORA_IA', preferredDiary, secondaryDiary];
-        else if (docKey === 'decisionDiary_dec' || docKey === 'decisionDiary_apr') candidateKeys = [docKey, 'DOC_4_BITACORA_IA'];
 
         // 1. Revisar si el entregable o su alias tiene override explícito o fue limpiado (clearedGuide)
         for (const k of candidateKeys) {
@@ -77,7 +71,7 @@ const ui = {
             if (s && s.guideDocUrl && String(s.guideDocUrl).trim()) {
                 return String(s.guideDocUrl).trim();
             }
-            if (s && s.clearedGuide === true && (k === docKey || k === 'hoja_taller_fyq' || k === preferredDiary)) {
+            if (s && s.clearedGuide === true && (k === docKey || k === 'hoja_taller_fyq')) {
                 return '';
             }
         }
@@ -2289,7 +2283,7 @@ const ui = {
                         <span class="text-xs font-orbitron font-black text-mars-cyan uppercase tracking-wider">📡 Estado de la Sesión de Aula</span>
                         <span class="text-xs font-bold uppercase px-2 py-0.5 border ${d1StatusColor}">[${d1StatusText}]</span>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center text-xs">
                         <div class="bg-slate-900 border border-slate-800 p-2">
                             <span class="block text-mars-cyan font-orbitron font-black text-base">${totalCos}</span>
                             <span class="text-slate-300 uppercase text-[10px]">Startups</span>
@@ -2702,7 +2696,7 @@ const ui = {
                     <span class="text-xs font-bold uppercase ${stBadge}">[${this.escapeHTML(status)}] • ${this.escapeHTML(s.date)}</span>
                 </div>
                 <p class="text-slate-200 italic text-xs mt-1 pl-2 border-l-2 border-slate-700 break-words">"${this.escapeHTML(s.text)}"</p>
-                ${s.driveUrl ? `<a href="${this.escapeHTML(s.driveUrl)}" target="_blank" rel="noopener noreferrer" class="text-[11px] text-mars-cyan hover:underline font-mono inline-flex items-center gap-1 mt-1 pl-2">📄 Evidencia Drive ↗</a>` : ''}
+                ${s.driveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(s.driveUrl)) ? `<a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(s.driveUrl) : encodeURI(s.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] text-xs text-mars-cyan hover:underline font-mono inline-flex items-center gap-1 mt-1 pl-2">📄 Evidencia Drive ↗</a>` : ''}
             </div>`;
         }).join('') || '<p class="text-slate-300 italic text-xs">No has enviado reportes desde esta entidad todavía.</p>';
 
@@ -3834,12 +3828,12 @@ const ui = {
               : item.driveUrl.includes('/presentation/') ? 'Slide'
               : item.driveUrl.includes('/folders/') ? 'Carpeta'
               : 'Archivo Drive';
-            const safeHref = encodeURI(item.driveUrl).replace(/"/g, '&quot;');
+            const safeHref = this.sanitizeDriveUrl ? this.sanitizeDriveUrl(item.driveUrl) : encodeURI(item.driveUrl).replace(/"/g, '&quot;');
             actionHtml = `<div class="flex items-center gap-2 flex-wrap w-full">
   ${statusBadgeHtml}
-  <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors min-h-[44px]">
+  ${safeHref ? `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors min-h-[44px]">
     <span>Abrir ${tipoDoc} ↗</span>
-  </a>
+  </a>` : ''}
   ${teacherSubsanarBtn}
 </div>`;
         } else {
@@ -3969,7 +3963,7 @@ const ui = {
             uploadSectionHtml = `
             <div class="bg-slate-900/60 border border-slate-800 p-3 mt-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs font-mono">
                 <span class="text-slate-400">Departamento Responsable: <strong class="text-mars-yellow uppercase">${this.escapeHTML(def.role ? def.role.replace('_',' ') : 'ASIGNADO')}</strong></span>
-                ${item && item.driveUrl ? `<a href="${encodeURI(item.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-mars-cyan hover:underline font-bold inline-flex items-center gap-1"><span>Abrir Documento Cloud</span> ↗</a>` : '<span class="text-slate-400 italic">Pendiente de subida por el responsable</span>'}
+                ${item && item.driveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(item.driveUrl)) ? `<a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(item.driveUrl) : encodeURI(item.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] text-mars-cyan hover:underline font-bold inline-flex items-center gap-1"><span>Abrir Documento Cloud</span> ↗</a>` : '<span class="text-slate-400 italic">Pendiente de subida por el responsable</span>'}
             </div>`;
         }
 
@@ -4327,8 +4321,8 @@ const ui = {
                 <p class="text-white font-bold uppercase text-xs">${this.escapeHTML(camp.title || camp.type || 'Acción Comercial')}</p>
                 <div class="bg-slate-900 border border-slate-800 p-3">
                     <p class="text-mars-yellow font-bold uppercase text-xs mb-1">Dossier / Justificación ROI</p>
-                    ${(camp.driveUrl && GOOGLE_DRIVE_REGEX.test(camp.driveUrl))
-                        ? `<a href="${encodeURI(camp.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Dossier ROI en Docs ↗</span></a>`
+                    ${(camp.driveUrl && GOOGLE_DRIVE_REGEX.test(camp.driveUrl) && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(camp.driveUrl)))
+                        ? `<a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(camp.driveUrl) : encodeURI(camp.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Dossier ROI en Docs ↗</span></a>`
                         : `<span class="text-xs text-amber-500/80 font-mono italic">[Justificación ROI legacy archivada por protocolo RGPD]</span>`
                     }
                 </div>

@@ -9,11 +9,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MARS-KET 2.0">
-    <link rel="manifest" href="manifest.json?v=2.0.30">
-    <link rel="icon" type="image/jpeg" href="logo.jpg?v=2.0.30">
-    <link rel="shortcut icon" href="logo.jpg?v=2.0.30">
-    <link rel="apple-touch-icon" href="logo.jpg?v=2.0.30">
-    <link rel="apple-touch-icon-precomposed" href="logo.jpg?v=2.0.30">
+    <link rel="manifest" href="manifest.json?v=2.0.31">
+    <link rel="icon" type="image/jpeg" href="logo.jpg?v=2.0.31">
+    <link rel="shortcut icon" href="logo.jpg?v=2.0.31">
+    <link rel="apple-touch-icon" href="logo.jpg?v=2.0.31">
+    <link rel="apple-touch-icon-precomposed" href="logo.jpg?v=2.0.31">
     
     <!-- Script de Precarga de Zoom y Modo Calma (Zero-Shift / Cero Parpadeo) -->
     <script>
@@ -31,7 +31,7 @@
     </script>
 
     <!-- Tailwind CSS (Compilado localmente v1.1.03 - Bloque T) -->
-    <link rel="stylesheet" href="css/tailwind.css?v=2.0.30">
+    <link rel="stylesheet" href="css/tailwind.css?v=2.0.31">
     <style>
         :root {
             color-scheme: dark;
@@ -115,6 +115,7 @@
         }
         html[data-focus-mode="calm"] .animate-pulse,
         html[data-focus-mode="calm"] .animate-ping,
+        html[data-focus-mode="calm"] .animate-bounce,
         html[data-focus-mode="calm"] .animate-in,
         html[data-focus-mode="calm"] .zoom-in,
         html[data-focus-mode="calm"] .slide-in-from-top-4,
@@ -527,7 +528,7 @@
                         <h1 class="font-orbitron font-black text-xs sm:text-lg text-white tracking-wider sm:tracking-widest leading-none flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
                             MARS-KET <span class="text-mars-cyan">2.0</span>
                         </h1>
-                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v2.0.30</span>
+                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v2.0.31</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -592,7 +593,7 @@
             <div class="font-orbitron font-black text-xs sm:text-sm tracking-[0.2em] text-white uppercase mb-1.5 flex items-center justify-center gap-2">
                 <span>MARS-KET <span class="text-mars-cyan">2.0</span></span>
                 <span class="text-slate-600 font-mono">|</span>
-                <span id="footer-version" class="text-slate-400 font-mono text-[11px] sm:text-xs tracking-widest font-normal">v2.0.30</span>
+                <span id="footer-version" class="text-slate-400 font-mono text-[11px] sm:text-xs tracking-widest font-normal">v2.0.31</span>
             </div>
 
             <!-- Capa 2: Descriptor Institucional y Académico -->
@@ -636,7 +637,7 @@
 
     <!-- OVERLAY DE CONTENCIÓN OFFLINE ESTRICTA (v1.0.19) -->
     <div id="hud-offline-containment" role="alertdialog" aria-modal="true" aria-labelledby="offline-containment-title" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[9999] flex items-center justify-center p-4 hidden">
-        <div class="terminal-border bg-mars-card max-w-lg w-full p-6 sm:p-8 border-2 border-mars-yellow shadow-[0_0_30px_rgba(255,183,3,0.35)] text-center space-y-4">
+        <div class="terminal-border bg-mars-card max-w-lg w-full max-h-[90dvh] overflow-y-auto p-6 sm:p-8 border-2 border-mars-yellow shadow-[0_0_30px_rgba(255,183,3,0.35)] text-center space-y-4">
             <div class="inline-flex items-center justify-center w-14 h-14 border-2 border-mars-yellow bg-mars-yellow/10 text-mars-yellow font-orbitron font-black text-2xl animate-pulse">⚠️</div>
             <h2 id="offline-containment-title" class="font-orbitron font-black text-sm sm:text-base text-mars-yellow uppercase tracking-widest leading-snug animate-pulse">
                 CONEXIÓN CON CONTROL DE MISIÓN INTERRUMPIDA // TERMINAL BLOQUEADA TEMPORALMENTE
@@ -673,21 +674,21 @@
     <div id="credentials-print-area" class="hidden"></div>
 
     <!-- SCRIPTS ORDENADOS DEL SISTEMA -->
-    <script src="js/lexicon-data.js?v=2.0.30"></script>
-    <script src="js/config.js?v=2.0.30"></script>
-    <script src="js/state.js?v=2.0.30"></script>
-    <script src="js/auth.js?v=2.0.30"></script>
-    <script src="js/ui-core.js?v=2.0.30"></script>
-    <script src="js/ui-empresa-core.js?v=2.0.30"></script>
-    <script src="js/ui-empresa-market.js?v=2.0.30"></script>
-    <script src="js/ui-empresa-tech.js?v=2.0.30"></script>
-    <script src="js/ui-empresa-finance.js?v=2.0.30"></script>
-    <script src="js/ui-empresa-ops.js?v=2.0.30"></script>
-    <script src="js/ui-empresa-gov-brand.js?v=2.0.30"></script>
-    <script src="js/ui-docente-core.js?v=2.0.30"></script>
-    <script src="js/ui-docente-eval.js?v=2.0.30"></script>
-    <script src="js/ui-docente-management.js?v=2.0.30"></script>
-    <script src="js/ui-docente-contest.js?v=2.0.30"></script>
+    <script src="js/lexicon-data.js?v=2.0.31"></script>
+    <script src="js/config.js?v=2.0.31"></script>
+    <script src="js/state.js?v=2.0.31"></script>
+    <script src="js/auth.js?v=2.0.31"></script>
+    <script src="js/ui-core.js?v=2.0.31"></script>
+    <script src="js/ui-empresa-core.js?v=2.0.31"></script>
+    <script src="js/ui-empresa-market.js?v=2.0.31"></script>
+    <script src="js/ui-empresa-tech.js?v=2.0.31"></script>
+    <script src="js/ui-empresa-finance.js?v=2.0.31"></script>
+    <script src="js/ui-empresa-ops.js?v=2.0.31"></script>
+    <script src="js/ui-empresa-gov-brand.js?v=2.0.31"></script>
+    <script src="js/ui-docente-core.js?v=2.0.31"></script>
+    <script src="js/ui-docente-eval.js?v=2.0.31"></script>
+    <script src="js/ui-docente-management.js?v=2.0.31"></script>
+    <script src="js/ui-docente-contest.js?v=2.0.31"></script>
 
     <script>
         window.addEventListener('DOMContentLoaded', () => {
@@ -727,7 +728,7 @@
                 }).observe(loginScreenEl, { childList: true, subtree: true });
             }
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-                navigator.serviceWorker.register('sw.js?v=2.0.30').then(reg => {
+                navigator.serviceWorker.register('sw.js?v=2.0.31').then(reg => {
                     reg.update().catch(() => {});
                 }).catch(() => {});
                 navigator.serviceWorker.addEventListener('controllerchange', () => {

@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.30) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.31) ---
 
-const APP_VERSION = "2.0.30";
+const APP_VERSION = "2.0.31";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -154,7 +154,7 @@ const OFFICIAL_DOC_TEMPLATES = Object.freeze({
     },
     DOC_4_BITACORA_IA: {
         id: 'DOC_4_BITACORA_IA',
-        title: 'CUADERNO DE BITÁCORA Y AUDITORÍA ÉTICA DE IA',
+        title: 'PLANTILLA DE PROMPT / USO DE IA',
         flow: 'Todos los Dptos. ➔ Dpto. Operaciones e IA',
         copyUrl: 'https://docs.google.com/document/d/1QDzumCcDHLWcQJlkPSaA1Q16Kj0Ff9wsHiPf_clLau8/copy'
     },
@@ -910,7 +910,7 @@ const DELIVERABLES_DEF = [
       defaultOpenDate: "2026-11-02T00:00",
       defaultDate: "2026-12-15T23:59",
       weight: "10% LYE",
-      defaultGuideDocUrl: "https://docs.google.com/document/d/1QDzumCcDHLWcQJlkPSaA1Q16Kj0Ff9wsHiPf_clLau8/copy"
+      defaultGuideDocUrl: "https://docs.google.com/document/d/1J-VQ4XjPI48RaKWzi9_lFqkJc7OcVx5lTC0_06JoktQ/copy"
     },
     {
       key: "brandIdentity_apr",
@@ -962,7 +962,7 @@ const DELIVERABLES_DEF = [
       defaultOpenDate: "2027-03-31T00:00",
       defaultDate: "2027-04-23T23:59",
       weight: "10% LYE",
-      defaultGuideDocUrl: "https://docs.google.com/document/d/1QDzumCcDHLWcQJlkPSaA1Q16Kj0Ff9wsHiPf_clLau8/copy"
+      defaultGuideDocUrl: "https://docs.google.com/document/d/1J-VQ4XjPI48RaKWzi9_lFqkJc7OcVx5lTC0_06JoktQ/copy"
     },
 
     // Lengua Castellana (1)
@@ -1156,6 +1156,21 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.31",
+      date: "2026-11-20",
+      title: "Ronda 4 · Privacidad HR, Plantillas IA Diferenciadas, XSS y Ergonomía 44px",
+      items: [
+        "Separación de Plantillas IA: Los entregables oficiales de Diario / Bitácora (4A Diciembre y 4B Abril) incorporan la nueva plantilla oficial (1J-VQ4Xj...) con migración automática para startups activas, mientras el botón rápido de IA mantiene y clarifica la Plantilla de Prompt / Uso de IA.",
+        "Confidencialidad HR DOC_2 en Servidor (api/index.php): sanitizeStateForClient() oculta inactivityReports a sesiones no docentes y diferencia el ETag de lectura (coord/teacher/pub), blindando además el fallback JSON.",
+        "Seguridad XSS y URLs: Todos los enlaces a Drive en modales, tablas, notificaciones y crónicas validan esquema seguro vía sanitizeDriveUrl(), los visores de portadas IA usan atributos data-* y se valida el esquema en imgSource.",
+        "Ergonomía Táctil 44px, Móvil 360px y PWA: Botones/enlaces Drive, evaluación docente y barra de formato alcanzan min-h-[44px] en móvil; manifest.json y sw.js actualizados a v2.0.31; y limpieza de mutaciones redundantes de co.balance."
+      ],
+      highlights: [
+        { type: "PLANTILLAS IA", text: "Bitácora de IA (4A/4B) diferenciada de la plantilla de Prompts." },
+        { type: "PRIVACIDAD & UX", text: "HR DOC_2 aislado en servidor, XSS blindado y botones 44px." }
+      ]
+    },
     {
       version: "2.0.30",
       date: "2026-11-19",

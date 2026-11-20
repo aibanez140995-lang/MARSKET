@@ -401,7 +401,7 @@ Object.assign(ui, {
                                 <span class="text-xs font-mono px-2 py-0.5 bg-slate-800 text-slate-300 rounded border border-slate-700">Clase ${this.escapeHTML(co.classGroup || 'A')}</span>
                             </h3>
                         </div>
-                        <button type="button" onclick="ui.evalSelectedCo=''; ui.render();" class="text-xs text-slate-400 hover:text-white font-mono uppercase px-2.5 py-1 border border-slate-700 hover:border-slate-500 rounded">
+                        <button type="button" onclick="ui.evalSelectedCo=''; ui.render();" class="min-h-[44px] inline-flex items-center text-xs text-slate-400 hover:text-white font-mono uppercase px-3 py-1.5 border border-slate-700 hover:border-slate-500 rounded">
                             ✕ Cambiar Empresa
                         </button>
                     </div>
@@ -731,7 +731,7 @@ Object.assign(ui, {
                 <h4 class="font-orbitron text-xs uppercase tracking-wider text-mars-yellow flex items-center gap-2">
                     <span>📅 CRONOGRAMA OFICIAL Y RÚBRICA POR FASES (${this.escapeHTML(config?.name || activeSubject)})</span>
                 </h4>
-                <button type="button" onclick="ui.toggleTeacherPhaseGuide()" class="text-xs text-slate-400 hover:text-white font-mono">
+                <button type="button" onclick="ui.toggleTeacherPhaseGuide()" class="min-h-[44px] inline-flex items-center px-3 text-xs text-slate-400 hover:text-white font-mono">
                     [ Cerrar ✕ ]
                 </button>
             </div>

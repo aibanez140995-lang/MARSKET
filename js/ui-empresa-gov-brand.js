@@ -688,8 +688,7 @@ Object.assign(ui, {
             return this.notify("Saldo insuficiente: se requieren 50 €v de tesorería para abonar la tasa mercantil de modificación estatutaria.", "error");
         }
 
-        // Deducción de 50 €v y registro en Libro Mayor
-        co.balance -= 50;
+        // Registro en Libro Mayor (recalculateBalance ajusta co.balance automáticamente)
         state.addToLedger(coId, `Tasa Registro Mercantil — Trámite Modificación Estatutaria (DOC_1: ${reason})`, 'REGISTRO_MERCANTIL', -50);
 
         const nowTs = Date.now();
@@ -1226,7 +1225,7 @@ Object.assign(ui, {
                         ${act.date ? `<span class="text-[10px] text-slate-400 block font-mono">Fecha: ${this.escapeHTML(act.date)}</span>` : ''}
                         ${actStatus === 'RECHAZADO_CEO' ? `
                             <div class="text-[11px] text-mars-magenta font-mono">Motivo devolución CEO: "${this.escapeHTML(actFeedback || 'Revisión requerida por CEO')}"</div>
-                            ${act.returnDriveUrl ? `<div class="mt-1"><a href="${encodeURI(act.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-mono font-bold mt-1"><span>📄 Ver Correcciones del CEO en Drive ↗</span></a></div>` : ''}
+                            ${act.returnDriveUrl ? `<div class="mt-1"><a href="${encodeURI(act.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-mono font-bold mt-1"><span>📄 Ver Correcciones del CEO en Drive ↗</span></a></div>` : ''}
                         ` : (actFeedback ? `<div class="text-[11px] text-mars-magenta font-mono">Motivo devolución CEO: "${this.escapeHTML(actFeedback)}"</div>` : '')}
                     </div>
                         <div class="flex items-center gap-2 flex-wrap shrink-0">

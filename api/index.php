@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.30
+// Versión: v2.0.31
 
 declare(strict_types=1);
 
@@ -275,7 +275,7 @@ function purgeCompanyFromFinalContest(&$fc, string $delCid): void {
     }
 }
 
-function sanitizeStateForClient(array $state, bool $includeContestDraft = false): array {
+function sanitizeStateForClient(array $state, bool $includeContestDraft = false, bool $includeTeacherPrivate = false): array {
     if (isset($state['config']) && is_array($state['config'])) {
         if (isset($state['config']['teachers']) && is_array($state['config']['teachers'])) {
             foreach ($state['config']['teachers'] as $tk => &$t) {
@@ -297,6 +297,9 @@ function sanitizeStateForClient(array $state, bool $includeContestDraft = false)
                 unset($co['authVault'], $co['roles'], $co['accessCode']);
                 if (!$includeContestDraft && isset($co['auxRoleRequest']) && is_array($co['auxRoleRequest'])) {
                     unset($co['auxRoleRequest']['pin']);
+                }
+                if (!$includeTeacherPrivate) {
+                    unset($co['inactivityReports']);
                 }
                 normalizeCompanyDictsForJson($co);
             }
@@ -473,16 +476,18 @@ try {
                 exit;
             }
 
-            // Determinar si la lectura proviene de Coordinación para exponer borrador interno Fase V
+            // Determinar si la lectura proviene de Coordinación o Claustro Docente
             $readAuth = verifySession();
             $isCoordReader = !empty($readAuth['isCoordinator']);
+            $isTeacherReader = $isCoordReader || !empty($readAuth['isTeacher']) || !empty($readAuth['isAdmin']);
+            $readerScope = $isCoordReader ? 'coord' : ($isTeacherReader ? 'teacher' : 'pub');
 
             // Mitigación de Ancho de Banda con ETag y HTTP 304 (0 bytes si versión, config.updatedAt y nivel de lector coinciden)
             $stmt = $pdo->query("SELECT json_extract(data, '$.version') as v, json_extract(data, '$.config.updatedAt') as cu FROM state WHERE id = 'current'");
             $row = $stmt->fetch();
             $version = (string)($row['v'] ?? '1');
             $cu = (string)((int)($row['cu'] ?? 0));
-            $serverETag = 'W/"v-' . $version . '-' . $cu . '-' . ($isCoordReader ? 'coord' : 'pub') . '"';
+            $serverETag = 'W/"v-' . $version . '-' . $cu . '-' . $readerScope . '"';
             $clientETag = $_SERVER['HTTP_IF_NONE_MATCH'] ?? '';
 
             if ($clientETag === $serverETag) {
@@ -539,7 +544,7 @@ try {
             $decoded = json_decode($cleanPayload, true);
             if (is_array($decoded)) {
                 ensureTestCompaniesInState($decoded);
-                $sanitized = sanitizeStateForClient($decoded, $isCoordReader);
+                $sanitized = sanitizeStateForClient($decoded, $isCoordReader, $isTeacherReader);
                 header('Content-Type: application/json; charset=utf-8');
                 header('ETag: ' . $serverETag);
                 header('Cache-Control: private, no-cache');
@@ -548,11 +553,9 @@ try {
                 exit;
             }
 
+            http_response_code(500);
             header('Content-Type: application/json; charset=utf-8');
-            header('ETag: ' . $serverETag);
-            header('Cache-Control: private, no-cache');
-            header('Vary: X-Marsket-Auth');
-            echo $cleanPayload;
+            echo json_encode(['error' => 'STATE_DECODE_ERROR', 'message' => 'Error interno al deserializar el estado.']);
             exit;
         }
 

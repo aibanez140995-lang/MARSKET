@@ -165,13 +165,13 @@ Object.assign(ui, {
                             <h4 class="text-white font-bold text-xs sm:text-sm uppercase leading-snug">${this.escapeHTML(item.name || 'Componente Especial I+D')}</h4>
                             ${item.returnReason ? `<p class="text-xs text-rose-300 font-mono mt-1"><strong>Observación CEO:</strong> ${this.escapeHTML(item.returnReason)}</p>` : ''}
                             <div class="mt-2 flex flex-wrap items-center gap-2">
-                                ${item.driveUrl ? `
-                                    <a href="${encodeURI(item.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-300 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50 transition-colors">
+                                ${(item.driveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(item.driveUrl))) ? `
+                                    <a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(item.driveUrl) : encodeURI(item.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-300 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50 transition-colors">
                                         <span>📄 Abrir Mi Solicitud en Docs ↗</span>
                                     </a>
                                 ` : ''}
-                                ${(item.responseDriveUrl && (item.status === 'DENEGADA' || item.status === 'DEVUELTO_CEO' || item.status === 'RECHAZADO_CEO')) ? `
-                                    <a href="${encodeURI(item.responseDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/50 text-red-200 border border-red-400 rounded font-mono hover:bg-red-900/60 transition-colors font-bold">
+                                ${(item.responseDriveUrl && (item.status === 'DENEGADA' || item.status === 'DEVUELTO_CEO' || item.status === 'RECHAZADO_CEO') && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(item.responseDriveUrl))) ? `
+                                    <a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(item.responseDriveUrl) : encodeURI(item.responseDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/50 text-red-200 border border-red-400 rounded font-mono hover:bg-red-900/60 transition-colors font-bold">
                                         <span>📄 Ver Dictamen / Respuesta de Coordinación ↗</span>
                                     </a>
                                 ` : ''}
@@ -227,7 +227,7 @@ Object.assign(ui, {
                                             <span class="text-emerald-400 font-bold uppercase">✅ LICENCIA DE LANZAMIENTO AESA CONCEDIDA</span>
                                             <span class="text-[10px] text-slate-400 font-mono">Protocolo de seguridad verificado</span>
                                         </div>
-                                        ${license?.driveUrl ? `<a href="${encodeURI(license.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="text-emerald-300 underline font-mono text-[11px]">Ver DOC_14 ↗</a>` : ''}
+                                        ${(license?.driveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(license.driveUrl))) ? `<a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(license.driveUrl) : encodeURI(license.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center text-emerald-300 underline font-mono text-[11px]">Ver DOC_14 ↗</a>` : ''}
                                     </div>`;
                             }
                             if (license && license.status === 'PENDIENTE_DOCENTE') {
@@ -257,9 +257,9 @@ Object.assign(ui, {
                                         <p class="text-slate-300 text-[11px]">
                                             El departamento Técnico debe corregir los aspectos señalados y el <strong>CEO</strong> deberá reenviar la subsanación en la Sala de Mando (tasa de subsanación: ${resubFee} €v).
                                         </p>
-                                        ${hasReportUrl ? `
+                                        ${(hasReportUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(license.rejectReportUrl))) ? `
                                             <div>
-                                                <a href="${encodeURI(license.rejectReportUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-900/50 text-red-100 border border-red-400/60 rounded font-mono hover:bg-red-800/70 transition-colors">
+                                                <a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(license.rejectReportUrl) : encodeURI(license.rejectReportUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-900/50 text-red-100 border border-red-400/60 rounded font-mono hover:bg-red-800/70 transition-colors">
                                                     <span>📄 Ver Informe de No Admisión Docente ↗</span>
                                                 </a>
                                             </div>
@@ -599,7 +599,7 @@ Object.assign(ui, {
                 ${faseIIILockNotice}
                 <p class="text-xs text-slate-300 font-sans">La Hoja de Taller ha sido remitida a Operaciones. El Operario está ensamblando y verificando la tolerancia física para añadir el dictamen al Histórico.</p>
                 <div class="pt-1 flex gap-2 items-center flex-wrap">
-                    <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors"><span>Ver Documento Drive ↗</span></a>
+                    ${(hojaUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(hojaUrl))) ? `<a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(hojaUrl) : encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/60 transition-colors"><span>Ver Documento Drive ↗</span></a>` : ''}
                 </div>
             </div>`;
         } else if (hojaStatus === 'DEVUELTO_A_TECNICO') {
@@ -613,9 +613,9 @@ Object.assign(ui, {
                 <div class="bg-amber-950/40 border border-amber-500/50 p-2.5 my-1 text-xs text-amber-300 font-mono">
                     <strong>Motivo de Incidencia Tipificado:</strong> ${this.escapeHTML(hojaFyq.returnReason || hojaFyq.returnReasonId || 'Incidencia de taller')}
                 </div>
-                ${hojaFyq.returnDriveUrl ? `
+                ${(hojaFyq.returnDriveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(hojaFyq.returnDriveUrl))) ? `
                 <div class="my-2">
-                    <a href="${encodeURI(hojaFyq.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-2 px-3 py-2 text-xs bg-amber-950/60 text-amber-300 border border-amber-400 rounded hover:bg-amber-900/60 transition-colors font-bold uppercase">
+                    <a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(hojaFyq.returnDriveUrl) : encodeURI(hojaFyq.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-2 px-3 py-2 text-xs bg-amber-950/60 text-amber-300 border border-amber-400 rounded hover:bg-amber-900/60 transition-colors font-bold uppercase">
                         <span>📄 Abrir Registro de Incidencias en Google Docs ↗</span>
                     </a>
                 </div>` : ''}
@@ -639,7 +639,7 @@ Object.assign(ui, {
                     <span class="text-xs font-mono font-bold text-purple-300 bg-purple-900/40 border border-purple-500 px-2 py-0.5 rounded">VALIDADO EN TALLER // EN REVISIÓN CEO</span>
                 </div>
                 <p class="text-xs text-slate-300 font-sans">Operaciones ha validado el montaje físico definitivo. La Hoja de Taller está pendiente del visado final del CEO hacia el profesor de FyQ.</p>
-                <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Ver Documento Drive ↗</span></a>
+                ${(hojaUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(hojaUrl))) ? `<a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(hojaUrl) : encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Ver Documento Drive ↗</span></a>` : ''}
             </div>`;
         } else if (hojaStatus === 'CEO_REVISION') {
             hojaInnerHtml = `
@@ -669,7 +669,7 @@ Object.assign(ui, {
                     <span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">✓ VISADO Y ENTREGADO A FYQ</span>
                 </div>
                 <p class="text-xs text-slate-300 font-sans">El CEO ha visado y remitido la Hoja de Taller al profesor de Física y Química para su evaluación oficial (10%).</p>
-                <a href="${encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Abrir Documento Oficial Drive ↗</span></a>
+                ${(hojaUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(hojaUrl))) ? `<a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(hojaUrl) : encodeURI(hojaUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono"><span>Abrir Documento Oficial Drive ↗</span></a>` : ''}
             </div>`;
         }
 

@@ -2013,9 +2013,9 @@ Object.assign(ui, {
                             <span class="text-[11px] text-red-300 font-mono">Devuelto por Dirección / Docente</span>
                         </div>
                         <p class="text-xs text-white font-bold mb-2 break-words">Motivo de Devolución: <span class="text-amber-300 font-normal italic">"${this.escapeHTML(retReason)}"</span></p>
-                        ${docObj.returnDriveUrl ? `
+                        ${docObj.returnDriveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(docObj.returnDriveUrl)) ? `
                             <div class="mb-2">
-                                <a href="${encodeURI(docObj.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-900/60 border border-red-400 text-white font-bold rounded hover:bg-red-800 transition-colors font-mono">
+                                <a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(docObj.returnDriveUrl) : encodeURI(docObj.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-900/60 border border-red-400 text-white font-bold rounded hover:bg-red-800 transition-colors font-mono">
                                     <span>📄 Ver Correcciones Marcadas en Docs ↗</span>
                                 </a>
                             </div>
@@ -2699,7 +2699,6 @@ Object.assign(ui, {
         }
 
         if (feeToPay > 0) {
-            co.balance -= feeToPay;
             state.addToLedger(
                 coId,
                 isResubmission
@@ -3079,16 +3078,16 @@ Object.assign(ui, {
                     <div class="flex justify-between items-center mb-1 flex-wrap gap-1">
                         <label for="offnews-body" class="text-xs text-amber-400 uppercase font-bold font-mono">Cuerpo de la Crónica Oficial *</label>
                         <div class="flex items-center gap-1">
-                            <button type="button" onclick="ui.insertFormatTag('offnews-body', '**', '**')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white font-bold text-xs rounded transition-colors" title="Negrita (**texto**)">
+                            <button type="button" onclick="ui.insertFormatTag('offnews-body', '**', '**')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white font-bold text-xs rounded transition-colors" title="Negrita (**texto**)">
                                 <strong>B</strong>
                             </button>
-                            <button type="button" onclick="ui.insertFormatTag('offnews-body', '*', '*')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white italic text-xs rounded transition-colors" title="Cursiva (*texto*)">
+                            <button type="button" onclick="ui.insertFormatTag('offnews-body', '*', '*')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white italic text-xs rounded transition-colors" title="Cursiva (*texto*)">
                                 <em>I</em>
                             </button>
-                            <button type="button" onclick="ui.insertFormatTag('offnews-body', '\n\n', '')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-amber-300 font-mono text-[11px] rounded transition-colors" title="Nuevo Párrafo">
+                            <button type="button" onclick="ui.insertFormatTag('offnews-body', '\n\n', '')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-amber-300 font-mono text-[11px] rounded transition-colors" title="Nuevo Párrafo">
                                 ¶ Párrafo
                             </button>
-                            <button type="button" onclick="ui.insertFormatTag('offnews-body', '\n- ', '')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-cyan-300 font-mono text-[11px] rounded transition-colors" title="Lista con viñetas">
+                            <button type="button" onclick="ui.insertFormatTag('offnews-body', '\n- ', '')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-cyan-300 font-mono text-[11px] rounded transition-colors" title="Lista con viñetas">
                                 • Lista
                             </button>
                         </div>
@@ -3272,16 +3271,16 @@ Object.assign(ui, {
                     <div class="flex justify-between items-center mb-1 flex-wrap gap-1">
                         <label for="offnews-edit-body" class="text-xs text-amber-400 uppercase font-bold font-mono">Cuerpo de la Crónica Oficial *</label>
                         <div class="flex items-center gap-1">
-                            <button type="button" onclick="ui.insertFormatTag('offnews-edit-body', '**', '**')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white font-bold text-xs rounded transition-colors" title="Negrita (**texto**)">
+                            <button type="button" onclick="ui.insertFormatTag('offnews-edit-body', '**', '**')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white font-bold text-xs rounded transition-colors" title="Negrita (**texto**)">
                                 <strong>B</strong>
                             </button>
-                            <button type="button" onclick="ui.insertFormatTag('offnews-edit-body', '*', '*')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white italic text-xs rounded transition-colors" title="Cursiva (*texto*)">
+                            <button type="button" onclick="ui.insertFormatTag('offnews-edit-body', '*', '*')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white italic text-xs rounded transition-colors" title="Cursiva (*texto*)">
                                 <em>I</em>
                             </button>
-                            <button type="button" onclick="ui.insertFormatTag('offnews-edit-body', '\\n\\n', '')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-amber-300 font-mono text-[11px] rounded transition-colors" title="Nuevo Párrafo">
+                            <button type="button" onclick="ui.insertFormatTag('offnews-edit-body', '\\n\\n', '')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-amber-300 font-mono text-[11px] rounded transition-colors" title="Nuevo Párrafo">
                                 ¶ Párrafo
                             </button>
-                            <button type="button" onclick="ui.insertFormatTag('offnews-edit-body', '\\n- ', '')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-cyan-300 font-mono text-[11px] rounded transition-colors" title="Lista con viñetas">
+                            <button type="button" onclick="ui.insertFormatTag('offnews-edit-body', '\\n- ', '')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-cyan-300 font-mono text-[11px] rounded transition-colors" title="Lista con viñetas">
                                 • Lista
                             </button>
                         </div>
@@ -3433,7 +3432,7 @@ Object.assign(ui, {
                     </div>
                     <input type="hidden" id="pr-nano-img-data" value="${this.escapeAttr(currentImg)}">
                     <div id="pr-nano-preview" class="${currentImg ? '' : 'hidden'}">
-                        ${currentImg ? `
+                        ${(currentImg && /^(https?:\/\/|data:image\/)/i.test(currentImg)) ? `
                             <div class="relative group mt-2 border border-amber-400/50 rounded overflow-hidden max-h-48 bg-black flex items-center justify-center">
                                 <img src="${this.escapeAttr(currentImg)}" alt="Imagen actual" class="max-h-48 w-full object-contain">
                                 <span class="absolute bottom-1 right-1 bg-black/80 text-[10px] text-amber-300 font-mono px-1.5 py-0.5 rounded border border-amber-500/40">Imagen Vinculada</span>
@@ -3446,13 +3445,13 @@ Object.assign(ui, {
                     <div class="flex justify-between items-center mb-1 flex-wrap gap-1">
                         <label for="pr-nano-note" class="text-xs text-amber-400 uppercase font-bold font-mono">Apunte Editorial de Coordinación AEE (Opcional)</label>
                         <div class="flex items-center gap-1">
-                            <button type="button" onclick="ui.insertFormatTag('pr-nano-note', '**', '**')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white font-bold text-xs rounded transition-colors" title="Negrita">
+                            <button type="button" onclick="ui.insertFormatTag('pr-nano-note', '**', '**')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white font-bold text-xs rounded transition-colors" title="Negrita">
                                 <strong>B</strong>
                             </button>
-                            <button type="button" onclick="ui.insertFormatTag('pr-nano-note', '*', '*')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white italic text-xs rounded transition-colors" title="Cursiva">
+                            <button type="button" onclick="ui.insertFormatTag('pr-nano-note', '*', '*')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white italic text-xs rounded transition-colors" title="Cursiva">
                                 <em>I</em>
                             </button>
-                            <button type="button" onclick="ui.insertFormatTag('pr-nano-note', '\n\n', '')" class="min-h-[28px] px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-amber-300 font-mono text-[11px] rounded transition-colors" title="Nuevo Párrafo">
+                            <button type="button" onclick="ui.insertFormatTag('pr-nano-note', '\n\n', '')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-amber-300 font-mono text-[11px] rounded transition-colors" title="Nuevo Párrafo">
                                 ¶ Párrafo
                             </button>
                         </div>
@@ -3718,14 +3717,14 @@ Object.assign(ui, {
                             return `
                             <div class="terminal-border bg-mars-card flex flex-col justify-between hover:border-mars-cyan transition-all overflow-hidden ${isOfficial ? 'border-t-4 border-t-amber-400' : 'border-t-2 border-t-mars-cyan'}">
                                 <div>
-                                    ${hasImage ? `
+                                    ${(hasImage && /^(https?:\/\/|data:image\/)/i.test(imgSource)) ? `
                                         <div class="relative w-full h-48 sm:h-56 bg-black overflow-hidden border-b border-slate-800 group">
-                                            <img src="${this.escapeAttr(imgSource)}" alt="${this.escapeAttr(r.title)}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 cursor-pointer" onclick="ui.modalViewNewsImage('${this.escapeAttr(imgSource)}', '${this.escapeAttr(r.title)}')">
+                                            <img src="${this.escapeAttr(imgSource)}" alt="${this.escapeAttr(r.title)}" data-img-src="${this.escapeAttr(imgSource)}" data-img-title="${this.escapeAttr(r.title)}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 cursor-pointer" onclick="ui.modalViewNewsImage(this.dataset.imgSrc, this.dataset.imgTitle)">
                                             <div class="absolute bottom-2 left-2 bg-black/85 backdrop-blur-sm border border-amber-400/60 px-2 py-0.5 rounded text-[10px] font-mono text-amber-300 uppercase flex items-center gap-1 shadow">
                                                 <span>🎨</span>
                                                 <span>Nano Banana 3</span>
                                             </div>
-                                            <button type="button" onclick="ui.modalViewNewsImage('${this.escapeAttr(imgSource)}', '${this.escapeAttr(r.title)}')" class="min-h-[44px] min-w-[44px] flex items-center justify-center absolute top-2 right-2 bg-black/80 hover:bg-black text-white p-2 rounded text-sm opacity-90 hover:opacity-100 transition-opacity" title="Ampliar imagen">
+                                            <button type="button" data-img-src="${this.escapeAttr(imgSource)}" data-img-title="${this.escapeAttr(r.title)}" onclick="ui.modalViewNewsImage(this.dataset.imgSrc, this.dataset.imgTitle)" class="min-h-[44px] min-w-[44px] flex items-center justify-center absolute top-2 right-2 bg-black/80 hover:bg-black text-white p-2 rounded text-sm opacity-90 hover:opacity-100 transition-opacity" title="Ampliar imagen">
                                                 🔍
                                             </button>
                                         </div>
@@ -3783,10 +3782,10 @@ Object.assign(ui, {
                                                         🖼️ ${hasImage ? 'Editar Portada IA' : 'Ilustrar (Nano Banana)'}
                                                     </button>
                                                 ` : ''}
-                                                <a href="${encodeURI(r.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-2 bg-cyan-950/60 border border-cyan-400 text-cyan-200 hover:bg-cyan-400 hover:text-black px-4 py-2 text-xs font-bold uppercase transition-all shadow-sm">
+                                                ${(r.driveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(r.driveUrl))) ? `<a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(r.driveUrl) : encodeURI(r.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-2 bg-cyan-950/60 border border-cyan-400 text-cyan-200 hover:bg-cyan-400 hover:text-black px-4 py-2 text-xs font-bold uppercase transition-all shadow-sm">
                                                     <span>📄 Leer Nota de Prensa Oficial</span>
                                                     <span class="text-xs font-mono">↗</span>
-                                                </a>
+                                                </a>` : ''}
                                             </div>
                                         `}
                                     </div>

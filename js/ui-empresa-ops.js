@@ -500,8 +500,8 @@ Object.assign(ui, {
                             <div class="flex flex-wrap justify-between gap-2 mb-2"><span class="text-mars-cyan font-bold uppercase">Autor: ${this.escapeHTML(authorLabel)} | Herramienta: ${this.escapeHTML(p.tool)}</span><span class="text-slate-300">${this.escapeHTML(p.date)}</span></div>
                             <div class="mb-3">
                                 ${(p.bitacoraUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(p.bitacoraUrl)) || (p.prompt && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(p.prompt))
-                                    ? `<a href="${encodeURI(p.bitacoraUrl || p.prompt).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Bitácora en Docs ↗</span></a>`
-                                    : `<span class="text-xs text-amber-500/80 font-mono italic">[Bitácora legacy archivada por protocolo RGPD]</span>`
+                                    ? `<a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(p.bitacoraUrl || p.prompt) : '#'}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Registro de Prompt / IA ↗</span></a>`
+                                    : `<span class="text-xs text-amber-500/80 font-mono italic">[Registro legacy archivado por protocolo RGPD]</span>`
                                 }
                             </div>
                             <div class="flex flex-wrap gap-2">
@@ -561,8 +561,8 @@ Object.assign(ui, {
             <div class="mb-3 bg-rose-950/30 border border-rose-500/40 p-3 text-xs">
                 <p class="font-bold text-rose-300 uppercase mb-1">⚠️ Bitácora devuelta para subsanar:</p>
                 <p class="text-slate-200">${this.escapeHTML(bitacoraDoc.returnReason || 'Revisar las observaciones antes de reenviar.')}</p>
-                ${(bitacoraDoc.returnDriveUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(bitacoraDoc.returnDriveUrl)) ? `
-                    <a href="${encodeURI(bitacoraDoc.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 bg-slate-900 border border-rose-400/40 text-rose-200 hover:border-rose-300 rounded font-mono text-xs">
+                ${(bitacoraDoc.returnDriveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(bitacoraDoc.returnDriveUrl))) ? `
+                    <a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(bitacoraDoc.returnDriveUrl) : encodeURI(bitacoraDoc.returnDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 bg-slate-900 border border-rose-400/40 text-rose-200 hover:border-rose-300 rounded font-mono text-xs">
                         <span>📄 Ver Informe de Devolución ↗</span>
                     </a>
                 ` : ''}
@@ -587,8 +587,8 @@ Object.assign(ui, {
             <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
                 <div class="flex flex-wrap items-center gap-2">
                     ${this.renderDocTemplateBtn(bitacoraDocKey, '📄 Ver Modelo Bitácora')}
-                    ${bitacoraDoc?.driveUrl ? `
-                        <a href="${encodeURI(bitacoraDoc.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 bg-slate-900 border border-slate-700 text-cyan-400 hover:border-cyan-400 font-mono text-xs rounded transition-colors">
+                    ${(bitacoraDoc?.driveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(bitacoraDoc.driveUrl))) ? `
+                        <a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(bitacoraDoc.driveUrl) : encodeURI(bitacoraDoc.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 bg-slate-900 border border-slate-700 text-cyan-400 hover:border-cyan-400 font-mono text-xs rounded transition-colors">
                             <span>📄 Abrir Mi Bitácora Entregada ↗</span>
                         </a>
                     ` : ''}
@@ -640,8 +640,8 @@ Object.assign(ui, {
                             </div>
                             <div class="mt-2">
                                 ${(p.bitacoraUrl && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(p.bitacoraUrl)) || (p.prompt && typeof GOOGLE_DRIVE_REGEX !== 'undefined' && GOOGLE_DRIVE_REGEX.test(p.prompt))
-                                    ? `<a href="${encodeURI(p.bitacoraUrl || p.prompt).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Bitácora en Docs ↗</span></a>`
-                                    : `<span class="text-xs text-mars-yellow/80 font-mono italic">[Bitácora legacy archivada por protocolo RGPD]</span>`
+                                    ? `<a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(p.bitacoraUrl || p.prompt) : '#'}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50 transition-colors font-mono"><span>Abrir Registro de Prompt / IA ↗</span></a>`
+                                    : `<span class="text-xs text-mars-yellow/80 font-mono italic">[Registro legacy archivado por protocolo RGPD]</span>`
                                 }
                             </div>
                         </div>
@@ -733,7 +733,7 @@ Object.assign(ui, {
         const roleDisplay = (state.user.role !== effRole) ? `${state.user.role} (${effRole})` : effRole;
 
         const html = `
-            <p class="text-xs text-slate-300 mb-3 leading-relaxed">Todo uso de IA generativa debe registrarse en el Cuaderno de Bitácora oficial (Google Docs) con permisos de lectura compartidos antes de integrarse en cualquier entregable.</p>
+            <p class="text-xs text-slate-300 mb-3 leading-relaxed">Todo uso de IA generativa debe registrarse en una ficha de <strong>Prompt / Uso de IA</strong> (Google Docs con permisos de lectura compartidos) antes de consolidarse en la Bitácora oficial.</p>
             <div class="bg-cyan-950/30 border border-cyan-500/30 p-2.5 mb-3 text-xs text-slate-300 font-mono">
                 ${isOps 
                     ? `<span class="text-mars-cyan font-bold">ℹ️ MODO OPERACIONES:</span> Tu registro se consolidará directamente en la Bitácora oficial del equipo.` 
@@ -749,7 +749,7 @@ Object.assign(ui, {
                 </div>
                 <div class="space-y-1.5 mb-3">
                     <label for="input-bitacora-url" class="text-[11px] font-mono text-slate-300 uppercase tracking-wide block">
-                        Enlace a Cuaderno de Bitácora Oficial (Google Docs)
+                        Enlace a Plantilla de Prompt / Uso de IA (Google Docs)
                     </label>
                     <div class="mb-2">
                         ${this.renderDocTemplateBtn('DOC_4_BITACORA_IA')}
