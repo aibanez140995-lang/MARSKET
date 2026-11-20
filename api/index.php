@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.32
+// Versión: v2.0.33
 
 declare(strict_types=1);
 

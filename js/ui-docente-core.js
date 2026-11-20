@@ -499,7 +499,10 @@ Object.assign(ui, {
                                 <span class="bg-mars-green/20 text-mars-green border border-mars-green/40 px-2 py-0.5 text-[10px] font-black uppercase">[✓ RECIBIDO DOCENTE]</span>
                             </td>
                             <td class="p-2.5">
-                                <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50">Abrir Drive ↗</a>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50">Abrir Drive ↗</a>
+                                    ${this.renderTeacherPdfBtnHtml ? this.renderTeacherPdfBtnHtml(driveUrl) : ''}
+                                </div>
                             </td>
                         </tr>
                     `;
@@ -578,7 +581,7 @@ Object.assign(ui, {
                                     <span class="bg-mars-green/20 text-mars-green border border-mars-green/40 px-2 py-0.5 text-[10px] font-black uppercase">[✓ RECIBIDO DOCENTE]</span>
                                 </td>
                                 <td class="p-2.5">
-                                    ${safeHref ? `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50">Abrir Drive ↗</a>` : '<span class="text-slate-500 text-[10px] italic">Sin enlace</span>'}
+                                    ${safeHref ? `<div class="flex items-center gap-1.5 flex-wrap"><a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50">Abrir Drive ↗</a>${this.renderTeacherPdfBtnHtml ? this.renderTeacherPdfBtnHtml(actUrl) : ''}</div>` : '<span class="text-slate-500 text-[10px] italic">Sin enlace</span>'}
                                 </td>
                             </tr>
                         `;
@@ -1132,11 +1135,12 @@ Object.assign(ui, {
                                 <span class="text-xs text-emerald-400 font-mono font-bold bg-emerald-950/40 border border-emerald-500/40 px-2 py-0.5">${paidTotal} €v Abonados${resubCount > 0 ? ` • Subsanación #${resubCount}` : ''}</span>
                             </div>
                             <p class="text-xs text-slate-300 font-mono">Firmado por: <strong>${this.escapeHTML(lic.signedBy || 'CEO')}</strong> • Fecha: ${this.escapeHTML(lic.appliedDate || '--')}</p>
-                            <div class="mt-2.5">
+                            <div class="mt-2.5 flex flex-wrap items-center gap-2">
                                 ${lic.driveUrl ? `
                                     <a href="${encodeURI(lic.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
                                         <span>📄 Abrir Solicitud Oficial DOC_14 en Google Docs ↗</span>
                                     </a>
+                                    ${this.renderTeacherPdfBtnHtml ? this.renderTeacherPdfBtnHtml(lic.driveUrl) : ''}
                                 ` : ''}
                             </div>
                         </div>

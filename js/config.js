@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.32) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.33) ---
 
-const APP_VERSION = "2.0.32";
+const APP_VERSION = "2.0.33";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1156,6 +1156,17 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.33",
+      date: "2026-11-20",
+      title: "Copia Congelada en PDF de Entregas Docentes",
+      items: [
+        "Botón [⬇️ PDF] en Todas las Vistas Docentes: El profesorado puede descargar en 1 clic una copia fija en PDF (/export?format=pdf, no editable por los alumnos) junto a cada enlace de Google Docs/Sheets/Slides en Rúbricas y Entregas (incluidas Notas de Prensa DOC_15 y Evidencias de Contratos), Archivo Documental Central (ARCHIVE), Recepción FyQ/MKT y Aduana/Trámites de Coordinación (AESA DOC_14, Marca DOC_11, Estatutos DOC_1, B2B DOC_9, HR DOC_2 e I+D DOC_13)."
+      ],
+      highlights: [
+        { type: "ANTI-EDICIÓN DOCENTE", text: "Descarga directa en PDF congelado de cualquier entrega Drive." }
+      ]
+    },
     {
       version: "2.0.32",
       date: "2026-11-20",

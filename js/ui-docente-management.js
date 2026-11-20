@@ -175,8 +175,9 @@ Object.assign(ui, {
                             <p class="text-xs text-mars-yellow uppercase font-bold mb-1">Motivo del Renombramiento:</p>
                             <p class="text-white text-xs mb-2 break-words">"${this.escapeHTML(req.reason || '')}"</p>
                             ${req.driveUrl ? `
-                            <div class="mb-3">
+                            <div class="mb-3 flex flex-wrap items-center gap-2">
                                 <a href="${encodeURI(req.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50"><span>📄 Abrir Solicitud Oficial en Google Drive ↗</span></a>
+                                ${this.renderTeacherPdfBtnHtml ? this.renderTeacherPdfBtnHtml(req.driveUrl) : ''}
                             </div>` : ''}
                             <label for="coord-new-co-name-${cid}" class="text-xs text-mars-green uppercase font-bold block mb-1">Nueva Denominación Social Oficial:</label>
                             <input type="text" id="coord-new-co-name-${cid}" placeholder="Escribe el nombre oficial aprobado..." value="${this.escapeHTML(req.proposedName !== 'Propuesta en Documento Drive' ? req.proposedName : '')}" class="w-full min-h-[44px] bg-black border border-mars-green/50 p-2 text-xs text-white font-orbitron uppercase outline-none focus:border-mars-green mb-3">
@@ -222,8 +223,9 @@ Object.assign(ui, {
                                 </div>
                             </div>
                             ${co.brandApproval.driveUrl ? `
-                            <div class="mb-1">
+                            <div class="mb-1 flex flex-wrap items-center gap-2">
                                 <a href="${encodeURI(co.brandApproval.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50"><span>📄 Abrir Expediente Slogan en Google Drive ↗</span></a>
+                                ${this.renderTeacherPdfBtnHtml ? this.renderTeacherPdfBtnHtml(co.brandApproval.driveUrl) : ''}
                             </div>` : ''}
                             <div>
                                 <label for="coord-official-slogan-${cid}" class="text-xs text-mars-yellow uppercase font-bold block mb-1">Slogan Oficial Aprobado (Extraído del Google Doc):</label>
@@ -263,9 +265,11 @@ Object.assign(ui, {
                             <div class="mt-2 flex flex-wrap gap-2">
                                 ${c.buyerDriveUrl ? `
                                     <a href="${encodeURI(c.buyerDriveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50"><span>📄 DOC_9 Adquisición (Comprador) ↗</span></a>
+                                    ${this.renderTeacherPdfBtnHtml ? this.renderTeacherPdfBtnHtml(c.buyerDriveUrl) : ''}
                                 ` : ''}
                                 ${c.driveUrl ? `
                                     <a href="${encodeURI(c.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-amber-950/40 text-amber-300 border border-amber-500/30 rounded font-mono hover:bg-amber-900/50"><span>📄 Memoria Venta (Vendedor) ↗</span></a>
+                                    ${this.renderTeacherPdfBtnHtml ? this.renderTeacherPdfBtnHtml(c.driveUrl) : ''}
                                 ` : ''}
                             </div>
                         </div>
@@ -1673,8 +1677,9 @@ Object.assign(ui, {
                     </div>
                     <p class="text-slate-200 italic bg-black p-3 border border-slate-800 mb-3 leading-relaxed break-words">"${this.escapeHTML(r.reason)}"</p>
                     ${r.driveUrl ? `
-                    <div class="mb-3">
+                    <div class="mb-3 flex flex-wrap items-center gap-2">
                         <a href="${encodeURI(r.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded font-mono hover:bg-cyan-900/50"><span>📄 Abrir Expediente HR en Google Drive ↗</span></a>
+                        ${this.renderTeacherPdfBtnHtml ? this.renderTeacherPdfBtnHtml(r.driveUrl) : ''}
                     </div>` : ''}
                     <div class="flex justify-between items-center mt-2 border-t border-slate-800 pt-3 flex-wrap gap-2">
                         <div class="flex items-center gap-2 flex-wrap">
@@ -1765,9 +1770,12 @@ Object.assign(ui, {
                         </div>
                         <p class="text-white font-bold text-xs uppercase mb-1.5">${this.escapeHTML(p.name || 'Componente Especial I+D')}</p>
                         ${p.driveUrl ? `
-                            <a href="${this.escapeHTML(p.driveUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-mars-cyan hover:underline font-mono bg-mars-cyan/10 px-2.5 py-1.5 border border-mars-cyan/40 min-h-[44px]">
-                                <span>📄 Abrir Memoria Técnica en Google Drive ↗</span>
-                            </a>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <a href="${this.escapeHTML(p.driveUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-mars-cyan hover:underline font-mono bg-mars-cyan/10 px-2.5 py-1.5 border border-mars-cyan/40 min-h-[44px]">
+                                    <span>📄 Abrir Memoria Técnica en Google Drive ↗</span>
+                                </a>
+                                ${this.renderTeacherPdfBtnHtml ? this.renderTeacherPdfBtnHtml(p.driveUrl) : ''}
+                            </div>
                         ` : '<span class="text-slate-400 italic text-[11px]">Sin enlace de Drive adjunto</span>'}
                     </div>
                     <div class="flex gap-2 items-center flex-wrap sm:flex-nowrap flex-shrink-0">
@@ -2114,10 +2122,11 @@ Object.assign(ui, {
                     <p class="text-xs text-red-300 font-bold uppercase mb-1">Empresa: <span class="text-white">${this.escapeHTML(coName)}</span></p>
                     <p class="text-xs text-slate-300">Material solicitado: <span class="text-white font-mono">${this.escapeHTML(req.name || 'Componente Especial')}</span></p>
                     ${req.driveUrl ? `
-                    <div class="mt-2">
+                    <div class="mt-2 flex flex-wrap items-center gap-2">
                         <a href="${this.escapeHTML(req.driveUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-mars-cyan hover:underline font-mono bg-mars-cyan/10 px-2.5 py-1.5 border border-mars-cyan/40 min-h-[44px]">
                             <span>📄 Abrir Solicitud del Alumno en Google Drive ↗</span>
                         </a>
+                        ${this.renderTeacherPdfBtnHtml ? this.renderTeacherPdfBtnHtml(req.driveUrl) : ''}
                     </div>` : ''}
                 </div>
 

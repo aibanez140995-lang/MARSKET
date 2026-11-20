@@ -266,7 +266,8 @@ Object.assign(ui, {
                                             badgeCls = 'bg-slate-900 text-slate-300 border border-slate-600 hover:border-mars-cyan';
                                             badgeTxt = '📝 Borrador';
                                         }
-                                        return `<div class="flex flex-col items-center gap-1"><a href="${docUrl || '#'}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] flex items-center justify-center ${badgeCls} px-2 py-1 font-bold transition-colors text-center text-[11px]">${badgeTxt}</a>${templateBadge}</div>`;
+                                        const pdfCompact = this.renderTeacherPdfBtnHtml ? this.renderTeacherPdfBtnHtml(docUrlRaw, true) : '';
+                                        return `<div class="flex flex-col items-center gap-1"><div class="flex items-center gap-1"><a href="${docUrl || '#'}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] flex items-center justify-center ${badgeCls} px-2 py-1 font-bold transition-colors text-center text-[11px]">${badgeTxt}</a>${pdfCompact}</div>${templateBadge}</div>`;
                                     }
                                     return `<div class="flex flex-col items-center gap-1"><span class="min-h-[44px] flex items-center justify-center text-slate-400 border border-slate-800 px-2 py-1 text-center">--</span>${templateBadge}</div>`;
                                 };
@@ -506,6 +507,7 @@ Object.assign(ui, {
                         <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors min-h-[44px]">
                             <span>Abrir Doc ↗</span>
                         </a>
+                        ${this.renderTeacherPdfBtnHtml ? this.renderTeacherPdfBtnHtml(item.driveUrl) : ''}
                         ${returnBtnHtml}
                     </div>
                 </div>`;
@@ -1426,9 +1428,9 @@ Object.assign(ui, {
                         ${gradeScore !== null ? `<span class="text-[10px] font-mono font-bold text-mars-yellow px-1.5 py-0.5 bg-amber-950/40 border border-amber-500/40 rounded">${this.escapeHTML(def.subject)}: ${gradeScore.toFixed(2)}</span>` : ''}
                     </div>
                 </div>
-                <div class="shrink-0">
+                <div class="shrink-0 flex items-center gap-1.5 flex-wrap">
                     ${hasUrl
-                        ? `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 bg-blue-950/50 border border-blue-500/40 text-blue-300 hover:bg-blue-900/60 rounded text-[11px] font-mono font-bold">Abrir Drive ↗</a>`
+                        ? `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 bg-blue-950/50 border border-blue-500/40 text-blue-300 hover:bg-blue-900/60 rounded text-[11px] font-mono font-bold">Abrir Drive ↗</a>${this.renderTeacherPdfBtnHtml ? this.renderTeacherPdfBtnHtml(rawDoc) : ''}`
                         : `<span class="text-[11px] text-slate-500 italic">Sin enlace</span>`}
                 </div>
             </div>`;
@@ -1489,7 +1491,7 @@ Object.assign(ui, {
                                     <strong class="text-white text-xs ml-1">Nota de Prensa Fase ${this.escapeHTML(targetPhase)}</strong>
                                     <span class="text-[10px] text-slate-400 ml-1">(${this.escapeHTML(prEntry.status || '')})</span>
                                 </div>
-                                ${prHasUrl ? `<a href="${safePrUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-300 hover:underline font-mono text-[11px] shrink-0">Abrir Drive ↗</a>` : ''}
+                                ${prHasUrl ? `<div class="flex items-center gap-1.5 shrink-0"><a href="${safePrUrl}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center text-blue-300 hover:underline font-mono text-[11px] shrink-0">Abrir Drive ↗</a>${this.renderTeacherPdfBtnHtml ? this.renderTeacherPdfBtnHtml(prEntry.driveUrl, true) : ''}</div>` : ''}
                             </div>` : ''}
                         </div>
                     </div>

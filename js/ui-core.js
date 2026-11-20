@@ -55,6 +55,29 @@ const ui = {
         return trimmed;
     },
 
+    getGooglePdfExportUrl(url) {
+        const safe = this.sanitizeDriveUrl ? this.sanitizeDriveUrl(url) : (url && typeof url === 'string' ? url.trim() : '');
+        if (!safe || !this.isDocsEditorUrl(safe)) return '';
+        if (/\/export\?format=pdf/i.test(safe)) return safe;
+        if (/\/(edit|view|preview|copy|template\/preview)([\?#].*)?$/i.test(safe)) {
+            return safe.replace(/\/(edit|view|preview|template\/preview)([\?#].*)?$/i, '/export?format=pdf');
+        }
+        if (/\/d\/[a-zA-Z0-9_-]+\/?$/i.test(safe)) {
+            return safe.replace(/\/?$/, '/export?format=pdf');
+        }
+        return '';
+    },
+
+    renderTeacherPdfBtnHtml(url, compact = false) {
+        if (!state?.user?.admin) return '';
+        const pdfUrl = this.getGooglePdfExportUrl(url);
+        if (!pdfUrl) return '';
+        if (compact) {
+            return `<a href="${this.escapeAttr(pdfUrl)}" target="_blank" rel="noopener noreferrer" title="Descargar copia PDF congelada (no editable por alumnos)" class="min-h-[44px] inline-flex items-center justify-center px-2 py-1 text-[10px] bg-emerald-950/50 text-emerald-300 border border-emerald-500/40 rounded hover:bg-emerald-500 hover:text-black transition-colors font-mono font-bold">⬇️ PDF</a>`;
+        }
+        return `<a href="${this.escapeAttr(pdfUrl)}" target="_blank" rel="noopener noreferrer" title="Descargar copia PDF congelada (no editable por alumnos)" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1.5 text-xs bg-emerald-950/50 text-emerald-300 border border-emerald-500/40 rounded hover:bg-emerald-500 hover:text-black transition-colors font-mono font-bold shrink-0"><span>⬇️ PDF</span></a>`;
+    },
+
     getDeliverableTemplateUrl(docKey) {
         if (!docKey) return '';
         const schedMap = (typeof state !== 'undefined' && state.data?.config?.deliverableSchedule) ? state.data.config.deliverableSchedule : {};
@@ -3834,6 +3857,7 @@ const ui = {
   ${safeHref ? `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors min-h-[44px]">
     <span>Abrir ${tipoDoc} ↗</span>
   </a>` : ''}
+  ${this.renderTeacherPdfBtnHtml ? this.renderTeacherPdfBtnHtml(item.driveUrl) : ''}
   ${teacherSubsanarBtn}
 </div>`;
         } else {
