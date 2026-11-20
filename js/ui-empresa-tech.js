@@ -1161,7 +1161,7 @@ Object.assign(ui, {
                         <input type="url" id="attach-flight-video-url" value="${this.escapeHTML(curVideo)}" placeholder="https://drive.google.com/file/d/..." class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow">
                         ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('attach-flight-video-url') : ''}
                     </div>
-                    <p class="text-[10px] text-slate-400 mt-1 font-sans">Asegúrate de configurar el acceso compartido como <em>"Cualquiera con el enlace puede ver"</em>. Déjalo vacío si deseas quitar el vídeo.</p>
+                    <p class="text-[10px] text-slate-400 mt-1 font-sans">Asegúrate de configurar el Acceso general como <em>"Fomento centros de enseñanza (Lector)"</em>. Déjalo vacío si deseas quitar el vídeo.</p>
                 </div>
             </div>
         `;
@@ -1221,7 +1221,7 @@ Object.assign(ui, {
                         ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('special-item-drive-url') : ''}
                     </div>
                     <p class="text-[10px] text-slate-400 mt-1 font-sans">
-                        Configura los permisos del documento en Google Drive como <em>"Cualquiera con el enlace puede ver"</em> para que el CEO y el claustro docente examinen los planos y especificaciones.
+                        Configura los permisos del documento en Google Drive (Acceso general) como <em>"Fomento centros de enseñanza (Lector)"</em> para que el CEO y el claustro docente examinen los planos y especificaciones.
                     </p>
                 </div>
                 <div class="pt-1">
@@ -1306,7 +1306,7 @@ Object.assign(ui, {
                         <input type="url" id="resubmit-special-item-url" value="${req.driveUrl ? this.escapeHTML(req.driveUrl) : ''}" placeholder="https://docs.google.com/... o https://drive.google.com/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" required class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow">
                         ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('resubmit-special-item-url') : ''}
                     </div>
-                    <p class="text-[10px] text-slate-400 mt-1 font-sans">Asegúrate de haber corregido el documento y mantenido permisos públicos de lectura.</p>
+                    <p class="text-[10px] text-slate-400 mt-1 font-sans">Asegúrate de haber corregido el documento y mantenido el acceso en «Fomento centros de enseñanza (Lector)».</p>
                 </div>
                 <div class="pt-1">
                     ${this.renderDocTemplateBtn('DOC_13_SOLICITUD_ID', '📄 Ver Plantilla Solicitud I+D (DOC_13)')}

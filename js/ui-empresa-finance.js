@@ -1619,7 +1619,7 @@ Object.assign(ui, {
                     <label class="mars-checkbox-label flex items-start gap-2.5 cursor-pointer p-2 bg-black/50 border border-slate-800 rounded min-h-[44px]">
                         <input type="checkbox" id="phase-balance-perm-check" class="mars-touch-input">
                         <span class="mars-checkbox-visual mt-0.5"></span>
-                        <span class="text-xs text-slate-200 font-sans">Confirmo que el Balance (DOC_17) tiene acceso <strong>«Cualquier persona con el enlace (Lector)»</strong>.</span>
+                        <span class="text-xs text-slate-200 font-sans">Confirmo que el Balance (DOC_17) tiene acceso <strong>«Fomento centros de enseñanza (Lector)»</strong>.</span>
                     </label>
                 </div>
             </div>

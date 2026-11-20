@@ -329,7 +329,7 @@ const ui = {
             <label class="mars-checkbox-label flex items-start gap-2.5 cursor-pointer p-2.5 bg-black/50 border border-slate-800 rounded min-h-[44px]">
                 <input type="checkbox" id="${this.escapeHTML(permCheckId)}" class="mars-touch-input">
                 <span class="mars-checkbox-visual mt-0.5"></span>
-                <span class="text-xs text-slate-200 font-sans">Confirmo que en Google Drive he marcado <strong>«Cualquier persona con el enlace (Lector)»</strong> para que el equipo y el profesor puedan abrirlo.</span>
+                <span class="text-xs text-slate-200 font-sans">Confirmo que en Google Drive he marcado <strong>«Fomento centros de enseñanza (Lector)»</strong> para que el equipo y el profesor puedan abrirlo.</span>
             </label>`
         };
     },
@@ -1980,7 +1980,7 @@ const ui = {
                 <!-- 4. Aviso Clave -->
                 <div class="bg-slate-900/80 border border-amber-400/40 p-3.5 text-xs text-slate-300 space-y-1">
                     <p class="text-amber-400 font-bold uppercase text-xs mb-1">⚠️ Aviso Clave y Protección del Menor:</p>
-                    <p>Los enlaces de Google Drive deben estar en modo <em>"Cualquiera con el enlace puede ver"</em>. Exige el cumplimiento estricto de la política <strong>Zero-PII</strong> (sin nombres ni datos personales de alumnos en los documentos).</p>
+                    <p>Los enlaces de Google Drive deben estar en modo <em>"Fomento centros de enseñanza (Lector)"</em>. Exige el cumplimiento estricto de la política <strong>Zero-PII</strong> (sin nombres ni datos personales de alumnos en los documentos).</p>
                     <p class="text-[11px] text-slate-400 pt-1 border-t border-slate-800">Cualquier consulta o reporte disciplinario debe gestionarse mediante motivos tipificados en la plataforma.</p>
                 </div>
             </div>`;
@@ -2450,7 +2450,7 @@ const ui = {
                     </summary>
                     <ol class="mt-2 space-y-1.5 text-slate-300 border-t border-slate-800 pt-2 pl-4 list-decimal">
                         <li>Abre tu documento en Google Docs y pulsa el botón azul <strong>Compartir</strong> (arriba a la derecha).</li>
-                        <li>En «Acceso general», cambia <em>Restringido</em> por <strong>Cualquier persona con el enlace</strong> (permiso: <strong>Lector</strong>).</li>
+                        <li>En «Acceso general», cambia <em>Restringido</em> por <strong>Fomento centros de enseñanza</strong> (permiso: <strong>Lector</strong>).</li>
                         <li>Pulsa <strong>Copiar enlace</strong> y pégalo aquí en MARS-KET.</li>
                     </ol>
                 </details>

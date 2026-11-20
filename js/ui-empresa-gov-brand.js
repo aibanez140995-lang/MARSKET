@@ -1534,7 +1534,7 @@ Object.assign(ui, {
                                     <input type="url" id="company-logo-drive" value="${this.escapeHTML((co.brandApproval && co.brandApproval.pendingLogo) ? co.brandApproval.pendingLogo : (co.logo || ''))}" placeholder="https://drive.google.com/..." class="flex-1 min-h-[44px] bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-magenta">
                                     ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('company-logo-drive') : ''}
                                 </div>
-                                <p class="text-[10px] text-slate-400 mt-1">La imagen en Drive debe tener acceso público de lectura («Cualquier persona con el enlace») para mostrarse en el HUD.</p>
+                                <p class="text-[10px] text-slate-400 mt-1">La imagen en Drive debe tener acceso general en <strong>«Fomento centros de enseñanza (Lector)»</strong> (o público) para mostrarse en el HUD.</p>
                             </div>
                             <div>
                                 <label for="brand-slogan-drive-url" class="text-xs text-mars-yellow uppercase font-bold block mb-1.5">Enlace a la Propuesta de Slogan en Google Drive (Obligatorio)</label>
@@ -1542,7 +1542,7 @@ Object.assign(ui, {
                                     <input type="url" id="brand-slogan-drive-url" value="${this.escapeHTML(co.brandApproval?.driveUrl || '')}" placeholder="https://docs.google.com/document/d/..." class="flex-1 min-h-[44px] bg-slate-900 border border-mars-yellow/60 p-2.5 text-base sm:text-xs text-white font-mono outline-none focus:border-mars-yellow" required>
                                     ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('brand-slogan-drive-url') : ''}
                                 </div>
-                                <p class="text-[10px] text-slate-400 mt-1">Usa primero [📋 Hacer Copia en Drive]. El Google Doc oficial debe tener permisos públicos de lectura.</p>
+                                <p class="text-[10px] text-slate-400 mt-1">Usa primero [📋 Hacer Copia en Drive]. El Google Doc oficial debe estar compartido en «Fomento centros de enseñanza (Lector)».</p>
                             </div>
                             <button type="button" onclick="ui.submitBrandProposalToCEO()" class="w-full min-h-[44px] bg-mars-cyan text-black px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)]">[ 📤 1. Presentar Propuesta al CEO ]</button>`;
                         })()}
@@ -1851,7 +1851,7 @@ Object.assign(ui, {
                         <input type="url" id="mkt-drive-url" placeholder="https://docs.google.com/... o https://drive.google.com/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-mars-cyan font-mono" required>
                         ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('mkt-drive-url') : ''}
                     </div>
-                    <p class="text-[10px] text-slate-400 mt-1">Adjunta tu copia del Google Doc DOC_12 con permisos abiertos de lectura.</p>
+                    <p class="text-[10px] text-slate-400 mt-1">Adjunta tu copia del Google Doc DOC_12 con acceso «Fomento centros de enseñanza (Lector)».</p>
                 </div>
             </div>
         `;

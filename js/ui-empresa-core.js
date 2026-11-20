@@ -2261,7 +2261,7 @@ Object.assign(ui, {
                 <label class="mars-checkbox-label flex items-start gap-2.5 cursor-pointer p-2.5 bg-black/50 border border-slate-800 rounded min-h-[44px]">
                     <input type="checkbox" id="deliverable-drive-perm-check" class="mars-touch-input">
                     <span class="mars-checkbox-visual mt-0.5"></span>
-                    <span class="text-xs text-slate-200 font-sans">Confirmo que en Google Drive he marcado <strong>«Cualquier persona con el enlace (Lector)»</strong> para que el CEO y el profesor puedan abrirlo.</span>
+                    <span class="text-xs text-slate-200 font-sans">Confirmo que en Google Drive he marcado <strong>«Fomento centros de enseñanza (Lector)»</strong> para que el CEO y el profesor puedan abrirlo.</span>
                 </label>
             </div>
         </div>`;
@@ -2643,7 +2643,7 @@ Object.assign(ui, {
                         <input type="url" id="launch-license-drive-url" value="${isResubmission && co.launchLicense?.driveUrl ? this.escapeHTML(co.launchLicense.driveUrl) : ''}" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
                         ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('launch-license-drive-url') : ''}
                     </div>
-                    <p class="text-[10px] text-slate-400 mt-1 font-sans">Asegúrate de compartir tu copia con permisos de lectura abiertos ("Cualquiera con el enlace puede ver").</p>
+                    <p class="text-[10px] text-slate-400 mt-1 font-sans">Asegúrate de compartir tu copia en Acceso general como <em>"Fomento centros de enseñanza (Lector)"</em>.</p>
                 </div>
                 <div class="p-3 bg-black/60 border border-slate-800 space-y-2">
                     <label class="flex items-start gap-2.5 cursor-pointer text-slate-200 text-xs font-sans">
@@ -2797,7 +2797,7 @@ Object.assign(ui, {
                         <input type="url" id="press-release-drive-url" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
                         ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('press-release-drive-url') : ''}
                     </div>
-                    <p class="text-[10px] text-slate-400 mt-1 font-sans">El documento debe estar en modo <em>"Cualquiera con el enlace puede ver"</em> para que toda la comunidad pueda leerlo.</p>
+                    <p class="text-[10px] text-slate-400 mt-1 font-sans">El documento debe estar en modo <em>"Fomento centros de enseñanza (Lector)"</em> para que toda la comunidad pueda leerlo.</p>
                 </div>
             </div>
         `;

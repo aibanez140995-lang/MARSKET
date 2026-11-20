@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.31) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.32) ---
 
-const APP_VERSION = "2.0.31";
+const APP_VERSION = "2.0.32";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1156,6 +1156,17 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.32",
+      date: "2026-11-20",
+      title: "Ajuste Aula Fomento · Permisos de Compartición Google Drive",
+      items: [
+        "Acceso General Google Drive en Aula: Actualizados todos los avisos, guías de 3 pasos y casillas de verificación en entregables, balances, bitácoras IA, prensa, vídeos y solicitudes I+D para indicar «Fomento centros de enseñanza (Lector)» en lugar de «Cualquier persona con el enlace»."
+      ],
+      highlights: [
+        { type: "GOOGLE WORKSPACE", text: "Instrucciones adaptadas a «Fomento centros de enseñanza (Lector)»." }
+      ]
+    },
     {
       version: "2.0.31",
       date: "2026-11-20",

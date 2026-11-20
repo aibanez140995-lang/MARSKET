@@ -677,7 +677,7 @@ Object.assign(ui, {
             <p class="text-xs text-slate-300 mb-3 leading-relaxed">Selecciona la incidencia técnica detectada durante la verificación física en el banco de trabajo. Prohibido el texto libre.</p>
             <div class="bg-cyan-950/40 border border-cyan-500/40 p-3 mb-3 text-xs text-slate-300 leading-relaxed font-sans">
                 <p class="font-bold text-cyan-400 uppercase mb-1">📋 Protocolo de Devolución de Taller:</p>
-                <p>Para asegurar la trazabilidad sin texto libre (política Zero-Text), documenta las anomalías físicas, fotografías del ensamble o tolerancias erróneas en un documento de Google Docs o Google Drive con permisos de lectura compartidos ("Cualquiera con el enlace puede ver").</p>
+                <p>Para asegurar la trazabilidad sin texto libre (política Zero-Text), documenta las anomalías físicas, fotografías del ensamble o tolerancias erróneas en un documento de Google Docs o Google Drive compartido en Acceso general como <em>"Fomento centros de enseñanza (Lector)"</em>.</p>
             </div>
             <div class="space-y-3">
                 <div>
@@ -770,7 +770,7 @@ Object.assign(ui, {
                     <label class="mars-checkbox-label flex items-start gap-2.5 cursor-pointer p-2 bg-black/50 border border-slate-800 rounded min-h-[44px]">
                         <input type="checkbox" id="input-bitacora-perm-check" class="mars-touch-input">
                         <span class="mars-checkbox-visual mt-0.5"></span>
-                        <span class="text-xs text-slate-200 font-sans">Confirmo que el Google Doc tiene acceso <strong>«Cualquier persona con el enlace (Lector)»</strong>.</span>
+                        <span class="text-xs text-slate-200 font-sans">Confirmo que el Google Doc tiene acceso <strong>«Fomento centros de enseñanza (Lector)»</strong>.</span>
                     </label>
                 </div>
             </div>
