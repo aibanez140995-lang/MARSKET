@@ -4,6 +4,8 @@
 const DEFAULT_STATE = {
     version: 1,
     resetEpoch: 0,
+    news: [],
+    deletedNewsIds: [],
     officialNews: [],
     deletedOfficialNewsIds: [],
     deletedCompanyIds: [],
@@ -174,6 +176,82 @@ const state = {
     recalculateBalance(co) {
         if (!co) return;
         co.balance = this.calculateBalance(co);
+    },
+
+    getDefaultOrbitalReportSeed() {
+        const seedImgSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#05070f"/><stop offset="55%" stop-color="#0b1528"/><stop offset="100%" stop-color="#19081c"/></linearGradient><linearGradient id="glow" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00f0ff" stop-opacity="0.38"/><stop offset="100%" stop-color="#00f0ff" stop-opacity="0"/></linearGradient></defs><rect width="1280" height="720" fill="url(#bg)"/><g stroke="#00f0ff" stroke-opacity="0.14" stroke-width="1"><path d="M0 140H1280M0 280H1280M0 420H1280M0 560H1280M213 0V720M426 0V720M640 0V720M853 0V720M1066 0V720"/></g><circle cx="960" cy="360" r="240" fill="url(#glow)"/><g transform="translate(880,115)"><polygon points="80,20 132,165 132,395 28,395 28,165" fill="#0f172a" stroke="#00f0ff" stroke-width="4"/><polygon points="80,20 132,165 28,165" fill="#1e293b" stroke="#00f0ff" stroke-width="3"/><polygon points="28,305 -32,430 28,395" fill="#ff0055" fill-opacity="0.85"/><polygon points="132,305 192,430 132,395" fill="#ff0055" fill-opacity="0.85"/><circle cx="80" cy="240" r="24" fill="#05070f" stroke="#ffb703" stroke-width="4"/><line x1="56" y1="240" x2="104" y2="240" stroke="#ffb703" stroke-width="2"/><line x1="80" y1="216" x2="80" y2="264" stroke="#ffb703" stroke-width="2"/></g><text x="72" y="130" fill="#ffb703" font-family="monospace" font-size="22" font-weight="bold" letter-spacing="4">ORBITAL REPORT // ARCHIVO AEE</text><text x="72" y="235" fill="#ffffff" font-family="sans-serif" font-size="52" font-weight="900">OPEN HARDWARE</text><text x="72" y="305" fill="#00f0ff" font-family="sans-serif" font-size="52" font-weight="900">Y MERCADO B2B</text><text x="72" y="375" fill="#cbd5e1" font-family="monospace" font-size="24">SPACEX PATENTS vs. EXPOSICION MARS-KET 2.0</text><rect x="72" y="435" width="430" height="58" fill="#05070f" stroke="#00f0ff" stroke-width="2"/><text x="96" y="472" fill="#00f0ff" font-family="monospace" font-size="22" font-weight="bold">E = ALTURA / COSTE • B2B READY</text></svg>`;
+        const seedImgUrl = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(seedImgSvg);
+        return {
+            id: 'NEWS-SEED-MUSK-PATENTS-001',
+            category: 'PROPIEDAD INDUSTRIAL & B2B',
+            categoryEn: 'INDUSTRIAL PROPERTY & B2B',
+            title: 'Elon Musk sobre las patentes de SpaceX: «Mide nuestro cohete en la calle y cópialo»',
+            subtitle: 'Por qué SpaceX evita registrar patentes para frenar el espionaje industrial y qué lección deja para la exhibición de prototipos sin combustible y el Mercado Secundario B2B de MARS-KET 2.0.',
+            body: 'En el sector aeroespacial comercial, la velocidad de iteración pesa más que los despachos de abogados. Elon Musk ha reiterado en varias ocasiones que **SpaceX apenas registra patentes** porque publicar planos detallados entregaría una hoja de ruta gratuita a competidores estatales: *"Si alguien quiere saber cómo es nuestro cohete, que lo mida en la calle y lo copie"*, ironizó.\n\nEn **MARS-KET 2.0**, vuestras startups vivirán exactamente ese dilema en la recta final del curso. Durante la **exhibición abierta de prototipos (sin tripulación ni combustible en exposición estática)**, todas las empresas de 4º ESO podrán observar a plena vista el fuselaje, las aletas estabilizadoras y las ojivas diseñadas por las demás clases.\n\n- **Tu ventaja no es el secreto, es el coste:** Copiar una aleta a simple vista no replica vuestro cálculo de eficiencia **E = Altura / Coste** ni la disciplina de vuestro Libro Mayor.\n- **Monetiza lo que ya probaste:** Si un componente o lote de material queda sobrante tras las pruebas de vuelo, publícalo en el **Mercado Secundario B2B** con su memoria técnica (`DOC_9`) y convierte el excedente en liquidez (`€v`) antes del cierre de fase.',
+            titleEn: 'Elon Musk on SpaceX Patents: "Measure Our Rocket on the Street and Copy It"',
+            subtitleEn: 'Why SpaceX avoids filing patents over industrial espionage concerns—and what this means for our year-end unfueled prototype exhibition and the MARS-KET 2.0 B2B Secondary Market.',
+            bodyEn: 'In commercial aerospace, iteration speed matters more than patent filings. Elon Musk has repeatedly explained that **SpaceX files virtually no patents** because publishing detailed blueprints would hand a free roadmap to rival programs: *"Measure our rocket on the street and copy it,"* he famously remarked.\n\nIn **MARS-KET 2.0**, your startups will face this exact reality at the end of the school year. During the **open prototype exhibition (uncrewed and unfueled static display)**, every 4th-year ESO team will be able to inspect rival airframes, stabilizer fins, and nose cones up close.\n\n- **Your edge is efficiency, not secrecy:** Eyeballing a fin shape cannot copy your **E = Height / Cost** optimization or your Ledger discipline.\n- **Monetize surplus hardware:** When tested components or spare materials remain in your workshop, list them on the **B2B Secondary Market** (`DOC_9`) to turn idle inventory into `€v` liquidity before phase close.',
+            imageUrl: seedImgUrl,
+            sourceName: 'Orbital Report / Archivo SpaceX',
+            sourceUrl: 'https://www.spacex.com',
+            marsketImpact: 'En la exhibición final sin combustible todos verán vuestros cohetes: la ventaja competitiva real está en optimizar E = Altura / Coste y vender excedentes estratégicos en el Mercado Secundario B2B.',
+            marsketImpactEn: 'At the year-end unfueled exhibition every team will see your rocket: your real edge lies in optimizing E = Height / Cost and trading surplus components in the B2B Secondary Market.',
+            debateQuestion: '¿Debe vuestra startup ocultar sus pruebas hasta el final o estandarizar piezas para liderar las ventas en el Mercado Secundario B2B?',
+            debateQuestionEn: 'Should your startup keep R&D under wraps until the exhibition, or standardize parts to lead sales in the B2B Secondary Market?',
+            publishedAt: 1763750000000,
+            updatedAt: 1763750000000,
+            publishedDate: '21/11/2026',
+            featured: true,
+            phase: 'ALL',
+            classGroup: 'ALL',
+            coId: null,
+            companyName: null,
+            author: 'Consejo Editorial AEE'
+        };
+    },
+
+    normalizeNewsItem(item) {
+        if (!item || typeof item !== 'object' || !item.id) return null;
+        const pubTs = this._parseSafeTs(item.publishedAt) || this._parseSafeTs(item.timestamp) || Date.now();
+        const updTs = this._parseSafeTs(item.updatedAt) || pubTs;
+        return {
+            id: String(item.id),
+            category: String(item.category || 'CRÓNICA AEE'),
+            categoryEn: String(item.categoryEn || item.category || 'AEE DISPATCH'),
+            title: String(item.title || 'Comunicado Orbital'),
+            subtitle: String(item.subtitle || ''),
+            body: String(item.body || ''),
+            titleEn: String(item.titleEn || ''),
+            subtitleEn: String(item.subtitleEn || ''),
+            bodyEn: String(item.bodyEn || ''),
+            imageUrl: item.imageUrl || null,
+            sourceName: String(item.sourceName || item.author || 'Agencia Espacial AEE'),
+            sourceUrl: item.sourceUrl || '',
+            marsketImpact: String(item.marsketImpact || ''),
+            marsketImpactEn: String(item.marsketImpactEn || ''),
+            debateQuestion: String(item.debateQuestion || ''),
+            debateQuestionEn: String(item.debateQuestionEn || ''),
+            publishedAt: pubTs,
+            updatedAt: updTs,
+            publishedDate: String(item.publishedDate || item.date || new Date(pubTs).toLocaleDateString('es-ES')),
+            featured: Boolean(item.featured),
+            phase: String(item.phase || 'ALL'),
+            classGroup: String(item.classGroup || 'ALL'),
+            coId: item.coId || null,
+            companyName: item.companyName || null,
+            author: String(item.author || 'Coordinación AEE')
+        };
+    },
+
+    resolveFeaturedNews(newsList) {
+        const list = Array.isArray(newsList) ? newsList.filter(Boolean) : [];
+        if (list.length === 0) return list;
+        const sorted = [...list].sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
+        const featuredPool = sorted.filter(n => n.featured);
+        const winner = featuredPool.length > 0
+            ? featuredPool.sort((a, b) => Math.max(b.updatedAt || 0, b.publishedAt || 0) - Math.max(a.updatedAt || 0, a.publishedAt || 0))[0]
+            : sorted[0];
+        return sorted.map(n => ({ ...n, featured: String(n.id) === String(winner.id) }));
     },
 
     calculateBomCost(co) {
@@ -404,8 +482,34 @@ const state = {
             }
         });
         d.pendingCustom = Array.isArray(d.pendingCustom) ? d.pendingCustom : [];
+        d.news = Array.isArray(d.news) ? d.news : [];
+        d.deletedNewsIds = Array.isArray(d.deletedNewsIds) ? d.deletedNewsIds : [];
         d.officialNews = Array.isArray(d.officialNews) ? d.officialNews : [];
         d.deletedOfficialNewsIds = Array.isArray(d.deletedOfficialNewsIds) ? d.deletedOfficialNewsIds : [];
+        const mergedNewsTombstones = Array.from(new Set([
+            ...d.deletedNewsIds.map(String),
+            ...d.deletedOfficialNewsIds.map(String)
+        ]));
+        d.deletedNewsIds = mergedNewsTombstones;
+        d.deletedOfficialNewsIds = mergedNewsTombstones;
+        const newsTombSet = new Set(mergedNewsTombstones);
+        const byNewsId = new Map();
+        d.officialNews.forEach(item => {
+            if (!item || !item.id || newsTombSet.has(String(item.id))) return;
+            const norm = this.normalizeNewsItem(item);
+            if (norm) byNewsId.set(String(norm.id), norm);
+        });
+        d.news.forEach(item => {
+            if (!item || !item.id || newsTombSet.has(String(item.id))) return;
+            const norm = this.normalizeNewsItem(item);
+            if (norm) byNewsId.set(String(norm.id), norm);
+        });
+        d.news = Array.from(byNewsId.values());
+        if (d.news.length === 0 && !newsTombSet.has('NEWS-SEED-MUSK-PATENTS-001')) {
+            d.news.push(this.getDefaultOrbitalReportSeed());
+        }
+        d.news = this.resolveFeaturedNews(d.news);
+        d.officialNews = d.news;
         d.pressReleases = Array.isArray(d.pressReleases) ? d.pressReleases : [];
         d.b2bMarket = Array.isArray(d.b2bMarket) ? d.b2bMarket : [];
         d.b2bContracts = Array.isArray(d.b2bContracts) ? d.b2bContracts : [];
@@ -1756,11 +1860,14 @@ const state = {
         ]);
         merged.dismissedNotificationIds = Array.from(allDismissedNotificationIds);
 
-        const allDeletedOfficialNewsIds = new Set([
+        const allDeletedNewsIds = new Set([
+            ...(Array.isArray(serverData.deletedNewsIds) ? serverData.deletedNewsIds.map(String) : []),
+            ...(Array.isArray(localData.deletedNewsIds) ? localData.deletedNewsIds.map(String) : []),
             ...(Array.isArray(serverData.deletedOfficialNewsIds) ? serverData.deletedOfficialNewsIds.map(String) : []),
             ...(Array.isArray(localData.deletedOfficialNewsIds) ? localData.deletedOfficialNewsIds.map(String) : [])
         ]);
-        merged.deletedOfficialNewsIds = Array.from(allDeletedOfficialNewsIds);
+        merged.deletedNewsIds = Array.from(allDeletedNewsIds);
+        merged.deletedOfficialNewsIds = merged.deletedNewsIds;
 
         const allDeletedPendingCustomIds = new Set([
             ...(Array.isArray(serverData.deletedPendingCustomIds) ? serverData.deletedPendingCustomIds.map(String) : []),
@@ -1787,8 +1894,23 @@ const state = {
             return iTs > 0 && iTs < rAt;
         };
 
-        merged.officialNews = mergeArraysGlobal(merged.officialNews, localData.officialNews)
-            .filter(n => n && n.id && !allDeletedOfficialNewsIds.has(String(n.id)));
+        const serverNewsPool = [
+            ...(Array.isArray(merged.officialNews) ? merged.officialNews : []),
+            ...(Array.isArray(merged.news) ? merged.news : [])
+        ];
+        const localNewsPool = [
+            ...(Array.isArray(localData.officialNews) ? localData.officialNews : []),
+            ...(Array.isArray(localData.news) ? localData.news : [])
+        ];
+        merged.news = mergeArraysGlobal(serverNewsPool, localNewsPool)
+            .filter(n => n && n.id && !allDeletedNewsIds.has(String(n.id)))
+            .map(n => this.normalizeNewsItem(n))
+            .filter(Boolean);
+        if (merged.news.length === 0 && !allDeletedNewsIds.has('NEWS-SEED-MUSK-PATENTS-001')) {
+            merged.news.push(this.getDefaultOrbitalReportSeed());
+        }
+        merged.news = this.resolveFeaturedNews(merged.news);
+        merged.officialNews = merged.news;
         merged.pressReleases = mergeArraysGlobal(merged.pressReleases, localData.pressReleases)
             .filter(pr => pr && !allDeletedCompanyIds.has(String(pr.coId)) && !allDeletedCompanyIds.has(String(pr.authorCoId)) && !isStaleTestArtifact(pr.authorCoId || pr.coId, pr));
         merged.suggestionsToAlex = mergeArraysGlobal(merged.suggestionsToAlex, localData.suggestionsToAlex)

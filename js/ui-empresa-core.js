@@ -2830,7 +2830,7 @@ Object.assign(ui, {
         co.pressReleases[phaseKey] = {
             id: 'PR-' + coId + '-' + phaseKey,
             phase: phaseKey,
-            status: 'PUBLISHED',
+            status: 'PENDING_REVIEW',
             returnReason: '',
             returnDriveUrl: '',
             title: `Nota de Prensa Oficial Fase ${phaseKey} — ${co.name}`,
@@ -2842,7 +2842,7 @@ Object.assign(ui, {
         };
         co.updatedAt = nowTs;
 
-        // Registro en listado global para el Tablón de Noticias (deduplicando por coId + phase)
+        // Registro en listado global para el Tablón de Noticias (pendiente de aprobación LEN / COORD)
         state.data.pressReleases = Array.isArray(state.data.pressReleases)
             ? state.data.pressReleases.filter(p => !(p && String(p.coId) === String(coId) && String(p.phase) === String(phaseKey)))
             : [];
@@ -2852,7 +2852,7 @@ Object.assign(ui, {
             companyName: co.name,
             classGroup: co.classGroup || 'A',
             phase: phaseKey,
-            status: 'PUBLISHED',
+            status: 'PENDING_REVIEW',
             title: `Nota de Prensa Oficial — Cierre Fase ${phaseKey} (${co.name})`,
             driveUrl: driveUrl,
             publishedAt: nowTs,
@@ -2861,14 +2861,14 @@ Object.assign(ui, {
         };
         state.data.pressReleases.unshift(item);
 
-        ui.pushNotification(coId, 'ALL', `📰 El CEO ha publicado la Nota de Prensa Oficial de Fase ${phaseKey} en el Tablón de Noticias.`, 'success', { view: 'news' });
-        ui.pushNotification('ADMIN', 'ALL', `📰 [${co.name}] Nota de Prensa Oficial de Fase ${phaseKey} publicada en el Tablón.`, 'info', { view: 'news' });
+        ui.pushNotification(coId, 'ALL', `📰 El CEO ha remitido la Nota de Prensa de Fase ${phaseKey} (DOC_15) a Lengua y Coordinación para su revisión y publicación.`, 'info', { view: 'dashboard', subTab: 'press' });
+        ui.pushNotification('ADMIN', 'ALL', `📰 [${co.name}] Nota de Prensa DOC_15 de Fase ${phaseKey} pendiente de aprobación editorial (LEN / COORD).`, 'info', { view: 'news' });
 
         state.save(coId);
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
         this.closeModal();
-        this.notify("✅ Nota de Prensa Oficial publicada en el Tablón de Noticias.", "success");
+        this.notify("✅ Nota de Prensa enviada a Lengua y Coordinación. Se publicará en Orbital Report tras su aprobación.", "success");
         this.render();
     },
 
@@ -3012,9 +3012,303 @@ Object.assign(ui, {
         this.showModal("Visor de Imagen Oficial // Nano Banana 3", html, actions);
     },
 
-    modalPublishOfficialNews() {
-        const isDocente = Boolean(state.user?.admin || (state.user?.role && (state.user.role === 'DOCENTE' || state.user.role.startsWith('COORD'))));
-        if (!isDocente) return this.notify("Acceso restringido a Coordinación Docente.", "error");
+    isNewsCoordinator() {
+        if (!state.user || !state.user.admin) return false;
+        const r = String(state.user.role || '').toUpperCase();
+        return r.startsWith('COORD') || r === 'COORDINADOR';
+    },
+
+    canModeratePressReleases() {
+        if (!state.user || !state.user.admin) return false;
+        const r = String(state.user.role || '').toUpperCase();
+        return r.startsWith('COORD') || r === 'COORDINADOR' || r === 'LEN';
+    },
+
+    getNewsLang() {
+        if (!this.newsLang) {
+            try {
+                const saved = localStorage.getItem('marsket_news_lang');
+                this.newsLang = (saved === 'EN') ? 'EN' : 'ES';
+            } catch (e) {
+                this.newsLang = 'ES';
+            }
+        }
+        return this.newsLang;
+    },
+
+    setNewsLang(lang) {
+        this.newsLang = (lang === 'EN') ? 'EN' : 'ES';
+        try {
+            localStorage.setItem('marsket_news_lang', this.newsLang);
+        } catch (e) {}
+        this.render();
+    },
+
+    getLocalizedNewsField(item, field) {
+        if (!item) return '';
+        const lang = this.getNewsLang();
+        if (lang === 'EN') {
+            return String(item[field + 'En'] || item[field] || '');
+        }
+        return String(item[field] || item[field + 'En'] || '');
+    },
+
+    getSpaceflightWireFallback() {
+        return [
+            {
+                id: 'wire-fb-1',
+                title: 'SpaceX Starship completes orbital flight test milestone with booster catch',
+                news_site: 'SpaceNews',
+                published_at: '2026-11-20T14:30:00Z',
+                url: 'https://spacenews.com',
+                image_url: '',
+                summary: 'Rapid reusability of heavy-lift rocket stages continues to reshape launch cost economics for commercial payloads.'
+            },
+            {
+                id: 'wire-fb-2',
+                title: 'ESA and European NewSpace startups advance reusable small-rocket propulsion',
+                news_site: 'European Spaceflight',
+                published_at: '2026-11-18T10:15:00Z',
+                url: 'https://europeanspaceflight.com',
+                image_url: '',
+                summary: 'European launch providers test modular propellant architectures and lightweight aerodynamic fairings.'
+            },
+            {
+                id: 'wire-fb-3',
+                title: 'Rocket Lab expands Electron cadence with streamlined composite airframes',
+                news_site: 'NASASpaceFlight',
+                published_at: '2026-11-15T18:00:00Z',
+                url: 'https://www.nasaspaceflight.com',
+                image_url: '',
+                summary: 'Consistent manufacturing tolerances and cost-per-kilogram metrics remain decisive for dedicated smallsat missions.'
+            },
+            {
+                id: 'wire-fb-4',
+                title: 'Ariane 6 prepares next institutional payload integration in Kourou',
+                news_site: 'ESA Space',
+                published_at: '2026-11-12T09:00:00Z',
+                url: 'https://www.esa.int',
+                image_url: '',
+                summary: 'Engineers finalize fairing acoustics and mass-budget verification ahead of upcoming launch window.'
+            },
+            {
+                id: 'wire-fb-5',
+                title: 'PLD Space accelerates Miura rocket development for European commercial access',
+                news_site: 'Spaceflight Now',
+                published_at: '2026-11-09T12:45:00Z',
+                url: 'https://spaceflightnow.com',
+                image_url: '',
+                summary: 'Spanish launch engineering teams validate recovery systems and structural tank tolerances.'
+            },
+            {
+                id: 'wire-fb-6',
+                title: 'Secondary payload market grows as startups optimize rocket fairing volume',
+                news_site: 'Ars Technica',
+                published_at: '2026-11-05T16:20:00Z',
+                url: 'https://arstechnica.com',
+                image_url: '',
+                summary: 'Rideshare adapters and surplus hardware contracts allow smaller aerospace firms to monetize unused capacity.'
+            }
+        ];
+    },
+
+    async fetchSpaceflightWire(force = false) {
+        const cacheKey = 'marsket_snapi_wire_v1';
+        const TTL_MS = 15 * 60 * 1000;
+        if (!force && Array.isArray(this._snapiWireArticles) && this._snapiWireArticles.length > 0) {
+            this.renderSpaceflightWireIntoDom();
+            return this._snapiWireArticles;
+        }
+        if (!force) {
+            try {
+                const raw = sessionStorage.getItem(cacheKey);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && Array.isArray(parsed.items) && (Date.now() - (parsed.ts || 0)) < TTL_MS) {
+                        this._snapiWireArticles = parsed.items;
+                        this._snapiWireIsFallback = false;
+                        this.renderSpaceflightWireIntoDom();
+                        return this._snapiWireArticles;
+                    }
+                }
+            } catch (e) {}
+        }
+
+        try {
+            const resp = await fetch('https://api.spaceflightnewsapi.net/v4/articles/?limit=6&search=rocket', { method: 'GET' });
+            if (!resp.ok) throw new Error('HTTP_' + resp.status);
+            const data = await resp.json();
+            const items = Array.isArray(data?.results) ? data.results : [];
+            if (items.length === 0) throw new Error('EMPTY_SNAPI');
+            this._snapiWireArticles = items;
+            this._snapiWireIsFallback = false;
+            try {
+                sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), items }));
+            } catch (e) {}
+        } catch (err) {
+            this._snapiWireArticles = this.getSpaceflightWireFallback();
+            this._snapiWireIsFallback = true;
+        }
+        this.renderSpaceflightWireIntoDom();
+        return this._snapiWireArticles;
+    },
+
+    renderSpaceflightWireIntoDom() {
+        const el = document.getElementById('orbital-wire-list');
+        if (!el) return;
+        const items = Array.isArray(this._snapiWireArticles) ? this._snapiWireArticles : [];
+        const isCoord = this.isNewsCoordinator();
+        const lang = this.getNewsLang();
+        if (items.length === 0) {
+            el.innerHTML = `<p class="text-xs text-slate-400 font-mono p-3">${lang === 'EN' ? 'No live dispatches available.' : 'Sin teletipos disponibles en este momento.'}</p>`;
+            return;
+        }
+        el.innerHTML = `
+            ${this._snapiWireIsFallback ? `
+                <div class="mb-2 px-2.5 py-1.5 bg-amber-950/40 border border-amber-500/40 text-[10px] font-mono text-amber-300">
+                    ${lang === 'EN' ? 'Offline/Cache Mode · Curated Aerospace Dispatches' : 'Modo Respaldo Local · Cables Aeroespaciales Curados'}
+                </div>
+            ` : ''}
+            <div class="space-y-2.5">
+                ${items.map((art, idx) => {
+                    const safeUrl = (art.url && /^https?:\/\//i.test(art.url)) ? this.escapeAttr(art.url) : '';
+                    const safeImg = (art.image_url && /^https?:\/\//i.test(art.image_url)) ? this.escapeAttr(art.image_url) : '';
+                    const dateStr = art.published_at ? new Date(art.published_at).toLocaleDateString(lang === 'EN' ? 'en-GB' : 'es-ES', { day: '2-digit', month: 'short' }) : '';
+                    return `
+                    <article class="bg-black/60 border border-slate-800 hover:border-mars-cyan/60 p-3 transition-colors">
+                        <div class="flex gap-2.5 items-start">
+                            ${safeImg ? `
+                                <img src="${safeImg}" alt="" loading="lazy" onerror="this.style.display='none'" class="w-16 h-12 object-cover border border-slate-700 shrink-0 bg-slate-900">
+                            ` : ''}
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center justify-between gap-2 text-[10px] font-mono text-mars-cyan uppercase mb-1">
+                                    <span class="truncate font-bold">${this.escapeHTML(art.news_site || 'SNAPI Wire')}</span>
+                                    <span class="text-slate-400 shrink-0">${this.escapeHTML(dateStr)}</span>
+                                </div>
+                                <h4 class="text-xs font-bold text-white leading-snug mb-1.5 break-words">${this.escapeHTML(art.title || '')}</h4>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    ${safeUrl ? `
+                                        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900 border border-slate-700 hover:border-mars-cyan text-cyan-300 text-[11px] font-mono font-bold uppercase transition-colors">
+                                            <span>${lang === 'EN' ? 'Source ↗' : 'Fuente ↗'}</span>
+                                        </a>
+                                    ` : ''}
+                                    ${isCoord ? `
+                                        <button type="button" onclick="ui.openEditorFromSnapiIndex(${idx})" class="min-h-[44px] px-2.5 py-1 bg-amber-950/60 border border-amber-500/60 text-amber-300 hover:bg-amber-400 hover:text-black text-[11px] font-bold uppercase transition-colors">
+                                            📥 Adaptar
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </article>`;
+                }).join('')}
+            </div>
+        `;
+    },
+
+    openEditorFromSnapiIndex(idx) {
+        if (!this.isNewsCoordinator()) return this.notify("Acceso restringido a Coordinación.", "error");
+        const items = Array.isArray(this._snapiWireArticles) ? this._snapiWireArticles : [];
+        const art = items[idx] || null;
+        this.modalPublishOfficialNews(art);
+    },
+
+    async loadSnapiImporterList() {
+        const listEl = document.getElementById('snapi-importer-results');
+        const qEl = document.getElementById('snapi-importer-query');
+        if (!listEl) return;
+        const q = qEl ? qEl.value.trim() : 'rocket';
+        listEl.innerHTML = `<p class="text-[11px] font-mono text-mars-cyan p-2">🛰️ Conectando con Spaceflight News API v4...</p>`;
+        try {
+            const url = `https://api.spaceflightnewsapi.net/v4/articles/?limit=6&search=${encodeURIComponent(q || 'rocket')}`;
+            const resp = await fetch(url);
+            if (!resp.ok) throw new Error('HTTP_' + resp.status);
+            const data = await resp.json();
+            const items = Array.isArray(data?.results) ? data.results : [];
+            this._snapiImporterItems = items;
+            if (items.length === 0) {
+                listEl.innerHTML = `<p class="text-[11px] font-mono text-slate-400 p-2">Sin resultados para "${this.escapeHTML(q)}". Prueba con "rocket", "SpaceX" o "Mars".</p>`;
+                return;
+            }
+            listEl.innerHTML = items.map((a, i) => `
+                <div class="p-2 bg-slate-900 border border-slate-700 flex items-center justify-between gap-2">
+                    <div class="min-w-0 flex-1">
+                        <span class="text-[10px] font-mono text-mars-cyan uppercase block">${this.escapeHTML(a.news_site || 'SNAPI')}</span>
+                        <span class="text-xs text-white font-bold line-clamp-2">${this.escapeHTML(a.title || '')}</span>
+                    </div>
+                    <button type="button" onclick="ui.applySnapiImporterItem(${i})" class="min-h-[44px] px-3 py-1.5 bg-mars-cyan text-black font-black text-[11px] uppercase hover:bg-white transition-colors shrink-0">
+                        📥 Cargar
+                    </button>
+                </div>
+            `).join('');
+        } catch (e) {
+            this._snapiImporterItems = this.getSpaceflightWireFallback();
+            listEl.innerHTML = `
+                <p class="text-[11px] font-mono text-amber-300 p-1">⚠️ API externa no accesible en este momento. Mostrando cables locales de respaldo:</p>
+                ${this._snapiImporterItems.slice(0, 3).map((a, i) => `
+                    <div class="p-2 bg-slate-900 border border-slate-700 flex items-center justify-between gap-2">
+                        <span class="text-xs text-white font-bold truncate">${this.escapeHTML(a.title)}</span>
+                        <button type="button" onclick="ui.applySnapiImporterItem(${i})" class="min-h-[44px] px-3 py-1 bg-amber-400 text-black font-black text-[11px] uppercase shrink-0">📥 Cargar</button>
+                    </div>
+                `).join('')}
+            `;
+        }
+    },
+
+    applySnapiImporterItem(idx) {
+        const items = Array.isArray(this._snapiImporterItems) ? this._snapiImporterItems : [];
+        const art = items[idx];
+        if (!art) return;
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+        setVal('offnews-title-en', art.title || '');
+        setVal('offnews-subtitle-en', art.summary ? art.summary.slice(0, 220) : '');
+        setVal('offnews-body-en', art.summary || '');
+        setVal('offnews-source-name', art.news_site || 'Spaceflight News API');
+        setVal('offnews-source-url', art.url || '');
+        if (art.image_url) {
+            setVal('offnews-url', art.image_url);
+            setVal('offnews-img-data', '');
+            this.previewNanoBananaUrl(art.image_url, 'offnews-preview');
+        }
+        const titleEs = document.getElementById('offnews-title');
+        if (titleEs && !titleEs.value.trim()) titleEs.value = art.title || '';
+        const bodyEs = document.getElementById('offnews-body');
+        if (bodyEs && !bodyEs.value.trim()) bodyEs.value = art.summary || '';
+        this.notify("🛰️ Datos cargados desde SNAPI v4. Adapta el texto al español y añade el impacto MARS-KET.", "success");
+    },
+
+    applyNewsPedagogicPreset(presetKey) {
+        const presets = {
+            B2B: {
+                impactEs: 'Revisa el inventario de tu Taller: cualquier componente probado que no uses puede venderse en el Mercado Secundario B2B (DOC_9) para recuperar €v antes del cierre de fase.',
+                impactEn: 'Check your Workshop inventory: any tested part you no longer need can be listed on the B2B Secondary Market (DOC_9) to recover €v before phase close.',
+                debateEs: '¿Conviene fabricar o comprar componentes nuevos, o podemos cerrar un acuerdo B2B más rentable con otra startup de la clase?',
+                debateEn: 'Should we buy new catalog parts, or negotiate a more cost-effective B2B contract with a rival startup?'
+            },
+            EFFICIENCY: {
+                impactEs: 'En el Banco de Pruebas de I+D, recuerda que la eficiencia E = Altura / Coste premia el equilibrio entre rendimiento aerodinámico y disciplina presupuestaria.',
+                impactEn: 'In the R&D Test Bench, remember that efficiency E = Height / Cost rewards the balance between aerodynamic performance and budget discipline.',
+                debateEs: '¿Qué parámetro de nuestro próximo lanzamiento (masa de reactivos o geometría de aletas) ofrece mayor mejora de E por cada €v invertido?',
+                debateEn: 'Which parameter in our next test flight (propellant mass or fin geometry) yields the highest E improvement per €v spent?'
+            },
+            PRESS: {
+                impactEs: 'Las startups que comunican con rigor técnico sus avances en la Nota de Prensa (DOC_15) refuerzan su posicionamiento ante patrocinadores y contratos.',
+                impactEn: 'Startups that communicate technical milestones rigorously in their Press Release (DOC_15) strengthen their standing for sponsors and contracts.',
+                debateEs: '¿Qué logro técnico o financiero de esta fase debe encabezar nuestra próxima Nota de Prensa DOC_15?',
+                debateEn: 'Which technical or financial milestone from this phase should lead our upcoming DOC_15 Press Release?'
+            }
+        };
+        const p = presets[presetKey];
+        if (!p) return;
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        setVal('offnews-impact', p.impactEs);
+        setVal('offnews-impact-en', p.impactEn);
+        setVal('offnews-debate', p.debateEs);
+        setVal('offnews-debate-en', p.debateEn);
+    },
+
+    modalPublishOfficialNews(prefillSnapi = null) {
+        if (!this.isNewsCoordinator()) return this.notify("Acceso restringido exclusivamente a Coordinación.", "error");
 
         const companies = state.data?.companies || {};
         const coList = Object.keys(companies).map(cid => ({
@@ -3023,36 +3317,76 @@ Object.assign(ui, {
             classGroup: companies[cid].classGroup || 'A'
         })).sort((a, b) => a.name.localeCompare(b.name));
 
+        const preTitleEn = prefillSnapi?.title || '';
+        const preSummaryEn = prefillSnapi?.summary || '';
+        const preImg = prefillSnapi?.image_url || '';
+        const preSrcName = prefillSnapi?.news_site || '';
+        const preSrcUrl = prefillSnapi?.url || '';
+
         const html = `
             <div class="space-y-4 text-xs font-sans">
-                <div class="p-3 bg-amber-950/40 border border-amber-500/50 rounded flex items-start gap-2 text-amber-200">
-                    <span class="text-lg">🍌</span>
-                    <div>
-                        <strong class="font-bold text-amber-300 block uppercase font-orbitron text-xs">Agencia Espacial AEE // Crónicas & Nano Banana 3</strong>
-                        <span>Publica una crónica oficial para toda la misión. Puedes acompañarla de una imagen generada con Nano Banana 3 (subiendo el archivo o pegando el enlace).</span>
+                <div class="p-3 bg-cyan-950/40 border border-mars-cyan/50 rounded space-y-2">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <strong class="font-bold text-mars-cyan uppercase font-orbitron text-xs">🛰️ Importar Noticia Real (Spaceflight News API v4)</strong>
+                        <button type="button" onclick="ui.loadSnapiImporterList()" class="min-h-[44px] bg-mars-cyan text-black px-3 py-1.5 text-xs font-black uppercase hover:bg-white transition-colors">
+                            📡 Buscar en SNAPI v4
+                        </button>
                     </div>
-                </div>
-
-                <div>
-                    <label for="offnews-title" class="text-xs text-amber-400 uppercase font-bold block mb-1 font-mono">Titular de la Noticia / Crónica *</label>
-                    <input type="text" id="offnews-title" placeholder="Ej: Éxito en la primera fase de ensayos de propulsión marciana..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white uppercase outline-none font-sans" required>
+                    <div class="flex gap-2">
+                        <input type="text" id="snapi-importer-query" value="rocket" placeholder="Ej: rocket, Mars, SpaceX, ESA..." class="flex-1 min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white outline-none focus:border-mars-cyan">
+                    </div>
+                    <div id="snapi-importer-results" class="space-y-1.5 max-h-48 overflow-y-auto"></div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
+                        <label for="offnews-category" class="text-xs text-amber-400 uppercase font-bold block mb-1 font-mono">Antetítulo / Categoría (ES) *</label>
+                        <input type="text" id="offnews-category" value="ACTUALIDAD AEROESPACIAL" placeholder="Ej: PROPULSIÓN & I+D" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white uppercase outline-none">
+                    </div>
+                    <div>
+                        <label for="offnews-category-en" class="text-xs text-cyan-300 uppercase font-bold block mb-1 font-mono">Category Kicker (EN)</label>
+                        <input type="text" id="offnews-category-en" value="AEROSPACE DISPATCH" placeholder="e.g. PROPULSION & R&D" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-mars-cyan p-2.5 text-xs text-white uppercase outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label for="offnews-title" class="text-xs text-amber-400 uppercase font-bold block mb-1 font-mono">Titular (Español) *</label>
+                        <input type="text" id="offnews-title" value="${this.escapeAttr(preTitleEn)}" placeholder="Titular principal en castellano..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none" required>
+                    </div>
+                    <div>
+                        <label for="offnews-title-en" class="text-xs text-cyan-300 uppercase font-bold block mb-1 font-mono">Headline (English)</label>
+                        <input type="text" id="offnews-title-en" value="${this.escapeAttr(preTitleEn)}" placeholder="English headline..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-mars-cyan p-2.5 text-xs text-white outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label for="offnews-subtitle" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Entradilla (Español)</label>
+                        <input type="text" id="offnews-subtitle" placeholder="Resumen breve en cursiva bajo el titular..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none">
+                    </div>
+                    <div>
+                        <label for="offnews-subtitle-en" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Subheadline (English)</label>
+                        <input type="text" id="offnews-subtitle-en" value="${this.escapeAttr(preSummaryEn.slice(0, 220))}" placeholder="Short summary..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-mars-cyan p-2.5 text-xs text-white outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
                         <label for="offnews-phase" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Fase Asociada</label>
                         <select id="offnews-phase" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none">
-                            <option value="ALL" selected>Todas / Misión Global</option>
-                            <option value="I">Fase I: Fundación & Viabilidad</option>
-                            <option value="II">Fase II: I+D y Prototipado Aeroespacial</option>
-                            <option value="III">Fase III: Producción y Finanzas B2B</option>
-                            <option value="IV">Fase IV: Validación Científica</option>
+                            <option value="ALL" selected>Todas / Global</option>
+                            <option value="I">Fase I</option>
+                            <option value="II">Fase II</option>
+                            <option value="III">Fase III</option>
+                            <option value="IV">Fase IV</option>
+                            <option value="V">Fase V</option>
                         </select>
                     </div>
                     <div>
                         <label for="offnews-class" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Clase Destino</label>
                         <select id="offnews-class" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none">
-                            <option value="ALL" selected>Todas las Clases (A-F y TEST)</option>
+                            <option value="ALL" selected>Todas (A-F y TEST)</option>
                             <option value="A">Clase A</option>
                             <option value="B">Clase B</option>
                             <option value="C">Clase C</option>
@@ -3062,149 +3396,218 @@ Object.assign(ui, {
                             <option value="TEST">Clase TEST</option>
                         </select>
                     </div>
+                    <div>
+                        <label for="offnews-company" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Startup (Opcional)</label>
+                        <select id="offnews-company" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none">
+                            <option value="">-- General --</option>
+                            ${coList.map(c => `<option value="${this.escapeAttr(c.id)}">${this.escapeHTML(c.name)} [${this.escapeHTML(c.classGroup)}]</option>`).join('')}
+                        </select>
+                    </div>
                 </div>
 
-                <div>
-                    <label for="offnews-company" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Vincular a una Startup (Opcional)</label>
-                    <select id="offnews-company" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none">
-                        <option value="">-- Sin startup específica (Comunicado General) --</option>
-                        ${coList.map(c => `
-                            <option value="${this.escapeAttr(c.id)}">${this.escapeHTML(c.name)} [Clase ${this.escapeHTML(c.classGroup)}]</option>
-                        `).join('')}
-                    </select>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <div class="flex justify-between items-center mb-1 flex-wrap gap-1">
+                            <label for="offnews-body" class="text-xs text-amber-400 uppercase font-bold font-mono">Cuerpo (Español) *</label>
+                            <div class="flex items-center gap-1">
+                                <button type="button" onclick="ui.insertFormatTag('offnews-body', '**', '**')" class="min-h-[32px] px-2 bg-slate-800 border border-slate-700 text-white font-bold text-xs">B</button>
+                                <button type="button" onclick="ui.insertFormatTag('offnews-body', '*', '*')" class="min-h-[32px] px-2 bg-slate-800 border border-slate-700 text-white italic text-xs">I</button>
+                                <button type="button" onclick="ui.insertFormatTag('offnews-body', '\\n- ', '')" class="min-h-[32px] px-2 bg-slate-800 border border-slate-700 text-cyan-300 text-[11px]">• Lista</button>
+                            </div>
+                        </div>
+                        <textarea id="offnews-body" rows="5" placeholder="Redacta o adapta la noticia al español..." class="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white font-sans outline-none">${this.escapeHTML(preSummaryEn)}</textarea>
+                    </div>
+                    <div>
+                        <label for="offnews-body-en" class="text-xs text-cyan-300 uppercase font-bold block mb-1 font-mono">Body (English)</label>
+                        <textarea id="offnews-body-en" rows="5" placeholder="English body text (optional or imported)..." class="w-full bg-slate-900 border border-slate-700 focus:border-mars-cyan p-2.5 text-xs text-white font-sans outline-none">${this.escapeHTML(preSummaryEn)}</textarea>
+                    </div>
                 </div>
 
-                <div>
-                    <div class="flex justify-between items-center mb-1 flex-wrap gap-1">
-                        <label for="offnews-body" class="text-xs text-amber-400 uppercase font-bold font-mono">Cuerpo de la Crónica Oficial *</label>
-                        <div class="flex items-center gap-1">
-                            <button type="button" onclick="ui.insertFormatTag('offnews-body', '**', '**')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white font-bold text-xs rounded transition-colors" title="Negrita (**texto**)">
-                                <strong>B</strong>
-                            </button>
-                            <button type="button" onclick="ui.insertFormatTag('offnews-body', '*', '*')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white italic text-xs rounded transition-colors" title="Cursiva (*texto*)">
-                                <em>I</em>
-                            </button>
-                            <button type="button" onclick="ui.insertFormatTag('offnews-body', '\n\n', '')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-amber-300 font-mono text-[11px] rounded transition-colors" title="Nuevo Párrafo">
-                                ¶ Párrafo
-                            </button>
-                            <button type="button" onclick="ui.insertFormatTag('offnews-body', '\n- ', '')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-cyan-300 font-mono text-[11px] rounded transition-colors" title="Lista con viñetas">
-                                • Lista
-                            </button>
+                <div class="p-3 bg-slate-950 border border-mars-cyan/40 rounded space-y-2">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <span class="text-xs font-orbitron font-bold text-mars-cyan uppercase">🧭 Conexión Pedagógica MARS-KET</span>
+                        <div class="flex gap-1.5 flex-wrap">
+                            <button type="button" onclick="ui.applyNewsPedagogicPreset('B2B')" class="min-h-[36px] px-2.5 py-1 bg-slate-800 border border-slate-600 text-[10px] text-amber-300 font-bold uppercase hover:bg-slate-700">⚡ Plantilla B2B</button>
+                            <button type="button" onclick="ui.applyNewsPedagogicPreset('EFFICIENCY')" class="min-h-[36px] px-2.5 py-1 bg-slate-800 border border-slate-600 text-[10px] text-cyan-300 font-bold uppercase hover:bg-slate-700">⚡ Plantilla I+D / E</button>
+                            <button type="button" onclick="ui.applyNewsPedagogicPreset('PRESS')" class="min-h-[36px] px-2.5 py-1 bg-slate-800 border border-slate-600 text-[10px] text-emerald-300 font-bold uppercase hover:bg-slate-700">⚡ Plantilla Prensa</button>
                         </div>
                     </div>
-                    <textarea id="offnews-body" rows="6" placeholder="Redacta la crónica oficial de la Agencia Espacial AEE. Puedes separar párrafos y usar **negrita**, *cursiva* o listas con viñetas..." class="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white font-sans outline-none"></textarea>
-                    <span class="text-[10px] text-slate-400 font-mono block mt-1">Formato admitido: **negrita**, *cursiva*, saltos de párrafo y viñetas (- elemento).</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                            <label for="offnews-impact" class="text-[11px] text-amber-300 font-bold block mb-1">Impacto en tu startup de MARS-KET (ES)</label>
+                            <textarea id="offnews-impact" rows="2" placeholder="Cómo afecta esto a los equipos de 4º ESO..." class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white outline-none"></textarea>
+                        </div>
+                        <div>
+                            <label for="offnews-impact-en" class="text-[11px] text-cyan-300 font-bold block mb-1">Startup Impact (EN)</label>
+                            <textarea id="offnews-impact-en" rows="2" placeholder="Impact on MARS-KET startups..." class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white outline-none"></textarea>
+                        </div>
+                        <div>
+                            <label for="offnews-debate" class="text-[11px] text-amber-300 font-bold block mb-1">Pregunta de debate para el Consejo (ES)</label>
+                            <textarea id="offnews-debate" rows="2" placeholder="Pregunta estratégica para debatir en equipo..." class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white outline-none"></textarea>
+                        </div>
+                        <div>
+                            <label for="offnews-debate-en" class="text-[11px] text-cyan-300 font-bold block mb-1">Boardroom Debate Question (EN)</label>
+                            <textarea id="offnews-debate-en" rows="2" placeholder="Strategic question for the team board..." class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white outline-none"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label for="offnews-source-name" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Fuente / Medio</label>
+                        <input type="text" id="offnews-source-name" value="${this.escapeAttr(preSrcName || 'Consejo Editorial AEE')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none">
+                    </div>
+                    <div>
+                        <label for="offnews-source-url" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Enlace Fuente Original (URL)</label>
+                        <input type="url" id="offnews-source-url" value="${this.escapeAttr(preSrcUrl)}" placeholder="https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none font-mono">
+                    </div>
                 </div>
 
                 <div class="p-3 bg-black/60 border border-slate-800 rounded space-y-3">
-                    <label class="text-xs text-amber-300 uppercase font-bold block font-mono">🎨 Imagen de Portada // Nano Banana 3 (Opcional)</label>
+                    <label class="text-xs text-amber-300 uppercase font-bold block font-mono">🎨 Imagen de Portada // URL o Nano Banana 3</label>
                     <div>
-                        <span class="text-[11px] text-slate-400 block mb-1">Opción 1: Subir imagen generada (se optimiza y comprime automáticamente en tu navegador)</span>
+                        <span class="text-[11px] text-slate-400 block mb-1">Opción 1: Subir imagen generada (se comprime automáticamente)</span>
                         <input type="file" id="offnews-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'offnews-img-data', 'offnews-preview')" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-none file:border-0 file:text-xs file:font-black file:uppercase file:bg-amber-400 file:text-black hover:file:bg-white cursor-pointer">
                     </div>
                     <div>
-                        <span class="text-[11px] text-slate-400 block mb-1">Opción 2: O pegar enlace directo de imagen (Google Drive o URL pública)</span>
-                        <input type="url" id="offnews-url" oninput="ui.previewNanoBananaUrl(this.value, 'offnews-preview')" placeholder="https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none font-mono">
+                        <span class="text-[11px] text-slate-400 block mb-1">Opción 2: URL de imagen (SNAPI / Google Drive / Web)</span>
+                        <input type="url" id="offnews-url" value="${this.escapeAttr(preImg)}" oninput="ui.previewNanoBananaUrl(this.value, 'offnews-preview')" placeholder="https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none font-mono">
                     </div>
                     <input type="hidden" id="offnews-img-data" value="">
-                    <div id="offnews-preview" class="hidden"></div>
+                    <div id="offnews-preview" class="${preImg ? '' : 'hidden'}">
+                        ${preImg ? `<img src="${this.escapeAttr(preImg)}" alt="Preview" class="max-h-40 w-full object-contain border border-cyan-500/40 bg-black">` : ''}
+                    </div>
                 </div>
+
+                <label class="mars-checkbox-label text-xs text-amber-300 font-bold uppercase cursor-pointer">
+                    <input type="checkbox" id="offnews-featured" class="mars-touch-input" checked>
+                    <span class="mars-checkbox-visual"></span>
+                    <span>⭐ Publicar como Noticia de Portada Principal (65% ancho)</span>
+                </label>
             </div>
         `;
 
         const actions = `
             <button type="button" onclick="ui.submitOfficialNews()" class="min-h-[44px] bg-amber-400 text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_15px_rgba(251,191,36,0.4)] w-full sm:w-auto">
-                🚀 Publicar Noticia Oficial
+                🚀 Publicar en ORBITAL REPORT
             </button>
         `;
 
-        this.showModal("🍌 Nueva Noticia Oficial // Nano Banana 3", html, actions);
+        this.showModal("📰 Nueva Edición // ORBITAL REPORT", html, actions);
     },
 
     submitOfficialNews() {
-        const isDocente = Boolean(state.user?.admin || (state.user?.role && (state.user.role === 'DOCENTE' || state.user.role.startsWith('COORD'))));
-        if (!isDocente) return this.notify("Acceso restringido a Coordinación Docente.", "error");
+        if (!this.isNewsCoordinator()) return this.notify("Acceso restringido exclusivamente a Coordinación.", "error");
 
-        const elTitle = document.getElementById('offnews-title');
-        const elBody = document.getElementById('offnews-body');
-        const elPhase = document.getElementById('offnews-phase');
-        const elClass = document.getElementById('offnews-class');
-        const elCompany = document.getElementById('offnews-company');
+        const getVal = (id) => (document.getElementById(id)?.value || '').trim();
+        const title = getVal('offnews-title');
+        const body = getVal('offnews-body');
+        if (!title) return this.notify("Debes indicar un titular en español para la noticia.", "warning");
+        if (!body) return this.notify("Debes redactar el cuerpo del artículo.", "warning");
+
         const elImgData = document.getElementById('offnews-img-data');
         const elUrl = document.getElementById('offnews-url');
+        const imageUrl = (elImgData && elImgData.value) ? elImgData.value : (elUrl ? elUrl.value.trim() : '');
 
-        const title = elTitle ? elTitle.value.trim() : '';
-        const body = elBody ? elBody.value.trim() : '';
-        if (!title) return this.notify("Debes indicar un titular para la noticia.", "warning");
-        if (!body) return this.notify("Debes redactar el cuerpo de la crónica.", "warning");
-
-        const phase = elPhase ? elPhase.value : 'ALL';
-        const classGroup = elClass ? elClass.value : 'ALL';
-        const coId = elCompany ? elCompany.value : '';
+        const coId = getVal('offnews-company');
         const coName = coId && state.data?.companies?.[coId] ? state.data.companies[coId].name : '';
-
-        let imageUrl = '';
-        if (elImgData && elImgData.value) {
-            imageUrl = elImgData.value;
-        } else if (elUrl && elUrl.value.trim()) {
-            imageUrl = elUrl.value.trim();
-        }
-
+        const isFeatured = Boolean(document.getElementById('offnews-featured')?.checked);
         const now = Date.now();
-        const newsItem = {
-            id: 'OFFNEWS-' + now + '-' + Math.floor(Math.random() * 1000).toString().padStart(3, '0'),
+
+        const newsItem = state.normalizeNewsItem({
+            id: 'NEWS-' + now + '-' + Math.floor(Math.random() * 1000).toString().padStart(3, '0'),
+            category: getVal('offnews-category') || 'ACTUALIDAD AEROESPACIAL',
+            categoryEn: getVal('offnews-category-en') || 'AEROSPACE DISPATCH',
             title: title,
+            subtitle: getVal('offnews-subtitle'),
             body: body,
-            phase: phase,
-            classGroup: classGroup,
+            titleEn: getVal('offnews-title-en'),
+            subtitleEn: getVal('offnews-subtitle-en'),
+            bodyEn: getVal('offnews-body-en'),
+            imageUrl: imageUrl || null,
+            sourceName: getVal('offnews-source-name') || 'Consejo Editorial AEE',
+            sourceUrl: getVal('offnews-source-url'),
+            marsketImpact: getVal('offnews-impact'),
+            marsketImpactEn: getVal('offnews-impact-en'),
+            debateQuestion: getVal('offnews-debate'),
+            debateQuestionEn: getVal('offnews-debate-en'),
+            phase: getVal('offnews-phase') || 'ALL',
+            classGroup: getVal('offnews-class') || 'ALL',
             coId: coId || null,
             companyName: coName || null,
-            imageUrl: imageUrl || null,
             author: state.user?.name || (state.user?.role ? `Coordinación (${state.user.role})` : 'Coordinación AEE'),
             publishedAt: now,
-            publishedDate: new Date().toLocaleDateString()
-        };
+            updatedAt: now,
+            publishedDate: new Date().toLocaleDateString('es-ES'),
+            featured: isFeatured
+        });
 
-        state.data.officialNews = Array.isArray(state.data.officialNews) ? state.data.officialNews : [];
-        state.data.officialNews.unshift(newsItem);
+        let list = Array.isArray(state.data.news) ? state.data.news : [];
+        if (isFeatured) {
+            list = list.map(n => ({ ...n, featured: false, updatedAt: now }));
+        }
+        list.unshift(newsItem);
+        state.data.news = state.resolveFeaturedNews(list);
+        state.data.officialNews = state.data.news;
 
         state.save();
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
-        ui.pushNotification('ALL', 'ALL', `🪐 [AEE Prensa] Nueva crónica oficial publicada: "${title}".`, 'info', { view: 'news' });
+        ui.pushNotification('ALL', 'ALL', `📰 [ORBITAL REPORT] Nuevo artículo publicado: "${title}".`, 'info', { view: 'news' });
 
         this.closeModal();
         this.render();
-        this.notify("✅ Crónica Oficial publicada con éxito en el Tablón de Noticias.", "success");
+        this.notify("✅ Artículo publicado en ORBITAL REPORT.", "success");
     },
 
     deleteOfficialNews(newsId) {
-        const isDocente = Boolean(state.user?.admin || (state.user?.role && (state.user.role === 'DOCENTE' || state.user.role.startsWith('COORD'))));
-        if (!isDocente) return this.notify("Solo Coordinación puede retirar noticias.", "error");
+        if (!this.isNewsCoordinator()) return this.notify("Solo Coordinación puede retirar noticias.", "error");
 
         this.confirmModal(
-            "¿Retirar Noticia Oficial?",
-            "Esta noticia se eliminará definitivamente del Tablón de Noticias para todos los alumnos.",
+            "¿Retirar Artículo de ORBITAL REPORT?",
+            "Este artículo se eliminará definitivamente del periódico para todos los alumnos.",
             () => {
-                state.data.deletedOfficialNewsIds = Array.isArray(state.data.deletedOfficialNewsIds) ? state.data.deletedOfficialNewsIds : [];
-                state.data.deletedOfficialNewsIds.push(String(newsId));
+                state.data.deletedNewsIds = Array.isArray(state.data.deletedNewsIds) ? state.data.deletedNewsIds : [];
+                if (!state.data.deletedNewsIds.includes(String(newsId))) {
+                    state.data.deletedNewsIds.push(String(newsId));
+                }
+                state.data.deletedOfficialNewsIds = state.data.deletedNewsIds;
 
-                state.data.officialNews = (state.data.officialNews || []).filter(n => String(n.id) !== String(newsId));
+                const remaining = (state.data.news || []).filter(n => String(n.id) !== String(newsId));
+                state.data.news = state.resolveFeaturedNews(remaining);
+                state.data.officialNews = state.data.news;
 
                 state.save();
                 if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+                this.closeModal();
                 this.render();
-                this.notify("🗑️ Noticia oficial retirada del tablón.", "info");
+                this.notify("🗑️ Artículo retirado del periódico.", "info");
             }
         );
     },
 
-    modalEditOfficialNews(newsId) {
-        const isDocente = Boolean(state.user?.admin || (state.user?.role && (state.user.role === 'DOCENTE' || state.user.role.startsWith('COORD'))));
-        if (!isDocente) return this.notify("Acceso restringido a Coordinación Docente.", "error");
+    setNewsFeatured(newsId) {
+        if (!this.isNewsCoordinator()) return this.notify("Solo Coordinación puede fijar la portada.", "error");
+        const now = Date.now();
+        const list = (state.data.news || []).map(n => {
+            if (!n) return n;
+            const isTarget = String(n.id) === String(newsId);
+            return { ...n, featured: isTarget, updatedAt: now };
+        });
+        state.data.news = state.resolveFeaturedNews(list);
+        state.data.officialNews = state.data.news;
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.closeModal();
+        this.render();
+        this.notify("⭐ Artículo fijado como Portada Principal.", "success");
+    },
 
-        const news = (state.data?.officialNews || []).find(n => String(n.id) === String(newsId));
-        if (!news) return this.notify("Crónica oficial no localizada.", "error");
+    modalEditOfficialNews(newsId) {
+        if (!this.isNewsCoordinator()) return this.notify("Acceso restringido exclusivamente a Coordinación.", "error");
+
+        const news = (state.data?.news || []).find(n => String(n.id) === String(newsId));
+        if (!news) return this.notify("Artículo no localizado.", "error");
 
         const companies = state.data?.companies || {};
         const coList = Object.keys(companies).map(cid => ({
@@ -3218,167 +3621,200 @@ Object.assign(ui, {
 
         const html = `
             <div class="space-y-4 text-xs font-sans">
-                <div class="p-3 bg-amber-950/40 border border-amber-500/50 rounded flex items-start gap-2 text-amber-200">
-                    <span class="text-lg">✏️</span>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <strong class="font-bold text-amber-300 block uppercase font-orbitron text-xs">Editar Crónica Oficial AEE</strong>
-                        <span>Modifica el titular, cuerpo de texto o actualiza la portada de Nano Banana 3. Los cambios se sincronizarán en los paneles de todos los alumnos.</span>
+                        <label for="offnews-edit-category" class="text-xs text-amber-400 uppercase font-bold block mb-1 font-mono">Categoría (ES)</label>
+                        <input type="text" id="offnews-edit-category" value="${this.escapeAttr(news.category || '')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white uppercase outline-none">
                     </div>
-                </div>
-
-                <div>
-                    <label for="offnews-edit-title" class="text-xs text-amber-400 uppercase font-bold block mb-1 font-mono">Titular de la Noticia / Crónica *</label>
-                    <input type="text" id="offnews-edit-title" value="${this.escapeAttr(news.title || '')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white uppercase outline-none font-sans" required>
+                    <div>
+                        <label for="offnews-edit-category-en" class="text-xs text-cyan-300 uppercase font-bold block mb-1 font-mono">Category (EN)</label>
+                        <input type="text" id="offnews-edit-category-en" value="${this.escapeAttr(news.categoryEn || '')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white uppercase outline-none">
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label for="offnews-edit-phase" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Fase Asociada</label>
-                        <select id="offnews-edit-phase" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none">
-                            <option value="ALL" ${news.phase === 'ALL' ? 'selected' : ''}>Todas / Misión Global</option>
-                            <option value="I" ${news.phase === 'I' ? 'selected' : ''}>Fase I: Fundación & Viabilidad</option>
-                            <option value="II" ${news.phase === 'II' ? 'selected' : ''}>Fase II: I+D y Prototipado Aeroespacial</option>
-                            <option value="III" ${news.phase === 'III' ? 'selected' : ''}>Fase III: Producción y Finanzas B2B</option>
-                            <option value="IV" ${news.phase === 'IV' ? 'selected' : ''}>Fase IV: Validación Científica</option>
+                        <label for="offnews-edit-title" class="text-xs text-amber-400 uppercase font-bold block mb-1 font-mono">Titular (Español) *</label>
+                        <input type="text" id="offnews-edit-title" value="${this.escapeAttr(news.title || '')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none" required>
+                    </div>
+                    <div>
+                        <label for="offnews-edit-title-en" class="text-xs text-cyan-300 uppercase font-bold block mb-1 font-mono">Headline (English)</label>
+                        <input type="text" id="offnews-edit-title-en" value="${this.escapeAttr(news.titleEn || '')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label for="offnews-edit-subtitle" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Entradilla (ES)</label>
+                        <input type="text" id="offnews-edit-subtitle" value="${this.escapeAttr(news.subtitle || '')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none">
+                    </div>
+                    <div>
+                        <label for="offnews-edit-subtitle-en" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Subheadline (EN)</label>
+                        <input type="text" id="offnews-edit-subtitle-en" value="${this.escapeAttr(news.subtitleEn || '')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label for="offnews-edit-phase" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Fase</label>
+                        <select id="offnews-edit-phase" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none">
+                            <option value="ALL" ${news.phase === 'ALL' ? 'selected' : ''}>Todas</option>
+                            <option value="I" ${news.phase === 'I' ? 'selected' : ''}>Fase I</option>
+                            <option value="II" ${news.phase === 'II' ? 'selected' : ''}>Fase II</option>
+                            <option value="III" ${news.phase === 'III' ? 'selected' : ''}>Fase III</option>
+                            <option value="IV" ${news.phase === 'IV' ? 'selected' : ''}>Fase IV</option>
+                            <option value="V" ${news.phase === 'V' ? 'selected' : ''}>Fase V</option>
                         </select>
                     </div>
                     <div>
-                        <label for="offnews-edit-class" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Clase Destino</label>
-                        <select id="offnews-edit-class" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none">
-                            <option value="ALL" ${news.classGroup === 'ALL' ? 'selected' : ''}>Todas las Clases (A-F y TEST)</option>
-                            <option value="A" ${news.classGroup === 'A' ? 'selected' : ''}>Clase A</option>
-                            <option value="B" ${news.classGroup === 'B' ? 'selected' : ''}>Clase B</option>
-                            <option value="C" ${news.classGroup === 'C' ? 'selected' : ''}>Clase C</option>
-                            <option value="D" ${news.classGroup === 'D' ? 'selected' : ''}>Clase D</option>
-                            <option value="E" ${news.classGroup === 'E' ? 'selected' : ''}>Clase E</option>
-                            <option value="F" ${news.classGroup === 'F' ? 'selected' : ''}>Clase F</option>
-                            <option value="TEST" ${news.classGroup === 'TEST' ? 'selected' : ''}>Clase TEST</option>
+                        <label for="offnews-edit-class" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Clase</label>
+                        <select id="offnews-edit-class" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none">
+                            <option value="ALL" ${news.classGroup === 'ALL' ? 'selected' : ''}>Todas</option>
+                            ${['A', 'B', 'C', 'D', 'E', 'F', 'TEST'].map(c => `<option value="${c}" ${news.classGroup === c ? 'selected' : ''}>Clase ${c}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="offnews-edit-company" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Startup</label>
+                        <select id="offnews-edit-company" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none">
+                            <option value="">-- General --</option>
+                            ${coList.map(c => `<option value="${this.escapeAttr(c.id)}" ${news.coId === c.id ? 'selected' : ''}>${this.escapeHTML(c.name)} [${this.escapeHTML(c.classGroup)}]</option>`).join('')}
                         </select>
                     </div>
                 </div>
 
-                <div>
-                    <label for="offnews-edit-company" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Vincular a una Startup (Opcional)</label>
-                    <select id="offnews-edit-company" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none">
-                        <option value="">-- Sin startup específica (Comunicado General) --</option>
-                        ${coList.map(c => `
-                            <option value="${this.escapeAttr(c.id)}" ${news.coId === c.id ? 'selected' : ''}>${this.escapeHTML(c.name)} [Clase ${this.escapeHTML(c.classGroup)}]</option>
-                        `).join('')}
-                    </select>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label for="offnews-edit-body" class="text-xs text-amber-400 uppercase font-bold block mb-1 font-mono">Cuerpo (ES) *</label>
+                        <textarea id="offnews-edit-body" rows="5" class="w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white font-sans outline-none">${this.escapeHTML(news.body || '')}</textarea>
+                    </div>
+                    <div>
+                        <label for="offnews-edit-body-en" class="text-xs text-cyan-300 uppercase font-bold block mb-1 font-mono">Body (EN)</label>
+                        <textarea id="offnews-edit-body-en" rows="5" class="w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white font-sans outline-none">${this.escapeHTML(news.bodyEn || '')}</textarea>
+                    </div>
                 </div>
 
-                <div>
-                    <div class="flex justify-between items-center mb-1 flex-wrap gap-1">
-                        <label for="offnews-edit-body" class="text-xs text-amber-400 uppercase font-bold font-mono">Cuerpo de la Crónica Oficial *</label>
-                        <div class="flex items-center gap-1">
-                            <button type="button" onclick="ui.insertFormatTag('offnews-edit-body', '**', '**')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white font-bold text-xs rounded transition-colors" title="Negrita (**texto**)">
-                                <strong>B</strong>
-                            </button>
-                            <button type="button" onclick="ui.insertFormatTag('offnews-edit-body', '*', '*')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-white italic text-xs rounded transition-colors" title="Cursiva (*texto*)">
-                                <em>I</em>
-                            </button>
-                            <button type="button" onclick="ui.insertFormatTag('offnews-edit-body', '\\n\\n', '')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-amber-300 font-mono text-[11px] rounded transition-colors" title="Nuevo Párrafo">
-                                ¶ Párrafo
-                            </button>
-                            <button type="button" onclick="ui.insertFormatTag('offnews-edit-body', '\\n- ', '')" class="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-0 px-2 py-0.5 bg-slate-800 border border-slate-700 hover:border-amber-400 text-cyan-300 font-mono text-[11px] rounded transition-colors" title="Lista con viñetas">
-                                • Lista
-                            </button>
-                        </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                        <label for="offnews-edit-impact" class="text-[11px] text-amber-300 font-bold block mb-1">Impacto MARS-KET (ES)</label>
+                        <textarea id="offnews-edit-impact" rows="2" class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white outline-none">${this.escapeHTML(news.marsketImpact || '')}</textarea>
                     </div>
-                    <textarea id="offnews-edit-body" rows="6" class="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white font-sans outline-none">${this.escapeHTML(news.body || '')}</textarea>
-                    <span class="text-[10px] text-slate-400 font-mono block mt-1">Formato admitido: **negrita**, *cursiva*, saltos de párrafo y viñetas (- elemento).</span>
+                    <div>
+                        <label for="offnews-edit-impact-en" class="text-[11px] text-cyan-300 font-bold block mb-1">Startup Impact (EN)</label>
+                        <textarea id="offnews-edit-impact-en" rows="2" class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white outline-none">${this.escapeHTML(news.marsketImpactEn || '')}</textarea>
+                    </div>
+                    <div>
+                        <label for="offnews-edit-debate" class="text-[11px] text-amber-300 font-bold block mb-1">Pregunta Debate (ES)</label>
+                        <textarea id="offnews-edit-debate" rows="2" class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white outline-none">${this.escapeHTML(news.debateQuestion || '')}</textarea>
+                    </div>
+                    <div>
+                        <label for="offnews-edit-debate-en" class="text-[11px] text-cyan-300 font-bold block mb-1">Debate Question (EN)</label>
+                        <textarea id="offnews-edit-debate-en" rows="2" class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white outline-none">${this.escapeHTML(news.debateQuestionEn || '')}</textarea>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label for="offnews-edit-source-name" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">Fuente</label>
+                        <input type="text" id="offnews-edit-source-name" value="${this.escapeAttr(news.sourceName || '')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none">
+                    </div>
+                    <div>
+                        <label for="offnews-edit-source-url" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">URL Fuente</label>
+                        <input type="url" id="offnews-edit-source-url" value="${this.escapeAttr(news.sourceUrl || '')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none font-mono">
+                    </div>
                 </div>
 
                 <div class="p-3 bg-black/60 border border-slate-800 rounded space-y-3">
-                    <label class="text-xs text-amber-300 uppercase font-bold block font-mono">🎨 Portada // Nano Banana 3</label>
+                    <label class="text-xs text-amber-300 uppercase font-bold block font-mono">🎨 Portada // URL o Nano Banana 3</label>
                     ${hasExistingImg ? `
-                        <div id="offnews-edit-current-img" class="p-2.5 bg-slate-950 border border-amber-500/40 rounded flex items-center justify-between gap-3 flex-wrap">
-                            <div class="flex items-center gap-3">
-                                <img src="${this.escapeHTML(existingImg)}" class="w-14 h-14 object-cover rounded border border-slate-700" alt="Portada actual">
-                                <div>
-                                    <span class="text-[11px] text-amber-300 font-bold block font-mono">Portada cargada actualmente</span>
-                                    <span class="text-[10px] text-slate-400">Puedes conservarla o sustituirla a continuación.</span>
-                                </div>
-                            </div>
-                            <button type="button" onclick="document.getElementById('offnews-edit-img-data').value = ''; document.getElementById('offnews-edit-url').value = ''; document.getElementById('offnews-edit-current-img').classList.add('hidden'); ui.notify('Portada marcada para eliminar al guardar.', 'info');" class="min-h-[44px] px-3 py-1 bg-red-950/60 border border-red-500 text-red-300 hover:bg-red-800 hover:text-white text-xs font-bold uppercase transition-colors">
+                        <div id="offnews-edit-current-img" class="p-2 bg-slate-950 border border-amber-500/40 rounded flex items-center justify-between gap-2 flex-wrap">
+                            <img src="${this.escapeAttr(existingImg)}" class="w-16 h-10 object-cover rounded border border-slate-700" alt="Portada actual">
+                            <button type="button" onclick="document.getElementById('offnews-edit-img-data').value = ''; document.getElementById('offnews-edit-url').value = ''; document.getElementById('offnews-edit-current-img').classList.add('hidden');" class="min-h-[44px] px-3 py-1 bg-red-950/60 border border-red-500 text-red-300 text-xs font-bold uppercase">
                                 🗑️ Quitar Portada
                             </button>
                         </div>
                     ` : ''}
-
-                    <div>
-                        <span class="text-[11px] text-slate-400 block mb-1">Subir nueva imagen optimizada</span>
-                        <input type="file" id="offnews-edit-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'offnews-edit-img-data', 'offnews-edit-preview')" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-none file:border-0 file:text-xs file:font-black file:uppercase file:bg-amber-400 file:text-black hover:file:bg-white cursor-pointer">
-                    </div>
-                    <div>
-                        <span class="text-[11px] text-slate-400 block mb-1">O pegar enlace directo de imagen (Drive o URL)</span>
-                        <input type="url" id="offnews-edit-url" value="${hasExistingImg && existingImg.startsWith('http') ? this.escapeAttr(existingImg) : ''}" oninput="ui.previewNanoBananaUrl(this.value, 'offnews-edit-preview')" placeholder="https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none font-mono">
-                    </div>
+                    <input type="file" id="offnews-edit-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'offnews-edit-img-data', 'offnews-edit-preview')" class="w-full text-xs text-slate-300">
+                    <input type="url" id="offnews-edit-url" value="${hasExistingImg && existingImg.startsWith('http') ? this.escapeAttr(existingImg) : ''}" oninput="ui.previewNanoBananaUrl(this.value, 'offnews-edit-preview')" placeholder="https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none font-mono">
                     <input type="hidden" id="offnews-edit-img-data" value="${hasExistingImg ? this.escapeAttr(existingImg) : ''}">
                     <div id="offnews-edit-preview" class="hidden"></div>
                 </div>
+
+                <label class="mars-checkbox-label text-xs text-amber-300 font-bold uppercase cursor-pointer">
+                    <input type="checkbox" id="offnews-edit-featured" class="mars-touch-input" ${news.featured ? 'checked' : ''}>
+                    <span class="mars-checkbox-visual"></span>
+                    <span>⭐ Destacar como Portada Principal</span>
+                </label>
             </div>
         `;
 
         const actions = `
             <div class="flex gap-2 flex-wrap justify-end w-full">
-                <button type="button" onclick="ui.closeModal()" class="min-h-[44px] bg-slate-800 text-white px-4 py-2 text-xs font-bold uppercase hover:bg-slate-700 transition-all">Cancelar</button>
-                <button type="button" onclick="ui.submitEditOfficialNews('${this.escapeHTML(newsId)}')" class="min-h-[44px] bg-amber-400 text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_15px_rgba(251,191,36,0.4)]">
+                <button type="button" onclick="ui.closeModal()" class="min-h-[44px] bg-slate-800 text-white px-4 py-2 text-xs font-bold uppercase">Cancelar</button>
+                <button type="button" onclick="ui.submitEditOfficialNews('${this.escapeHTML(newsId)}')" class="min-h-[44px] bg-amber-400 text-black px-6 py-2.5 text-xs font-black uppercase">
                     💾 Guardar Cambios
                 </button>
             </div>
         `;
 
-        this.showModal(`✏️ Editar Crónica Oficial // ${this.escapeHTML(news.title || '')}`, html, actions);
+        this.showModal(`✏️ Editar Artículo // ${this.escapeHTML(news.title || '')}`, html, actions);
     },
 
     submitEditOfficialNews(newsId) {
-        const isDocente = Boolean(state.user?.admin || (state.user?.role && (state.user.role === 'DOCENTE' || state.user.role.startsWith('COORD'))));
-        if (!isDocente) return this.notify("Acceso restringido a Coordinación Docente.", "error");
+        if (!this.isNewsCoordinator()) return this.notify("Acceso restringido exclusivamente a Coordinación.", "error");
 
-        const news = (state.data?.officialNews || []).find(n => String(n.id) === String(newsId));
-        if (!news) return this.notify("Crónica oficial no localizada.", "error");
+        const list = Array.isArray(state.data?.news) ? state.data.news : [];
+        const news = list.find(n => String(n.id) === String(newsId));
+        if (!news) return this.notify("Artículo no localizado.", "error");
 
-        const elTitle = document.getElementById('offnews-edit-title');
-        const elBody = document.getElementById('offnews-edit-body');
-        const elPhase = document.getElementById('offnews-edit-phase');
-        const elClass = document.getElementById('offnews-edit-class');
-        const elCompany = document.getElementById('offnews-edit-company');
+        const getVal = (id) => (document.getElementById(id)?.value || '').trim();
+        const title = getVal('offnews-edit-title');
+        const body = getVal('offnews-edit-body');
+        if (!title) return this.notify("Debes indicar un titular en español.", "warning");
+        if (!body) return this.notify("Debes redactar el cuerpo del artículo.", "warning");
+
         const elImgData = document.getElementById('offnews-edit-img-data');
         const elUrl = document.getElementById('offnews-edit-url');
+        const imageUrl = (elImgData && elImgData.value) ? elImgData.value : (elUrl ? elUrl.value.trim() : '');
 
-        const title = elTitle ? elTitle.value.trim() : '';
-        const body = elBody ? elBody.value.trim() : '';
-        if (!title) return this.notify("Debes indicar un titular para la noticia.", "warning");
-        if (!body) return this.notify("Debes redactar el cuerpo de la crónica.", "warning");
-
-        const phase = elPhase ? elPhase.value : 'ALL';
-        const classGroup = elClass ? elClass.value : 'ALL';
-        const coId = elCompany ? elCompany.value : '';
+        const coId = getVal('offnews-edit-company');
         const coName = coId && state.data?.companies?.[coId] ? state.data.companies[coId].name : '';
+        const isFeatured = Boolean(document.getElementById('offnews-edit-featured')?.checked);
+        const now = Date.now();
 
-        let imageUrl = '';
-        if (elImgData && elImgData.value) {
-            imageUrl = elImgData.value;
-        } else if (elUrl && elUrl.value.trim()) {
-            imageUrl = elUrl.value.trim();
-        }
-
+        news.category = getVal('offnews-edit-category') || news.category || 'ACTUALIDAD AEROESPACIAL';
+        news.categoryEn = getVal('offnews-edit-category-en') || news.categoryEn || 'AEROSPACE DISPATCH';
         news.title = title;
+        news.subtitle = getVal('offnews-edit-subtitle');
         news.body = body;
-        news.phase = phase;
-        news.classGroup = classGroup;
+        news.titleEn = getVal('offnews-edit-title-en');
+        news.subtitleEn = getVal('offnews-edit-subtitle-en');
+        news.bodyEn = getVal('offnews-edit-body-en');
+        news.marsketImpact = getVal('offnews-edit-impact');
+        news.marsketImpactEn = getVal('offnews-edit-impact-en');
+        news.debateQuestion = getVal('offnews-edit-debate');
+        news.debateQuestionEn = getVal('offnews-edit-debate-en');
+        news.sourceName = getVal('offnews-edit-source-name') || 'Consejo Editorial AEE';
+        news.sourceUrl = getVal('offnews-edit-source-url');
+        news.phase = getVal('offnews-edit-phase') || 'ALL';
+        news.classGroup = getVal('offnews-edit-class') || 'ALL';
         news.coId = coId || null;
         news.companyName = coName || null;
         news.imageUrl = imageUrl || null;
-        news.updatedAt = Date.now();
+        news.featured = isFeatured;
+        news.updatedAt = now;
+
+        const nextList = isFeatured
+            ? list.map(n => (String(n.id) === String(newsId) ? news : { ...n, featured: false, updatedAt: now }))
+            : list;
+        state.data.news = state.resolveFeaturedNews(nextList);
+        state.data.officialNews = state.data.news;
 
         state.save();
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
 
         this.closeModal();
         this.render();
-        this.notify("✅ Crónica Oficial actualizada con éxito.", "success");
+        this.notify("✅ Artículo actualizado en ORBITAL REPORT.", "success");
     },
 
     modalAttachNanoBananaToPR(prId) {
@@ -3523,85 +3959,207 @@ Object.assign(ui, {
         this.notify("✅ Portada e ilustración de Nano Banana 3 vinculada con éxito.", "success");
     },
 
+    approvePressReleaseForNewspaper(coId, phaseKey) {
+        if (!this.canModeratePressReleases()) return this.notify("Solo Lengua (LEN) y Coordinación pueden aprobar Notas de Prensa.", "error");
+        const co = state.data?.companies?.[coId];
+        const pr = co?.pressReleases?.[phaseKey];
+        if (!co || !pr) return this.notify("Nota de prensa no encontrada.", "error");
+
+        const nowTs = Math.max(Date.now(), (Number(pr.updatedAt) || 0) + 1);
+        pr.status = 'PUBLISHED';
+        pr.approvedBy = state.user?.role || 'DOCENTE';
+        pr.approvedAt = nowTs;
+        pr.updatedAt = nowTs;
+        co.updatedAt = nowTs;
+
+        state.data.pressReleases = Array.isArray(state.data.pressReleases) ? state.data.pressReleases : [];
+        const existingGlobal = state.data.pressReleases.find(p => p && String(p.coId) === String(coId) && String(p.phase) === String(phaseKey));
+        if (existingGlobal) {
+            existingGlobal.status = 'PUBLISHED';
+            existingGlobal.updatedAt = nowTs;
+            existingGlobal.approvedBy = pr.approvedBy;
+        } else {
+            state.data.pressReleases.unshift({
+                id: pr.id || ('PR-' + coId + '-' + phaseKey),
+                coId,
+                companyName: co.name,
+                classGroup: co.classGroup || 'A',
+                phase: phaseKey,
+                status: 'PUBLISHED',
+                title: pr.title || `Nota de Prensa Oficial — Cierre Fase ${phaseKey} (${co.name})`,
+                driveUrl: pr.driveUrl,
+                nanoBananaImage: pr.nanoBananaImage || null,
+                editorialNote: pr.editorialNote || null,
+                publishedAt: pr.publishedAt || nowTs,
+                updatedAt: nowTs,
+                publishedDate: pr.publishedDate || new Date(nowTs).toLocaleDateString('es-ES')
+            });
+        }
+
+        const msg = `📰 ¡Enhorabuena! Vuestra Nota de Prensa DOC_15 de Fase ${phaseKey} ha sido aprobada y publicada en ORBITAL REPORT.`;
+        this.pushNotification(coId, 'CEO', msg, 'success', { view: 'news' });
+        this.pushNotification(coId, 'MARKETING', msg, 'success', { view: 'news' });
+
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.notify(`✅ Nota de Prensa de ${co.name} publicada en ORBITAL REPORT.`, "success");
+        this.render();
+    },
+
+    modalReadNewsArticle(newsId) {
+        const list = Array.isArray(state.data?.news) ? state.data.news : [];
+        const art = list.find(n => String(n.id) === String(newsId));
+        if (!art) return this.notify("Artículo no encontrado.", "warning");
+
+        const lang = this.getNewsLang();
+        const isCoord = this.isNewsCoordinator();
+        const cat = this.getLocalizedNewsField(art, 'category') || 'ACTUALIDAD';
+        const title = this.getLocalizedNewsField(art, 'title');
+        const subtitle = this.getLocalizedNewsField(art, 'subtitle');
+        const body = this.getLocalizedNewsField(art, 'body');
+        const impact = this.getLocalizedNewsField(art, 'marsketImpact');
+        const debate = this.getLocalizedNewsField(art, 'debateQuestion');
+        const hasImg = Boolean(art.imageUrl && /^(https?:\/\/|data:image\/)/i.test(art.imageUrl));
+        const safeSourceUrl = (art.sourceUrl && /^https?:\/\//i.test(art.sourceUrl)) ? this.escapeAttr(art.sourceUrl) : '';
+
+        const html = `
+            <article class="space-y-4 font-sans text-xs sm:text-sm">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="px-2 py-0.5 text-[11px] font-mono font-black uppercase bg-amber-950/60 border border-amber-400 text-amber-300">${this.escapeHTML(cat)}</span>
+                        <span class="text-[11px] font-mono text-slate-400">${this.escapeHTML(art.publishedDate || '--')} • ${this.escapeHTML(art.sourceName || 'AEE')}</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="ui.setNewsLang('ES'); ui.modalReadNewsArticle('${this.escapeAttr(art.id)}')" class="min-h-[44px] px-3 py-1 text-xs font-mono font-bold uppercase border ${lang === 'ES' ? 'bg-mars-cyan text-black border-mars-cyan' : 'bg-slate-900 text-slate-300 border-slate-700'}">🇪🇸 ES</button>
+                        <button type="button" onclick="ui.setNewsLang('EN'); ui.modalReadNewsArticle('${this.escapeAttr(art.id)}')" class="min-h-[44px] px-3 py-1 text-xs font-mono font-bold uppercase border ${lang === 'EN' ? 'bg-mars-cyan text-black border-mars-cyan' : 'bg-slate-900 text-slate-300 border-slate-700'}">🇬🇧 EN</button>
+                    </div>
+                </div>
+
+                ${hasImg ? `
+                    <div class="aspect-video w-full bg-black border border-slate-800 overflow-hidden">
+                        <img src="${this.escapeAttr(art.imageUrl)}" alt="${this.escapeAttr(title)}" class="w-full h-full object-cover">
+                    </div>
+                ` : ''}
+
+                <h3 class="text-lg sm:text-xl font-orbitron font-black text-white leading-snug">${this.escapeHTML(title)}</h3>
+                ${subtitle ? `<p class="text-sm text-amber-200/90 italic font-sans leading-relaxed border-l-2 border-amber-400 pl-3">${this.escapeHTML(subtitle)}</p>` : ''}
+
+                <div class="text-slate-200 leading-relaxed">${this.renderFormattedNewsText(body)}</div>
+
+                ${(impact || debate) ? `
+                    <div class="p-4 bg-slate-950 border-2 border-mars-cyan/50 space-y-2.5">
+                        <h4 class="font-orbitron font-black text-xs uppercase text-mars-cyan tracking-wider">
+                            🧭 ${lang === 'EN' ? 'MISSION LOG // BOARDROOM DEBATE' : 'BITÁCORA DE MISIÓN // DEBATE PARA EL CONSEJO'}
+                        </h4>
+                        ${impact ? `<p class="text-xs text-slate-200"><strong class="text-amber-300 uppercase">${lang === 'EN' ? 'Startup Impact:' : 'Impacto en tu startup:'}</strong> ${this.escapeHTML(impact)}</p>` : ''}
+                        ${debate ? `<p class="text-xs text-cyan-200 italic"><strong class="not-italic text-mars-cyan uppercase">${lang === 'EN' ? 'Boardroom Question:' : 'Pregunta para el Consejo:'}</strong> ${this.escapeHTML(debate)}</p>` : ''}
+                    </div>
+                ` : ''}
+
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800 text-xs font-mono">
+                    <span class="text-slate-400">${lang === 'EN' ? 'Author:' : 'Redacción:'} ${this.escapeHTML(art.author || 'AEE')}</span>
+                    ${safeSourceUrl ? `<a href="${safeSourceUrl}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-3 py-1.5 bg-cyan-950/60 border border-cyan-400 text-cyan-200 hover:bg-cyan-400 hover:text-black font-bold uppercase">${lang === 'EN' ? 'Original Source ↗' : 'Fuente Original ↗'}</a>` : ''}
+                </div>
+            </article>
+        `;
+
+        const actions = `
+            <div class="flex flex-wrap gap-2 justify-end w-full">
+                ${isCoord && !art.featured ? `<button type="button" onclick="ui.setNewsFeatured('${this.escapeAttr(art.id)}')" class="min-h-[44px] px-4 py-2 bg-amber-950/60 border border-amber-400 text-amber-300 hover:bg-amber-400 hover:text-black text-xs font-bold uppercase">⭐ Fijar en Portada</button>` : ''}
+                ${isCoord ? `<button type="button" onclick="ui.modalEditOfficialNews('${this.escapeAttr(art.id)}')" class="min-h-[44px] px-4 py-2 bg-slate-800 border border-slate-600 text-white hover:border-mars-cyan text-xs font-bold uppercase">✏️ Editar</button>` : ''}
+                <button type="button" onclick="ui.closeModal()" class="min-h-[44px] px-5 py-2 bg-mars-cyan text-black font-black text-xs uppercase hover:bg-white">Cerrar</button>
+            </div>
+        `;
+        this.showModal(`ORBITAL REPORT // ${this.escapeHTML(cat)}`, html, actions, 'max-w-3xl');
+    },
+
     viewNewsBoard(el) {
         if (!el || !state.user) return;
-        const isDocente = Boolean(state.user?.admin || (state.user?.role && (state.user.role === 'DOCENTE' || state.user.role.startsWith('COORD'))));
+        const isCoord = this.isNewsCoordinator();
+        const canModeratePR = this.canModeratePressReleases();
+        const lang = this.getNewsLang();
         const classFilter = this.newsClassFilter || 'ALL';
         const phaseFilter = this.newsPhaseFilter || 'ALL';
+        const curPhase = typeof this.getCurrentPhaseKey === 'function' ? this.getCurrentPhaseKey() : 'I';
 
-        // 1. Recopilación de Crónicas Oficiales de Coordinación AEE
-        const deletedNewsIds = new Set((state.data?.deletedOfficialNewsIds || []).map(String));
-        const officialNews = (state.data?.officialNews || [])
-            .filter(n => n && n.id && !deletedNewsIds.has(String(n.id)))
-            .map(n => ({
-                ...n,
-                isOfficial: true,
-                publishedAt: n.publishedAt || (n.timestamp || 0),
-                publishedDate: n.publishedDate || (n.date || '--')
-            }));
+        // 1. Artículos del Periódico (state.data.news con tombstones unificados)
+        const deletedNewsIds = new Set([
+            ...(state.data?.deletedNewsIds || []).map(String),
+            ...(state.data?.deletedOfficialNewsIds || []).map(String)
+        ]);
+        const rawNews = Array.isArray(state.data?.news) && state.data.news.length > 0
+            ? state.data.news
+            : (state.data?.officialNews || []);
+        const officialNews = state.resolveFeaturedNews(
+            rawNews
+                .filter(n => n && n.id && !deletedNewsIds.has(String(n.id)))
+                .map(n => state.normalizeNewsItem(n))
+                .filter(Boolean)
+        ).map(n => ({ ...n, isOfficial: true }));
 
-        // 2. Recopilación de Notas de Prensa de las Startups (DOC_15)
-        const allReleases = [];
+        // 2. Notas de Prensa de Startups (DOC_15): separar PENDING_REVIEW (solo LEN/COORD) y PUBLISHED (públicas intercaladas)
+        const pendingReleases = [];
+        const publishedReleases = [];
         const companies = state.data?.companies || {};
-        const returnedPrKeys = new Set();
+        const seenPrIds = new Set();
+
         Object.keys(companies).forEach(cid => {
             const co = companies[cid];
-            if (co && co.pressReleases) {
-                Object.keys(co.pressReleases).forEach(pk => {
-                    const pr = co.pressReleases[pk];
-                    if (pr && pr.status === 'RETURNED') {
-                        returnedPrKeys.add(pr.id || `${cid}-${pk}`);
-                        returnedPrKeys.add(`PR-${cid}-${pk}`);
-                        return;
-                    }
-                    if (pr && pr.driveUrl) {
-                        allReleases.push({
-                            id: pr.id || `${cid}-${pk}`,
-                            coId: cid,
-                            companyName: co.name,
-                            classGroup: co.classGroup || 'A',
-                            phase: pk,
-                            title: pr.title || `Nota de Prensa Fase ${pk} (${co.name})`,
-                            driveUrl: pr.driveUrl,
-                            nanoBananaImage: pr.nanoBananaImage || null,
-                            editorialNote: pr.editorialNote || null,
-                            publishedAt: pr.publishedAt || 0,
-                            publishedDate: pr.publishedDate || '--',
-                            isOfficial: false
-                        });
-                    }
-                });
-            }
+            if (!co || !co.pressReleases) return;
+            Object.keys(co.pressReleases).forEach(pk => {
+                const pr = co.pressReleases[pk];
+                if (!pr || !pr.driveUrl || pr.status === 'RETURNED') return;
+                const prId = pr.id || `PR-${cid}-${pk}`;
+                seenPrIds.add(prId);
+                seenPrIds.add(`PR-${cid}-${pk}`);
+                const normalizedPr = {
+                    id: prId,
+                    coId: cid,
+                    companyName: co.name,
+                    classGroup: co.classGroup || 'A',
+                    phase: pk,
+                    status: pr.status || 'PUBLISHED',
+                    title: pr.title || `Nota de Prensa Fase ${pk} (${co.name})`,
+                    driveUrl: pr.driveUrl,
+                    nanoBananaImage: pr.nanoBananaImage || null,
+                    editorialNote: pr.editorialNote || null,
+                    publishedAt: pr.publishedAt || 0,
+                    publishedDate: pr.publishedDate || '--',
+                    isOfficial: false
+                };
+                if (normalizedPr.status === 'PENDING_REVIEW') {
+                    pendingReleases.push(normalizedPr);
+                } else if (normalizedPr.status === 'PUBLISHED') {
+                    publishedReleases.push(normalizedPr);
+                }
+            });
         });
 
         if (Array.isArray(state.data?.pressReleases)) {
             state.data.pressReleases.forEach(pr => {
-                if (!pr || pr.status === 'RETURNED' || returnedPrKeys.has(pr.id) || returnedPrKeys.has(`PR-${pr.coId}-${pr.phase}`)) {
-                    return;
-                }
-                const exist = allReleases.find(r => r.id === pr.id);
-                if (!exist) {
-                    allReleases.push({
-                        ...pr,
-                        isOfficial: false
-                    });
-                } else {
-                    if (pr.nanoBananaImage && !exist.nanoBananaImage) exist.nanoBananaImage = pr.nanoBananaImage;
-                    if (pr.editorialNote && !exist.editorialNote) exist.editorialNote = pr.editorialNote;
-                }
+                if (!pr || pr.status === 'RETURNED' || seenPrIds.has(pr.id) || seenPrIds.has(`PR-${pr.coId}-${pr.phase}`)) return;
+                const item = { ...pr, isOfficial: false };
+                if (item.status === 'PENDING_REVIEW') pendingReleases.push(item);
+                else if (item.status === 'PUBLISHED') publishedReleases.push(item);
             });
         }
 
-        const allItems = [...officialNews, ...allReleases];
-        allItems.sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
+        const matchesFilters = (r) => {
+            const okClass = classFilter === 'ALL' || !r.classGroup || r.classGroup === 'ALL' || String(r.classGroup).toUpperCase() === classFilter.toUpperCase();
+            const okPhase = phaseFilter === 'ALL' || !r.phase || r.phase === 'ALL' || String(r.phase) === String(phaseFilter);
+            return okClass && okPhase;
+        };
 
-        let filtered = allItems;
-        if (classFilter !== 'ALL') {
-            filtered = filtered.filter(r => !r.classGroup || r.classGroup === 'ALL' || (r.classGroup || 'A').toUpperCase() === classFilter.toUpperCase());
-        }
-        if (phaseFilter !== 'ALL') {
-            filtered = filtered.filter(r => !r.phase || r.phase === 'ALL' || r.phase === phaseFilter);
-        }
+        const filteredOfficial = officialNews.filter(matchesFilters);
+        const filteredReleases = publishedReleases.filter(matchesFilters);
+        const filteredPending = pendingReleases.filter(matchesFilters);
+
+        // Portada Principal (65%) + Hemeroteca Intercalada (35%)
+        const coverArticle = filteredOfficial.find(n => n.featured) || filteredOfficial[0] || null;
+        const archiveItems = [
+            ...filteredOfficial.filter(n => !coverArticle || String(n.id) !== String(coverArticle.id)),
+            ...filteredReleases
+        ].sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
 
         const currentCo = (!state.user.admin && state.user.coId) ? (companies[state.user.coId] || null) : null;
         const contestShowcaseHtml = (phaseFilter === 'ALL' || phaseFilter === 'V') && typeof this.renderContestNewsShowcase === 'function'
@@ -3609,194 +4167,296 @@ Object.assign(ui, {
             : '';
 
         const availableClasses = ['A', 'B', 'C', 'D', 'E', 'F', 'TEST'];
+        const editionDateStr = new Date().toLocaleDateString(lang === 'EN' ? 'en-GB' : 'es-ES', {
+            weekday: 'long', day: '2-digit', month: 'short', year: 'numeric'
+        }).toUpperCase();
+        const editionNum = String(officialNews.length + publishedReleases.length + 1).padStart(3, '0');
+
+        const renderCoverHtml = (art) => {
+            if (!art) {
+                return `
+                <div class="terminal-border bg-mars-card p-10 text-center border-dashed border-slate-700">
+                    <span class="text-3xl block mb-2">📰</span>
+                    <h3 class="text-base font-orbitron font-bold text-white uppercase mb-1">${lang === 'EN' ? 'No Articles Match This Filter' : 'Sin Artículos en este Filtro'}</h3>
+                    <p class="text-xs text-slate-400 font-sans">${lang === 'EN' ? 'Adjust class or phase filters to view Orbital Report dispatches.' : 'Cambia el filtro de clase o fase para leer la edición completa.'}</p>
+                </div>`;
+            }
+            const cat = this.getLocalizedNewsField(art, 'category') || 'ACTUALIDAD';
+            const title = this.getLocalizedNewsField(art, 'title');
+            const subtitle = this.getLocalizedNewsField(art, 'subtitle');
+            const body = this.getLocalizedNewsField(art, 'body');
+            const impact = this.getLocalizedNewsField(art, 'marsketImpact');
+            const debate = this.getLocalizedNewsField(art, 'debateQuestion');
+            const hasImg = Boolean(art.imageUrl && /^(https?:\/\/|data:image\/)/i.test(art.imageUrl));
+            const safeSourceUrl = (art.sourceUrl && /^https?:\/\//i.test(art.sourceUrl)) ? this.escapeAttr(art.sourceUrl) : '';
+            const debateActionTarget = state.user?.admin ? '' : (this.getEffectiveRole() === 'CEO' || this.getEffectiveRole() === 'AUXILIAR' ? "ui.navigate('resolutions')" : "ui.navigate('role_deliverables')");
+
+            return `
+            <article class="terminal-border bg-mars-card border-t-4 border-t-amber-400 overflow-hidden shadow-lg">
+                ${hasImg ? `
+                    <div class="relative aspect-video w-full bg-black border-b border-slate-800 overflow-hidden group">
+                        <img src="${this.escapeAttr(art.imageUrl)}" alt="${this.escapeAttr(title)}" data-img-src="${this.escapeAttr(art.imageUrl)}" data-img-title="${this.escapeAttr(title)}" onclick="ui.modalViewNewsImage(this.dataset.imgSrc, this.dataset.imgTitle)" class="w-full h-full object-cover cursor-pointer transition-transform duration-300 group-hover:scale-[1.02]">
+                        <span class="absolute top-3 left-3 bg-black/85 border border-amber-400 text-amber-300 px-2.5 py-1 text-[10px] font-mono font-black uppercase tracking-widest">
+                            ★ ${lang === 'EN' ? 'LEAD COVER STORY' : 'PORTADA PRINCIPAL'}
+                        </span>
+                        <button type="button" data-img-src="${this.escapeAttr(art.imageUrl)}" data-img-title="${this.escapeAttr(title)}" onclick="ui.modalViewNewsImage(this.dataset.imgSrc, this.dataset.imgTitle)" class="min-h-[44px] min-w-[44px] flex items-center justify-center absolute top-2 right-2 bg-black/80 hover:bg-black text-white rounded text-sm" title="Ampliar imagen">🔍</button>
+                    </div>
+                ` : ''}
+
+                <div class="p-5 sm:p-7 space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="px-2.5 py-0.5 text-[11px] font-mono font-black uppercase bg-amber-950/60 border border-amber-400 text-amber-300">${this.escapeHTML(cat)}</span>
+                            ${art.phase && art.phase !== 'ALL' ? `<span class="px-2 py-0.5 text-[11px] font-mono font-bold bg-slate-900 border border-mars-cyan/50 text-mars-cyan uppercase">FASE ${this.escapeHTML(art.phase)}</span>` : ''}
+                            ${art.classGroup && art.classGroup !== 'ALL' ? `<span class="px-2 py-0.5 text-[11px] font-mono bg-slate-900 border border-slate-700 text-slate-300 uppercase">CLASE ${this.escapeHTML(art.classGroup)}</span>` : ''}
+                        </div>
+                        <span class="text-xs font-mono text-slate-400">${this.escapeHTML(art.publishedDate || '--')} • ${this.escapeHTML(art.sourceName || 'AEE')}</span>
+                    </div>
+
+                    <h3 class="text-xl sm:text-3xl font-orbitron font-black text-white leading-tight tracking-tight">${this.escapeHTML(title)}</h3>
+
+                    ${subtitle ? `
+                        <p class="text-sm sm:text-base text-amber-200/95 italic font-sans leading-relaxed border-l-4 border-amber-400 pl-3.5">${this.escapeHTML(subtitle)}</p>
+                    ` : ''}
+
+                    <div class="text-xs sm:text-sm text-slate-200 leading-relaxed font-sans pt-1">
+                        ${this.renderFormattedNewsText(body)}
+                    </div>
+
+                    ${(impact || debate) ? `
+                        <div class="p-4 sm:p-5 bg-slate-950/90 border-2 border-mars-cyan/60 space-y-3 shadow-[0_0_15px_rgba(0,240,255,0.08)]">
+                            <div class="flex items-center justify-between gap-2 flex-wrap border-b border-slate-800 pb-2">
+                                <h4 class="font-orbitron font-black text-xs sm:text-sm uppercase text-mars-cyan tracking-wider">
+                                    🧭 ${lang === 'EN' ? 'MISSION LOG // BOARDROOM DEBATE' : 'BITÁCORA DE MISIÓN // DEBATE PARA EL CONSEJO'}
+                                </h4>
+                                ${debateActionTarget ? `
+                                    <button type="button" onclick="${debateActionTarget}" class="min-h-[44px] px-3 py-1.5 bg-mars-cyan/15 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black text-[11px] font-black uppercase transition-colors">
+                                        ⚖️ ${lang === 'EN' ? 'Take to Board / Deliverables ➔' : 'Llevar a Asamblea / Entregables ➔'}
+                                    </button>
+                                ` : ''}
+                            </div>
+                            ${impact ? `
+                                <p class="text-xs sm:text-sm text-slate-200 font-sans leading-relaxed">
+                                    <strong class="text-amber-300 uppercase font-mono text-xs">${lang === 'EN' ? 'Impact on your MARS-KET startup:' : 'Impacto en tu startup de MARS-KET:'}</strong> ${this.escapeHTML(impact)}
+                                </p>
+                            ` : ''}
+                            ${debate ? `
+                                <p class="text-xs sm:text-sm text-cyan-200 italic font-sans leading-relaxed">
+                                    <strong class="not-italic text-mars-cyan uppercase font-mono text-xs">${lang === 'EN' ? 'Boardroom Debate Question:' : 'Pregunta de debate para el Consejo:'}</strong> ${this.escapeHTML(debate)}
+                                </p>
+                            ` : ''}
+                        </div>
+                    ` : ''}
+
+                    <div class="pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 flex-wrap text-xs font-mono text-slate-400">
+                            <span>${lang === 'EN' ? 'By' : 'Por'} ${this.escapeHTML(art.author || 'AEE')}</span>
+                            ${safeSourceUrl ? `<a href="${safeSourceUrl}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-3 py-1 bg-slate-900 border border-slate-700 hover:border-mars-cyan text-cyan-300 font-bold uppercase">${lang === 'EN' ? 'Original Source ↗' : 'Fuente Original ↗'}</a>` : ''}
+                        </div>
+                        ${isCoord ? `
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <button type="button" onclick="ui.modalEditOfficialNews('${this.escapeAttr(art.id)}')" class="min-h-[44px] bg-amber-950/50 border border-amber-500/60 text-amber-300 hover:bg-amber-400 hover:text-black px-3 py-1.5 text-xs font-bold uppercase">✏️ Editar</button>
+                                <button type="button" onclick="ui.deleteOfficialNews('${this.escapeAttr(art.id)}')" class="min-h-[44px] px-3 py-1.5 text-red-400 hover:text-red-300 text-xs font-bold uppercase underline">🗑️ Retirar</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            </article>`;
+        };
 
         const wrapper = document.createElement('div');
         wrapper.className = 'space-y-6';
         wrapper.innerHTML = `
-            <!-- Cabecera del Tablón de Noticias -->
-            <div class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-cyan">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-mars-border pb-4 mb-4">
-                    <div>
-                        <div class="flex items-center gap-2 mb-1 flex-wrap">
-                            <span class="px-2.5 py-0.5 text-xs font-black uppercase bg-mars-cyan/20 border border-mars-cyan text-mars-cyan">PRENSA & COMUNICACIÓN OFICIAL</span>
-                            <span class="text-xs text-slate-400 font-mono">${allItems.length} Comunicados (${officialNews.length} AEE / ${allReleases.length} Startups)</span>
+            <!-- MASTHEAD EDITORIAL: ORBITAL REPORT — EDICIÓN MARS-KET -->
+            <header class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-cyan">
+                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-mars-border pb-4 mb-4">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap text-[11px] font-mono text-amber-300 uppercase tracking-widest">
+                            <span class="px-2 py-0.5 font-black bg-mars-cyan/20 border border-mars-cyan text-mars-cyan">EDICIÓN N.º ${editionNum}</span>
+                            <span>•</span>
+                            <span>${this.escapeHTML(editionDateStr)}</span>
+                            <span>•</span>
+                            <span class="text-mars-green font-bold">FASE ACTIVA: FASE ${this.escapeHTML(curPhase)}</span>
                         </div>
-                        <h2 class="text-xl sm:text-2xl font-orbitron font-black text-white uppercase tracking-tight">
-                            📰 Tablón Oficial de Noticias de la Misión
+                        <h2 class="text-2xl sm:text-3xl font-orbitron font-black text-white uppercase tracking-tight">
+                            🪐 ORBITAL REPORT <span class="text-mars-cyan">— Edición MARS-KET</span>
                         </h2>
-                        <p class="text-xs text-slate-300 uppercase mt-0.5 font-sans">
-                            Seguimiento público del progreso de las startups y crónicas oficiales ilustradas con IA (Nano Banana 3).
+                        <p class="text-xs text-slate-300 mt-1 font-sans">
+                            ${lang === 'EN'
+                                ? 'Bilingual aerospace press: real-world rocket dispatches, AEE chronicles & approved startup press releases (DOC_15).'
+                                : 'Prensa aeroespacial bilingüe: actualidad espacial real, crónicas AEE y comunicados corporativos aprobados (DOC_15).'}
                         </p>
                     </div>
-                    ${isDocente ? `
-                        <button type="button" onclick="ui.modalPublishOfficialNews()" class="min-h-[44px] bg-amber-400 text-black px-4 py-2.5 font-black uppercase text-xs hover:bg-white transition-all shadow-[0_0_15px_rgba(251,191,36,0.4)] flex items-center gap-2 shrink-0">
-                            <span>🍌 + Publicar Crónica / Imagen Nano Banana 3</span>
-                        </button>
-                    ` : ''}
+                    <div class="flex flex-wrap items-center gap-2 shrink-0">
+                        <div class="flex items-center border border-slate-700 bg-black p-0.5" role="group" aria-label="Idioma del periódico">
+                            <button type="button" onclick="ui.setNewsLang('ES')" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-black uppercase transition-colors ${lang === 'ES' ? 'bg-mars-cyan text-black' : 'text-slate-300 hover:text-white'}">🇪🇸 ES</button>
+                            <button type="button" onclick="ui.setNewsLang('EN')" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-black uppercase transition-colors ${lang === 'EN' ? 'bg-mars-cyan text-black' : 'text-slate-300 hover:text-white'}">🇬🇧 EN</button>
+                        </div>
+                        ${isCoord ? `
+                            <button type="button" onclick="ui.modalPublishOfficialNews()" class="min-h-[44px] bg-amber-400 text-black px-4 py-2 font-black uppercase text-xs hover:bg-white transition-all shadow-[0_0_15px_rgba(251,191,36,0.35)] flex items-center gap-1.5">
+                                <span>🛰️ + Nueva Crónica / Importar Real</span>
+                            </button>
+                        ` : ''}
+                    </div>
                 </div>
 
-                <!-- Barra de Filtros Rápidos (Compacta <select> en móvil, píldoras en sm+) -->
-                <div class="sm:hidden grid grid-cols-2 gap-2 pt-2">
+                <!-- Filtros por Clase y Fase -->
+                <div class="sm:hidden grid grid-cols-2 gap-2 pt-1">
                     <div>
                         <label for="news-class-select" class="text-[10px] font-mono text-slate-400 uppercase block mb-1">Clase</label>
-                        <select id="news-class-select" onchange="ui.setNewsClassFilter(this.value)" class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan/50 p-2 text-base sm:text-xs text-white font-mono">
+                        <select id="news-class-select" onchange="ui.setNewsClassFilter(this.value)" class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan/50 p-2 text-base text-white font-mono">
                             <option value="ALL" ${classFilter === 'ALL' ? 'selected' : ''}>Todas</option>
                             ${availableClasses.map(c => `<option value="${c}" ${classFilter === c ? 'selected' : ''}>Clase ${c}</option>`).join('')}
                         </select>
                     </div>
                     <div>
                         <label for="news-phase-select" class="text-[10px] font-mono text-slate-400 uppercase block mb-1">Fase</label>
-                        <select id="news-phase-select" onchange="ui.setNewsPhaseFilter(this.value)" class="w-full min-h-[44px] bg-slate-900 border border-amber-400/50 p-2 text-base sm:text-xs text-white font-mono">
+                        <select id="news-phase-select" onchange="ui.setNewsPhaseFilter(this.value)" class="w-full min-h-[44px] bg-slate-900 border border-amber-400/50 p-2 text-base text-white font-mono">
                             <option value="ALL" ${phaseFilter === 'ALL' ? 'selected' : ''}>Todas</option>
-                            <option value="I" ${phaseFilter === 'I' ? 'selected' : ''}>Fase I</option>
-                            <option value="II" ${phaseFilter === 'II' ? 'selected' : ''}>Fase II</option>
-                            <option value="III" ${phaseFilter === 'III' ? 'selected' : ''}>Fase III</option>
-                            <option value="IV" ${phaseFilter === 'IV' ? 'selected' : ''}>Fase IV</option>
-                            <option value="V" ${phaseFilter === 'V' ? 'selected' : ''}>🏆 Fase V</option>
+                            ${['I', 'II', 'III', 'IV', 'V'].map(p => `<option value="${p}" ${phaseFilter === p ? 'selected' : ''}>Fase ${p}</option>`).join('')}
                         </select>
                     </div>
                 </div>
-                <div class="hidden sm:flex flex-wrap items-center justify-between gap-3 pt-2">
-                    <!-- Filtro por Clase -->
+                <div class="hidden sm:flex flex-wrap items-center justify-between gap-3 pt-1">
                     <div class="flex items-center gap-1.5 flex-wrap">
                         <span class="text-xs text-slate-400 font-mono font-bold mr-1 uppercase">Clase:</span>
-                        <button type="button" onclick="ui.setNewsClassFilter('ALL')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${classFilter === 'ALL' ? 'bg-mars-cyan text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
-                            Todas
-                        </button>
-                        ${availableClasses.map(c => `
-                            <button type="button" onclick="ui.setNewsClassFilter('${c}')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${classFilter === c ? 'bg-mars-cyan text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
-                                Clase ${c}
-                            </button>
-                        `).join('')}
+                        <button type="button" onclick="ui.setNewsClassFilter('ALL')" class="min-h-[44px] px-3 py-1.5 text-xs font-bold uppercase ${classFilter === 'ALL' ? 'bg-mars-cyan text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">Todas</button>
+                        ${availableClasses.map(c => `<button type="button" onclick="ui.setNewsClassFilter('${c}')" class="min-h-[44px] px-3 py-1.5 text-xs font-bold uppercase ${classFilter === c ? 'bg-mars-cyan text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">${c}</button>`).join('')}
                     </div>
-
-                    <!-- Filtro por Fase -->
                     <div class="flex items-center gap-1.5 flex-wrap">
                         <span class="text-xs text-slate-400 font-mono font-bold mr-1 uppercase">Fase:</span>
-                        <button type="button" onclick="ui.setNewsPhaseFilter('ALL')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${phaseFilter === 'ALL' ? 'bg-amber-400 text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
-                            Todas
-                        </button>
-                        <button type="button" onclick="ui.setNewsPhaseFilter('I')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${phaseFilter === 'I' ? 'bg-amber-400 text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
-                            Fase I
-                        </button>
-                        <button type="button" onclick="ui.setNewsPhaseFilter('II')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${phaseFilter === 'II' ? 'bg-amber-400 text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
-                            Fase II
-                        </button>
-                        <button type="button" onclick="ui.setNewsPhaseFilter('III')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${phaseFilter === 'III' ? 'bg-amber-400 text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
-                            Fase III
-                        </button>
-                        <button type="button" onclick="ui.setNewsPhaseFilter('IV')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${phaseFilter === 'IV' ? 'bg-amber-400 text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
-                            Fase IV
-                        </button>
-                        <button type="button" onclick="ui.setNewsPhaseFilter('V')" class="min-h-[44px] px-3.5 py-2 text-xs font-bold uppercase transition-all ${phaseFilter === 'V' ? 'bg-mars-green text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">
-                            🏆 Fase V
-                        </button>
+                        <button type="button" onclick="ui.setNewsPhaseFilter('ALL')" class="min-h-[44px] px-3 py-1.5 text-xs font-bold uppercase ${phaseFilter === 'ALL' ? 'bg-amber-400 text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">Todas</button>
+                        ${['I', 'II', 'III', 'IV'].map(p => `<button type="button" onclick="ui.setNewsPhaseFilter('${p}')" class="min-h-[44px] px-3 py-1.5 text-xs font-bold uppercase ${phaseFilter === p ? 'bg-amber-400 text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">F${p}</button>`).join('')}
+                        <button type="button" onclick="ui.setNewsPhaseFilter('V')" class="min-h-[44px] px-3 py-1.5 text-xs font-bold uppercase ${phaseFilter === 'V' ? 'bg-mars-green text-black font-black' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'}">🏆 FV</button>
                     </div>
                 </div>
-            </div>
+            </header>
+
+            ${(canModeratePR && filteredPending.length > 0) ? `
+                <section class="terminal-border bg-emerald-950/25 border-l-4 border-l-mars-green p-4 space-y-3">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <div>
+                            <h3 class="font-orbitron text-xs sm:text-sm font-black text-mars-green uppercase tracking-wider">
+                                📥 Bandeja Editorial DOC_15 · Pendientes de Publicación (${filteredPending.length})
+                            </h3>
+                            <p class="text-[11px] text-slate-300 font-sans">Notas de Prensa remitidas por los CEOs. Solo Lengua (LEN) y Coordinación pueden aprobar su publicación en ORBITAL REPORT.</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        ${filteredPending.map(pr => `
+                            <div class="bg-black/70 border border-slate-700 p-3 flex flex-col justify-between gap-2">
+                                <div>
+                                    <div class="flex items-center gap-2 text-[10px] font-mono mb-1">
+                                        <span class="px-1.5 py-0.5 bg-mars-cyan/20 text-mars-cyan border border-mars-cyan/40 font-bold">FASE ${this.escapeHTML(pr.phase)}</span>
+                                        <span class="text-slate-400">CLASE ${this.escapeHTML(pr.classGroup)} • ${this.escapeHTML(pr.publishedDate)}</span>
+                                    </div>
+                                    <h4 class="text-xs font-orbitron font-bold text-white uppercase">${this.escapeHTML(pr.companyName || pr.coId)}</h4>
+                                    <p class="text-[11px] text-slate-300 truncate">${this.escapeHTML(pr.title)}</p>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-2 pt-1">
+                                    ${(pr.driveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(pr.driveUrl))) ? `<a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(pr.driveUrl) : encodeURI(pr.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-3 py-1.5 bg-slate-900 border border-mars-cyan/50 text-cyan-300 text-xs font-bold uppercase">📄 Abrir Doc ↗</a>` : ''}
+                                    <button type="button" onclick="ui.approvePressReleaseForNewspaper('${this.escapeAttr(pr.coId)}', '${this.escapeAttr(pr.phase)}')" class="min-h-[44px] px-3 py-1.5 bg-mars-green text-black font-black text-xs uppercase hover:bg-white">✅ Publicar</button>
+                                    <button type="button" onclick="ui.modalTeacherReturnPressRelease('${this.escapeAttr(pr.coId)}', '${this.escapeAttr(pr.phase)}')" class="min-h-[44px] px-3 py-1.5 bg-red-950/60 border border-red-500/60 text-red-300 font-bold text-xs uppercase hover:bg-red-800 hover:text-white">↩ Subsanar</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </section>
+            ` : ''}
 
             ${contestShowcaseHtml}
 
-            <!-- Listado de Noticias -->
-            <div class="space-y-4">
-                ${filtered.length === 0 ? (phaseFilter === 'V' && contestShowcaseHtml ? '' : `
-                    <div class="terminal-border bg-mars-card p-10 text-center border-dashed border-slate-700">
-                        <span class="text-3xl block mb-2">📰</span>
-                        <h3 class="text-base font-orbitron font-bold text-white uppercase mb-1">Sin Comunicados Publicados en este Filtro</h3>
-                        <p class="text-xs text-slate-400 max-w-lg mx-auto font-sans">
-                            Las notas de prensa oficiales de startups se habilitan al cierre de cada fase, y las crónicas oficiales son emitidas por la Agencia Espacial AEE.
-                        </p>
-                    </div>
-                `) : `
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                        ${filtered.map(r => {
-                            const hasImage = Boolean(r.imageUrl || r.nanoBananaImage);
-                            const imgSource = r.imageUrl || r.nanoBananaImage;
-                            const isOfficial = Boolean(r.isOfficial);
+            <!-- GRID EDITORIAL 65% / 35% -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <!-- COLUMNA IZQUIERDA (65% -> 8/12 cols): PORTADA PRINCIPAL -->
+                <section class="lg:col-span-8 space-y-6" aria-label="Portada Principal">
+                    ${renderCoverHtml(coverArticle)}
+                </section>
 
-                            return `
-                            <div class="terminal-border bg-mars-card flex flex-col justify-between hover:border-mars-cyan transition-all overflow-hidden ${isOfficial ? 'border-t-4 border-t-amber-400' : 'border-t-2 border-t-mars-cyan'}">
-                                <div>
-                                    ${(hasImage && /^(https?:\/\/|data:image\/)/i.test(imgSource)) ? `
-                                        <div class="relative w-full h-48 sm:h-56 bg-black overflow-hidden border-b border-slate-800 group">
-                                            <img src="${this.escapeAttr(imgSource)}" alt="${this.escapeAttr(r.title)}" data-img-src="${this.escapeAttr(imgSource)}" data-img-title="${this.escapeAttr(r.title)}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 cursor-pointer" onclick="ui.modalViewNewsImage(this.dataset.imgSrc, this.dataset.imgTitle)">
-                                            <div class="absolute bottom-2 left-2 bg-black/85 backdrop-blur-sm border border-amber-400/60 px-2 py-0.5 rounded text-[10px] font-mono text-amber-300 uppercase flex items-center gap-1 shadow">
-                                                <span>🎨</span>
-                                                <span>Nano Banana 3</span>
+                <!-- COLUMNA DERECHA (35% -> 4/12 cols): HEMEROTECA + DOC_15 INTERCALADAS + INTERNATIONAL WIRE -->
+                <aside class="lg:col-span-4 space-y-6" aria-label="Hemeroteca y Teletipo Internacional">
+                    <!-- BLOQUE 1: HEMEROTECA Y COMUNICADOS STARTUPS -->
+                    <div class="terminal-border bg-mars-card p-4 border-t-4 border-t-mars-cyan space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                            <h3 class="font-orbitron font-black text-xs uppercase text-mars-cyan tracking-wider">
+                                🗂️ ${lang === 'EN' ? 'ARCHIVE & PRESS RELEASES' : 'NOTICIAS ANTERIORES & DOC_15'}
+                            </h3>
+                            <span class="text-[11px] font-mono text-slate-400">${archiveItems.length}</span>
+                        </div>
+
+                        ${archiveItems.length === 0 ? `
+                            <p class="text-xs text-slate-400 font-sans py-3">
+                                ${lang === 'EN'
+                                    ? 'Previous editions and approved startup press releases (DOC_15) will appear here.'
+                                    : 'Aquí aparecerán las ediciones anteriores y las Notas de Prensa (DOC_15) aprobadas por Lengua y Coordinación.'}
+                            </p>
+                        ` : `
+                            <div class="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                                ${archiveItems.map(item => {
+                                    if (item.isOfficial) {
+                                        const t = this.getLocalizedNewsField(item, 'title');
+                                        const c = this.getLocalizedNewsField(item, 'category') || 'AEE';
+                                        return `
+                                        <div class="bg-black/60 border border-slate-800 hover:border-amber-400/60 p-3 space-y-2 transition-colors">
+                                            <div class="flex items-center justify-between gap-2 text-[10px] font-mono">
+                                                <span class="text-amber-300 font-bold uppercase truncate">🪐 ${this.escapeHTML(c)}</span>
+                                                <span class="text-slate-400 shrink-0">${this.escapeHTML(item.publishedDate || '--')}</span>
                                             </div>
-                                            <button type="button" data-img-src="${this.escapeAttr(imgSource)}" data-img-title="${this.escapeAttr(r.title)}" onclick="ui.modalViewNewsImage(this.dataset.imgSrc, this.dataset.imgTitle)" class="min-h-[44px] min-w-[44px] flex items-center justify-center absolute top-2 right-2 bg-black/80 hover:bg-black text-white p-2 rounded text-sm opacity-90 hover:opacity-100 transition-opacity" title="Ampliar imagen">
-                                                🔍
-                                            </button>
-                                        </div>
-                                    ` : ''}
-
-                                    <div class="p-5">
-                                        <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                                            <div class="flex items-center gap-1.5 flex-wrap">
-                                                ${isOfficial ? `
-                                                    <span class="px-2 py-0.5 text-xs font-black uppercase bg-amber-950/60 border border-amber-400 text-amber-300">🪐 AGENCIA ESPACIAL AEE // CRÓNICA</span>
-                                                ` : `
-                                                    <span class="px-2 py-0.5 text-xs font-black uppercase bg-black border border-mars-cyan text-mars-cyan">FASE ${this.escapeHTML(r.phase)}</span>
-                                                `}
-                                                ${r.classGroup && r.classGroup !== 'ALL' ? `
-                                                    <span class="px-2 py-0.5 text-xs font-mono text-slate-300 bg-slate-900 border border-slate-700">[CLASE ${this.escapeHTML(r.classGroup)}]</span>
-                                                ` : (isOfficial ? `<span class="px-2 py-0.5 text-xs font-mono text-amber-300 bg-amber-950/40 border border-amber-500/30">[TODA LA MISIÓN]</span>` : '')}
-                                            </div>
-                                            <span class="text-[11px] text-slate-400 font-mono">${this.escapeHTML(r.publishedDate || '--')}</span>
-                                        </div>
-
-                                        ${r.companyName ? `
-                                            <span class="text-xs text-mars-cyan font-bold block mb-1 uppercase tracking-wider">${this.escapeHTML(r.companyName)}</span>
-                                        ` : ''}
-
-                                        <h3 class="text-base font-orbitron font-black text-white uppercase mb-2 leading-snug">${this.escapeHTML(r.title)}</h3>
-
-                                        ${r.body ? `
-                                            <div class="text-xs text-slate-300 font-sans mb-3">${this.renderFormattedNewsText(r.body)}</div>
-                                        ` : ''}
-
-                                        ${r.editorialNote ? `
-                                            <div class="mt-2 mb-3 p-2.5 bg-amber-950/30 border-l-2 border-amber-400 text-xs text-amber-200 font-sans">
-                                                <strong class="text-amber-400 uppercase font-mono text-[10px] block mb-1">Apunte Editorial Coordinación AEE:</strong>
-                                                <div>${this.renderFormattedNewsText(r.editorialNote)}</div>
-                                            </div>
-                                        ` : ''}
-                                    </div>
-                                </div>
-
-                                <div class="p-5 pt-0">
-                                    <div class="pt-3 border-t border-slate-800 flex justify-between items-center flex-wrap gap-2">
-                                        ${isOfficial ? `
-                                            <span class="text-[11px] text-slate-400 font-mono">Por ${this.escapeHTML(r.author || 'Coordinación AEE')}</span>
-                                            ${isDocente ? `
-                                                <div class="flex items-center gap-2 flex-wrap">
-                                                    <button type="button" onclick="ui.modalEditOfficialNews('${this.escapeHTML(r.id)}')" class="min-h-[44px] bg-amber-950/50 border border-amber-500/60 text-amber-300 hover:bg-amber-400 hover:text-black px-3 py-1.5 text-xs font-bold uppercase transition-all whitespace-nowrap">✏️ Editar Crónica</button>
-                                                    <button type="button" onclick="ui.deleteOfficialNews('${this.escapeHTML(r.id)}')" class="min-h-[44px] text-red-400 hover:text-red-300 text-xs font-bold uppercase underline">🗑️ Retirar</button>
-                                                </div>
-                                            ` : ''}
-                                        ` : `
-                                            <span class="text-[10px] text-slate-500 font-mono">DOC_15 Oficial</span>
+                                            <h4 class="text-xs font-orbitron font-bold text-white leading-snug break-words">${this.escapeHTML(t)}</h4>
                                             <div class="flex items-center gap-2 flex-wrap">
-                                                ${isDocente ? `
-                                                    <button type="button" onclick="ui.modalAttachNanoBananaToPR('${this.escapeHTML(r.id)}')" class="min-h-[44px] bg-amber-950/50 border border-amber-500/60 text-amber-300 hover:bg-amber-400 hover:text-black px-3 py-1.5 text-xs font-bold uppercase transition-all whitespace-nowrap">
-                                                        🖼️ ${hasImage ? 'Editar Portada IA' : 'Ilustrar (Nano Banana)'}
-                                                    </button>
-                                                ` : ''}
-                                                ${(r.driveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(r.driveUrl))) ? `<a href="${this.sanitizeDriveUrl ? this.sanitizeDriveUrl(r.driveUrl) : encodeURI(r.driveUrl).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-2 bg-cyan-950/60 border border-cyan-400 text-cyan-200 hover:bg-cyan-400 hover:text-black px-4 py-2 text-xs font-bold uppercase transition-all shadow-sm">
-                                                    <span>📄 Leer Nota de Prensa Oficial</span>
-                                                    <span class="text-xs font-mono">↗</span>
-                                                </a>` : ''}
+                                                <button type="button" onclick="ui.modalReadNewsArticle('${this.escapeAttr(item.id)}')" class="min-h-[44px] px-3 py-1.5 bg-slate-900 border border-amber-400/60 text-amber-300 hover:bg-amber-400 hover:text-black text-[11px] font-bold uppercase">
+                                                    📖 ${lang === 'EN' ? 'Read Article' : 'Leer Crónica'}
+                                                </button>
+                                                ${isCoord ? `<button type="button" onclick="ui.setNewsFeatured('${this.escapeAttr(item.id)}')" class="min-h-[44px] px-2.5 py-1.5 bg-slate-900 border border-slate-700 text-slate-300 hover:text-white text-[11px] font-bold uppercase" title="Promover a Portada">⭐</button>` : ''}
                                             </div>
-                                        `}
-                                    </div>
-                                </div>
-                            </div>`;
-                        }).join('')}
+                                        </div>`;
+                                    } else {
+                                        const safeDrive = (item.driveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(item.driveUrl)))
+                                            ? (this.sanitizeDriveUrl ? this.sanitizeDriveUrl(item.driveUrl) : encodeURI(item.driveUrl).replace(/"/g, '&quot;'))
+                                            : '';
+                                        const hasPrImg = Boolean(item.nanoBananaImage && /^(https?:\/\/|data:image\/)/i.test(item.nanoBananaImage));
+                                        return `
+                                        <div class="bg-black/60 border border-mars-cyan/30 hover:border-mars-cyan p-3 space-y-2 transition-colors">
+                                            <div class="flex items-center justify-between gap-2 text-[10px] font-mono">
+                                                <span class="text-mars-cyan font-bold uppercase">🎙️ DOC_15 • FASE ${this.escapeHTML(item.phase)} • CLASE ${this.escapeHTML(item.classGroup || 'A')}</span>
+                                                <span class="text-slate-400 shrink-0">${this.escapeHTML(item.publishedDate || '--')}</span>
+                                            </div>
+                                            ${hasPrImg ? `<img src="${this.escapeAttr(item.nanoBananaImage)}" alt="${this.escapeAttr(item.companyName || '')}" class="w-full h-24 object-cover border border-slate-800 cursor-pointer" onclick="ui.modalViewNewsImage('${this.escapeAttr(item.nanoBananaImage)}', '${this.escapeAttr(item.title)}')">` : ''}
+                                            <h4 class="text-xs font-orbitron font-bold text-white uppercase leading-snug">${this.escapeHTML(item.companyName || '')}</h4>
+                                            <p class="text-[11px] text-slate-300 font-sans">${this.escapeHTML(item.title || '')}</p>
+                                            ${item.editorialNote ? `<p class="text-[11px] text-amber-200 border-l-2 border-amber-400 pl-2 italic">${this.escapeHTML(item.editorialNote)}</p>` : ''}
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                ${safeDrive ? `<a href="${safeDrive}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-3 py-1.5 bg-cyan-950/60 border border-cyan-400 text-cyan-200 hover:bg-cyan-400 hover:text-black text-[11px] font-bold uppercase">📄 ${lang === 'EN' ? 'Open Press Release ↗' : 'Leer Nota ↗'}</a>` : ''}
+                                                ${isCoord ? `<button type="button" onclick="ui.modalAttachNanoBananaToPR('${this.escapeAttr(item.id)}')" class="min-h-[44px] px-2.5 py-1.5 bg-amber-950/50 border border-amber-500/60 text-amber-300 text-[11px] font-bold uppercase">🖼️</button>` : ''}
+                                            </div>
+                                        </div>`;
+                                    }
+                                }).join('')}
+                            </div>
+                        `}
                     </div>
-                `}
+
+                    <!-- BLOQUE 2: INTERNATIONAL WIRE (SPACEFLIGHT NEWS API v4) -->
+                    <div class="terminal-border bg-mars-card p-4 border-t-4 border-t-mars-magenta space-y-3">
+                        <div class="flex items-center justify-between gap-2 border-b border-slate-800 pb-2">
+                            <div>
+                                <h3 class="font-orbitron font-black text-xs uppercase text-mars-magenta tracking-wider flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-mars-green animate-pulse" aria-hidden="true"></span>
+                                    📡 INTERNATIONAL WIRE (LIVE)
+                                </h3>
+                                <span class="text-[10px] font-mono text-slate-400">Spaceflight News API v4 • English</span>
+                            </div>
+                            <button type="button" onclick="ui.fetchSpaceflightWire(true)" class="min-h-[44px] min-w-[44px] px-2.5 py-1 bg-slate-900 border border-slate-700 hover:border-mars-cyan text-xs text-mars-cyan font-mono font-bold uppercase" title="Actualizar teletipo">🔄</button>
+                        </div>
+                        <div id="orbital-wire-list" class="space-y-2.5">
+                            <p class="text-xs font-mono text-slate-400 p-2">🛰️ ${lang === 'EN' ? 'Connecting to Spaceflight News API...' : 'Conectando con Spaceflight News API v4...'}</p>
+                        </div>
+                    </div>
+                </aside>
             </div>
         `;
         el.appendChild(wrapper);
+        this.fetchSpaceflightWire(false);
     },
 
     getCurrentPhaseKey() {

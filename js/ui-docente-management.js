@@ -37,6 +37,18 @@ Object.assign(ui, {
         const isFyqTeacher = state.user.role === 'FYQ';
         const canSponsor = state.data.config.teachers[state.user.role]?.canSponsor === true;
 
+        const orbitalQuickBarHtml = isCoord ? `
+            <div class="terminal-border bg-amber-950/20 border-l-4 border-l-amber-400 p-4 mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                    <h4 class="font-orbitron text-amber-300 text-xs uppercase font-bold tracking-wider">🪐 Redacción ORBITAL REPORT // Edición MARS-KET</h4>
+                    <p class="text-[11px] text-slate-300 mt-0.5">Importa noticias reales de cohetes (Spaceflight News API v4), adáptalas al proyecto y publícalas en portada bilingüe ES/EN.</p>
+                </div>
+                <div class="flex gap-2 flex-wrap shrink-0">
+                    <button type="button" onclick="ui.modalPublishOfficialNews()" class="min-h-[44px] bg-amber-400 text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors">🛰️ Importar Noticia Real / Publicar</button>
+                    <button type="button" onclick="ui.navigate('news')" class="min-h-[44px] bg-slate-900 border border-mars-cyan text-mars-cyan px-3 py-2 text-xs font-bold uppercase hover:bg-mars-cyan hover:text-black transition-colors">Ver Periódico ➔</button>
+                </div>
+            </div>` : '';
+
         const pendingAuxList = Object.keys(state.data.companies || {}).filter(cid => {
             const co = state.data.companies[cid];
             if (!co || !co.auxRoleRequest) return false;
@@ -286,6 +298,7 @@ Object.assign(ui, {
         }
 
         const topAduanasHtml = `
+        ${orbitalQuickBarHtml}
         ${quickQueueBannersHtml}
         ${incidentsHtml}
         ${nameCustomsHtml}

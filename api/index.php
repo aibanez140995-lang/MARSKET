@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.33
+// Versión: v2.0.34
 
 declare(strict_types=1);
 
@@ -918,10 +918,36 @@ try {
                 $payload['resetEpoch'] = max((int)($currentState['resetEpoch'] ?? 0), (int)($payload['resetEpoch'] ?? 0)) + 1;
             } else {
                 // Unión de tombstones globales en servidor (nunca perder borrados entre docentes ni descartes de avisos)
-                foreach (['deletedCatalogIds', 'deletedOfficialNewsIds', 'deletedSuggestionIds', 'deletedPendingCustomIds'] as $gTombKey) {
+                foreach (['deletedCatalogIds', 'deletedSuggestionIds', 'deletedPendingCustomIds'] as $gTombKey) {
                     $currTomb = is_array($currentState[$gTombKey] ?? null) ? $currentState[$gTombKey] : [];
                     $incTomb = ($isTeacher && is_array($payload[$gTombKey] ?? null)) ? $payload[$gTombKey] : [];
                     $payload[$gTombKey] = array_values(array_unique(array_map('strval', array_merge($currTomb, $incTomb))));
+                }
+                // Tombstones y artículos de ORBITAL REPORT (news / officialNews): escritura exclusiva de Coordinación (COORD_*)
+                $currNewsTomb = array_merge(
+                    is_array($currentState['deletedNewsIds'] ?? null) ? $currentState['deletedNewsIds'] : [],
+                    is_array($currentState['deletedOfficialNewsIds'] ?? null) ? $currentState['deletedOfficialNewsIds'] : []
+                );
+                $incNewsTomb = $isCoord ? array_merge(
+                    is_array($payload['deletedNewsIds'] ?? null) ? $payload['deletedNewsIds'] : [],
+                    is_array($payload['deletedOfficialNewsIds'] ?? null) ? $payload['deletedOfficialNewsIds'] : []
+                ) : [];
+                $mergedNewsTomb = array_values(array_unique(array_map('strval', array_merge($currNewsTomb, $incNewsTomb))));
+                $payload['deletedNewsIds'] = $mergedNewsTomb;
+                $payload['deletedOfficialNewsIds'] = $mergedNewsTomb;
+                if (!$isCoord) {
+                    if (isset($currentState['news'])) {
+                        $payload['news'] = $currentState['news'];
+                    }
+                    if (isset($currentState['officialNews'])) {
+                        $payload['officialNews'] = $currentState['officialNews'];
+                    }
+                } elseif (isset($payload['news']) && is_array($payload['news'])) {
+                    $delNewsSet = array_flip($mergedNewsTomb);
+                    $payload['news'] = array_values(array_filter($payload['news'], function ($it) use ($delNewsSet) {
+                        return is_array($it) && !empty($it['id']) && !isset($delNewsSet[(string)$it['id']]);
+                    }));
+                    $payload['officialNews'] = $payload['news'];
                 }
                 $currDismissed = is_array($currentState['dismissedNotificationIds'] ?? null) ? $currentState['dismissedNotificationIds'] : [];
                 $incDismissed = is_array($payload['dismissedNotificationIds'] ?? null) ? $payload['dismissedNotificationIds'] : [];
@@ -3036,8 +3062,10 @@ try {
             $currentState['securityIncidents'] = [];
             $currentState['suggestionsToAlex'] = [];
             $currentState['pendingCustom'] = [];
+            $currentState['news'] = [];
             $currentState['officialNews'] = [];
             $currentState['pressReleases'] = [];
+            $currentState['deletedNewsIds'] = [];
             $currentState['deletedOfficialNewsIds'] = [];
             $currentState['deletedSuggestionIds'] = [];
             $currentState['deletedCompanyIds'] = [];

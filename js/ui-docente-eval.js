@@ -485,25 +485,33 @@ Object.assign(ui, {
             const hasDoc = item && item.driveUrl;
             if (hasDoc) {
                 const isReturned = item.status === 'RETURNED';
+                const isPendingReview = item.status === 'PENDING_REVIEW';
                 const safeUrl = encodeURI(item.driveUrl).replace(/"/g, '&quot;');
                 const badgeHtml = isReturned
                     ? `<span class="text-[10px] bg-red-950/80 text-red-300 border border-red-500/60 px-2 py-0.5 rounded font-mono font-bold">[⚠️ SUBSANACIÓN DOCENTE]</span>`
-                    : `<span class="text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-mono font-bold">[✓ PUBLICADA]</span>`;
+                    : (isPendingReview
+                        ? `<span class="text-[10px] bg-amber-950/70 text-amber-300 border border-amber-500/50 px-2 py-0.5 rounded font-mono font-bold">[⏳ PENDIENTE PUBLICACIÓN]</span>`
+                        : `<span class="text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-mono font-bold">[✓ PUBLICADA EN ORBITAL REPORT]</span>`);
+                const canModPr = typeof this.canModeratePressReleases === 'function' ? this.canModeratePressReleases() : Boolean(state.user?.admin);
+                const approvePrBtnHtml = (canModPr && isPendingReview && targetCid)
+                    ? `<button type="button" onclick="ui.approvePressReleaseForNewspaper('${this.escapeHTML(targetCid)}', '${ph}')" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-mars-green text-black hover:bg-white rounded transition-colors font-black uppercase min-h-[44px]" title="Aprobar y publicar en ORBITAL REPORT">✅ Publicar en Periódico</button>`
+                    : '';
                 const returnBtnHtml = (state.user?.admin && targetCid)
                     ? `<button type="button" onclick="ui.modalTeacherReturnPressRelease('${this.escapeHTML(targetCid)}', '${ph}')" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-bold uppercase min-h-[44px]" title="Requerir subsanación de nota de prensa">↩ Subsanar</button>`
                     : '';
                 return `
-                <div class="bg-black/70 border ${isReturned ? 'border-red-500/50' : 'border-slate-800'} p-2.5 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
+                <div class="bg-black/70 border ${isReturned ? 'border-red-500/50' : (isPendingReview ? 'border-amber-500/50' : 'border-slate-800')} p-2.5 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
                     <div>
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <span class="text-[10px] font-mono bg-mars-cyan/20 text-mars-cyan border border-mars-cyan/40 px-1.5 py-0.5 rounded font-bold">FASE ${ph}</span>
                             <span class="text-white font-bold">${this.escapeHTML(item.title || 'Nota de Prensa')}</span>
                         </div>
-                        <p class="text-[10px] text-slate-400 mt-0.5">Publicada: ${this.escapeHTML(item.publishedDate || item.publishedAt || '')}</p>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Enviada: ${this.escapeHTML(item.publishedDate || item.publishedAt || '')}</p>
                         ${isReturned && item.returnReason ? `<p class="text-[10px] text-red-300 mt-0.5">⚠️ ${this.escapeHTML(item.returnReason)}</p>` : ''}
                     </div>
                     <div class="flex items-center gap-2 shrink-0 flex-wrap">
                         ${badgeHtml}
+                        ${approvePrBtnHtml}
                         <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors min-h-[44px]">
                             <span>Abrir Doc ↗</span>
                         </a>

@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.33) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.34) ---
 
-const APP_VERSION = "2.0.33";
+const APP_VERSION = "2.0.34";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1156,6 +1156,20 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.34",
+      date: "2026-11-21",
+      title: "ORBITAL REPORT — Periódico Aeroespacial Bilingüe (ES/EN)",
+      items: [
+        "Periódico Digital ORBITAL REPORT (65% / 35%): Nueva portada editorial con imagen 16:9, antetítulo, titular, entradilla, caja destacada de «Bitácora de Misión / Debate para el Consejo», hemeroteca con lector modal y conmutador instantáneo Español / Inglés.",
+        "Spaceflight News API v4 (En Vivo e Importador Docente): Columna lateral International Wire con los últimos titulares reales de cohetes (con caché de sesión y respaldo offline) + importador exclusivo de Coordinación para adaptar noticias reales y añadir impacto en MARS-KET.",
+        "Artículo Inicial Precargado: Crónica bilingüe de Elon Musk sobre las patentes de SpaceX conectada con la exhibición final de prototipos sin combustible y el Mercado Secundario B2B.",
+        "Moderación de Notas de Prensa (DOC_15): Las notas enviadas por los CEOs pasan a revisión de Lengua (LEN) y Coordinación (COORD_*), publicándose intercaladas en el periódico tras su aprobación."
+      ],
+      highlights: [
+        { type: "PRENSA BILINGÜE", text: "ORBITAL REPORT ES/EN + Spaceflight News API v4 + Moderación DOC_15." }
+      ]
+    },
     {
       version: "2.0.33",
       date: "2026-11-20",
