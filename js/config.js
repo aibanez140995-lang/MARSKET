@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.35) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.36) ---
 
-const APP_VERSION = "2.0.35";
+const APP_VERSION = "2.0.36";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1156,6 +1156,19 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.36",
+      date: "2026-11-21",
+      title: "ORBITAL REPORT — Diseño Editorial The Washington Post, Extractor Completo y Proxy de Imágenes",
+      items: [
+        "Estética The Washington Post: Periódico digital sobre papel editorial claro (#FAF8F5) y tinta negra (#111111) con cabecera clásica ORBITAL REPORT — Edición MARS-KET, tipografía serif, letra capitular y columnas con filete divisor.",
+        "Visor de Artículo a Pantalla Amplia In-App: Al pulsar cualquier noticia del teletipo en vivo o de la hemeroteca, se abre dentro de la propia app con todos los párrafos completos extraídos del medio original y traducidos al español.",
+        "Traducción y Proxy de Imágenes en Servidor CDMON (api/index.php): Nuevo motor PHP (/api/news/wire, /api/news/article y /api/news/image) con caché SQLite para evitar bloqueos CORS/hotlink y garantizar que el 100% de las fotos y artículos completos funcionen."
+      ],
+      highlights: [
+        { type: "PRENSA EDITORIAL", text: "Estética Washington Post + Artículo Completo In-App + Proxy de Imágenes." }
+      ]
+    },
     {
       version: "2.0.35",
       date: "2026-11-21",

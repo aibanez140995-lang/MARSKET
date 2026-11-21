@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.35
+// Versión: v2.0.36
 
 declare(strict_types=1);
 
@@ -3109,6 +3109,310 @@ try {
         http_response_code(405);
         echo json_encode(['error' => 'Method Not Allowed']);
         exit;
+    }
+
+    // -------------------------------------------------------------------------
+    // D. ENDPOINTS DE PERIÓDICO ORBITAL REPORT (SNAPI v4 + EXTRACTOR + TRADUCTOR + PROXY IMG)
+    // -------------------------------------------------------------------------
+    if ($endpoint === 'news/image' || $endpoint === 'news/wire' || $endpoint === 'news/article' || $endpoint === 'news/translate') {
+        $isAllowedNewsHttpUrl = function (string $url): bool {
+            $parts = @parse_url($url);
+            if (!$parts || empty($parts['scheme']) || empty($parts['host'])) return false;
+            $scheme = strtolower($parts['scheme']);
+            if ($scheme !== 'http' && $scheme !== 'https') return false;
+            $host = strtolower($parts['host']);
+            if ($host === 'localhost' || $host === '127.0.0.1' || $host === '::1') return false;
+            $ip = @gethostbyname($host);
+            if ($ip && filter_var($ip, FILTER_VALIDATE_IP)) {
+                if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        $httpGetServer = function (string $url, int $timeout = 10, bool $isImage = false): array {
+            if (function_exists('curl_init')) {
+                $ch = curl_init($url);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_MAXREDIRS => 4,
+                    CURLOPT_TIMEOUT => $timeout,
+                    CURLOPT_CONNECTTIMEOUT => 5,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                    CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+                    CURLOPT_HTTPHEADER => $isImage
+                        ? ['Accept: image/avif,image/webp,image/apng,image/*,*/*;q=0.8']
+                        : ['Accept: text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8', 'Accept-Language: en-US,en;q=0.9,es;q=0.8']
+                ]);
+                $body = curl_exec($ch);
+                $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $ctype = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+                curl_close($ch);
+                if (is_string($body) && $code >= 200 && $code < 400) {
+                    return ['ok' => true, 'body' => $body, 'code' => $code, 'contentType' => $ctype];
+                }
+            }
+            $ctx = stream_context_create([
+                'http' => [
+                    'method' => 'GET',
+                    'timeout' => $timeout,
+                    'header' => "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0.0.0 Safari/537.36\r\n"
+                ]
+            ]);
+            $body = @file_get_contents($url, false, $ctx);
+            if (is_string($body) && $body !== '') {
+                return ['ok' => true, 'body' => $body, 'code' => 200, 'contentType' => ''];
+            }
+            return ['ok' => false, 'body' => '', 'code' => 0, 'contentType' => ''];
+        };
+
+        $translateServer = function (string $text, string $from = 'en', string $to = 'es') use ($httpGetServer): string {
+            $clean = trim($text);
+            if ($clean === '' || $from === $to) return $clean;
+            $chunks = preg_split('/\n{2,}/', $clean) ?: [$clean];
+            $outParts = [];
+            foreach ($chunks as $chunk) {
+                $chunk = trim($chunk);
+                if ($chunk === '') continue;
+                $tr = '';
+                $gUrl = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=' . rawurlencode($from) . '&tl=' . rawurlencode($to) . '&dt=t&q=' . rawurlencode(mb_substr($chunk, 0, 1800, 'UTF-8'));
+                $res = $httpGetServer($gUrl, 8, false);
+                if ($res['ok'] && $res['body'] !== '') {
+                    $json = json_decode($res['body'], true);
+                    if (is_array($json) && isset($json[0]) && is_array($json[0])) {
+                        $buf = '';
+                        foreach ($json[0] as $seg) {
+                            if (is_array($seg) && isset($seg[0])) $buf .= (string)$seg[0];
+                        }
+                        $tr = trim($buf);
+                    }
+                }
+                if ($tr === '') {
+                    $mmUrl = 'https://api.mymemory.translated.net/get?q=' . rawurlencode(mb_substr($chunk, 0, 480, 'UTF-8')) . '&langpair=' . rawurlencode($from . '|' . $to);
+                    $res2 = $httpGetServer($mmUrl, 8, false);
+                    if ($res2['ok'] && $res2['body'] !== '') {
+                        $j2 = json_decode($res2['body'], true);
+                        $cand = trim((string)($j2['responseData']['translatedText'] ?? ''));
+                        if ($cand !== '' && stripos($cand, 'MYMEMORY WARNING') === false) {
+                            $tr = $cand;
+                        }
+                    }
+                }
+                $outParts[] = ($tr !== '') ? $tr : $chunk;
+            }
+            return implode("\n\n", $outParts);
+        };
+
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS news_cache (
+                cache_key TEXT PRIMARY KEY,
+                payload LONGTEXT NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+        ");
+
+        if ($endpoint === 'news/translate' && $method === 'POST') {
+            $tBody = json_decode($rawInput, true);
+            $txt = trim((string)($tBody['text'] ?? ''));
+            $from = trim((string)($tBody['from'] ?? 'es'));
+            $to = trim((string)($tBody['to'] ?? 'en'));
+            $translated = ($txt !== '') ? $translateServer($txt, $from, $to) : '';
+            echo json_encode(['translatedText' => $translated], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        if ($endpoint === 'news/image') {
+            $imgUrl = trim((string)($_GET['url'] ?? ''));
+            if ($imgUrl !== '' && $isAllowedNewsHttpUrl($imgUrl)) {
+                $res = $httpGetServer($imgUrl, 9, true);
+                if ($res['ok'] && strlen($res['body']) > 256 && strlen($res['body']) <= 4 * 1024 * 1024) {
+                    $ctype = strtolower(trim(explode(';', $res['contentType'])[0] ?? ''));
+                    if (strpos($ctype, 'image/') !== 0) {
+                        $finfo = class_exists('finfo') ? new \finfo(FILEINFO_MIME_TYPE) : null;
+                        $detected = $finfo ? (string)$finfo->buffer($res['body']) : '';
+                        if (strpos($detected, 'image/') === 0) $ctype = $detected;
+                    }
+                    if (strpos($ctype, 'image/') === 0 && $ctype !== 'image/svg+xml') {
+                        header('Content-Type: ' . $ctype);
+                        header('Cache-Control: public, max-age=86400');
+                        echo $res['body'];
+                        exit;
+                    }
+                }
+            }
+            header('Content-Type: image/svg+xml; charset=utf-8');
+            header('Cache-Control: public, max-age=3600');
+            echo '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#111827"/><stop offset="100%" stop-color="#1e293b"/></linearGradient></defs><rect width="1280" height="720" fill="url(#g)"/><g stroke="#cbd5e1" stroke-opacity="0.15"><path d="M0 180H1280M0 360H1280M0 540H1280M320 0V720M640 0V720M960 0V720"/></g><polygon points="640,120 685,250 685,460 595,460 595,250" fill="#f8fafc" fill-opacity="0.9"/><polygon points="595,380 540,490 595,460" fill="#991b1b"/><polygon points="685,380 740,490 685,460" fill="#991b1b"/><text x="640" y="575" text-anchor="middle" fill="#e2e8f0" font-family="Georgia, serif" font-size="34" font-weight="bold" letter-spacing="4">ORBITAL REPORT // ARCHIVO FOTOGRÁFICO</text></svg>';
+            exit;
+        }
+
+        if ($endpoint === 'news/wire') {
+            $q = trim((string)($_GET['q'] ?? 'rocket'));
+            if ($q === '') $q = 'rocket';
+            $cacheKey = 'wire_' . md5(strtolower($q));
+            $stmtC = $pdo->prepare("SELECT payload, updated_at FROM news_cache WHERE cache_key = :k");
+            $stmtC->execute([':k' => $cacheKey]);
+            $cRow = $stmtC->fetch();
+            $nowSec = time();
+            if ($cRow && ($nowSec - (int)$cRow['updated_at']) < 1800) {
+                $cached = json_decode((string)$cRow['payload'], true);
+                if (is_array($cached) && !empty($cached['results'])) {
+                    echo json_encode($cached, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    exit;
+                }
+            }
+
+            $snapiUrl = 'https://api.spaceflightnewsapi.net/v4/articles/?limit=6&search=' . rawurlencode($q);
+            $res = $httpGetServer($snapiUrl, 10, false);
+            $items = [];
+            if ($res['ok'] && $res['body'] !== '') {
+                $decoded = json_decode($res['body'], true);
+                $rawResults = is_array($decoded['results'] ?? null) ? $decoded['results'] : [];
+                foreach ($rawResults as $art) {
+                    if (!is_array($art) || empty($art['title'])) continue;
+                    $tEn = trim((string)$art['title']);
+                    $sEn = trim((string)($art['summary'] ?? ''));
+                    $tEs = $translateServer($tEn, 'en', 'es');
+                    $sEs = $sEn !== '' ? $translateServer($sEn, 'en', 'es') : '';
+                    $rawImg = (string)($art['image_url'] ?? '');
+                    $proxyImg = ($rawImg !== '' && $isAllowedNewsHttpUrl($rawImg))
+                        ? ('/api/news/image?url=' . rawurlencode($rawImg))
+                        : '';
+                    $items[] = [
+                        'id' => (string)($art['id'] ?? md5($tEn)),
+                        'title' => $tEn,
+                        'titleEs' => $tEs,
+                        'summary' => $sEn,
+                        'summaryEs' => $sEs,
+                        'news_site' => (string)($art['news_site'] ?? 'Aerospace Wire'),
+                        'published_at' => (string)($art['published_at'] ?? ''),
+                        'url' => (string)($art['url'] ?? ''),
+                        'image_url' => $rawImg,
+                        'proxy_image_url' => $proxyImg
+                    ];
+                }
+            }
+            $outPayload = ['results' => $items, 'cachedAt' => $nowSec];
+            if (!empty($items)) {
+                $pdo->prepare("INSERT OR REPLACE INTO news_cache (cache_key, payload, updated_at) VALUES (:k, :p, :u)")
+                    ->execute([':k' => $cacheKey, ':p' => json_encode($outPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ':u' => $nowSec]);
+            }
+            echo json_encode($outPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        if ($endpoint === 'news/article') {
+            $artUrl = trim((string)($_GET['url'] ?? ''));
+            $fallbackTitle = trim((string)($_GET['title'] ?? ''));
+            $fallbackSummary = trim((string)($_GET['summary'] ?? ''));
+            $siteName = trim((string)($_GET['site'] ?? 'Aerospace Press'));
+            $fallbackImg = trim((string)($_GET['img'] ?? ''));
+
+            if ($artUrl === '' || !$isAllowedNewsHttpUrl($artUrl)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'INVALID_ARTICLE_URL']);
+                exit;
+            }
+
+            $cacheKey = 'art_' . md5($artUrl);
+            $stmtC = $pdo->prepare("SELECT payload, updated_at FROM news_cache WHERE cache_key = :k");
+            $stmtC->execute([':k' => $cacheKey]);
+            $cRow = $stmtC->fetch();
+            $nowSec = time();
+            if ($cRow && ($nowSec - (int)$cRow['updated_at']) < 86400) {
+                $cached = json_decode((string)$cRow['payload'], true);
+                if (is_array($cached) && !empty($cached['bodyEn'])) {
+                    echo json_encode($cached, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    exit;
+                }
+            }
+
+            $res = $httpGetServer($artUrl, 12, false);
+            $paragraphs = [];
+            $extractedTitle = $fallbackTitle;
+            $extractedImg = $fallbackImg;
+
+            if ($res['ok'] && $res['body'] !== '' && class_exists('DOMDocument')) {
+                $html = $res['body'];
+                $dom = new \DOMDocument();
+                $prevErr = libxml_use_internal_errors(true);
+                @$dom->loadHTML('<?xml encoding="utf-8" ?>' . $html, LIBXML_NOWARNING | LIBXML_NOERROR);
+                libxml_clear_errors();
+                libxml_use_internal_errors($prevErr);
+
+                $xpath = new \DOMXPath($dom);
+                foreach ($xpath->query('//script|//style|//noscript|//nav|//header|//footer|//aside|//form') as $node) {
+                    if ($node->parentNode) $node->parentNode->removeChild($node);
+                }
+
+                $ogImg = $xpath->query('//meta[@property="og:image"]/@content|//meta[@name="twitter:image"]/@content');
+                if ($ogImg && $ogImg->length > 0) {
+                    $candImg = trim((string)$ogImg->item(0)->nodeValue);
+                    if ($candImg !== '' && $isAllowedNewsHttpUrl($candImg)) $extractedImg = $candImg;
+                }
+                if ($extractedTitle === '') {
+                    $ogT = $xpath->query('//meta[@property="og:title"]/@content|//h1');
+                    if ($ogT && $ogT->length > 0) $extractedTitle = trim((string)$ogT->item(0)->textContent);
+                }
+
+                $pNodes = $xpath->query('//article//p');
+                if (!$pNodes || $pNodes->length < 3) {
+                    $pNodes = $xpath->query('//main//p|//div[contains(@class,"content") or contains(@class,"article") or contains(@class,"post")]//p|//p');
+                }
+                $seenP = [];
+                if ($pNodes) {
+                    foreach ($pNodes as $pNode) {
+                        $txt = preg_replace('/\s+/', ' ', trim((string)$pNode->textContent));
+                        if ($txt === '' || mb_strlen($txt, 'UTF-8') < 48) continue;
+                        if (preg_match('/^(subscribe|sign up|cookie|privacy|advertisement|read more|all rights reserved|follow us)/i', $txt)) continue;
+                        $sig = md5($txt);
+                        if (isset($seenP[$sig])) continue;
+                        $seenP[$sig] = true;
+                        $paragraphs[] = $txt;
+                        if (count($paragraphs) >= 10) break;
+                    }
+                }
+            }
+
+            if (count($paragraphs) < 2 && $fallbackSummary !== '') {
+                $paragraphs = array_values(array_filter(array_merge([$fallbackSummary], $paragraphs)));
+            }
+            if (empty($paragraphs)) {
+                $paragraphs = [$extractedTitle ?: 'Aerospace launch update reported by ' . $siteName . '.'];
+            }
+
+            $bodyEn = implode("\n\n", $paragraphs);
+            $titleEn = $extractedTitle ?: 'Aerospace Dispatch';
+            $titleEs = $translateServer($titleEn, 'en', 'es');
+            $bodyEs = $translateServer($bodyEn, 'en', 'es');
+            $summaryEs = $fallbackSummary !== '' ? $translateServer($fallbackSummary, 'en', 'es') : '';
+
+            $proxyImg = ($extractedImg !== '' && $isAllowedNewsHttpUrl($extractedImg))
+                ? ('/api/news/image?url=' . rawurlencode($extractedImg))
+                : '/api/news/image';
+
+            $articlePayload = [
+                'url' => $artUrl,
+                'sourceName' => $siteName,
+                'titleEn' => $titleEn,
+                'titleEs' => $titleEs,
+                'subtitleEn' => $fallbackSummary,
+                'subtitleEs' => $summaryEs,
+                'bodyEn' => $bodyEn,
+                'bodyEs' => $bodyEs,
+                'imageUrl' => $proxyImg,
+                'rawImageUrl' => $extractedImg,
+                'extractedParagraphs' => count($paragraphs)
+            ];
+
+            $pdo->prepare("INSERT OR REPLACE INTO news_cache (cache_key, payload, updated_at) VALUES (:k, :p, :u)")
+                ->execute([':k' => $cacheKey, ':p' => json_encode($articlePayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ':u' => $nowSec]);
+
+            echo json_encode($articlePayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
     }
 
     // 404 para cualquier endpoint de API no reconocido
