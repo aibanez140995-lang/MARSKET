@@ -385,7 +385,7 @@ Object.assign(ui, {
             const subWeightPct = Math.round((weights[sub] || 0) * 100);
             const criteriaRows = config.criteria.map(c => `
                 <div class="flex justify-between text-xs uppercase w-full border-b border-slate-800/60 pb-1.5 gap-2">
-                    <span class="text-slate-300 pr-2">${this.escapeHTML(c.name)} (${Math.round(c.weight*100)}%)</span>
+                    <span class="text-slate-300 pr-2">${this.escapeHTML(c.name)} (${Number((c.weight*100).toFixed(1))}%)</span>
                     <span class="font-mono font-bold shrink-0 ${grade.scores && grade.scores[c.id] !== undefined ? 'text-white' : 'text-slate-400'}">${grade.scores && grade.scores[c.id] !== undefined ? this.escapeHTML(grade.scores[c.id]) : '-'}</span>
                 </div>`).join('');
             
@@ -524,9 +524,11 @@ Object.assign(ui, {
                     const dlDate = sched.deadline || (state.data.config?.deadlines && state.data.config.deadlines[def.key]) ? (sched.deadline || state.data.config.deadlines[def.key]) : def.defaultDate;
                     const dlStatus = this.getDeadlineStatus(dlDate);
 
-                    const lockBadge = isLocked
-                        ? `<span class="text-xs font-mono font-bold text-mars-yellow bg-mars-yellow/10 border border-mars-yellow/30 px-2 py-0.5 rounded">🔒 BLOQUEADO HASTA ${new Date(openDate).toLocaleString()}</span>`
-                        : `<span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">🟢 ACTIVO / EN PLAZO</span>`;
+                    const lockBadge = this.getDeliverableLockBadgeHtml
+                        ? this.getDeliverableLockBadgeHtml(def.key, co, docObj)
+                        : (isLocked
+                            ? `<span class="text-xs font-mono font-bold text-mars-yellow bg-mars-yellow/10 border border-mars-yellow/30 px-2 py-0.5 rounded">🔒 BLOQUEADO HASTA ${new Date(openDate).toLocaleString()}</span>`
+                            : `<span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">🟢 ACTIVO / EN PLAZO</span>`);
 
                     let pipelineBadge = '<span class="text-xs font-bold uppercase text-slate-300 bg-black border border-slate-700 px-2 py-0.5">⏳ PENDIENTE</span>';
                     let borderColor = isLocked ? 'border-mars-yellow/40' : 'border-slate-800';
@@ -2251,18 +2253,27 @@ Object.assign(ui, {
                 </div>
             ` : ''}
 
+            <div class="p-3 bg-amber-950/35 border-2 border-amber-400/70 rounded space-y-2 mb-2">
+                <div class="flex items-start gap-2">
+                    <span class="text-base shrink-0">🔐</span>
+                    <div class="text-xs font-sans text-amber-100 leading-snug">
+                        <strong class="text-amber-300 uppercase font-mono block text-[11px]">PASO 1 OBLIGATORIO — Permisos de Lectura en Google Drive:</strong>
+                        <span>En tu Google Doc/Drive pulsa <strong>Compartir</strong> ➔ Acceso general ➔ <strong>«Fomento centros de enseñanza (Lector)»</strong>.</span>
+                    </div>
+                </div>
+                <label class="mars-checkbox-label text-xs text-white font-bold cursor-pointer bg-black/50 border border-amber-500/40 px-2.5 py-1.5 rounded w-full">
+                    <input type="checkbox" id="deliverable-drive-perm-check" class="mars-touch-input">
+                    <span class="mars-checkbox-visual"></span>
+                    <span class="text-[11px] font-sans">✓ He compartido el documento con «Fomento centros de enseñanza (Lector)»</span>
+                </label>
+            </div>
             <div class="space-y-2">
-                <label for="deliverable-drive-input" class="text-xs text-mars-cyan uppercase font-bold block">Enlace de TU documento rellenado en Google Drive / Docs</label>
+                <label for="deliverable-drive-input" class="text-xs text-mars-cyan uppercase font-bold block">Paso 2: Enlace de TU documento rellenado en Google Drive / Docs</label>
                 <div class="flex flex-col sm:flex-row gap-2">
                     <input type="url" id="deliverable-drive-input" value="${this.escapeHTML(existingUrl)}" placeholder="https://docs.google.com/document/d/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 bg-black border-2 border-mars-cyan p-3 text-base sm:text-xs text-mars-cyan font-mono outline-none focus:shadow-neon-cyan min-h-[44px]">
                     ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('deliverable-drive-input') : ''}
                 </div>
                 <p class="text-[11px] text-slate-300 font-sans">No pegues el enlace de la plantilla vacía (<code>/copy</code>): usa primero <strong>[📋 Hacer Copia en Drive]</strong> y pega aquí el enlace de vuestra copia.</p>
-                <label class="mars-checkbox-label flex items-start gap-2.5 cursor-pointer p-2.5 bg-black/50 border border-slate-800 rounded min-h-[44px]">
-                    <input type="checkbox" id="deliverable-drive-perm-check" class="mars-touch-input">
-                    <span class="mars-checkbox-visual mt-0.5"></span>
-                    <span class="text-xs text-slate-200 font-sans">Confirmo que en Google Drive he marcado <strong>«Fomento centros de enseñanza (Lector)»</strong> para que el CEO y el profesor puedan abrirlo.</span>
-                </label>
             </div>
         </div>`;
 
@@ -2789,15 +2800,28 @@ Object.assign(ui, {
                 <div class="mb-2">
                     ${this.renderDocTemplateBtn('DOC_15_NOTA_PRENSA', '📄 Ver Plantilla Nota de Prensa (DOC_15)')}
                 </div>
+                <div class="p-3 bg-amber-950/35 border-2 border-amber-400/70 rounded space-y-2 mb-2">
+                    <div class="flex items-start gap-2">
+                        <span class="text-base shrink-0">🔐</span>
+                        <div class="text-xs font-sans text-amber-100 leading-snug">
+                            <strong class="text-amber-300 uppercase font-mono block text-[11px]">PASO 1 OBLIGATORIO — Permisos de Lectura en Google Drive:</strong>
+                            <span>En tu Google Doc/Drive pulsa <strong>Compartir</strong> ➔ Acceso general ➔ <strong>«Fomento centros de enseñanza (Lector)»</strong>. Imprescindible para que el profesorado y las demás startups puedan leerla en el periódico.</span>
+                        </div>
+                    </div>
+                    <label class="mars-checkbox-label text-xs text-white font-bold cursor-pointer bg-black/50 border border-amber-500/40 px-2.5 py-1.5 rounded w-full">
+                        <input type="checkbox" id="press-release-share-ok" class="mars-touch-input">
+                        <span class="mars-checkbox-visual"></span>
+                        <span class="text-[11px] font-sans">✓ He compartido la Nota de Prensa con «Fomento centros de enseñanza (Lector)»</span>
+                    </label>
+                </div>
                 <div>
                     <label for="press-release-drive-url" class="text-mars-cyan uppercase font-bold block mb-1">
-                        Enlace a la Nota de Prensa en Google Drive o Docs (URL)
+                        Paso 2: Enlace a la Nota de Prensa en Google Drive o Docs (URL)
                     </label>
                     <div class="flex flex-col sm:flex-row gap-2">
                         <input type="url" id="press-release-drive-url" placeholder="https://docs.google.com/document/d/... o https://drive.google.com/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 min-h-[44px] bg-slate-900 border border-mars-cyan p-2.5 text-base sm:text-xs text-white outline-none focus:border-white font-mono" required>
                         ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('press-release-drive-url') : ''}
                     </div>
-                    <p class="text-[10px] text-slate-400 mt-1 font-sans">El documento debe estar en modo <em>"Fomento centros de enseñanza (Lector)"</em> para que toda la comunidad pueda leerlo.</p>
                 </div>
             </div>
         `;
@@ -2807,6 +2831,10 @@ Object.assign(ui, {
 
     submitPressRelease(phaseKey) {
         if (!state.user || this.getEffectiveRole() !== 'CEO') return;
+        const shareChk = document.getElementById('press-release-share-ok');
+        if (shareChk && !shareChk.checked) {
+            return this.notify("⚠️ Paso 1 obligatorio: marca la casilla confirmando que compartiste la Nota de Prensa con «Fomento centros de enseñanza (Lector)».", "warning");
+        }
         const elUrl = document.getElementById('press-release-drive-url');
         if (!elUrl) return;
 
@@ -5637,8 +5665,8 @@ Object.assign(ui, {
                                                 ✍️ Suscribir Contrato
                                             </button>
                                         ` : `
-                                            <button type="button" disabled class="w-full min-h-[44px] bg-slate-900 border border-slate-800 text-amber-400/70 text-xs font-bold uppercase font-mono cursor-not-allowed">
-                                                🔒 Ventana Cerrada
+                                            <button type="button" disabled class="w-full min-h-[44px] bg-slate-900 border border-slate-800 text-amber-400/80 text-xs font-bold uppercase font-mono cursor-not-allowed">
+                                                ${(currentPhaseTab === 'I' && !this.isBudgetInitialDelivered(co) && !co.unlockAllContracts) ? '⏳ Requiere Presupuesto DOC_4' : '🔒 Ventana Cerrada'}
                                             </button>
                                         `) : `
                                             <div class="min-h-[44px] bg-slate-900 border border-slate-800 text-slate-400 text-[11px] font-mono flex items-center justify-center text-center p-1">

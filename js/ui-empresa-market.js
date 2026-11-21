@@ -127,6 +127,8 @@ Object.assign(ui, {
                             : `<button type="button" onclick="ui.addToCart('${this.escapeHTML(item.id)}')" class="w-full min-h-[44px] bg-slate-800 text-mars-cyan border border-mars-cyan hover:bg-mars-cyan hover:text-black font-black py-2 px-3 text-xs uppercase tracking-wider transition-all">🛒 Añadir al Carrito</button>`)) 
                     : (isDocente ? `<span class="block text-center text-slate-300 text-xs uppercase font-bold py-2 border border-slate-800 bg-black/40">Modo Supervisión</span>` : `<span class="block text-center text-slate-300 text-xs uppercase font-bold border border-slate-700 p-2.5 bg-black/40">Solo Dpto. Técnico</span>`);
 
+                const hasCatImg = Boolean(item.imageUrl && /^(https?:\/\/|data:image\/)/i.test(item.imageUrl));
+                const catImgSrc = hasCatImg ? (this.getNewsImageSrc ? this.getNewsImageSrc(item.imageUrl) : item.imageUrl) : '';
                 return `
                 <div class="catalog-item bg-slate-900 border border-slate-700 p-4 hover:border-mars-cyan/60 transition-colors h-full flex flex-col justify-between" data-search="${this.escapeHTML((item.name + ' ' + item.id + ' ' + (item.category || '')).toLowerCase())}">
                     <div>
@@ -134,6 +136,11 @@ Object.assign(ui, {
                             <span class="font-mono text-slate-300 text-xs">${this.escapeHTML(item.id)}</span>
                             <span class="text-mars-green font-mono font-bold text-sm">${Number(item.price).toFixed(2)} €v</span>
                         </div>
+                        ${hasCatImg ? `
+                            <div class="w-full h-28 bg-black/70 border border-slate-800 mb-2.5 overflow-hidden flex items-center justify-center rounded-sm">
+                                <img src="${this.escapeAttr(catImgSrc)}" alt="${this.escapeAttr(item.name)}" loading="lazy" onclick="ui.modalViewNewsImage('${this.escapeAttr(catImgSrc)}', '${this.escapeAttr(item.name)}')" class="w-full h-full object-contain cursor-pointer hover:scale-105 transition-transform">
+                            </div>
+                        ` : ''}
                         <h4 class="text-white font-bold text-xs sm:text-sm uppercase mb-2 leading-snug break-words">${this.escapeHTML(item.name)}</h4>
                         <div class="flex flex-wrap justify-between gap-1 text-xs text-slate-300 uppercase mb-3">
                             <span>Medida: <span class="text-white font-bold">${this.escapeHTML(item.unit)}</span></span>

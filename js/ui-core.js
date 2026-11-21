@@ -3568,10 +3568,11 @@ const ui = {
         
         const hero = this.generateHeroBanner();
         const notifs = state.user.admin ? '' : (this.renderNotifications ? this.renderNotifications() : '');
+        const overdueAlert = state.user.admin ? '' : (this.renderOverdueDeliverablesAlertBanner ? this.renderOverdueDeliverablesAlertBanner() : '');
         const bankruptBanner = (!state.user.admin && co && typeof this.renderBankruptcyAlertBanner === 'function')
             ? this.renderBankruptcyAlertBanner(co)
             : '';
-        const topContext = hero + notifs + bankruptBanner;
+        const topContext = hero + notifs + overdueAlert + bankruptBanner;
         
         switch(this.current) {
             case 'dashboard': vp.innerHTML = topContext; this.viewDashboard(vp); break;
@@ -3925,6 +3926,97 @@ const ui = {
         return false;
     },
 
+    renderDriveShareStep1Box(checkboxId, extraHint = '') {
+        const safeId = this.escapeAttr(checkboxId || 'confirm-drive-share-step1');
+        return `
+        <div class="p-3 bg-amber-950/35 border-2 border-amber-400/70 rounded space-y-2 mb-2">
+            <div class="flex items-start gap-2">
+                <span class="text-base shrink-0">🔐</span>
+                <div class="text-xs font-sans text-amber-100 leading-snug">
+                    <strong class="text-amber-300 uppercase font-mono block text-[11px]">PASO 1 OBLIGATORIO — Permisos de Lectura en Google Drive:</strong>
+                    <span>En tu Google Doc/Drive pulsa <strong>Compartir</strong> ➔ Acceso general ➔ <strong>«Fomento centros de enseñanza (Lector)»</strong>.${extraHint ? ' ' + this.escapeHTML(extraHint) : ''}</span>
+                </div>
+            </div>
+            <label class="mars-checkbox-label text-xs text-white font-bold cursor-pointer bg-black/50 border border-amber-500/40 px-2.5 py-1.5 rounded w-full">
+                <input type="checkbox" id="${safeId}" class="mars-touch-input">
+                <span class="mars-checkbox-visual"></span>
+                <span class="text-[11px] font-sans">✓ He compartido el documento con «Fomento centros de enseñanza (Lector)»</span>
+            </label>
+        </div>`;
+    },
+
+    getDeliverableLockBadgeHtml(docKey, co, docObj) {
+        const sched = (state.data.config?.deliverableSchedule && state.data.config.deliverableSchedule[docKey]) || {};
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const def = defs.find(d => d.key === docKey) || {};
+        const openDate = sched.openDate || def.defaultOpenDate;
+        const isLocked = this.isDeliverableLocked(docKey, co);
+        if (isLocked) {
+            return `<span class="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded">🔒 BLOQUEADO HASTA ${new Date(openDate).toLocaleString()}</span>`;
+        }
+        const st = (typeof docObj === 'object' && docObj !== null) ? docObj.status : (typeof docObj === 'string' && docObj ? 'DELIVERED_TO_TEACHER' : '');
+        const isDelivered = st === 'DELIVERED_TO_TEACHER' || st === 'REVIEWED' || st === 'ACCEPTED' || st === 'APPROVED';
+        const dlDate = sched.deadline || (state.data.config?.deadlines && state.data.config.deadlines[docKey]) || def.defaultDate;
+        const dlTs = dlDate ? new Date(dlDate).getTime() : 0;
+        const isExpired = Boolean(dlTs && !isNaN(dlTs) && Date.now() > dlTs);
+        if (isDelivered) {
+            return `<span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">✅ ENTREGADO</span>`;
+        }
+        if (isExpired) {
+            return `<span class="text-xs font-mono font-bold text-red-300 bg-red-950/70 border border-red-500/70 px-2 py-0.5 rounded">🔴 PLAZO EXPIRADO</span>`;
+        }
+        return `<span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">🟢 ACTIVO / EN PLAZO</span>`;
+    },
+
+    renderOverdueDeliverablesAlertBanner() {
+        if (!state.user || state.user.admin || !state.user.coId) return '';
+        const co = state.data?.companies?.[state.user.coId];
+        if (!co) return '';
+        const effRole = this.getEffectiveRole(co);
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const docs = co.deliverables || {};
+        const now = Date.now();
+
+        const overdueList = defs.filter(def => {
+            if (!def || !def.key) return false;
+            const p = this.getDeliverablePhase ? this.getDeliverablePhase(def.key) : (def.phase || 'I');
+            if (!this.isPhaseUnlocked(p, co) || this.isDeliverableLocked(def.key, co)) return false;
+            const normRole = def.role === 'OPERACIONES' ? 'OPERACIONES_IA' : def.role;
+            if (effRole !== 'CEO' && effRole !== normRole) return false;
+
+            const sched = (state.data.config?.deliverableSchedule && state.data.config.deliverableSchedule[def.key]) || {};
+            const dlDate = sched.deadline || (state.data.config?.deadlines && state.data.config.deadlines[def.key]) || def.defaultDate;
+            const dlTs = dlDate ? new Date(dlDate).getTime() : 0;
+            if (!dlTs || isNaN(dlTs) || now <= dlTs) return false;
+
+            const docItem = docs[def.key];
+            const st = (typeof docItem === 'object' && docItem) ? docItem.status : (typeof docItem === 'string' && docItem ? 'DELIVERED_TO_TEACHER' : 'PENDING');
+            return st !== 'DELIVERED_TO_TEACHER' && st !== 'REVIEWED' && st !== 'ACCEPTED' && st !== 'APPROVED';
+        });
+
+        if (overdueList.length === 0) return '';
+
+        return `
+        <div role="alert" class="mb-5 p-4 bg-red-950/60 border-2 border-red-500 rounded shadow-[0_0_15px_rgba(239,68,68,0.25)] space-y-2">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🚨</span>
+                    <h4 class="font-orbitron font-black text-xs sm:text-sm text-red-300 uppercase tracking-wider">
+                        ALERTA DE ENTREGA VENCIDA (${overdueList.length} documento${overdueList.length > 1 ? 's' : ''} sin entregar)
+                    </h4>
+                </div>
+                <button type="button" onclick="ui.navigate('role_deliverables')" class="min-h-[44px] px-3.5 py-1.5 bg-red-600 hover:bg-white hover:text-black text-white font-black uppercase text-xs rounded transition-colors shrink-0">
+                    📤 Ir a Entregables ➔
+                </button>
+            </div>
+            <ul class="space-y-1 text-xs font-mono text-red-100 pl-1">
+                ${overdueList.map(d => `
+                    <li>• <strong>${this.escapeHTML(d.name || d.key)}</strong> <span class="text-amber-300">[Resp: ${this.escapeHTML((d.role || '').replace('_', ' '))}]</span> — Plazo expirado y pendiente de entrega.</li>
+                `).join('')}
+            </ul>
+        </div>`;
+    },
+
     renderDriveLinkBox(title, desc, docKey, currentDoc) {
         const co = (typeof state !== 'undefined' && state.user?.coId && state.data?.companies) ? state.data.companies[state.user.coId] : null;
         if (!state.user?.admin && this.isDeliverableLocked(docKey, co)) {
@@ -3940,9 +4032,7 @@ const ui = {
         const openDate = sched.openDate || def.defaultOpenDate;
         const isLocked = this.isDeliverableLocked(docKey, co);
 
-        const lockBadge = isLocked
-            ? `<span class="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded">🔒 BLOQUEADO HASTA ${new Date(openDate).toLocaleString()}</span>`
-            : `<span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">🟢 ACTIVO / EN PLAZO</span>`;
+        const lockBadge = this.getDeliverableLockBadgeHtml(docKey, co, currentDoc);
 
         const tplHtml = this.renderDocTemplateBtn(docKey, '📄 Ver Plantilla Docente');
         const templateBtn = tplHtml ? `<div class="mb-2">${tplHtml}</div>` : '';
@@ -3964,9 +4054,11 @@ const ui = {
 
         let uploadSectionHtml = '';
         if (canUpload) {
+            const step1Box = isLocked ? '' : this.renderDriveShareStep1Box(`confirm-drive-share-${docKey}`);
             uploadSectionHtml = `
             <div class="bg-slate-900 border border-slate-700 p-3 mt-2 space-y-2">
-                <label for="input-drive-url-${docKey}" class="text-xs text-mars-yellow font-bold uppercase block">${isLocked ? '🔒 Entrega Bloqueada hasta la Fecha de Apertura' : (isAdmin ? 'Entregar o Actualizar Enlace Google Drive' : 'Subir Enlace para Supervisión del CEO')}</label>
+                ${step1Box}
+                <label for="input-drive-url-${docKey}" class="text-xs text-mars-yellow font-bold uppercase block">${isLocked ? '🔒 Entrega Bloqueada hasta la Fecha de Apertura' : (isAdmin ? 'Paso 2: Entregar o Actualizar Enlace Google Drive' : 'Paso 2: Subir Enlace para Supervisión del CEO')}</label>
                 <div class="space-y-1.5">
                   <input type="url" 
                          id="input-drive-url-${docKey}" 
@@ -4148,6 +4240,11 @@ const ui = {
             this.notify("Este entregable se encuentra bloqueado hasta su fecha de apertura.", "error");
             return;
         }
+        const shareChk = document.getElementById(`confirm-drive-share-${docType}`);
+        if (shareChk && !shareChk.checked) {
+            this.notify("⚠️ Paso 1 obligatorio: marca la casilla confirmando que compartiste el documento con «Fomento centros de enseñanza (Lector)».", "warning");
+            return;
+        }
         const inputFromBtn = (btnEl && btnEl.closest) ? (btnEl.closest('.bg-slate-900')?.querySelector('input[name="driveUrl"]') || btnEl.closest('.border-b')?.querySelector('input[name="driveUrl"]')) : null;
         const inputEl = inputFromBtn || document.getElementById(`input-drive-url-${docType}`);
         const driveUrl = (inputFromBtn?.value || (document.getElementById(`input-drive-url-${docType}`)?.value || '')).trim();
@@ -4191,15 +4288,13 @@ const ui = {
                 : (isReturned
                     ? { text: "🔴 SUBSANACIÓN REQUERIDA", class: "bg-red-950/60 text-red-400 border border-red-500 font-black animate-pulse" }
                     : this.getDeadlineStatus(dlDate, !!(doc && doc.driveUrl))));
-        const lockBadge = isLocked
-            ? `<span class="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded">🔒 BLOQUEADO HASTA ${new Date(openDate).toLocaleString()}</span>`
-            : `<span class="text-xs font-mono font-bold text-mars-green bg-mars-green/10 border border-mars-green/30 px-2 py-0.5 rounded">🟢 ACTIVO / EN PLAZO</span>`;
+        const lockBadge = this.getDeliverableLockBadgeHtml(docKey, co, doc);
         const templateBtn = this.renderDocTemplateBtn(docKey, '📄 Ver Plantilla Docente');
         const rubric = (typeof RUBRIC_CONFIG !== 'undefined' && RUBRIC_CONFIG[def.subject]) ? RUBRIC_CONFIG[def.subject] : null;
         const criteriaHtml = rubric && rubric.criteria ? rubric.criteria.map(c => `
             <li class="flex justify-between items-center py-1 border-b border-slate-800/80 last:border-0">
                 <span class="text-slate-200">${this.escapeHTML(c.name)}</span>
-                <span class="text-mars-cyan font-bold">${Math.round(c.weight * 100)}%</span>
+                <span class="text-mars-cyan font-bold">${Number((c.weight * 100).toFixed(1))}%</span>
             </li>
         `).join('') : '';
 
@@ -4327,7 +4422,7 @@ const ui = {
         const grade = (co.grades && co.grades[sub]) ? co.grades[sub] : { scores: {}, feedback: '', final: null };
         const rows = config.criteria.map(c => `
             <div class="flex justify-between text-xs uppercase border-b border-slate-800/80 pb-1.5 gap-2">
-                <span class="text-slate-300">${this.escapeHTML(c.name)} (${Math.round(c.weight * 100)}%)</span>
+                <span class="text-slate-300">${this.escapeHTML(c.name)} (${Number((c.weight * 100).toFixed(1))}%)</span>
                 <span class="font-mono font-bold ${grade.scores && grade.scores[c.id] !== undefined ? 'text-white' : 'text-slate-400'}">${grade.scores && grade.scores[c.id] !== undefined ? this.escapeHTML(grade.scores[c.id]) : '-'}</span>
             </div>`).join('');
         const fb = grade.feedback ? `<div class="bg-black p-3 border border-slate-700 text-xs text-slate-200 italic mt-2 break-words"><span class="text-mars-yellow font-bold not-italic block mb-1 uppercase text-xs">Feedback Docente:</span>"${this.escapeHTML(grade.feedback)}"</div>` : '';

@@ -424,7 +424,7 @@ Object.assign(ui, {
                                             <span class="text-[10px] font-mono px-2 py-0.5 rounded border ${phaseBadgeClass} font-bold uppercase">FASE ${criterionPhase}</span>
                                             <label for="grade-${c.id}" class="text-xs text-white font-bold uppercase leading-tight cursor-pointer">${this.escapeHTML(c.name)}</label>
                                         </div>
-                                        <span class="text-xs bg-mars-cyan text-black px-2 py-0.5 mt-1 inline-block font-bold">PESO EN ASIGNATURA: ${Math.round(c.weight*100)}%</span>
+                                        <span class="text-xs bg-mars-cyan text-black px-2 py-0.5 mt-1 inline-block font-bold">PESO EN ASIGNATURA: ${Number((c.weight*100).toFixed(1))}%</span>
                                     </div>
                                     <input type="number" id="grade-${c.id}" min="0" max="10" step="0.1" value="${pastGrade.scores && pastGrade.scores[c.id] !== undefined ? pastGrade.scores[c.id] : ''}" oninput="ui.calcRealtimeGrade('${activeSubject}')" class="min-h-[44px] w-full sm:w-24 bg-black border border-mars-border text-center text-mars-cyan font-bold text-base p-2 outline-none focus:border-mars-cyan shrink-0" placeholder="0-10">
                                 </div>`;
@@ -727,7 +727,7 @@ Object.assign(ui, {
                     <div class="space-y-1.5 border-t border-slate-800/80 pt-2">
                         ${phCriteria.length > 0 ? phCriteria.map(c => `
                             <div class="text-[11px] text-slate-300 leading-snug">
-                                <span class="text-mars-yellow font-bold">${Math.round(c.weight * 100)}%</span>: ${this.escapeHTML(c.name)}
+                                <span class="text-mars-yellow font-bold">${Number((c.weight * 100).toFixed(1))}%</span>: ${this.escapeHTML(c.name)}
                             </div>
                         `).join('') : '<p class="text-[10px] text-slate-400 italic">Sin entregables de esta materia en esta fase.</p>'}
                     </div>

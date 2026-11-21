@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.36) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.37) ---
 
-const APP_VERSION = "2.0.36";
+const APP_VERSION = "2.0.37";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -283,7 +283,7 @@ const PRESS_RELEASE_PHASES = Object.freeze([
     }
 ]);
 
-// Ventanas temporales oficiales de selección de contratos (Fase I: 5 días lectivos)
+// Ventanas temporales oficiales de selección de contratos (5 días lectivos por fase)
 const CONTRACTS_PHASE_WINDOWS = Object.freeze({
     'I': {
         phase: 'I',
@@ -298,8 +298,8 @@ const CONTRACTS_PHASE_WINDOWS = Object.freeze({
         phase: 'II',
         phaseName: 'Fase II: I+D y Prototipado Aeroespacial',
         selectionStart: '2026-12-15T00:00',
-        selectionEnd: '2026-12-17T23:59',
-        windowLabel: '15/12/2026 – 17/12/2026 (Primeros 3 días lectivos de Fase II)',
+        selectionEnd: '2026-12-21T23:59',
+        windowLabel: '15/12/2026 – 21/12/2026 (Primeros 5 días lectivos de Fase II)',
         evalCutoff: '2027-02-15T23:59',
         evalCutoffLabel: '15/02/2027'
     },
@@ -307,8 +307,8 @@ const CONTRACTS_PHASE_WINDOWS = Object.freeze({
         phase: 'III',
         phaseName: 'Fase III: Producción y Finanzas B2B',
         selectionStart: '2027-02-15T00:00',
-        selectionEnd: '2027-02-17T23:59',
-        windowLabel: '15/02/2027 – 17/02/2027 (Primeros 3 días lectivos de Fase III)',
+        selectionEnd: '2027-02-19T23:59',
+        windowLabel: '15/02/2027 – 19/02/2027 (Primeros 5 días lectivos de Fase III)',
         evalCutoff: '2027-03-31T23:59',
         evalCutoffLabel: '31/03/2027'
     },
@@ -316,8 +316,8 @@ const CONTRACTS_PHASE_WINDOWS = Object.freeze({
         phase: 'IV',
         phaseName: 'Fase IV: Validación Científica y Comercialización',
         selectionStart: '2027-03-31T00:00',
-        selectionEnd: '2027-04-02T23:59',
-        windowLabel: '31/03/2027 – 02/04/2027 (Primeros 3 días lectivos de Fase IV)',
+        selectionEnd: '2027-04-06T23:59',
+        windowLabel: '31/03/2027 – 06/04/2027 (Primeros 5 días lectivos de Fase IV)',
         evalCutoff: '2027-04-23T23:59',
         evalCutoffLabel: '23/04/2027'
     }
@@ -791,9 +791,12 @@ const RUBRIC_CONFIG = {
         {id: 'c7', name: 'Defensas Orales', weight: 0.20}
     ] },
     LEN: { name: "Lengua Castellana", criteria: [
-        {id: 'c1', name: '1. Producción Oral', weight: 0.50}, 
-        {id: 'c2', name: '2. Producción Escrita (Dossier Inversores)', weight: 0.40},
-        {id: 'c3', name: '3. Conjunto de Notas de Prensa', weight: 0.10}
+        {id: 'c1', name: '1. Pitch de Ventas (Exposición Oral)', weight: 0.50},
+        {id: 'c2', name: '2. Dossier de Inversores', weight: 0.40},
+        {id: 'c3', name: '3A. Nota de Prensa Fase I (DOC_15)', weight: 0.025},
+        {id: 'c4', name: '3B. Nota de Prensa Fase II (DOC_15)', weight: 0.025},
+        {id: 'c5', name: '3C. Nota de Prensa Fase III (DOC_15)', weight: 0.025},
+        {id: 'c6', name: '3D. Nota de Prensa Fase IV (DOC_15)', weight: 0.025}
     ] },
     MAT: { name: "Matemáticas", criteria: [
         {id: 'c1', name: 'Elaboración Goniómetro', weight: 0.25}, 
@@ -1156,6 +1159,21 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.37",
+      date: "2026-11-21",
+      title: "Imágenes en Catálogo, Paso 1 Drive, Rúbrica LEN, Alertas de Plazo y Contratos 5 Días",
+      items: [
+        "Paso 1 Obligatorio de Compartición Drive: Caja destacada y casilla clicable de «Fomento centros de enseñanza (Lector)» como primer paso en Entregables y Notas de Prensa (DOC_15).",
+        "Imágenes en Catálogo B2C: Coordinación puede subir o enlazar fotografías para cada componente en Gestión Catálogo y los alumnos las visualizan en la tienda SUPER-MARSKET.",
+        "Rúbrica Lengua Castellana (LEN): 50% Pitch de Ventas (Exposición Oral), 40% Dossier de Inversores y 4 casillas independientes para Notas de Prensa DOC_15 (2.5% cada fase).",
+        "Control de Plazos y Alertas: Corregido el badge ACTIVO / EN PLAZO cuando el plazo ha vencido (ahora muestra PLAZO EXPIRADO o ENTREGADO) y añadido banner rojo de alerta al CEO y al departamento responsable cuando un documento vence sin entregarse.",
+        "Contratos (5 Días Lectivos): Ampliadas a 5 días lectivos las ventanas de Fases II, III y IV (manteniendo Fase I desde el 21/11) y corregido el texto «Ventana cerrada» cuando falta entregar DOC_4 en Fase I."
+      ],
+      highlights: [
+        { type: "MEJORAS AULA", text: "Fotos de catálogo, 1er paso Drive, rúbrica LEN y alertas de plazo." }
+      ]
+    },
     {
       version: "2.0.36",
       date: "2026-11-21",

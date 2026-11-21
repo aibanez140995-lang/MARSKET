@@ -1846,7 +1846,14 @@ Object.assign(ui, {
                     <option value="Externo">Externo</option>
                 </select>
                 <label for="new-cat-origin" class="text-xs text-slate-300 uppercase font-bold block mb-1">Origen</label>
-                <input type="text" id="new-cat-origin" placeholder="Origen (Ej: España)" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white mb-4 outline-none focus:border-mars-cyan">
+                <input type="text" id="new-cat-origin" placeholder="Origen (Ej: España)" class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2.5 text-base sm:text-xs text-white mb-3 outline-none focus:border-mars-cyan">
+                <div class="p-2.5 bg-black/50 border border-slate-800 rounded mb-4 space-y-2">
+                    <label class="text-[11px] text-mars-cyan uppercase font-bold block font-mono">🖼️ Imagen del Componente (Opcional)</label>
+                    <input type="file" id="new-cat-img-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'new-cat-img-data', 'new-cat-img-preview')" class="w-full text-[11px] text-slate-300 file:mr-2 file:py-1.5 file:px-3 file:border-0 file:text-[11px] file:font-bold file:uppercase file:bg-mars-cyan file:text-black cursor-pointer">
+                    <input type="url" id="new-cat-img-url" oninput="ui.previewNanoBananaUrl(this.value, 'new-cat-img-preview')" placeholder="O pega enlace URL de imagen..." class="min-h-[44px] w-full bg-slate-900 border border-mars-border p-2 text-xs text-white outline-none font-mono">
+                    <input type="hidden" id="new-cat-img-data" value="">
+                    <div id="new-cat-img-preview" class="hidden"></div>
+                </div>
                 <button onclick="ui.addCatalogItem()" class="min-h-[44px] w-full bg-mars-cyan text-black font-black py-3 text-xs uppercase tracking-widest hover:shadow-[0_0_10px_#00f0ff] transition-shadow">Añadir al Catálogo</button>
             </div>
             <div class="lg:col-span-2 terminal-border bg-mars-card p-6 w-full overflow-hidden border-t-4 border-t-mars-yellow">
@@ -1888,6 +1895,7 @@ Object.assign(ui, {
                                 </td>
                                 <td class="py-2">
                                     <div class="flex items-center gap-2">
+                                        <button type="button" onclick="ui.modalCatalogItemImage('${this.escapeHTML(item.id)}')" aria-label="Imagen de ${this.escapeHTML(item.name)}" class="min-h-[44px] px-2.5 py-1.5 text-xs font-bold border ${item.imageUrl ? 'bg-cyan-950/60 border-cyan-400 text-cyan-300' : 'bg-slate-900 border-slate-700 text-slate-300'} hover:bg-mars-cyan hover:text-black transition-colors" title="Subir o cambiar foto del componente">${item.imageUrl ? '🖼️✓' : '🖼️'}</button>
                                         <button onclick="ui.saveCatalogPrice('${this.escapeHTML(item.id)}', ${idx})" aria-label="Guardar precio de ${this.escapeHTML(item.name)}" class="min-h-[44px] bg-mars-yellow/20 text-mars-yellow border border-mars-yellow/50 px-3 py-1.5 font-bold hover:bg-mars-yellow hover:text-black transition-colors">Guardar</button>
                                         <button onclick="ui.deleteCatalogItem('${this.escapeHTML(item.id)}')" aria-label="Eliminar ${this.escapeHTML(item.name)}" class="min-h-[44px] min-w-[44px] text-mars-magenta font-bold px-2.5 py-1.5 border border-mars-magenta hover:bg-mars-magenta hover:text-white transition-colors" title="Eliminar artículo del catálogo">✕</button>
                                     </div>
@@ -2117,11 +2125,66 @@ Object.assign(ui, {
         } else if (Array.isArray(state.data.deletedCatalogIds)) {
             state.data.deletedCatalogIds = state.data.deletedCatalogIds.filter(x => String(x) !== String(id));
         }
-        state.data.catalog.push({ id, name, price, unit, category, origin, updatedAt: Date.now(), ...(wasPreviouslyDeleted ? { recreatedAt: Date.now() } : {}) });
+        const elImgData = document.getElementById('new-cat-img-data');
+        const elImgUrl = document.getElementById('new-cat-img-url');
+        const imageUrl = (elImgData && elImgData.value) ? elImgData.value : (elImgUrl ? elImgUrl.value.trim() : '');
+        state.data.catalog.push({ id, name, price, unit, category, origin, ...(imageUrl ? { imageUrl } : {}), updatedAt: Date.now(), ...(wasPreviouslyDeleted ? { recreatedAt: Date.now() } : {}) });
         state.save();
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.notify("Artículo añadido al catálogo global.", "success");
         this.render();
+    },
+
+    modalCatalogItemImage(itemId) {
+        if (!this.checkCoordinatorAccess()) return;
+        const item = (state.data.catalog || []).find(i => i && String(i.id) === String(itemId));
+        if (!item) return this.notify("Artículo no encontrado.", "warning");
+        const curImg = item.imageUrl || '';
+        const html = `
+            <div class="space-y-4 text-xs font-sans">
+                <div class="p-3 bg-slate-900 border border-slate-700 rounded">
+                    <span class="font-mono text-mars-cyan font-bold">[${this.escapeHTML(item.id)}]</span>
+                    <strong class="text-white uppercase ml-1">${this.escapeHTML(item.name)}</strong>
+                </div>
+                ${curImg ? `
+                    <div class="p-2 bg-black border border-cyan-500/40 rounded flex items-center justify-between gap-3">
+                        <img src="${this.escapeAttr(curImg)}" alt="${this.escapeAttr(item.name)}" class="w-20 h-20 object-contain bg-slate-950 border border-slate-800 rounded">
+                        <button type="button" onclick="document.getElementById('edit-cat-img-data').value=''; document.getElementById('edit-cat-img-url').value=''; ui.notify('Imagen marcada para eliminar al guardar.', 'info');" class="min-h-[44px] px-3 py-1.5 bg-red-950/60 border border-red-500 text-red-300 font-bold uppercase text-xs">🗑️ Quitar Foto</button>
+                    </div>
+                ` : ''}
+                <div>
+                    <label class="text-xs text-mars-cyan uppercase font-bold block mb-1 font-mono">Subir Imagen desde el Ordenador / Móvil</label>
+                    <input type="file" id="edit-cat-img-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'edit-cat-img-data', 'edit-cat-img-preview')" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:border-0 file:text-xs file:font-black file:uppercase file:bg-mars-cyan file:text-black cursor-pointer">
+                </div>
+                <div>
+                    <label for="edit-cat-img-url" class="text-xs text-slate-300 uppercase font-bold block mb-1 font-mono">O Pegar Enlace URL de Imagen</label>
+                    <input type="url" id="edit-cat-img-url" value="${curImg.startsWith('http') ? this.escapeAttr(curImg) : ''}" oninput="ui.previewNanoBananaUrl(this.value, 'edit-cat-img-preview')" placeholder="https://..." class="min-h-[44px] w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white font-mono outline-none focus:border-mars-cyan">
+                </div>
+                <input type="hidden" id="edit-cat-img-data" value="${this.escapeAttr(curImg)}">
+                <div id="edit-cat-img-preview" class="hidden"></div>
+            </div>
+        `;
+        const actions = `
+            <button type="button" onclick="ui.closeModal()" class="min-h-[44px] px-4 py-2 bg-slate-800 text-white text-xs font-bold uppercase">Cancelar</button>
+            <button type="button" onclick="ui.saveCatalogItemImage('${this.escapeAttr(item.id)}')" class="min-h-[44px] px-5 py-2 bg-mars-cyan text-black font-black text-xs uppercase hover:bg-white">💾 Guardar Imagen</button>
+        `;
+        this.showModal(`🖼️ Imagen de Componente // ${this.escapeHTML(item.name)}`, html, actions);
+    },
+
+    saveCatalogItemImage(itemId) {
+        if (!this.checkCoordinatorAccess()) return;
+        const item = (state.data.catalog || []).find(i => i && String(i.id) === String(itemId));
+        if (!item) return;
+        const elData = document.getElementById('edit-cat-img-data');
+        const elUrl = document.getElementById('edit-cat-img-url');
+        const nextImg = (elData && elData.value) ? elData.value : (elUrl ? elUrl.value.trim() : '');
+        item.imageUrl = nextImg || null;
+        item.updatedAt = Date.now();
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.closeModal();
+        this.render();
+        this.notify(nextImg ? "✅ Imagen del componente guardada." : "🗑️ Imagen retirada del componente.", "success");
     },
 
     modalDenySpecialItem(pid) {
