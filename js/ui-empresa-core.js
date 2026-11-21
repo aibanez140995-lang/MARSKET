@@ -3112,11 +3112,143 @@ Object.assign(ui, {
         ];
     },
 
+    async autoTranslateText(text, fromLang = 'en', toLang = 'es') {
+        const clean = String(text || '').trim();
+        if (!clean || fromLang === toLang) return clean;
+        const cacheKey = 'marsket_tr_v1';
+        const key = `${fromLang}|${toLang}|${clean.slice(0, 120)}|${clean.length}`;
+        try {
+            const rawCache = sessionStorage.getItem(cacheKey);
+            const cache = rawCache ? JSON.parse(rawCache) : {};
+            if (cache[key]) return cache[key];
+        } catch (e) {}
+
+        let translated = '';
+        try {
+            const gUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(fromLang)}&tl=${encodeURIComponent(toLang)}&dt=t&q=${encodeURIComponent(clean.slice(0, 1800))}`;
+            const resp = await fetch(gUrl);
+            if (resp.ok) {
+                const data = await resp.json();
+                if (Array.isArray(data?.[0])) {
+                    translated = data[0].map(seg => (Array.isArray(seg) ? seg[0] : '')).join('').trim();
+                }
+            }
+        } catch (e) {}
+
+        if (!translated) {
+            try {
+                const mmUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(clean.slice(0, 480))}&langpair=${encodeURIComponent(fromLang)}|${encodeURIComponent(toLang)}`;
+                const resp2 = await fetch(mmUrl);
+                if (resp2.ok) {
+                    const d2 = await resp2.json();
+                    const cand = String(d2?.responseData?.translatedText || '').trim();
+                    if (cand && !cand.toUpperCase().includes('MYMEMORY WARNING')) {
+                        translated = cand;
+                    }
+                }
+            } catch (e) {}
+        }
+
+        const finalTxt = translated || clean;
+        if (translated) {
+            try {
+                const rawCache = sessionStorage.getItem(cacheKey);
+                const cache = rawCache ? JSON.parse(rawCache) : {};
+                cache[key] = finalTxt;
+                const keys = Object.keys(cache);
+                if (keys.length > 80) delete cache[keys[0]];
+                sessionStorage.setItem(cacheKey, JSON.stringify(cache));
+            } catch (e) {}
+        }
+        return finalTxt;
+    },
+
+    async translateWireArticlesIfNeeded() {
+        const lang = this.getNewsLang();
+        const items = Array.isArray(this._snapiWireArticles) ? this._snapiWireArticles : [];
+        if (lang !== 'ES' || items.length === 0) return;
+        const pending = items.filter(a => a && a.title && !a.titleEs);
+        if (pending.length === 0) return;
+        await Promise.all(pending.map(async (art) => {
+            art.titleEs = await this.autoTranslateText(art.title, 'en', 'es');
+        }));
+        this.renderSpaceflightWireIntoDom();
+    },
+
+    async quickPublishSnapiToBoard(idx, sourceList = 'wire') {
+        if (!this.isNewsCoordinator()) return this.notify("Acceso restringido exclusivamente a Coordinación.", "error");
+        const pool = sourceList === 'importer' ? (this._snapiImporterItems || []) : (this._snapiWireArticles || []);
+        const art = pool[idx];
+        if (!art) return this.notify("No se encontró la noticia seleccionada.", "warning");
+
+        this.notify("🌐 Traduciendo y trasladando noticia al periódico...", "info");
+
+        const titleEn = String(art.title || '').trim();
+        const summaryEn = String(art.summary || '').trim();
+        const [titleEs, summaryEs] = await Promise.all([
+            art.titleEs ? Promise.resolve(art.titleEs) : this.autoTranslateText(titleEn, 'en', 'es'),
+            summaryEn ? this.autoTranslateText(summaryEn, 'en', 'es') : Promise.resolve('')
+        ]);
+
+        const lower = (titleEn + ' ' + summaryEn).toLowerCase();
+        const isPropulsion = /propulsion|engine|fuel|booster|launch|starship|falcon|rocket/.test(lower);
+        const catEs = isPropulsion ? 'PROPULSIÓN & LANZAMIENTO' : 'ACTUALIDAD AEROESPACIAL';
+        const catEn = isPropulsion ? 'PROPULSION & LAUNCH' : 'AEROSPACE DISPATCH';
+        const impactEs = isPropulsion
+            ? 'Cada avance en eficiencia y reutilización recuerda a tu startup la importancia de optimizar la relación E = Altura / Coste en el Banco de Pruebas.'
+            : 'Analiza cómo las decisiones industriales del sector espacial inspiran la gestión de costes, contratos y excedentes B2B de tu startup.';
+        const impactEn = isPropulsion
+            ? 'Every breakthrough in launch efficiency reminds your startup to optimize E = Height / Cost in the R&D Test Bench.'
+            : 'Analyze how real aerospace industry moves inspire your startup’s cost discipline, contracts, and B2B surplus strategy.';
+        const debateEs = '¿Qué lección técnica o financiera de esta noticia real podemos aplicar esta semana en nuestro equipo de MARS-KET?';
+        const debateEn = 'Which technical or financial lesson from this real-world dispatch can our MARS-KET team apply this week?';
+
+        const now = Date.now();
+        const newsItem = state.normalizeNewsItem({
+            id: 'NEWS-SNAPI-' + now + '-' + Math.floor(Math.random() * 1000).toString().padStart(3, '0'),
+            category: catEs,
+            categoryEn: catEn,
+            title: titleEs || titleEn,
+            subtitle: summaryEs ? summaryEs.slice(0, 220) : '',
+            body: summaryEs || summaryEn || titleEs,
+            titleEn: titleEn,
+            subtitleEn: summaryEn ? summaryEn.slice(0, 220) : '',
+            bodyEn: summaryEn || titleEn,
+            imageUrl: (art.image_url && /^https?:\/\//i.test(art.image_url)) ? art.image_url : null,
+            sourceName: art.news_site || 'Spaceflight News API',
+            sourceUrl: art.url || '',
+            marsketImpact: impactEs,
+            marsketImpactEn: impactEn,
+            debateQuestion: debateEs,
+            debateQuestionEn: debateEn,
+            phase: 'ALL',
+            classGroup: 'ALL',
+            author: state.user?.name || 'Coordinación AEE',
+            publishedAt: now,
+            updatedAt: now,
+            publishedDate: new Date().toLocaleDateString('es-ES'),
+            featured: true
+        });
+
+        let list = Array.isArray(state.data.news) ? state.data.news : [];
+        list = list.map(n => ({ ...n, featured: false, updatedAt: now }));
+        list.unshift(newsItem);
+        state.data.news = state.resolveFeaturedNews(list);
+        state.data.officialNews = state.data.news;
+
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.closeModal();
+        this.render();
+        this.notify("✅ Noticia traducida y trasladada a la portada de THE ORBITAL REPORT.", "success");
+    },
+
     async fetchSpaceflightWire(force = false) {
         const cacheKey = 'marsket_snapi_wire_v1';
         const TTL_MS = 15 * 60 * 1000;
         if (!force && Array.isArray(this._snapiWireArticles) && this._snapiWireArticles.length > 0) {
             this.renderSpaceflightWireIntoDom();
+            this.translateWireArticlesIfNeeded();
             return this._snapiWireArticles;
         }
         if (!force) {
@@ -3128,6 +3260,7 @@ Object.assign(ui, {
                         this._snapiWireArticles = parsed.items;
                         this._snapiWireIsFallback = false;
                         this.renderSpaceflightWireIntoDom();
+                        this.translateWireArticlesIfNeeded();
                         return this._snapiWireArticles;
                     }
                 }
@@ -3150,6 +3283,7 @@ Object.assign(ui, {
             this._snapiWireIsFallback = true;
         }
         this.renderSpaceflightWireIntoDom();
+        this.translateWireArticlesIfNeeded();
         return this._snapiWireArticles;
     },
 
@@ -3169,13 +3303,14 @@ Object.assign(ui, {
                     ${lang === 'EN' ? 'Offline/Cache Mode · Curated Aerospace Dispatches' : 'Modo Respaldo Local · Cables Aeroespaciales Curados'}
                 </div>
             ` : ''}
-            <div class="space-y-2.5">
+            <div class="divide-y divide-slate-800">
                 ${items.map((art, idx) => {
                     const safeUrl = (art.url && /^https?:\/\//i.test(art.url)) ? this.escapeAttr(art.url) : '';
                     const safeImg = (art.image_url && /^https?:\/\//i.test(art.image_url)) ? this.escapeAttr(art.image_url) : '';
                     const dateStr = art.published_at ? new Date(art.published_at).toLocaleDateString(lang === 'EN' ? 'en-GB' : 'es-ES', { day: '2-digit', month: 'short' }) : '';
+                    const displayTitle = (lang === 'ES' && art.titleEs) ? art.titleEs : (art.title || '');
                     return `
-                    <article class="bg-black/60 border border-slate-800 hover:border-mars-cyan/60 p-3 transition-colors">
+                    <article class="py-3 first:pt-1 last:pb-1">
                         <div class="flex gap-2.5 items-start">
                             ${safeImg ? `
                                 <img src="${safeImg}" alt="" loading="lazy" onerror="this.style.display='none'" class="w-16 h-12 object-cover border border-slate-700 shrink-0 bg-slate-900">
@@ -3185,16 +3320,19 @@ Object.assign(ui, {
                                     <span class="truncate font-bold">${this.escapeHTML(art.news_site || 'SNAPI Wire')}</span>
                                     <span class="text-slate-400 shrink-0">${this.escapeHTML(dateStr)}</span>
                                 </div>
-                                <h4 class="text-xs font-bold text-white leading-snug mb-1.5 break-words">${this.escapeHTML(art.title || '')}</h4>
-                                <div class="flex items-center gap-2 flex-wrap">
+                                <h4 class="text-xs sm:text-[13px] font-serif font-bold text-white leading-snug mb-2 break-words">${this.escapeHTML(displayTitle)}</h4>
+                                <div class="flex items-center gap-1.5 flex-wrap">
                                     ${safeUrl ? `
                                         <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900 border border-slate-700 hover:border-mars-cyan text-cyan-300 text-[11px] font-mono font-bold uppercase transition-colors">
                                             <span>${lang === 'EN' ? 'Source ↗' : 'Fuente ↗'}</span>
                                         </a>
                                     ` : ''}
                                     ${isCoord ? `
-                                        <button type="button" onclick="ui.openEditorFromSnapiIndex(${idx})" class="min-h-[44px] px-2.5 py-1 bg-amber-950/60 border border-amber-500/60 text-amber-300 hover:bg-amber-400 hover:text-black text-[11px] font-bold uppercase transition-colors">
-                                            📥 Adaptar
+                                        <button type="button" onclick="ui.quickPublishSnapiToBoard(${idx}, 'wire')" class="min-h-[44px] px-2.5 py-1 bg-amber-400 text-black hover:bg-white text-[11px] font-black uppercase transition-colors">
+                                            ⚡ Trasladar al Periódico
+                                        </button>
+                                        <button type="button" onclick="ui.openEditorFromSnapiIndex(${idx})" class="min-h-[44px] min-w-[44px] px-2 py-1 bg-slate-900 border border-amber-500/50 text-amber-300 hover:bg-amber-400 hover:text-black text-[11px] font-bold uppercase transition-colors" title="Editar antes de publicar">
+                                            ✏️
                                         </button>
                                     ` : ''}
                                 </div>
@@ -3231,14 +3369,19 @@ Object.assign(ui, {
                 return;
             }
             listEl.innerHTML = items.map((a, i) => `
-                <div class="p-2 bg-slate-900 border border-slate-700 flex items-center justify-between gap-2">
+                <div class="p-2 bg-slate-900 border border-slate-700 flex items-center justify-between gap-2 flex-wrap">
                     <div class="min-w-0 flex-1">
                         <span class="text-[10px] font-mono text-mars-cyan uppercase block">${this.escapeHTML(a.news_site || 'SNAPI')}</span>
                         <span class="text-xs text-white font-bold line-clamp-2">${this.escapeHTML(a.title || '')}</span>
                     </div>
-                    <button type="button" onclick="ui.applySnapiImporterItem(${i})" class="min-h-[44px] px-3 py-1.5 bg-mars-cyan text-black font-black text-[11px] uppercase hover:bg-white transition-colors shrink-0">
-                        📥 Cargar
-                    </button>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button type="button" onclick="ui.quickPublishSnapiToBoard(${i}, 'importer')" class="min-h-[44px] px-3 py-1.5 bg-amber-400 text-black font-black text-[11px] uppercase hover:bg-white transition-colors">
+                            ⚡ Trasladar
+                        </button>
+                        <button type="button" onclick="ui.applySnapiImporterItem(${i})" class="min-h-[44px] px-2.5 py-1.5 bg-mars-cyan text-black font-black text-[11px] uppercase hover:bg-white transition-colors">
+                            📥 Editar
+                        </button>
+                    </div>
                 </div>
             `).join('');
         } catch (e) {
@@ -3496,7 +3639,7 @@ Object.assign(ui, {
         this.showModal("📰 Nueva Edición // ORBITAL REPORT", html, actions);
     },
 
-    submitOfficialNews() {
+    async submitOfficialNews() {
         if (!this.isNewsCoordinator()) return this.notify("Acceso restringido exclusivamente a Coordinación.", "error");
 
         const getVal = (id) => (document.getElementById(id)?.value || '').trim();
@@ -3504,6 +3647,32 @@ Object.assign(ui, {
         const body = getVal('offnews-body');
         if (!title) return this.notify("Debes indicar un titular en español para la noticia.", "warning");
         if (!body) return this.notify("Debes redactar el cuerpo del artículo.", "warning");
+
+        const subtitle = getVal('offnews-subtitle');
+        const marsketImpact = getVal('offnews-impact');
+        const debateQuestion = getVal('offnews-debate');
+
+        let titleEn = getVal('offnews-title-en');
+        let subtitleEn = getVal('offnews-subtitle-en');
+        let bodyEn = getVal('offnews-body-en');
+        let marsketImpactEn = getVal('offnews-impact-en');
+        let debateQuestionEn = getVal('offnews-debate-en');
+
+        if (!titleEn || !bodyEn) {
+            this.notify("🌐 Generando versión automática en inglés...", "info");
+            const [trTitle, trSub, trBody, trImp, trDeb] = await Promise.all([
+                titleEn ? Promise.resolve(titleEn) : this.autoTranslateText(title, 'es', 'en'),
+                subtitleEn ? Promise.resolve(subtitleEn) : (subtitle ? this.autoTranslateText(subtitle, 'es', 'en') : Promise.resolve('')),
+                bodyEn ? Promise.resolve(bodyEn) : this.autoTranslateText(body, 'es', 'en'),
+                marsketImpactEn ? Promise.resolve(marsketImpactEn) : (marsketImpact ? this.autoTranslateText(marsketImpact, 'es', 'en') : Promise.resolve('')),
+                debateQuestionEn ? Promise.resolve(debateQuestionEn) : (debateQuestion ? this.autoTranslateText(debateQuestion, 'es', 'en') : Promise.resolve(''))
+            ]);
+            titleEn = trTitle;
+            subtitleEn = trSub;
+            bodyEn = trBody;
+            marsketImpactEn = trImp;
+            debateQuestionEn = trDeb;
+        }
 
         const elImgData = document.getElementById('offnews-img-data');
         const elUrl = document.getElementById('offnews-url');
@@ -3519,18 +3688,18 @@ Object.assign(ui, {
             category: getVal('offnews-category') || 'ACTUALIDAD AEROESPACIAL',
             categoryEn: getVal('offnews-category-en') || 'AEROSPACE DISPATCH',
             title: title,
-            subtitle: getVal('offnews-subtitle'),
+            subtitle: subtitle,
             body: body,
-            titleEn: getVal('offnews-title-en'),
-            subtitleEn: getVal('offnews-subtitle-en'),
-            bodyEn: getVal('offnews-body-en'),
+            titleEn: titleEn,
+            subtitleEn: subtitleEn,
+            bodyEn: bodyEn,
             imageUrl: imageUrl || null,
             sourceName: getVal('offnews-source-name') || 'Consejo Editorial AEE',
             sourceUrl: getVal('offnews-source-url'),
-            marsketImpact: getVal('offnews-impact'),
-            marsketImpactEn: getVal('offnews-impact-en'),
-            debateQuestion: getVal('offnews-debate'),
-            debateQuestionEn: getVal('offnews-debate-en'),
+            marsketImpact: marsketImpact,
+            marsketImpactEn: marsketImpactEn,
+            debateQuestion: debateQuestion,
+            debateQuestionEn: debateQuestionEn,
             phase: getVal('offnews-phase') || 'ALL',
             classGroup: getVal('offnews-class') || 'ALL',
             coId: coId || null,
@@ -4213,13 +4382,13 @@ Object.assign(ui, {
                         <span class="text-xs font-mono text-slate-400">${this.escapeHTML(art.publishedDate || '--')} • ${this.escapeHTML(art.sourceName || 'AEE')}</span>
                     </div>
 
-                    <h3 class="text-xl sm:text-3xl font-orbitron font-black text-white leading-tight tracking-tight">${this.escapeHTML(title)}</h3>
+                    <h3 class="text-2xl sm:text-4xl font-serif font-black text-white leading-tight tracking-tight">${this.escapeHTML(title)}</h3>
 
                     ${subtitle ? `
-                        <p class="text-sm sm:text-base text-amber-200/95 italic font-sans leading-relaxed border-l-4 border-amber-400 pl-3.5">${this.escapeHTML(subtitle)}</p>
+                        <p class="text-sm sm:text-base text-amber-200/95 italic font-serif leading-relaxed border-l-4 border-amber-400 pl-3.5">${this.escapeHTML(subtitle)}</p>
                     ` : ''}
 
-                    <div class="text-xs sm:text-sm text-slate-200 leading-relaxed font-sans pt-1">
+                    <div class="text-sm text-slate-200 leading-relaxed font-sans pt-1">
                         ${this.renderFormattedNewsText(body)}
                     </div>
 
@@ -4267,34 +4436,35 @@ Object.assign(ui, {
         const wrapper = document.createElement('div');
         wrapper.className = 'space-y-6';
         wrapper.innerHTML = `
-            <!-- MASTHEAD EDITORIAL: ORBITAL REPORT — EDICIÓN MARS-KET -->
-            <header class="terminal-border bg-mars-card p-5 sm:p-6 border-t-4 border-t-mars-cyan">
-                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-mars-border pb-4 mb-4">
-                    <div class="min-w-0">
-                        <div class="flex items-center gap-2 mb-1 flex-wrap text-[11px] font-mono text-amber-300 uppercase tracking-widest">
-                            <span class="px-2 py-0.5 font-black bg-mars-cyan/20 border border-mars-cyan text-mars-cyan">EDICIÓN N.º ${editionNum}</span>
-                            <span>•</span>
-                            <span>${this.escapeHTML(editionDateStr)}</span>
-                            <span>•</span>
-                            <span class="text-mars-green font-bold">FASE ACTIVA: FASE ${this.escapeHTML(curPhase)}</span>
-                        </div>
-                        <h2 class="text-2xl sm:text-3xl font-orbitron font-black text-white uppercase tracking-tight">
-                            🪐 ORBITAL REPORT <span class="text-mars-cyan">— Edición MARS-KET</span>
-                        </h2>
-                        <p class="text-xs text-slate-300 mt-1 font-sans">
-                            ${lang === 'EN'
-                                ? 'Bilingual aerospace press: real-world rocket dispatches, AEE chronicles & approved startup press releases (DOC_15).'
-                                : 'Prensa aeroespacial bilingüe: actualidad espacial real, crónicas AEE y comunicados corporativos aprobados (DOC_15).'}
-                        </p>
-                    </div>
+            <!-- MASTHEAD EDITORIAL DE PERIÓDICO DIGITAL: THE ORBITAL REPORT -->
+            <header class="bg-[#090d16] border-t-4 border-t-mars-cyan border-b-2 border-b-slate-700 p-5 sm:p-7 shadow-lg">
+                <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-400 uppercase border-b border-slate-800 pb-2 mb-3">
+                    <span>VOL. II • EDICIÓN N.º ${editionNum} • MIRAVALLES-EL REDÍN</span>
+                    <span>${this.escapeHTML(editionDateStr)}</span>
+                    <span class="text-mars-green font-bold">FASE ACTIVA: FASE ${this.escapeHTML(curPhase)}</span>
+                </div>
+                <div class="text-center border-b-2 border-slate-700/80 pb-4 mb-4">
+                    <h2 class="text-3xl sm:text-5xl font-serif font-black text-white tracking-tight uppercase">
+                        THE <span class="text-mars-cyan">ORBITAL</span> REPORT
+                    </h2>
+                    <p class="text-xs font-mono uppercase tracking-[0.22em] text-amber-300 mt-1">
+                        ${lang === 'EN' ? 'MARS-KET 2.0 DIGITAL EDITION • AEROSPACE PRESS & B2B ECONOMY' : 'EDICIÓN DIGITAL MARS-KET 2.0 • PRENSA AEROESPACIAL Y ECONOMÍA B2B'}
+                    </p>
+                </div>
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mb-3">
+                    <p class="text-xs text-slate-300 font-sans">
+                        ${lang === 'EN'
+                            ? 'Live international aerospace wire (auto-translated) & official startup press releases (DOC_15).'
+                            : 'Actualidad aeroespacial internacional (traducción directa automática) y comunicados corporativos (DOC_15).'}
+                    </p>
                     <div class="flex flex-wrap items-center gap-2 shrink-0">
                         <div class="flex items-center border border-slate-700 bg-black p-0.5" role="group" aria-label="Idioma del periódico">
                             <button type="button" onclick="ui.setNewsLang('ES')" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-black uppercase transition-colors ${lang === 'ES' ? 'bg-mars-cyan text-black' : 'text-slate-300 hover:text-white'}">🇪🇸 ES</button>
                             <button type="button" onclick="ui.setNewsLang('EN')" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-black uppercase transition-colors ${lang === 'EN' ? 'bg-mars-cyan text-black' : 'text-slate-300 hover:text-white'}">🇬🇧 EN</button>
                         </div>
                         ${isCoord ? `
-                            <button type="button" onclick="ui.modalPublishOfficialNews()" class="min-h-[44px] bg-amber-400 text-black px-4 py-2 font-black uppercase text-xs hover:bg-white transition-all shadow-[0_0_15px_rgba(251,191,36,0.35)] flex items-center gap-1.5">
-                                <span>🛰️ + Nueva Crónica / Importar Real</span>
+                            <button type="button" onclick="ui.modalPublishOfficialNews()" class="min-h-[44px] bg-amber-400 text-black px-4 py-2 font-black uppercase text-xs hover:bg-white transition-all flex items-center gap-1.5">
+                                <span>🛰️ + Publicar / Importar Noticia</span>
                             </button>
                         ` : ''}
                     </div>
@@ -4369,7 +4539,7 @@ Object.assign(ui, {
             <!-- GRID EDITORIAL 65% / 35% -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 <!-- COLUMNA IZQUIERDA (65% -> 8/12 cols): PORTADA PRINCIPAL -->
-                <section class="lg:col-span-8 space-y-6" aria-label="Portada Principal">
+                <section class="lg:col-span-8 space-y-6 lg:border-r lg:border-slate-800 lg:pr-6" aria-label="Portada Principal">
                     ${renderCoverHtml(coverArticle)}
                 </section>
 

@@ -1,7 +1,7 @@
 # ==============================================================================
 # MARS-KET OS - Configuración Apache (.htaccess) para Hosting CDMON
 # Servidor: Apache 2.4+ / PHP 8.x
-# Versión: v2.0.34
+# Versión: v2.0.35
 # ==============================================================================
 
 # EXENCIÓN LOADER.IO PARA VALIDACIÓN DE ESTRÉS
@@ -94,7 +94,7 @@
 <IfModule mod_headers.c>
     # Cabeceras de Seguridad, Aislamiento HTTP Hermético y Supresión de CDNs (WP2)
     Header always set Referrer-Policy "no-referrer"
-    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src 'self' https://api.spaceflightnewsapi.net; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src 'self' https://api.spaceflightnewsapi.net https://translate.googleapis.com https://api.mymemory.translated.net; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
     Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "DENY"

@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.34) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.35) ---
 
-const APP_VERSION = "2.0.34";
+const APP_VERSION = "2.0.35";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1156,6 +1156,19 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.35",
+      date: "2026-11-21",
+      title: "THE ORBITAL REPORT — Traducción Directa Automática y Traslado en 1 Clic",
+      items: [
+        "Traducción Directa Automática (ES ⇄ EN): Los titulares del teletipo internacional (Spaceflight News API v4) se traducen automáticamente al español cuando el periódico está en modo ES, y vuelven al inglés original en modo EN sin que el docente tenga que traducir nada.",
+        "Traslado al Periódico en 1 Clic: Botón [⚡ Trasladar al Periódico] en cada noticia real del teletipo o buscador para Coordinación, que traduce automáticamente el titular y resumen, asigna categoría e impacto MARS-KET y la publica al instante en portada.",
+        "Estética de Periódico Digital: Nueva cabecera editorial centrada THE ORBITAL REPORT con doble filete, tipografía de prensa (serif) en titulares y entradillas, y divisor de columnas."
+      ],
+      highlights: [
+        { type: "TRADUCCIÓN AUTOMÁTICA", text: "Traducción neuronal automática + traslado en 1 clic al tablón." }
+      ]
+    },
     {
       version: "2.0.34",
       date: "2026-11-21",
