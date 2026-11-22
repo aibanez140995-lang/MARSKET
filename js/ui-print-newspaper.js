@@ -423,8 +423,8 @@ Object.assign(ui, {
                     <input type="text" id="print-slot-subtitle" value="${this.escapeAttr(slot.subtitle || '')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white">
                 </div>
                 <div>
-                    <div class="flex justify-between items-center mb-1">
-                        <label for="print-slot-body" class="text-[11px] text-amber-300 font-bold uppercase">Cuerpo de la Noticia (Castellano)</label>
+                    <div class="flex flex-wrap justify-between items-center gap-2 mb-1">
+                        <label for="print-slot-body" class="text-[11px] text-amber-300 font-bold uppercase">Cuerpo de la Noticia (Castellano) <span class="font-mono text-[10px] text-slate-400 normal-case ml-1">· **negrita** · *cursiva* · - lista</span></label>
                         <select id="print-slot-fontsize" class="bg-slate-900 border border-slate-700 px-2 py-1 text-[11px] text-cyan-300 font-mono">
                             ${[8.5, 9, 9.5, 10, 10.5].map(pt => `<option value="${pt}" ${Number(slot.fontSizePt || 9.5) === pt ? 'selected' : ''}>Letra ${pt} pt</option>`).join('')}
                         </select>
@@ -1117,6 +1117,38 @@ Object.assign(ui, {
         this.notify(`✅ Noticia aplicada a Página ${page.pageNumber}.`, "success");
     },
 
+    formatPrintEditorialText(rawText) {
+        const formatInline = (txt) => {
+            let safe = this.escapeHTML(txt);
+            safe = safe.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
+            safe = safe.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, '$1<em>$2</em>');
+            return safe;
+        };
+        const lines = String(rawText || '').replace(/\r\n/g, '\n').split('\n');
+        let html = '';
+        let inList = false;
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            if (/^[-•]\s+/.test(trimmed)) {
+                if (!inList) {
+                    html += '<ul class="list-disc pl-4 my-1 space-y-0.5 text-left">';
+                    inList = true;
+                }
+                html += `<li>${formatInline(trimmed.replace(/^[-•]\s+/, ''))}</li>`;
+            } else {
+                if (inList) {
+                    html += '</ul>';
+                    inList = false;
+                }
+                if (trimmed !== '') {
+                    html += `<p class="mb-1 last:mb-0 text-justify">${formatInline(trimmed)}</p>`;
+                }
+            }
+        });
+        if (inList) html += '</ul>';
+        return html;
+    },
+
     renderPrintStudioPageHtml(ed, page, pageIdx, forPrint = false) {
         const isCover = page.pageNumber === 1;
         const isWhoIsWho = page.pageNumber === 7 && (page.pageMode || 'who_is_who') === 'who_is_who';
@@ -1254,7 +1286,7 @@ Object.assign(ui, {
                             <figcaption class="text-[7.5pt] font-mono text-stone-600 italic mt-0.5">Fuente: ${this.escapeHTML(slot.mediaSource || 'ORBITAL REPORT')}</figcaption>
                         </figure>
                     ` : `<p class="text-[7.5pt] font-mono text-stone-600 mb-1">Fuente: ${this.escapeHTML(slot.mediaSource || 'ORBITAL REPORT')}</p>`}
-                    <p style="font-size: ${fontPt}pt; line-height: 1.38;" class="font-serif text-[#1f2937] whitespace-pre-line text-justify">${this.escapeHTML(slot.body || '')}</p>
+                    <div style="font-size: ${fontPt}pt; line-height: 1.38;" class="font-serif text-[#1f2937]">${this.formatPrintEditorialText(slot.body || '')}</div>
                 </article>`;
             }).join('');
             mainContentHtml = `<div class="space-y-2">${slotsHtml}</div>`;

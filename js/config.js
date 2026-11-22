@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.42) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.43) ---
 
-const APP_VERSION = "2.0.42";
+const APP_VERSION = "2.0.43";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,17 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.43",
+      date: "2026-11-22",
+      title: "Formato Tipográfico en Edición Impresa A3 (**negrita**, *cursiva*, - lista)",
+      items: [
+        "Edición Impresa A3: El cuerpo de las noticias admite ahora **doble asterisco** para negrita, *un asterisco* para cursiva y líneas iniciadas con «- » para listas con viñetas (tanto en vista previa como en el PDF A3)."
+      ],
+      highlights: [
+        { type: "MAQUETACIÓN A3", text: "Soporte de **negrita**, *cursiva* y - listas en edición escrita." }
+      ]
+    },
     {
       version: "2.0.42",
       date: "2026-11-22",
