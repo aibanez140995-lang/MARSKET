@@ -2584,7 +2584,7 @@ const state = {
 
     async checkFastVersion() {
         if (this.pausePolling) return;
-        if (!this.user || !this.user.coId) {
+        if (!this.user || !this.user.coId || this.user.isVip) {
             // Sondeo de estado general para roles de coordinación docente o invitados
             return await this.fetchFromCloud();
         }

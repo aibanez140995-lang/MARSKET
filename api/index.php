@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.44
+// Versión: v2.0.45
 
 declare(strict_types=1);
 
@@ -2279,20 +2279,7 @@ try {
                 $co['deliverables'] = is_array($co['deliverables'] ?? null) ? $co['deliverables'] : [];
                 if ($rawKey === '' || !isset($co['deliverables'][$rawKey])) {
                     rollbackQuietly($pdo);
-                    if ($code === 'VIP-0000') {
-                    echo json_encode([
-                        'matchedCoId' => 'vip_reader',
-                        'isVip' => true,
-                        'companyMeta' => [
-                            'hasAux' => false,
-                            'isVip' => true,
-                            'name' => 'Lector Invitado · ORBITAL REPORT'
-                        ]
-                    ], JSON_UNESCAPED_UNICODE);
-                    exit;
-                }
-
-                http_response_code(404);
+                    http_response_code(404);
                     echo json_encode(['error' => 'DELIVERABLE_NOT_FOUND']);
                     exit;
                 }
@@ -2677,19 +2664,6 @@ try {
 
             if ($itemIndex === -1) {
                 rollbackQuietly($pdo);
-                if ($code === 'VIP-0000') {
-                    echo json_encode([
-                        'matchedCoId' => 'vip_reader',
-                        'isVip' => true,
-                        'companyMeta' => [
-                            'hasAux' => false,
-                            'isVip' => true,
-                            'name' => 'Lector Invitado · ORBITAL REPORT'
-                        ]
-                    ], JSON_UNESCAPED_UNICODE);
-                    exit;
-                }
-
                 http_response_code(404);
                 echo json_encode(['error' => 'Not found']);
                 exit;
@@ -2929,20 +2903,7 @@ try {
             if ($type === 'teacher') {
                 if (empty($currentState['config']['teachers'][$id])) {
                     rollbackQuietly($pdo);
-                    if ($code === 'VIP-0000') {
-                    echo json_encode([
-                        'matchedCoId' => 'vip_reader',
-                        'isVip' => true,
-                        'companyMeta' => [
-                            'hasAux' => false,
-                            'isVip' => true,
-                            'name' => 'Lector Invitado · ORBITAL REPORT'
-                        ]
-                    ], JSON_UNESCAPED_UNICODE);
-                    exit;
-                }
-
-                http_response_code(404);
+                    http_response_code(404);
                     echo json_encode(['error' => "Docente $id no encontrado"]);
                     exit;
                 }

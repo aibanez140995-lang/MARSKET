@@ -156,10 +156,10 @@ const auth = (function() {
                 setTimeout(() => {
                     loginScreen.style.display = 'none';
                     loginScreen.classList.add('hidden');
-                    if (typeof ui.showWelcomeModal === 'function') ui.showWelcomeModal();
+                    if (!userObj.isVip && typeof ui.showWelcomeModal === 'function') ui.showWelcomeModal();
                 }, 200);
             } else {
-                if (typeof ui.showWelcomeModal === 'function') ui.showWelcomeModal();
+                if (!userObj.isVip && typeof ui.showWelcomeModal === 'function') ui.showWelcomeModal();
             }
         }, 120);
     }
@@ -279,6 +279,11 @@ const auth = (function() {
 
             // 2. Validación centralizada en servidor (Zero-Trust)
             let networkFailed = false;
+            if (!matchedCoId && code === 'VIP-0000') {
+                matchedCoId = 'vip_reader';
+                _serverCompanyMeta = { hasAux: false, isVip: true, name: 'Lector Invitado · ORBITAL REPORT' };
+            }
+
             if (!matchedCoId) {
                 try {
                     const res = await fetch('/api/state', {

@@ -2265,6 +2265,7 @@ const ui = {
     },
 
     showOnboarding() {
+        if (state.user?.isVip) return;
         const todayStr = new Date().toISOString().split('T')[0];
         let hideToday = false;
         try {
@@ -2619,21 +2620,8 @@ const ui = {
         if (!initialRole) {
             if (state.user) {
                 if (state.user.isVip) {
-            if(tacticalRow) tacticalRow.classList.add('hidden');
-            if(sandboxBadgeEl) {
-                sandboxBadgeEl.classList.add('hidden');
-                sandboxBadgeEl.innerText = '';
-            }
-            if(balEl) balEl.innerText = 'VIP';
-            if(infoEl) {
-                infoEl.innerText = 'ORBITAL REPORT · LECTOR INVITADO';
-                infoEl.title = 'Acceso de lectura pública al periódico digital';
-            }
-            if(miniLogo) {
-                miniLogo.classList.add('hidden');
-                miniLogo.innerHTML = '';
-            }
-        } else if (state.user.admin) {
+                    initialRole = 'CEO';
+                } else if (state.user.admin) {
                     initialRole = 'DOCENTE';
                 } else {
                     const co = state.data.companies?.[state.user.coId];
@@ -2978,7 +2966,7 @@ const ui = {
     },
 
     generateHeroBanner() {
-        if (!state.user || state.user.admin) return '';
+        if (!state.user || state.user.admin || state.user.isVip) return '';
         const co = state.data.companies[state.user.coId];
         if (!co) { auth.logout(); return ''; }
 
@@ -3028,24 +3016,9 @@ const ui = {
     },
 
     updateBadges() {
-        if (!state.user) return;
+        if (!state.user || state.user.isVip) return;
 
-        if (state.user.isVip) {
-            if(tacticalRow) tacticalRow.classList.add('hidden');
-            if(sandboxBadgeEl) {
-                sandboxBadgeEl.classList.add('hidden');
-                sandboxBadgeEl.innerText = '';
-            }
-            if(balEl) balEl.innerText = 'VIP';
-            if(infoEl) {
-                infoEl.innerText = 'ORBITAL REPORT · LECTOR INVITADO';
-                infoEl.title = 'Acceso de lectura pública al periódico digital';
-            }
-            if(miniLogo) {
-                miniLogo.classList.add('hidden');
-                miniLogo.innerHTML = '';
-            }
-        } else if (state.user.admin) {
+        if (state.user.admin) {
             const isCoord = state.user.role && String(state.user.role).startsWith('COORD');
             const allSuggs = state.data.suggestionsToAlex || [];
             const isResolvedStatus = (s) => s.status === 'IMPLEMENTADO' || s.status === 'RESUELTO' || s.resolved === true;
@@ -3620,10 +3593,10 @@ const ui = {
             }
         }
         
-        const hero = this.generateHeroBanner();
-        const notifs = state.user.admin ? '' : (this.renderNotifications ? this.renderNotifications() : '');
-        const overdueAlert = state.user.admin ? '' : (this.renderOverdueDeliverablesAlertBanner ? this.renderOverdueDeliverablesAlertBanner() : '');
-        const bankruptBanner = (!state.user.admin && co && typeof this.renderBankruptcyAlertBanner === 'function')
+        const hero = state.user.isVip ? '' : this.generateHeroBanner();
+        const notifs = (state.user.admin || state.user.isVip) ? '' : (this.renderNotifications ? this.renderNotifications() : '');
+        const overdueAlert = (state.user.admin || state.user.isVip) ? '' : (this.renderOverdueDeliverablesAlertBanner ? this.renderOverdueDeliverablesAlertBanner() : '');
+        const bankruptBanner = (!state.user.admin && !state.user.isVip && co && typeof this.renderBankruptcyAlertBanner === 'function')
             ? this.renderBankruptcyAlertBanner(co)
             : '';
         const topContext = hero + notifs + overdueAlert + bankruptBanner;
@@ -4023,7 +3996,7 @@ const ui = {
     },
 
     renderOverdueDeliverablesAlertBanner() {
-        if (!state.user || state.user.admin || !state.user.coId) return '';
+        if (!state.user || state.user.admin || state.user.isVip || !state.user.coId) return '';
         const co = state.data?.companies?.[state.user.coId];
         if (!co) return '';
         const effRole = this.getEffectiveRole(co);

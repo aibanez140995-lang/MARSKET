@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.44) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.45) ---
 
-const APP_VERSION = "2.0.44";
+const APP_VERSION = "2.0.45";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,19 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.45",
+      date: "2026-11-22",
+      title: "Fix Completo VIP-0000, Configurador de Anuncios Reparado y Ajuste de Tamaños de Imagen A3",
+      items: [
+        "Acceso VIP-0000 (PIN 0000) Reparado: Blindados generateHeroBanner(), updateBadges(), showGuide(), showOnboarding() y checkFastVersion() para sesiones isVip, limpiando código duplicado en api/index.php.",
+        "Configurar Anuncio Operativo y con Tamaño Configurable: Botón «📢 Anuncio» siempre accesible en cabecera, soporte tanto para startups DOC_12 como para anuncios libres, selector de altura (14–42 mm), diseño (Logo + Texto o Banner completo) y botones rápidos ➖ / ➕.",
+        "Tamaño de Imágenes en Noticias A3: Cada noticia permite regular la altura de su fotografía (15–85 mm u ocultar) y encuadre (Cover / Contain) desde el editor o con los botones rápidos 🖼️- / 🖼️+."
+      ],
+      highlights: [
+        { type: "VIP & MAQUETACIÓN", text: "VIP-0000 operativo, anuncios reparados y control de tamaños A3." }
+      ]
+    },
     {
       version: "2.0.44",
       date: "2026-11-22",

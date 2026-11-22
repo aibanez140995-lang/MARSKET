@@ -94,9 +94,10 @@ Object.assign(ui, {
 
         // PASO 2: Selección de Departamento y Teclado PIN (Solo para la entidad ya validada)
         const isTeacher = verifiedCoId === 'admin';
+        const isVipStep = verifiedCoId === 'vip_reader';
         const entityLabel = isTeacher 
             ? 'CLAUSTRO DOCENTE' 
-            : (state.data.companies[verifiedCoId]?.name || 'STARTUP');
+            : (isVipStep ? 'LECTOR INVITADO · ORBITAL REPORT' : (state.data.companies[verifiedCoId]?.name || 'STARTUP'));
 
         el.innerHTML = `
         ${scanlineHtml}

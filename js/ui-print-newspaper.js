@@ -428,9 +428,29 @@ Object.assign(ui, {
                     </div>
                     <textarea id="print-slot-body" rows="6" class="w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white font-sans">${this.escapeHTML(slot.body || '')}</textarea>
                 </div>
-                <div>
-                    <label for="print-slot-img" class="text-[11px] text-slate-300 font-bold uppercase block mb-1">URL de Imagen (Opcional)</label>
-                    <input type="text" id="print-slot-img" value="${this.escapeAttr(slot.imageUrl || '')}" placeholder="/api/news/image?url=... o https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                        <label for="print-slot-img" class="text-[11px] text-slate-300 font-bold uppercase block mb-1">URL de Imagen (Opcional)</label>
+                        <input type="text" id="print-slot-img" value="${this.escapeAttr(slot.imageUrl || '')}" placeholder="/api/news/image?url=... o https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label for="print-slot-img-height" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Alto Imagen</label>
+                            <select id="print-slot-img-height" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
+                                ${[0, 15, 20, 25, 30, 35, 40, 50, 60, 70, 85].map(mm => {
+                                    const curMm = (slot.imgHeightMm !== undefined && slot.imgHeightMm !== null) ? Number(slot.imgHeightMm) : (page.pageNumber === 1 && slotIdx === 0 ? 60 : 30);
+                                    return `<option value="${mm}" ${curMm === mm ? 'selected' : ''}>${mm === 0 ? 'Ocultar' : mm + ' mm'}</option>`;
+                                }).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="print-slot-img-fit" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Encuadre</label>
+                            <select id="print-slot-img-fit" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
+                                <option value="cover" ${(slot.imgFit || 'cover') === 'cover' ? 'selected' : ''}>Recortar (Cover)</option>
+                                <option value="contain" ${slot.imgFit === 'contain' ? 'selected' : ''}>Completa (Contain)</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -494,6 +514,9 @@ Object.assign(ui, {
         slot.body = getVal('print-slot-body');
         slot.imageUrl = getVal('print-slot-img');
         slot.fontSizePt = parseFloat(getVal('print-slot-fontsize')) || 9.5;
+        const imgH = parseInt(getVal('print-slot-img-height'), 10);
+        if (!isNaN(imgH)) slot.imgHeightMm = imgH;
+        slot.imgFit = getVal('print-slot-img-fit') || 'cover';
         ed.updatedAt = Date.now();
         state.save();
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
@@ -505,8 +528,11 @@ Object.assign(ui, {
         if (!this.isNewsCoordinator()) return;
         const ed = this.getActivePrintEdition();
         const page = ed?.pages?.[pageIdx];
-        const ad = page?.adSlot;
-        if (!ad) return;
+        if (!page) return;
+        if (!page.adSlot) {
+            page.adSlot = { id: `ad-p${page.pageNumber}`, label: `Faldón Publicitario Pág. ${page.pageNumber}`, coId: '', companyName: '', classGroup: '', slogan: '', bodyText: '', imageUrl: '', actId: '', campId: '', adHeightMm: 18, adLayout: 'card' };
+        }
+        const ad = page.adSlot;
 
         const companies = state.data?.companies || {};
         const pendingAds = this.getPendingPrintAdRequests();
@@ -543,15 +569,39 @@ Object.assign(ui, {
                     <label for="print-ad-text" class="text-[11px] text-slate-300 font-bold uppercase block mb-1">Texto Publicitario (Opcional)</label>
                     <textarea id="print-ad-text" rows="2" class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white">${this.escapeHTML(ad.bodyText || '')}</textarea>
                 </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                        <label for="print-ad-height" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Tamaño del Anuncio (Alto en papel)</label>
+                        <select id="print-ad-height" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
+                            ${[
+                                { mm: 14, label: '14 mm (Compacto)' },
+                                { mm: 18, label: '18 mm (Estándar)' },
+                                { mm: 24, label: '24 mm (Mediano)' },
+                                { mm: 32, label: '32 mm (Grande)' },
+                                { mm: 42, label: '42 mm (Destacado)' }
+                            ].map(o => `<option value="${o.mm}" ${Number(ad.adHeightMm || 18) === o.mm ? 'selected' : ''}>${o.label}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="print-ad-layout" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Diseño del Anuncio</label>
+                        <select id="print-ad-layout" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
+                            <option value="card" ${(ad.adLayout || 'card') === 'card' ? 'selected' : ''}>Logo cuadrado + Texto</option>
+                            <option value="banner" ${ad.adLayout === 'banner' ? 'selected' : ''}>Banner imagen ancho completo</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="p-2.5 bg-black/50 border border-slate-800 rounded space-y-2">
                     <label class="text-[11px] text-amber-300 font-bold uppercase block font-mono">🖼️ Subir Foto / Creatividad del Anuncio (Opcional)</label>
                     <p class="text-[11px] text-cyan-300 font-mono bg-cyan-950/35 border border-cyan-500/30 px-2 py-1 rounded">
-                        📐 Tamaño en papel A3: <strong>18 × 18 mm</strong> (formato cuadrado 1:1 · recomendado <strong>400 × 400 px</strong> o <strong>600 × 600 px</strong>, mínimo 220 × 220 px).
+                        📐 Tamaño en papel A3: <strong>18×18 mm</strong> (logo cuadrado) hasta <strong>190×42 mm</strong> (banner ancho). Recomendado: mín. <strong>400×400 px</strong> o <strong>1200×300 px</strong> para banner.
                     </p>
                     <input type="file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'print-ad-img-data', 'print-ad-img-preview')" class="w-full text-xs text-slate-300">
                     <input type="url" id="print-ad-img-url" value="${(ad.imageUrl && ad.imageUrl.startsWith('http')) ? this.escapeAttr(ad.imageUrl) : ''}" oninput="ui.previewNanoBananaUrl(this.value, 'print-ad-img-preview')" placeholder="O pega URL de imagen..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
                     <input type="hidden" id="print-ad-img-data" value="${this.escapeAttr(ad.imageUrl || '')}">
-                    <div id="print-ad-img-preview" class="hidden"></div>
+                    <div id="print-ad-img-preview" class="${ad.imageUrl ? '' : 'hidden'}">
+                        ${ad.imageUrl ? `<img src="${this.escapeAttr(ad.imageUrl)}" alt="Vista previa anuncio" class="max-h-28 w-full object-contain border border-amber-400/50 bg-white p-1">` : ''}
+                    </div>
                 </div>
             </div>
         `;
@@ -625,14 +675,21 @@ Object.assign(ui, {
 
         const cid = document.getElementById('print-ad-company')?.value || '';
         const co = cid ? state.data?.companies?.[cid] : null;
-        ad.coId = cid;
-        ad.companyName = co ? co.name : '';
-        ad.classGroup = co ? (co.classGroup || 'A') : '';
-        ad.slogan = (document.getElementById('print-ad-slogan')?.value || '').trim();
-        ad.bodyText = (document.getElementById('print-ad-text')?.value || '').trim();
+        const slogan = (document.getElementById('print-ad-slogan')?.value || '').trim();
+        const bodyText = (document.getElementById('print-ad-text')?.value || '').trim();
         const imgData = document.getElementById('print-ad-img-data')?.value || '';
         const imgUrl = (document.getElementById('print-ad-img-url')?.value || '').trim();
-        ad.imageUrl = imgData || imgUrl || '';
+        const finalImg = imgUrl || imgData || '';
+        const hasCustomContent = Boolean(slogan || bodyText || finalImg);
+
+        ad.coId = cid;
+        ad.companyName = co ? co.name : (hasCustomContent ? (slogan || 'ESPACIO PATROCINADO') : '');
+        ad.classGroup = co ? (co.classGroup || 'A') : (hasCustomContent ? 'AEE' : '');
+        ad.slogan = slogan;
+        ad.bodyText = bodyText;
+        ad.imageUrl = finalImg;
+        ad.adHeightMm = parseInt(document.getElementById('print-ad-height')?.value || '18', 10) || 18;
+        ad.adLayout = document.getElementById('print-ad-layout')?.value || 'card';
         ad.campId = document.getElementById('print-ad-camp-id')?.value || '';
         ad.actId = document.getElementById('print-ad-act-id')?.value || '';
         ed.updatedAt = Date.now();
@@ -1187,6 +1244,35 @@ Object.assign(ui, {
         this.notify("✕ Noticia quitada de la página.", "info");
     },
 
+    adjustPrintSlotImageHeight(pageIdx, slotIdx, deltaMm) {
+        if (!this.isNewsCoordinator()) return;
+        const ed = this.getActivePrintEdition();
+        const page = ed?.pages?.[pageIdx];
+        const slot = page?.slots?.[slotIdx];
+        if (!slot) return;
+        const cur = (slot.imgHeightMm !== undefined && slot.imgHeightMm !== null)
+            ? Number(slot.imgHeightMm)
+            : (page.pageNumber === 1 && slotIdx === 0 ? 60 : 30);
+        slot.imgHeightMm = Math.max(0, Math.min(90, cur + deltaMm));
+        ed.updatedAt = Date.now();
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.render();
+    },
+
+    adjustPrintAdHeight(pageIdx, deltaMm) {
+        if (!this.isNewsCoordinator()) return;
+        const ed = this.getActivePrintEdition();
+        const ad = ed?.pages?.[pageIdx]?.adSlot;
+        if (!ad) return;
+        const cur = Number(ad.adHeightMm || 18);
+        ad.adHeightMm = Math.max(12, Math.min(60, cur + deltaMm));
+        ed.updatedAt = Date.now();
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.render();
+    },
+
     checkPrintPagesOverflow() {
         document.querySelectorAll('[data-print-page-box]').forEach(box => {
             const pIdx = box.getAttribute('data-print-page-box');
@@ -1231,7 +1317,8 @@ Object.assign(ui, {
         } else if (!isCover && !forPrint) {
             pageControlsHtml = `
                 <div class="flex items-center gap-1.5">
-                    <button type="button" onclick="ui.addPrintSlot(${pageIdx})" class="px-2 py-0.5 bg-emerald-700 text-white hover:bg-[#111111] text-[10px] font-mono font-bold uppercase">+ Añadir Noticia</button>
+                    <button type="button" onclick="ui.addPrintSlot(${pageIdx})" class="px-2 py-0.5 bg-emerald-700 text-white hover:bg-[#111111] text-[10px] font-mono font-bold uppercase">+ Noticia</button>
+                    <button type="button" onclick="ui.modalConfigurePrintAd(${pageIdx})" class="px-2 py-0.5 bg-[#8B0000] text-white hover:bg-[#111111] text-[10px] font-mono font-bold uppercase">📢 Anuncio</button>
                 </div>`;
         }
 
@@ -1326,8 +1413,14 @@ Object.assign(ui, {
             const slotsHtml = visibleSlots.map((slot, sIdx) => {
                 const imgSrc = slot.imageUrl ? (this.getNewsImageSrc ? this.getNewsImageSrc(slot.imageUrl) : slot.imageUrl) : '';
                 const fontPt = Number(slot.fontSizePt || (isCover ? 10 : 9.5));
+                const imgHeightMm = (slot.imgHeightMm !== undefined && slot.imgHeightMm !== null) ? Number(slot.imgHeightMm) : (isCover && sIdx === 0 ? 60 : 30);
+                const imgFitClass = (slot.imgFit === 'contain') ? 'object-contain bg-stone-100' : 'object-cover';
                 const editBtn = !forPrint ? `
-                    <div class="flex items-center gap-1">
+                    <div class="flex items-center gap-1 flex-wrap">
+                        ${imgSrc ? `
+                            <button type="button" onclick="ui.adjustPrintSlotImageHeight(${pageIdx}, ${sIdx}, -5)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Reducir altura de foto (-5 mm)">🖼️-</button>
+                            <button type="button" onclick="ui.adjustPrintSlotImageHeight(${pageIdx}, ${sIdx}, 5)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Aumentar altura de foto (+5 mm)">🖼️+</button>
+                        ` : ''}
                         <button type="button" onclick="ui.modalPickPrintSlotNews(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-amber-400 text-black hover:bg-white text-[10px] font-mono font-bold uppercase">📰 Elegir Noticia</button>
                         <button type="button" onclick="ui.modalEditPrintSlot(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-[#111111] text-white hover:bg-[#8B0000] text-[10px] font-mono font-bold uppercase">✏️ Editar</button>
                         ${(!isCover || (page.slots || []).length > 1) ? `<button type="button" onclick="ui.removePrintSlot(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-[10px] font-mono font-bold uppercase" title="Quitar noticia de esta página">✕</button>` : ''}
@@ -1340,9 +1433,9 @@ Object.assign(ui, {
                     </div>
                     <h3 class="font-serif font-black text-[#111111] ${isCover && sIdx === 0 ? 'text-[21pt] leading-[1.08]' : 'text-[13pt] leading-[1.14]'} mb-1">${this.escapeHTML(slot.title || '')}</h3>
                     ${slot.subtitle ? `<p class="font-serif italic text-[9.5pt] text-stone-700 leading-snug mb-1.5">${this.escapeHTML(slot.subtitle)}</p>` : ''}
-                    ${imgSrc ? `
+                    ${(imgSrc && imgHeightMm > 0) ? `
                         <figure class="mb-1.5">
-                            <img src="${this.escapeAttr(imgSrc)}" alt="" class="w-full ${isCover && sIdx === 0 ? 'h-[62mm]' : 'h-[30mm]'} object-cover border border-stone-300">
+                            <img src="${this.escapeAttr(imgSrc)}" alt="" style="height:${imgHeightMm}mm;" class="w-full ${imgFitClass} border border-stone-300">
                             <figcaption class="text-[7.5pt] font-mono text-stone-600 italic mt-0.5">Fuente: ${this.escapeHTML(slot.mediaSource || 'ORBITAL REPORT')}</figcaption>
                         </figure>
                     ` : `<p class="text-[7.5pt] font-mono text-stone-600 mb-1">Fuente: ${this.escapeHTML(slot.mediaSource || 'ORBITAL REPORT')}</p>`}
@@ -1374,21 +1467,36 @@ Object.assign(ui, {
         let adHtml = '';
         if (page.adSlot) {
             const ad = page.adSlot;
+            const adHeightMm = Number(ad.adHeightMm || 18);
+            const isActiveAd = Boolean(ad.companyName || ad.imageUrl || ad.slogan || ad.bodyText);
             const adBtn = !forPrint ? `
-                <div class="flex items-center gap-1">
+                <div class="flex items-center gap-1 shrink-0">
+                    ${isActiveAd ? `
+                        <button type="button" onclick="ui.adjustPrintAdHeight(${pageIdx}, -4)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Reducir tamaño del anuncio">➖</button>
+                        <button type="button" onclick="ui.adjustPrintAdHeight(${pageIdx}, 4)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Aumentar tamaño del anuncio">➕</button>
+                    ` : ''}
                     <button type="button" onclick="ui.modalConfigurePrintAd(${pageIdx})" class="px-2 py-0.5 bg-[#8B0000] text-white hover:bg-[#111111] text-[10px] font-mono font-bold uppercase">📢 Configurar Anuncio</button>
-                    ${ad.companyName ? `<button type="button" onclick="ui.clearPrintAdSlot(${pageIdx})" class="px-2 py-0.5 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-[10px] font-mono font-bold uppercase" title="Quitar anuncio">✕</button>` : ''}
+                    ${isActiveAd ? `<button type="button" onclick="ui.clearPrintAdSlot(${pageIdx})" class="px-2 py-0.5 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-[10px] font-mono font-bold uppercase" title="Quitar anuncio">✕</button>` : ''}
                 </div>` : '';
-            if (ad.companyName) {
+            if (isActiveAd && ad.adLayout === 'banner' && ad.imageUrl) {
                 adHtml = `
-                <div class="mt-auto border-2 border-[#111111] bg-[#EFECE4] p-2 flex items-center gap-2.5">
-                    ${ad.imageUrl ? `<img src="${this.escapeAttr(ad.imageUrl)}" alt="" class="w-[18mm] h-[18mm] object-contain bg-white border border-stone-300 shrink-0">` : ''}
+                <div class="mt-auto border-2 border-[#111111] bg-[#EFECE4] p-1.5 space-y-1">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-[7pt] font-mono uppercase tracking-widest text-[#8B0000] font-bold">PUBLICIDAD · ${this.escapeHTML(ad.companyName || 'ORBITAL REPORT')} (${adHeightMm} mm)</span>
+                        ${adBtn}
+                    </div>
+                    <img src="${this.escapeAttr(ad.imageUrl)}" alt="" style="height:${adHeightMm}mm;" class="w-full object-contain bg-white border border-stone-300">
+                </div>`;
+            } else if (isActiveAd) {
+                adHtml = `
+                <div style="min-height:${adHeightMm}mm;" class="mt-auto border-2 border-[#111111] bg-[#EFECE4] p-2 flex items-center gap-2.5">
+                    ${ad.imageUrl ? `<img src="${this.escapeAttr(ad.imageUrl)}" alt="" style="width:${adHeightMm}mm;height:${adHeightMm}mm;" class="object-contain bg-white border border-stone-300 shrink-0">` : ''}
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center justify-between gap-2">
-                            <span class="text-[7pt] font-mono uppercase tracking-widest text-[#8B0000] font-bold">ESPACIO PUBLICITARIO • CLASE ${this.escapeHTML(ad.classGroup || 'A')}</span>
+                            <span class="text-[7pt] font-mono uppercase tracking-widest text-[#8B0000] font-bold">ESPACIO PUBLICITARIO${ad.classGroup ? ' • CLASE ' + this.escapeHTML(ad.classGroup) : ''} (${adHeightMm} mm)</span>
                             ${adBtn}
                         </div>
-                        <h4 class="font-serif font-black text-[10pt] text-[#111111] uppercase leading-tight">${this.escapeHTML(ad.companyName)}</h4>
+                        <h4 class="font-serif font-black text-[10pt] text-[#111111] uppercase leading-tight">${this.escapeHTML(ad.companyName || 'ESPACIO PATROCINADO')}</h4>
                         ${ad.slogan ? `<p class="font-serif italic text-[8.5pt] text-[#111111] leading-tight">«${this.escapeHTML(ad.slogan)}»</p>` : ''}
                         ${ad.bodyText ? `<p class="font-sans text-[7.5pt] text-stone-700 mt-0.5 leading-tight">${this.escapeHTML(ad.bodyText)}</p>` : ''}
                     </div>
