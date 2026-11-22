@@ -4987,12 +4987,14 @@ Object.assign(ui, {
                                     if (item.isOfficial) {
                                         const t = this.getLocalizedNewsField(item, 'title');
                                         const c = this.getLocalizedNewsField(item, 'category') || 'AEE';
+                                        const artImg = item.imageUrl ? this.getNewsImageSrc(item.imageUrl) : '';
                                         return `
                                         <article class="py-3 space-y-1.5">
                                             <div class="flex items-center justify-between gap-2 text-[10px] font-mono">
                                                 <span class="text-[#8B0000] font-bold uppercase truncate">${this.escapeHTML(c)}</span>
                                                 <span class="text-stone-500 shrink-0">${this.escapeHTML(item.publishedDate || '--')}</span>
                                             </div>
+                                            ${artImg ? `<img src="${this.escapeAttr(artImg)}" alt="${this.escapeAttr(t)}" class="w-full h-24 object-cover border border-stone-300 cursor-pointer" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(item.id)}')">` : ''}
                                             <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(item.id)}')" class="text-left w-full text-sm font-serif font-bold text-[#111111] hover:text-[#8B0000] leading-snug break-words">
                                                 ${this.escapeHTML(t)}
                                             </button>

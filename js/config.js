@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.40) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.41) ---
 
-const APP_VERSION = "2.0.40";
+const APP_VERSION = "2.0.41";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,18 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.41",
+      date: "2026-11-22",
+      title: "Imágenes en Hemeroteca, Retirada de Anuncios y Guía de Tamaño A3",
+      items: [
+        "Imágenes en Hemeroteca: Los artículos archivados en Hemeroteca ahora muestran su miniatura de portada cuando disponen de fotografía.",
+        "Retirada de Anuncios y Tamaño Recomendado: Añadido botón «✕ / Quitar Anuncio» en los faldones publicitarios del Estudio Impreso A3 e indicación visible de las dimensiones exactas de imagen (18 × 18 mm · 1:1 recomendado 400 × 400 px)."
+      ],
+      highlights: [
+        { type: "MEJORAS IMPRESIÓN", text: "Miniaturas en Hemeroteca, quitar anuncios y guía de tamaño." }
+      ]
+    },
     {
       version: "2.0.40",
       date: "2026-11-22",

@@ -548,6 +548,9 @@ Object.assign(ui, {
                 </div>
                 <div class="p-2.5 bg-black/50 border border-slate-800 rounded space-y-2">
                     <label class="text-[11px] text-amber-300 font-bold uppercase block font-mono">🖼️ Subir Foto / Creatividad del Anuncio (Opcional)</label>
+                    <p class="text-[11px] text-cyan-300 font-mono bg-cyan-950/35 border border-cyan-500/30 px-2 py-1 rounded">
+                        📐 Tamaño en papel A3: <strong>18 × 18 mm</strong> (formato cuadrado 1:1 · recomendado <strong>400 × 400 px</strong> o <strong>600 × 600 px</strong>, mínimo 220 × 220 px).
+                    </p>
                     <input type="file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'print-ad-img-data', 'print-ad-img-preview')" class="w-full text-xs text-slate-300">
                     <input type="url" id="print-ad-img-url" value="${(ad.imageUrl && ad.imageUrl.startsWith('http')) ? this.escapeAttr(ad.imageUrl) : ''}" oninput="ui.previewNanoBananaUrl(this.value, 'print-ad-img-preview')" placeholder="O pega URL de imagen..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
                     <input type="hidden" id="print-ad-img-data" value="${this.escapeAttr(ad.imageUrl || '')}">
@@ -557,6 +560,7 @@ Object.assign(ui, {
         `;
         const actions = `
             <button type="button" onclick="ui.closeModal()" class="min-h-[44px] px-4 py-2 bg-slate-800 text-white text-xs font-bold uppercase">Cancelar</button>
+            ${ad.companyName ? `<button type="button" onclick="ui.clearPrintAdSlot(${pageIdx})" class="min-h-[44px] px-4 py-2 bg-red-900/70 border border-red-400 text-red-200 hover:bg-red-700 hover:text-white text-xs font-bold uppercase">🗑️ Quitar Anuncio</button>` : ''}
             <button type="button" onclick="ui.savePrintAdSlot(${pageIdx}, false)" class="min-h-[44px] px-4 py-2 bg-mars-cyan text-black font-black text-xs uppercase hover:bg-white">💾 Guardar Anuncio</button>
             <button type="button" onclick="ui.savePrintAdSlot(${pageIdx}, true)" class="min-h-[44px] px-4 py-2 bg-mars-green text-black font-black text-xs uppercase hover:bg-white">✅ Guardar y Aprobar Acción DOC_12</button>
         `;
@@ -593,6 +597,27 @@ Object.assign(ui, {
                 doc12Box.classList.add('hidden');
             }
         }
+    },
+
+    clearPrintAdSlot(pageIdx) {
+        if (!this.isNewsCoordinator()) return;
+        const ed = this.getActivePrintEdition();
+        const ad = ed?.pages?.[pageIdx]?.adSlot;
+        if (!ad) return;
+        ad.coId = '';
+        ad.companyName = '';
+        ad.classGroup = '';
+        ad.slogan = '';
+        ad.bodyText = '';
+        ad.imageUrl = '';
+        ad.campId = '';
+        ad.actId = '';
+        ed.updatedAt = Date.now();
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.closeModal();
+        this.render();
+        this.notify("🗑️ Anuncio retirado de la página.", "info");
     },
 
     savePrintAdSlot(pageIdx, approveDoc12 = false) {
@@ -1113,7 +1138,11 @@ Object.assign(ui, {
         let adHtml = '';
         if (page.adSlot) {
             const ad = page.adSlot;
-            const adBtn = !forPrint ? `<button type="button" onclick="ui.modalConfigurePrintAd(${pageIdx})" class="px-2 py-0.5 bg-[#8B0000] text-white hover:bg-[#111111] text-[10px] font-mono font-bold uppercase">📢 Configurar Anuncio</button>` : '';
+            const adBtn = !forPrint ? `
+                <div class="flex items-center gap-1">
+                    <button type="button" onclick="ui.modalConfigurePrintAd(${pageIdx})" class="px-2 py-0.5 bg-[#8B0000] text-white hover:bg-[#111111] text-[10px] font-mono font-bold uppercase">📢 Configurar Anuncio</button>
+                    ${ad.companyName ? `<button type="button" onclick="ui.clearPrintAdSlot(${pageIdx})" class="px-2 py-0.5 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-[10px] font-mono font-bold uppercase" title="Quitar anuncio">✕</button>` : ''}
+                </div>` : '';
             if (ad.companyName) {
                 adHtml = `
                 <div class="mt-auto border-2 border-[#111111] bg-[#EFECE4] p-2 flex items-center gap-2.5">
