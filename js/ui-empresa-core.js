@@ -3946,7 +3946,7 @@ Object.assign(ui, {
                     return { ...n, placement: 'sub', subOrder: 1, featured: false, placementUpdatedAt: now, updatedAt: now };
                 }
                 if (n.placement === 'sub') {
-                    return { ...n, subOrder: (Number(n.subOrder) || 1) + 1, placementUpdatedAt: now };
+                    return { ...n, subOrder: (Number(n.subOrder) || 1) + 1, placementUpdatedAt: now, updatedAt: now };
                 }
                 return n;
             });

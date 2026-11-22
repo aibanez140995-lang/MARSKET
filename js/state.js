@@ -1837,6 +1837,7 @@ const state = {
             if(!Array.isArray(arrL)) arrL = [];
             const getGlobalTs = (it) => Math.max(
                 this._parseSafeTs(it?.updatedAt),
+                this._parseSafeTs(it?.placementUpdatedAt),
                 this._parseSafeTs(it?.resolvedAt),
                 this._parseSafeTs(it?.approvedAt),
                 this._parseSafeTs(it?.rejectedAt),
@@ -1844,6 +1845,18 @@ const state = {
                 this._parseSafeTs(it?.createdAt),
                 this._parseSafeTs(it?.timestamp)
             );
+            const serverDedupMap = new Map();
+            const serverDedup = [];
+            arrS.forEach(sItem => {
+                const id = String(sItem?.id || sItem?.sessionId || '');
+                if (!id) { serverDedup.push(sItem); return; }
+                const prev = serverDedupMap.get(id);
+                if (!prev || getGlobalTs(sItem) >= getGlobalTs(prev)) {
+                    serverDedupMap.set(id, sItem);
+                }
+            });
+            serverDedupMap.forEach(v => serverDedup.push(v));
+            arrS = serverDedup;
             const localMap = new Map();
             arrL.forEach(i => {
                 const id = String(i?.id || i?.sessionId || '');

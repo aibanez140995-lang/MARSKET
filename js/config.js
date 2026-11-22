@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.41) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.42) ---
 
-const APP_VERSION = "2.0.41";
+const APP_VERSION = "2.0.42";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,20 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.42",
+      date: "2026-11-22",
+      title: "Fix VIP-0000, Persistencia de Portada, Selector Quién es quién y Modal Elegir Noticia A3",
+      items: [
+        "Acceso VIP-0000 Operativo: Corregida la validación de sesión en render() y verifySessionIntegrity() para que VIP-0000 / 0000 entre directo al periódico digital sin ser desconectado.",
+        "Persistencia de Portada y Debajo de Portada: Añadido placementUpdatedAt en la fusión LWW y deduplicación en servidor/cliente para que la portada y las noticias de debajo se mantengan al salir y para todo el alumnado.",
+        "Selector «Quién es quién» (Pág. 7): Corregido el listado de empresas del colegio (leyendo claves del diccionario) con filtro por clase A-F/TEST y checkboxes táctiles.",
+        "Modal «📰 Elegir Noticia» en Edición Escrita A3: Permite elegir directamente entre noticias reales del teletipo o creadas por Coordinación y aplicarlas al hueco de la página."
+      ],
+      highlights: [
+        { type: "FIX INTEGRAL", text: "VIP-0000 funcional, portada persistente, Quién es quién y selector A3." }
+      ]
+    },
     {
       version: "2.0.41",
       date: "2026-11-22",

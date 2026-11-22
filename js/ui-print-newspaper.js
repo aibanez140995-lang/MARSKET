@@ -679,8 +679,10 @@ Object.assign(ui, {
         const startupProtoMap = new Map((Array.isArray(cfg.startups) ? cfg.startups : []).map(s => [String(s.coId), s.prototypeName || '']));
 
         const realList = this.getWhoIsWhoRealPresets();
-        const companies = Object.values(state.data?.companies || {})
-            .filter(c => c && c.id && c.id !== 'vip_reader')
+        const companiesDict = state.data?.companies || {};
+        const companies = Object.keys(companiesDict)
+            .filter(cid => cid && cid !== 'vip_reader' && companiesDict[cid] && typeof companiesDict[cid] === 'object')
+            .map(cid => ({ ...companiesDict[cid], _keyId: cid }))
             .sort((a, b) => String(a.classGroup || 'A').localeCompare(String(b.classGroup || 'A')) || String(a.name || '').localeCompare(String(b.name || '')));
 
         const html = `
@@ -688,19 +690,28 @@ Object.assign(ui, {
                 <p class="text-[11px] text-slate-300">Selecciona empresas aeroespaciales reales y startups del colegio (clases A–F) para mostrarlas juntas en la Página 7. Zero-PII: solo se imprime <strong>Nombre · España</strong> y el nombre del prototipo.</p>
 
                 <div class="space-y-2">
-                    <h4 class="text-xs font-mono font-bold text-amber-300 uppercase">🎓 Startups del Colegio (Elige y asigna Prototipo)</h4>
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h4 class="text-xs font-mono font-bold text-amber-300 uppercase">🎓 Startups del Colegio (${companies.length} disponibles)</h4>
+                        <select aria-label="Filtrar startups por clase" onchange="document.querySelectorAll('.wiw-startup-row').forEach(r => { r.style.display = (this.value === 'ALL' || r.dataset.cls === this.value) ? '' : 'none'; })" class="min-h-[36px] bg-slate-900 border border-slate-700 px-2 py-1 text-xs text-white font-mono">
+                            <option value="ALL">Todas las clases</option>
+                            <option value="A">Clase A</option><option value="B">Clase B</option><option value="C">Clase C</option>
+                            <option value="D">Clase D</option><option value="E">Clase E</option><option value="F">Clase F</option>
+                            <option value="TEST">Clase TEST</option>
+                        </select>
+                    </div>
                     <div class="max-h-56 overflow-y-auto border border-slate-700 bg-slate-900/70 divide-y divide-slate-800 p-2 space-y-1.5">
-                        ${companies.map(c => {
-                            const cid = String(c.id);
+                        ${companies.length === 0 ? `<p class="text-slate-400 italic p-2">No hay empresas registradas en el estado actual.</p>` : companies.map(c => {
+                            const cid = String(c._keyId);
+                            const cls = String(c.classGroup || 'A').toUpperCase();
                             const checked = startupProtoMap.has(cid);
                             const protoVal = startupProtoMap.get(cid) || '';
                             return `
-                            <div class="pt-1.5 first:pt-0 flex flex-col sm:flex-row sm:items-center gap-2">
-                                <label class="flex items-center gap-2 min-w-[180px] cursor-pointer text-white font-bold">
-                                    <input type="checkbox" class="wiw-startup-chk w-4 h-4 accent-amber-400" value="${this.escapeAttr(cid)}" ${checked ? 'checked' : ''}>
-                                    <span>${this.escapeHTML(c.name)} <span class="text-[10px] text-mars-cyan font-mono">(${this.escapeHTML(c.classGroup || 'A')})</span></span>
+                            <div class="wiw-startup-row pt-1.5 first:pt-0 flex flex-col sm:flex-row sm:items-center gap-2" data-cls="${this.escapeAttr(cls)}" data-cid="${this.escapeAttr(cid)}">
+                                <label class="flex items-center gap-2 min-w-[200px] cursor-pointer text-white font-bold select-none">
+                                    <input type="checkbox" class="wiw-startup-chk w-5 h-5 accent-amber-400 cursor-pointer shrink-0" value="${this.escapeAttr(cid)}" ${checked ? 'checked' : ''}>
+                                    <span>${this.escapeHTML(c.name || cid)} <span class="text-[10px] text-mars-cyan font-mono">(${this.escapeHTML(cls)})</span></span>
                                 </label>
-                                <input type="text" data-wiw-proto="${this.escapeAttr(cid)}" value="${this.escapeAttr(protoVal)}" placeholder="Nombre del prototipo (ej: Falcon-MARS I)" class="flex-1 min-h-[38px] bg-black border border-slate-700 px-2.5 py-1 text-xs text-white outline-none focus:border-amber-400">
+                                <input type="text" class="wiw-proto-input flex-1 min-h-[38px] bg-black border border-slate-700 px-2.5 py-1 text-xs text-white outline-none focus:border-amber-400" value="${this.escapeAttr(protoVal)}" placeholder="Nombre del prototipo (ej: Falcon-MARS I)">
                             </div>`;
                         }).join('')}
                     </div>
@@ -734,9 +745,11 @@ Object.assign(ui, {
 
         const realIds = Array.from(document.querySelectorAll('.wiw-real-chk:checked')).map(el => el.value);
         const startups = [];
-        document.querySelectorAll('.wiw-startup-chk:checked').forEach(chk => {
-            const cid = chk.value;
-            const protoInput = document.querySelector(`[data-wiw-proto="${cid}"]`);
+        document.querySelectorAll('.wiw-startup-row').forEach(row => {
+            const chk = row.querySelector('.wiw-startup-chk');
+            if (!chk || !chk.checked) return;
+            const cid = row.dataset.cid || chk.value;
+            const protoInput = row.querySelector('.wiw-proto-input');
             const prototypeName = (protoInput?.value || '').trim() || 'Prototipo Fase I';
             startups.push({ coId: cid, prototypeName });
         });
@@ -996,6 +1009,114 @@ Object.assign(ui, {
         return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${vb} ${vb}" width="${sizePx}" height="${sizePx}" shape-rendering="crispEdges" class="bg-white border border-stone-300 shrink-0">${rects}</svg>`;
     },
 
+    async fetchWireForPrintPicker(pageIdx, slotIdx) {
+        if (!this.isNewsCoordinator()) return;
+        if (typeof this.fetchSpaceflightWire === 'function') {
+            await this.fetchSpaceflightWire(true);
+        }
+        this.modalPickPrintSlotNews(pageIdx, slotIdx);
+    },
+
+    modalPickPrintSlotNews(pageIdx, slotIdx) {
+        if (!this.isNewsCoordinator()) return;
+        const ed = this.getActivePrintEdition();
+        const page = ed?.pages?.[pageIdx];
+        const slot = page?.slots?.[slotIdx];
+        if (!slot) return;
+
+        const savedNews = Array.isArray(state.data?.news) ? state.data.news : [];
+        const wireNews = Array.isArray(this._snapiWireArticles) ? this._snapiWireArticles : [];
+
+        const html = `
+            <div class="space-y-4 text-xs font-sans">
+                <p class="text-[11px] text-slate-300">Selecciona una noticia para aplicarla directamente en la <strong>Página ${page.pageNumber}</strong> (Hueco #${slotIdx + 1}).</p>
+
+                <div class="space-y-2">
+                    <h4 class="text-xs font-mono font-bold text-amber-300 uppercase">🏛️ Noticias Creadas por Coordinación (${savedNews.length})</h4>
+                    <div class="max-h-52 overflow-y-auto border border-slate-700 bg-slate-900/70 divide-y divide-slate-800 p-2 space-y-1.5">
+                        ${savedNews.length === 0 ? `<p class="text-slate-400 italic p-2">No hay noticias guardadas todavía.</p>` : savedNews.map((n, i) => `
+                            <div class="pt-1.5 first:pt-0 flex items-center justify-between gap-2">
+                                <div class="min-w-0 flex-1">
+                                    <span class="block text-[10px] font-mono text-mars-cyan uppercase">${this.escapeHTML(n.category || 'AEE')} · ${this.escapeHTML(n.publishedDate || '')}</span>
+                                    <strong class="block text-xs text-white truncate">${this.escapeHTML(n.title || '')}</strong>
+                                </div>
+                                <button type="button" onclick="ui.applyPickedNewsToPrintSlot(${pageIdx}, ${slotIdx}, 'NEWS', ${i})" class="min-h-[38px] px-3 py-1 bg-amber-400 text-black font-black text-[11px] uppercase hover:bg-white shrink-0">Aplicar</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <h4 class="text-xs font-mono font-bold text-mars-cyan uppercase">📡 Noticias Reales Aeroespaciales (${wireNews.length})</h4>
+                        <button type="button" onclick="ui.fetchWireForPrintPicker(${pageIdx}, ${slotIdx})" class="min-h-[34px] px-2.5 py-1 bg-slate-800 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black text-[10px] font-mono font-bold uppercase">🔄 Actualizar Teletipo</button>
+                    </div>
+                    <div class="max-h-52 overflow-y-auto border border-slate-700 bg-slate-900/70 divide-y divide-slate-800 p-2 space-y-1.5">
+                        ${wireNews.length === 0 ? `<p class="text-slate-400 italic p-2">Pulsa «🔄 Actualizar Teletipo» para cargar las noticias reales más recientes.</p>` : wireNews.map((w, i) => `
+                            <div class="pt-1.5 first:pt-0 flex items-center justify-between gap-2">
+                                <div class="min-w-0 flex-1">
+                                    <span class="block text-[10px] font-mono text-emerald-300 uppercase">Fuente: ${this.escapeHTML(w.news_site || 'Spaceflight News')}</span>
+                                    <strong class="block text-xs text-white truncate">${this.escapeHTML(w.titleEs || w.title || '')}</strong>
+                                </div>
+                                <button type="button" onclick="ui.applyPickedNewsToPrintSlot(${pageIdx}, ${slotIdx}, 'WIRE', ${i})" class="min-h-[38px] px-3 py-1 bg-mars-cyan text-black font-black text-[11px] uppercase hover:bg-white shrink-0">Aplicar</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+        const actions = `<button type="button" onclick="ui.closeModal()" class="min-h-[44px] px-4 py-2 bg-slate-800 text-white text-xs font-bold uppercase">Cerrar</button>`;
+        this.showModal(`📰 Elegir Noticia // Página ${page.pageNumber}`, html, actions, 'max-w-3xl');
+    },
+
+    async applyPickedNewsToPrintSlot(pageIdx, slotIdx, kind, idx) {
+        if (!this.isNewsCoordinator()) return;
+        const ed = this.getActivePrintEdition();
+        const page = ed?.pages?.[pageIdx];
+        const slot = page?.slots?.[slotIdx];
+        if (!slot) return;
+
+        if (kind === 'NEWS') {
+            const art = (state.data?.news || [])[idx];
+            if (!art) return;
+            slot.kicker = art.category || 'ACTUALIDAD';
+            slot.mediaSource = art.sourceName || art.author || 'ORBITAL REPORT';
+            slot.title = art.title || slot.title;
+            slot.subtitle = art.subtitle || '';
+            slot.body = art.body || art.title || '';
+            slot.imageUrl = art.imageUrl ? (this.getNewsImageSrc ? this.getNewsImageSrc(art.imageUrl) : art.imageUrl) : '';
+        } else if (kind === 'WIRE') {
+            const art = (this._snapiWireArticles || [])[idx];
+            if (!art) return;
+            slot.kicker = 'PRENSA INTERNACIONAL';
+            slot.mediaSource = art.news_site || 'Spaceflight News';
+            slot.title = art.titleEs || art.title || slot.title;
+            slot.subtitle = art.summaryEs || art.summary || '';
+            slot.body = art.summaryEs || art.summary || '';
+            slot.imageUrl = art.proxy_image_url || (art.image_url && this.getNewsImageSrc ? this.getNewsImageSrc(art.image_url) : '');
+
+            if (art.url && /^https?:\/\//i.test(art.url)) {
+                this.notify("🌐 Extrayendo artículo completo en castellano...", "info");
+                try {
+                    const resp = await fetch(`/api/news/article?url=${encodeURIComponent(art.url)}&title=${encodeURIComponent(art.title || '')}&summary=${encodeURIComponent(art.summary || '')}&site=${encodeURIComponent(art.news_site || '')}&img=${encodeURIComponent(art.image_url || '')}`);
+                    if (resp.ok) {
+                        const full = await resp.json();
+                        slot.title = full.titleEs || slot.title;
+                        slot.body = full.bodyEs || full.bodyEn || slot.body;
+                        if (full.imageUrl) slot.imageUrl = full.imageUrl;
+                    }
+                } catch (e) {}
+            }
+        }
+
+        ed.updatedAt = Date.now();
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.closeModal();
+        this.render();
+        this.notify(`✅ Noticia aplicada a Página ${page.pageNumber}.`, "success");
+    },
+
     renderPrintStudioPageHtml(ed, page, pageIdx, forPrint = false) {
         const isCover = page.pageNumber === 1;
         const isWhoIsWho = page.pageNumber === 7 && (page.pageMode || 'who_is_who') === 'who_is_who';
@@ -1112,7 +1233,11 @@ Object.assign(ui, {
             const slotsHtml = (page.slots || []).map((slot, sIdx) => {
                 const imgSrc = slot.imageUrl ? (this.getNewsImageSrc ? this.getNewsImageSrc(slot.imageUrl) : slot.imageUrl) : '';
                 const fontPt = Number(slot.fontSizePt || 9.5);
-                const editBtn = !forPrint ? `<button type="button" onclick="ui.modalEditPrintSlot(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-[#111111] text-white hover:bg-[#8B0000] text-[10px] font-mono font-bold uppercase">✏️ Editar</button>` : '';
+                const editBtn = !forPrint ? `
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="ui.modalPickPrintSlotNews(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-amber-400 text-black hover:bg-white text-[10px] font-mono font-bold uppercase">📰 Elegir Noticia</button>
+                        <button type="button" onclick="ui.modalEditPrintSlot(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-[#111111] text-white hover:bg-[#8B0000] text-[10px] font-mono font-bold uppercase">✏️ Editar</button>
+                    </div>` : '';
                 const charCount = (slot.body || '').length;
                 const fitBadge = !forPrint ? `<span class="text-[9px] font-mono ${charCount > 1400 ? 'text-red-700 font-bold' : 'text-emerald-800'}">${charCount > 1400 ? '⚠️ Texto largo' : '✓ Encaja'}</span>` : '';
                 return `
