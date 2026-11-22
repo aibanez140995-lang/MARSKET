@@ -2042,6 +2042,9 @@ const state = {
             this.revokeSession("Sesión finalizada: El tiempo de autorización de misión (8 horas) ha expirado.");
             return false;
         }
+        if (this.user.isVip) {
+            return true;
+        }
 
         // 2. Comprobar que la entidad siga existiendo en el estado del servidor
         const teacherRoles = ['FYQ', 'ECO', 'MAT', 'LEN', 'ING', 'LYE'];

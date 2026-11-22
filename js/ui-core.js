@@ -3570,7 +3570,7 @@ const ui = {
             return;
         }
         
-        if (!state.user.admin && !state.data.companies[state.user.coId]) {
+        if (!state.user.admin && !state.user.isVip && !state.data.companies[state.user.coId]) {
             auth.logout();
             return;
         }
@@ -3597,20 +3597,8 @@ const ui = {
 
         let currentAllowed = [];
         if (state.user.isVip) {
-            if(tacticalRow) tacticalRow.classList.add('hidden');
-            if(sandboxBadgeEl) {
-                sandboxBadgeEl.classList.add('hidden');
-                sandboxBadgeEl.innerText = '';
-            }
-            if(balEl) balEl.innerText = 'VIP';
-            if(infoEl) {
-                infoEl.innerText = 'ORBITAL REPORT · LECTOR INVITADO';
-                infoEl.title = 'Acceso de lectura pública al periódico digital';
-            }
-            if(miniLogo) {
-                miniLogo.classList.add('hidden');
-                miniLogo.innerHTML = '';
-            }
+            currentAllowed = ['news'];
+            this.current = 'news';
         } else if (state.user.admin) {
             currentAllowed = ['admin', 'market', 'dossier', 'news'];
             if (!currentAllowed.includes(this.current)) this.current = 'admin';

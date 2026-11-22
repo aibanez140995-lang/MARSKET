@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.43) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.44) ---
 
-const APP_VERSION = "2.0.43";
+const APP_VERSION = "2.0.44";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,19 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.44",
+      date: "2026-11-22",
+      title: "Fix Real VIP-0000, Portada con Sumario A3, Botones +/- Noticias y Medidor A3",
+      items: [
+        "Fix Definitivo VIP-0000: Aplicado el bypass de verificación de entidad empresarial en verifySessionIntegrity() y render() para que VIP-0000 / 0000 abra el periódico digital sin ser revocado.",
+        "Portada Impresa A3 (1 Noticia + Sumario): La Página 1 muestra únicamente la noticia principal de portada acompañada del bloque «EN ESTE NÚMERO // SUMARIO DE PÁGINAS» (Pág. 2 a Pág. 8).",
+        "Botones + Añadir Noticia y ✕ Quitar + Medidor A3 Real: Añadidos controles para añadir/quitar noticias en cada página interior, selector de letra desde 7.5 pt y medición real de altura A3 (297 mm) en pantalla."
+      ],
+      highlights: [
+        { type: "VIP & A3", text: "VIP-0000 desbloqueado, portada con sumario y medidor de altura A3." }
+      ]
+    },
     {
       version: "2.0.43",
       date: "2026-11-22",

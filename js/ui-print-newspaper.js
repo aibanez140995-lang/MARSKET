@@ -66,8 +66,7 @@ Object.assign(ui, {
                 label: 'Portada',
                 sectionTitle: 'PORTADA PRINCIPAL',
                 slots: [
-                    { id: 'p1-lead', role: 'lead', kicker: 'ACTUALIDAD Y ESTRATEGIA', title: 'Noticia Principal de Portada', subtitle: 'Entradilla editorial en cursiva...', body: 'Selecciona una noticia real o crónica de Coordinación para la apertura de portada.', imageUrl: '', mediaSource: 'Consejo Editorial AEE', fontSizePt: 9.5 },
-                    { id: 'p1-sec', role: 'secondary', kicker: 'EN BREVE // MISIÓN', title: 'Noticia Secundaria de Portada', subtitle: '', body: 'Segundo titular destacado de la primera plana.', imageUrl: '', mediaSource: 'ORBITAL REPORT', fontSizePt: 9 }
+                    { id: 'p1-lead', role: 'lead', kicker: 'ACTUALIDAD Y ESTRATEGIA', title: 'Noticia Principal de Portada', subtitle: 'Entradilla editorial en cursiva...', body: 'Selecciona una noticia real o crónica de Coordinación para la apertura de portada.', imageUrl: '', mediaSource: 'Consejo Editorial AEE', fontSizePt: 10 }
                 ],
                 adSlot: null
             },
@@ -275,10 +274,8 @@ Object.assign(ui, {
             slot.mediaSource = art.news_site || 'Spaceflight News';
         };
 
-        // Pág. 1: Portada (Noticia principal + secundaria)
-        if (savedNews[0]) fillSlotFromNews(ed.pages[0].slots[0], savedNews[0]);
-        if (savedNews[1]) fillSlotFromNews(ed.pages[0].slots[1], savedNews[1]);
-        else if (wireNews[0]) fillSlotFromWire(ed.pages[0].slots[1], wireNews[0]);
+        // Pág. 1: Portada (1 noticia principal; el resumen de páginas se genera abajo)
+        if (savedNews[0] && ed.pages[0]?.slots?.[0]) fillSlotFromNews(ed.pages[0].slots[0], savedNews[0]);
 
         // Pág. 2: Crónicas AEE
         if (savedNews[2]) fillSlotFromNews(ed.pages[1].slots[0], savedNews[2]);
@@ -426,7 +423,7 @@ Object.assign(ui, {
                     <div class="flex flex-wrap justify-between items-center gap-2 mb-1">
                         <label for="print-slot-body" class="text-[11px] text-amber-300 font-bold uppercase">Cuerpo de la Noticia (Castellano) <span class="font-mono text-[10px] text-slate-400 normal-case ml-1">· **negrita** · *cursiva* · - lista</span></label>
                         <select id="print-slot-fontsize" class="bg-slate-900 border border-slate-700 px-2 py-1 text-[11px] text-cyan-300 font-mono">
-                            ${[8.5, 9, 9.5, 10, 10.5].map(pt => `<option value="${pt}" ${Number(slot.fontSizePt || 9.5) === pt ? 'selected' : ''}>Letra ${pt} pt</option>`).join('')}
+                            ${[7.5, 8, 8.5, 9, 9.5, 10, 10.5].map(pt => `<option value="${pt}" ${Number(slot.fontSizePt || 9.5) === pt ? 'selected' : ''}>Letra ${pt} pt</option>`).join('')}
                         </select>
                     </div>
                     <textarea id="print-slot-body" rows="6" class="w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white font-sans">${this.escapeHTML(slot.body || '')}</textarea>
@@ -1149,6 +1146,64 @@ Object.assign(ui, {
         return html;
     },
 
+    addPrintSlot(pageIdx) {
+        if (!this.isNewsCoordinator()) return;
+        const ed = this.getActivePrintEdition();
+        const page = ed?.pages?.[pageIdx];
+        if (!page) return;
+        page.slots = Array.isArray(page.slots) ? page.slots : [];
+        const newIdx = page.slots.length;
+        page.slots.push({
+            id: `p${page.pageNumber}-slot-${Date.now()}`,
+            role: 'article',
+            kicker: 'ACTUALIDAD',
+            title: 'Nueva Noticia',
+            subtitle: '',
+            body: 'Pulsa «📰 Elegir Noticia» o «✏️ Editar» para redactar el texto adaptado al tamaño A3.',
+            imageUrl: '',
+            mediaSource: 'ORBITAL REPORT',
+            fontSizePt: 9
+        });
+        ed.updatedAt = Date.now();
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.render();
+        this.modalPickPrintSlotNews(pageIdx, newIdx);
+    },
+
+    removePrintSlot(pageIdx, slotIdx) {
+        if (!this.isNewsCoordinator()) return;
+        const ed = this.getActivePrintEdition();
+        const page = ed?.pages?.[pageIdx];
+        if (!page || !Array.isArray(page.slots)) return;
+        if (page.pageNumber === 1 && page.slots.length <= 1) {
+            return this.notify("La Portada debe conservar al menos 1 noticia principal.", "warning");
+        }
+        page.slots.splice(slotIdx, 1);
+        ed.updatedAt = Date.now();
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.render();
+        this.notify("✕ Noticia quitada de la página.", "info");
+    },
+
+    checkPrintPagesOverflow() {
+        document.querySelectorAll('[data-print-page-box]').forEach(box => {
+            const pIdx = box.getAttribute('data-print-page-box');
+            const badge = document.getElementById(`print-fit-badge-${pIdx}`);
+            const inner = box.querySelector('[data-print-page-inner]');
+            if (!badge || !inner) return;
+            const overflows = box.scrollHeight > (box.clientHeight + 4);
+            if (overflows) {
+                badge.className = 'text-[9px] font-mono px-1.5 py-0.5 bg-red-700 text-white font-bold uppercase';
+                badge.innerText = '⚠️ Excede A3 (edita/recorta)';
+            } else {
+                badge.className = 'text-[9px] font-mono px-1.5 py-0.5 bg-emerald-800 text-white font-bold uppercase';
+                badge.innerText = '✓ Cabe en A3';
+            }
+        });
+    },
+
     renderPrintStudioPageHtml(ed, page, pageIdx, forPrint = false) {
         const isCover = page.pageNumber === 1;
         const isWhoIsWho = page.pageNumber === 7 && (page.pageMode || 'who_is_who') === 'who_is_who';
@@ -1172,6 +1227,11 @@ Object.assign(ui, {
                         <button type="button" onclick="ui.modalEditBeyondRocketDirectory(${pageIdx})" class="px-2 py-0.5 bg-amber-400 text-black hover:bg-white text-[10px] font-mono font-bold uppercase">✏️ Editar Fichas</button>
                     ` : ''}
                     <button type="button" onclick="ui.togglePrintPageMode(${pageIdx})" class="px-2 py-0.5 bg-[#111111] text-white hover:bg-[#8B0000] text-[10px] font-mono font-bold uppercase">${isBeyondRocket ? '📰 Cambiar a Noticias' : '🚀 Cambiar a Más allá del cohete'}</button>
+                </div>`;
+        } else if (!isCover && !forPrint) {
+            pageControlsHtml = `
+                <div class="flex items-center gap-1.5">
+                    <button type="button" onclick="ui.addPrintSlot(${pageIdx})" class="px-2 py-0.5 bg-emerald-700 text-white hover:bg-[#111111] text-[10px] font-mono font-bold uppercase">+ Añadir Noticia</button>
                 </div>`;
         }
 
@@ -1262,34 +1322,53 @@ Object.assign(ui, {
                     </div>
                 </div>`;
         } else {
-            const slotsHtml = (page.slots || []).map((slot, sIdx) => {
+            const visibleSlots = isCover ? (page.slots || []).slice(0, 1) : (page.slots || []);
+            const slotsHtml = visibleSlots.map((slot, sIdx) => {
                 const imgSrc = slot.imageUrl ? (this.getNewsImageSrc ? this.getNewsImageSrc(slot.imageUrl) : slot.imageUrl) : '';
-                const fontPt = Number(slot.fontSizePt || 9.5);
+                const fontPt = Number(slot.fontSizePt || (isCover ? 10 : 9.5));
                 const editBtn = !forPrint ? `
                     <div class="flex items-center gap-1">
                         <button type="button" onclick="ui.modalPickPrintSlotNews(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-amber-400 text-black hover:bg-white text-[10px] font-mono font-bold uppercase">📰 Elegir Noticia</button>
                         <button type="button" onclick="ui.modalEditPrintSlot(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-[#111111] text-white hover:bg-[#8B0000] text-[10px] font-mono font-bold uppercase">✏️ Editar</button>
+                        ${(!isCover || (page.slots || []).length > 1) ? `<button type="button" onclick="ui.removePrintSlot(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-[10px] font-mono font-bold uppercase" title="Quitar noticia de esta página">✕</button>` : ''}
                     </div>` : '';
-                const charCount = (slot.body || '').length;
-                const fitBadge = !forPrint ? `<span class="text-[9px] font-mono ${charCount > 1400 ? 'text-red-700 font-bold' : 'text-emerald-800'}">${charCount > 1400 ? '⚠️ Texto largo' : '✓ Encaja'}</span>` : '';
                 return `
                 <article class="border-b border-stone-300 pb-2.5 mb-2.5 last:border-b-0 last:mb-0">
                     <div class="flex items-center justify-between gap-2 mb-1">
                         <span class="text-[9pt] font-mono font-bold uppercase tracking-wider text-[#8B0000]">${this.escapeHTML(slot.kicker || '')}</span>
-                        <div class="flex items-center gap-1.5">${fitBadge}${editBtn}</div>
+                        <div class="flex items-center gap-1.5">${editBtn}</div>
                     </div>
-                    <h3 class="font-serif font-black text-[#111111] ${isCover && sIdx === 0 ? 'text-[19pt] leading-[1.08]' : 'text-[13pt] leading-[1.14]'} mb-1">${this.escapeHTML(slot.title || '')}</h3>
+                    <h3 class="font-serif font-black text-[#111111] ${isCover && sIdx === 0 ? 'text-[21pt] leading-[1.08]' : 'text-[13pt] leading-[1.14]'} mb-1">${this.escapeHTML(slot.title || '')}</h3>
                     ${slot.subtitle ? `<p class="font-serif italic text-[9.5pt] text-stone-700 leading-snug mb-1.5">${this.escapeHTML(slot.subtitle)}</p>` : ''}
                     ${imgSrc ? `
                         <figure class="mb-1.5">
-                            <img src="${this.escapeAttr(imgSrc)}" alt="" class="w-full ${isCover && sIdx === 0 ? 'h-[48mm]' : 'h-[32mm]'} object-cover border border-stone-300">
+                            <img src="${this.escapeAttr(imgSrc)}" alt="" class="w-full ${isCover && sIdx === 0 ? 'h-[62mm]' : 'h-[30mm]'} object-cover border border-stone-300">
                             <figcaption class="text-[7.5pt] font-mono text-stone-600 italic mt-0.5">Fuente: ${this.escapeHTML(slot.mediaSource || 'ORBITAL REPORT')}</figcaption>
                         </figure>
                     ` : `<p class="text-[7.5pt] font-mono text-stone-600 mb-1">Fuente: ${this.escapeHTML(slot.mediaSource || 'ORBITAL REPORT')}</p>`}
                     <div style="font-size: ${fontPt}pt; line-height: 1.38;" class="font-serif text-[#1f2937]">${this.formatPrintEditorialText(slot.body || '')}</div>
                 </article>`;
             }).join('');
-            mainContentHtml = `<div class="space-y-2">${slotsHtml}</div>`;
+
+            const coverSummaryHtml = isCover ? `
+                <div class="mt-3 pt-2.5 border-t-2 border-[#111111]">
+                    <div class="text-[7.5pt] font-mono font-black uppercase tracking-widest text-[#8B0000] mb-1.5">EN ESTE NÚMERO // SUMARIO DE PÁGINAS</div>
+                    <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-[7.5pt] leading-tight">
+                        ${(ed.pages || []).slice(1).map(p => {
+                            let summaryTitle = p.label || '';
+                            if (p.pageNumber === 7 && (p.pageMode || 'who_is_who') === 'who_is_who') {
+                                summaryTitle = 'Quién es quién: Startups y Empresas';
+                            } else if (p.pageNumber === 8 && (p.pageMode || 'beyond_rocket') === 'beyond_rocket') {
+                                summaryTitle = 'Más allá del cohete y Acceso QR';
+                            } else if (p.slots && p.slots[0]?.title) {
+                                summaryTitle = p.slots[0].title;
+                            }
+                            return `<div class="truncate border-b border-stone-200 pb-0.5"><strong class="font-mono text-[#8B0000]">PÁG. ${p.pageNumber}</strong> · <span class="font-serif text-[#111111]">${this.escapeHTML(summaryTitle)}</span></div>`;
+                        }).join('')}
+                    </div>
+                </div>` : '';
+
+            mainContentHtml = `<div class="space-y-2">${slotsHtml}${coverSummaryHtml}</div>`;
         }
 
         let adHtml = '';
@@ -1340,10 +1419,13 @@ Object.assign(ui, {
             </div>
         `;
 
+        const fitPill = !forPrint ? `<span id="print-fit-badge-${pageIdx}" class="text-[9px] font-mono px-1.5 py-0.5 bg-stone-300 text-[#111111] uppercase">Midiendo A3...</span>` : '';
+
         return `
-        <div class="bg-[#FAF8F5] text-[#111111] p-[9mm] flex flex-col justify-between h-full box-border overflow-hidden border border-stone-300">
-            <div>
+        <div data-print-page-box="${pageIdx}" style="height:297mm;max-height:297mm;" class="bg-[#FAF8F5] text-[#111111] p-[9mm] flex flex-col justify-between box-border overflow-hidden border border-stone-300">
+            <div data-print-page-inner="${pageIdx}">
                 ${headerHtml}
+                ${!forPrint ? `<div class="flex justify-end mb-1">${fitPill}</div>` : ''}
                 ${mainContentHtml}
             </div>
             ${adHtml}
@@ -1441,6 +1523,7 @@ Object.assign(ui, {
             ${bodyContentHtml}
         `;
         el.appendChild(wrapper);
+        requestAnimationFrame(() => this.checkPrintPagesOverflow());
     },
 
     printA3NewspaperPDF() {
