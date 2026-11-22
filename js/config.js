@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.37) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.38) ---
 
-const APP_VERSION = "2.0.37";
+const APP_VERSION = "2.0.38";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,20 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.38",
+      date: "2026-11-22",
+      title: "ORBITAL REPORT — Estudio de Edición Impresa A3 (Estilo Washington Post)",
+      items: [
+        "Estudio de Edición Impresa A3 (Solo Coordinación): Nuevo maquetador en español de 8 páginas (Portada a Contraportada) impuestas en 4 caras A3 apaisadas con imposición de cuadernillo ([8|1], [2|7], [6|3], [4|5]) listas para imprimir a doble cara y doblar por la mitad.",
+        "Combinación Editorial Real + Aula: Permite seleccionar noticias reales de Spaceflight News API v4 (atribuyendo siempre la fuente original), crónicas de Coordinación y Notas de Prensa DOC_15 aprobadas.",
+        "Vista Previa y Edición In-Situ: Conmutador entre Orden de Lectura (Págs. 1–8) y Pliegos Imposicionados A3 (4 Caras), con ajuste directo de titulares, entradillas y cuerpo si un texto no encaja en la página.",
+        "Espacios Publicitarios y Vínculo con Campañas DOC_12: Huecos de anuncio en la edición impresa con selector de startup e imagen/texto opcional; Marketing (MK-TRA, MK-HYB, MK-SUP) puede solicitar «Publicidad en Periódico Impreso» sin coste extra (0 €v), descontando 1 acción del pack cuando Coordinación aprueba."
+      ],
+      highlights: [
+        { type: "EDICIÓN IMPRESA", text: "Periódico mensual A3 en papel (8 págs.) y publicidad ligada a DOC_12." }
+      ]
+    },
     {
       version: "2.0.37",
       date: "2026-11-21",

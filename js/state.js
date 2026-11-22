@@ -6,6 +6,8 @@ const DEFAULT_STATE = {
     resetEpoch: 0,
     news: [],
     deletedNewsIds: [],
+    printEditions: [],
+    deletedPrintEditionIds: [],
     officialNews: [],
     deletedOfficialNewsIds: [],
     deletedCompanyIds: [],
@@ -510,6 +512,11 @@ const state = {
         }
         d.news = this.resolveFeaturedNews(d.news);
         d.officialNews = d.news;
+        d.deletedPrintEditionIds = Array.isArray(d.deletedPrintEditionIds) ? d.deletedPrintEditionIds.map(String) : [];
+        const delPrintSet = new Set(d.deletedPrintEditionIds);
+        d.printEditions = Array.isArray(d.printEditions)
+            ? d.printEditions.filter(pe => pe && pe.id && !delPrintSet.has(String(pe.id)))
+            : [];
         d.pressReleases = Array.isArray(d.pressReleases) ? d.pressReleases : [];
         d.b2bMarket = Array.isArray(d.b2bMarket) ? d.b2bMarket : [];
         d.b2bContracts = Array.isArray(d.b2bContracts) ? d.b2bContracts : [];
@@ -1911,6 +1918,14 @@ const state = {
         }
         merged.news = this.resolveFeaturedNews(merged.news);
         merged.officialNews = merged.news;
+        const allDeletedPrintEditionIds = new Set([
+            ...(Array.isArray(serverData.deletedPrintEditionIds) ? serverData.deletedPrintEditionIds.map(String) : []),
+            ...(Array.isArray(localData.deletedPrintEditionIds) ? localData.deletedPrintEditionIds.map(String) : [])
+        ]);
+        merged.deletedPrintEditionIds = Array.from(allDeletedPrintEditionIds);
+        merged.printEditions = mergeArraysGlobal(merged.printEditions, localData.printEditions)
+            .filter(pe => pe && pe.id && !allDeletedPrintEditionIds.has(String(pe.id)));
+
         merged.pressReleases = mergeArraysGlobal(merged.pressReleases, localData.pressReleases)
             .filter(pr => pr && !allDeletedCompanyIds.has(String(pr.coId)) && !allDeletedCompanyIds.has(String(pr.authorCoId)) && !isStaleTestArtifact(pr.authorCoId || pr.coId, pr));
         merged.suggestionsToAlex = mergeArraysGlobal(merged.suggestionsToAlex, localData.suggestionsToAlex)

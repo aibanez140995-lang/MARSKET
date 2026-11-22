@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.37
+// Versión: v2.0.38
 
 declare(strict_types=1);
 
@@ -935,6 +935,21 @@ try {
                 $mergedNewsTomb = array_values(array_unique(array_map('strval', array_merge($currNewsTomb, $incNewsTomb))));
                 $payload['deletedNewsIds'] = $mergedNewsTomb;
                 $payload['deletedOfficialNewsIds'] = $mergedNewsTomb;
+
+                $currPrintTomb = is_array($currentState['deletedPrintEditionIds'] ?? null) ? $currentState['deletedPrintEditionIds'] : [];
+                $incPrintTomb = ($isCoord && is_array($payload['deletedPrintEditionIds'] ?? null)) ? $payload['deletedPrintEditionIds'] : [];
+                $mergedPrintTomb = array_values(array_unique(array_map('strval', array_merge($currPrintTomb, $incPrintTomb))));
+                $payload['deletedPrintEditionIds'] = $mergedPrintTomb;
+                if (!$isCoord) {
+                    if (isset($currentState['printEditions'])) {
+                        $payload['printEditions'] = $currentState['printEditions'];
+                    }
+                } elseif (isset($payload['printEditions']) && is_array($payload['printEditions'])) {
+                    $delPrintSet = array_flip($mergedPrintTomb);
+                    $payload['printEditions'] = array_values(array_filter($payload['printEditions'], function ($pe) use ($delPrintSet) {
+                        return is_array($pe) && !empty($pe['id']) && !isset($delPrintSet[(string)$pe['id']]);
+                    }));
+                }
                 if (!$isCoord) {
                     if (isset($currentState['news'])) {
                         $payload['news'] = $currentState['news'];
@@ -3064,6 +3079,8 @@ try {
             $currentState['pendingCustom'] = [];
             $currentState['news'] = [];
             $currentState['officialNews'] = [];
+            $currentState['printEditions'] = [];
+            $currentState['deletedPrintEditionIds'] = [];
             $currentState['pressReleases'] = [];
             $currentState['deletedNewsIds'] = [];
             $currentState['deletedOfficialNewsIds'] = [];

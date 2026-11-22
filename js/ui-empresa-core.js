@@ -4430,6 +4430,9 @@ Object.assign(ui, {
     viewNewsBoard(el) {
         if (!el || !state.user) return;
         const isCoord = this.isNewsCoordinator();
+        if (this.printStudioActive && isCoord && typeof this.renderPrintEditionStudio === 'function') {
+            return this.renderPrintEditionStudio(el);
+        }
         const canModeratePR = this.canModeratePressReleases();
         const lang = this.getNewsLang();
         const classFilter = this.newsClassFilter || 'ALL';
@@ -4752,6 +4755,9 @@ Object.assign(ui, {
                         ${isCoord ? `
                             <button type="button" onclick="ui.modalPublishOfficialNews()" class="min-h-[44px] bg-[#8B0000] text-white px-4 py-2 font-mono font-bold uppercase text-xs hover:bg-[#111111] transition-colors">
                                 ✍️ + Redacción / Importar
+                            </button>
+                            <button type="button" onclick="ui.openPrintEditionStudio()" class="min-h-[44px] bg-[#111111] text-white px-4 py-2 font-mono font-bold uppercase text-xs hover:bg-[#8B0000] transition-colors">
+                                🖨️ Edición Impresa A3
                             </button>
                         ` : ''}
                     </div>

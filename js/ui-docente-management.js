@@ -45,6 +45,7 @@ Object.assign(ui, {
                 </div>
                 <div class="flex gap-2 flex-wrap shrink-0">
                     <button type="button" onclick="ui.modalPublishOfficialNews()" class="min-h-[44px] bg-amber-400 text-black px-4 py-2 text-xs font-black uppercase hover:bg-white transition-colors">🛰️ Importar Noticia Real / Publicar</button>
+                    <button type="button" onclick="ui.openPrintEditionStudio()" class="min-h-[44px] bg-slate-900 border border-amber-400 text-amber-300 px-3 py-2 text-xs font-bold uppercase hover:bg-amber-400 hover:text-black transition-colors">🖨️ Edición Impresa A3</button>
                     <button type="button" onclick="ui.navigate('news')" class="min-h-[44px] bg-slate-900 border border-mars-cyan text-mars-cyan px-3 py-2 text-xs font-bold uppercase hover:bg-mars-cyan hover:text-black transition-colors">Ver Periódico ➔</button>
                 </div>
             </div>` : '';

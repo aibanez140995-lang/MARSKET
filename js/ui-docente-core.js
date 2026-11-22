@@ -578,7 +578,12 @@ Object.assign(ui, {
                                 </td>
                                 <td class="p-2.5 font-mono text-slate-300">${this.escapeHTML(dateFormatted)}</td>
                                 <td class="p-2.5">
-                                    <span class="bg-mars-green/20 text-mars-green border border-mars-green/40 px-2 py-0.5 text-[10px] font-black uppercase">[✓ RECIBIDO DOCENTE]</span>
+                                    <span class="bg-mars-green/20 text-mars-green border border-mars-green/40 px-2 py-0.5 text-[10px] font-black uppercase">[✓ VALIDADO CEO]</span>
+                                    ${String(state.user?.role || '').startsWith('COORD') ? `
+                                        <button type="button" onclick="ui.approveMktActionByCoordinator('${this.escapeAttr(cid)}', '${this.escapeAttr(c.id)}', '${this.escapeAttr(act.id)}')" class="mt-1.5 min-h-[44px] block bg-mars-cyan text-black px-2.5 py-1 text-[10px] font-black uppercase hover:bg-white transition-colors">
+                                            ✅ Aprobar y Descontar Acción
+                                        </button>
+                                    ` : ''}
                                 </td>
                                 <td class="p-2.5">
                                     ${safeHref ? `<div class="flex items-center gap-1.5 flex-wrap"><a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-cyan-950/40 text-cyan-400 border border-cyan-500/30 rounded hover:bg-cyan-900/50">Abrir Drive ↗</a>${this.renderTeacherPdfBtnHtml ? this.renderTeacherPdfBtnHtml(actUrl) : ''}</div>` : '<span class="text-slate-500 text-[10px] italic">Sin enlace</span>'}
@@ -627,6 +632,29 @@ Object.assign(ui, {
             </div>
         </div>
         `;
+    },
+
+    approveMktActionByCoordinator(coId, campId, actId) {
+        if (!this.checkCoordinatorAccess()) return;
+        const co = state.data?.companies?.[coId];
+        const camp = (co?.marketingCampaigns || []).find(c => String(c.id) === String(campId));
+        const act = (camp?.executedActions || []).find(a => String(a.id) === String(actId));
+        if (!co || !camp || !act) return this.notify("Acción publicitaria no encontrada.", "warning");
+
+        const nowTs = Math.max(Date.now(), (Number(act.updatedAt) || 0) + 1);
+        act.status = 'APROBADO_DOCENTE';
+        act.approvedByCoordAt = nowTs;
+        act.updatedAt = nowTs;
+        camp.updatedAt = nowTs;
+        co.updatedAt = nowTs;
+
+        this.pushNotification(coId, 'MARKETING', `📰 Coordinación ha APROBADO la acción "${act.title}" (descontada de vuestro paquete ${camp.packageName}).`, 'success', { view: 'campaigns' });
+        this.pushNotification(coId, 'CEO', `📰 Coordinación ha APROBADO la acción "${act.title}".`, 'success', { view: 'campaigns' });
+
+        state.save(coId);
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.notify(`✅ Acción aprobada para ${co.name} y descontada del paquete.`, "success");
+        this.render();
     },
 
     renderAdminBackups() {

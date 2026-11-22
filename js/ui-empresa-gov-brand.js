@@ -1803,6 +1803,7 @@ Object.assign(ui, {
             ];
         } else if (camp.packageId === 'MK-TRA') {
             standardizedActions = [
+                "📰 Publicidad en Periódico Impreso (ORBITAL REPORT)",
                 "Diseño e Impresión de Póster de Pasillos",
                 "Reparto de Flyers y Folletos Físicos",
                 "Nota de Prensa en Tablón Escolar",
@@ -1810,6 +1811,7 @@ Object.assign(ui, {
             ];
         } else if (camp.packageId === 'MK-HYB') {
             standardizedActions = [
+                "📰 Publicidad en Periódico Impreso (ORBITAL REPORT)",
                 "[Online] Campaña en Redes Sociales",
                 "[Online] Banner Promocional Digital",
                 "[Físico] Póster Gran Formato para Pasillos",
@@ -1817,6 +1819,7 @@ Object.assign(ui, {
             ];
         } else if (camp.packageId === 'MK-SUP') {
             standardizedActions = [
+                "📰 Publicidad en Periódico Impreso (ORBITAL REPORT)",
                 "Campaña Multiplataforma Integral",
                 "Vídeo / Teaser Oficial de Apogeo",
                 "Rueda de Prensa y Nota Institucional",
