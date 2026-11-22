@@ -484,6 +484,12 @@ const ui = {
     },
 
     navigate(view, opts = null) {
+        if (state.user?.isVip) {
+            this.current = 'news';
+            this.currentSubView = null;
+            this.render();
+            return;
+        }
         if (!state.user?.admin && view === 'dossier') {
             this.current = 'role_deliverables';
             this.currentSubView = null;
@@ -2612,7 +2618,22 @@ const ui = {
         let initialRole = defaultRole;
         if (!initialRole) {
             if (state.user) {
-                if (state.user.admin) {
+                if (state.user.isVip) {
+            if(tacticalRow) tacticalRow.classList.add('hidden');
+            if(sandboxBadgeEl) {
+                sandboxBadgeEl.classList.add('hidden');
+                sandboxBadgeEl.innerText = '';
+            }
+            if(balEl) balEl.innerText = 'VIP';
+            if(infoEl) {
+                infoEl.innerText = 'ORBITAL REPORT · LECTOR INVITADO';
+                infoEl.title = 'Acceso de lectura pública al periódico digital';
+            }
+            if(miniLogo) {
+                miniLogo.classList.add('hidden');
+                miniLogo.innerHTML = '';
+            }
+        } else if (state.user.admin) {
                     initialRole = 'DOCENTE';
                 } else {
                     const co = state.data.companies?.[state.user.coId];
@@ -3009,7 +3030,22 @@ const ui = {
     updateBadges() {
         if (!state.user) return;
 
-        if (state.user.admin) {
+        if (state.user.isVip) {
+            if(tacticalRow) tacticalRow.classList.add('hidden');
+            if(sandboxBadgeEl) {
+                sandboxBadgeEl.classList.add('hidden');
+                sandboxBadgeEl.innerText = '';
+            }
+            if(balEl) balEl.innerText = 'VIP';
+            if(infoEl) {
+                infoEl.innerText = 'ORBITAL REPORT · LECTOR INVITADO';
+                infoEl.title = 'Acceso de lectura pública al periódico digital';
+            }
+            if(miniLogo) {
+                miniLogo.classList.add('hidden');
+                miniLogo.innerHTML = '';
+            }
+        } else if (state.user.admin) {
             const isCoord = state.user.role && String(state.user.role).startsWith('COORD');
             const allSuggs = state.data.suggestionsToAlex || [];
             const isResolvedStatus = (s) => s.status === 'IMPLEMENTADO' || s.status === 'RESUELTO' || s.resolved === true;
@@ -3337,7 +3373,22 @@ const ui = {
         const tacticalRow = document.getElementById('hud-tactical-row');
         const sandboxBadgeEl = document.getElementById('hud-sandbox-badge');
         
-        if (state.user.admin) {
+        if (state.user.isVip) {
+            if(tacticalRow) tacticalRow.classList.add('hidden');
+            if(sandboxBadgeEl) {
+                sandboxBadgeEl.classList.add('hidden');
+                sandboxBadgeEl.innerText = '';
+            }
+            if(balEl) balEl.innerText = 'VIP';
+            if(infoEl) {
+                infoEl.innerText = 'ORBITAL REPORT · LECTOR INVITADO';
+                infoEl.title = 'Acceso de lectura pública al periódico digital';
+            }
+            if(miniLogo) {
+                miniLogo.classList.add('hidden');
+                miniLogo.innerHTML = '';
+            }
+        } else if (state.user.admin) {
             if(tacticalRow) tacticalRow.classList.remove('hidden');
             if(sandboxBadgeEl) {
                 sandboxBadgeEl.classList.add('hidden');
@@ -3545,7 +3596,22 @@ const ui = {
         };
 
         let currentAllowed = [];
-        if (state.user.admin) {
+        if (state.user.isVip) {
+            if(tacticalRow) tacticalRow.classList.add('hidden');
+            if(sandboxBadgeEl) {
+                sandboxBadgeEl.classList.add('hidden');
+                sandboxBadgeEl.innerText = '';
+            }
+            if(balEl) balEl.innerText = 'VIP';
+            if(infoEl) {
+                infoEl.innerText = 'ORBITAL REPORT · LECTOR INVITADO';
+                infoEl.title = 'Acceso de lectura pública al periódico digital';
+            }
+            if(miniLogo) {
+                miniLogo.classList.add('hidden');
+                miniLogo.innerHTML = '';
+            }
+        } else if (state.user.admin) {
             currentAllowed = ['admin', 'market', 'dossier', 'news'];
             if (!currentAllowed.includes(this.current)) this.current = 'admin';
         } else {

@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.38) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.39) ---
 
-const APP_VERSION = "2.0.38";
+const APP_VERSION = "2.0.39";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,19 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.39",
+      date: "2026-11-22",
+      title: "ORBITAL REPORT Fase 2: Portada 3 Niveles, Págs. 7 y 8 Opcionales A3 y Acceso VIP-0000",
+      items: [
+        "Periódico Web en 3 Niveles (Sin Enlaces Drive): Nuevo bloque «Debajo de la portada» (2-3 noticias) con rotación automática al pulsar ⭐ Portada, diferenciación entre Bajar a Hemeroteca (📥) y Eliminar (✕) en Portada, Debajo y Hemeroteca, y eliminación de todo enlace a Google Drive.",
+        "Estudio A3 — Páginas 7 y 8 Opcionales: Pág. 7 («Quién es quién» con modal para mezclar startups A-F con Nombre · España + prototipo y empresas reales) y Pág. 8 («Más allá del cohete» con recorte automático para faldón DOC_12, QR SVG vectorial + claves VIP-0000 / 0000 y sincronización traducida al español con Launch Library 2).",
+        "Acceso Invitado VIP-0000 (PIN 0000): Perfil de lectura aislado desde servidor (api/index.php) y cliente (sin localStorage ni otras pestañas) para familias, profesorado y alumnado directo a ORBITAL REPORT."
+      ],
+      highlights: [
+        { type: "PERIÓDICO & VIP", text: "Portada rotatoria 3 niveles, directorios A3 opcionales y acceso VIP-0000." }
+      ]
+    },
     {
       version: "2.0.38",
       date: "2026-11-22",

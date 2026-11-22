@@ -64,6 +64,7 @@ const auth = (function() {
 
         const sessionPayload = { 
             admin: isTeacher,
+            isVip: !!userObj.isVip,
             role: userObj.role,
             coId: userObj.coId,
             exp,
@@ -88,8 +89,12 @@ const auth = (function() {
             localStorage.removeItem(state.sessionKey);
         } catch (e) {}
 
-        // Rehidratar estado completo autenticado para Coordinación (desbloquea borrador interno Fase V) y luego credenciales
-        if (isTeacher && userObj.role && userObj.role.startsWith('COORD')) {
+        // Rehidratar estado completo autenticado para Coordinación (desbloquea borrador interno Fase V) o lector VIP (solo noticias)
+        if (userObj.isVip && typeof state.fetchFromCloud === 'function') {
+            state.data = state.migrate(JSON.parse(JSON.stringify(DEFAULT_STATE)));
+            state.lastETag = null;
+            await state.fetchFromCloud(true).catch(() => {});
+        } else if (isTeacher && userObj.role && userObj.role.startsWith('COORD')) {
             if (typeof state.fetchFromCloud === 'function') {
                 await state.fetchFromCloud(true).catch(e => console.warn("[AUTH] Error hidratando borrador Fase V:", e));
             }
@@ -102,7 +107,9 @@ const auth = (function() {
             ui.playLoginAnimation(roleName);
         }
 
-        telemetry.startSession(entityName, roleName);
+        if (!userObj.isVip) {
+            telemetry.startSession(entityName, roleName);
+        }
 
         // Transición sin CLS (login -> app)
         setTimeout(() => {
@@ -113,7 +120,10 @@ const auth = (function() {
             authInstance.buildNav(userObj.admin);
 
             // Entrada directa a la ventana prioritaria del rol
-            if (userObj.admin) {
+            if (userObj.isVip) {
+                ui.current = 'news';
+                ui.currentSubView = null;
+            } else if (userObj.admin) {
                 const isCoordLogin = Boolean(userObj.role && String(userObj.role).startsWith('COORD'));
                 ui.adminMode = 'aula';
                 ui.adminTab = isCoordLogin ? 'dash' : 'eval';
@@ -325,6 +335,8 @@ const auth = (function() {
             if (_verifiedCoId === 'admin') {
                 const teachers = state.data.config?.teachers || {};
                 roleSelect.innerHTML = `<option value="" disabled selected>[ 1. Elige tu perfil docente ]</option>` + Object.keys(teachers).map(k => `<option value="${ui.escapeHTML(k)}">${ui.escapeHTML(teachers[k].name)}</option>`).join('');
+            } else if (_verifiedCoId === 'vip_reader') {
+                roleSelect.innerHTML = `<option value="VIP_READER" selected>📰 Lector Invitado · ORBITAL REPORT</option>`;
             } else {
                 const co = state.data.companies[_verifiedCoId];
                 const hasAux = !!(state.getRolePin(co, 'AUXILIAR') || co?.auxRoleDept || co?.auxRoleRequest?.status === 'APROBADO' || (_serverCompanyMeta && _serverCompanyMeta.hasAux));
@@ -467,14 +479,18 @@ const auth = (function() {
                     }
                 } catch(e) {}
 
-                // 2. Fallback local si el pin estuviera presente en memoria
-                if (!studentOk && co) {
+                // 2. Fallback local si el pin estuviera presente en memoria (o acceso VIP 0000)
+                if (!studentOk && _verifiedCoId === 'vip_reader' && role === 'VIP_READER' && pinAttempt === '0000') {
+                    studentOk = true;
+                    coName = 'ORBITAL REPORT · Lector VIP';
+                } else if (!studentOk && co) {
                     const expectedPin = state.getRolePin(co, role);
                     if (expectedPin && expectedPin === pinAttempt) studentOk = true;
                 }
 
                 if (studentOk) {
-                    if (co) {
+                    const isVipLogin = (_verifiedCoId === 'vip_reader' && role === 'VIP_READER');
+                    if (co && !isVipLogin) {
                         co.loginStats = co.loginStats || { totalLogins: 0, roles: {} };
                         co.loginStats.totalLogins = (co.loginStats.totalLogins || 0) + 1;
                         co.loginStats.roles = co.loginStats.roles || {};
@@ -484,7 +500,7 @@ const auth = (function() {
                     }
                     _internalExecutionGuard = true;
                     try {
-                        await _doCompleteLogin({ admin: false, role: role, coId: _verifiedCoId }, coName, role, pinAttempt, serverToken, serverAuthStamp);
+                        await _doCompleteLogin({ admin: false, isVip: isVipLogin, role: role, coId: _verifiedCoId }, coName, role, pinAttempt, serverToken, serverAuthStamp);
                     } finally {
                         _internalExecutionGuard = false;
                     }
@@ -511,13 +527,21 @@ const auth = (function() {
             const role = state.user?.role || '';
             const coId = state.user?.coId || '';
             const auxDept = (role === 'AUXILIAR') ? (state.data?.companies?.[coId]?.auxRoleDept || '') : '';
-            const sig = `${isAdmin ? 'ADMIN' : 'USER'}:${role}:${coId}:${auxDept}`;
+            const isVipUser = !!state.user?.isVip;
+            const sig = `${isVipUser ? 'VIP' : (isAdmin ? 'ADMIN' : 'USER')}:${role}:${coId}:${auxDept}`;
 
             if ((this._lastNavSignature === sig || _lastNavSignature === sig) && nav.children.length > 0) {
                 return;
             }
             this._lastNavSignature = sig;
             _lastNavSignature = sig;
+
+            if (isVipUser) {
+                nav.innerHTML = `
+                    <button type="button" role="tab" data-tab-id="news" onclick="ui.navigate('news')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">📰 Periódico ORBITAL REPORT</button>
+                `;
+                return;
+            }
 
             if (isAdmin) {
                 nav.innerHTML = `

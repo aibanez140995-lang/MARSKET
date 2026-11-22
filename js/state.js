@@ -216,6 +216,11 @@ const state = {
         if (!item || typeof item !== 'object' || !item.id) return null;
         const pubTs = this._parseSafeTs(item.publishedAt) || this._parseSafeTs(item.timestamp) || Date.now();
         const updTs = this._parseSafeTs(item.updatedAt) || pubTs;
+        const plcUpdTs = this._parseSafeTs(item.placementUpdatedAt) || updTs;
+        const rawPlc = String(item.placement || '');
+        const placement = (rawPlc === 'front' || rawPlc === 'sub' || rawPlc === 'archive')
+            ? rawPlc
+            : (item.featured ? 'front' : 'archive');
         return {
             id: String(item.id),
             category: String(item.category || 'CRÓNICA AEE'),
@@ -235,8 +240,11 @@ const state = {
             debateQuestionEn: String(item.debateQuestionEn || ''),
             publishedAt: pubTs,
             updatedAt: updTs,
+            placementUpdatedAt: plcUpdTs,
+            placement,
+            subOrder: placement === 'sub' ? (parseInt(item.subOrder, 10) || 1) : 0,
             publishedDate: String(item.publishedDate || item.date || new Date(pubTs).toLocaleDateString('es-ES')),
-            featured: Boolean(item.featured),
+            featured: placement === 'front',
             phase: String(item.phase || 'ALL'),
             classGroup: String(item.classGroup || 'ALL'),
             coId: item.coId || null,
@@ -249,11 +257,33 @@ const state = {
         const list = Array.isArray(newsList) ? newsList.filter(Boolean) : [];
         if (list.length === 0) return list;
         const sorted = [...list].sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
-        const featuredPool = sorted.filter(n => n.featured);
-        const winner = featuredPool.length > 0
-            ? featuredPool.sort((a, b) => Math.max(b.updatedAt || 0, b.publishedAt || 0) - Math.max(a.updatedAt || 0, a.publishedAt || 0))[0]
-            : sorted[0];
-        return sorted.map(n => ({ ...n, featured: String(n.id) === String(winner.id) }));
+        const frontPool = sorted.filter(n => n.placement === 'front' || n.featured);
+        const winner = frontPool.length > 0
+            ? [...frontPool].sort((a, b) => Math.max(b.placementUpdatedAt || 0, b.updatedAt || 0, b.publishedAt || 0) - Math.max(a.placementUpdatedAt || 0, a.updatedAt || 0, a.publishedAt || 0))[0]
+            : null;
+        const winnerId = winner ? String(winner.id) : null;
+
+        const subPool = sorted
+            .filter(n => (!winnerId || String(n.id) !== winnerId) && n.placement === 'sub')
+            .sort((a, b) => {
+                const oa = Number(a.subOrder) || 99;
+                const ob = Number(b.subOrder) || 99;
+                if (oa !== ob) return oa - ob;
+                return Math.max(b.placementUpdatedAt || 0, b.updatedAt || 0) - Math.max(a.placementUpdatedAt || 0, a.updatedAt || 0);
+            });
+        const subRankMap = new Map();
+        subPool.slice(0, 3).forEach((n, idx) => subRankMap.set(String(n.id), idx + 1));
+
+        return sorted.map(n => {
+            const nid = String(n.id);
+            if (winnerId && nid === winnerId) {
+                return { ...n, placement: 'front', subOrder: 0, featured: true };
+            }
+            if (subRankMap.has(nid)) {
+                return { ...n, placement: 'sub', subOrder: subRankMap.get(nid), featured: false };
+            }
+            return { ...n, placement: 'archive', subOrder: 0, featured: false };
+        });
     },
 
     calculateBomCost(co) {
@@ -2377,11 +2407,20 @@ const state = {
     },
 
     async init() {
+        let isVipSessionHint = false;
         try {
-            const saved = localStorage.getItem(this.storageKey);
+            const preSession = sessionStorage.getItem(this.sessionKey);
+            if (preSession) {
+                const parsedPre = JSON.parse(preSession);
+                if (parsedPre && parsedPre.isVip) isVipSessionHint = true;
+            }
+        } catch (e) {}
+
+        try {
+            const saved = isVipSessionHint ? null : localStorage.getItem(this.storageKey);
             const raw = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_STATE));
             this.data = this.migrate(raw);
-            this.saveLocalOnly();
+            if (!isVipSessionHint) this.saveLocalOnly();
         } catch (err) {
             console.error("Error migrando datos locales:", err);
             this.data = this.migrate(JSON.parse(JSON.stringify(DEFAULT_STATE)));
@@ -2426,7 +2465,9 @@ const state = {
                 // Sesión legítima validada
                 this.user = Object.freeze(sessionUser);
                 this.currentUser = this.user;
-                if (this.user.admin && this.user.role && this.user.role.startsWith('COORD')) {
+                if (this.user.isVip) {
+                    if (typeof ui !== 'undefined') ui.current = 'news';
+                } else if (this.user.admin && this.user.role && this.user.role.startsWith('COORD')) {
                     await this.fetchAdminCredentials().catch(() => {});
                 }
                 if (typeof ui !== 'undefined' && typeof ui.setHUDVisibility === 'function') {
@@ -3618,6 +3659,7 @@ const state = {
     },
 
     saveLocalOnly() {
+        if (this.user?.isVip) return;
         try {
             const clean = this.sanitizeForLocalStorage(this.data);
             localStorage.setItem(this.storageKey, JSON.stringify(clean));
@@ -3633,6 +3675,7 @@ const state = {
     },
 
     save(targetCid = null) { 
+        if (this.user?.isVip) return;
         if (targetCid !== '__GLOBAL__') {
             if (this.user && !this.user.admin && this.data.companies?.[this.user.coId]) {
                 this.data.companies[this.user.coId].updatedAt = Date.now();
@@ -3678,6 +3721,7 @@ const state = {
     },
 
     async pushToCloud(debounced = false) {
+        if (this.user?.isVip) return false;
         if (!this.verifySessionIntegrity(this.data)) {
             return false;
         }

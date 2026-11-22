@@ -3898,7 +3898,23 @@ Object.assign(ui, {
 
         let list = Array.isArray(state.data.news) ? state.data.news : [];
         if (isFeatured) {
-            list = list.map(n => ({ ...n, featured: false, updatedAt: now }));
+            list = list.map(n => {
+                if (!n) return n;
+                if (n.placement === 'front' || n.featured) {
+                    return { ...n, placement: 'sub', subOrder: 1, featured: false, placementUpdatedAt: now, updatedAt: now };
+                }
+                if (n.placement === 'sub') {
+                    return { ...n, subOrder: (Number(n.subOrder) || 1) + 1, placementUpdatedAt: now };
+                }
+                return n;
+            });
+            newsItem.placement = 'front';
+            newsItem.subOrder = 0;
+            newsItem.placementUpdatedAt = now;
+        } else {
+            newsItem.placement = 'archive';
+            newsItem.subOrder = 0;
+            newsItem.placementUpdatedAt = now;
         }
         list.unshift(newsItem);
         state.data.news = state.resolveFeaturedNews(list);
@@ -3940,13 +3956,40 @@ Object.assign(ui, {
         );
     },
 
+    demoteNewsToArchive(newsId) {
+        if (!this.isNewsCoordinator()) return this.notify("Solo Coordinación puede reorganizar la portada.", "error");
+        const now = Date.now();
+        const list = (state.data.news || []).map(n => {
+            if (!n) return n;
+            if (String(n.id) === String(newsId)) {
+                return { ...n, placement: 'archive', subOrder: 0, featured: false, placementUpdatedAt: now, updatedAt: now };
+            }
+            return n;
+        });
+        state.data.news = state.resolveFeaturedNews(list);
+        state.data.officialNews = state.data.news;
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.render();
+        this.notify("📥 Noticia bajada a la Hemeroteca (conservada en archivo).", "info");
+    },
+
     setNewsFeatured(newsId) {
         if (!this.isNewsCoordinator()) return this.notify("Solo Coordinación puede fijar la portada.", "error");
         const now = Date.now();
         const list = (state.data.news || []).map(n => {
             if (!n) return n;
             const isTarget = String(n.id) === String(newsId);
-            return { ...n, featured: isTarget, updatedAt: now };
+            if (isTarget) {
+                return { ...n, placement: 'front', subOrder: 0, featured: true, placementUpdatedAt: now, updatedAt: now };
+            }
+            if (n.placement === 'front' || n.featured) {
+                return { ...n, placement: 'sub', subOrder: 1, featured: false, placementUpdatedAt: now, updatedAt: now };
+            }
+            if (n.placement === 'sub') {
+                return { ...n, subOrder: (Number(n.subOrder) || 1) + 1, placementUpdatedAt: now };
+            }
+            return n;
         });
         state.data.news = state.resolveFeaturedNews(list);
         state.data.officialNews = state.data.news;
@@ -3954,7 +3997,7 @@ Object.assign(ui, {
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
         this.render();
-        this.notify("⭐ Artículo fijado como Portada Principal.", "success");
+        this.notify("⭐ Portada actualizada (la anterior bajó debajo de portada).", "success");
     },
 
     modalEditOfficialNews(newsId) {
@@ -4511,10 +4554,15 @@ Object.assign(ui, {
         const filteredReleases = publishedReleases.filter(matchesFilters);
         const filteredPending = pendingReleases.filter(matchesFilters);
 
-        // Portada Principal (65%) + Hemeroteca Intercalada (35%)
-        const coverArticle = filteredOfficial.find(n => n.featured) || filteredOfficial[0] || null;
+        // Portada Principal (1) + Debajo de la portada (2-3) + Hemeroteca (35%)
+        const coverArticle = filteredOfficial.find(n => n.placement === 'front' || n.featured) || null;
+        const subCoverArticles = filteredOfficial
+            .filter(n => (!coverArticle || String(n.id) !== String(coverArticle.id)) && n.placement === 'sub')
+            .sort((a, b) => (Number(a.subOrder) || 99) - (Number(b.subOrder) || 99))
+            .slice(0, 3);
+        const subCoverIds = new Set(subCoverArticles.map(n => String(n.id)));
         const archiveItems = [
-            ...filteredOfficial.filter(n => !coverArticle || String(n.id) !== String(coverArticle.id)),
+            ...filteredOfficial.filter(n => (!coverArticle || String(n.id) !== String(coverArticle.id)) && !subCoverIds.has(String(n.id))),
             ...filteredReleases
         ].sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
 
@@ -4719,7 +4767,8 @@ Object.assign(ui, {
                     ${isCoord ? `
                         <div class="flex items-center gap-2 flex-wrap">
                             <button type="button" onclick="ui.modalEditOfficialNews('${this.escapeAttr(art.id)}')" class="min-h-[44px] bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white px-3 py-1.5 text-xs font-mono font-bold uppercase">✏️ Editar</button>
-                            <button type="button" onclick="ui.deleteOfficialNews('${this.escapeAttr(art.id)}')" class="min-h-[44px] px-3 py-1.5 text-[#8B0000] hover:underline text-xs font-mono font-bold uppercase">🗑️ Retirar</button>
+                            <button type="button" onclick="ui.demoteNewsToArchive('${this.escapeAttr(art.id)}')" class="min-h-[44px] bg-white border border-stone-400 text-[#111111] hover:bg-stone-200 px-3 py-1.5 text-xs font-mono font-bold uppercase" title="Bajar a Hemeroteca sin borrar">📥 Hemeroteca</button>
+                            <button type="button" onclick="ui.deleteOfficialNews('${this.escapeAttr(art.id)}')" class="min-h-[44px] px-3 py-1.5 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-xs font-mono font-bold uppercase" title="Eliminar del periódico">✕ Quitar</button>
                         </div>
                     ` : ''}
                 </div>
@@ -4808,9 +4857,46 @@ Object.assign(ui, {
 
             <!-- GRID EDITORIAL 65% / 35% CON FILETE DIVISOR -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
-                <!-- COLUMNA IZQUIERDA (65% -> 8/12 cols): PORTADA PRINCIPAL -->
-                <section class="lg:col-span-8 lg:border-r lg:border-stone-300 lg:pr-7" aria-label="Portada Principal">
+                <!-- COLUMNA IZQUIERDA (65% -> 8/12 cols): PORTADA PRINCIPAL + DEBAJO DE LA PORTADA -->
+                <section class="lg:col-span-8 lg:border-r lg:border-stone-300 lg:pr-7 space-y-6" aria-label="Portada Principal">
                     ${renderCoverHtml(coverArticle)}
+                    ${subCoverArticles.length > 0 ? `
+                        <div class="border-t-2 border-[#111111] pt-5 space-y-3" aria-label="Debajo de la portada">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="font-mono text-[11px] font-black uppercase tracking-widest text-[#8B0000]">🗞️ ${lang === 'EN' ? 'Also on the Front Page' : 'En Portada · Destacados'}</span>
+                                ${isCoord ? `<span class="font-mono text-[10px] text-stone-600 uppercase">${subCoverArticles.length}/3 espacios</span>` : ''}
+                            </div>
+                            <div class="grid grid-cols-1 ${subCoverArticles.length >= 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4">
+                                ${subCoverArticles.map(sub => {
+                                    const sCat = this.getLocalizedNewsField(sub, 'category') || 'ACTUALIDAD';
+                                    const sTitle = this.getLocalizedNewsField(sub, 'title');
+                                    const sSub = this.getLocalizedNewsField(sub, 'subtitle') || this.getLocalizedNewsField(sub, 'body');
+                                    const sImg = sub.imageUrl ? this.getNewsImageSrc(sub.imageUrl) : '';
+                                    return `
+                                    <article class="bg-white border border-stone-300 p-3 flex flex-col justify-between gap-2.5">
+                                        <div class="space-y-1.5">
+                                            ${sImg ? `<img src="${this.escapeAttr(sImg)}" alt="${this.escapeAttr(sTitle)}" class="w-full h-24 object-cover border border-stone-200 cursor-pointer" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(sub.id)}')">` : ''}
+                                            <span class="block text-[10px] font-mono font-bold text-[#8B0000] uppercase truncate">${this.escapeHTML(sCat)}</span>
+                                            <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(sub.id)}')" class="text-left w-full text-sm font-serif font-bold text-[#111111] hover:text-[#8B0000] leading-snug line-clamp-3">
+                                                ${this.escapeHTML(sTitle)}
+                                            </button>
+                                            ${sSub ? `<p class="text-xs text-stone-700 font-sans line-clamp-2">${this.escapeHTML(sSub)}</p>` : ''}
+                                        </div>
+                                        <div class="flex items-center justify-between gap-1.5 pt-2 border-t border-stone-200 flex-wrap">
+                                            <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(sub.id)}')" class="min-h-[44px] px-2.5 py-1 bg-white border border-stone-400 hover:border-[#111111] text-[#111111] text-[10px] font-mono font-bold uppercase">📖 ${lang === 'EN' ? 'Read' : 'Leer'}</button>
+                                            ${isCoord ? `
+                                                <div class="flex items-center gap-1">
+                                                    <button type="button" onclick="ui.setNewsFeatured('${this.escapeAttr(sub.id)}')" class="min-h-[44px] px-2 py-1 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[11px] font-mono font-bold uppercase" title="Subir a Portada Principal">⭐</button>
+                                                    <button type="button" onclick="ui.demoteNewsToArchive('${this.escapeAttr(sub.id)}')" class="min-h-[44px] px-2 py-1 bg-white border border-stone-400 text-[#111111] hover:bg-stone-200 text-[11px] font-mono font-bold uppercase" title="Bajar a Hemeroteca">📥</button>
+                                                    <button type="button" onclick="ui.deleteOfficialNews('${this.escapeAttr(sub.id)}')" class="min-h-[44px] px-2 py-1 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-[11px] font-mono font-bold uppercase" title="Eliminar del periódico">✕</button>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    </article>`;
+                                }).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
                 </section>
 
                 <!-- COLUMNA DERECHA (35% -> 4/12 cols): TELETIPO EN VIVO + HEMEROTECA & DOC_15 -->
@@ -4866,12 +4952,10 @@ Object.assign(ui, {
                                                     📖 ${lang === 'EN' ? 'Read Full' : 'Leer Completa'}
                                                 </button>
                                                 ${isCoord ? `<button type="button" onclick="ui.setNewsFeatured('${this.escapeAttr(item.id)}')" class="min-h-[44px] px-2.5 py-1 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[11px] font-mono font-bold uppercase" title="Promover a Portada">⭐</button>` : ''}
+                                                ${isCoord ? `<button type="button" onclick="ui.deleteOfficialNews('${this.escapeAttr(item.id)}')" class="min-h-[44px] px-2.5 py-1 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-[11px] font-mono font-bold uppercase" title="Eliminar de Hemeroteca">✕</button>` : ''}
                                             </div>
                                         </article>`;
                                     } else {
-                                        const safeDrive = (item.driveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(item.driveUrl)))
-                                            ? (this.sanitizeDriveUrl ? this.sanitizeDriveUrl(item.driveUrl) : encodeURI(item.driveUrl).replace(/"/g, '&quot;'))
-                                            : '';
                                         const hasPrImg = Boolean(item.nanoBananaImage && /^(https?:\/\/|data:image\/)/i.test(item.nanoBananaImage));
                                         return `
                                         <article class="py-3 space-y-2">
@@ -4883,10 +4967,11 @@ Object.assign(ui, {
                                             <h4 class="text-sm font-serif font-bold text-[#111111] uppercase leading-snug">${this.escapeHTML(item.companyName || '')}</h4>
                                             <p class="text-xs text-stone-700 font-sans">${this.escapeHTML(item.title || '')}</p>
                                             ${item.editorialNote ? `<p class="text-xs text-stone-700 border-l-2 border-[#8B0000] pl-2 italic">${this.escapeHTML(item.editorialNote)}</p>` : ''}
-                                            <div class="flex items-center gap-2 flex-wrap">
-                                                ${safeDrive ? `<a href="${safeDrive}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-3 py-1 bg-white border border-[#111111] text-[#111111] hover:bg-[#111111] hover:text-white text-[11px] font-mono font-bold uppercase">📄 ${lang === 'EN' ? 'Open Press Release ↗' : 'Leer Nota ↗'}</a>` : ''}
-                                                ${isCoord ? `<button type="button" onclick="ui.modalAttachNanoBananaToPR('${this.escapeAttr(item.id)}')" class="min-h-[44px] px-2.5 py-1 bg-stone-200 border border-stone-400 text-[#111111] text-[11px] font-bold uppercase">🖼️</button>` : ''}
-                                            </div>
+                                            ${isCoord ? `
+                                                <div class="flex items-center gap-2 flex-wrap">
+                                                    <button type="button" onclick="ui.modalAttachNanoBananaToPR('${this.escapeAttr(item.id)}')" class="min-h-[44px] px-2.5 py-1 bg-stone-200 border border-stone-400 text-[#111111] text-[11px] font-bold uppercase">🖼️</button>
+                                                </div>
+                                            ` : ''}
                                         </article>`;
                                     }
                                 }).join('')}

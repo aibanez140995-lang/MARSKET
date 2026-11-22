@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.38
+// Versión: v2.0.39
 
 declare(strict_types=1);
 
@@ -201,6 +201,18 @@ function verifySession(?PDO $pdo = null): array {
                 'role' => $role,
                 'isAdmin' => true,
                 'stamp' => (int)($claims['stamp'] ?? 0)
+            ];
+        }
+        if ($typ === 'V') {
+            return [
+                'authorized' => false,
+                'isCoordinator' => false,
+                'isVip' => true,
+                'isStudent' => false,
+                'role' => 'VIP_READER',
+                'coId' => 'vip_reader',
+                'isAdmin' => false,
+                'stamp' => (int)($claims['stamp'] ?? 1)
             ];
         }
         if ($typ === 'S') {
@@ -476,11 +488,12 @@ try {
                 exit;
             }
 
-            // Determinar si la lectura proviene de Coordinación o Claustro Docente
+            // Determinar si la lectura proviene de Coordinación, Claustro Docente o Lector VIP
             $readAuth = verifySession();
             $isCoordReader = !empty($readAuth['isCoordinator']);
             $isTeacherReader = $isCoordReader || !empty($readAuth['isTeacher']) || !empty($readAuth['isAdmin']);
-            $readerScope = $isCoordReader ? 'coord' : ($isTeacherReader ? 'teacher' : 'pub');
+            $isVipReader = !empty($readAuth['isVip']);
+            $readerScope = $isCoordReader ? 'coord' : ($isTeacherReader ? 'teacher' : ($isVipReader ? 'vip' : 'pub'));
 
             // Mitigación de Ancho de Banda con ETag y HTTP 304 (0 bytes si versión, config.updatedAt y nivel de lector coinciden)
             $stmt = $pdo->query("SELECT json_extract(data, '$.version') as v, json_extract(data, '$.config.updatedAt') as cu FROM state WHERE id = 'current'");
@@ -543,6 +556,35 @@ try {
             $cleanPayload = $row['clean_data'];
             $decoded = json_decode($cleanPayload, true);
             if (is_array($decoded)) {
+                if ($isVipReader) {
+                    $vipNews = array_values(is_array($decoded['news'] ?? null) ? $decoded['news'] : (is_array($decoded['officialNews'] ?? null) ? $decoded['officialNews'] : []));
+                    $vipState = [
+                        'version' => $decoded['version'] ?? 1,
+                        'lastUpdated' => $decoded['lastUpdated'] ?? 0,
+                        'news' => $vipNews,
+                        'officialNews' => $vipNews,
+                        'deletedNewsIds' => array_values(is_array($decoded['deletedNewsIds'] ?? null) ? $decoded['deletedNewsIds'] : []),
+                        'deletedOfficialNewsIds' => array_values(is_array($decoded['deletedOfficialNewsIds'] ?? null) ? $decoded['deletedOfficialNewsIds'] : []),
+                        'printEditions' => [],
+                        'deletedPrintEditionIds' => [],
+                        'companies' => new \stdClass(),
+                        'b2bMarket' => [],
+                        'b2bContracts' => [],
+                        'suggestions' => [],
+                        'pendingCustomItems' => [],
+                        'catalog' => [],
+                        'config' => [
+                            'phase' => $decoded['config']['phase'] ?? 'I',
+                            'updatedAt' => $decoded['config']['updatedAt'] ?? 0
+                        ]
+                    ];
+                    header('Content-Type: application/json; charset=utf-8');
+                    header('ETag: ' . $serverETag);
+                    header('Cache-Control: private, no-cache');
+                    header('Vary: X-Marsket-Auth');
+                    echo json_encode($vipState, JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
                 ensureTestCompaniesInState($decoded);
                 $sanitized = sanitizeStateForClient($decoded, $isCoordReader, $isTeacherReader);
                 header('Content-Type: application/json; charset=utf-8');
@@ -677,6 +719,19 @@ try {
                     exit;
                 }
 
+                if ($code === 'VIP-0000') {
+                    echo json_encode([
+                        'matchedCoId' => 'vip_reader',
+                        'isVip' => true,
+                        'companyMeta' => [
+                            'hasAux' => false,
+                            'isVip' => true,
+                            'name' => 'Lector Invitado · ORBITAL REPORT'
+                        ]
+                    ], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
+
                 http_response_code(404);
                 echo json_encode(['error' => 'Company code not found']);
                 exit;
@@ -687,6 +742,19 @@ try {
                 $coId = (string)($payload['coId'] ?? '');
                 $role = strtoupper(trim((string)($payload['role'] ?? '')));
                 $pinAttempt = trim((string)($payload['pin'] ?? ''));
+
+                if ($coId === 'vip_reader' && $role === 'VIP_READER') {
+                    $verified = ($pinAttempt === '0000');
+                    http_response_code($verified ? 200 : 401);
+                    echo json_encode([
+                        'verified' => $verified,
+                        'isVip' => true,
+                        'companyName' => 'ORBITAL REPORT · Lector VIP',
+                        'authStamp' => 1,
+                        'token' => $verified ? issueSignedSessionToken($pdo, ['typ' => 'V', 'coId' => 'vip_reader', 'role' => 'VIP_READER', 'stamp' => 1]) : null
+                    ], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
 
                 if (!isValidCompanyId($coId) || !isValidStudentRole($role)) {
                     http_response_code(400);
@@ -866,6 +934,14 @@ try {
 
             // Guardado de Estado: Autorización y Particionado Zero-Trust (v1.1.25)
             $auth = verifySession($pdo);
+            if (!empty($auth['isVip'])) {
+                http_response_code(403);
+                echo json_encode([
+                    'error' => 'VIP_READONLY',
+                    'message' => 'El acceso VIP-0000 es exclusivamente de lectura del periódico.'
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
             $isCoord = !empty($auth['isCoordinator']);
             $isTeacher = !empty($auth['isAdmin']) || !empty($auth['isTeacher']);
             $isStudent = !empty($auth['isStudent']) || !empty($auth['coId']);
@@ -2203,7 +2279,20 @@ try {
                 $co['deliverables'] = is_array($co['deliverables'] ?? null) ? $co['deliverables'] : [];
                 if ($rawKey === '' || !isset($co['deliverables'][$rawKey])) {
                     rollbackQuietly($pdo);
-                    http_response_code(404);
+                    if ($code === 'VIP-0000') {
+                    echo json_encode([
+                        'matchedCoId' => 'vip_reader',
+                        'isVip' => true,
+                        'companyMeta' => [
+                            'hasAux' => false,
+                            'isVip' => true,
+                            'name' => 'Lector Invitado · ORBITAL REPORT'
+                        ]
+                    ], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
+
+                http_response_code(404);
                     echo json_encode(['error' => 'DELIVERABLE_NOT_FOUND']);
                     exit;
                 }
@@ -2588,6 +2677,19 @@ try {
 
             if ($itemIndex === -1) {
                 rollbackQuietly($pdo);
+                if ($code === 'VIP-0000') {
+                    echo json_encode([
+                        'matchedCoId' => 'vip_reader',
+                        'isVip' => true,
+                        'companyMeta' => [
+                            'hasAux' => false,
+                            'isVip' => true,
+                            'name' => 'Lector Invitado · ORBITAL REPORT'
+                        ]
+                    ], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
+
                 http_response_code(404);
                 echo json_encode(['error' => 'Not found']);
                 exit;
@@ -2827,7 +2929,20 @@ try {
             if ($type === 'teacher') {
                 if (empty($currentState['config']['teachers'][$id])) {
                     rollbackQuietly($pdo);
-                    http_response_code(404);
+                    if ($code === 'VIP-0000') {
+                    echo json_encode([
+                        'matchedCoId' => 'vip_reader',
+                        'isVip' => true,
+                        'companyMeta' => [
+                            'hasAux' => false,
+                            'isVip' => true,
+                            'name' => 'Lector Invitado · ORBITAL REPORT'
+                        ]
+                    ], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
+
+                http_response_code(404);
                     echo json_encode(['error' => "Docente $id no encontrado"]);
                     exit;
                 }
