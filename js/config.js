@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.39) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.40) ---
 
-const APP_VERSION = "2.0.39";
+const APP_VERSION = "2.0.40";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,18 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.40",
+      date: "2026-11-22",
+      title: "Fix Antiduplicados en Hemeroteca y Rotación Unificada de Noticias",
+      items: [
+        "Protección Antiduplicados al Publicar: Bloqueo anti doble-clic y deduplicación por ID, URL de origen y título reciente al publicar noticias desde Redacción, Lector Amplio o Teletipo.",
+        "Rotación Unificada: Todas las vías de publicación a Portada rotan limpiamente la noticia saliente hacia «Debajo de la portada» (máx. 3) antes de pasar a Hemeroteca."
+      ],
+      highlights: [
+        { type: "FIX PERIÓDICO", text: "Eliminada la duplicación en Hemeroteca al publicar noticias." }
+      ]
+    },
     {
       version: "2.0.39",
       date: "2026-11-22",

@@ -3318,7 +3318,23 @@ Object.assign(ui, {
         });
 
         let list = Array.isArray(state.data.news) ? state.data.news : [];
-        list = list.map(n => ({ ...n, featured: false, updatedAt: now }));
+        if (list.some(n => n && ((newsItem.sourceUrl && n.sourceUrl === newsItem.sourceUrl) || (n.title === newsItem.title && Math.abs((n.publishedAt || 0) - now) < 8000)))) {
+            this.closeModal();
+            return this.notify("ℹ️ Esta noticia ya estaba publicada en ORBITAL REPORT.", "info");
+        }
+        list = list.map(n => {
+            if (!n) return n;
+            if (n.placement === 'front' || n.featured) {
+                return { ...n, placement: 'sub', subOrder: 1, featured: false, placementUpdatedAt: now, updatedAt: now };
+            }
+            if (n.placement === 'sub') {
+                return { ...n, subOrder: (Number(n.subOrder) || 1) + 1, placementUpdatedAt: now };
+            }
+            return n;
+        });
+        newsItem.placement = 'front';
+        newsItem.subOrder = 0;
+        newsItem.placementUpdatedAt = now;
         list.unshift(newsItem);
         state.data.news = state.resolveFeaturedNews(list);
         state.data.officialNews = state.data.news;
@@ -3332,9 +3348,12 @@ Object.assign(ui, {
 
     async quickPublishSnapiToBoard(idx, sourceList = 'wire') {
         if (!this.isNewsCoordinator()) return this.notify("Acceso restringido exclusivamente a Coordinación.", "error");
+        if (this._publishingSnapiLock) return;
         const pool = sourceList === 'importer' ? (this._snapiImporterItems || []) : (this._snapiWireArticles || []);
         const art = pool[idx];
         if (!art) return this.notify("No se encontró la noticia seleccionada.", "warning");
+        this._publishingSnapiLock = true;
+        try {
 
         this.notify("🌐 Extrayendo artículo completo y traduciendo en servidor...", "info");
 
@@ -3404,7 +3423,23 @@ Object.assign(ui, {
         });
 
         let list = Array.isArray(state.data.news) ? state.data.news : [];
-        list = list.map(n => ({ ...n, featured: false, updatedAt: now }));
+        if (list.some(n => n && ((newsItem.sourceUrl && n.sourceUrl === newsItem.sourceUrl) || (n.title === newsItem.title && Math.abs((n.publishedAt || 0) - now) < 8000)))) {
+            this.closeModal();
+            return this.notify("ℹ️ Esta noticia ya estaba publicada en ORBITAL REPORT.", "info");
+        }
+        list = list.map(n => {
+            if (!n) return n;
+            if (n.placement === 'front' || n.featured) {
+                return { ...n, placement: 'sub', subOrder: 1, featured: false, placementUpdatedAt: now, updatedAt: now };
+            }
+            if (n.placement === 'sub') {
+                return { ...n, subOrder: (Number(n.subOrder) || 1) + 1, placementUpdatedAt: now };
+            }
+            return n;
+        });
+        newsItem.placement = 'front';
+        newsItem.subOrder = 0;
+        newsItem.placementUpdatedAt = now;
         list.unshift(newsItem);
         state.data.news = state.resolveFeaturedNews(list);
         state.data.officialNews = state.data.news;
@@ -3414,6 +3449,9 @@ Object.assign(ui, {
         this.closeModal();
         this.render();
         this.notify("✅ Artículo completo traducido y trasladado a la portada de ORBITAL REPORT.", "success");
+        } finally {
+            this._publishingSnapiLock = false;
+        }
     },
 
     async fetchSpaceflightWire(force = false) {
@@ -3897,6 +3935,10 @@ Object.assign(ui, {
         });
 
         let list = Array.isArray(state.data.news) ? state.data.news : [];
+        if (list.some(n => n && n.title === newsItem.title && Math.abs((n.publishedAt || 0) - now) < 8000)) {
+            this.closeModal();
+            return this.notify("ℹ️ Este artículo ya acaba de ser publicado.", "info");
+        }
         if (isFeatured) {
             list = list.map(n => {
                 if (!n) return n;
@@ -4490,9 +4532,16 @@ Object.assign(ui, {
         const rawNews = Array.isArray(state.data?.news) && state.data.news.length > 0
             ? state.data.news
             : (state.data?.officialNews || []);
+        const seenNewsIds = new Set();
         const officialNews = state.resolveFeaturedNews(
             rawNews
-                .filter(n => n && n.id && !deletedNewsIds.has(String(n.id)))
+                .filter(n => {
+                    if (!n || !n.id) return false;
+                    const nid = String(n.id);
+                    if (deletedNewsIds.has(nid) || seenNewsIds.has(nid)) return false;
+                    seenNewsIds.add(nid);
+                    return true;
+                })
                 .map(n => state.normalizeNewsItem(n))
                 .filter(Boolean)
         ).map(n => ({ ...n, isOfficial: true }));
