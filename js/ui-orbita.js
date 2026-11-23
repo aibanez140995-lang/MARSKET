@@ -1418,24 +1418,10 @@ Object.assign(ui, {
         </div>`;
     },
 
-    getOrbitaWhoIsWhoRealPresets() {
-        return [
-            { id: 'nasa', name: 'NASA', domain: 'nasa.gov', countryEs: 'EE. UU.', countryEn: 'USA', roleEs: 'Agencia espacial civil de referencia (programa lunar Artemis, telescopio Webb y exploración robótica de Marte).', roleEn: 'Leading civil space agency behind the Artemis lunar program, James Webb telescope, and Mars rovers.' },
-            { id: 'esa', name: 'ESA', domain: 'esa.int', countryEs: 'Europa (22 Estados)', countryEn: 'Europe (22 States)', roleEs: 'Agencia Espacial Europea: impulsa Ariane 6, Galileo, observación terrestre Copernicus y vocaciones STEM.', roleEn: 'European Space Agency driving Ariane 6, Galileo navigation, Copernicus Earth observation, and STEM outreach.' },
-            { id: 'aee', name: 'Agencia Espacial Española (AEE)', domain: 'aee.gob.es', countryEs: 'España', countryEn: 'Spain', roleEs: 'Coordina la política espacial nacional, los retornos industriales en ESA y la seguridad aeroespacial.', roleEn: 'Coordinates Spain’s national space policy, ESA industrial returns, and aerospace safety.' },
-            { id: 'spacex', name: 'SpaceX', domain: 'spacex.com', countryEs: 'EE. UU.', countryEn: 'USA', roleEs: 'Pionera en cohetes orbitales reutilizables (Falcon 9 / Starship) y red satelital Starlink.', roleEn: 'Pioneer of reusable orbital rockets (Falcon 9 / Starship) and the Starlink satellite constellation.' },
-            { id: 'pld', name: 'PLD Space', domain: 'pldspace.com', countryEs: 'España (Elche)', countryEn: 'Spain (Elche)', roleEs: 'Empresa española creadora del cohete suborbital Miura 1 y del lanzador orbital Miura 5.', roleEn: 'Spanish aerospace firm behind the Miura 1 suborbital rocket and Miura 5 orbital launcher.' },
-            { id: 'airbus', name: 'Airbus Defence and Space', domain: 'airbus.com', countryEs: 'Europa', countryEn: 'Europe', roleEs: 'Construye el módulo de servicio europeo de Orion (Artemis), satélites científicos y estructuras de vuelo.', roleEn: 'Builds the European Service Module for Artemis Orion, scientific satellites, and flight structures.' },
-            { id: 'gmv', name: 'GMV', domain: 'gmv.com', countryEs: 'España', countryEn: 'Spain', roleEs: 'Referente europeo en dinámica de vuelo, segmento terreno y sistemas críticos de navegación Galileo.', roleEn: 'European leader in flight dynamics, ground control segments, and Galileo navigation systems.' },
-            { id: 'sateliot', name: 'Sateliot', domain: 'sateliot.space', countryEs: 'España', countryEn: 'Spain', roleEs: 'Primera constelación española de nanosatélites 5G-IoT para conectividad global de sensores.', roleEn: 'First Spanish 5G-IoT nanosatellite constellation for global low-power sensor connectivity.' },
-            { id: 'blueorigin', name: 'Blue Origin', domain: 'blueorigin.com', countryEs: 'EE. UU.', countryEn: 'USA', roleEs: 'Desarrolla los cohetes reutilizables New Shepard y New Glenn y motores criogénicos BE-4.', roleEn: 'Develops reusable New Shepard and New Glenn rockets alongside BE-4 cryogenic engines.' },
-            { id: 'arianespace', name: 'Arianespace / ArianeGroup', domain: 'arianespace.com', countryEs: 'Francia / Europa', countryEn: 'France / Europe', roleEs: 'Opera el Puerto Espacial Europeo de Kourou y los lanzadores Ariane 6 y Vega-C.', roleEn: 'Operates Europe’s Spaceport in Kourou and the Ariane 6 and Vega-C launch vehicles.' }
-        ];
-    },
-
     modalEditRealCompanyLogo(presetId) {
         if (!this.isNewsCoordinator()) return this.notify("Solo Coordinación puede editar logos reales.", "error");
-        const preset = this.getOrbitaWhoIsWhoRealPresets().find(p => p.id === presetId);
+        const presets = (typeof this.getWhoIsWhoRealPresets === 'function') ? this.getWhoIsWhoRealPresets() : [];
+        const preset = presets.find(p => p.id === presetId);
         if (!preset) return;
         const current = String(state.data?.realCompanyLogos?.[presetId] || '');
         const html = `
@@ -1483,7 +1469,7 @@ Object.assign(ui, {
 
     renderWhoIsWhoDirectoryView(lang) {
         const isCoord = this.isNewsCoordinator();
-        const presets = this.getOrbitaWhoIsWhoRealPresets();
+        const presets = (typeof this.getWhoIsWhoRealPresets === 'function') ? this.getWhoIsWhoRealPresets() : [];
         const customLogos = (state.data && state.data.realCompanyLogos) || {};
         const isVipMode = state.user && state.user.role === 'VIP_READER';
         let startups = [];
@@ -1541,7 +1527,9 @@ Object.assign(ui, {
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         ${presets.map(p => {
                             const customUrl = customLogos[p.id] ? this.getNewsImageSrc(customLogos[p.id]) : '';
-                            const initials = p.name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 3).toUpperCase();
+                            const initials = p.monogram || p.name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 3).toUpperCase();
+                            const countryLabel = p.country || p.countryEs || '';
+                            const descLabel = p.summary || p.roleEs || '';
                             return `
                             <article class="bg-white border border-stone-300 p-4 flex flex-col justify-between gap-3">
                                 <div class="flex items-start gap-3">
@@ -1549,11 +1537,11 @@ Object.assign(ui, {
                                         ? `<img src="${this.escapeAttr(customUrl)}" alt="${this.escapeAttr(p.name)}" class="w-12 h-12 object-contain border border-stone-200 bg-white p-1 shrink-0">`
                                         : `<div class="w-12 h-12 border border-[#111111] bg-[#FAF8F5] flex items-center justify-center font-orbita-serif font-black text-sm text-[#111111] shrink-0">${this.escapeHTML(initials)}</div>`}
                                     <div class="min-w-0 flex-1">
-                                        <span class="text-[10px] font-mono font-bold uppercase text-[#8B0000]">${this.escapeHTML(lang === 'EN' ? p.countryEn : p.countryEs)}</span>
+                                        <span class="text-[10px] font-mono font-bold uppercase text-[#8B0000]">${this.escapeHTML(countryLabel)}</span>
                                         <h5 class="text-base font-orbita-serif font-bold text-[#111111] leading-snug">${this.escapeHTML(p.name)}</h5>
                                     </div>
                                 </div>
-                                <p class="text-xs font-orbita-serif text-stone-700 leading-relaxed">${this.escapeHTML(lang === 'EN' ? p.roleEn : p.roleEs)}</p>
+                                <p class="text-xs font-orbita-serif text-stone-700 leading-relaxed">${this.escapeHTML(descLabel)}</p>
                                 <div class="flex items-center justify-between gap-2 pt-2 border-t border-stone-200">
                                     <a href="https://${this.escapeAttr(p.domain)}" target="_blank" rel="noopener noreferrer" class="text-[11px] font-mono text-stone-600 hover:text-[#8B0000] underline">${this.escapeHTML(p.domain)}</a>
                                     ${isCoord ? `<button type="button" onclick="ui.modalEditRealCompanyLogo('${this.escapeAttr(p.id)}')" class="min-h-[44px] px-2.5 py-1 border border-stone-400 text-[11px] font-mono font-bold text-[#111111] hover:bg-[#111111] hover:text-white uppercase">Logo</button>` : ''}
@@ -1914,10 +1902,8 @@ Object.assign(ui, {
             <header class="border-b-4 border-double border-[#111111] pb-4 space-y-3">
                 <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-stone-700 border-b border-stone-300 pb-2">
                     <span class="uppercase tracking-wider font-bold">
-                        ${curEdition === 0
-                            ? (lang === 'EN' ? 'Edition No. 0 · Inaugural Pilot' : 'Edición N.º 0 · Piloto Inaugural')
-                            : (lang === 'EN' ? `Edition No. ${curEdition}` : `Edición N.º ${curEdition}`)}
-                        &bull; ${this.escapeHTML(todayLabel)}
+                        ${lang === 'EN' ? `Edition No. ${curEdition}` : `Edición N.º ${curEdition}`}
+                        &bull; MIRAVALLES-EL REDÍN &bull; ${this.escapeHTML(todayLabel)}
                     </span>
                     <div class="flex items-center gap-3">
                         <button type="button" onclick="ui.scrollToOrbitaColophon()" class="min-h-[44px] px-2 text-xs font-mono font-bold underline text-[#111111] hover:text-[#8B0000]">
@@ -1950,12 +1936,6 @@ Object.assign(ui, {
                         </div>
                     ` : ''}
                 </div>
-
-                <p class="text-[11px] font-mono text-stone-600">
-                    ${lang === 'EN'
-                        ? 'Real aerospace journalism and simulated MARS-KET 4º ESO project dispatches.'
-                        : 'Periodismo aeroespacial real y crónicas simuladas del proyecto escolar MARS-KET (4º ESO).'}
-                </p>
 
                 <nav class="relative border-t border-stone-300 pt-2 overflow-x-auto" aria-label="Secciones de Órbita">
                     <div class="flex items-center gap-1.5 min-w-max pb-1">
@@ -2112,7 +2092,7 @@ Object.assign(ui, {
                         Órbita. &bull; ${lang === 'EN' ? `Edition No. ${curEdition}` : `Edición N.º ${curEdition}`}
                     </span>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs sm:text-sm font-orbita-serif text-stone-700 leading-relaxed">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs sm:text-sm font-orbita-serif text-stone-700 leading-relaxed">
                     <div>
                         <h3 class="font-mono font-bold uppercase text-[11px] text-[#111111] mb-1">
                             ${lang === 'EN' ? 'What you are reading' : 'Qué estás leyendo'}
@@ -2131,16 +2111,6 @@ Object.assign(ui, {
                             ${lang === 'EN'
                                 ? 'Every article displays its origin tag: REAL JOURNALISM covers NASA, launches, technology, and history; MARS-KET SIMULATION covers classroom startups and virtual-euro (€v) contracts.'
                                 : 'Cada noticia indica su procedencia: ACTUALIDAD REAL agrupa noticias reales de ciencia, lanzamientos e historia; SIMULACIÓN MARS-KET cubre crónicas del instituto en euros virtuales (€v).'}
-                        </p>
-                    </div>
-                    <div>
-                        <h3 class="font-mono font-bold uppercase text-[11px] text-[#111111] mb-1">
-                            ${lang === 'EN' ? 'Editorial Coordination & Privacy' : 'Coordinación y privacidad'}
-                        </h3>
-                        <p>
-                            ${lang === 'EN'
-                                ? 'Edited by project teachers. Student deliverables are reviewed before publication, with zero open comments or personal data tracking.'
-                                : 'Coordinado por el profesorado del proyecto sin comentarios abiertos ni seguimiento de datos personales del alumnado.'}
                         </p>
                     </div>
                 </div>

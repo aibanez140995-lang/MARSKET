@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.59) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.60) ---
 
-const APP_VERSION = "2.0.59";
+const APP_VERSION = "2.0.60";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1327,6 +1327,16 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.60",
+      date: "2026-11-23",
+      title: "Órbita: Quién es quién completo con logos, cabecera escolar y colofón simplificado",
+      items: [
+        "Restauradas las 19 empresas aeroespaciales reales con sus IDs originales en Quién es quién digital, recuperando todos los logos ya guardados y el botón Logo para Coordinación.",
+        "Eliminado «· Piloto Inaugural» de la cabecera de Órbita y añadido MIRAVALLES-EL REDÍN en la barra superior de edición.",
+        "Eliminada la frase descriptiva bajo la cabecera y el bloque «Coordinación y privacidad» del colofón «Sobre esta edición»."
+      ]
+    },
     {
       version: "2.0.59",
       date: "2026-11-23",
