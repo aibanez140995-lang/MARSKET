@@ -31,6 +31,9 @@ const filesToUpload = [
     'css/tailwind.css',
     'css/input.css',
     'css/fonts/orbitron.woff2',
+    'css/fonts/newsreader-latin-400-normal.woff2',
+    'css/fonts/newsreader-latin-700-normal.woff2',
+    'css/fonts/newsreader-latin-400-italic.woff2',
 
     // JS (subidos ANTES que index.html y sw.js para evitar condiciones de carrera en caché)
     'js/lexicon-data.js',
@@ -43,6 +46,7 @@ const filesToUpload = [
     'js/ui-docente-management.js',
     'js/ui-docente-contest.js',
     'js/ui-empresa-core.js',
+    'js/ui-orbita.js',
     'js/ui-print-newspaper.js',
     'js/ui-empresa-finance.js',
     'js/ui-empresa-gov-brand.js',

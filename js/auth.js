@@ -281,7 +281,7 @@ const auth = (function() {
             let networkFailed = false;
             if (!matchedCoId && code === 'VIP-0000') {
                 matchedCoId = 'vip_reader';
-                _serverCompanyMeta = { hasAux: false, isVip: true, name: 'Lector Invitado · ORBITAL REPORT' };
+                _serverCompanyMeta = { hasAux: false, isVip: true, name: 'Lector Invitado · Órbita.' };
             }
 
             if (!matchedCoId) {
@@ -350,7 +350,7 @@ const auth = (function() {
                 const teachers = state.data.config?.teachers || {};
                 roleSelect.innerHTML = `<option value="" disabled selected>[ 1. Elige tu perfil docente ]</option>` + Object.keys(teachers).map(k => `<option value="${ui.escapeHTML(k)}">${ui.escapeHTML(teachers[k].name)}</option>`).join('');
             } else if (_verifiedCoId === 'vip_reader') {
-                roleSelect.innerHTML = `<option value="VIP_READER" selected>📰 Lector Invitado · ORBITAL REPORT</option>`;
+                roleSelect.innerHTML = `<option value="VIP_READER" selected>📰 Lector Invitado · Órbita.</option>`;
             } else {
                 const co = state.data.companies[_verifiedCoId];
                 const hasAux = !!(state.getRolePin(co, 'AUXILIAR') || co?.auxRoleDept || co?.auxRoleRequest?.status === 'APROBADO' || (_serverCompanyMeta && _serverCompanyMeta.hasAux));
@@ -526,7 +526,7 @@ const auth = (function() {
                 // 2. Fallback local si el pin estuviera presente en memoria (o acceso VIP 0000)
                 if (!studentOk && _verifiedCoId === 'vip_reader' && role === 'VIP_READER' && pinAttempt === '0000') {
                     studentOk = true;
-                    coName = 'ORBITAL REPORT · Lector VIP';
+                    coName = 'Órbita. · Lector VIP';
                 } else if (!studentOk && co) {
                     const expectedPin = state.getRolePin(co, role);
                     if (expectedPin && expectedPin === pinAttempt) studentOk = true;
@@ -584,7 +584,7 @@ const auth = (function() {
 
             if (isVipUser) {
                 nav.innerHTML = `
-                    <button type="button" role="tab" data-tab-id="news" onclick="ui.navigate('news')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">📰 Periódico ORBITAL REPORT</button>
+                    <button type="button" role="tab" data-tab-id="news" onclick="ui.navigate('news')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">Periódico Órbita.</button>
                 `;
                 return;
             }

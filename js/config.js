@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.56) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.58) ---
 
-const APP_VERSION = "2.0.56";
+const APP_VERSION = "2.0.58";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -65,6 +65,174 @@ const CONTEST_AWARDS_DEF = Object.freeze({
             colorHex: '#FFB703'
         }
     ]
+});
+
+// Registro maestro de las 11 secciones de «Órbita.» (fuente única para UI digital, state.js y Estudio A3)
+const ORBITA_SECTIONS = Object.freeze([
+    {
+        id: 'portada',
+        shortLabelEs: 'Portada',
+        shortLabelEn: 'Front Page',
+        titleEs: 'Portada',
+        titleEn: 'Front Page',
+        subtitleEs: 'Selección principal del número, lecturas destacadas y acceso al resto de secciones.',
+        subtitleEn: 'Lead story, most-read digest, and highlights from every section.',
+        kind: 'front',
+        wireQuery: null,
+        allowDrafts: false,
+        iconKey: 'portada'
+    },
+    {
+        id: 'nasa',
+        shortLabelEs: 'NASA',
+        shortLabelEn: 'NASA',
+        titleEs: 'NASA',
+        titleEn: 'NASA',
+        subtitleEs: 'Misiones científicas, exploración planetaria, astronautas y observatorios de la NASA.',
+        subtitleEn: 'Science missions, planetary exploration, astronauts, and NASA observatories.',
+        kind: 'articles',
+        wireQuery: 'nasa',
+        allowDrafts: true,
+        iconKey: 'nasa'
+    },
+    {
+        id: 'lanzamientos',
+        shortLabelEs: 'Lanzamientos',
+        shortLabelEn: 'Launches',
+        titleEs: 'Lanzamientos',
+        titleEn: 'Launches',
+        subtitleEs: 'Despegues orbitales, cohetes, pruebas de motores y cuentas atrás.',
+        subtitleEn: 'Orbital liftoffs, launch vehicles, static fires, and countdowns.',
+        kind: 'articles',
+        wireQuery: 'launches',
+        allowDrafts: true,
+        iconKey: 'lanzamientos'
+    },
+    {
+        id: 'tecnologia',
+        shortLabelEs: 'Tecnología',
+        shortLabelEn: 'Technology',
+        titleEs: 'Tecnología Aeroespacial',
+        titleEn: 'Aerospace Technology',
+        subtitleEs: 'Satélites, comunicaciones ópticas, radar, robótica y medicina en órbita.',
+        subtitleEn: 'Satellites, optical links, radar, robotics, and orbital medicine.',
+        kind: 'articles',
+        wireQuery: 'technology',
+        allowDrafts: true,
+        iconKey: 'tecnologia'
+    },
+    {
+        id: 'industria',
+        shortLabelEs: 'Industria',
+        shortLabelEn: 'Industry',
+        titleEs: 'Industria y Ecosistema MARS-KET',
+        titleEn: 'Industry & MARS-KET Ecosystem',
+        subtitleEs: 'Economía espacial, proveedores europeos y crónicas de las startups del proyecto.',
+        subtitleEn: 'Space economy, suppliers, and classroom startup dispatches.',
+        kind: 'articles',
+        wireQuery: 'industry',
+        allowDrafts: true,
+        iconKey: 'industria'
+    },
+    {
+        id: 'quien',
+        shortLabelEs: 'Quién es quién',
+        shortLabelEn: "Who's Who",
+        titleEs: 'Quién es quién',
+        titleEn: "Who's Who",
+        subtitleEs: 'Compañías y agencias aeroespaciales reales junto a las Startups Navarras del programa.',
+        subtitleEn: 'Real aerospace agencies and companies alongside Navarra classroom startups.',
+        kind: 'directory',
+        wireQuery: null,
+        allowDrafts: false,
+        iconKey: 'quien'
+    },
+    {
+        id: 'inventos',
+        shortLabelEs: 'En tu casa',
+        shortLabelEn: 'Space at Home',
+        titleEs: 'Del espacio a tu casa',
+        titleEn: 'From Space to Your Home',
+        subtitleEs: 'Inventos nacidos para misiones espaciales que hoy forman parte de tu vida diaria.',
+        subtitleEn: 'Inventions engineered for spaceflight that now power everyday life.',
+        kind: 'articles',
+        wireQuery: null,
+        allowDrafts: true,
+        iconKey: 'inventos'
+    },
+    {
+        id: 'historia',
+        shortLabelEs: 'Historia',
+        shortLabelEn: 'History',
+        titleEs: 'Industria aeroespacial en la historia',
+        titleEn: 'Aerospace Industry in History',
+        subtitleEs: 'Hitos, pioneras e ingeniería histórica que construyeron la era espacial.',
+        subtitleEn: 'Milestones, pioneers, and historic engineering that built the space age.',
+        kind: 'articles',
+        wireQuery: null,
+        allowDrafts: true,
+        iconKey: 'historia'
+    },
+    {
+        id: 'juguetes',
+        shortLabelEs: 'Juguetes',
+        shortLabelEn: 'Toys & Space',
+        titleEs: 'Juguetes y el espacio',
+        titleEn: 'Toys and Space',
+        subtitleEs: 'Maquetas, LEGO espacial, cohetería educativa, Playmobil y simuladores orbitales.',
+        subtitleEn: 'Scale models, space LEGO, educational rocketry, Playmobil, and flight sims.',
+        kind: 'articles',
+        wireQuery: null,
+        allowDrafts: true,
+        iconKey: 'juguetes'
+    },
+    {
+        id: 'entrevistas',
+        shortLabelEs: 'Entrevistas',
+        shortLabelEn: 'Interviews',
+        titleEs: 'Entrevistas',
+        titleEn: 'Interviews',
+        subtitleEs: 'Conversaciones y perfiles en profundidad con protagonistas de la misión.',
+        subtitleEn: 'In-depth conversations and profiles from the mission.',
+        kind: 'articles',
+        wireQuery: null,
+        allowDrafts: true,
+        iconKey: 'entrevistas'
+    },
+    {
+        id: 'hemeroteca',
+        shortLabelEs: 'Hemeroteca',
+        shortLabelEn: 'Archive',
+        titleEs: 'Hemeroteca',
+        titleEn: 'Archive',
+        subtitleEs: 'Calendario mensual e historial de ediciones digitales publicadas.',
+        subtitleEn: 'Monthly calendar and back catalog of published digital editions.',
+        kind: 'archive',
+        wireQuery: null,
+        allowDrafts: false,
+        iconKey: 'hemeroteca'
+    }
+]);
+
+// Iconos vectoriales SVG monocromos (cero emojis dentro de «Órbita.»)
+const ORBITA_ICONS = Object.freeze({
+    portada: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5M8 17h8"/></svg>',
+    nasa: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><ellipse cx="12" cy="12" rx="11" ry="4" transform="rotate(-20 12 12)"/></svg>',
+    lanzamientos: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2c3 3 4 7 4 11l-4 3-4-3c0-4 1-8 4-11z"/><path d="M8 13l-3 3v3l3-2M16 13l3 3v3l-3-2M10 19l2 3 2-3"/></svg>',
+    tecnologia: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>',
+    industria: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M4 21V9l6 4V9l6 4V4h4v17"/></svg>',
+    quien: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14c2.8.3 5 2.5 5 5.5"/></svg>',
+    inventos: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+    historia: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    juguetes: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>',
+    entrevistas: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="10" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg>',
+    hemeroteca: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="1"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>',
+    refresh: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>',
+    search: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>',
+    calendar: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="1"/><path d="M16 2v4M8 2v4M3 9h18"/></svg>',
+    book: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h7a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4z"/><path d="M20 4h-7a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h8z"/></svg>',
+    star: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15 9 22 9.5 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.5 9 9"/></svg>',
+    edit: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>'
 });
 
 const AEE_SANCTION_ARTICLES_DEF = Object.freeze([
@@ -1159,6 +1327,32 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.58",
+      date: "2026-11-23",
+      title: "Fase B «Órbita.»: Periódico Digital Sin Emojis, Tipografía Newsreader, Hemeroteca Mensual, Top 10 y A3 en 2 Columnas",
+      items: [
+        "Nuevo Módulo «Órbita.» (js/ui-orbita.js) y Tipografía Newsreader Local: Cabecera editorial clásica modernizada con punto carmesí, cero emojis en toda la experiencia lectora, iconos SVG monocromos, etiquetas ACTUALIDAD REAL / SIMULACIÓN MARS-KET, colofón «Sobre esta edición» al pie y notas DOC_15 redactadas solo por Coordinación.",
+        "11 Secciones, Borradores, Hemeroteca Mensual y «Las 10 más leídas»: Sección Entrevistas lista para irse completando, teletipo internacional funcional en las 4 secciones de actualidad, calendario mensual en Hemeroteca compatible con móviles de 360px y ranking Top 5/10 con relleno aleatorio inicial.",
+        "Estudio de Impresión A3 en Doble Columna Automática (js/ui-print-newspaper.js): Cuerpos largos/principales en 2 columnas con guionado español, detector de desbordamiento vertical y horizontal, retirada de clases en anuncios DOC_12 y caché CSS versionada en impresión."
+      ],
+      highlights: [
+        { type: "ÓRBITA.", text: "Rediseño editorial completo digital y A3 (11 secciones, Newsreader, 0 emojis, Hemeroteca y 2 columnas)." }
+      ]
+    },
+    {
+      version: "2.0.57",
+      date: "2026-11-23",
+      title: "Fase A «Órbita.»: Base Editorial de 11 Secciones, 18 Reportajes Verificados, Borradores en Servidor y Teletipo en Lote",
+      items: [
+        "Taxonomía Única de 11 Secciones e Iconos SVG (config.js): Registro maestro ORBITA_SECTIONS y ORBITA_ICONS para Portada, NASA, Lanzamientos, Tecnología, Industria, Quién es quién, Del espacio a tu casa, Industria aeroespacial en la historia, Juguetes y el espacio, Entrevistas y Hemeroteca.",
+        "18 Reportajes Periodísticos Verificados (Edición N.º 0): Precarga en ES/EN para Juguetes y el espacio (6), NASA (3), Lanzamientos (3), Tecnología (3) e Industria (3), preservando Historia y Del espacio a tu casa y corrigiendo fechas ISO de noviembre de 2026.",
+        "Seguridad de Borradores, VIP-0000 y «Las 10 más leídas» (api/index.php + api/db.php): Filtrado en servidor de artículos DRAFT, protección de config.orbita para no-coordinadores, ETag propio para VIP-0000, traducción en lote rápida para teletipos y nueva tabla news_views en SQLite."
+      ],
+      highlights: [
+        { type: "ÓRBITA. FASE A", text: "11 secciones, 18 reportajes verificados, borradores en servidor y teletipo en lote." }
+      ]
+    },
     {
       version: "2.0.56",
       date: "2026-11-23",

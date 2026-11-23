@@ -87,88 +87,87 @@ Object.assign(ui, {
                 label: 'Portada',
                 sectionTitle: 'PORTADA PRINCIPAL',
                 slots: [
-                    { id: 'p1-lead', role: 'lead', kicker: 'ACTUALIDAD Y ESTRATEGIA', title: 'Noticia Principal de Portada', subtitle: 'Entradilla editorial en cursiva...', body: 'Selecciona una noticia real o crónica de Coordinación para la apertura de portada.', imageUrl: '', mediaSource: 'Consejo Editorial AEE', fontSizePt: 10 }
+                    { id: 'p1-lead', role: 'lead', kicker: 'PORTADA', title: 'Noticia Principal de Portada', subtitle: 'Entradilla editorial en cursiva...', body: 'Selecciona una noticia de portada de Órbita. para la apertura del número.', imageUrl: '', mediaSource: 'Órbita.', fontSizePt: 10 }
                 ],
                 adSlot: null
             },
             {
                 pageNumber: 2,
-                label: 'Crónicas AEE',
-                sectionTitle: 'CRÓNICAS DE LA MISIÓN & EDITORIAL',
+                label: 'NASA',
+                sectionTitle: 'NASA // EXPLORACIÓN Y CIENCIA',
                 slots: [
-                    { id: 'p2-a1', role: 'article', kicker: 'EDITORIAL AEE', title: 'Avance de la Misión Aeroespacial', subtitle: 'Estado de las startups y próximos hitos.', body: 'Crónica escrita por Coordinación sobre el progreso de las clases A-F.', imageUrl: '', mediaSource: 'Consejo Editorial AEE', fontSizePt: 9.5 },
-                    { id: 'p2-a2', role: 'article', kicker: 'GESTIÓN & NORMATIVA', title: 'Claves del Mes en MARS-KET 2.0', subtitle: '', body: 'Recordatorio de plazos, seguridad en banco de pruebas y buenas prácticas.', imageUrl: '', mediaSource: 'Coordinación General', fontSizePt: 9.5 }
+                    { id: 'p2-a1', role: 'article', kicker: 'NASA', title: 'Misiones Científicas de la NASA', subtitle: 'Observatorios, Artemis y exploración planetaria.', body: 'Selecciona un artículo de la sección NASA o del teletipo internacional.', imageUrl: '', mediaSource: 'NASA / Órbita.', fontSizePt: 9.5 },
+                    { id: 'p2-a2', role: 'article', kicker: 'OBSERVATORIOS', title: 'Breve de Ciencia Planetaria', subtitle: '', body: 'Segundo bloque informativo de la sección NASA.', imageUrl: '', mediaSource: 'Órbita.', fontSizePt: 9.5 }
                 ],
                 adSlot: { id: 'ad-p2', label: 'Faldón Publicitario Pág. 2', coId: '', companyName: '', classGroup: '', slogan: '', bodyText: '', imageUrl: '', actId: '', campId: '' }
             },
             {
                 pageNumber: 3,
-                label: 'Mundo Aeroespacial',
-                sectionTitle: 'ACTUALIDAD AEROESPACIAL INTERNACIONAL',
+                label: 'Lanzamientos',
+                sectionTitle: 'LANZAMIENTOS // VEHÍCULOS Y DESPEGUES',
                 slots: [
-                    { id: 'p3-a1', role: 'article', kicker: 'PRENSA INTERNACIONAL', title: 'Noticia Real de Cohetes #1', subtitle: '', body: 'Selecciona una noticia real del teletipo para mostrarla traducida al castellano con su fuente original.', imageUrl: '', mediaSource: 'SpaceNews', fontSizePt: 9.5 },
-                    { id: 'p3-a2', role: 'article', kicker: 'PROPULSIÓN GLOBAL', title: 'Noticia Real de Cohetes #2', subtitle: '', body: 'Segunda noticia aeroespacial traducida al castellano.', imageUrl: '', mediaSource: 'NASASpaceFlight', fontSizePt: 9 }
+                    { id: 'p3-a1', role: 'article', kicker: 'LANZAMIENTOS', title: 'Campaña Orbital del Mes', subtitle: '', body: 'Selecciona una crónica de lanzamientos orbitales o del teletipo internacional.', imageUrl: '', mediaSource: 'Órbita.', fontSizePt: 9.5 },
+                    { id: 'p3-a2', role: 'article', kicker: 'PROPULSIÓN GLOBAL', title: 'Actualidad de Rampas y Cohetes', subtitle: '', body: 'Segundo bloque informativo de lanzamientos.', imageUrl: '', mediaSource: 'Órbita.', fontSizePt: 9 }
                 ],
                 adSlot: { id: 'ad-p3', label: 'Faldón Publicitario Pág. 3', coId: '', companyName: '', classGroup: '', slogan: '', bodyText: '', imageUrl: '', actId: '', campId: '' }
             },
             {
                 pageNumber: 4,
-                label: 'Startups I (Central Izq.)',
-                sectionTitle: 'ECOSISTEMA DE STARTUPS · NOTAS DE PRENSA',
+                label: 'Tecnología',
+                sectionTitle: 'TECNOLOGÍA AEROESPACIAL',
                 slots: [
-                    { id: 'p4-a1', role: 'article', kicker: 'COMUNICADO DOC_15', title: 'Nota de Prensa Corporativa #1', subtitle: '', body: 'Espacio reservado para comunicados de startups aprobados por Lengua y Coordinación.', imageUrl: '', mediaSource: 'Prensa Startups', fontSizePt: 9.5 },
-                    { id: 'p4-a2', role: 'article', kicker: 'COMUNICADO DOC_15', title: 'Nota de Prensa Corporativa #2', subtitle: '', body: 'Resumen de logros técnicos y financieros de los equipos de 4º ESO.', imageUrl: '', mediaSource: 'Prensa Startups', fontSizePt: 9 }
+                    { id: 'p4-a1', role: 'article', kicker: 'TECNOLOGÍA', title: 'Ingeniería Orbital y Satélites', subtitle: '', body: 'Comunicaciones láser, radar SAR, robótica y protección de órbitas.', imageUrl: '', mediaSource: 'Órbita.', fontSizePt: 9.5 },
+                    { id: 'p4-a2', role: 'article', kicker: 'INNOVACIÓN', title: 'Sistemas de Misión en Órbita', subtitle: '', body: 'Segundo bloque de tecnología aeroespacial.', imageUrl: '', mediaSource: 'Órbita.', fontSizePt: 9 }
                 ],
                 adSlot: { id: 'ad-p4', label: 'Faldón Publicitario Pág. 4', coId: '', companyName: '', classGroup: '', slogan: '', bodyText: '', imageUrl: '', actId: '', campId: '' }
             },
             {
                 pageNumber: 5,
-                label: 'Startups II (Central Der.)',
-                sectionTitle: 'MERCADO SECUNDARIO B2B & RENDIMIENTO',
+                label: 'Industria',
+                sectionTitle: 'INDUSTRIA & ECOSISTEMA MARS-KET',
                 slots: [
-                    { id: 'p5-a1', role: 'article', kicker: 'INNOVACIÓN & EFICIENCIA', title: 'Ranking de Eficiencia y Prototipos', subtitle: '', body: 'Análisis comparativo del rendimiento E = Altura / Coste en el Banco de Pruebas.', imageUrl: '', mediaSource: 'Dirección Técnica AEE', fontSizePt: 9.5 },
-                    { id: 'p5-a2', role: 'article', kicker: 'MERCADO B2B', title: 'Actividad en Aduana y Traspasos', subtitle: '', body: 'Movimientos de segunda mano (DOC_9) y aprovechamiento de excedentes entre startups.', imageUrl: '', mediaSource: 'Aduana B2B AEE', fontSizePt: 9 }
+                    { id: 'p5-a1', role: 'article', kicker: 'INDUSTRIA ESPACIAL', title: 'Economía del NewSpace y Proveedores', subtitle: '', body: 'Contratos por hitos, cadena de suministro europea y análisis económico.', imageUrl: '', mediaSource: 'Órbita.', fontSizePt: 9.5 },
+                    { id: 'p5-a2', role: 'article', kicker: 'MARS-KET', title: 'Crónicas y Comunicados del Proyecto', subtitle: '', body: 'Noticias redactadas por Coordinación a partir de la actividad de las startups.', imageUrl: '', mediaSource: 'Órbita.', fontSizePt: 9 }
                 ],
                 adSlot: { id: 'ad-p5', label: 'Faldón Publicitario Pág. 5', coId: '', companyName: '', classGroup: '', slogan: '', bodyText: '', imageUrl: '', actId: '', campId: '' }
             },
             {
                 pageNumber: 6,
-                label: 'Ciencia e I+D',
-                sectionTitle: 'CIENCIA, PROPULSIÓN E I+D ESCOLAR',
+                label: 'Historia & En tu casa',
+                sectionTitle: 'HISTORIA AEROESPACIAL & DEL ESPACIO A TU CASA',
                 slots: [
-                    { id: 'p6-a1', role: 'article', kicker: 'CIENCIA AEROESPACIAL', title: 'Reportaje Técnico de Propulsión', subtitle: '', body: 'Noticia real o artículo divulgativo de Física y Química aplicado al diseño del cohete.', imageUrl: '', mediaSource: 'ESA / FyQ', fontSizePt: 9.5 },
-                    { id: 'p6-a2', role: 'article', kicker: 'TALLER & BOM', title: 'Control de Calidad y Materiales', subtitle: '', body: 'Notas de taller, optimización de masa y uso responsable de IA.', imageUrl: '', mediaSource: 'Operaciones AEE', fontSizePt: 9 }
+                    { id: 'p6-a1', role: 'article', kicker: 'EN LA HISTORIA', title: 'Hito de la Industria Aeroespacial', subtitle: '', body: 'Reportaje de la sección Industria aeroespacial en la historia (o Entrevistas).', imageUrl: '', mediaSource: 'Órbita.', fontSizePt: 9.5 },
+                    { id: 'p6-a2', role: 'article', kicker: 'DEL ESPACIO A TU CASA', title: 'Transferencia Espacial Cotidiana', subtitle: '', body: 'Invento nacido en misiones espaciales que hoy forma parte de nuestra vida.', imageUrl: '', mediaSource: 'Órbita.', fontSizePt: 9 }
                 ],
                 adSlot: { id: 'ad-p6', label: 'Faldón Publicitario Pág. 6', coId: '', companyName: '', classGroup: '', slogan: '', bodyText: '', imageUrl: '', actId: '', campId: '' }
             },
             {
                 pageNumber: 7,
-                label: 'Economía / Quién es quién',
+                label: 'Quién es quién',
                 sectionTitle: 'DIRECTORIO // QUIÉN ES QUIÉN',
-                pageMode: 'who_is_who', // 'who_is_who' | 'news'
+                pageMode: 'who_is_who',
                 whoIsWhoConfig: {
                     realIds: ['real-spacex', 'real-pld', 'real-blue', 'real-rocketlab', 'real-isar', 'real-arianegroup'],
-                    startups: [] // [{ coId, prototypeName }]
+                    startups: []
                 },
                 slots: [
-                    { id: 'p7-a1', role: 'article', kicker: 'ECONOMÍA & FINANZAS', title: 'Licitaciones Comerciales del Mes', subtitle: '', body: 'Estado de los contratos comerciales y disciplina presupuestaria en €v.', imageUrl: '', mediaSource: 'Economía AEE', fontSizePt: 9.5 },
-                    { id: 'p7-a2', role: 'article', kicker: 'GOBERNANZA', title: 'Liderazgo y Decisiones del Consejo', subtitle: '', body: 'Buenas prácticas de dirección general y coordinación departamental.', imageUrl: '', mediaSource: 'Liderazgo LyE', fontSizePt: 9 }
+                    { id: 'p7-a1', role: 'article', kicker: 'DIRECTORIO', title: 'Empresas Reales y Startups Navarras', subtitle: '', body: 'Directorio del ecosistema aeroespacial real junto a las startups participantes.', imageUrl: '', mediaSource: 'Órbita.', fontSizePt: 9.5 }
                 ],
                 adSlot: { id: 'ad-p7', label: 'Faldón Publicitario Pág. 7', coId: '', companyName: '', classGroup: '', slogan: '', bodyText: '', imageUrl: '', actId: '', campId: '' }
             },
             {
                 pageNumber: 8,
-                label: 'Contraportada / Más allá del cohete',
-                sectionTitle: 'CONTRAPORTADA // MÁS ALLÁ DEL COHETE',
-                pageMode: 'beyond_rocket', // 'beyond_rocket' | 'news'
+                label: 'Contraportada / Juguetes y el espacio',
+                sectionTitle: 'CONTRAPORTADA // JUGUETES Y EL ESPACIO',
+                pageMode: 'news',
                 beyondRocketConfig: {
-                    subtitle: 'Satélites, logística orbital, exploración, aviación y próximos lanzamientos.',
+                    subtitle: 'Maquetas, LEGO espacial, cohetería educativa, Playmobil y simuladores orbitales.',
                     directoryItems: this.getBeyondRocketDefaultDirectory(),
                     ll2Launches: [],
                     ll2SyncedAt: 0
                 },
                 slots: [
-                    { id: 'p8-lead', role: 'lead', kicker: 'CIERRE DE EDICIÓN', title: 'Artículo de Contraportada', subtitle: 'Reflexión final del mes sobre el sector espacial.', body: 'Crónica de cierre o noticia internacional destacada para la contraportada del periódico.', imageUrl: '', mediaSource: 'ORBITAL REPORT', fontSizePt: 9.5 }
+                    { id: 'p8-lead', role: 'lead', kicker: 'JUGUETES Y EL ESPACIO', title: 'El espacio a escala en maquetas y simuladores', subtitle: 'Cómo los juegos y modelos didácticos acercan la ingeniería orbital al aula.', body: 'Selecciona un reportaje de Juguetes y el espacio (o Entrevistas) para la contraportada de Órbita.', imageUrl: '', mediaSource: 'Órbita.', fontSizePt: 9.5 }
                 ],
                 adSlot: { id: 'ad-p8', label: 'Faldón Destacado de Contraportada (Pág. 8)', coId: '', companyName: '', classGroup: '', slogan: '', bodyText: '', imageUrl: '', actId: '', campId: '' }
             }
@@ -362,7 +361,8 @@ Object.assign(ui, {
             (co.marketingCampaigns || []).forEach(camp => {
                 (camp.executedActions || []).forEach(act => {
                     if (!act) return;
-                    const isPrintAd = String(act.title || '').includes('Periódico Impreso') || String(act.title || '').includes('ORBITAL REPORT');
+                    const titleLow = String(act.title || '').toLowerCase();
+                    const isPrintAd = titleLow.includes('periódico impreso') || titleLow.includes('orbital report') || titleLow.includes('órbita') || titleLow.includes('orbita');
                     if (isPrintAd && (act.status === 'VALIDADO_CEO' || act.status === 'APROBADO_DOCENTE')) {
                         list.push({
                             coId: cid,
@@ -1481,26 +1481,33 @@ Object.assign(ui, {
         const savedNews = Array.isArray(state.data?.news) ? state.data.news : [];
         const wireNews = Array.isArray(this._snapiWireArticles) ? this._snapiWireArticles : [];
         const activeSec = this.printPickerSectionFilter || 'ALL';
-        const secCounts = {
-            ALL: savedNews.length,
-            actualidad: savedNews.filter(n => n && (n.section || 'actualidad') === 'actualidad').length,
-            historia: savedNews.filter(n => n && n.section === 'historia').length,
-            inventos: savedNews.filter(n => n && n.section === 'inventos').length
-        };
+        const articleSections = (typeof ORBITA_SECTIONS !== 'undefined' && Array.isArray(ORBITA_SECTIONS))
+            ? ORBITA_SECTIONS.filter(s => s.kind === 'articles')
+            : [
+                { id: 'nasa', shortLabelEs: 'NASA' },
+                { id: 'lanzamientos', shortLabelEs: 'Lanzamientos' },
+                { id: 'tecnologia', shortLabelEs: 'Tecnología' },
+                { id: 'industria', shortLabelEs: 'Industria' },
+                { id: 'inventos', shortLabelEs: 'En tu casa' },
+                { id: 'historia', shortLabelEs: 'Historia' },
+                { id: 'juguetes', shortLabelEs: 'Juguetes' },
+                { id: 'entrevistas', shortLabelEs: 'Entrevistas' }
+            ];
         const tabs = [
-            { id: 'ALL', label: `Todas (${secCounts.ALL})` },
-            { id: 'actualidad', label: `📡 Actualidad (${secCounts.actualidad})` },
-            { id: 'historia', label: `🏛️ Un poco de Historia (${secCounts.historia})` },
-            { id: 'inventos', label: `🏠 Del Espacio a tu Casa (${secCounts.inventos})` }
+            { id: 'ALL', label: `Todas (${savedNews.length})` },
+            ...articleSections.map(s => {
+                const cnt = savedNews.filter(n => n && (n.section || 'industria') === s.id).length;
+                return { id: s.id, label: `${s.shortLabelEs} (${cnt})` };
+            })
         ];
-        const visibleCount = savedNews.filter(n => activeSec === 'ALL' || (n && (n.section || 'actualidad') === activeSec)).length;
+        const visibleCount = savedNews.filter(n => activeSec === 'ALL' || (n && (n.section || 'industria') === activeSec)).length;
 
         const html = `
             <div class="space-y-4 text-xs font-sans">
-                <p class="text-[11px] text-slate-300">Selecciona una noticia del periódico digital (incluyendo <strong>Historia</strong> y <strong>Del Espacio a tu Casa</strong> con su imagen) o del teletipo real para aplicarla en la <strong>Página ${page.pageNumber}</strong> (Hueco #${slotIdx + 1}).</p>
+                <p class="text-[11px] text-slate-300">Selecciona un artículo de <strong>Órbita.</strong> (incluyendo <strong>Juguetes</strong>, <strong>Historia</strong>, <strong>Del espacio a tu casa</strong> o <strong>Entrevistas</strong>) o del teletipo real para aplicarlo en la <strong>Página ${page.pageNumber}</strong> (Hueco #${slotIdx + 1}).</p>
 
                 <div class="space-y-2">
-                    <h4 class="text-xs font-mono font-bold text-amber-300 uppercase">🏛️ Artículos del Periódico Digital (${savedNews.length})</h4>
+                    <h4 class="text-xs font-mono font-bold text-amber-300 uppercase">Artículos de Órbita. Digital (${savedNews.length})</h4>
                     <div class="flex flex-wrap gap-1.5">
                         ${tabs.map(t => `
                             <button type="button" data-sec="${t.id}" onclick="ui.filterPrintPickerSection('${t.id}')" class="${activeSec === t.id ? 'print-pick-tab min-h-[38px] px-2.5 py-1 bg-amber-400 text-black font-black text-[11px] font-mono uppercase border border-amber-400' : 'print-pick-tab min-h-[38px] px-2.5 py-1 bg-slate-900 text-slate-300 hover:border-white text-[11px] font-mono font-bold uppercase border border-slate-700'}">
@@ -1510,15 +1517,16 @@ Object.assign(ui, {
                     </div>
                     <div class="max-h-60 overflow-y-auto border border-slate-700 bg-slate-900/70 divide-y divide-slate-800 p-2 space-y-1.5">
                         ${savedNews.length === 0 ? `<p class="text-slate-400 italic p-2">No hay noticias guardadas todavía.</p>` : savedNews.map((n, i) => {
-                            const sec = (n.section === 'historia' || n.section === 'inventos') ? n.section : 'actualidad';
-                            const secBadge = sec === 'historia' ? 'HISTORIA' : (sec === 'inventos' ? 'DEL ESPACIO A TU CASA' : 'ACTUALIDAD');
+                            const sec = n.section || 'industria';
+                            const secObj = articleSections.find(s => s.id === sec);
+                            const secBadge = secObj ? secObj.shortLabelEs.toUpperCase() : sec.toUpperCase();
                             const thumb = n.imageUrl ? this.resolvePrintImageUrl(n.imageUrl, false) : '';
                             const hiddenStyle = (activeSec !== 'ALL' && sec !== activeSec) ? 'display:none;' : '';
                             return `
                             <div class="print-pick-news-row pt-1.5 first:pt-0 flex items-center justify-between gap-2.5" data-sec="${sec}" style="${hiddenStyle}">
                                 ${thumb ? `<img src="${this.escapeAttr(thumb)}" alt="" class="w-14 h-10 object-cover border border-slate-600 shrink-0 bg-black">` : `<div class="w-14 h-10 border border-slate-700 bg-slate-800 flex items-center justify-center text-[10px] font-mono text-slate-400 shrink-0">SIN IMG</div>`}
                                 <div class="min-w-0 flex-1">
-                                    <span class="block text-[10px] font-mono text-mars-cyan uppercase truncate">${secBadge} · ${this.escapeHTML(n.category || 'AEE')} · ${this.escapeHTML(n.publishedDate || '')}</span>
+                                    <span class="block text-[10px] font-mono text-mars-cyan uppercase truncate">${this.escapeHTML(secBadge)} · ${this.escapeHTML(n.category || 'ÓRBITA.')} · ${this.escapeHTML(n.publishedDate || '')}</span>
                                     <strong class="block text-xs text-white truncate">${this.escapeHTML(n.title || '')}</strong>
                                 </div>
                                 <button type="button" onclick="ui.applyPickedNewsToPrintSlot(${pageIdx}, ${slotIdx}, 'NEWS', ${i})" class="min-h-[38px] px-3 py-1 bg-amber-400 text-black font-black text-[11px] uppercase hover:bg-white shrink-0">Aplicar</button>
@@ -1746,13 +1754,19 @@ Object.assign(ui, {
             const badge = document.getElementById(`print-fit-badge-${pIdx}`);
             const inner = box.querySelector('[data-print-page-inner]');
             if (!badge || !inner) return;
-            const overflows = box.scrollHeight > (box.clientHeight + 4);
+            let colOverflows = false;
+            box.querySelectorAll('.orbita-print-cols-2').forEach(colBox => {
+                if (colBox.scrollWidth > (colBox.clientWidth + 4) || colBox.scrollHeight > (colBox.clientHeight + 4)) {
+                    colOverflows = true;
+                }
+            });
+            const overflows = (box.scrollHeight > (box.clientHeight + 4)) || (box.scrollWidth > (box.clientWidth + 4)) || colOverflows;
             if (overflows) {
                 badge.className = 'text-[10px] font-mono px-2 py-0.5 bg-red-700 text-white font-bold uppercase shrink-0';
-                badge.innerText = '⚠️ Excede A3 (recorta)';
+                badge.innerText = 'Excede A3 (recorta)';
             } else {
                 badge.className = 'text-[10px] font-mono px-2 py-0.5 bg-emerald-700 text-white font-bold uppercase shrink-0';
-                badge.innerText = '✓ Cabe en A3';
+                badge.innerText = 'Cabe en A3';
             }
         });
     },
@@ -1795,7 +1809,7 @@ Object.assign(ui, {
         const hasAd = Boolean(page.adSlot && page.adSlot.companyName);
         const monoFont = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
         const sansFont = "ui-sans-serif, system-ui, -apple-system, sans-serif";
-        const serifFont = "Georgia, 'Times New Roman', Times, serif";
+        const serifFont = "'Newsreader', Georgia, 'Times New Roman', Times, serif";
 
         let mainContentHtml = '';
 
@@ -1870,7 +1884,7 @@ Object.assign(ui, {
             const realBlockHtml = realEntries.length > 0 ? `
                     <div>
                         <div style="font-family:${monoFont};font-size:7pt;font-weight:900;text-transform:uppercase;letter-spacing:0.06em;color:#8B0000;border-bottom:1px solid #111111;padding-bottom:0.6mm;margin-bottom:1.2mm;">
-                            🛰️ Empresas y Agencias Reales (${realEntries.length})
+                            Empresas y Agencias Reales (${realEntries.length})
                         </div>
                         <div style="display:grid;grid-template-columns:${gridCols};gap:${gapCss};">
                             ${realEntries.map(e => `
@@ -1891,7 +1905,7 @@ Object.assign(ui, {
             const startupBlockHtml = startupEntries.length > 0 ? `
                     <div style="${realEntries.length > 0 ? 'border-top:2px solid #8B0000;padding-top:1.4mm;' : ''}">
                         <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #111111;padding-bottom:0.6mm;margin-bottom:1.2mm;">
-                            <span style="font-family:${monoFont};font-size:7pt;font-weight:900;text-transform:uppercase;letter-spacing:0.06em;color:#111111;">🚀 Apartado Startups Navarras (${startupEntries.length})</span>
+                            <span style="font-family:${monoFont};font-size:7pt;font-weight:900;text-transform:uppercase;letter-spacing:0.06em;color:#111111;">Apartado Startups Navarras (${startupEntries.length})</span>
                             <span style="font-family:${monoFont};font-size:6pt;font-weight:700;color:#8B0000;text-transform:uppercase;">Ecosistema Navarra</span>
                         </div>
                         <div style="display:grid;grid-template-columns:${gridCols};gap:${gapCss};">
@@ -1910,7 +1924,7 @@ Object.assign(ui, {
                     </div>` : '';
 
             const emptyWhoHtml = (realEntries.length === 0 && startupEntries.length === 0)
-                ? `<p style="margin:0;font-size:8pt;font-style:italic;color:#78716c;">Pulsa «🌍 Elegir Empresas» en la barra superior de esta página para seleccionar empresas reales y Startups Navarras.</p>`
+                ? `<p style="margin:0;font-size:8pt;font-style:italic;color:#78716c;">${forPrint ? 'Sin empresas seleccionadas para esta página.' : 'Pulsa «Elegir Empresas» en la barra superior de esta página para seleccionar empresas reales y Startups Navarras.'}</p>`
                 : '';
 
             mainContentHtml = `
@@ -1952,7 +1966,7 @@ Object.assign(ui, {
                     </div>
                     ${ll2Items.length > 0 ? `
                         <div style="background:#EFECE4;border-left:2px solid #8B0000;padding:1.5mm;display:flex;flex-direction:column;gap:1mm;">
-                            <span style="display:block;font-family:${monoFont};font-size:6.8pt;line-height:1.15;font-weight:900;text-transform:uppercase;color:#8B0000;">🛰️ Agenda de Lanzamientos Reales (Launch Library 2 · ES)</span>
+                            <span style="display:block;font-family:${monoFont};font-size:6.8pt;line-height:1.15;font-weight:900;text-transform:uppercase;color:#8B0000;">Agenda de Lanzamientos Reales</span>
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:1mm 2.5mm;">
                                 ${ll2Items.map(l => `
                                     <div style="font-size:6.8pt;line-height:1.2;font-family:${sansFont};">
@@ -1966,7 +1980,7 @@ Object.assign(ui, {
                     <div style="background:#ffffff;border:1px solid #111111;padding:1.5mm;display:flex;align-items:center;gap:2.5mm;">
                         ${qrSvg}
                         <div style="min-width:0;flex:1;">
-                            <strong style="display:block;font-family:${serifFont};font-size:8.2pt;line-height:1.15;color:#111111;">ORBITAL REPORT en la web</strong>
+                            <strong style="display:block;font-family:${serifFont};font-size:8.2pt;line-height:1.15;color:#111111;">Órbita. en la web</strong>
                             <span style="display:block;font-family:${sansFont};font-size:7pt;line-height:1.25;color:#44403c;">Escanea el QR para leer las noticias del proyecto desde casa.</span>
                             <span style="display:inline-block;margin-top:0.6mm;padding:0.4mm 1.4mm;background:#111111;color:#ffffff;font-family:${monoFont};font-size:6.8pt;line-height:1.2;font-weight:700;text-transform:uppercase;">Acceso Colegio/Familias: VIP-0000 · PIN 0000</span>
                         </div>
@@ -1980,14 +1994,20 @@ Object.assign(ui, {
                 const imgHeightMm = (slot.imgHeightMm !== undefined && slot.imgHeightMm !== null) ? Number(slot.imgHeightMm) : (isCover && sIdx === 0 ? 60 : 32);
                 const imgFitVal = (slot.imgFit === 'contain') ? 'contain' : 'cover';
                 const imgBgStyle = (slot.imgFit === 'contain') ? 'background:#f5f5f4;' : '';
+                const plainLen = String(slot.body || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().length;
+                const useTwoCols = (slot.role === 'lead') || (plainLen >= 450);
+                const bodyColStyle = useTwoCols
+                    ? `font-family:${serifFont};font-size:${fontPt}pt;line-height:1.38;color:#1f2937;column-count:2;column-gap:4.5mm;column-rule:0.4pt solid #d6d3d1;column-fill:balance;hyphens:auto;orphans:2;widows:2;`
+                    : `font-family:${serifFont};font-size:${fontPt}pt;line-height:1.38;color:#1f2937;`;
+                const bodyColClass = useTwoCols ? ' class="orbita-print-cols-2"' : '';
                 const editBtn = !forPrint ? `
                     <div style="position:absolute;top:0;right:0;z-index:20;display:flex;align-items:center;gap:2px;flex-wrap:wrap;background:rgba(250,248,245,0.95);border:1px solid #cbd5e1;padding:2px;box-shadow:0 1px 4px rgba(0,0,0,0.12);">
                         ${imgSrc ? `
-                            <button type="button" onclick="ui.adjustPrintSlotImageHeight(${pageIdx}, ${sIdx}, -5)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Reducir altura de foto (-5 mm)">🖼️-</button>
-                            <button type="button" onclick="ui.adjustPrintSlotImageHeight(${pageIdx}, ${sIdx}, 5)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Aumentar altura de foto (+5 mm)">🖼️+</button>
+                            <button type="button" onclick="ui.adjustPrintSlotImageHeight(${pageIdx}, ${sIdx}, -5)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Reducir altura de foto (-5 mm)">Img-</button>
+                            <button type="button" onclick="ui.adjustPrintSlotImageHeight(${pageIdx}, ${sIdx}, 5)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Aumentar altura de foto (+5 mm)">Img+</button>
                         ` : ''}
-                        <button type="button" onclick="ui.modalPickPrintSlotNews(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-amber-400 text-black hover:bg-white text-[10px] font-mono font-bold uppercase">📰 Elegir</button>
-                        <button type="button" onclick="ui.modalEditPrintSlot(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-[#111111] text-white hover:bg-[#8B0000] text-[10px] font-mono font-bold uppercase">✏️ Editar</button>
+                        <button type="button" onclick="ui.modalPickPrintSlotNews(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-amber-400 text-black hover:bg-white text-[10px] font-mono font-bold uppercase">Elegir</button>
+                        <button type="button" onclick="ui.modalEditPrintSlot(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-[#111111] text-white hover:bg-[#8B0000] text-[10px] font-mono font-bold uppercase">Editar</button>
                         ${(!isCover || (page.slots || []).length > 1) ? `<button type="button" onclick="ui.removePrintSlot(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-[10px] font-mono font-bold uppercase" title="Quitar noticia de esta página">✕</button>` : ''}
                     </div>` : '';
                 const borderStyle = sIdx < visibleSlots.length - 1
@@ -2008,10 +2028,10 @@ Object.assign(ui, {
                     ${(imgSrc && imgHeightMm > 0) ? `
                         <figure style="margin:0 0 1.4mm 0;">
                             <img src="${this.escapeAttr(imgSrc)}" alt="" style="width:100%;height:${imgHeightMm}mm;object-fit:${imgFitVal};${imgBgStyle}display:block;border:1px solid #d6d3d1;">
-                            <figcaption style="font-family:${monoFont};font-size:7.5pt;line-height:1.2;color:#57534e;font-style:italic;margin-top:0.6mm;">Fuente: ${this.escapeHTML(slot.mediaSource || 'ORBITAL REPORT')}</figcaption>
+                            <figcaption style="font-family:${monoFont};font-size:7.5pt;line-height:1.2;color:#57534e;font-style:italic;margin-top:0.6mm;">Fuente: ${this.escapeHTML(slot.mediaSource || 'Órbita.')}</figcaption>
                         </figure>
-                    ` : `<p style="margin:0 0 1mm 0;font-family:${monoFont};font-size:7.5pt;line-height:1.2;color:#57534e;">Fuente: ${this.escapeHTML(slot.mediaSource || 'ORBITAL REPORT')}</p>`}
-                    <div style="font-family:${serifFont};font-size:${fontPt}pt;line-height:1.38;color:#1f2937;">${this.formatPrintEditorialText(slot.body || '')}</div>
+                    ` : `<p style="margin:0 0 1mm 0;font-family:${monoFont};font-size:7.5pt;line-height:1.2;color:#57534e;">Fuente: ${this.escapeHTML(slot.mediaSource || 'Órbita.')}</p>`}
+                    <div${bodyColClass} style="${bodyColStyle}">${this.formatPrintEditorialText(slot.body || '')}</div>
                 </article>`;
             }).join('');
 
@@ -2061,7 +2081,7 @@ Object.assign(ui, {
                 adHtml = `
                 <div style="position:relative;margin-top:auto;border:2px solid #111111;background:#EFECE4;padding:1.5mm;display:flex;flex-direction:column;gap:1mm;">
                     ${adBtn}
-                    <span style="font-family:${monoFont};font-size:7pt;line-height:1.2;text-transform:uppercase;letter-spacing:0.08em;color:#8B0000;font-weight:700;">PUBLICIDAD · ${this.escapeHTML(ad.companyName || 'ORBITAL REPORT')}${adSizeTag}</span>
+                    <span style="font-family:${monoFont};font-size:7pt;line-height:1.2;text-transform:uppercase;letter-spacing:0.08em;color:#8B0000;font-weight:700;">PUBLICIDAD · ${this.escapeHTML(ad.companyName || 'Órbita.')}${adSizeTag}</span>
                     <img src="${this.escapeAttr(adImgSrc)}" alt="" style="${bannerImgStyle}">
                 </div>`;
             } else if (isActiveAd) {
@@ -2071,7 +2091,7 @@ Object.assign(ui, {
                     ${adBtn}
                     ${adImgSrc ? `<img src="${this.escapeAttr(adImgSrc)}" alt="" style="width:${cardImgMm}mm;height:${cardImgMm}mm;object-fit:${adFit};background:#ffffff;border:1px solid #d6d3d1;flex-shrink:0;display:block;">` : ''}
                     <div style="min-width:0;flex:1;">
-                        <span style="display:block;font-family:${monoFont};font-size:7pt;line-height:1.2;text-transform:uppercase;letter-spacing:0.08em;color:#8B0000;font-weight:700;">ESPACIO PUBLICITARIO${ad.classGroup ? ' • CLASE ' + this.escapeHTML(ad.classGroup) : ''}${adSizeTag}</span>
+                        <span style="display:block;font-family:${monoFont};font-size:7pt;line-height:1.2;text-transform:uppercase;letter-spacing:0.08em;color:#8B0000;font-weight:700;">ESPACIO PUBLICITARIO · NAVARRA${adSizeTag}</span>
                         <h4 style="margin:0.4mm 0 0 0;font-family:${serifFont};font-weight:900;font-size:10pt;line-height:1.15;color:#111111;text-transform:uppercase;">${this.escapeHTML(ad.companyName || 'ESPACIO PATROCINADO')}</h4>
                         ${ad.slogan ? `<p style="margin:0.4mm 0 0 0;font-family:${serifFont};font-style:italic;font-size:8.5pt;line-height:1.2;color:#111111;">«${this.escapeHTML(ad.slogan)}»</p>` : ''}
                         ${ad.bodyText ? `<p style="margin:0.5mm 0 0 0;font-family:${sansFont};font-size:7.5pt;line-height:1.2;color:#44403c;">${this.escapeHTML(ad.bodyText)}</p>` : ''}
@@ -2093,12 +2113,12 @@ Object.assign(ui, {
                     <span>MIRAVALLES-EL REDÍN</span>
                     <span>${this.escapeHTML(ed.dateLabel || '')}</span>
                 </div>
-                <h1 style="margin:0;font-family:${serifFont};font-weight:900;font-size:30pt;line-height:1;letter-spacing:-0.02em;color:#111111;">ORBITAL REPORT</h1>
-                <p style="margin:0.8mm 0 0 0;font-family:${serifFont};font-style:italic;font-size:9pt;line-height:1.2;color:#44403c;">Edición Impresa MARS-KET • «La Ciencia Despega a Plena Luz»</p>
+                <h1 style="margin:0;font-family:${serifFont};font-weight:900;font-size:32pt;line-height:1;letter-spacing:-0.02em;color:#111111;">Órbita<span style="color:#8B0000;">.</span></h1>
+                <p style="margin:0.8mm 0 0 0;font-family:${serifFont};font-style:italic;font-size:9pt;line-height:1.2;color:#44403c;">EL DIARIO AEROESPACIAL &bull; Lanzamientos, ciencia e industria</p>
             </div>
         ` : `
             <div style="display:flex;justify-content:space-between;align-items:center;gap:2mm;border-bottom:2px solid #111111;padding-bottom:1mm;margin-bottom:2mm;font-family:${monoFont};font-size:8pt;line-height:1.2;text-transform:uppercase;color:#111111;">
-                <span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">ORBITAL REPORT // ${this.escapeHTML(page.sectionTitle || page.label)}</span>
+                <span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Órbita. // ${this.escapeHTML(page.sectionTitle || page.label)}</span>
                 <span style="flex-shrink:0;">PÁGINA ${page.pageNumber}</span>
             </div>
         `;
@@ -2185,7 +2205,7 @@ Object.assign(ui, {
                 <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
                     <div>
                         <div class="flex items-center gap-2 flex-wrap">
-                            <h2 class="font-orbitron font-black text-base sm:text-xl text-white uppercase">🖨️ Estudio de Edición Impresa A3 // ORBITAL REPORT</h2>
+                            <h2 class="font-orbitron font-black text-base sm:text-xl text-white uppercase">Estudio de Edición Impresa A3 // Órbita.</h2>
                             ${ed.status === 'FINALIZED'
                                 ? `<span class="px-2 py-0.5 bg-emerald-950 border border-emerald-400 text-emerald-300 font-mono text-[10px] font-black uppercase">🔒 EDICIÓN DEFINITIVA</span>`
                                 : `<span class="px-2 py-0.5 bg-amber-950 border border-amber-400 text-amber-300 font-mono text-[10px] font-bold uppercase">📝 BORRADOR</span>`}
@@ -2254,36 +2274,52 @@ Object.assign(ui, {
             </section>
         `).join('');
 
+        const cssVer = encodeURIComponent(typeof APP_VERSION !== 'undefined' ? APP_VERSION : Date.now());
         const docHtml = `<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <base href="${this.escapeAttr(window.location.origin)}/">
-    <title>ORBITAL REPORT — ${this.escapeHTML(ed.issueLabel || 'Edición A3')}</title>
-    <link rel="stylesheet" href="${this.escapeAttr(window.location.origin)}/css/tailwind.css">
+    <title>Órbita. — ${this.escapeHTML(ed.issueLabel || 'Edición A3')}</title>
+    <link rel="stylesheet" href="${this.escapeAttr(window.location.origin)}/css/tailwind.css?v=${cssVer}">
     <style>
         @page { size: 420mm 297mm; margin: 0; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        html, body { margin: 0; padding: 0; background: #1e293b; font-family: Georgia, "Times New Roman", serif; color: #111111; font-size: 16px; }
+        html, body { margin: 0; padding: 0; background: #1e293b; font-family: 'Newsreader', Georgia, "Times New Roman", serif; color: #111111; font-size: 16px; }
         .no-print { position: sticky; top: 0; z-index: 99; background: #0b1120; color: #fff; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 2px solid #00f0ff; font-family: ui-monospace, monospace; font-size: 12px; }
         .btn-p { background: #00ff66; color: #000; border: 0; padding: 10px 18px; font-weight: 900; cursor: pointer; text-transform: uppercase; white-space: nowrap; }
-        .a3-sheet { width: 420mm; height: 297mm; margin: 12px auto; background: #FAF8F5; display: grid; grid-template-columns: 210mm 210mm; page-break-after: always; break-after: page; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .a3-sheet { width: 420mm; height: 296.5mm; margin: 12px auto; background: #FAF8F5; display: grid; grid-template-columns: 210mm 210mm; page-break-after: always; break-after: page; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .a3-sheet:last-of-type { page-break-after: auto; break-after: auto; }
-        .a4-half { width: 210mm; height: 297mm; overflow: hidden; }
+        .a4-half { width: 210mm; height: 296.5mm; overflow: hidden; }
         .left-half { border-right: 0.5pt dashed #cbd5e1; }
         @media print {
             html, body { width: 420mm !important; margin: 0 !important; padding: 0 !important; background: #FAF8F5 !important; }
             .no-print { display: none !important; }
-            .a3-sheet { width: 420mm !important; height: 297mm !important; margin: 0 !important; box-shadow: none !important; }
+            .a3-sheet { width: 420mm !important; height: 296.5mm !important; margin: 0 !important; box-shadow: none !important; }
         }
     </style>
 </head>
 <body>
     <div class="no-print">
-        <span>🖨️ ORBITAL REPORT (${this.escapeHTML(ed.issueLabel)}) — Al imprimir selecciona: <strong>Papel A3 Horizontal · Márgenes: Ninguno · Escala: 100% (Tamaño real)</strong></span>
-        <button class="btn-p" onclick="window.print()">🖨️ Imprimir / Guardar PDF A3</button>
+        <span>Órbita. (${this.escapeHTML(ed.issueLabel)}) — Al imprimir selecciona: <strong>Papel A3 Horizontal · Márgenes: Ninguno · Escala: 100% (Tamaño real)</strong></span>
+        <button id="orbita-print-btn" class="btn-p" onclick="window.print()">Imprimir / Guardar PDF A3</button>
     </div>
     ${sheetsHtml}
+    <script>
+        (function () {
+            const btn = document.getElementById('orbita-print-btn');
+            const imgs = Array.from(document.querySelectorAll('img'));
+            if (imgs.length === 0) return;
+            if (btn) btn.textContent = 'Cargando imágenes...';
+            const waiters = imgs.map(img => img.complete ? Promise.resolve() : (typeof img.decode === 'function' ? img.decode().catch(function () {}) : new Promise(function (res) { img.onload = res; img.onerror = res; })));
+            Promise.race([
+                Promise.all(waiters),
+                new Promise(function (res) { setTimeout(res, 2500); })
+            ]).then(function () {
+                if (btn) btn.textContent = 'Imprimir / Guardar PDF A3';
+            });
+        })();
+    <\/script>
 </body>
 </html>`;
 
@@ -2292,6 +2328,6 @@ Object.assign(ui, {
         win.document.open();
         win.document.write(docHtml);
         win.document.close();
-        this.notify("🖨️ Maqueta A3 lista en nueva pestaña (recuerda: A3 Horizontal · Márgenes Ninguno · Escala 100%).", "success");
+        this.notify("Maqueta A3 lista en nueva pestaña (recuerda: A3 Horizontal · Márgenes Ninguno · Escala 100%).", "success");
     }
 });

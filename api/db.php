@@ -190,6 +190,15 @@ function getDatabaseConnection(): PDO {
         ");
     }
 
+    // Tabla analítica independiente para «Las 10 más leídas» de Órbita. (idempotente fuera de $isNewDb; no toca state.version)
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS news_views (
+            article_id TEXT PRIMARY KEY,
+            views INTEGER NOT NULL DEFAULT 0,
+            updated_at INTEGER NOT NULL
+        );
+    ");
+
     // Inicialización del estado base virgen o migración puntual sin leer todo el JSON en cada petición
     $stmt = $pdo->query("SELECT json_extract(data, '$.config.catalogBaselineVersion') AS cat_ver FROM state WHERE id = 'current'");
     $row = $stmt ? $stmt->fetch() : null;

@@ -18,6 +18,7 @@ const FILES = [
     'js/auth.js',
     'js/ui-core.js',
     'js/ui-empresa-core.js',
+    'js/ui-orbita.js',
     'js/ui-print-newspaper.js',
     'js/ui-empresa-market.js',
     'js/ui-empresa-tech.js',

@@ -182,12 +182,15 @@ const state = {
     },
 
     getDefaultOrbitalReportSeed() {
-        const seedImgSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#05070f"/><stop offset="55%" stop-color="#0b1528"/><stop offset="100%" stop-color="#19081c"/></linearGradient><linearGradient id="glow" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00f0ff" stop-opacity="0.38"/><stop offset="100%" stop-color="#00f0ff" stop-opacity="0"/></linearGradient></defs><rect width="1280" height="720" fill="url(#bg)"/><g stroke="#00f0ff" stroke-opacity="0.14" stroke-width="1"><path d="M0 140H1280M0 280H1280M0 420H1280M0 560H1280M213 0V720M426 0V720M640 0V720M853 0V720M1066 0V720"/></g><circle cx="960" cy="360" r="240" fill="url(#glow)"/><g transform="translate(880,115)"><polygon points="80,20 132,165 132,395 28,395 28,165" fill="#0f172a" stroke="#00f0ff" stroke-width="4"/><polygon points="80,20 132,165 28,165" fill="#1e293b" stroke="#00f0ff" stroke-width="3"/><polygon points="28,305 -32,430 28,395" fill="#ff0055" fill-opacity="0.85"/><polygon points="132,305 192,430 132,395" fill="#ff0055" fill-opacity="0.85"/><circle cx="80" cy="240" r="24" fill="#05070f" stroke="#ffb703" stroke-width="4"/><line x1="56" y1="240" x2="104" y2="240" stroke="#ffb703" stroke-width="2"/><line x1="80" y1="216" x2="80" y2="264" stroke="#ffb703" stroke-width="2"/></g><text x="72" y="130" fill="#ffb703" font-family="monospace" font-size="22" font-weight="bold" letter-spacing="4">ORBITAL REPORT // ARCHIVO AEE</text><text x="72" y="235" fill="#ffffff" font-family="sans-serif" font-size="52" font-weight="900">SECRETOS INDUSTRIALES</text><text x="72" y="305" fill="#00f0ff" font-family="sans-serif" font-size="52" font-weight="900">Y MERCADO B2B</text><text x="72" y="375" fill="#cbd5e1" font-family="monospace" font-size="24">SPACEX vs. EXPOSICION MARS-KET 2.0</text><rect x="72" y="435" width="430" height="58" fill="#05070f" stroke="#00f0ff" stroke-width="2"/><text x="96" y="472" fill="#00f0ff" font-family="monospace" font-size="22" font-weight="bold">E = ALTURA / COSTE • B2B READY</text></svg>`;
+        const seedImgSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#05070f"/><stop offset="55%" stop-color="#0b1528"/><stop offset="100%" stop-color="#19081c"/></linearGradient><linearGradient id="glow" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00f0ff" stop-opacity="0.38"/><stop offset="100%" stop-color="#00f0ff" stop-opacity="0"/></linearGradient></defs><rect width="1280" height="720" fill="url(#bg)"/><g stroke="#00f0ff" stroke-opacity="0.14" stroke-width="1"><path d="M0 140H1280M0 280H1280M0 420H1280M0 560H1280M213 0V720M426 0V720M640 0V720M853 0V720M1066 0V720"/></g><circle cx="960" cy="360" r="240" fill="url(#glow)"/><g transform="translate(880,115)"><polygon points="80,20 132,165 132,395 28,395 28,165" fill="#0f172a" stroke="#00f0ff" stroke-width="4"/><polygon points="80,20 132,165 28,165" fill="#1e293b" stroke="#00f0ff" stroke-width="3"/><polygon points="28,305 -32,430 28,395" fill="#ff0055" fill-opacity="0.85"/><polygon points="132,305 192,430 132,395" fill="#ff0055" fill-opacity="0.85"/><circle cx="80" cy="240" r="24" fill="#05070f" stroke="#ffb703" stroke-width="4"/><line x1="56" y1="240" x2="104" y2="240" stroke="#ffb703" stroke-width="2"/><line x1="80" y1="216" x2="80" y2="264" stroke="#ffb703" stroke-width="2"/></g><text x="72" y="130" fill="#ffb703" font-family="monospace" font-size="22" font-weight="bold" letter-spacing="4">ÓRBITA. // ARCHIVO AEE</text><text x="72" y="235" fill="#ffffff" font-family="sans-serif" font-size="52" font-weight="900">SECRETOS INDUSTRIALES</text><text x="72" y="305" fill="#00f0ff" font-family="sans-serif" font-size="52" font-weight="900">Y MERCADO B2B</text><text x="72" y="375" fill="#cbd5e1" font-family="monospace" font-size="24">SPACEX vs. EXPOSICION MARS-KET 2.0</text><rect x="72" y="435" width="430" height="58" fill="#05070f" stroke="#00f0ff" stroke-width="2"/><text x="96" y="472" fill="#00f0ff" font-family="monospace" font-size="22" font-weight="bold">E = ALTURA / COSTE • B2B READY</text></svg>`;
         const seedImgUrl = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(seedImgSvg);
         return {
             id: 'NEWS-SEED-MUSK-PATENTS-001',
-            seedVersion: 2,
-            section: 'actualidad',
+            seedVersion: 3,
+            section: 'industria',
+            origin: 'REAL',
+            status: 'PUBLISHED',
+            editionNumber: 0,
             category: 'PROPIEDAD INDUSTRIAL & B2B',
             categoryEn: 'INDUSTRIAL PROPERTY & B2B',
             title: 'Por qué SpaceX evita registrar patentes: «Publicarlas sería como entregar un libro de recetas»',
@@ -197,15 +200,16 @@ const state = {
             subtitleEn: 'In commercial aerospace, fast engineering iteration often outweighs public patent filings—a strategic lesson for MARS-KET startups ahead of our static exhibition and B2B market.',
             bodyEn: 'Across most technology sectors, engineers rush to file patent paperwork before a new component even leaves the lab. In commercial rocketry, however, the logic frequently reverses. Speaking to Wired in 2012, SpaceX chief executive Elon Musk explained why the company holds virtually no patents on its launch vehicles: obtaining a patent requires publishing detailed blueprints and operating specs, which against rival state-backed or overseas programs would amount to providing a free "recipe book."\n\nRather than placing core propulsion and structural details in public legal registries that are difficult to enforce across borders, the company leaned on strict internal trade secrets and rapid hardware iteration. When an engineering team tests, improves, and flies a new revision every few months, anyone attempting to reverse-engineer an older design ends up solving yesterday’s problem.\n\nIn MARS-KET 2.0, every 4th ESO startup encounters a classroom version of that same reality. During our year-end open exhibition—held strictly as a static display without fuel or flight—rival teams from all classes will see your nose cone profile, fin alignment, and airframe craftsmanship up close.\n\nYet spotting a silhouette on a display stand cannot copy the discipline behind your efficiency index E = Height / Cost, your leak-free assembly in the Workshop, or the accuracy of your Ledger. Even better, whenever tested hardware or excess materials remain after R&D flights, listing them on the B2B Secondary Market (DOC_9) allows your team to turn spare parts into vital virtual-euro liquidity before phase close.',
             imageUrl: seedImgUrl,
-            sourceName: 'Orbital Report / Archivo Wired & SpaceX',
+            sourceName: 'Órbita. / Archivo Wired & SpaceX',
             sourceUrl: 'https://www.spacex.com',
             marsketImpact: 'En la exhibición final sin combustible todos verán vuestros cohetes: la ventaja competitiva real está en vuestro índice E = Altura / Coste, la fiabilidad de ensamblaje y el uso inteligente del Mercado Secundario B2B.',
             marsketImpactEn: 'At the year-end unfueled exhibition every team will see your rocket: your true advantage lies in E = Height / Cost, build reliability, and strategic trading in the B2B Secondary Market.',
             debateQuestion: '¿Tiene más sentido proteger los diseños en secretismo o estandarizar piezas útiles para rentabilizarlas vendiendo excedentes en el Mercado B2B?',
             debateQuestionEn: 'Is it smarter to guard workshop ideas closely, or standardize reliable components so surplus stock sells easily on the B2B Market?',
-            publishedAt: 1763750000000,
-            updatedAt: 1763850000000,
+            publishedAt: 1795420800000,
+            updatedAt: 1795420800000,
             publishedDate: '23/11/2026',
+            publishedIsoDate: '2026-11-23',
             featured: true,
             phase: 'ALL',
             classGroup: 'ALL',
@@ -217,17 +221,20 @@ const state = {
 
     _makeEditorialCoverSvg(kicker, line1, line2, accentHex = '#00f0ff', bgHex = '#0b1528') {
         const escSvg = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#05070f"/><stop offset="100%" stop-color="${escSvg(bgHex)}"/></linearGradient></defs><rect width="1280" height="720" fill="url(#g)"/><g stroke="${escSvg(accentHex)}" stroke-opacity="0.16" stroke-width="1"><path d="M0 180H1280M0 360H1280M0 540H1280M320 0V720M640 0V720M960 0V720"/></g><circle cx="1020" cy="360" r="190" fill="${escSvg(accentHex)}" fill-opacity="0.12" stroke="${escSvg(accentHex)}" stroke-width="3"/><circle cx="1020" cy="360" r="95" fill="none" stroke="#ffffff" stroke-opacity="0.4" stroke-dasharray="10 8" stroke-width="2"/><text x="72" y="150" fill="${escSvg(accentHex)}" font-family="monospace" font-size="24" font-weight="bold" letter-spacing="4">${escSvg(kicker)}</text><text x="72" y="290" fill="#ffffff" font-family="sans-serif" font-size="54" font-weight="900">${escSvg(line1)}</text><text x="72" y="365" fill="#e2e8f0" font-family="sans-serif" font-size="40" font-weight="700">${escSvg(line2)}</text><rect x="72" y="460" width="380" height="52" fill="#05070f" stroke="${escSvg(accentHex)}" stroke-width="2"/><text x="92" y="494" fill="${escSvg(accentHex)}" font-family="monospace" font-size="20" font-weight="bold">ORBITAL REPORT // ARCHIVO AEE</text></svg>`;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#05070f"/><stop offset="100%" stop-color="${escSvg(bgHex)}"/></linearGradient></defs><rect width="1280" height="720" fill="url(#g)"/><g stroke="${escSvg(accentHex)}" stroke-opacity="0.16" stroke-width="1"><path d="M0 180H1280M0 360H1280M0 540H1280M320 0V720M640 0V720M960 0V720"/></g><circle cx="1020" cy="360" r="190" fill="${escSvg(accentHex)}" fill-opacity="0.12" stroke="${escSvg(accentHex)}" stroke-width="3"/><circle cx="1020" cy="360" r="95" fill="none" stroke="#ffffff" stroke-opacity="0.4" stroke-dasharray="10 8" stroke-width="2"/><text x="72" y="150" fill="${escSvg(accentHex)}" font-family="monospace" font-size="24" font-weight="bold" letter-spacing="4">${escSvg(kicker)}</text><text x="72" y="290" fill="#ffffff" font-family="sans-serif" font-size="54" font-weight="900">${escSvg(line1)}</text><text x="72" y="365" fill="#e2e8f0" font-family="sans-serif" font-size="40" font-weight="700">${escSvg(line2)}</text><rect x="72" y="460" width="380" height="52" fill="#05070f" stroke="${escSvg(accentHex)}" stroke-width="2"/><text x="92" y="494" fill="${escSvg(accentHex)}" font-family="monospace" font-size="20" font-weight="bold">ÓRBITA. // ARCHIVO AEE</text></svg>`;
         return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
     },
 
     getEditorialSectionSeeds() {
-        const baseTs = 1763740000000;
-        const revTs = 1763850000000;
+        const baseTs = 1795420800000;
+        const revTs = 1795420800000;
         const make = (id, section, offsetMin, kickerEs, kickerEn, titleEs, subEs, bodyEs, titleEn, subEn, bodyEn, impactEs, impactEn, debateEs, debateEn, svg1, svg2, accent, bg, sourceName, sourceUrl) => ({
             id,
-            seedVersion: 2,
+            seedVersion: 3,
             section,
+            origin: 'REAL',
+            status: 'PUBLISHED',
+            editionNumber: 0,
             category: kickerEs,
             categoryEn: kickerEn,
             title: titleEs,
@@ -237,7 +244,7 @@ const state = {
             subtitleEn: subEn,
             bodyEn,
             imageUrl: this._makeEditorialCoverSvg(kickerEs, svg1, svg2, accent, bg),
-            sourceName: sourceName || 'Archivo Histórico AEE',
+            sourceName: sourceName || 'Órbita. / Archivo AEE',
             sourceUrl: sourceUrl || '',
             marsketImpact: impactEs,
             marsketImpactEn: impactEn,
@@ -247,6 +254,7 @@ const state = {
             updatedAt: revTs,
             placementUpdatedAt: baseTs,
             publishedDate: '23/11/2026',
+            publishedIsoDate: '2026-11-23',
             placement: 'archive',
             subOrder: 0,
             featured: false,
@@ -481,6 +489,283 @@ const state = {
                 'Why does recycling and purifying scarce resources inside a closed loop cost less than constantly importing fresh supplies?',
                 'FILTROS DE AGUA', 'IONES DE PLATA Y CARBON · NASA', '#34d399', '#062019',
                 'NASA Spinoff / Archivo AEE', 'https://spinoff.nasa.gov'
+            ),
+            // --- JUGUETES Y EL ESPACIO (6 reportajes verificados) ---
+            make(
+                'SEED-TOY-LEGO-JUNO', 'juguetes', 70,
+                'JUGUETES Y EL ESPACIO', 'TOYS AND SPACE',
+                'Tres minifiguras de LEGO de aluminio rumbo a Júpiter: la tripulación metálica de la sonda Juno',
+                'Lanzadas en 2011 a bordo de la nave de la NASA, no eran de plástico ABS sino piezas fresadas en aluminio aeroespacial para resistir la radiación y el frío del gigante gaseoso.',
+                'El 5 de agosto de 2011 despegó desde Cabo Cañaveral la sonda Juno de la NASA con destino a Júpiter. Entre sus instrumentos científicos viajaba una carga insólita fruto de la alianza educativa Bricks in Space entre la agencia estadounidense y el Grupo LEGO: tres minifiguras de unos 3,8 centímetros que representaban a Galileo Galilei (con telescopio), al dios romano Júpiter (con un rayo) y a la diosa Juno (con una lupa).\n\nPara sobrevivir cinco años de crucero interplanetario hasta entrar en órbita joviana en julio de 2016, las figuras no podían fabricarse en plástico convencional, que podría liberar gases o degradarse bajo radiación extrema. Se fresaron en aluminio de grado espacial con el mismo cuidado de masa y limpieza que cualquier componente de vuelo.\n\nEn MARS-KET 2.0, elegir el material adecuado en el Taller determina tanto la resistencia estructural como el coste final en el cálculo de eficiencia E = Altura / Coste.',
+                'Three Aluminum LEGO Minifigures Bound for Jupiter: Inside NASA Juno’s Metal Crew',
+                'Launched in 2011 aboard NASA’s Juno spacecraft, the figures were milled from aerospace-grade aluminum rather than ABS plastic to survive deep-space radiation.',
+                'When NASA’s Juno probe lifted off on August 5, 2011, it carried an unusual educational payload under the NASA-LEGO Bricks in Space partnership: three custom 1.5-inch minifigures depicting Galileo Galilei, Jupiter, and Juno. Instead of standard plastic, engineers machined them from aerospace-grade aluminum so they would neither outgas nor degrade during their five-year voyage to Jupiter in July 2016.\n\nIn MARS-KET 2.0, choosing lightweight yet durable materials in the Workshop directly shapes both structural reliability and your efficiency score E = Height / Cost.',
+                'La elección de materiales resistentes y ligeros decide si un componente soporta las condiciones reales de vuelo.',
+                'Choosing light, durable materials determines whether hardware survives real flight conditions.',
+                '¿Por qué una sonda espacial exige materiales distintos a los de un juguete cotidiano aunque compartan la misma forma?',
+                'Why does a spacecraft require different materials than an everyday toy even when they share the same shape?',
+                'LEGO EN JUPITER', 'ALUMINIO AEROESPACIAL · 2011', '#fbbf24', '#1f1605',
+                'NASA / LEGO Bricks in Space', 'https://www.nasa.gov'
+            ),
+            make(
+                'SEED-TOY-LEGO-SATURNV', 'juguetes', 75,
+                'JUGUETES Y EL ESPACIO', 'TOYS AND SPACE',
+                'Ingeniería por etapas en 1.969 piezas: el Saturno V y el Artemis SLS en formato maqueta',
+                'Cómo los conjuntos a escala 1:110 reproducen exactamente la separación de fases, los tanques de propelente y la lógica modular de un lanzador real.',
+                'Publicado en 2017 (y reeditado como 92176), el modelo LEGO Ideas NASA Apollo Saturn V mide aproximadamente un metro de altura a escala 1:110 y consta exactamente de 1.969 piezas en homenaje al año del alunizaje del Apolo 11. Lejos de ser un bloque sólido, se desmonta en las tres etapas propulsoras reales (S-IC, S-II y S-IVB), el módulo lunar y la cápsula de mando.\n\nAños después, el modelo LEGO Icons del cohete Artemis SLS (10341, 3.601 piezas) trasladó la misma filosofía a la torre móvil de lanzamiento y sus propulsores laterales.\n\nTrabajar por etapas y subsistemas ordenados —igual que vuestra lista de materiales BOM en Operaciones y Técnico— permite probar, sustituir o mejorar cada parte sin reconstruir todo el cohete.',
+                'Staging Engineering in 1,969 Bricks: Saturn V and Artemis SLS in Scale Models',
+                'How 1:110 scale sets mirror real propellant stages, strap-on boosters, and modular aerospace assembly.',
+                'Released in 2017 with exactly 1,969 pieces in tribute to the 1969 Apollo 11 landing, the one-meter 1:110 Saturn V model separates cleanly into the S-IC, S-II, and S-IVB stages, lunar lander, and command module. Years later, the 3,601-piece Artemis SLS set extended that modular approach to the mobile launch tower and solid rocket boosters.\n\nOrganizing your rocket into clear subsystems—just like your Workshop BOM—lets teams test and refine individual parts without rebuilding the entire airframe.',
+                'Dividir un cohete en subsistemas ordenados facilita la lista de materiales BOM y acelera las pruebas en taller.',
+                'Breaking a rocket into clean subsystems simplifies your BOM and speeds up Workshop testing.',
+                '¿Qué ventaja tiene diseñar un cohete por módulos separables frente a pegarlo todo en una sola pieza rígida?',
+                'What advantage does modular assembly give over gluing an entire rocket into one rigid piece?',
+                'SATURNO V 1:110', '1.969 PIEZAS POR ETAPAS', '#f97316', '#1c0f06',
+                'NASA / Archivo de Modelismo', 'https://www.nasa.gov'
+            ),
+            make(
+                'SEED-TOY-SNOOPY-ZEROG', 'juguetes', 80,
+                'JUGUETES Y EL ESPACIO', 'TOYS AND SPACE',
+                'Snoopy en gravedad cero: del Apolo 10 en 1969 a indicador oficial de microgravedad en Artemis I',
+                'Por qué los astronautas y las misiones automáticas sujetan un peluche en cabina para comprobar visualmente el instante en que termina el empuje.',
+                'En mayo de 1969, los astronautas del Apolo 10 bautizaron su módulo lunar como Snoopy y la cápsula de mando como Charlie Brown. Desde entonces, la NASA entrega el premio Silver Snoopy a quienes destacan por la seguridad de vuelo.\n\nCincuenta y tres años después, el 16 de noviembre de 2022, un peluche de Snoopy vestido con una réplica del traje naranja OCSS viajó sujeto con una correa en el interior de la cápsula Orion durante la misión Artemis I. Al apagarse los motores y quedar la nave en caída libre orbital, flotar al extremo de la cinta ofrece una confirmación visual inmediata de la entrada en microgravedad.\n\nEn MARS-KET, cada ensayo exige el mismo rigor de seguridad y verificación documental antes de obtener la Licencia de Vuelo AESA (DOC_14).',
+                'Snoopy in Zero-G: From Apollo 10 in 1969 to Artemis I’s Microgravity Indicator',
+                'Why crews tether a plush mascot inside the cabin to confirm visually the exact moment engine thrust ends.',
+                'In May 1969, the Apollo 10 crew named their lunar module Snoopy and command module Charlie Brown, inspiring NASA’s Silver Snoopy flight-safety award. On November 16, 2022, a Snoopy plush wearing a custom orange suit rode tethered inside Orion for Artemis I as an official zero-gravity indicator: once engines cut off and free-fall begins, the floating toy gives cameras an instant visual cue of microgravity.\n\nIn MARS-KET, flight safety and thorough verification remain essential before earning your AESA Flight License (DOC_14).',
+                'La cultura de seguridad aeroespacial combina indicadores físicos simples con protocolos documentados antes de volar.',
+                'Aerospace safety culture pairs simple physical indicators with documented pre-flight checks.',
+                '¿Por qué flota un objeto atado con correa dentro de una nave en órbita si la gravedad terrestre sigue actuando allí arriba?',
+                'Why does a tethered toy float inside an orbiting spacecraft even though Earth’s gravity still reaches orbit?',
+                'SNOOPY EN ORBITA', 'APOLO 10 -> ARTEMIS I', '#38bdf8', '#081826',
+                'NASA Artemis / Archivo AEE', 'https://www.nasa.gov'
+            ),
+            make(
+                'SEED-TOY-ESTES-MABEL', 'juguetes', 85,
+                'JUGUETES Y EL ESPACIO', 'TOYS AND SPACE',
+                'Cohetes de modelismo Estes y la máquina «Mabel» (1958): cómo la cohetería escolar se volvió segura',
+                'De los experimentos peligrosos de los años cincuenta a los motores comerciales reemplazables fabricados sin chispas eléctricas.',
+                'A finales de los años cincuenta, tras el lanzamiento del Sputnik, cientos de jóvenes intentaban fabricar pólvora casera en sus garajes con graves accidentes. Para ofrecer una alternativa segura, Orville Carlisle y G. Harry Stine idearon cohetes ligeros de papel y madera con motores prefabricados intercambiables.\n\nEn 1958, Vern Estes diseñó «Mabel», una prensa neumática operada sin electricidad para evitar chispas capaz de fabricar un motor seguro de cartón cada 5,5 segundos, fundando Estes Industries y estandarizando la cohetería educativa en institutos de todo el mundo.\n\nEn MARS-KET, los reactivos de laboratorio (bicarbonato y vinagre) cumplen esa misma regla: máxima seguridad física para centrarse en la estanqueidad, el coste y la altura.',
+                'Estes Model Rockets and the "Mabel" Machine (1958): Making School Rocketry Safe',
+                'How replaceable factory-made paper motors replaced risky homemade experiments for classrooms worldwide.',
+                'Following Sputnik in the late 1950s, homemade propellant experiments caused frequent injuries among students. Orville Carlisle and G. Harry Stine pioneered lightweight paper-and-wood rockets powered by replaceable factory motors. In 1958, Vern Estes engineered "Mabel"—an electricity-free pneumatic press producing one safe motor every 5.5 seconds—making model rocketry a safe STEM staple.\n\nMARS-KET applies the same rule with safe classroom chemistry (vinegar and baking soda) so teams can focus on seals, cost, and apogee.',
+                'La estandarización de consumibles seguros permite repetir ensayos de vuelo y comparar eficiencias de forma justa.',
+                'Standardizing safe consumables lets teams repeat flight tests and compare efficiency fairly.',
+                '¿Qué cambia en la fiabilidad de un ensayo cuando el motor o el reactivo están estandarizados frente a improvisarlos cada vez?',
+                'How does test reliability change when propellants are standardized instead of improvised?',
+                'COHETERIA ESTES', 'PRENSA MABEL · 1958', '#ef4444', '#22090c',
+                'Archivo Histórico STEM / NAR', 'https://www.nar.org'
+            ),
+            make(
+                'SEED-TOY-KSP-SIM', 'juguetes', 90,
+                'JUGUETES Y EL ESPACIO', 'TOYS AND SPACE',
+                'Kerbal Space Program, NASA y ESA: cuando los simuladores de vuelo enseñan mecánica orbital antes de despegar',
+                'Expansiones oficiales con la Asteroid Redirect Mission (2014) y Shared Horizons (2020) demostraron por qué fallar en pantalla ahorra presupuesto real.',
+                'Más allá de los juegos arcade, los simuladores de física orbital permiten experimentar sin riesgo con el centro de masa, el centro de presión aerodinámica y las ventanas de transferencia.\n\nEl simulador Kerbal Space Program colaboró oficialmente con la NASA en 2014 para recrear la Asteroid Redirect Mission y con la Agencia Espacial Europea (ESA) en 2020 con la expansión Shared Horizons, incluyendo el lanzador Ariane 5 y las sondas Rosetta y BepiColombo, en línea con herramientas divulgativas abiertas como NASA Eyes.\n\nAntes de gastar euros virtuales (€v) o consumibles en el Banco de Pruebas, comprobar proporciones y estabilidad en papel o simulador evita fallos costosos.',
+                'Kerbal Space Program, NASA, and ESA: Teaching Orbital Mechanics Before Liftoff',
+                'Official expansions with NASA (2014) and ESA (2020) show why failing on screen saves real mission budgets.',
+                'Physics-based orbital simulators let students experiment safely with center of mass, aerodynamic drag, and transfer windows. Kerbal Space Program partnered officially with NASA in 2014 (Asteroid Redirect Mission) and ESA in 2020 (Shared Horizons, featuring Ariane 5, Rosetta, and BepiColombo), alongside interactive tools like NASA Eyes.\n\nTesting ratios and stability before spending virtual euros (€v) or reagents in the Workshop keeps your budget intact.',
+                'Simular y calcular antes de consumir material protege la tesorería y mejora la nota técnica en FyQ y Matemáticas.',
+                'Simulating and calculating before spending materials protects cash flow and strengthens your technical dossier.',
+                '¿Qué errores de diseño se detectan más rápido al probar primero un modelo digital antes de cortar cartón o plástico?',
+                'Which design errors surface faster in a digital simulation before cutting real materials?',
+                'SIMULACION ORBITAL', 'KSP · NASA & ESA', '#22d3ee', '#071b26',
+                'ESA / NASA Educational', 'https://www.esa.int'
+            ),
+            make(
+                'SEED-TOY-PLAYMOBIL-MARS', 'juguetes', 95,
+                'JUGUETES Y EL ESPACIO', 'TOYS AND SPACE',
+                'Playmobil en Marte y la Luna: de la gama Mars Mission (2018) a la divulgación conjunta con la ESA',
+                'Cómo las maquetas de estaciones modulares, esclusas y rovers acercan la logística espacial y el diseño de marca al público joven.',
+                'En 2018 Playmobil presentó su línea Mars Mission, compuesta por una estación marciana modular (referencia 9487), un cohete con plataforma de lanzamiento (9488) y un vehículo explorador con laboratorio móvil (9489). Posteriormente, la marca estableció una colaboración educativa con la Agencia Espacial Europea (ESA) centrada en la exploración lunar.\n\nMás allá del juego simbólico, estos conjuntos muestran cómo un proyecto aeroespacial necesita coherencia visual completa: traje, vehículo, módulo habitable, panel solar e identidad gráfica reconocible.\n\nEs exactamente el puente entre ingeniería y comunicación corporativa que trabajan vuestros departamentos de Marketing (DOC_7) y Técnico.',
+                'Playmobil on Mars and the Moon: From Mars Mission (2018) to ESA Educational Outreach',
+                'How modular station sets, airlocks, and rovers introduce habitat logistics and brand identity to young audiences.',
+                'In 2018 Playmobil introduced its Mars Mission range—a modular habitat station (9487), launch rocket (9488), and lab rover (9489)—later partnering with the European Space Agency (ESA) on lunar outreach sets. These kits illustrate that aerospace projects rely on an integrated visual system uniting suits, habitats, solar arrays, and mission branding.\n\nThat same link between engineering and visual identity drives Marketing (DOC_7) and Technical teams in MARS-KET.',
+                'Una identidad visual coherente convierte un prototipo técnico en una marca reconocible ante inversores y familias.',
+                'A cohesive visual identity turns technical hardware into a recognizable brand for investors and families.',
+                '¿Qué elementos visuales hacen que un vehículo o estación espacial resulte inmediatamente reconocible como parte de una misma empresa?',
+                'What visual cues make a rover or station immediately recognizable as belonging to the same company?',
+                'MISION MARTE', 'PLAYMOBIL · ESA STEM', '#34d399', '#062019',
+                'ESA / Archivo STEM AEE', 'https://www.esa.int'
+            ),
+            // --- NASA (3 reportajes verificados) ---
+            make(
+                'SEED-NASA-ARTEMIS-II', 'nasa', 100,
+                'NASA · EXPLORACIÓN HUMANA', 'NASA · HUMAN EXPLORATION',
+                'Artemis II y el retorno humano al entorno lunar: qué validan la cápsula Orion y su escudo térmico',
+                'La primera misión tripulada del programa Artemis pone a prueba el soporte vital, las comunicaciones y la trayectoria de retorno libre alrededor de la Luna.',
+                'A diferencia del vuelo automático Artemis I, Artemis II embarca a cuatro astronautas —Reid Wiseman, Victor Glover, Christina Koch y Jeremy Hansen— en un sobrevuelo lunar de varios días a bordo de la nave Orion.\n\nEl objetivo científico y técnico no es alunizar todavía, sino validar en condiciones reales los sistemas de regeneración de aire, agua, protección frente a radiación y guiado manual antes de comprometer un descenso futuro al polo sur lunar.\n\nCada parámetro validado en fase previa reduce el riesgo de fallos en misiones posteriores, igual que vuestro Informe Técnico Preliminar en MARS-KET.',
+                'Artemis II and Human Return to Lunar Orbit: Validating Orion’s Life Support and Heatshield',
+                'The first crewed Artemis flight tests life support, radiation shielding, and free-return navigation around the Moon.',
+                'Unlike the uncrewed Artemis I test, Artemis II carries four astronauts—Reid Wiseman, Victor Glover, Christina Koch, and Jeremy Hansen—on a multi-day lunar flyby aboard Orion. Rather than landing, engineers verify air and water regeneration, radiation protection, and manual piloting before attempting future south-pole touchdowns.\n\nValidating every system in an earlier test phase lowers risk later—the exact purpose of your Preliminary Technical Report.',
+                'Validar soporte vital y trayectoria antes del alunizaje refleja la metodología por fases de vuestro proyecto.',
+                'Validating life support and flight paths before landing mirrors MARS-KET’s phased engineering workflow.',
+                '¿Por qué las agencias espaciales realizan un sobrevuelo tripulado completo antes de intentar posarse sobre la superficie lunar?',
+                'Why do space agencies fly a complete crewed lunar flyby before attempting a surface landing?',
+                'ARTEMIS II', 'ORION · NASA', '#3b82f6', '#0a1428',
+                'NASA Artemis Program', 'https://www.nasa.gov/artemis'
+            ),
+            make(
+                'SEED-NASA-EUROPA-CLIPPER', 'nasa', 105,
+                'NASA · CIENCIA PLANETARIA', 'NASA · PLANETARY SCIENCE',
+                'Europa Clipper rumbo a Júpiter: radar penetrador de hielo en busca de océanos subterráneos',
+                'Lanzada en octubre de 2024, la mayor sonda planetaria de la NASA utiliza asistencias gravitatorias para estudiar si la luna Europa reúne condiciones de habitabilidad.',
+                'Bajo una corteza helada de kilómetros de espesor, la luna joviana Europa oculta probablemente un océano global de agua salada. Para estudiarlo sin aterrizar, la misión Europa Clipper —lanzada en octubre de 2024 con llegada prevista en 2030— realizará decenas de sobrevuelos cercanos.\n\nSus nueve instrumentos incluyen un radar capaz de sondear la estructura del hielo, espectrómetros para analizar penachos de vapor y magnetómetros para medir la conductividad del océano oculto, ahorrando masa propulsiva gracias a asistencias gravitatorias de Marte y la Tierra.\n\nEn clase, aprovechar impulsos físicos gratuitos y elegir sensores precisos permite lograr mayor alcance sin disparar el presupuesto.',
+                'Europa Clipper En Route to Jupiter: Ice-Penetrating Radar Hunting Subsurface Oceans',
+                'Launched in October 2024, NASA’s largest planetary probe uses gravity assists to assess Europa’s habitability.',
+                'Beneath kilometers of ice, Jupiter’s moon Europa likely harbors a global saltwater ocean. Launched in October 2024 for a 2030 arrival, Europa Clipper will perform dozens of close flybys using ice-penetrating radar, spectrometers, and magnetometers—relying on Mars and Earth gravity assists to save propellant mass.\n\nMaximizing trajectory physics while keeping sensors focused mirrors optimizing cost and performance in R&D.',
+                'Las asistencias gravitatorias demuestran cómo las leyes de la física multiplican el alcance sin gastar más combustible.',
+                'Gravity assists show how physics multiplies mission reach without burning extra propellant.',
+                '¿Cómo permite la gravedad de un planeta acelerar una sonda espacial sin consumir apenas reactivo ni combustible?',
+                'How can a planet’s gravity accelerate a spacecraft while burning virtually no propellant?',
+                'EUROPA CLIPPER', 'RADAR Y HABITABILIDAD', '#06b6d4', '#061a24',
+                'NASA JPL / Europa Clipper', 'https://europa.nasa.gov'
+            ),
+            make(
+                'SEED-NASA-JWST-EXOPLANETS', 'nasa', 110,
+                'NASA · OBSERVATORIOS', 'NASA · OBSERVATORIES',
+                'El telescopio James Webb y la espectroscopía infrarroja: cómo leer la química de un planeta lejano',
+                'Cuando un exoplaneta pasa delante de su estrella, la luz filtrada por su atmósfera delata moléculas de agua, dióxido de carbono o metano a decenas de años luz.',
+                'A 1,5 millones de kilómetros de la Tierra, en el punto de Lagrange L2, el Telescopio Espacial James Webb (JWST) observa el universo en longitudes de onda infrarrojas protegidas por un parasol de cinco capas tan grande como una pista de tenis.\n\nMediante espectroscopía de transmisión, sus detectores comparan la luz estelar normal con la pequeña fracción que atraviesa la atmósfera de un exoplaneta durante un tránsito. Cada molécula absorbe frecuencias exactas, dejando una huella química inequívoca de vapor de agua, CO₂ o metano.\n\nEs el mismo vínculo entre composición molecular, espectro y reacción química que estudiáis en Física y Química de 4º ESO.',
+                'James Webb’s Infrared Spectroscopy: Reading the Chemistry of Distant Exoplanets',
+                'When an exoplanet crosses in front of its star, starlight passing through its atmosphere reveals water vapor, CO2, and methane.',
+                'Stationed 1.5 million kilometers away at L2 behind a five-layer sunshield, the James Webb Space Telescope uses infrared transmission spectroscopy to compare starlight before and during planetary transits. Each gas absorbs characteristic wavelengths, exposing fingerprints of water vapor, carbon dioxide, or methane.\n\nLight absorption and molecular fingerprints link deep-space astronomy straight to 4th ESO Physics & Chemistry.',
+                'La espectroscopía conecta directamente la química de átomos y moléculas con la exploración del universo.',
+                'Spectroscopy connects atomic and molecular chemistry directly with space exploration.',
+                '¿Por qué el telescopio James Webb necesita trabajar muy frío en el infrarrojo y alejado del calor de la Tierra?',
+                'Why must James Webb operate extremely cold in the infrared far from Earth’s heat?',
+                'JAMES WEBB · L2', 'ESPECTROSCOPIA INFRARROJA', '#a855f7', '#180924',
+                'NASA / ESA / CSA Webb', 'https://webb.nasa.gov'
+            ),
+            // --- LANZAMIENTOS (3 reportajes verificados) ---
+            make(
+                'SEED-LAUNCH-ARIANE-6', 'lanzamientos', 115,
+                'LANZAMIENTOS · EUROPA', 'LAUNCHES · EUROPE',
+                'Ariane 6 desde Kourou: así opera el lanzador modular europeo en versiones A62 y A64',
+                'Con dos o cuatro propulsores laterales sólidos y una etapa superior reencendible Vinci, Europa adapta el empuje según la masa y órbita de cada satélite.',
+                'Desde el Puerto Espacial Europeo de Kourou (Guayana Francesa), cerca del ecuador para aprovechar la velocidad de rotación terrestre, Ariane 6 devuelve a Europa un acceso autónomo a órbita baja, geoestacionaria y trayectorias interplanetarias.\n\nSu diseño modular permite volar en configuración A62 (con dos aceleradores sólidos laterales para cargas medias) o A64 (con cuatro aceleradores para misiones pesadas), mientras el motor criogénico reencendible Vinci de la etapa superior coloca distintos satélites en órbitas separadas durante un mismo lanzamiento antes de desorbitar.\n\nElegir A62 o A64 responde a la misma pregunta de MARS-KET: no gastar más propulsión de la necesaria para la carga útil objetivo.',
+                'Ariane 6 from Kourou: How Europe’s Modular Launcher Scales Between A62 and A64',
+                'With two or four solid boosters and a restartable Vinci upper stage, Ariane 6 matches thrust to each payload.',
+                'Launching near the equator from Europe’s Spaceport in Kourou, Ariane 6 restores independent European orbital access. Its modular architecture flies as A62 (two solid strap-on boosters) for medium payloads or A64 (four boosters) for heavy lift, while the restartable Vinci upper stage deploys multiple satellites into separate orbits before deorbiting.\n\nChoosing A62 vs A64 mirrors MARS-KET’s core rule: never pay for more thrust than your mission requires.',
+                'Adaptar la configuración del cohete al tamaño de la carga evita costes innecesarios y mejora la eficiencia.',
+                'Matching rocket configuration to payload mass prevents wasted cost and raises efficiency.',
+                '¿Qué ventaja física ofrece lanzar un cohete cerca del ecuador terrestre hacia el este como hace Kourou?',
+                'What physical advantage comes from launching eastward near Earth’s equator at Kourou?',
+                'ARIANE 6 · KOUROU', 'VERSIONES A62 y A64', '#f59e0b', '#1c1205',
+                'ESA / Arianespace', 'https://www.esa.int'
+            ),
+            make(
+                'SEED-LAUNCH-MIURA-5', 'lanzamientos', 120,
+                'LANZAMIENTOS · ESPAÑA', 'LAUNCHES · SPAIN',
+                'Miura 5 de PLD Space: del banco de ensayos de Teruel a la rampa orbital de la Guayana Francesa',
+                'Tras el hito suborbital de Miura 1 en 2023, el programa español califica sus motores TEPREL-C y prepara las primeras plataformas orbitales.',
+                'Tras completar en octubre de 2023 el primer vuelo de un cohete privado español con el Miura 1 desde Huelva, la compañía ilicitana PLD Space dio el salto hacia su lanzador orbital de dos etapas: Miura 5, diseñado para situar pequeños satélites comerciales y científicos en órbita baja.\n\nEl camino desde el prototipo hasta la rampa pasa por cientos de encendidos estáticos de motores TEPREL-C en el aeropuerto de Teruel, pruebas de tanques presurizados y el despliegue de infraestructura propia en la Guayana Francesa.\n\nAl igual que en nuestro Banco de Pruebas del aula, ninguna empresa pasa al lanzamiento definitivo sin verificar primero en tierra la estanqueidad y el empuje real.',
+                'PLD Space’s Miura 5: From Teruel Static-Fire Benches to French Guiana’s Orbital Pad',
+                'Following Miura 1’s 2023 suborbital flight, Spain’s orbital program qualifies TEPREL-C engines on the ground first.',
+                'After flying Miura 1 in October 2023 as Spain’s first private rocket, Elche-based PLD Space shifted focus to the two-stage orbital Miura 5 launcher. Reaching the launchpad requires sustained TEPREL-C static-fire campaigns in Teruel, tank pressure qualification, and dedicated pad infrastructure in French Guiana.\n\nJust like MARS-KET’s Test Bench, teams qualify propulsion and seals thoroughly on the ground before orbital flight.',
+                'Las campañas en banco de pruebas separan una idea prometedora de un cohete fiable listo para operar.',
+                'Test-bench campaigns separate promising concepts from reliable operational launch vehicles.',
+                '¿Qué datos críticos comprueba un ingeniero en un encendido estático en tierra antes de soltar el cohete?',
+                'What critical parameters do engineers verify during a static fire before releasing a rocket?',
+                'MIURA 5 · PLD SPACE', 'TERUEL -> KOUROU', '#ef4444', '#21080b',
+                'PLD Space / Archivo AEE', 'https://www.pldspace.com'
+            ),
+            make(
+                'SEED-LAUNCH-COUNTDOWN-REUSE', 'lanzamientos', 125,
+                'LANZAMIENTOS · ECONOMÍA', 'LAUNCHES · ECONOMICS',
+                'Go, Hold, Scrub y recuperación de etapas: cómo leer una cuenta atrás y por qué reutilizar baja el coste por kilo',
+                'Qué significan los avisos técnicos previos al T-0 y cómo el aterrizaje de la primera etapa transforma la ecuación Altura / Coste.',
+                'Seguir un lanzamiento real exige entender su vocabulario: «Go» confirma que un subsistema está en parámetros; «Hold» detiene el reloj ante una comprobación o racha de viento; y «Scrub» aplaza el despegue por seguridad hasta la siguiente ventana orbital disponible.\n\nDurante décadas, cada cohete se perdía completo en el océano tras un solo uso. Con la recuperación propulsiva de primeras etapas en plataformas como Falcon 9 o New Glenn y proyectos europeos como MaiaSpace, el fuselaje y los motores más caros regresan para volar de nuevo.\n\nReutilizar la etapa principal equivale exactamente a lo que hacéis en MARS-KET cuando conserváis vuestro cuerpo principal en buenas condiciones entre ensayos para maximizar E = Altura / Coste.',
+                'Go, Hold, Scrub, and Booster Recovery: Reading a Countdown and the Economics of Reuse',
+                'What launch-control calls mean before T-0, and why recovering first stages reshapes cost per kilogram.',
+                'Following a real countdown starts with three calls: "Go" clears a subsystem, "Hold" pauses the clock for checks or upper-level winds, and "Scrub" safely postpones liftoff to the next launch window. Historically, every rocket was discarded after a single flight; booster recovery on vehicles like Falcon 9, New Glenn, and MaiaSpace lets the costliest engines fly repeatedly.\n\nReusing a durable airframe across tests mirrors MARS-KET’s goal of maximizing E = Height / Cost.',
+                'Aplazar un ensayo inseguro («Scrub») ahorra reparaciones y reutilizar estructura multiplica vuestra eficiencia E.',
+                'Scrubbing an unsafe test avoids repairs, while reusing airframes multiplies your E score.',
+                '¿Por qué un aplazamiento («Scrub») por viento en altura suele ser una decisión financiera inteligente además de segura?',
+                'Why is scrubbing a launch due to upper-level winds a smart financial decision as well as a safety call?',
+                'CUENTA ATRAS T-0', 'GO · HOLD · SCRUB', '#22d3ee', '#071824',
+                'Órbita. / Guía de Lanzamientos', 'https://www.esa.int'
+            ),
+            // --- TECNOLOGÍA (3 reportajes verificados, no cohetes/despegues) ---
+            make(
+                'SEED-TECH-DSOC-LASER', 'tecnologia', 130,
+                'TECNOLOGÍA AEROESPACIAL', 'AEROSPACE TECHNOLOGY',
+                'Comunicaciones láser en espacio profundo: la demostración DSOC de la NASA supera la barrera de la radio',
+                'Transmitir datos con haces ópticos infrarrojos desde la sonda Psyche multiplica la capacidad frente a las ondas de radio tradicionales.',
+                'A medida que las sondas viajan más allá de Marte, enviar imágenes de alta resolución por radio se vuelve un cuello de botella lento. Con el experimento Deep Space Optical Communications (DSOC) instalado en la sonda Psyche, la NASA demostró enlaces láser en el infrarrojo cercano desde cientos de millones de kilómetros de distancia.\n\nAl tener longitudes de onda mucho más cortas que las microondas de radio, un haz láser empaqueta entre 10 y 100 veces más información por segundo, aunque exige una puntería extrema para compensar el movimiento relativo entre la nave y los telescopios receptores en la Tierra mientras la luz tarda minutos en viajar.\n\nLa óptica geométrica y las ondas electromagnéticas se convierten así en el próximo salto de las telecomunicaciones interplanetarias.',
+                'Deep Space Laser Communications: NASA’s DSOC Pushes Past Radio Bottlenecks',
+                'Infrared optical links aboard Psyche multiply deep-space data rates over conventional radio antennas.',
+                'As probes travel beyond Mars, traditional radio downlinks become narrow bottlenecks. With the Deep Space Optical Communications (DSOC) payload aboard Psyche, NASA demonstrated near-infrared laser links across hundreds of millions of kilometers—packing 10 to 100 times more bandwidth than radio, while demanding pinpoint pointing to account for Earth and spacecraft motion during multi-minute light travel times.',
+                'Mayor ancho de banda en órbita significa telemetría más rica para tomar decisiones de misión sin demoras.',
+                'Higher bandwidth in orbit delivers richer telemetry for faster mission decisions.',
+                '¿Qué dificultad física adicional aparece al apuntar un láser fino desde millones de kilómetros frente a emitir ondas de radio anchas?',
+                'What extra physical challenge appears when aiming a narrow laser from millions of kilometers away compared to broad radio beams?',
+                'ENLACE LASER DSOC', 'ESPACIO PROFUNDO · OPTICA', '#00f0ff', '#061926',
+                'NASA JPL / DSOC', 'https://www.jpl.nasa.gov'
+            ),
+            make(
+                'SEED-TECH-SAR-5G-IOT', 'tecnologia', 135,
+                'TECNOLOGÍA AEROESPACIAL', 'AEROSPACE TECHNOLOGY',
+                'Radar SAR y conectividad 5G-IoT desde órbita baja: ver a través de las nubes y conectar sensores rurales',
+                'Constelaciones como ICEYE y la española Sateliot amplían los usos cotidianos de los satélites pequeños sin necesidad de grandes antenas.',
+                'Una cámara óptica convencional queda ciega si hay nubes o es de noche, justo cuando suelen ocurrir inundaciones o grandes incendios. Los satélites equipados con Radar de Apertura Sintética (SAR), como la constelación europea ICEYE, emiten pulsos de microondas propios y reconstruyen mapas centimétricos del terreno a cualquier hora y bajo tormentas.\n\nEn paralelo, iniciativas españolas como Sateliot despliegan nanosatélites en órbita baja capaces de actuar como torres de telefonía en el espacio bajo estándar 5G-IoT, permitiendo que sensores agrícolas, ganaderos o marítimos sigan conectados en zonas sin cobertura terrestre.\n\nLa tecnología espacial deja de depender solo de gigantes gubernamentales para ofrecer servicios de datos continuos.',
+                'SAR Radar and 5G-IoT from Low Orbit: Seeing Through Clouds and Connecting Rural Sensors',
+                'Constellations like ICEYE and Spain’s Sateliot turn small satellites into all-weather emergency and IoT relays.',
+                'Optical cameras go blind under clouds or night—precisely when floods and wildfires strike. Synthetic Aperture Radar (SAR) satellites such as ICEYE emit microwave pulses to map terrain day or night through storms. Meanwhile, Spanish startup Sateliot operates LEO nanosatellites acting as orbital 5G-IoT towers so agricultural and maritime sensors stay online far beyond terrestrial cell coverage.',
+                'Combinar sensores especializados y telecomunicaciones eficientes genera valor comercial real en el mercado espacial.',
+                'Pairing specialized sensors with efficient telecom links creates real commercial value.',
+                '¿Por qué un satélite radar SAR puede vigilar una inundación bajo tormenta mientras un satélite fotográfico normal no ve nada?',
+                'Why can a SAR radar satellite monitor a flood under storm clouds while a regular camera sees nothing?',
+                'RADAR SAR & 5G-IOT', 'SATELITES EN ORBITA BAJA', '#10b981', '#062016',
+                'ESA / Sateliot / ICEYE', 'https://www.esa.int'
+            ),
+            make(
+                'SEED-TECH-DEBRIS-GALILEO', 'tecnologia', 140,
+                'TECNOLOGÍA AEROESPACIAL', 'AEROSPACE TECHNOLOGY',
+                'Basura espacial y relojes atómicos: cómo se protegen las órbitas útiles y se ajusta el GPS europeo Galileo',
+                'Desde misiones de inspección y captura activa como ADRAS-J hasta las correcciones relativistas que mantienen la precisión de navegación al metro.',
+                'Más de 68.000 fragmentos mayores de diez centímetros y millones de partículas milimétricas orbitan la Tierra a velocidades superiores a 27.000 km/h. Para evitar colisiones en cascada, misiones de servicio en órbita como ADRAS-J (Astroscale) y las directrices Cero Basura de la ESA prueban cómo inspeccionar, capturar y desorbitar etapas antiguas en desuso.\n\nAl mismo tiempo, los satélites de la constelación europea Galileo mantienen relojes atómicos de altísima estabilidad que deben corregir cada día un pequeño desfase temporal predicho por la relatividad de Einstein —por su velocidad orbital y menor gravedad— sin el cual los navegadores del móvil acumularían kilómetros de error.\n\nFísica teórica y mantenimiento responsable de órbita sostienen hoy servicios que usamos cada minuto.',
+                'Orbital Debris Removal and Atomic Clocks: Protecting Orbits and Calibrating Europe’s Galileo',
+                'Active inspection missions like ADRAS-J and relativistic clock corrections keep orbital infrastructure accurate and safe.',
+                'Tens of thousands of tracked fragments larger than 10 cm orbit Earth above 27,000 km/h. Service missions such as Astroscale’s ADRAS-J and ESA’s Zero Debris guidelines test close-proximity inspection and deorbiting of spent stages. Meanwhile, Europe’s Galileo navigation fleet carries atomic clocks adjusted daily for Einstein’s relativistic time dilation so phone maps remain accurate to the meter.',
+                'La precisión científica y la responsabilidad ambiental en órbita forman parte de la excelencia operativa.',
+                'Scientific precision and orbital sustainability go hand in hand with operational excellence.',
+                '¿Qué ocurriría con las telecomunicaciones en pocos años si ninguna empresa retirara o desorbitara los satélites y etapas viejas?',
+                'What would happen to global communications if operators never retired or deorbited old stages and satellites?',
+                'ORBITA LIMPIA & GALILEO', 'DEBRIS Y RELOJES ATOMICOS', '#6366f1', '#0e0f29',
+                'ESA Space Environment / Galileo', 'https://www.esa.int'
+            ),
+            // --- INDUSTRIA (2 reportajes nuevos + Musk patente = 3) ---
+            make(
+                'SEED-IND-FIXED-PRICE', 'industria', 145,
+                'INDUSTRIA Y NEWSPACE', 'INDUSTRY & NEWSPACE',
+                'Contratos de precio fijo e hitos: cómo NASA y ESA transformaron el modo de financiar empresas privadas',
+                'Pasar del pago de sobrecostes abiertos al pago por entregables verificados obligó a las startups espaciales a controlar su presupuesto desde el primer día.',
+                'Durante la era clásica del espacio, muchos contratos públicos funcionaban bajo el modelo de reembolso de costes más margen: si un proyecto tardaba el doble y costaba el triple, la agencia seguía pagando las facturas. Con la llegada de programas comerciales como COTS y Commercial Crew de la NASA o las iniciativas comerciales de la ESA, el modelo cambió hacia contratos de precio fijo por hitos.\n\nBajo ese esquema, la empresa recibe cada pago únicamente cuando supera una revisión técnica concreta o completa un vuelo de demostración. Si se pasa de presupuesto, el sobrecoste recae sobre su propia tesorería.\n\nEs exactamente la misma regla que rige los Contratos Comerciales de MARS-KET: solo cobráis el hito cuando cumplís la altura, el plazo y el Libro Mayor sin caer en números rojos.',
+                'Fixed-Price Milestone Contracts: How NASA and ESA Reshaped Commercial Space Procurement',
+                'Shifting from open cost-plus billing to milestone payments forced space startups to master cash flow from day one.',
+                'Traditional aerospace contracts often used cost-plus billing, passing overruns back to public agencies. Programs like NASA’s COTS and Commercial Crew—and newer ESA commercial initiatives—shifted toward fixed-price milestone contracts: startups get paid only after passing defined engineering reviews or flight demonstrations, absorbing any cost overruns themselves.\n\nMARS-KET commercial contracts follow that exact logic: milestone payouts unlock only when technical targets and Ledger discipline are met.',
+                'Controlar el flujo de caja y cumplir hitos en plazo evita quedarse sin liquidez antes del cierre de fase.',
+                'Controlling cash flow and hitting deadlines prevents running out of liquidity before phase close.',
+                '¿Por qué un contrato de precio fijo por hitos premia tanto la eficiencia técnica como la disciplina financiera?',
+                'Why does a fixed-price milestone contract reward financial discipline as much as engineering talent?',
+                'CONTRATOS POR HITOS', 'ECONOMIA DEL NEWSPACE', '#eab308', '#1f1805',
+                'Órbita. / Análisis Económico', 'https://www.nasa.gov'
+            ),
+            make(
+                'SEED-IND-SUPPLIER-NETWORK', 'industria', 150,
+                'INDUSTRIA Y PROVEEDORES', 'INDUSTRY & SUPPLIERS',
+                'La red B2B detrás de cada misión europea: el papel de GMV, Sener, Airbus y Deimos sin lanzar cohetes propios',
+                'Por qué la mayor parte de la industria aeroespacial factura diseñando subsistemas, software de guiado, mecanismos y estructuras para terceros.',
+                'Cuando pensamos en el sector espacial solemos imaginar solo el cohete en la rampa, pero la mayor parte del empleo y de la facturación aeroespacial vive en la cadena de proveedores especializados B2B. En Europa y España, compañías como GMV (segmento terreno y dinámica orbital), Sener (mecanismos de precisión y guiado), Airbus (estructuras y satélites) o Deimos (análisis de misión) suministran componentes críticos para misiones de la ESA y la NASA.\n\nNinguna empresa fabrica cada tornillo, sensor o algoritmo en solitario. Especializarse en un subsistema excelente y venderlo a otras compañías genera ingresos estables sin asumir todo el riesgo de un lanzador.\n\nEn el Mercado B2B de MARS-KET ocurre lo mismo: una startup que domina un módulo técnico o produce excedentes fiables puede financiar toda su campaña vendiendo a otras empresas.',
+                'The B2B Network Behind Every European Mission: GMV, Sener, Airbus, and Deimos',
+                'Why most aerospace revenue comes from supplying specialized guidance software, mechanisms, and subsystems to partners.',
+                'While launchpads grab headlines, most aerospace revenue flows through specialized B2B suppliers. European and Spanish firms such as GMV (flight dynamics and ground segments), Sener (precision mechanisms), Airbus (structures and spacecraft), and Deimos (mission analysis) supply critical subsystems across ESA and NASA programs without owning rockets.\n\nIn MARS-KET’s B2B Market, specializing in reliable components or surplus stock can fund your whole mission.',
+                'Vender componentes fiables en el mercado B2B convierte la capacidad técnica de taller en ingresos directos.',
+                'Selling reliable components in the B2B market turns workshop skill directly into revenue.',
+                '¿En qué casos puede ser más rentable para una startup vender subsistemas B2B que competir por construir todo desde cero?',
+                'When is it more profitable for a startup to supply B2B subsystems rather than building everything from scratch?',
+                'CADENA DE VALOR B2B', 'GMV · SENER · AIRBUS', '#ec4899', '#240818',
+                'ESA / Industria Aeroespacial', 'https://www.esa.int'
             )
         ];
     },
@@ -497,7 +782,7 @@ const state = {
             if (!seed || !seed.id || tombSet.has(String(seed.id))) return;
             const sId = String(seed.id);
             if (!byIdx.has(sId)) {
-                if (onlyInsertIfNoActualidad && list.some(n => n && (n.section || 'actualidad') === 'actualidad')) {
+                if (onlyInsertIfNoActualidad && list.some(n => n && (n.section === 'industria' || n.section === 'actualidad'))) {
                     return;
                 }
                 byIdx.set(sId, list.length);
@@ -508,9 +793,8 @@ const state = {
             const cur = list[idx];
             if (!cur || cur.userEdited) return;
             const curSeedVer = Number(cur.seedVersion) || 0;
-            const targetVer = Number(seed.seedVersion) || 2;
-            const wasUntouchedLegacySeed = curSeedVer < targetVer && (Number(cur.updatedAt) || 0) <= 1763750000000;
-            if (!wasUntouchedLegacySeed) return;
+            const targetVer = Number(seed.seedVersion) || 3;
+            if (curSeedVer >= targetVer) return;
 
             const hasCustomPhoto = Boolean(cur.imageUrl && !String(cur.imageUrl).startsWith('data:image/svg+xml'));
             list[idx] = {
@@ -519,8 +803,9 @@ const state = {
                 placement: cur.placement || seed.placement,
                 subOrder: cur.subOrder || seed.subOrder || 0,
                 featured: cur.featured !== undefined ? cur.featured : seed.featured,
-                placementUpdatedAt: cur.placementUpdatedAt || seed.placementUpdatedAt || cur.updatedAt,
-                publishedAt: cur.publishedAt || seed.publishedAt,
+                placementUpdatedAt: cur.placementUpdatedAt || seed.placementUpdatedAt || seed.updatedAt,
+                publishedAt: curSeedVer < 3 ? seed.publishedAt : (cur.publishedAt || seed.publishedAt),
+                publishedIsoDate: curSeedVer < 3 ? seed.publishedIsoDate : (cur.publishedIsoDate || seed.publishedIsoDate),
                 userEdited: false
             };
         };
@@ -528,6 +813,23 @@ const state = {
         mergeSeedIntoList(this.getDefaultOrbitalReportSeed(), true);
         this.getEditorialSectionSeeds().forEach(seed => mergeSeedIntoList(seed, false));
         return list;
+    },
+
+    _toMadridIsoDate(ts, fallbackStr = '') {
+        const raw = String(fallbackStr || '').trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+        const dmy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (dmy) {
+            return `${dmy[3]}-${String(dmy[2]).padStart(2, '0')}-${String(dmy[1]).padStart(2, '0')}`;
+        }
+        const nTs = Number(ts);
+        if (Number.isFinite(nTs) && nTs > 0) {
+            try {
+                const iso = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date(nTs));
+                if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+            } catch (e) {}
+        }
+        return '2026-11-23';
     },
 
     normalizeNewsItem(item) {
@@ -539,15 +841,27 @@ const state = {
         const placement = (rawPlc === 'front' || rawPlc === 'sub' || rawPlc === 'archive')
             ? rawPlc
             : (item.featured ? 'front' : 'archive');
-        const rawSec = String(item.section || '').toLowerCase();
-        const section = (rawSec === 'historia' || rawSec === 'inventos' || rawSec === 'actualidad')
+        const rawSec = String(item.section || '').toLowerCase().trim();
+        const validSections = ['nasa', 'lanzamientos', 'tecnologia', 'industria', 'inventos', 'historia', 'juguetes', 'entrevistas'];
+        const section = validSections.includes(rawSec)
             ? rawSec
-            : 'actualidad';
+            : 'industria';
+        const status = String(item.status || 'PUBLISHED').toUpperCase() === 'DRAFT' ? 'DRAFT' : 'PUBLISHED';
+        const edNum = Number(item.editionNumber);
+        const editionNumber = (Number.isFinite(edNum) && edNum >= 0) ? Math.floor(edNum) : 0;
+        const origin = String(item.origin || '').toUpperCase() === 'SIMULATION' || item.coId
+            ? 'SIMULATION'
+            : 'REAL';
+        const pubDateLabel = String(item.publishedDate || item.date || new Date(pubTs).toLocaleDateString('es-ES'));
+        const publishedIsoDate = this._toMadridIsoDate(pubTs, item.publishedIsoDate || pubDateLabel);
         return {
             id: String(item.id),
             seedVersion: Number(item.seedVersion) || 0,
             userEdited: Boolean(item.userEdited),
             section,
+            status,
+            editionNumber,
+            origin,
             category: String(item.category || 'CRÓNICA AEE'),
             categoryEn: String(item.categoryEn || item.category || 'AEE DISPATCH'),
             title: String(item.title || 'Comunicado Orbital'),
@@ -557,7 +871,7 @@ const state = {
             subtitleEn: String(item.subtitleEn || ''),
             bodyEn: String(item.bodyEn || ''),
             imageUrl: item.imageUrl || null,
-            sourceName: String(item.sourceName || item.author || 'Agencia Espacial AEE'),
+            sourceName: String(item.sourceName || item.author || 'Órbita.'),
             sourceUrl: item.sourceUrl || '',
             marsketImpact: String(item.marsketImpact || ''),
             marsketImpactEn: String(item.marsketImpactEn || ''),
@@ -568,8 +882,9 @@ const state = {
             placementUpdatedAt: plcUpdTs,
             placement,
             subOrder: placement === 'sub' ? (parseInt(item.subOrder, 10) || 1) : 0,
-            publishedDate: String(item.publishedDate || item.date || new Date(pubTs).toLocaleDateString('es-ES')),
-            featured: placement === 'front',
+            publishedDate: pubDateLabel,
+            publishedIsoDate,
+            featured: status === 'PUBLISHED' && placement === 'front',
             phase: String(item.phase || 'ALL'),
             classGroup: String(item.classGroup || 'ALL'),
             coId: item.coId || null,
@@ -581,8 +896,10 @@ const state = {
     resolveFeaturedNews(newsList) {
         const list = Array.isArray(newsList) ? newsList.filter(Boolean) : [];
         if (list.length === 0) return list;
-        const sorted = [...list].sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
-        const frontPool = sorted.filter(n => n.placement === 'front' || (n.featured && (n.section || 'actualidad') === 'actualidad'));
+        const publishedList = list.filter(n => n.status !== 'DRAFT');
+        const draftList = list.filter(n => n.status === 'DRAFT').map(n => ({ ...n, featured: false }));
+        const sorted = [...publishedList].sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
+        const frontPool = sorted.filter(n => n.placement === 'front' || (n.featured && n.section === 'industria'));
         const winner = frontPool.length > 0
             ? [...frontPool].sort((a, b) => Math.max(b.placementUpdatedAt || 0, b.updatedAt || 0, b.publishedAt || 0) - Math.max(a.placementUpdatedAt || 0, a.updatedAt || 0, a.publishedAt || 0))[0]
             : null;
@@ -599,7 +916,7 @@ const state = {
         const subRankMap = new Map();
         subPool.slice(0, 3).forEach((n, idx) => subRankMap.set(String(n.id), idx + 1));
 
-        return sorted.map(n => {
+        const resolvedPublished = sorted.map(n => {
             const nid = String(n.id);
             if (winnerId && nid === winnerId) {
                 return { ...n, placement: 'front', subOrder: 0, featured: true };
@@ -609,6 +926,7 @@ const state = {
             }
             return { ...n, placement: 'archive', subOrder: 0, featured: false };
         });
+        return resolvedPublished.concat(draftList);
     },
 
     calculateBomCost(co) {
@@ -863,8 +1181,12 @@ const state = {
         });
         d.news = Array.from(byNewsId.values());
         d.news = this.applyEditorialSeeds(d.news, newsTombSet);
+        const isCoordMigrate = Boolean(this.user && this.user.admin && String(this.user.role || '').startsWith('COORD'));
+        if (!isCoordMigrate) {
+            d.news = d.news.filter(n => n && n.status !== 'DRAFT');
+        }
         d.news = this.resolveFeaturedNews(d.news);
-        d.officialNews = d.news;
+        delete d.officialNews;
         d.vipStartups = Array.isArray(d.vipStartups) ? d.vipStartups : [];
         d.realCompanyLogos = (d.realCompanyLogos && typeof d.realCompanyLogos === 'object' && !Array.isArray(d.realCompanyLogos)) ? d.realCompanyLogos : {};
         d.realCompanyLogosUpdatedAt = Number(d.realCompanyLogosUpdatedAt) || 0;
@@ -1023,6 +1345,9 @@ const state = {
         }
 
         d.config.guidelines = d.config.guidelines || { techReportDocUrl: "", techReportNotes: "" };
+        d.config.orbita = (d.config.orbita && typeof d.config.orbita === 'object')
+            ? { currentEditionNumber: Math.max(0, parseInt(d.config.orbita.currentEditionNumber, 10) || 0) }
+            : { currentEditionNumber: 0 };
         d.config.teachers = d.config.teachers || JSON.parse(JSON.stringify(DEFAULT_STATE.config.teachers));
         
         if(d.config.teachers.COORD) {
@@ -2284,8 +2609,18 @@ const state = {
             .map(n => this.normalizeNewsItem(n))
             .filter(Boolean);
         merged.news = this.applyEditorialSeeds(merged.news, allDeletedNewsIds);
+        const isCoordMerge = Boolean(this.user && this.user.admin && String(this.user.role || '').startsWith('COORD'));
+        if (!isCoordMerge) {
+            merged.news = merged.news.filter(n => n && n.status !== 'DRAFT');
+        }
         merged.news = this.resolveFeaturedNews(merged.news);
-        merged.officialNews = merged.news;
+        delete merged.officialNews;
+        const sOrbEd = Number(serverData?.config?.orbita?.currentEditionNumber) || 0;
+        const lOrbEd = Number(localData?.config?.orbita?.currentEditionNumber) || 0;
+        merged.config = merged.config || {};
+        merged.config.orbita = {
+            currentEditionNumber: isCoordMerge ? Math.max(sOrbEd, lOrbEd, 0) : Math.max(sOrbEd, 0)
+        };
         merged.vipStartups = Array.isArray(serverData.vipStartups)
             ? serverData.vipStartups
             : (Array.isArray(localData.vipStartups) ? localData.vipStartups : []);
@@ -3881,7 +4216,8 @@ const state = {
                 const isEditingInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
                 const modalEl = typeof document !== 'undefined' ? document.getElementById('modal-overlay') : null;
                 const isModalOpen = modalEl && !modalEl.classList.contains('hidden');
-                if (!isEditingInput && !isModalOpen) {
+                const isReadingOrbita = ui.activeTab === 'news' && Boolean(ui.activeFullArticleReader);
+                if (!isEditingInput && !isModalOpen && !isReadingOrbita) {
                     const savedScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
                     ui.render();
                     if (typeof window !== 'undefined') {

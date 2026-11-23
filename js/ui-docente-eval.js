@@ -843,10 +843,10 @@ Object.assign(ui, {
                     ? `<span class="text-[10px] bg-red-950/80 text-red-300 border border-red-500/60 px-2 py-0.5 rounded font-mono font-bold">[⚠️ SUBSANACIÓN DOCENTE]</span>`
                     : (isPendingReview
                         ? `<span class="text-[10px] bg-amber-950/70 text-amber-300 border border-amber-500/50 px-2 py-0.5 rounded font-mono font-bold">[⏳ PENDIENTE PUBLICACIÓN]</span>`
-                        : `<span class="text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-mono font-bold">[✓ PUBLICADA EN ORBITAL REPORT]</span>`);
-                const canModPr = typeof this.canModeratePressReleases === 'function' ? this.canModeratePressReleases() : Boolean(state.user?.admin);
-                const approvePrBtnHtml = (canModPr && isPendingReview && targetCid)
-                    ? `<button type="button" onclick="ui.approvePressReleaseForNewspaper('${this.escapeHTML(targetCid)}', '${ph}')" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-mars-green text-black hover:bg-white rounded transition-colors font-black uppercase min-h-[44px]" title="Aprobar y publicar en ORBITAL REPORT">✅ Publicar en Periódico</button>`
+                        : `<span class="text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-mono font-bold">[✓ REVISADA / EN ÓRBITA.]</span>`);
+                const isCoordPr = typeof this.isNewsCoordinator === 'function' ? this.isNewsCoordinator() : false;
+                const approvePrBtnHtml = (isCoordPr && isPendingReview && targetCid)
+                    ? `<button type="button" onclick="ui.openOrbitaDraftFromDoc15('${this.escapeHTML(targetCid)}', '${ph}')" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-mars-green text-black hover:bg-white rounded transition-colors font-black uppercase min-h-[44px]" title="Redactar noticia en Órbita. a partir de este DOC_15">📰 Redactar en Órbita.</button>`
                     : '';
                 const returnBtnHtml = (state.user?.admin && targetCid)
                     ? `<button type="button" onclick="ui.modalTeacherReturnPressRelease('${this.escapeHTML(targetCid)}', '${ph}')" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-red-950/60 border border-red-500/50 text-red-300 hover:bg-red-900/60 hover:text-white rounded transition-colors font-bold uppercase min-h-[44px]" title="Requerir subsanación de nota de prensa">↩ Subsanar</button>`

@@ -1595,8 +1595,8 @@ const ui = {
 
         const msg = String(notif.message || '').toLowerCase();
 
-        // Prensa, Crónica AEE y Tablón de Noticias
-        if (msg.includes('nota de prensa') || msg.includes('crónica') || msg.includes('tablón de noticias') || msg.includes('aee prensa')) {
+        // Prensa, Crónica AEE y Tablón de Noticias («Órbita.»)
+        if (msg.includes('nota de prensa') || msg.includes('crónica') || msg.includes('tablón de noticias') || msg.includes('aee prensa') || msg.includes('órbita.') || msg.includes('periódico órbita')) {
             return { view: 'news' };
         }
 
@@ -3354,7 +3354,7 @@ const ui = {
             }
             if(balEl) balEl.innerText = 'VIP';
             if(infoEl) {
-                infoEl.innerText = 'ORBITAL REPORT · LECTOR INVITADO';
+                infoEl.innerText = 'Órbita. · LECTOR INVITADO';
                 infoEl.title = 'Acceso de lectura pública al periódico digital';
             }
             if(miniLogo) {

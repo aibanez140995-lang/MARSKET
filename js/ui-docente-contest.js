@@ -1222,7 +1222,10 @@ Object.assign(ui, {
         </div>`;
     },
 
-    renderContestNewsShowcase(currentCo = null) {
+    renderContestNewsShowcase(opts = null) {
+        const noEmoji = Boolean(opts && typeof opts === 'object' && opts.noEmoji);
+        const currentCo = (opts && opts.currentCo) ? opts.currentCo : (opts && opts.id ? opts : null);
+        const stripEmojis = (s) => noEmoji ? String(s || '').replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F]/gu, '').replace(/\s{2,}/g, ' ') : String(s || '');
         const fc = this.getContestState();
         const classes = this.getContestClasses();
         const companies = state.data?.companies || {};
@@ -1231,7 +1234,7 @@ Object.assign(ui, {
 
         if (!hasAnyFinalist && !fc.published) {
             if (phaseFilter !== 'V') return '';
-            return `
+            return stripEmojis(`
             <div class="terminal-border bg-mars-card p-6 border-l-4 border-mars-green mb-6">
                 <div class="flex items-center gap-2 mb-2">
                     <span class="text-xs font-black uppercase px-2 py-0.5 bg-black border border-mars-green text-mars-green">FASE V // 19/05/2027</span>
@@ -1241,12 +1244,12 @@ Object.assign(ui, {
                 <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">
                     Al término de la Fase IV, Coordinación proclamará aquí a la <strong>1 startup finalista por cada clase (A–F)</strong> que volará su cohete en directo el <strong>19/05/2027</strong>.
                 </p>
-            </div>`;
+            </div>`);
         }
 
         // Si NO está publicado: estricto Sugg 1 = NO -> mostrar SOLO Finalistas A-F + estado pendiente, CERO alturas/costes/E/premios
         if (!fc.published) {
-            return `
+            return stripEmojis(`
             <div class="terminal-border bg-mars-card p-5 border-l-4 border-mars-green mb-6">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 pb-3 border-b border-slate-800">
                     <div>
@@ -1278,7 +1281,7 @@ Object.assign(ui, {
                         </div>`;
                     }).join('')}
                 </div>
-            </div>`;
+            </div>`);
         }
 
         // Si SÍ está publicado: mostrar Podio + 6 Galardones + Marcador en Directo con E y Vídeos
@@ -1303,7 +1306,7 @@ Object.assign(ui, {
             </div>`;
         };
 
-        return `
+        return stripEmojis(`
         <div class="terminal-border bg-mars-card p-5 border-l-4 border-mars-green mb-6 space-y-5">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-800">
                 <div>
@@ -1396,7 +1399,7 @@ Object.assign(ui, {
                     </table>
                 </div>
             </div>
-        </div>`;
+        </div>`);
     },
 
     renderContestDashboardBanner(co) {

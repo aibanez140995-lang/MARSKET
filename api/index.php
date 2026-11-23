@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.56
+// Versión: v2.0.58
 
 declare(strict_types=1);
 
@@ -329,6 +329,14 @@ function sanitizeStateForClient(array $state, bool $includeContestDraft = false,
     }
     if (!$includeContestDraft) {
         unset($state['printEditions'], $state['printAdLibrary'], $state['deletedPrintEditionIds']);
+        if (isset($state['config']['orbita'])) {
+            unset($state['config']['orbita']);
+        }
+        if (isset($state['news']) && is_array($state['news'])) {
+            $state['news'] = array_values(array_filter($state['news'], function ($it) {
+                return is_array($it) && strtoupper((string)($it['status'] ?? 'PUBLISHED')) !== 'DRAFT';
+            }));
+        }
     }
     unset($state['officialNews']);
     return $state;
@@ -510,7 +518,7 @@ try {
             $serverETag = 'W/"v-' . $version . '-' . $cu . '-' . $readerScope . '"';
             $clientETag = $_SERVER['HTTP_IF_NONE_MATCH'] ?? '';
 
-            if ($clientETag === $serverETag) {
+            if (!$isVipReader && $clientETag === $serverETag) {
                 http_response_code(304);
                 header('ETag: ' . $serverETag);
                 header('Cache-Control: private, no-cache');
@@ -564,7 +572,10 @@ try {
             $decoded = json_decode($cleanPayload, true);
             if (is_array($decoded)) {
                 if ($isVipReader) {
-                    $vipNews = array_values(is_array($decoded['news'] ?? null) ? $decoded['news'] : (is_array($decoded['officialNews'] ?? null) ? $decoded['officialNews'] : []));
+                    $rawVipNews = is_array($decoded['news'] ?? null) ? $decoded['news'] : (is_array($decoded['officialNews'] ?? null) ? $decoded['officialNews'] : []);
+                    $vipNews = array_values(array_filter($rawVipNews, function ($it) {
+                        return is_array($it) && strtoupper((string)($it['status'] ?? 'PUBLISHED')) !== 'DRAFT';
+                    }));
                     $vipStartups = [];
                     if (!empty($decoded['companies']) && is_array($decoded['companies'])) {
                         foreach ($decoded['companies'] as $vCid => $vCo) {
@@ -631,14 +642,26 @@ try {
                         'catalog' => [],
                         'config' => [
                             'phase' => $decoded['config']['phase'] ?? 'I',
-                            'updatedAt' => $decoded['config']['updatedAt'] ?? 0
+                            'updatedAt' => $decoded['config']['updatedAt'] ?? 0,
+                            'orbita' => [
+                                'currentEditionNumber' => (int)($decoded['config']['orbita']['currentEditionNumber'] ?? 0)
+                            ]
                         ]
                     ];
+                    $vipJson = json_encode($vipState, JSON_UNESCAPED_UNICODE);
+                    $vipETag = 'W/"vip-' . md5((string)$vipJson) . '"';
+                    if ($clientETag === $vipETag) {
+                        http_response_code(304);
+                        header('ETag: ' . $vipETag);
+                        header('Cache-Control: private, no-cache');
+                        header('Vary: X-Marsket-Auth');
+                        exit;
+                    }
                     header('Content-Type: application/json; charset=utf-8');
-                    header('ETag: ' . $serverETag);
+                    header('ETag: ' . $vipETag);
                     header('Cache-Control: private, no-cache');
                     header('Vary: X-Marsket-Auth');
-                    echo json_encode($vipState, JSON_UNESCAPED_UNICODE);
+                    echo $vipJson;
                     exit;
                 }
                 ensureTestCompaniesInState($decoded);
@@ -782,7 +805,7 @@ try {
                         'companyMeta' => [
                             'hasAux' => false,
                             'isVip' => true,
-                            'name' => 'Lector Invitado · ORBITAL REPORT'
+                            'name' => 'Lector Invitado · Órbita.'
                         ]
                     ], JSON_UNESCAPED_UNICODE);
                     exit;
@@ -805,7 +828,7 @@ try {
                     echo json_encode([
                         'verified' => $verified,
                         'isVip' => true,
-                        'companyName' => 'ORBITAL REPORT · Lector VIP',
+                        'companyName' => 'Órbita. · Lector VIP',
                         'authStamp' => 1,
                         'token' => $verified ? issueSignedSessionToken($pdo, ['typ' => 'V', 'coId' => 'vip_reader', 'role' => 'VIP_READER', 'stamp' => 1]) : null
                     ], JSON_UNESCAPED_UNICODE);
@@ -1095,16 +1118,21 @@ try {
                     if (isset($currentState['news'])) {
                         $payload['news'] = $currentState['news'];
                     }
-                    if (isset($currentState['officialNews'])) {
-                        $payload['officialNews'] = $currentState['officialNews'];
+                    if (!isset($payload['config']) || !is_array($payload['config'])) {
+                        $payload['config'] = [];
+                    }
+                    if (isset($currentState['config']['orbita'])) {
+                        $payload['config']['orbita'] = $currentState['config']['orbita'];
+                    } else {
+                        unset($payload['config']['orbita']);
                     }
                 } elseif (isset($payload['news']) && is_array($payload['news'])) {
                     $delNewsSet = array_flip($mergedNewsTomb);
                     $payload['news'] = array_values(array_filter($payload['news'], function ($it) use ($delNewsSet) {
                         return is_array($it) && !empty($it['id']) && !isset($delNewsSet[(string)$it['id']]);
                     }));
-                    $payload['officialNews'] = $payload['news'];
                 }
+                unset($payload['officialNews']);
                 $currDismissed = is_array($currentState['dismissedNotificationIds'] ?? null) ? $currentState['dismissedNotificationIds'] : [];
                 $incDismissed = is_array($payload['dismissedNotificationIds'] ?? null) ? $payload['dismissedNotificationIds'] : [];
                 $payload['dismissedNotificationIds'] = array_values(array_unique(array_map('strval', array_merge($currDismissed, $incDismissed))));
@@ -3260,6 +3288,7 @@ try {
                 $currentState['config'] = [];
             }
             $currentState['config']['nextOrderId'] = 1001;
+            $currentState['config']['orbita'] = ['currentEditionNumber' => 0];
             $currentState['config']['updatedAt'] = $now;
             $currentState['resetEpoch'] = $newEpoch;
             $currentState['version'] = $newVersion;
@@ -3269,6 +3298,7 @@ try {
             $saveStmt->execute([':data' => json_encode($currentState, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
 
             $pdo->exec("DELETE FROM company_state");
+            $pdo->exec("DELETE FROM news_views");
             commitTx($pdo);
 
             echo json_encode([
@@ -3418,38 +3448,199 @@ try {
             }
             header('Content-Type: image/svg+xml; charset=utf-8');
             header('Cache-Control: public, max-age=3600');
-            echo '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#111827"/><stop offset="100%" stop-color="#1e293b"/></linearGradient></defs><rect width="1280" height="720" fill="url(#g)"/><g stroke="#cbd5e1" stroke-opacity="0.15"><path d="M0 180H1280M0 360H1280M0 540H1280M320 0V720M640 0V720M960 0V720"/></g><polygon points="640,120 685,250 685,460 595,460 595,250" fill="#f8fafc" fill-opacity="0.9"/><polygon points="595,380 540,490 595,460" fill="#991b1b"/><polygon points="685,380 740,490 685,460" fill="#991b1b"/><text x="640" y="575" text-anchor="middle" fill="#e2e8f0" font-family="Georgia, serif" font-size="34" font-weight="bold" letter-spacing="4">ORBITAL REPORT // ARCHIVO FOTOGRÁFICO</text></svg>';
+            echo '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#111827"/><stop offset="100%" stop-color="#1e293b"/></linearGradient></defs><rect width="1280" height="720" fill="url(#g)"/><g stroke="#cbd5e1" stroke-opacity="0.15"><path d="M0 180H1280M0 360H1280M0 540H1280M320 0V720M640 0V720M960 0V720"/></g><polygon points="640,120 685,250 685,460 595,460 595,250" fill="#f8fafc" fill-opacity="0.9"/><polygon points="595,380 540,490 595,460" fill="#991b1b"/><polygon points="685,380 740,490 685,460" fill="#991b1b"/><text x="640" y="575" text-anchor="middle" fill="#e2e8f0" font-family="Georgia, serif" font-size="34" font-weight="bold" letter-spacing="4">Órbita. // ARCHIVO FOTOGRÁFICO</text></svg>';
+            exit;
+        }
+
+        if ($endpoint === 'news/view' && $method === 'POST') {
+            $vAuth = verifySession($pdo);
+            if (empty($vAuth['authorized']) && empty($vAuth['isVip']) && empty($vAuth['isStudent']) && empty($vAuth['isTeacher'])) {
+                http_response_code(401);
+                echo json_encode(['error' => 'SESSION_REQUIRED']);
+                exit;
+            }
+            $vBody = json_decode($rawInput, true);
+            $articleId = trim((string)($vBody['articleId'] ?? ($vBody['article_id'] ?? '')));
+            if (!preg_match('/^[A-Za-z0-9_-]{3,80}$/', $articleId)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'INVALID_ARTICLE_ID']);
+                exit;
+            }
+            $nowSec = time();
+            $stmtV = $pdo->prepare("
+                INSERT INTO news_views (article_id, views, updated_at)
+                VALUES (:id, 1, :u)
+                ON CONFLICT(article_id) DO UPDATE SET views = views + 1, updated_at = :u
+            ");
+            $stmtV->execute([':id' => $articleId, ':u' => $nowSec]);
+            $stmtGet = $pdo->prepare("SELECT views FROM news_views WHERE article_id = :id");
+            $stmtGet->execute([':id' => $articleId]);
+            $vRow = $stmtGet->fetch();
+            echo json_encode([
+                'ok' => true,
+                'articleId' => $articleId,
+                'views' => (int)($vRow['views'] ?? 1)
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        if ($endpoint === 'news/top' && $method === 'GET') {
+            $limit = max(1, min(30, (int)($_GET['limit'] ?? 20)));
+            $stmtTop = $pdo->prepare("SELECT article_id, views FROM news_views WHERE views > 0 ORDER BY views DESC, updated_at DESC LIMIT :lim");
+            $stmtTop->bindValue(':lim', $limit, \PDO::PARAM_INT);
+            $stmtTop->execute();
+            $topRows = $stmtTop->fetchAll();
+            $topItems = [];
+            foreach ($topRows as $trRow) {
+                $topItems[] = [
+                    'articleId' => (string)$trRow['article_id'],
+                    'views' => (int)$trRow['views']
+                ];
+            }
+            header('Cache-Control: public, max-age=60');
+            echo json_encode(['items' => $topItems], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
 
         if ($endpoint === 'news/wire') {
-            $q = trim((string)($_GET['q'] ?? 'rocket'));
+            $sectionMap = [
+                'nasa' => 'nasa',
+                'lanzamientos' => 'launches',
+                'tecnologia' => 'technology',
+                'industria' => 'industry'
+            ];
+            $rawSection = strtolower(trim((string)($_GET['section'] ?? '')));
+            $secKey = isset($sectionMap[$rawSection]) ? $rawSection : '';
+            $q = $secKey !== '' ? $sectionMap[$secKey] : trim((string)($_GET['q'] ?? 'rocket'));
             if ($q === '') $q = 'rocket';
-            $cacheKey = 'wire_' . md5(strtolower($q));
+            $forceReq = ((string)($_GET['force'] ?? '0') === '1');
+            $nowSec = time();
+
+            if ($forceReq) {
+                $wAuth = verifySession($pdo);
+                if (empty($wAuth['isCoordinator'])) {
+                    http_response_code(403);
+                    echo json_encode(['error' => 'COORDINATOR_ONLY_REFRESH']);
+                    exit;
+                }
+                $cdKey = 'wire_cd_' . md5(($secKey !== '' ? $secKey : strtolower($q)));
+                $stmtCd = $pdo->prepare("SELECT updated_at FROM news_cache WHERE cache_key = :k");
+                $stmtCd->execute([':k' => $cdKey]);
+                $cdRow = $stmtCd->fetch();
+                if ($cdRow && ($nowSec - (int)$cdRow['updated_at']) < 60) {
+                    $retryAfter = 60 - ($nowSec - (int)$cdRow['updated_at']);
+                    http_response_code(429);
+                    echo json_encode(['error' => 'COOLDOWN', 'retryAfterSec' => max(1, $retryAfter)]);
+                    exit;
+                }
+                $pdo->prepare("INSERT OR REPLACE INTO news_cache (cache_key, payload, updated_at) VALUES (:k, '1', :u)")
+                    ->execute([':k' => $cdKey, ':u' => $nowSec]);
+            }
+
+            $cacheKey = 'wire_' . md5(($secKey !== '' ? $secKey . ':' : '') . strtolower($q));
             $stmtC = $pdo->prepare("SELECT payload, updated_at FROM news_cache WHERE cache_key = :k");
             $stmtC->execute([':k' => $cacheKey]);
             $cRow = $stmtC->fetch();
-            $nowSec = time();
-            if ($cRow && ($nowSec - (int)$cRow['updated_at']) < 1800) {
-                $cached = json_decode((string)$cRow['payload'], true);
-                if (is_array($cached) && !empty($cached['results'])) {
-                    echo json_encode($cached, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $cachedPayload = ($cRow && !empty($cRow['payload'])) ? json_decode((string)$cRow['payload'], true) : null;
+            $hasStale = (is_array($cachedPayload) && !empty($cachedPayload['results']));
+
+            if (!$forceReq && $hasStale && ($nowSec - (int)$cRow['updated_at']) < 1800) {
+                $cachedPayload['source'] = 'cache';
+                $cachedPayload['section'] = $secKey !== '' ? $secKey : 'general';
+                echo json_encode($cachedPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                exit;
+            }
+
+            // Bloqueo anti-avalancha (single-flight 20s) si no es recarga forzada de Coordinación
+            $lockKey = 'wire_lock_' . md5(($secKey !== '' ? $secKey : strtolower($q)));
+            if (!$forceReq && $hasStale) {
+                $stmtL = $pdo->prepare("SELECT updated_at FROM news_cache WHERE cache_key = :k");
+                $stmtL->execute([':k' => $lockKey]);
+                $lRow = $stmtL->fetch();
+                if ($lRow && ($nowSec - (int)$lRow['updated_at']) < 20) {
+                    $cachedPayload['source'] = 'stale_fallback';
+                    $cachedPayload['section'] = $secKey !== '' ? $secKey : 'general';
+                    echo json_encode($cachedPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                     exit;
                 }
             }
+            $pdo->prepare("INSERT OR REPLACE INTO news_cache (cache_key, payload, updated_at) VALUES (:k, '1', :u)")
+                ->execute([':k' => $lockKey, ':u' => $nowSec]);
+
+            $translateBatchServer = function (array $texts) use ($httpGetServer, $translateServer): array {
+                $count = count($texts);
+                if ($count === 0) return [];
+                $out = array_fill(0, $count, '');
+                $sep = "\n[[S]]\n";
+                $chunks = [];
+                $curIdx = [];
+                $curLen = 0;
+                foreach ($texts as $idx => $txt) {
+                    $clean = trim(str_replace('[[S]]', ' ', (string)$txt));
+                    $len = mb_strlen($clean, 'UTF-8');
+                    if (!empty($curIdx) && ($curLen + $len + 8) > 1350) {
+                        $chunks[] = $curIdx;
+                        $curIdx = [];
+                        $curLen = 0;
+                    }
+                    $curIdx[] = [$idx, $clean];
+                    $curLen += $len + 8;
+                }
+                if (!empty($curIdx)) $chunks[] = $curIdx;
+
+                foreach ($chunks as $chunk) {
+                    $joined = implode($sep, array_map(function ($pair) { return $pair[1]; }, $chunk));
+                    if (trim($joined) === '') continue;
+                    $gUrl = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=es&dt=t&q=' . rawurlencode(mb_substr($joined, 0, 1750, 'UTF-8'));
+                    $res = $httpGetServer($gUrl, 7, false);
+                    $translatedWhole = '';
+                    if ($res['ok'] && $res['body'] !== '') {
+                        $json = json_decode($res['body'], true);
+                        if (is_array($json) && isset($json[0]) && is_array($json[0])) {
+                            foreach ($json[0] as $seg) {
+                                if (is_array($seg) && isset($seg[0])) $translatedWhole .= (string)$seg[0];
+                            }
+                        }
+                    }
+                    $parts = preg_split('/\s*\[\[\s*S\s*\]\]\s*/u', trim($translatedWhole));
+                    if (is_array($parts) && count($parts) === count($chunk)) {
+                        foreach ($chunk as $pos => $pair) {
+                            $cand = trim((string)$parts[$pos]);
+                            $out[$pair[0]] = ($cand !== '') ? $cand : $pair[1];
+                        }
+                    } else {
+                        // Respaldo seguro por ítem o inglés si el separador cambió
+                        foreach ($chunk as $pair) {
+                            $fallbackTr = (count($chunk) <= 4) ? $translateServer($pair[1], 'en', 'es') : $pair[1];
+                            $out[$pair[0]] = ($fallbackTr !== '') ? $fallbackTr : $pair[1];
+                        }
+                    }
+                }
+                return $out;
+            };
 
             $snapiUrl = 'https://api.spaceflightnewsapi.net/v4/articles/?limit=6&search=' . rawurlencode($q);
-            $res = $httpGetServer($snapiUrl, 10, false);
+            $res = $httpGetServer($snapiUrl, 8, false);
             $items = [];
             if ($res['ok'] && $res['body'] !== '') {
                 $decoded = json_decode($res['body'], true);
                 $rawResults = is_array($decoded['results'] ?? null) ? $decoded['results'] : [];
+                $titlesToTr = [];
+                $summariesToTr = [];
+                $filtered = [];
                 foreach ($rawResults as $art) {
                     if (!is_array($art) || empty($art['title'])) continue;
                     $tEn = trim((string)$art['title']);
                     $sEn = trim((string)($art['summary'] ?? ''));
-                    $tEs = $translateServer($tEn, 'en', 'es');
-                    $sEs = $sEn !== '' ? $translateServer($sEn, 'en', 'es') : '';
+                    $filtered[] = $art;
+                    $titlesToTr[] = $tEn;
+                    $summariesToTr[] = mb_substr($sEn, 0, 500, 'UTF-8');
+                }
+                $titlesEs = $translateBatchServer($titlesToTr);
+                $summariesEs = $translateBatchServer($summariesToTr);
+                foreach ($filtered as $idx => $art) {
+                    $tEn = trim((string)$art['title']);
+                    $sEn = trim((string)($art['summary'] ?? ''));
                     $rawImg = (string)($art['image_url'] ?? '');
                     $proxyImg = ($rawImg !== '' && $isAllowedNewsHttpUrl($rawImg))
                         ? ('/api/news/image?url=' . rawurlencode($rawImg))
@@ -3457,9 +3648,9 @@ try {
                     $items[] = [
                         'id' => (string)($art['id'] ?? md5($tEn)),
                         'title' => $tEn,
-                        'titleEs' => $tEs,
+                        'titleEs' => (string)($titlesEs[$idx] ?? $tEn),
                         'summary' => $sEn,
-                        'summaryEs' => $sEs,
+                        'summaryEs' => (string)($summariesEs[$idx] ?? $sEn),
                         'news_site' => (string)($art['news_site'] ?? 'Aerospace Wire'),
                         'published_at' => (string)($art['published_at'] ?? ''),
                         'url' => (string)($art['url'] ?? ''),
@@ -3468,7 +3659,18 @@ try {
                     ];
                 }
             }
-            $outPayload = ['results' => $items, 'cachedAt' => $nowSec];
+            if (empty($items) && $hasStale) {
+                $cachedPayload['source'] = 'stale_fallback';
+                $cachedPayload['section'] = $secKey !== '' ? $secKey : 'general';
+                echo json_encode($cachedPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                exit;
+            }
+            $outPayload = [
+                'results' => $items,
+                'cachedAt' => $nowSec,
+                'source' => 'live',
+                'section' => $secKey !== '' ? $secKey : 'general'
+            ];
             if (!empty($items)) {
                 $pdo->prepare("INSERT OR REPLACE INTO news_cache (cache_key, payload, updated_at) VALUES (:k, :p, :u)")
                     ->execute([':k' => $cacheKey, ':p' => json_encode($outPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ':u' => $nowSec]);
