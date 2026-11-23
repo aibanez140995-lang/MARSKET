@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.60) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.61) ---
 
-const APP_VERSION = "2.0.60";
+const APP_VERSION = "2.0.61";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1327,6 +1327,16 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.61",
+      date: "2026-11-23",
+      title: "Órbita: Formato **negrita**, *cursiva* y - lista en noticias digitales y edición directa desde Portada y Hemeroteca",
+      items: [
+        "Soporte completo en el lector digital de Órbita (js/ui-orbita.js) para formato **negrita**, *cursiva* y listas con guion (- elemento) dentro del cuerpo de los artículos, manteniendo titulares y entradillas como texto limpio.",
+        "Barra rápida de formato (**B** Negrita, *I* Cursiva, - Lista) en los modales de publicación y edición de noticias de Órbita y en el Estudio de Edición Impresa A3.",
+        "Botón de edición directa (titular, entradilla y cuerpo) disponible para Coordinación también en Portada (noticia principal, sub-portadas y destacados de sección) y en Hemeroteca."
+      ]
+    },
     {
       version: "2.0.60",
       date: "2026-11-23",

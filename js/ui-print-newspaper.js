@@ -560,11 +560,12 @@ Object.assign(ui, {
                 </div>
                 <div>
                     <div class="flex flex-wrap justify-between items-center gap-2 mb-1">
-                        <label for="print-slot-body" class="text-[11px] text-amber-300 font-bold uppercase">Cuerpo de la Noticia (Castellano) <span class="font-mono text-[10px] text-slate-400 normal-case ml-1">· **negrita** · *cursiva* · - lista</span></label>
+                        <label for="print-slot-body" class="text-[11px] text-amber-300 font-bold uppercase">Cuerpo de la Noticia (Castellano)</label>
                         <select id="print-slot-fontsize" class="bg-slate-900 border border-slate-700 px-2 py-1 text-[11px] text-cyan-300 font-mono">
                             ${[7.5, 8, 8.5, 9, 9.5, 10, 10.5].map(pt => `<option value="${pt}" ${Number(slot.fontSizePt || 9.5) === pt ? 'selected' : ''}>Letra ${pt} pt</option>`).join('')}
                         </select>
                     </div>
+                    ${this.renderOrbitaFormatToolbar('print-slot-body')}
                     <textarea id="print-slot-body" rows="6" class="w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white font-sans">${this.escapeHTML(slot.body || '')}</textarea>
                 </div>
                 <div class="p-2.5 bg-black/60 border border-slate-800 rounded space-y-2">

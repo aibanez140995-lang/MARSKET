@@ -37,10 +37,89 @@ Object.assign(ui, {
     formatOrbitaParagraphs(text, pClass = 'mb-3') {
         const clean = String(text || '').trim();
         if (!clean) return '';
-        return clean
-            .split(/\n{2,}/)
-            .map(p => `<p class="${pClass}">${this.escapeHTML(p.trim()).replace(/\n/g, '<br>')}</p>`)
-            .join('');
+        const formatInline = (txt) => {
+            let safe = this.escapeHTML(txt);
+            safe = safe.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
+            safe = safe.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, '$1<em>$2</em>');
+            return safe;
+        };
+        const lines = clean.replace(/\r\n/g, '\n').split('\n');
+        const blocks = [];
+        let listItems = [];
+        let paraLines = [];
+        const flushPara = () => {
+            if (paraLines.length > 0) {
+                blocks.push(`<p class="${pClass}">${paraLines.map(l => formatInline(l)).join('<br>')}</p>`);
+                paraLines = [];
+            }
+        };
+        const flushList = () => {
+            if (listItems.length > 0) {
+                blocks.push(`<ul class="list-disc pl-6 space-y-1.5 ${pClass}">${listItems.map(it => `<li>${it}</li>`).join('')}</ul>`);
+                listItems = [];
+            }
+        };
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            if (/^[-•]\s+/.test(trimmed)) {
+                flushPara();
+                listItems.push(formatInline(trimmed.replace(/^[-•]\s+/, '')));
+            } else if (trimmed === '') {
+                flushPara();
+                flushList();
+            } else {
+                flushList();
+                paraLines.push(trimmed);
+            }
+        });
+        flushPara();
+        flushList();
+        return blocks.join('');
+    },
+
+    insertOrbitaBodyFormat(textareaId, mode) {
+        const ta = document.getElementById(textareaId);
+        if (!ta) return;
+        const start = ta.selectionStart ?? ta.value.length;
+        const end = ta.selectionEnd ?? ta.value.length;
+        const val = ta.value || '';
+        const selected = val.slice(start, end);
+        let insert = '';
+        let cursorOffset = 0;
+        if (mode === 'bold') {
+            const inner = selected || 'texto en negrita';
+            insert = `**${inner}**`;
+            cursorOffset = selected ? insert.length : 2;
+        } else if (mode === 'italic') {
+            const inner = selected || 'texto en cursiva';
+            insert = `*${inner}*`;
+            cursorOffset = selected ? insert.length : 1;
+        } else if (mode === 'list') {
+            if (selected) {
+                insert = selected.split('\n').map(l => l.trim() ? (l.trim().startsWith('- ') ? l.trim() : `- ${l.trim()}`) : '').join('\n');
+                cursorOffset = insert.length;
+            } else {
+                const prefix = (start > 0 && val[start - 1] !== '\n') ? '\n- ' : '- ';
+                insert = `${prefix}Elemento de lista`;
+                cursorOffset = insert.length;
+            }
+        }
+        ta.value = val.slice(0, start) + insert + val.slice(end);
+        ta.focus();
+        const pos = start + cursorOffset;
+        ta.setSelectionRange(pos, pos);
+    },
+
+    renderOrbitaFormatToolbar(textareaId) {
+        const idAttr = this.escapeAttr(textareaId);
+        return `
+            <div class="flex flex-wrap items-center gap-1.5 mb-1.5">
+                <button type="button" onclick="ui.insertOrbitaBodyFormat('${idAttr}', 'bold')" class="min-h-[32px] px-2.5 py-1 bg-slate-800 border border-slate-600 text-white hover:bg-amber-500 hover:text-black text-[11px] font-bold rounded transition-colors" title="Negrita: **texto**">**B** Negrita</button>
+                <button type="button" onclick="ui.insertOrbitaBodyFormat('${idAttr}', 'italic')" class="min-h-[32px] px-2.5 py-1 bg-slate-800 border border-slate-600 text-white hover:bg-amber-500 hover:text-black text-[11px] italic rounded transition-colors" title="Cursiva: *texto*">*I* Cursiva</button>
+                <button type="button" onclick="ui.insertOrbitaBodyFormat('${idAttr}', 'list')" class="min-h-[32px] px-2.5 py-1 bg-slate-800 border border-slate-600 text-white hover:bg-amber-500 hover:text-black text-[11px] font-mono rounded transition-colors" title="Lista: - elemento">- Lista</button>
+                <span class="text-[10px] font-mono text-slate-400 ml-1">**negrita** · *cursiva* · - lista</span>
+            </div>
+        `;
     },
 
     modalViewNewsImage(imageUrl, caption, sourceLabel = '') {
@@ -610,10 +689,12 @@ Object.assign(ui, {
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Cuerpo del Artículo (Español) *</label>
+                        ${this.renderOrbitaFormatToolbar('offnews-body')}
                         <textarea id="offnews-body" rows="5" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2.5 text-sm text-white leading-relaxed">${this.escapeHTML(pSubEs)}</textarea>
                     </div>
                     <div>
                         <label class="text-[11px] font-mono text-cyan-300 uppercase block mb-1">Article Body (English — auto si vacío)</label>
+                        ${this.renderOrbitaFormatToolbar('offnews-body-en')}
                         <textarea id="offnews-body-en" rows="5" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2.5 text-sm text-white leading-relaxed">${this.escapeHTML(pSubEn)}</textarea>
                     </div>
                 </div>
@@ -877,10 +958,12 @@ Object.assign(ui, {
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Cuerpo (ES) *</label>
+                        ${this.renderOrbitaFormatToolbar('offnews-edit-body')}
                         <textarea id="offnews-edit-body" rows="5" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-sm text-white">${this.escapeHTML(news.body || '')}</textarea>
                     </div>
                     <div>
                         <label class="text-[11px] font-mono text-cyan-300 uppercase block mb-1">Body (EN)</label>
+                        ${this.renderOrbitaFormatToolbar('offnews-edit-body-en')}
                         <textarea id="offnews-edit-body-en" rows="5" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-sm text-white">${this.escapeHTML(news.bodyEn || '')}</textarea>
                     </div>
                 </div>
@@ -1794,9 +1877,12 @@ Object.assign(ui, {
                                         ${this.escapeHTML(title)}
                                     </button>
                                 </div>
-                                <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(art.id)}')" class="min-h-[44px] px-3 py-1.5 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase shrink-0">
-                                    ${lang === 'EN' ? 'Read' : 'Leer'}
-                                </button>
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    ${this.isNewsCoordinator() ? `<button type="button" onclick="ui.modalEditOfficialNews('${this.escapeAttr(art.id)}')" class="min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2.5 bg-stone-100 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white" title="Editar artículo">${this.getOrbitaIcon('edit')}</button>` : ''}
+                                    <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(art.id)}')" class="min-h-[44px] px-3 py-1.5 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase shrink-0">
+                                        ${lang === 'EN' ? 'Read' : 'Leer'}
+                                    </button>
+                                </div>
                             </article>`;
                         }).join('')}
                     </div>
@@ -1976,12 +2062,15 @@ Object.assign(ui, {
                                 </button>
                                 ${cSub ? `<p class="text-base font-orbita-serif text-stone-700 leading-relaxed">${this.escapeHTML(cSub)}</p>` : ''}
                                 ${cImg ? `<img src="${this.escapeAttr(cImg)}" alt="${this.escapeAttr(cTitle)}" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(coverArticle.id)}')" class="w-full max-h-80 object-cover border border-stone-300 cursor-pointer">` : ''}
-                                <div class="flex items-center justify-between gap-2 pt-2 border-t border-stone-200">
+                                <div class="flex items-center justify-between gap-2 pt-2 border-t border-stone-200 flex-wrap">
                                     <span class="text-[11px] font-mono text-stone-500">${this.escapeHTML(coverArticle.sourceName || 'Órbita.')} &bull; ${this.escapeHTML(coverArticle.publishedDate || '')}</span>
-                                    <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(coverArticle.id)}')" class="min-h-[44px] inline-flex items-center gap-1.5 px-4 py-2 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase">
-                                        ${this.getOrbitaIcon('book')}
-                                        <span>${lang === 'EN' ? 'Read Lead Story' : 'Leer Portada'}</span>
-                                    </button>
+                                    <div class="flex items-center gap-1.5">
+                                        ${isCoord ? `<button type="button" onclick="ui.modalEditOfficialNews('${this.escapeAttr(coverArticle.id)}')" class="min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-3 py-2 bg-stone-100 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white" title="Editar">${this.getOrbitaIcon('edit')}</button>` : ''}
+                                        <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(coverArticle.id)}')" class="min-h-[44px] inline-flex items-center gap-1.5 px-4 py-2 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase">
+                                            ${this.getOrbitaIcon('book')}
+                                            <span>${lang === 'EN' ? 'Read Lead Story' : 'Leer Portada'}</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </article>`;
                         })() : ''}
@@ -1999,7 +2088,10 @@ Object.assign(ui, {
                                                 ${this.escapeHTML(sTitle)}
                                             </button>
                                         </div>
-                                        <span class="text-[10px] font-mono text-stone-500">${this.escapeHTML(sc.publishedDate || '')}</span>
+                                        <div class="flex items-center justify-between gap-2 pt-1">
+                                            <span class="text-[10px] font-mono text-stone-500">${this.escapeHTML(sc.publishedDate || '')}</span>
+                                            ${isCoord ? `<button type="button" onclick="ui.modalEditOfficialNews('${this.escapeAttr(sc.id)}')" class="min-h-[36px] min-w-[36px] inline-flex items-center justify-center px-2 bg-stone-100 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white" title="Editar">${this.getOrbitaIcon('edit')}</button>` : ''}
+                                        </div>
                                     </article>`;
                                 }).join('')}
                             </div>
@@ -2018,9 +2110,12 @@ Object.assign(ui, {
                                             ${this.getOrbitaIcon(sm.iconKey)}
                                             <span>${this.escapeHTML(lang === 'EN' ? sm.shortLabelEn : sm.shortLabelEs)}</span>
                                         </span>
-                                        <button type="button" onclick="ui.setNewsSectionTab('${secKey}')" class="min-h-[44px] px-2 text-[11px] font-mono underline text-stone-600 hover:text-[#111111]">
-                                            ${lang === 'EN' ? 'See all' : 'Ver sección'}
-                                        </button>
+                                        <div class="flex items-center gap-1">
+                                            ${isCoord ? `<button type="button" onclick="ui.modalEditOfficialNews('${this.escapeAttr(pick.id)}')" class="min-h-[36px] min-w-[36px] inline-flex items-center justify-center px-2 bg-stone-100 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white" title="Editar">${this.getOrbitaIcon('edit')}</button>` : ''}
+                                            <button type="button" onclick="ui.setNewsSectionTab('${secKey}')" class="min-h-[44px] px-2 text-[11px] font-mono underline text-stone-600 hover:text-[#111111]">
+                                                ${lang === 'EN' ? 'See all' : 'Ver sección'}
+                                            </button>
+                                        </div>
                                     </div>
                                     <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(pick.id)}')" class="text-left block w-full text-base font-orbita-serif font-bold text-[#111111] hover:text-[#8B0000] leading-snug">
                                         ${this.escapeHTML(this.getLocalizedNewsField(pick, 'title'))}
