@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.50) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.51) ---
 
-const APP_VERSION = "2.0.50";
+const APP_VERSION = "2.0.51";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,17 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.51",
+      date: "2026-11-23",
+      title: "Exportación a Google Sheets / CSV sin Fórmulas (Trabajo en Economía)",
+      items: [
+        "Exportación Curricular Limpia: Al copiar la lista de la compra para Google Sheets o descargar el CSV, la columna de subtotal y el total se entregan en blanco y sin fórmulas preconstruidas para que el alumnado las elabore en la asignatura de Economía."
+      ],
+      highlights: [
+        { type: "PEDAGOGÍA", text: "Datos brutos sin fórmulas en Google Sheets/CSV para práctica en Economía." }
+      ]
+    },
     {
       version: "2.0.50",
       date: "2026-11-23",

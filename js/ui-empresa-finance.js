@@ -208,14 +208,12 @@ Object.assign(ui, {
         }
         const fmtNum = (n) => Number(n || 0).toFixed(2).replace('.', ',');
         const lines = ['Código\tMaterial / Concepto\tUnidad\tCantidad\tPrecio Unit. (€v)\tSubtotal (€v)'];
-        ctx.items.forEach((it, idx) => {
-            const rowNum = idx + 2;
+        ctx.items.forEach((it) => {
             const safeName = String(it.name).replace(/[\t\r\n]+/g, ' ');
             const safeUnit = String(it.unit).replace(/[\t\r\n]+/g, ' ');
-            lines.push(`${it.id}\t${safeName}\t${safeUnit}\t${it.qty}\t${fmtNum(it.price)}\t=D${rowNum}*E${rowNum}`);
+            lines.push(`${it.id}\t${safeName}\t${safeUnit}\t${it.qty}\t${fmtNum(it.price)}\t`);
         });
-        const lastRow = ctx.items.length + 1;
-        lines.push(`TOTAL\t${ctx.co.name || ''}\t\t\t\t=SUMA(F2:F${lastRow})`);
+        lines.push(`TOTAL\t${ctx.co.name || ''}\t\t\t\t`);
         const tsv = lines.join('\n');
 
         let copied = false;
@@ -239,7 +237,7 @@ Object.assign(ui, {
             } catch (e) {}
         }
         if (copied) {
-            return this.notify("✅ Tabla copiada con fórmulas. Abre sheets.new (o tu plantilla ECO/DOC_9) y pulsa Ctrl+V.", "success");
+            return this.notify("✅ Tabla copiada sin fórmulas (lista para calcular en Economía). Abre sheets.new o tu hoja y pulsa Ctrl+V.", "success");
         }
         return this.notify("No se pudo copiar automáticamente; usa el botón ⬇️ CSV como alternativa.", "warning");
     },
@@ -260,10 +258,10 @@ Object.assign(ui, {
                 it.unit,
                 it.qty,
                 it.price.toFixed(2).replace('.', ','),
-                it.subtotal.toFixed(2).replace('.', ',')
+                ''
             ].map(esc).join(';'));
         });
-        rows.push([ctx.co.name || '', ctx.title, 'TOTAL', '', '', '', '', ctx.totalEurV.toFixed(2).replace('.', ',')].map(esc).join(';'));
+        rows.push([ctx.co.name || '', ctx.title, 'TOTAL', '', '', '', '', ''].map(esc).join(';'));
         const csvContent = '\uFEFF' + rows.join('\r\n');
         const safeCo = String(ctx.co.id || 'startup').replace(/[^a-zA-Z0-9_-]/g, '_');
         const safeRef = orderId ? String(orderId).replace(/[^a-zA-Z0-9_-]/g, '_') : 'carrito';
