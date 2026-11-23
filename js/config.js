@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.55) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.56) ---
 
-const APP_VERSION = "2.0.55";
+const APP_VERSION = "2.0.56";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,18 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.56",
+      date: "2026-11-23",
+      title: "Quién es quién A3 con Todas las Startups (32+) y Etiqueta «· Navarra» en Rojo",
+      items: [
+        "Todas las Startups Navarras Visibles sin Recortes en Página 7: Eliminado el límite que recortaba la lista a 10–14 empresas; ahora la Página 7 impresa muestra absolutamente todas las startups y empresas reales seleccionadas (incluidas las 32 del centro) ajustando automáticamente la rejilla a 2 o 3 columnas para que quepan en A3.",
+        "Identificador «· Navarra» Homogéneo: En las fichas de Startups Navarras del A3, la procedencia se muestra como «· Navarra» con el mismo formato tipográfico rojo que los países de las empresas reales y sin clases escolares."
+      ],
+      highlights: [
+        { type: "ORBITAL REPORT A3", text: "Página 7 adaptativa para mostrar las 32 startups + etiqueta · Navarra en rojo." }
+      ]
+    },
     {
       version: "2.0.55",
       date: "2026-11-23",

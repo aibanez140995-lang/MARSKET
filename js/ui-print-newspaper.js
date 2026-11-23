@@ -1822,7 +1822,7 @@ Object.assign(ui, {
                     monogram: r.monogram || r.name.slice(0, 3).toUpperCase(),
                     accent: r.accentColor || '#0f172a'
                 };
-            }).filter(Boolean).slice(0, hasAd ? 8 : 10);
+            }).filter(Boolean);
 
             const startupEntries = (cfg.startups || []).map(s => {
                 const co = companies[s.coId];
@@ -1840,65 +1840,88 @@ Object.assign(ui, {
                     logoSrc: rawCoLogo,
                     monogram: mono
                 };
-            }).filter(Boolean).slice(0, hasAd ? 10 : 14);
+            }).filter(Boolean);
+
+            const totalEntries = realEntries.length + startupEntries.length;
+            const isUltraCompact = totalEntries > 28;
+            const isMediumCompact = !isUltraCompact && totalEntries > 16;
+
+            const gridCols = (isUltraCompact || isMediumCompact) ? '1fr 1fr 1fr' : '1fr 1fr';
+            const logoMm = isUltraCompact ? '5.2mm' : (isMediumCompact ? '6mm' : '7.2mm');
+            const monoPt = isUltraCompact ? '5.2pt' : (isMediumCompact ? '5.6pt' : '6.2pt');
+            const titlePt = isUltraCompact ? '6.6pt' : (isMediumCompact ? '7.2pt' : '7.8pt');
+            const countryPt = isUltraCompact ? '5.6pt' : (isMediumCompact ? '6pt' : '6.5pt');
+            const descPt = isUltraCompact ? '5.7pt' : (isMediumCompact ? '6.2pt' : '6.8pt');
+            const domPt = isUltraCompact ? '5.2pt' : (isMediumCompact ? '5.5pt' : '6pt');
+            const gapCss = isUltraCompact ? '1mm 2mm' : (isMediumCompact ? '1.2mm 2.4mm' : '1.5mm 3mm');
+            const itemPadCss = isUltraCompact ? '0.8mm' : (isMediumCompact ? '1mm' : '1.2mm');
+            const hdrPt = isUltraCompact ? '14.5pt' : (isMediumCompact ? '15.5pt' : '17pt');
+            const subPt = isUltraCompact ? '7.4pt' : (isMediumCompact ? '7.8pt' : '8.2pt');
+            const hdrPb = isUltraCompact ? '1mm' : '1.5mm';
+            const outerGap = isUltraCompact ? '1.8mm' : '2.5mm';
 
             const renderPrintLogoBox = (logoSrc, monogram, accentBg) => `
-                <div style="width:7.2mm;height:7.2mm;min-width:7.2mm;border:1px solid #d6d3d1;background:${logoSrc ? '#ffffff' : this.escapeAttr(accentBg)};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+                <div style="width:${logoMm};height:${logoMm};min-width:${logoMm};border:1px solid #d6d3d1;background:${logoSrc ? '#ffffff' : this.escapeAttr(accentBg)};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
                     ${logoSrc
-                        ? `<img src="${this.escapeAttr(logoSrc)}" alt="" style="width:100%;height:100%;object-fit:contain;display:block;" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='flex';"><span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-family:${monoFont};font-size:6.2pt;font-weight:900;color:#ffffff;background:${this.escapeAttr(accentBg)};">${this.escapeHTML(monogram)}</span>`
-                        : `<span style="font-family:${monoFont};font-size:6.2pt;font-weight:900;color:#ffffff;">${this.escapeHTML(monogram)}</span>`}
+                        ? `<img src="${this.escapeAttr(logoSrc)}" alt="" style="width:100%;height:100%;object-fit:contain;display:block;" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='flex';"><span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-family:${monoFont};font-size:${monoPt};font-weight:900;color:#ffffff;background:${this.escapeAttr(accentBg)};">${this.escapeHTML(monogram)}</span>`
+                        : `<span style="font-family:${monoFont};font-size:${monoPt};font-weight:900;color:#ffffff;">${this.escapeHTML(monogram)}</span>`}
                 </div>`;
 
-            mainContentHtml = `
-                <div style="display:flex;flex-direction:column;gap:2.5mm;">
-                    <div style="border-bottom:1px solid #d6d3d1;padding-bottom:1.5mm;">
-                        <h3 style="margin:0;font-family:${serifFont};font-weight:900;font-size:17pt;line-height:1.1;color:#111111;">Quién es quién en el Sector Aeroespacial</h3>
-                        <p style="margin:0.8mm 0 0 0;font-family:${serifFont};font-style:italic;font-size:8.2pt;line-height:1.25;color:#44403c;">${realEntries.length} empresas y agencias reales junto al apartado de Startups Navarras (${startupEntries.length} seleccionadas).</p>
-                    </div>
-
+            const realBlockHtml = realEntries.length > 0 ? `
                     <div>
-                        <div style="font-family:${monoFont};font-size:7.2pt;font-weight:900;text-transform:uppercase;letter-spacing:0.06em;color:#8B0000;border-bottom:1px solid #111111;padding-bottom:0.8mm;margin-bottom:1.6mm;">
-                            🛰️ Empresas y Agencias Reales
+                        <div style="font-family:${monoFont};font-size:7pt;font-weight:900;text-transform:uppercase;letter-spacing:0.06em;color:#8B0000;border-bottom:1px solid #111111;padding-bottom:0.6mm;margin-bottom:1.2mm;">
+                            🛰️ Empresas y Agencias Reales (${realEntries.length})
                         </div>
-                        ${realEntries.length === 0
-                            ? `<p style="margin:0;font-size:7.8pt;font-style:italic;color:#78716c;">Pulsa «🌍 Elegir Empresas» en la barra superior de esta página para incluir empresas aeroespaciales reales.</p>`
-                            : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5mm 3mm;">
-                                ${realEntries.map(e => `
-                                    <div style="display:flex;align-items:flex-start;gap:1.8mm;border-bottom:1px solid #e7e5e4;padding-bottom:1.2mm;">
-                                        ${renderPrintLogoBox(e.logoSrc, e.monogram, e.accent)}
-                                        <div style="min-width:0;flex:1;">
-                                            <div style="font-family:${serifFont};font-weight:700;font-size:7.8pt;line-height:1.15;color:#111111;">
-                                                ${this.escapeHTML(e.name)} <span style="font-family:${monoFont};font-weight:400;font-size:6.5pt;color:#8B0000;">· ${this.escapeHTML(e.country)}</span>
-                                            </div>
-                                            <div style="font-family:${sansFont};font-size:6.8pt;line-height:1.22;color:#44403c;margin-top:0.3mm;">${this.escapeHTML(e.desc)}</div>
-                                            ${e.domain ? `<div style="font-family:${monoFont};font-size:6pt;line-height:1.1;color:#78716c;margin-top:0.3mm;">${this.escapeHTML(e.domain)}</div>` : ''}
+                        <div style="display:grid;grid-template-columns:${gridCols};gap:${gapCss};">
+                            ${realEntries.map(e => `
+                                <div style="display:flex;align-items:flex-start;gap:1.4mm;border-bottom:1px solid #e7e5e4;padding-bottom:${itemPadCss};min-width:0;">
+                                    ${renderPrintLogoBox(e.logoSrc, e.monogram, e.accent)}
+                                    <div style="min-width:0;flex:1;">
+                                        <div style="font-family:${serifFont};font-weight:700;font-size:${titlePt};line-height:1.12;color:#111111;">
+                                            ${this.escapeHTML(e.name)} <span style="font-family:${monoFont};font-weight:400;font-size:${countryPt};color:#8B0000;">· ${this.escapeHTML(e.country)}</span>
                                         </div>
+                                        <div style="font-family:${sansFont};font-size:${descPt};line-height:1.18;color:#44403c;margin-top:0.2mm;">${this.escapeHTML(e.desc)}</div>
+                                        ${e.domain ? `<div style="font-family:${monoFont};font-size:${domPt};line-height:1.08;color:#78716c;margin-top:0.2mm;">${this.escapeHTML(e.domain)}</div>` : ''}
                                     </div>
-                                `).join('')}
-                            </div>`}
-                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>` : '';
 
-                    <div style="border-top:2px solid #8B0000;padding-top:1.8mm;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #111111;padding-bottom:0.8mm;margin-bottom:1.6mm;">
-                            <span style="font-family:${monoFont};font-size:7.2pt;font-weight:900;text-transform:uppercase;letter-spacing:0.06em;color:#111111;">🚀 Apartado Startups Navarras</span>
-                            <span style="font-family:${monoFont};font-size:6.2pt;font-weight:700;background:#111111;color:#ffffff;padding:0.4mm 1.4mm;text-transform:uppercase;">Ecosistema Navarra</span>
+            const startupBlockHtml = startupEntries.length > 0 ? `
+                    <div style="${realEntries.length > 0 ? 'border-top:2px solid #8B0000;padding-top:1.4mm;' : ''}">
+                        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #111111;padding-bottom:0.6mm;margin-bottom:1.2mm;">
+                            <span style="font-family:${monoFont};font-size:7pt;font-weight:900;text-transform:uppercase;letter-spacing:0.06em;color:#111111;">🚀 Apartado Startups Navarras (${startupEntries.length})</span>
+                            <span style="font-family:${monoFont};font-size:6pt;font-weight:700;color:#8B0000;text-transform:uppercase;">Ecosistema Navarra</span>
                         </div>
-                        ${startupEntries.length === 0
-                            ? `<p style="margin:0;font-size:7.8pt;font-style:italic;color:#78716c;">Pulsa «🌍 Elegir Empresas» para añadir Startups Navarras (se mostrarán sin etiqueta de clase).</p>`
-                            : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5mm 3mm;">
-                                ${startupEntries.map(s => `
-                                    <div style="display:flex;align-items:flex-start;gap:1.8mm;border-bottom:1px solid #e7e5e4;padding-bottom:1.2mm;">
-                                        ${renderPrintLogoBox(s.logoSrc, s.monogram, '#111111')}
-                                        <div style="min-width:0;flex:1;">
-                                            <div style="font-family:${serifFont};font-weight:700;font-size:7.8pt;line-height:1.15;color:#111111;">
-                                                ${this.escapeHTML(s.name)} <span style="font-family:${monoFont};font-weight:700;font-size:6pt;background:#EFECE4;border:1px solid #d6d3d1;color:#111111;padding:0 1mm;vertical-align:middle;">NAVARRA</span>
-                                            </div>
-                                            <div style="font-family:${sansFont};font-size:6.8pt;line-height:1.22;color:#44403c;margin-top:0.3mm;">${this.escapeHTML(s.desc)}</div>
+                        <div style="display:grid;grid-template-columns:${gridCols};gap:${gapCss};">
+                            ${startupEntries.map(s => `
+                                <div style="display:flex;align-items:flex-start;gap:1.4mm;border-bottom:1px solid #e7e5e4;padding-bottom:${itemPadCss};min-width:0;">
+                                    ${renderPrintLogoBox(s.logoSrc, s.monogram, '#111111')}
+                                    <div style="min-width:0;flex:1;">
+                                        <div style="font-family:${serifFont};font-weight:700;font-size:${titlePt};line-height:1.12;color:#111111;">
+                                            ${this.escapeHTML(s.name)} <span style="font-family:${monoFont};font-weight:400;font-size:${countryPt};color:#8B0000;">· Navarra</span>
                                         </div>
+                                        <div style="font-family:${sansFont};font-size:${descPt};line-height:1.18;color:#44403c;margin-top:0.2mm;">${this.escapeHTML(s.desc)}</div>
                                     </div>
-                                `).join('')}
-                            </div>`}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>` : '';
+
+            const emptyWhoHtml = (realEntries.length === 0 && startupEntries.length === 0)
+                ? `<p style="margin:0;font-size:8pt;font-style:italic;color:#78716c;">Pulsa «🌍 Elegir Empresas» en la barra superior de esta página para seleccionar empresas reales y Startups Navarras.</p>`
+                : '';
+
+            mainContentHtml = `
+                <div style="display:flex;flex-direction:column;gap:${outerGap};">
+                    <div style="border-bottom:1px solid #d6d3d1;padding-bottom:${hdrPb};">
+                        <h3 style="margin:0;font-family:${serifFont};font-weight:900;font-size:${hdrPt};line-height:1.08;color:#111111;">Quién es quién en el Sector Aeroespacial</h3>
+                        <p style="margin:0.6mm 0 0 0;font-family:${serifFont};font-style:italic;font-size:${subPt};line-height:1.2;color:#44403c;">${realEntries.length} empresas y agencias reales junto al apartado de Startups Navarras (${startupEntries.length} seleccionadas).</p>
                     </div>
+                    ${realBlockHtml}
+                    ${startupBlockHtml}
+                    ${emptyWhoHtml}
                 </div>`;
         } else if (isBeyondRocket) {
             const cfg = page.beyondRocketConfig || {
