@@ -5,6 +5,20 @@ Object.assign(ui, {
     printStudioActive: false,
     printStudioEditionId: null,
     printStudioViewMode: 'reading', // 'reading' (Págs 1..8) | 'imposed' (4 Caras A3 [8|1], [2|7], [6|3], [4|5])
+    printStudioZoomMode: 'fit', // 'fit' (escalado proporcional WYSIWYG) | 'actual' (100% 210mm reales)
+    printPickerSectionFilter: 'ALL',
+    _printResizeBound: false,
+
+    resolvePrintImageUrl(rawUrl, forPrint = false) {
+        const u = String(rawUrl || '').trim();
+        if (!u) return '';
+        if (u.startsWith('data:image/')) return u;
+        const resolved = (typeof this.getNewsImageSrc === 'function') ? this.getNewsImageSrc(u) : u;
+        if (forPrint && resolved.startsWith('/')) {
+            return window.location.origin + resolved;
+        }
+        return resolved;
+    },
 
     openPrintEditionStudio() {
         if (!this.isNewsCoordinator || !this.isNewsCoordinator()) {
@@ -261,41 +275,55 @@ Object.assign(ui, {
             });
         });
 
-        const fillSlotFromNews = (slot, art) => {
+        const fillSlotFromNews = (slot, art, defaultImgMm = 32) => {
             if (!slot || !art) return;
-            slot.kicker = art.category || 'ACTUALIDAD AEROESPACIAL';
+            const sec = String(art.section || 'actualidad').toLowerCase();
+            const fallbackKicker = sec === 'historia'
+                ? 'UN POCO DE HISTORIA'
+                : (sec === 'inventos' ? 'DEL ESPACIO A TU CASA' : 'ACTUALIDAD AEROESPACIAL');
+            slot.kicker = art.category || fallbackKicker;
             slot.title = art.title || slot.title;
             slot.subtitle = art.subtitle || '';
             slot.body = art.body || art.title || '';
-            slot.imageUrl = art.imageUrl ? (this.getNewsImageSrc ? this.getNewsImageSrc(art.imageUrl) : art.imageUrl) : '';
+            slot.imageUrl = art.imageUrl ? this.resolvePrintImageUrl(art.imageUrl, false) : '';
+            if (slot.imageUrl && (slot.imgHeightMm === undefined || slot.imgHeightMm === null || Number(slot.imgHeightMm) <= 0)) {
+                slot.imgHeightMm = defaultImgMm;
+            }
             slot.mediaSource = art.sourceName || art.author || 'Consejo Editorial AEE';
         };
 
-        const fillSlotFromWire = (slot, art) => {
+        const fillSlotFromWire = (slot, art, defaultImgMm = 32) => {
             if (!slot || !art) return;
             slot.kicker = 'PRENSA INTERNACIONAL';
             slot.title = art.titleEs || art.title || slot.title;
             slot.subtitle = art.summaryEs || art.summary || '';
             slot.body = art.summaryEs || art.summary || art.titleEs || art.title || '';
-            slot.imageUrl = art.proxy_image_url || (art.image_url && this.getNewsImageSrc ? this.getNewsImageSrc(art.image_url) : '');
+            slot.imageUrl = art.proxy_image_url || (art.image_url ? this.resolvePrintImageUrl(art.image_url, false) : '');
+            if (slot.imageUrl && (slot.imgHeightMm === undefined || slot.imgHeightMm === null || Number(slot.imgHeightMm) <= 0)) {
+                slot.imgHeightMm = defaultImgMm;
+            }
             slot.mediaSource = art.news_site || 'Spaceflight News';
         };
 
+        const actNews = savedNews.filter(n => n && (n.section || 'actualidad') === 'actualidad');
+        const histNews = savedNews.filter(n => n && n.section === 'historia');
+        const invNews = savedNews.filter(n => n && n.section === 'inventos');
+
         // Pág. 1: Portada (1 noticia principal; el resumen de páginas se genera abajo)
-        if (savedNews[0] && ed.pages[0]?.slots?.[0]) fillSlotFromNews(ed.pages[0].slots[0], savedNews[0]);
+        if ((actNews[0] || savedNews[0]) && ed.pages[0]?.slots?.[0]) fillSlotFromNews(ed.pages[0].slots[0], actNews[0] || savedNews[0], 60);
 
         // Pág. 2: Crónicas AEE
-        if (savedNews[2]) fillSlotFromNews(ed.pages[1].slots[0], savedNews[2]);
-        if (savedNews[3]) fillSlotFromNews(ed.pages[1].slots[1], savedNews[3]);
+        if (actNews[1] || savedNews[2]) fillSlotFromNews(ed.pages[1].slots[0], actNews[1] || savedNews[2], 32);
+        if (histNews[0] || savedNews[3]) fillSlotFromNews(ed.pages[1].slots[1], histNews[0] || savedNews[3], 32);
 
         // Pág. 3: Actualidad Aeroespacial Internacional (SNAPI traducido + fuente)
-        if (wireNews[0]) fillSlotFromWire(ed.pages[2].slots[0], wireNews[0]);
-        if (wireNews[1]) fillSlotFromWire(ed.pages[2].slots[1], wireNews[1]);
+        if (wireNews[0]) fillSlotFromWire(ed.pages[2].slots[0], wireNews[0], 32);
+        if (wireNews[1]) fillSlotFromWire(ed.pages[2].slots[1], wireNews[1], 32);
 
         // Pág. 4: Notas de Prensa DOC_15
         if (publishedPRs[0]) {
             const p = publishedPRs[0];
-            ed.pages[3].slots[0].kicker = `COMUNICADO DOC_15 • CLASE ${p.classGroup}`;
+            ed.pages[3].slots[0].kicker = `COMUNICADO DOC_15`;
             ed.pages[3].slots[0].title = `${p.companyName}: ${p.title}`;
             ed.pages[3].slots[0].body = p.editorialNote || `Comunicado oficial de cierre de Fase ${p.phase} publicado por ${p.companyName}.`;
             ed.pages[3].slots[0].imageUrl = p.nanoBananaImage || '';
@@ -303,17 +331,18 @@ Object.assign(ui, {
         }
         if (publishedPRs[1]) {
             const p = publishedPRs[1];
-            ed.pages[3].slots[1].kicker = `COMUNICADO DOC_15 • CLASE ${p.classGroup}`;
+            ed.pages[3].slots[1].kicker = `COMUNICADO DOC_15`;
             ed.pages[3].slots[1].title = `${p.companyName}: ${p.title}`;
             ed.pages[3].slots[1].body = p.editorialNote || `Comunicado oficial de cierre de Fase ${p.phase} publicado por ${p.companyName}.`;
             ed.pages[3].slots[1].imageUrl = p.nanoBananaImage || '';
             ed.pages[3].slots[1].mediaSource = `${p.companyName} (DOC_15)`;
         }
 
-        // Pág. 6 y 8: Noticias reales adicionales
-        if (wireNews[2]) fillSlotFromWire(ed.pages[5].slots[0], wireNews[2]);
-        if (wireNews[3]) fillSlotFromWire(ed.pages[6].slots[0], wireNews[3]);
-        if (wireNews[4]) fillSlotFromWire(ed.pages[7].slots[0], wireNews[4]);
+        // Pág. 6 y 8: Noticias reales o de secciones Historia/Inventos según sección de página
+        if (invNews[0]) fillSlotFromNews(ed.pages[5].slots[0], invNews[0], 32);
+        else if (wireNews[2]) fillSlotFromWire(ed.pages[5].slots[0], wireNews[2], 32);
+        if (wireNews[3]) fillSlotFromWire(ed.pages[6].slots[0], wireNews[3], 32);
+        if (wireNews[4]) fillSlotFromWire(ed.pages[7].slots[0], wireNews[4], 32);
 
         ed.updatedAt = Date.now();
         if (!silent) {
@@ -476,18 +505,25 @@ Object.assign(ui, {
 
         const savedNews = Array.isArray(state.data.news) ? state.data.news : [];
         const wireNews = Array.isArray(this._snapiWireArticles) ? this._snapiWireArticles : [];
+        const optGroupFor = (secKey, label) => {
+            const items = savedNews
+                .map((n, i) => ({ n, i }))
+                .filter(x => x.n && (x.n.section || 'actualidad') === secKey);
+            if (items.length === 0) return '';
+            return `<optgroup label="${this.escapeAttr(label)}">${items.map(({ n, i }) => `<option value="NEWS:${i}">${this.escapeHTML((n.title || '').slice(0, 74))}</option>`).join('')}</optgroup>`;
+        };
+        const curImgPreview = slot.imageUrl ? this.resolvePrintImageUrl(slot.imageUrl, false) : '';
 
         const html = `
             <div class="space-y-3 text-xs font-sans">
                 <div class="p-3 bg-cyan-950/40 border border-mars-cyan/50 rounded space-y-2">
-                    <label for="print-slot-source-pick" class="text-xs text-mars-cyan font-bold uppercase block font-mono">📥 Cargar desde Noticias de la App o Teletipo Real (Opcional)</label>
-                    <select id="print-slot-source-pick" onchange="ui.applySourceToPrintSlotEditor(this.value)" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white">
+                    <label for="print-slot-source-pick" class="text-xs text-mars-cyan font-bold uppercase block font-mono">📥 Cargar desde Periódico Digital o Teletipo Real (Opcional)</label>
+                    <select id="print-slot-source-pick" data-page-num="${page.pageNumber}" data-slot-idx="${slotIdx}" onchange="ui.applySourceToPrintSlotEditor(this.value, this)" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white">
                         <option value="">-- Mantener / Editar texto manualmente --</option>
-                        ${savedNews.map((n, i) => {
-                            const secLabel = n.section === 'historia' ? 'Historia' : (n.section === 'inventos' ? 'Del Espacio a tu Casa' : 'Actualidad');
-                            return `<option value="NEWS:${i}">[${secLabel}] ${this.escapeHTML((n.title || '').slice(0, 72))}</option>`;
-                        }).join('')}
-                        ${wireNews.map((w, i) => `<option value="WIRE:${i}">[Real · ${this.escapeHTML(w.news_site || 'SNAPI')}] ${this.escapeHTML((w.titleEs || w.title || '').slice(0, 70))}</option>`).join('')}
+                        ${optGroupFor('actualidad', '📡 Actualidad (Edición Digital)')}
+                        ${optGroupFor('historia', '🏛️ Un poco de Historia')}
+                        ${optGroupFor('inventos', '🏠 Del Espacio a tu Casa')}
+                        ${wireNews.length > 0 ? `<optgroup label="🌐 Teletipo Aeroespacial Real">${wireNews.map((w, i) => `<option value="WIRE:${i}">[${this.escapeHTML(w.news_site || 'SNAPI')}] ${this.escapeHTML((w.titleEs || w.title || '').slice(0, 70))}</option>`).join('')}</optgroup>` : ''}
                     </select>
                 </div>
 
@@ -498,6 +534,7 @@ Object.assign(ui, {
                         <datalist id="print-kicker-presets">
                             <option value="ACTUALIDAD">
                             <option value="UN POCO DE HISTORIA">
+                            <option value="DEL ESPACIO A TU CASA">
                             <option value="ENTREVISTAS">
                             <option value="REPORTAJE ESPECIAL">
                             <option value="CIENCIA Y PROPULSIÓN">
@@ -530,28 +567,37 @@ Object.assign(ui, {
                     </div>
                     <textarea id="print-slot-body" rows="6" class="w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white font-sans">${this.escapeHTML(slot.body || '')}</textarea>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                        <label for="print-slot-img" class="text-[11px] text-slate-300 font-bold uppercase block mb-1">URL de Imagen (Opcional)</label>
-                        <input type="text" id="print-slot-img" value="${this.escapeAttr(slot.imageUrl || '')}" placeholder="/api/news/image?url=... o https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
+                <div class="p-2.5 bg-black/60 border border-slate-800 rounded space-y-2">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                            <label for="print-slot-img-file" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Subir Imagen desde Equipo (Opcional)</label>
+                            <input type="file" id="print-slot-img-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'print-slot-img', 'print-slot-img-preview'); const h=document.getElementById('print-slot-img-height'); if(h && h.value==='0') h.value='35';" class="w-full text-xs text-slate-300 file:mr-2 file:py-1.5 file:px-3 file:border-0 file:text-xs file:font-black file:uppercase file:bg-amber-400 file:text-black cursor-pointer">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label for="print-slot-img-height" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Alto Imagen</label>
+                                <select id="print-slot-img-height" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
+                                    ${[0, 15, 20, 25, 30, 32, 35, 40, 50, 60, 70, 85].map(mm => {
+                                        const curMm = (slot.imgHeightMm !== undefined && slot.imgHeightMm !== null) ? Number(slot.imgHeightMm) : (page.pageNumber === 1 && slotIdx === 0 ? 60 : 32);
+                                        return `<option value="${mm}" ${curMm === mm ? 'selected' : ''}>${mm === 0 ? 'Ocultar' : mm + ' mm'}</option>`;
+                                    }).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label for="print-slot-img-fit" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Encuadre</label>
+                                <select id="print-slot-img-fit" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
+                                    <option value="cover" ${(slot.imgFit || 'cover') === 'cover' ? 'selected' : ''}>Recortar (Cover)</option>
+                                    <option value="contain" ${slot.imgFit === 'contain' ? 'selected' : ''}>Completa (Contain)</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label for="print-slot-img-height" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Alto Imagen</label>
-                            <select id="print-slot-img-height" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
-                                ${[0, 15, 20, 25, 30, 35, 40, 50, 60, 70, 85].map(mm => {
-                                    const curMm = (slot.imgHeightMm !== undefined && slot.imgHeightMm !== null) ? Number(slot.imgHeightMm) : (page.pageNumber === 1 && slotIdx === 0 ? 60 : 30);
-                                    return `<option value="${mm}" ${curMm === mm ? 'selected' : ''}>${mm === 0 ? 'Ocultar' : mm + ' mm'}</option>`;
-                                }).join('')}
-                            </select>
-                        </div>
-                        <div>
-                            <label for="print-slot-img-fit" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Encuadre</label>
-                            <select id="print-slot-img-fit" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
-                                <option value="cover" ${(slot.imgFit || 'cover') === 'cover' ? 'selected' : ''}>Recortar (Cover)</option>
-                                <option value="contain" ${slot.imgFit === 'contain' ? 'selected' : ''}>Completa (Contain)</option>
-                            </select>
-                        </div>
+                    <div>
+                        <label for="print-slot-img" class="text-[11px] text-slate-300 font-bold uppercase block mb-1">O URL de Imagen / Google Drive</label>
+                        <input type="text" id="print-slot-img" value="${this.escapeAttr(slot.imageUrl || '')}" oninput="ui.previewNanoBananaUrl(this.value, 'print-slot-img-preview'); const h=document.getElementById('print-slot-img-height'); if(this.value.trim() && h && h.value==='0') h.value='35';" placeholder="/api/news/image?url=... o https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
+                    </div>
+                    <div id="print-slot-img-preview" class="${curImgPreview ? '' : 'hidden'} bg-black border border-slate-700 p-1.5 flex items-center justify-center rounded">
+                        ${curImgPreview ? `<img src="${this.escapeAttr(curImgPreview)}" alt="Vista previa" class="max-h-32 w-full object-contain">` : ''}
                     </div>
                 </div>
             </div>
@@ -563,21 +609,34 @@ Object.assign(ui, {
         this.showModal(`✏️ Editar Hueco // Página ${page.pageNumber} (${page.label})`, html, actions);
     },
 
-    async applySourceToPrintSlotEditor(val) {
+    async applySourceToPrintSlotEditor(val, selectEl = null) {
         if (!val) return;
         const [kind, idxStr] = val.split(':');
         const idx = parseInt(idxStr, 10);
         const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+        const ensureVisibleImgHeight = () => {
+            const hEl = document.getElementById('print-slot-img-height');
+            if (hEl && (hEl.value === '0' || !hEl.value)) {
+                const isLeadCover = selectEl?.dataset?.pageNum === '1' && selectEl?.dataset?.slotIdx === '0';
+                hEl.value = isLeadCover ? '60' : '32';
+            }
+        };
 
         if (kind === 'NEWS') {
             const art = (state.data.news || [])[idx];
             if (!art) return;
-            setVal('print-slot-kicker', art.category || 'ACTUALIDAD');
+            const secFallback = art.section === 'historia' ? 'UN POCO DE HISTORIA' : (art.section === 'inventos' ? 'DEL ESPACIO A TU CASA' : 'ACTUALIDAD');
+            setVal('print-slot-kicker', art.category || secFallback);
             setVal('print-slot-source', art.sourceName || art.author || 'AEE');
             setVal('print-slot-title', art.title || '');
             setVal('print-slot-subtitle', art.subtitle || '');
             setVal('print-slot-body', art.body || '');
-            setVal('print-slot-img', art.imageUrl ? (this.getNewsImageSrc ? this.getNewsImageSrc(art.imageUrl) : art.imageUrl) : '');
+            const resolvedImg = art.imageUrl ? this.resolvePrintImageUrl(art.imageUrl, false) : '';
+            setVal('print-slot-img', resolvedImg);
+            if (resolvedImg) {
+                ensureVisibleImgHeight();
+                if (typeof this.previewNanoBananaUrl === 'function') this.previewNanoBananaUrl(resolvedImg, 'print-slot-img-preview');
+            }
         } else if (kind === 'WIRE') {
             const art = (this._snapiWireArticles || [])[idx];
             if (!art) return;
@@ -586,7 +645,12 @@ Object.assign(ui, {
             setVal('print-slot-title', art.titleEs || art.title || '');
             setVal('print-slot-subtitle', art.summaryEs || art.summary || '');
             setVal('print-slot-body', art.summaryEs || art.summary || '');
-            setVal('print-slot-img', art.proxy_image_url || (art.image_url && this.getNewsImageSrc ? this.getNewsImageSrc(art.image_url) : ''));
+            const wImg = art.proxy_image_url || (art.image_url ? this.resolvePrintImageUrl(art.image_url, false) : '');
+            setVal('print-slot-img', wImg);
+            if (wImg) {
+                ensureVisibleImgHeight();
+                if (typeof this.previewNanoBananaUrl === 'function') this.previewNanoBananaUrl(wImg, 'print-slot-img-preview');
+            }
 
             if (art.url && /^https?:\/\//i.test(art.url)) {
                 this.notify("🌐 Extrayendo artículo completo traducido...", "info");
@@ -596,7 +660,11 @@ Object.assign(ui, {
                         const full = await resp.json();
                         setVal('print-slot-title', full.titleEs || art.titleEs || art.title);
                         setVal('print-slot-body', full.bodyEs || full.bodyEn || '');
-                        if (full.imageUrl) setVal('print-slot-img', full.imageUrl);
+                        if (full.imageUrl) {
+                            setVal('print-slot-img', full.imageUrl);
+                            ensureVisibleImgHeight();
+                            if (typeof this.previewNanoBananaUrl === 'function') this.previewNanoBananaUrl(full.imageUrl, 'print-slot-img-preview');
+                        }
                     }
                 } catch (e) {}
             }
@@ -936,6 +1004,46 @@ Object.assign(ui, {
         this.render();
     },
 
+    toggleWhoIsWhoClass(cls) {
+        const targetCls = String(cls || '').toUpperCase();
+        const chks = [];
+        document.querySelectorAll('.wiw-startup-row').forEach(row => {
+            if (targetCls === 'ALL' || String(row.dataset.cls || '').toUpperCase() === targetCls) {
+                const chk = row.querySelector('.wiw-startup-chk');
+                if (chk) chks.push(chk);
+            }
+        });
+        if (chks.length === 0) return;
+        const allChecked = chks.every(c => c.checked);
+        chks.forEach(c => { c.checked = !allChecked; });
+        this.updateWhoIsWhoModalCounts();
+    },
+
+    clearWhoIsWhoStartups() {
+        document.querySelectorAll('.wiw-startup-chk').forEach(chk => { chk.checked = false; });
+        this.updateWhoIsWhoModalCounts();
+    },
+
+    toggleWhoIsWhoRealGroup(mode) {
+        const m = String(mode || 'ALL').toUpperCase();
+        const chks = Array.from(document.querySelectorAll('.wiw-real-chk'));
+        chks.forEach(chk => {
+            const reg = String(chk.dataset.region || 'INTL').toUpperCase();
+            if (m === 'NONE') chk.checked = false;
+            else if (m === 'ALL') chk.checked = true;
+            else if (m === 'ES') chk.checked = (reg === 'ES');
+            else if (m === 'EU') chk.checked = (reg === 'ES' || reg === 'EU');
+        });
+        this.updateWhoIsWhoModalCounts();
+    },
+
+    updateWhoIsWhoModalCounts() {
+        const stEl = document.getElementById('wiw-startup-count');
+        const rEl = document.getElementById('wiw-real-count');
+        if (stEl) stEl.innerText = String(document.querySelectorAll('.wiw-startup-chk:checked').length);
+        if (rEl) rEl.innerText = String(document.querySelectorAll('.wiw-real-chk:checked').length);
+    },
+
     modalConfigureWhoIsWho(pageIdx) {
         if (!this.isNewsCoordinator()) return;
         const ed = this.getActivePrintEdition();
@@ -952,13 +1060,19 @@ Object.assign(ui, {
             .map(cid => ({ ...companiesDict[cid], _keyId: cid }))
             .sort((a, b) => String(a.classGroup || 'A').localeCompare(String(b.classGroup || 'A')) || String(a.name || '').localeCompare(String(b.name || '')));
 
+        const presentClasses = ['A', 'B', 'C', 'D', 'E', 'F', 'TEST'].filter(cls =>
+            companies.some(c => String(c.classGroup || 'A').toUpperCase() === cls)
+        );
+        const initStartupSelCount = companies.filter(c => startupProtoMap.has(String(c._keyId))).length;
+        const initRealSelCount = realList.filter(r => selectedRealSet.has(r.id)).length;
+
         const html = `
             <div class="space-y-4 text-xs font-sans">
-                <p class="text-[11px] text-slate-300">Selecciona empresas aeroespaciales reales y startups del colegio (clases A–F) para mostrarlas juntas en la Página 7. Zero-PII: solo se imprime <strong>Nombre · España</strong> y el nombre del prototipo.</p>
+                <p class="text-[11px] text-slate-300">Selecciona empresas aeroespaciales reales y Startups Navarras para la Página 7 impresa. <strong>Nota:</strong> la clase solo se muestra aquí para ayudarte a marcar rápido por aula; en el periódico impreso nunca aparecen clases (<code class="text-amber-300">NAVARRA</code>).</p>
 
                 <div class="space-y-2">
                     <div class="flex flex-wrap items-center justify-between gap-2">
-                        <h4 class="text-xs font-mono font-bold text-amber-300 uppercase">🎓 Startups del Colegio (${companies.length} disponibles)</h4>
+                        <h4 class="text-xs font-mono font-bold text-amber-300 uppercase">🚀 Apartado Startups Navarras (<span id="wiw-startup-count">${initStartupSelCount}</span> / ${companies.length} seleccionadas)</h4>
                         <select aria-label="Filtrar startups por clase" onchange="document.querySelectorAll('.wiw-startup-row').forEach(r => { r.style.display = (this.value === 'ALL' || r.dataset.cls === this.value) ? '' : 'none'; })" class="min-h-[36px] bg-slate-900 border border-slate-700 px-2 py-1 text-xs text-white font-mono">
                             <option value="ALL">Todas las clases</option>
                             <option value="A">Clase A</option><option value="B">Clase B</option><option value="C">Clase C</option>
@@ -966,6 +1080,17 @@ Object.assign(ui, {
                             <option value="TEST">Clase TEST</option>
                         </select>
                     </div>
+                    ${companies.length > 0 ? `
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            ${presentClasses.map(cls => `
+                                <button type="button" onclick="ui.toggleWhoIsWhoClass('${cls}')" class="min-h-[36px] px-2.5 py-1 bg-amber-400/15 border border-amber-400/60 text-amber-200 hover:bg-amber-400 hover:text-black text-[11px] font-mono font-bold uppercase transition-colors">
+                                    ☑️ Toda ${this.escapeHTML(cls)}
+                                </button>
+                            `).join('')}
+                            <button type="button" onclick="ui.toggleWhoIsWhoClass('ALL')" class="min-h-[36px] px-2.5 py-1 bg-slate-800 border border-slate-600 text-white hover:bg-white hover:text-black text-[11px] font-mono font-bold uppercase">☑️ Todas</button>
+                            <button type="button" onclick="ui.clearWhoIsWhoStartups()" class="min-h-[36px] px-2.5 py-1 bg-slate-900 border border-red-500/60 text-red-300 hover:bg-red-600 hover:text-white text-[11px] font-mono font-bold uppercase">☐ Ninguna</button>
+                        </div>
+                    ` : ''}
                     <div class="max-h-56 overflow-y-auto border border-slate-700 bg-slate-900/70 divide-y divide-slate-800 p-2 space-y-1.5">
                         ${companies.length === 0 ? `<p class="text-slate-400 italic p-2">No hay empresas registradas en el estado actual.</p>` : companies.map(c => {
                             const cid = String(c._keyId);
@@ -975,22 +1100,31 @@ Object.assign(ui, {
                             return `
                             <div class="wiw-startup-row pt-1.5 first:pt-0 flex flex-col sm:flex-row sm:items-center gap-2" data-cls="${this.escapeAttr(cls)}" data-cid="${this.escapeAttr(cid)}">
                                 <label class="flex items-center gap-2 min-w-[200px] cursor-pointer text-white font-bold select-none">
-                                    <input type="checkbox" class="wiw-startup-chk w-5 h-5 accent-amber-400 cursor-pointer shrink-0" value="${this.escapeAttr(cid)}" ${checked ? 'checked' : ''}>
+                                    <input type="checkbox" onchange="ui.updateWhoIsWhoModalCounts()" class="wiw-startup-chk w-5 h-5 accent-amber-400 cursor-pointer shrink-0" value="${this.escapeAttr(cid)}" ${checked ? 'checked' : ''}>
                                     <span>${this.escapeHTML(c.name || cid)} <span class="text-[10px] text-mars-cyan font-mono">(${this.escapeHTML(cls)})</span></span>
                                 </label>
-                                <input type="text" class="wiw-proto-input flex-1 min-h-[38px] bg-black border border-slate-700 px-2.5 py-1 text-xs text-white outline-none focus:border-amber-400" value="${this.escapeAttr(protoVal)}" placeholder="Nombre del prototipo (ej: Falcon-MARS I)">
+                                <input type="text" class="wiw-proto-input flex-1 min-h-[38px] bg-black border border-slate-700 px-2.5 py-1 text-xs text-white outline-none focus:border-amber-400" value="${this.escapeAttr(protoVal)}" placeholder="Prototipo (opcional; vacío = usa eslogan)">
                             </div>`;
                         }).join('')}
                     </div>
                 </div>
 
                 <div class="space-y-2">
-                    <h4 class="text-xs font-mono font-bold text-mars-cyan uppercase">🛰️ Empresas Aeroespaciales Reales</h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-44 overflow-y-auto border border-slate-700 bg-slate-900/70 p-2">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h4 class="text-xs font-mono font-bold text-mars-cyan uppercase">🛰️ Empresas y Agencias Reales (<span id="wiw-real-count">${initRealSelCount}</span> / ${realList.length})</h4>
+                        <div class="flex flex-wrap gap-1.5">
+                            <button type="button" onclick="ui.toggleWhoIsWhoRealGroup('ES')" class="min-h-[34px] px-2 py-1 bg-slate-800 border border-slate-600 text-white hover:border-mars-cyan text-[10px] font-mono font-bold uppercase">🇪🇸 Españolas</button>
+                            <button type="button" onclick="ui.toggleWhoIsWhoRealGroup('EU')" class="min-h-[34px] px-2 py-1 bg-slate-800 border border-slate-600 text-white hover:border-mars-cyan text-[10px] font-mono font-bold uppercase">🇪🇺 Europeas</button>
+                            <button type="button" onclick="ui.toggleWhoIsWhoRealGroup('ALL')" class="min-h-[34px] px-2 py-1 bg-slate-800 border border-slate-600 text-white hover:border-mars-cyan text-[10px] font-mono font-bold uppercase">🌍 Todas</button>
+                            <button type="button" onclick="ui.toggleWhoIsWhoRealGroup('NONE')" class="min-h-[34px] px-2 py-1 bg-slate-900 border border-red-500/60 text-red-300 hover:bg-red-600 hover:text-white text-[10px] font-mono font-bold uppercase">☐ Ninguna</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto border border-slate-700 bg-slate-900/70 p-2">
                         ${realList.map(r => `
-                            <label class="flex items-start gap-2 p-1.5 rounded hover:bg-slate-800/70 cursor-pointer">
-                                <input type="checkbox" class="wiw-real-chk mt-0.5 w-4 h-4 accent-mars-cyan" value="${this.escapeAttr(r.id)}" ${selectedRealSet.has(r.id) ? 'checked' : ''}>
-                                <span><strong class="text-white">${this.escapeHTML(r.name)}</strong> · <span class="text-slate-400">${this.escapeHTML(r.country)}</span></span>
+                            <label class="flex items-center gap-2 p-1.5 rounded hover:bg-slate-800/70 cursor-pointer">
+                                <input type="checkbox" onchange="ui.updateWhoIsWhoModalCounts()" data-region="${this.escapeAttr(r.region || 'INTL')}" class="wiw-real-chk w-4 h-4 accent-mars-cyan shrink-0" value="${this.escapeAttr(r.id)}" ${selectedRealSet.has(r.id) ? 'checked' : ''}>
+                                ${typeof this.renderBrandLogoBadge === 'function' ? this.renderBrandLogoBadge(r, true) : ''}
+                                <span class="min-w-0"><strong class="text-white block truncate">${this.escapeHTML(r.name)}</strong><span class="text-slate-400 text-[10px] font-mono">${this.escapeHTML(r.country)}</span></span>
                             </label>
                         `).join('')}
                     </div>
@@ -1001,7 +1135,7 @@ Object.assign(ui, {
             <button type="button" onclick="ui.closeModal()" class="min-h-[44px] px-4 py-2 bg-slate-800 text-white text-xs font-bold uppercase">Cancelar</button>
             <button type="button" onclick="ui.saveWhoIsWhoConfig(${pageIdx})" class="min-h-[44px] px-5 py-2 bg-amber-400 text-black font-black text-xs uppercase hover:bg-white">💾 Guardar Quién es quién</button>
         `;
-        this.showModal("🌍 Configurar «Quién es quién» (Pág. 7)", html, actions);
+        this.showModal("🌍 Configurar «Quién es quién» (Pág. 7)", html, actions, 'max-w-3xl');
     },
 
     saveWhoIsWhoConfig(pageIdx) {
@@ -1017,7 +1151,7 @@ Object.assign(ui, {
             if (!chk || !chk.checked) return;
             const cid = row.dataset.cid || chk.value;
             const protoInput = row.querySelector('.wiw-proto-input');
-            const prototypeName = (protoInput?.value || '').trim() || 'Prototipo Fase I';
+            const prototypeName = (protoInput?.value || '').trim();
             startups.push({ coId: cid, prototypeName });
         });
 
@@ -1028,7 +1162,7 @@ Object.assign(ui, {
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
         this.render();
-        this.notify(`✅ «Quién es quién» actualizado (${startups.length} startups + ${realIds.length} reales).`, "success");
+        this.notify(`✅ «Quién es quién» actualizado (${realIds.length} reales + ${startups.length} Startups Navarras).`, "success");
     },
 
     translateLaunchLibraryItemToEs(item) {
@@ -1284,6 +1418,25 @@ Object.assign(ui, {
         this.modalPickPrintSlotNews(pageIdx, slotIdx);
     },
 
+    filterPrintPickerSection(sec) {
+        this.printPickerSectionFilter = sec || 'ALL';
+        const activeSec = this.printPickerSectionFilter;
+        document.querySelectorAll('.print-pick-tab').forEach(btn => {
+            const isSel = btn.dataset.sec === activeSec;
+            btn.className = isSel
+                ? 'print-pick-tab min-h-[38px] px-2.5 py-1 bg-amber-400 text-black font-black text-[11px] font-mono uppercase border border-amber-400'
+                : 'print-pick-tab min-h-[38px] px-2.5 py-1 bg-slate-900 text-slate-300 hover:border-white text-[11px] font-mono font-bold uppercase border border-slate-700';
+        });
+        let shown = 0;
+        document.querySelectorAll('.print-pick-news-row').forEach(row => {
+            const match = activeSec === 'ALL' || row.dataset.sec === activeSec;
+            row.style.display = match ? '' : 'none';
+            if (match) shown += 1;
+        });
+        const emptyEl = document.getElementById('print-pick-empty-sec');
+        if (emptyEl) emptyEl.classList.toggle('hidden', shown > 0);
+    },
+
     modalPickPrintSlotNews(pageIdx, slotIdx) {
         if (!this.isNewsCoordinator()) return;
         const ed = this.getActivePrintEdition();
@@ -1293,25 +1446,51 @@ Object.assign(ui, {
 
         const savedNews = Array.isArray(state.data?.news) ? state.data.news : [];
         const wireNews = Array.isArray(this._snapiWireArticles) ? this._snapiWireArticles : [];
+        const activeSec = this.printPickerSectionFilter || 'ALL';
+        const secCounts = {
+            ALL: savedNews.length,
+            actualidad: savedNews.filter(n => n && (n.section || 'actualidad') === 'actualidad').length,
+            historia: savedNews.filter(n => n && n.section === 'historia').length,
+            inventos: savedNews.filter(n => n && n.section === 'inventos').length
+        };
+        const tabs = [
+            { id: 'ALL', label: `Todas (${secCounts.ALL})` },
+            { id: 'actualidad', label: `📡 Actualidad (${secCounts.actualidad})` },
+            { id: 'historia', label: `🏛️ Un poco de Historia (${secCounts.historia})` },
+            { id: 'inventos', label: `🏠 Del Espacio a tu Casa (${secCounts.inventos})` }
+        ];
+        const visibleCount = savedNews.filter(n => activeSec === 'ALL' || (n && (n.section || 'actualidad') === activeSec)).length;
 
         const html = `
             <div class="space-y-4 text-xs font-sans">
-                <p class="text-[11px] text-slate-300">Selecciona una noticia para aplicarla directamente en la <strong>Página ${page.pageNumber}</strong> (Hueco #${slotIdx + 1}).</p>
+                <p class="text-[11px] text-slate-300">Selecciona una noticia del periódico digital (incluyendo <strong>Historia</strong> y <strong>Del Espacio a tu Casa</strong> con su imagen) o del teletipo real para aplicarla en la <strong>Página ${page.pageNumber}</strong> (Hueco #${slotIdx + 1}).</p>
 
                 <div class="space-y-2">
-                    <h4 class="text-xs font-mono font-bold text-amber-300 uppercase">🏛️ Noticias Creadas por Coordinación (${savedNews.length})</h4>
-                    <div class="max-h-52 overflow-y-auto border border-slate-700 bg-slate-900/70 divide-y divide-slate-800 p-2 space-y-1.5">
+                    <h4 class="text-xs font-mono font-bold text-amber-300 uppercase">🏛️ Artículos del Periódico Digital (${savedNews.length})</h4>
+                    <div class="flex flex-wrap gap-1.5">
+                        ${tabs.map(t => `
+                            <button type="button" data-sec="${t.id}" onclick="ui.filterPrintPickerSection('${t.id}')" class="${activeSec === t.id ? 'print-pick-tab min-h-[38px] px-2.5 py-1 bg-amber-400 text-black font-black text-[11px] font-mono uppercase border border-amber-400' : 'print-pick-tab min-h-[38px] px-2.5 py-1 bg-slate-900 text-slate-300 hover:border-white text-[11px] font-mono font-bold uppercase border border-slate-700'}">
+                                ${this.escapeHTML(t.label)}
+                            </button>
+                        `).join('')}
+                    </div>
+                    <div class="max-h-60 overflow-y-auto border border-slate-700 bg-slate-900/70 divide-y divide-slate-800 p-2 space-y-1.5">
                         ${savedNews.length === 0 ? `<p class="text-slate-400 italic p-2">No hay noticias guardadas todavía.</p>` : savedNews.map((n, i) => {
-                            const secBadge = n.section === 'historia' ? 'HISTORIA' : (n.section === 'inventos' ? 'DEL ESPACIO A TU CASA' : 'ACTUALIDAD');
+                            const sec = (n.section === 'historia' || n.section === 'inventos') ? n.section : 'actualidad';
+                            const secBadge = sec === 'historia' ? 'HISTORIA' : (sec === 'inventos' ? 'DEL ESPACIO A TU CASA' : 'ACTUALIDAD');
+                            const thumb = n.imageUrl ? this.resolvePrintImageUrl(n.imageUrl, false) : '';
+                            const hiddenStyle = (activeSec !== 'ALL' && sec !== activeSec) ? 'display:none;' : '';
                             return `
-                            <div class="pt-1.5 first:pt-0 flex items-center justify-between gap-2">
+                            <div class="print-pick-news-row pt-1.5 first:pt-0 flex items-center justify-between gap-2.5" data-sec="${sec}" style="${hiddenStyle}">
+                                ${thumb ? `<img src="${this.escapeAttr(thumb)}" alt="" class="w-14 h-10 object-cover border border-slate-600 shrink-0 bg-black">` : `<div class="w-14 h-10 border border-slate-700 bg-slate-800 flex items-center justify-center text-[10px] font-mono text-slate-400 shrink-0">SIN IMG</div>`}
                                 <div class="min-w-0 flex-1">
-                                    <span class="block text-[10px] font-mono text-mars-cyan uppercase">${secBadge} · ${this.escapeHTML(n.category || 'AEE')} · ${this.escapeHTML(n.publishedDate || '')}</span>
+                                    <span class="block text-[10px] font-mono text-mars-cyan uppercase truncate">${secBadge} · ${this.escapeHTML(n.category || 'AEE')} · ${this.escapeHTML(n.publishedDate || '')}</span>
                                     <strong class="block text-xs text-white truncate">${this.escapeHTML(n.title || '')}</strong>
                                 </div>
                                 <button type="button" onclick="ui.applyPickedNewsToPrintSlot(${pageIdx}, ${slotIdx}, 'NEWS', ${i})" class="min-h-[38px] px-3 py-1 bg-amber-400 text-black font-black text-[11px] uppercase hover:bg-white shrink-0">Aplicar</button>
                             </div>
                         `; }).join('')}
+                        <p id="print-pick-empty-sec" class="${visibleCount === 0 && savedNews.length > 0 ? '' : 'hidden'} text-slate-400 italic p-2">No hay artículos en esta sección.</p>
                     </div>
                 </div>
 
@@ -1344,16 +1523,23 @@ Object.assign(ui, {
         const page = ed?.pages?.[pageIdx];
         const slot = page?.slots?.[slotIdx];
         if (!slot) return;
+        const defaultMm = (page.pageNumber === 1 && slotIdx === 0) ? 60 : 32;
 
         if (kind === 'NEWS') {
             const art = (state.data?.news || [])[idx];
             if (!art) return;
-            slot.kicker = art.category || 'ACTUALIDAD';
+            const secFallback = art.section === 'historia'
+                ? 'UN POCO DE HISTORIA'
+                : (art.section === 'inventos' ? 'DEL ESPACIO A TU CASA' : 'ACTUALIDAD');
+            slot.kicker = art.category || secFallback;
             slot.mediaSource = art.sourceName || art.author || 'ORBITAL REPORT';
             slot.title = art.title || slot.title;
             slot.subtitle = art.subtitle || '';
             slot.body = art.body || art.title || '';
-            slot.imageUrl = art.imageUrl ? (this.getNewsImageSrc ? this.getNewsImageSrc(art.imageUrl) : art.imageUrl) : '';
+            slot.imageUrl = art.imageUrl ? this.resolvePrintImageUrl(art.imageUrl, false) : '';
+            if (slot.imageUrl && (slot.imgHeightMm === undefined || slot.imgHeightMm === null || Number(slot.imgHeightMm) <= 0)) {
+                slot.imgHeightMm = defaultMm;
+            }
         } else if (kind === 'WIRE') {
             const art = (this._snapiWireArticles || [])[idx];
             if (!art) return;
@@ -1362,7 +1548,10 @@ Object.assign(ui, {
             slot.title = art.titleEs || art.title || slot.title;
             slot.subtitle = art.summaryEs || art.summary || '';
             slot.body = art.summaryEs || art.summary || '';
-            slot.imageUrl = art.proxy_image_url || (art.image_url && this.getNewsImageSrc ? this.getNewsImageSrc(art.image_url) : '');
+            slot.imageUrl = art.proxy_image_url || (art.image_url ? this.resolvePrintImageUrl(art.image_url, false) : '');
+            if (slot.imageUrl && (slot.imgHeightMm === undefined || slot.imgHeightMm === null || Number(slot.imgHeightMm) <= 0)) {
+                slot.imgHeightMm = defaultMm;
+            }
 
             if (art.url && /^https?:\/\//i.test(art.url)) {
                 this.notify("🌐 Extrayendo artículo completo en castellano...", "info");
@@ -1372,7 +1561,12 @@ Object.assign(ui, {
                         const full = await resp.json();
                         slot.title = full.titleEs || slot.title;
                         slot.body = full.bodyEs || full.bodyEn || slot.body;
-                        if (full.imageUrl) slot.imageUrl = full.imageUrl;
+                        if (full.imageUrl) {
+                            slot.imageUrl = full.imageUrl;
+                            if (slot.imgHeightMm === undefined || slot.imgHeightMm === null || Number(slot.imgHeightMm) <= 0) {
+                                slot.imgHeightMm = defaultMm;
+                            }
+                        }
                     }
                 } catch (e) {}
             }
@@ -1394,28 +1588,27 @@ Object.assign(ui, {
             return safe;
         };
         const lines = String(rawText || '').replace(/\r\n/g, '\n').split('\n');
-        let html = '';
-        let inList = false;
+        const blocks = [];
+        let listItems = [];
+        const flushList = () => {
+            if (listItems.length > 0) {
+                blocks.push(`<ul style="list-style:disc;padding-left:4mm;margin:1mm 0;text-align:left;">${listItems.map(it => `<li style="margin:0.4mm 0;">${it}</li>`).join('')}</ul>`);
+                listItems = [];
+            }
+        };
         lines.forEach(line => {
             const trimmed = line.trim();
             if (/^[-•]\s+/.test(trimmed)) {
-                if (!inList) {
-                    html += '<ul class="list-disc pl-4 my-1 space-y-0.5 text-left">';
-                    inList = true;
-                }
-                html += `<li>${formatInline(trimmed.replace(/^[-•]\s+/, ''))}</li>`;
+                listItems.push(formatInline(trimmed.replace(/^[-•]\s+/, '')));
             } else {
-                if (inList) {
-                    html += '</ul>';
-                    inList = false;
-                }
+                flushList();
                 if (trimmed !== '') {
-                    html += `<p class="mb-1 last:mb-0 text-justify">${formatInline(trimmed)}</p>`;
+                    blocks.push(`<p style="margin:0 0 1.2mm 0;text-align:justify;">${formatInline(trimmed)}</p>`);
                 }
             }
         });
-        if (inList) html += '</ul>';
-        return html;
+        flushList();
+        return blocks.join('');
     },
 
     addPrintSlot(pageIdx) {
@@ -1488,7 +1681,32 @@ Object.assign(ui, {
         this.render();
     },
 
+    fitPrintPreviewStages() {
+        const zoomMode = this.printStudioZoomMode || 'fit';
+        document.querySelectorAll('[data-print-scale-outer]').forEach(outer => {
+            const inner = outer.querySelector('[data-print-scale-inner]');
+            if (!inner) return;
+            const natW = inner.offsetWidth;
+            const natH = inner.offsetHeight;
+            if (!natW || !natH) return;
+            if (zoomMode === 'actual') {
+                outer.style.overflowX = 'auto';
+                outer.style.height = natH + 'px';
+                inner.style.transform = 'none';
+                inner.style.transformOrigin = 'top left';
+            } else {
+                outer.style.overflowX = 'hidden';
+                const availW = outer.clientWidth || natW;
+                const scale = Math.min(1, availW / natW);
+                inner.style.transformOrigin = 'top left';
+                inner.style.transform = `scale(${scale.toFixed(4)})`;
+                outer.style.height = Math.ceil(natH * scale) + 'px';
+            }
+        });
+    },
+
     checkPrintPagesOverflow() {
+        this.fitPrintPreviewStages();
         document.querySelectorAll('[data-print-page-box]').forEach(box => {
             const pIdx = box.getAttribute('data-print-page-box');
             const badge = document.getElementById(`print-fit-badge-${pIdx}`);
@@ -1496,13 +1714,44 @@ Object.assign(ui, {
             if (!badge || !inner) return;
             const overflows = box.scrollHeight > (box.clientHeight + 4);
             if (overflows) {
-                badge.className = 'text-[9px] font-mono px-1.5 py-0.5 bg-red-700 text-white font-bold uppercase';
-                badge.innerText = '⚠️ Excede A3 (edita/recorta)';
+                badge.className = 'text-[10px] font-mono px-2 py-0.5 bg-red-700 text-white font-bold uppercase shrink-0';
+                badge.innerText = '⚠️ Excede A3 (recorta)';
             } else {
-                badge.className = 'text-[9px] font-mono px-1.5 py-0.5 bg-emerald-800 text-white font-bold uppercase';
+                badge.className = 'text-[10px] font-mono px-2 py-0.5 bg-emerald-700 text-white font-bold uppercase shrink-0';
                 badge.innerText = '✓ Cabe en A3';
             }
         });
+    },
+
+    renderPrintPageToolbarHtml(page, pageIdx, compact = false) {
+        const isCover = page.pageNumber === 1;
+        const isWhoIsWho = page.pageNumber === 7 && (page.pageMode || 'who_is_who') === 'who_is_who';
+        const isBeyondRocket = page.pageNumber === 8 && (page.pageMode || 'beyond_rocket') === 'beyond_rocket';
+        const showArticleTools = !isCover && !isWhoIsWho && !isBeyondRocket;
+
+        return `
+        <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-950/90 border border-slate-700 px-2.5 py-1.5">
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="text-[11px] font-mono font-bold text-mars-cyan uppercase truncate">${compact ? `Pág. ${page.pageNumber}` : `📄 Página ${page.pageNumber} — ${this.escapeHTML(page.label)}`}</span>
+                <span id="print-fit-badge-${pageIdx}" class="text-[10px] font-mono px-2 py-0.5 bg-slate-700 text-white font-bold uppercase shrink-0">Midiendo...</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-1">
+                ${!isCover ? `<button type="button" onclick="ui.modalEditPrintPageSection(${pageIdx})" class="px-2 py-1 bg-slate-800 border border-slate-600 text-slate-200 hover:border-white text-[10px] font-mono font-bold uppercase" title="Editar título de sección">✏️ Sección</button>` : ''}
+                ${page.pageNumber === 7 ? `
+                    ${isWhoIsWho ? `<button type="button" onclick="ui.modalConfigureWhoIsWho(${pageIdx})" class="px-2 py-1 bg-amber-400 text-black hover:bg-white text-[10px] font-mono font-black uppercase">🌍 Elegir Empresas</button>` : ''}
+                    <button type="button" onclick="ui.togglePrintPageMode(${pageIdx})" class="px-2 py-1 bg-slate-800 border border-slate-500 text-white hover:bg-[#8B0000] text-[10px] font-mono font-bold uppercase">${isWhoIsWho ? '📰 Noticias' : '🌍 Quién es quién'}</button>
+                ` : ''}
+                ${page.pageNumber === 8 ? `
+                    ${isBeyondRocket ? `
+                        <button type="button" onclick="ui.syncLaunchLibrary2ForPrint(${pageIdx})" class="px-2 py-1 bg-emerald-700 text-white hover:bg-emerald-600 text-[10px] font-mono font-bold uppercase">🛰️ Sync LL2</button>
+                        <button type="button" onclick="ui.modalEditBeyondRocketDirectory(${pageIdx})" class="px-2 py-1 bg-amber-400 text-black hover:bg-white text-[10px] font-mono font-black uppercase">✏️ Fichas</button>
+                    ` : ''}
+                    <button type="button" onclick="ui.togglePrintPageMode(${pageIdx})" class="px-2 py-1 bg-slate-800 border border-slate-500 text-white hover:bg-[#8B0000] text-[10px] font-mono font-bold uppercase">${isBeyondRocket ? '📰 Noticias' : '🚀 Más allá'}</button>
+                ` : ''}
+                ${showArticleTools ? `<button type="button" onclick="ui.addPrintSlot(${pageIdx})" class="px-2 py-1 bg-emerald-700 text-white hover:bg-emerald-600 text-[10px] font-mono font-bold uppercase">+ Noticia</button>` : ''}
+                ${page.adSlot ? `<button type="button" onclick="ui.modalConfigurePrintAd(${pageIdx})" class="px-2 py-1 bg-[#8B0000] text-white hover:bg-red-700 text-[10px] font-mono font-bold uppercase">📢 Anuncio</button>` : ''}
+            </div>
+        </div>`;
     },
 
     renderPrintStudioPageHtml(ed, page, pageIdx, forPrint = false) {
@@ -1510,68 +1759,111 @@ Object.assign(ui, {
         const isWhoIsWho = page.pageNumber === 7 && (page.pageMode || 'who_is_who') === 'who_is_who';
         const isBeyondRocket = page.pageNumber === 8 && (page.pageMode || 'beyond_rocket') === 'beyond_rocket';
         const hasAd = Boolean(page.adSlot && page.adSlot.companyName);
+        const monoFont = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+        const sansFont = "ui-sans-serif, system-ui, -apple-system, sans-serif";
+        const serifFont = "Georgia, 'Times New Roman', Times, serif";
 
         let mainContentHtml = '';
-        let pageControlsHtml = '';
-
-        if (page.pageNumber === 7 && !forPrint) {
-            pageControlsHtml = `
-                <div class="flex items-center gap-1.5">
-                    ${isWhoIsWho ? `<button type="button" onclick="ui.modalConfigureWhoIsWho(${pageIdx})" class="px-2 py-0.5 bg-amber-400 text-black hover:bg-white text-[10px] font-mono font-bold uppercase">🌍 Elegir Empresas</button>` : ''}
-                    <button type="button" onclick="ui.togglePrintPageMode(${pageIdx})" class="px-2 py-0.5 bg-[#111111] text-white hover:bg-[#8B0000] text-[10px] font-mono font-bold uppercase">${isWhoIsWho ? '📰 Cambiar a Noticias' : '🌍 Cambiar a Quién es quién'}</button>
-                </div>`;
-        } else if (page.pageNumber === 8 && !forPrint) {
-            pageControlsHtml = `
-                <div class="flex items-center gap-1.5 flex-wrap">
-                    ${isBeyondRocket ? `
-                        <button type="button" onclick="ui.syncLaunchLibrary2ForPrint(${pageIdx})" class="px-2 py-0.5 bg-emerald-700 text-white hover:bg-[#111111] text-[10px] font-mono font-bold uppercase">🛰️ Sync LL2 (ES)</button>
-                        <button type="button" onclick="ui.modalEditBeyondRocketDirectory(${pageIdx})" class="px-2 py-0.5 bg-amber-400 text-black hover:bg-white text-[10px] font-mono font-bold uppercase">✏️ Editar Fichas</button>
-                    ` : ''}
-                    <button type="button" onclick="ui.togglePrintPageMode(${pageIdx})" class="px-2 py-0.5 bg-[#111111] text-white hover:bg-[#8B0000] text-[10px] font-mono font-bold uppercase">${isBeyondRocket ? '📰 Cambiar a Noticias' : '🚀 Cambiar a Más allá del cohete'}</button>
-                </div>`;
-        } else if (!isCover && !forPrint) {
-            pageControlsHtml = `
-                <div class="flex items-center gap-1.5">
-                    <button type="button" onclick="ui.addPrintSlot(${pageIdx})" class="px-2 py-0.5 bg-emerald-700 text-white hover:bg-[#111111] text-[10px] font-mono font-bold uppercase">+ Noticia</button>
-                    <button type="button" onclick="ui.modalConfigurePrintAd(${pageIdx})" class="px-2 py-0.5 bg-[#8B0000] text-white hover:bg-[#111111] text-[10px] font-mono font-bold uppercase">📢 Anuncio</button>
-                </div>`;
-        }
 
         if (isWhoIsWho) {
             const cfg = page.whoIsWhoConfig || { realIds: ['real-spacex', 'real-pld', 'real-blue', 'real-rocketlab'], startups: [] };
             const realMap = new Map(this.getWhoIsWhoRealPresets().map(r => [r.id, r]));
             const companies = state.data?.companies || {};
+            const realLogos = state.data?.realCompanyLogos || {};
+
+            const realEntries = (cfg.realIds || []).map(id => {
+                const r = realMap.get(id);
+                if (!r) return null;
+                const rawCustom = String(realLogos[r.id] || '').trim();
+                const customLogo = (rawCustom && (/^https?:\/\//i.test(rawCustom) || rawCustom.startsWith('data:image/')))
+                    ? this.resolvePrintImageUrl(this.getDirectDriveImageUrl ? this.getDirectDriveImageUrl(rawCustom) : rawCustom, forPrint)
+                    : '';
+                const favicon = r.domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(r.domain)}&sz=64` : '';
+                return {
+                    name: r.name,
+                    country: r.country,
+                    desc: r.summary,
+                    domain: r.domain || '',
+                    logoSrc: customLogo || favicon,
+                    monogram: r.monogram || r.name.slice(0, 3).toUpperCase(),
+                    accent: r.accentColor || '#0f172a'
+                };
+            }).filter(Boolean).slice(0, hasAd ? 8 : 10);
+
             const startupEntries = (cfg.startups || []).map(s => {
                 const co = companies[s.coId];
                 if (!co) return null;
+                const isLogoAllowed = !co.brandStatus || co.brandStatus === 'APROBADO' || co.brandApproval?.status === 'APROBADO';
+                const rawCoLogo = (isLogoAllowed && co.logo && (/^https?:\/\//i.test(co.logo) || co.logo.startsWith('data:image/')))
+                    ? this.resolvePrintImageUrl(this.getDirectDriveImageUrl ? this.getDirectDriveImageUrl(co.logo) : co.logo, forPrint)
+                    : '';
+                const protoTxt = String(s.prototypeName || '').trim();
+                const descTxt = protoTxt ? `Prototipo: ${protoTxt}` : (co.slogan ? `«${co.slogan}»` : 'Startup aeroespacial escolar');
+                const mono = (co.name || 'ST').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase() || 'ST';
                 return {
                     name: co.name,
-                    country: 'España',
-                    desc: `Prototipo: ${s.prototypeName || 'En desarrollo'}`,
-                    isSchool: true
+                    desc: descTxt,
+                    logoSrc: rawCoLogo,
+                    monogram: mono
                 };
-            }).filter(Boolean);
-            const realEntries = (cfg.realIds || []).map(id => {
-                const r = realMap.get(id);
-                return r ? { name: r.name, country: r.country, desc: r.summary, isSchool: false } : null;
-            }).filter(Boolean);
-            const allEntries = [...startupEntries, ...realEntries].slice(0, hasAd ? 16 : 22);
+            }).filter(Boolean).slice(0, hasAd ? 10 : 14);
+
+            const renderPrintLogoBox = (logoSrc, monogram, accentBg) => `
+                <div style="width:7.2mm;height:7.2mm;min-width:7.2mm;border:1px solid #d6d3d1;background:${logoSrc ? '#ffffff' : this.escapeAttr(accentBg)};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+                    ${logoSrc
+                        ? `<img src="${this.escapeAttr(logoSrc)}" alt="" style="width:100%;height:100%;object-fit:contain;display:block;" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='flex';"><span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-family:${monoFont};font-size:6.2pt;font-weight:900;color:#ffffff;background:${this.escapeAttr(accentBg)};">${this.escapeHTML(monogram)}</span>`
+                        : `<span style="font-family:${monoFont};font-size:6.2pt;font-weight:900;color:#ffffff;">${this.escapeHTML(monogram)}</span>`}
+                </div>`;
 
             mainContentHtml = `
-                <div class="space-y-2">
-                    <div class="border-b border-stone-300 pb-1.5">
-                        <h3 class="font-serif font-black text-[18pt] leading-tight text-[#111111]">Quién es quién</h3>
-                        <p class="font-serif italic text-[8.5pt] text-stone-700">${startupEntries.length} startups escolares y ${realEntries.length} empresas aeroespaciales de referencia.</p>
+                <div style="display:flex;flex-direction:column;gap:2.5mm;">
+                    <div style="border-bottom:1px solid #d6d3d1;padding-bottom:1.5mm;">
+                        <h3 style="margin:0;font-family:${serifFont};font-weight:900;font-size:17pt;line-height:1.1;color:#111111;">Quién es quién en el Sector Aeroespacial</h3>
+                        <p style="margin:0.8mm 0 0 0;font-family:${serifFont};font-style:italic;font-size:8.2pt;line-height:1.25;color:#44403c;">${realEntries.length} empresas y agencias reales junto al apartado de Startups Navarras (${startupEntries.length} seleccionadas).</p>
                     </div>
-                    <div class="grid grid-cols-2 gap-x-3 gap-y-1.5">
-                        ${allEntries.length === 0 ? `<p class="col-span-2 text-xs text-stone-500 italic">Pulsa «🌍 Elegir Empresas» para seleccionar startups y empresas reales.</p>` : allEntries.map(e => `
-                            <div class="border-b border-stone-200 pb-1">
-                                <div class="text-[8pt] font-serif font-bold text-[#111111] leading-tight">
-                                    ${this.escapeHTML(e.name)} <span class="font-mono text-[7pt] font-normal text-[#8B0000]">· ${this.escapeHTML(e.country)}</span>
-                                </div>
-                                <div class="text-[7.2pt] font-sans text-stone-700 leading-snug">${this.escapeHTML(e.desc)}</div>
-                            </div>
-                        `).join('')}
+
+                    <div>
+                        <div style="font-family:${monoFont};font-size:7.2pt;font-weight:900;text-transform:uppercase;letter-spacing:0.06em;color:#8B0000;border-bottom:1px solid #111111;padding-bottom:0.8mm;margin-bottom:1.6mm;">
+                            🛰️ Empresas y Agencias Reales
+                        </div>
+                        ${realEntries.length === 0
+                            ? `<p style="margin:0;font-size:7.8pt;font-style:italic;color:#78716c;">Pulsa «🌍 Elegir Empresas» en la barra superior de esta página para incluir empresas aeroespaciales reales.</p>`
+                            : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5mm 3mm;">
+                                ${realEntries.map(e => `
+                                    <div style="display:flex;align-items:flex-start;gap:1.8mm;border-bottom:1px solid #e7e5e4;padding-bottom:1.2mm;">
+                                        ${renderPrintLogoBox(e.logoSrc, e.monogram, e.accent)}
+                                        <div style="min-width:0;flex:1;">
+                                            <div style="font-family:${serifFont};font-weight:700;font-size:7.8pt;line-height:1.15;color:#111111;">
+                                                ${this.escapeHTML(e.name)} <span style="font-family:${monoFont};font-weight:400;font-size:6.5pt;color:#8B0000;">· ${this.escapeHTML(e.country)}</span>
+                                            </div>
+                                            <div style="font-family:${sansFont};font-size:6.8pt;line-height:1.22;color:#44403c;margin-top:0.3mm;">${this.escapeHTML(e.desc)}</div>
+                                            ${e.domain ? `<div style="font-family:${monoFont};font-size:6pt;line-height:1.1;color:#78716c;margin-top:0.3mm;">${this.escapeHTML(e.domain)}</div>` : ''}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>`}
+                    </div>
+
+                    <div style="border-top:2px solid #8B0000;padding-top:1.8mm;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #111111;padding-bottom:0.8mm;margin-bottom:1.6mm;">
+                            <span style="font-family:${monoFont};font-size:7.2pt;font-weight:900;text-transform:uppercase;letter-spacing:0.06em;color:#111111;">🚀 Apartado Startups Navarras</span>
+                            <span style="font-family:${monoFont};font-size:6.2pt;font-weight:700;background:#111111;color:#ffffff;padding:0.4mm 1.4mm;text-transform:uppercase;">Ecosistema Navarra</span>
+                        </div>
+                        ${startupEntries.length === 0
+                            ? `<p style="margin:0;font-size:7.8pt;font-style:italic;color:#78716c;">Pulsa «🌍 Elegir Empresas» para añadir Startups Navarras (se mostrarán sin etiqueta de clase).</p>`
+                            : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5mm 3mm;">
+                                ${startupEntries.map(s => `
+                                    <div style="display:flex;align-items:flex-start;gap:1.8mm;border-bottom:1px solid #e7e5e4;padding-bottom:1.2mm;">
+                                        ${renderPrintLogoBox(s.logoSrc, s.monogram, '#111111')}
+                                        <div style="min-width:0;flex:1;">
+                                            <div style="font-family:${serifFont};font-weight:700;font-size:7.8pt;line-height:1.15;color:#111111;">
+                                                ${this.escapeHTML(s.name)} <span style="font-family:${monoFont};font-weight:700;font-size:6pt;background:#EFECE4;border:1px solid #d6d3d1;color:#111111;padding:0 1mm;vertical-align:middle;">NAVARRA</span>
+                                            </div>
+                                            <div style="font-family:${sansFont};font-size:6.8pt;line-height:1.22;color:#44403c;margin-top:0.3mm;">${this.escapeHTML(s.desc)}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>`}
                     </div>
                 </div>`;
         } else if (isBeyondRocket) {
@@ -1587,96 +1879,104 @@ Object.assign(ui, {
             const qrSvg = this.generateQrSvg(window.location.origin, 58);
 
             mainContentHtml = `
-                <div class="space-y-2">
-                    <div class="border-b border-stone-300 pb-1">
-                        <h3 class="font-serif font-black text-[17pt] leading-tight text-[#111111]">Más allá del cohete</h3>
-                        <p class="font-serif italic text-[8pt] text-stone-700">${this.escapeHTML(cfg.subtitle || '')}</p>
+                <div style="display:flex;flex-direction:column;gap:2mm;">
+                    <div style="border-bottom:1px solid #d6d3d1;padding-bottom:1mm;">
+                        <h3 style="margin:0;font-family:${serifFont};font-weight:900;font-size:17pt;line-height:1.12;color:#111111;">Más allá del cohete</h3>
+                        <p style="margin:0.5mm 0 0 0;font-family:${serifFont};font-style:italic;font-size:8pt;line-height:1.25;color:#44403c;">${this.escapeHTML(cfg.subtitle || '')}</p>
                     </div>
-                    <div class="grid grid-cols-2 gap-x-3 gap-y-1">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1mm 3mm;">
                         ${dirItems.map(it => `
-                            <div class="border-b border-stone-200 pb-0.5">
-                                <span class="block text-[6.3pt] font-mono font-bold uppercase text-[#0f5132] tracking-wide">${this.escapeHTML(it.cat)}</span>
-                                <strong class="block text-[7.6pt] font-serif text-[#111111] leading-tight">${this.escapeHTML(it.name)}</strong>
-                                <span class="block text-[6.8pt] font-sans text-stone-700 leading-tight">${this.escapeHTML(it.desc)}</span>
+                            <div style="border-bottom:1px solid #e7e5e4;padding-bottom:0.8mm;">
+                                <span style="display:block;font-family:${monoFont};font-size:6.3pt;line-height:1.15;font-weight:700;text-transform:uppercase;color:#0f5132;letter-spacing:0.04em;">${this.escapeHTML(it.cat)}</span>
+                                <strong style="display:block;font-family:${serifFont};font-size:7.6pt;line-height:1.15;color:#111111;">${this.escapeHTML(it.name)}</strong>
+                                <span style="display:block;font-family:${sansFont};font-size:6.8pt;line-height:1.2;color:#44403c;">${this.escapeHTML(it.desc)}</span>
                             </div>
                         `).join('')}
                     </div>
                     ${ll2Items.length > 0 ? `
-                        <div class="bg-[#EFECE4] border-l-2 border-l-[#8B0000] p-1.5 space-y-1">
-                            <span class="block text-[6.8pt] font-mono font-black uppercase text-[#8B0000]">🛰️ Agenda de Lanzamientos Reales (Launch Library 2 · ES)</span>
-                            <div class="grid grid-cols-2 gap-x-2.5 gap-y-1">
+                        <div style="background:#EFECE4;border-left:2px solid #8B0000;padding:1.5mm;display:flex;flex-direction:column;gap:1mm;">
+                            <span style="display:block;font-family:${monoFont};font-size:6.8pt;line-height:1.15;font-weight:900;text-transform:uppercase;color:#8B0000;">🛰️ Agenda de Lanzamientos Reales (Launch Library 2 · ES)</span>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1mm 2.5mm;">
                                 ${ll2Items.map(l => `
-                                    <div class="text-[6.8pt] leading-tight">
-                                        <strong class="text-[#111111]">${this.escapeHTML(l.name)}</strong>
-                                        <span class="block text-stone-700">${this.escapeHTML(l.dateEs)} · <em>${this.escapeHTML(l.statusEs)}</em></span>
+                                    <div style="font-size:6.8pt;line-height:1.2;font-family:${sansFont};">
+                                        <strong style="color:#111111;">${this.escapeHTML(l.name)}</strong>
+                                        <span style="display:block;color:#44403c;">${this.escapeHTML(l.dateEs)} · <em>${this.escapeHTML(l.statusEs)}</em></span>
                                     </div>
                                 `).join('')}
                             </div>
                         </div>
                     ` : ''}
-                    <div class="bg-white border border-[#111111] p-1.5 flex items-center gap-2.5">
+                    <div style="background:#ffffff;border:1px solid #111111;padding:1.5mm;display:flex;align-items:center;gap:2.5mm;">
                         ${qrSvg}
-                        <div class="min-w-0 flex-1">
-                            <strong class="block text-[8.2pt] font-serif text-[#111111] leading-tight">ORBITAL REPORT en la web</strong>
-                            <span class="block text-[7pt] font-sans text-stone-700 leading-snug">Escanea el QR para leer las noticias del proyecto desde casa.</span>
-                            <span class="inline-block mt-0.5 px-1.5 py-0.5 bg-[#111111] text-white font-mono text-[6.8pt] font-bold uppercase">Acceso Colegio/Familias: VIP-0000 · PIN 0000</span>
+                        <div style="min-width:0;flex:1;">
+                            <strong style="display:block;font-family:${serifFont};font-size:8.2pt;line-height:1.15;color:#111111;">ORBITAL REPORT en la web</strong>
+                            <span style="display:block;font-family:${sansFont};font-size:7pt;line-height:1.25;color:#44403c;">Escanea el QR para leer las noticias del proyecto desde casa.</span>
+                            <span style="display:inline-block;margin-top:0.6mm;padding:0.4mm 1.4mm;background:#111111;color:#ffffff;font-family:${monoFont};font-size:6.8pt;line-height:1.2;font-weight:700;text-transform:uppercase;">Acceso Colegio/Familias: VIP-0000 · PIN 0000</span>
                         </div>
                     </div>
                 </div>`;
         } else {
             const visibleSlots = isCover ? (page.slots || []).slice(0, 1) : (page.slots || []);
             const slotsHtml = visibleSlots.map((slot, sIdx) => {
-                const imgSrc = slot.imageUrl ? (this.getNewsImageSrc ? this.getNewsImageSrc(slot.imageUrl) : slot.imageUrl) : '';
+                const imgSrc = slot.imageUrl ? this.resolvePrintImageUrl(slot.imageUrl, forPrint) : '';
                 const fontPt = Number(slot.fontSizePt || (isCover ? 10 : 9.5));
-                const imgHeightMm = (slot.imgHeightMm !== undefined && slot.imgHeightMm !== null) ? Number(slot.imgHeightMm) : (isCover && sIdx === 0 ? 60 : 30);
-                const imgFitClass = (slot.imgFit === 'contain') ? 'object-contain bg-stone-100' : 'object-cover';
+                const imgHeightMm = (slot.imgHeightMm !== undefined && slot.imgHeightMm !== null) ? Number(slot.imgHeightMm) : (isCover && sIdx === 0 ? 60 : 32);
+                const imgFitVal = (slot.imgFit === 'contain') ? 'contain' : 'cover';
+                const imgBgStyle = (slot.imgFit === 'contain') ? 'background:#f5f5f4;' : '';
                 const editBtn = !forPrint ? `
-                    <div class="flex items-center gap-1 flex-wrap">
+                    <div style="position:absolute;top:0;right:0;z-index:20;display:flex;align-items:center;gap:2px;flex-wrap:wrap;background:rgba(250,248,245,0.95);border:1px solid #cbd5e1;padding:2px;box-shadow:0 1px 4px rgba(0,0,0,0.12);">
                         ${imgSrc ? `
                             <button type="button" onclick="ui.adjustPrintSlotImageHeight(${pageIdx}, ${sIdx}, -5)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Reducir altura de foto (-5 mm)">🖼️-</button>
                             <button type="button" onclick="ui.adjustPrintSlotImageHeight(${pageIdx}, ${sIdx}, 5)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Aumentar altura de foto (+5 mm)">🖼️+</button>
                         ` : ''}
-                        <button type="button" onclick="ui.modalPickPrintSlotNews(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-amber-400 text-black hover:bg-white text-[10px] font-mono font-bold uppercase">📰 Elegir Noticia</button>
+                        <button type="button" onclick="ui.modalPickPrintSlotNews(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-amber-400 text-black hover:bg-white text-[10px] font-mono font-bold uppercase">📰 Elegir</button>
                         <button type="button" onclick="ui.modalEditPrintSlot(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-[#111111] text-white hover:bg-[#8B0000] text-[10px] font-mono font-bold uppercase">✏️ Editar</button>
                         ${(!isCover || (page.slots || []).length > 1) ? `<button type="button" onclick="ui.removePrintSlot(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-[10px] font-mono font-bold uppercase" title="Quitar noticia de esta página">✕</button>` : ''}
                     </div>` : '';
+                const borderStyle = sIdx < visibleSlots.length - 1
+                    ? 'border-bottom:1px solid #d6d3d1;padding-bottom:2.4mm;margin-bottom:2.4mm;'
+                    : 'margin-bottom:0;';
+                const h3Style = (isCover && sIdx === 0)
+                    ? `margin:0 0 1mm 0;font-family:${serifFont};font-weight:900;color:#111111;font-size:21pt;line-height:1.08;`
+                    : `margin:0 0 1mm 0;font-family:${serifFont};font-weight:900;color:#111111;font-size:13pt;line-height:1.14;`;
+
                 return `
-                <article class="border-b border-stone-300 pb-2.5 mb-2.5 last:border-b-0 last:mb-0">
-                    <div class="flex items-center justify-between gap-2 mb-1">
-                        <span class="text-[9pt] font-mono font-bold uppercase tracking-wider text-[#8B0000]">${this.escapeHTML(slot.kicker || '')}</span>
-                        <div class="flex items-center gap-1.5">${editBtn}</div>
+                <article style="position:relative;${borderStyle}">
+                    ${editBtn}
+                    <div style="margin-bottom:0.8mm;">
+                        <span style="font-family:${monoFont};font-size:8.5pt;line-height:1.2;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#8B0000;">${this.escapeHTML(slot.kicker || '')}</span>
                     </div>
-                    <h3 class="font-serif font-black text-[#111111] ${isCover && sIdx === 0 ? 'text-[21pt] leading-[1.08]' : 'text-[13pt] leading-[1.14]'} mb-1">${this.escapeHTML(slot.title || '')}</h3>
-                    ${slot.subtitle ? `<p class="font-serif italic text-[9.5pt] text-stone-700 leading-snug mb-1.5">${this.escapeHTML(slot.subtitle)}</p>` : ''}
+                    <h3 style="${h3Style}">${this.escapeHTML(slot.title || '')}</h3>
+                    ${slot.subtitle ? `<p style="margin:0 0 1.4mm 0;font-family:${serifFont};font-style:italic;font-size:9.5pt;line-height:1.25;color:#44403c;">${this.escapeHTML(slot.subtitle)}</p>` : ''}
                     ${(imgSrc && imgHeightMm > 0) ? `
-                        <figure class="mb-1.5">
-                            <img src="${this.escapeAttr(imgSrc)}" alt="" style="height:${imgHeightMm}mm;" class="w-full ${imgFitClass} border border-stone-300">
-                            <figcaption class="text-[7.5pt] font-mono text-stone-600 italic mt-0.5">Fuente: ${this.escapeHTML(slot.mediaSource || 'ORBITAL REPORT')}</figcaption>
+                        <figure style="margin:0 0 1.4mm 0;">
+                            <img src="${this.escapeAttr(imgSrc)}" alt="" style="width:100%;height:${imgHeightMm}mm;object-fit:${imgFitVal};${imgBgStyle}display:block;border:1px solid #d6d3d1;">
+                            <figcaption style="font-family:${monoFont};font-size:7.5pt;line-height:1.2;color:#57534e;font-style:italic;margin-top:0.6mm;">Fuente: ${this.escapeHTML(slot.mediaSource || 'ORBITAL REPORT')}</figcaption>
                         </figure>
-                    ` : `<p class="text-[7.5pt] font-mono text-stone-600 mb-1">Fuente: ${this.escapeHTML(slot.mediaSource || 'ORBITAL REPORT')}</p>`}
-                    <div style="font-size: ${fontPt}pt; line-height: 1.38;" class="font-serif text-[#1f2937]">${this.formatPrintEditorialText(slot.body || '')}</div>
+                    ` : `<p style="margin:0 0 1mm 0;font-family:${monoFont};font-size:7.5pt;line-height:1.2;color:#57534e;">Fuente: ${this.escapeHTML(slot.mediaSource || 'ORBITAL REPORT')}</p>`}
+                    <div style="font-family:${serifFont};font-size:${fontPt}pt;line-height:1.38;color:#1f2937;">${this.formatPrintEditorialText(slot.body || '')}</div>
                 </article>`;
             }).join('');
 
             const coverSummaryHtml = isCover ? `
-                <div class="mt-3 pt-2.5 border-t-2 border-[#111111]">
-                    <div class="text-[7.5pt] font-mono font-black uppercase tracking-widest text-[#8B0000] mb-1.5">EN ESTE NÚMERO // SUMARIO DE PÁGINAS</div>
-                    <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-[7.5pt] leading-tight">
+                <div style="margin-top:2.8mm;padding-top:2.2mm;border-top:2px solid #111111;">
+                    <div style="font-family:${monoFont};font-size:7.5pt;line-height:1.2;font-weight:900;text-transform:uppercase;letter-spacing:0.08em;color:#8B0000;margin-bottom:1.4mm;">EN ESTE NÚMERO // SUMARIO DE PÁGINAS</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1mm 3mm;font-size:7.5pt;line-height:1.25;">
                         ${(ed.pages || []).slice(1).map(p => {
                             let summaryTitle = p.label || '';
                             if (p.pageNumber === 7 && (p.pageMode || 'who_is_who') === 'who_is_who') {
-                                summaryTitle = 'Quién es quién: Startups y Empresas';
+                                summaryTitle = 'Quién es quién: Sector Real y Startups Navarras';
                             } else if (p.pageNumber === 8 && (p.pageMode || 'beyond_rocket') === 'beyond_rocket') {
                                 summaryTitle = 'Más allá del cohete y Acceso QR';
                             } else if (p.slots && p.slots[0]?.title) {
                                 summaryTitle = p.slots[0].title;
                             }
-                            return `<div class="truncate border-b border-stone-200 pb-0.5"><strong class="font-mono text-[#8B0000]">PÁG. ${p.pageNumber}</strong> · <span class="font-serif text-[#111111]">${this.escapeHTML(summaryTitle)}</span></div>`;
+                            return `<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid #e7e5e4;padding-bottom:0.5mm;"><strong style="font-family:${monoFont};color:#8B0000;">PÁG. ${p.pageNumber}</strong> · <span style="font-family:${serifFont};color:#111111;">${this.escapeHTML(summaryTitle)}</span></div>`;
                         }).join('')}
                     </div>
                 </div>` : '';
 
-            mainContentHtml = `<div class="space-y-2">${slotsHtml}${coverSummaryHtml}</div>`;
+            mainContentHtml = `<div>${slotsHtml}${coverSummaryHtml}</div>`;
         }
 
         let adHtml = '';
@@ -1684,78 +1984,71 @@ Object.assign(ui, {
             const ad = page.adSlot;
             const adHeightMm = Number(ad.adHeightMm || 18);
             const isActiveAd = Boolean(ad.companyName || ad.imageUrl || ad.slogan || ad.bodyText);
+            const adImgSrc = ad.imageUrl ? this.resolvePrintImageUrl(ad.imageUrl, forPrint) : '';
             const adBtn = !forPrint ? `
-                <div class="flex items-center gap-1 shrink-0">
+                <div style="position:absolute;top:2px;right:2px;z-index:20;display:flex;align-items:center;gap:2px;background:rgba(250,248,245,0.95);border:1px solid #cbd5e1;padding:2px;">
                     ${isActiveAd ? `
                         <button type="button" onclick="ui.adjustPrintAdHeight(${pageIdx}, -4)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Reducir tamaño del anuncio">➖</button>
                         <button type="button" onclick="ui.adjustPrintAdHeight(${pageIdx}, 4)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Aumentar tamaño del anuncio">➕</button>
                     ` : ''}
-                    <button type="button" onclick="ui.modalConfigurePrintAd(${pageIdx})" class="px-2 py-0.5 bg-[#8B0000] text-white hover:bg-[#111111] text-[10px] font-mono font-bold uppercase">📢 Configurar Anuncio</button>
+                    <button type="button" onclick="ui.modalConfigurePrintAd(${pageIdx})" class="px-2 py-0.5 bg-[#8B0000] text-white hover:bg-[#111111] text-[10px] font-mono font-bold uppercase">📢 Anuncio</button>
                     ${isActiveAd ? `<button type="button" onclick="ui.clearPrintAdSlot(${pageIdx})" class="px-2 py-0.5 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-[10px] font-mono font-bold uppercase" title="Quitar anuncio">✕</button>` : ''}
                 </div>` : '';
-            if (isActiveAd && ad.adLayout === 'banner' && ad.imageUrl) {
+
+            if (isActiveAd && ad.adLayout === 'banner' && adImgSrc) {
                 adHtml = `
-                <div class="mt-auto border-2 border-[#111111] bg-[#EFECE4] p-1.5 space-y-1">
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="text-[7pt] font-mono uppercase tracking-widest text-[#8B0000] font-bold">PUBLICIDAD · ${this.escapeHTML(ad.companyName || 'ORBITAL REPORT')} (${adHeightMm} mm)</span>
-                        ${adBtn}
-                    </div>
-                    <img src="${this.escapeAttr(ad.imageUrl)}" alt="" style="height:${adHeightMm}mm;" class="w-full object-contain bg-white border border-stone-300">
+                <div style="position:relative;margin-top:auto;border:2px solid #111111;background:#EFECE4;padding:1.5mm;display:flex;flex-direction:column;gap:1mm;">
+                    ${adBtn}
+                    <span style="font-family:${monoFont};font-size:7pt;line-height:1.2;text-transform:uppercase;letter-spacing:0.08em;color:#8B0000;font-weight:700;">PUBLICIDAD · ${this.escapeHTML(ad.companyName || 'ORBITAL REPORT')} (${adHeightMm} mm)</span>
+                    <img src="${this.escapeAttr(adImgSrc)}" alt="" style="width:100%;height:${adHeightMm}mm;object-fit:contain;background:#ffffff;border:1px solid #d6d3d1;display:block;">
                 </div>`;
             } else if (isActiveAd) {
                 adHtml = `
-                <div style="min-height:${adHeightMm}mm;" class="mt-auto border-2 border-[#111111] bg-[#EFECE4] p-2 flex items-center gap-2.5">
-                    ${ad.imageUrl ? `<img src="${this.escapeAttr(ad.imageUrl)}" alt="" style="width:${adHeightMm}mm;height:${adHeightMm}mm;" class="object-contain bg-white border border-stone-300 shrink-0">` : ''}
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-center justify-between gap-2">
-                            <span class="text-[7pt] font-mono uppercase tracking-widest text-[#8B0000] font-bold">ESPACIO PUBLICITARIO${ad.classGroup ? ' • CLASE ' + this.escapeHTML(ad.classGroup) : ''} (${adHeightMm} mm)</span>
-                            ${adBtn}
-                        </div>
-                        <h4 class="font-serif font-black text-[10pt] text-[#111111] uppercase leading-tight">${this.escapeHTML(ad.companyName || 'ESPACIO PATROCINADO')}</h4>
-                        ${ad.slogan ? `<p class="font-serif italic text-[8.5pt] text-[#111111] leading-tight">«${this.escapeHTML(ad.slogan)}»</p>` : ''}
-                        ${ad.bodyText ? `<p class="font-sans text-[7.5pt] text-stone-700 mt-0.5 leading-tight">${this.escapeHTML(ad.bodyText)}</p>` : ''}
+                <div style="position:relative;margin-top:auto;min-height:${adHeightMm}mm;border:2px solid #111111;background:#EFECE4;padding:2mm;display:flex;align-items:center;gap:2.5mm;">
+                    ${adBtn}
+                    ${adImgSrc ? `<img src="${this.escapeAttr(adImgSrc)}" alt="" style="width:${adHeightMm}mm;height:${adHeightMm}mm;object-fit:contain;background:#ffffff;border:1px solid #d6d3d1;flex-shrink:0;display:block;">` : ''}
+                    <div style="min-width:0;flex:1;">
+                        <span style="display:block;font-family:${monoFont};font-size:7pt;line-height:1.2;text-transform:uppercase;letter-spacing:0.08em;color:#8B0000;font-weight:700;">ESPACIO PUBLICITARIO${ad.classGroup ? ' • CLASE ' + this.escapeHTML(ad.classGroup) : ''} (${adHeightMm} mm)</span>
+                        <h4 style="margin:0.4mm 0 0 0;font-family:${serifFont};font-weight:900;font-size:10pt;line-height:1.15;color:#111111;text-transform:uppercase;">${this.escapeHTML(ad.companyName || 'ESPACIO PATROCINADO')}</h4>
+                        ${ad.slogan ? `<p style="margin:0.4mm 0 0 0;font-family:${serifFont};font-style:italic;font-size:8.5pt;line-height:1.2;color:#111111;">«${this.escapeHTML(ad.slogan)}»</p>` : ''}
+                        ${ad.bodyText ? `<p style="margin:0.5mm 0 0 0;font-family:${sansFont};font-size:7.5pt;line-height:1.2;color:#44403c;">${this.escapeHTML(ad.bodyText)}</p>` : ''}
                     </div>
                 </div>`;
             } else {
                 adHtml = `
-                <div class="mt-auto border border-dashed border-stone-400 bg-stone-100 p-2 flex items-center justify-between gap-2">
-                    <span class="text-[8pt] font-mono text-stone-600 uppercase">[ ${this.escapeHTML(ad.label || 'Espacio Publicitario Startup')} ]</span>
+                <div style="position:relative;margin-top:auto;min-height:9.5mm;border:1px dashed #a8a29e;background:#f5f5f4;padding:2mm;display:flex;align-items:center;">
                     ${adBtn}
+                    <span style="font-family:${monoFont};font-size:8pt;line-height:1.2;color:#57534e;text-transform:uppercase;">[ ${this.escapeHTML(ad.label || 'Espacio Publicitario Startup')} ]</span>
                 </div>`;
             }
         }
 
         const headerHtml = isCover ? `
-            <div class="border-b-2 border-[#111111] pb-2 mb-3 text-center">
-                <div class="flex justify-between text-[7.5pt] font-mono uppercase text-stone-600 border-b border-stone-300 pb-1 mb-1">
+            <div style="border-bottom:2px solid #111111;padding-bottom:2mm;margin-bottom:2.8mm;text-align:center;">
+                <div style="display:flex;justify-content:space-between;font-family:${monoFont};font-size:7.5pt;line-height:1.2;text-transform:uppercase;color:#57534e;border-bottom:1px solid #d6d3d1;padding-bottom:1mm;margin-bottom:1mm;">
                     <span>${this.escapeHTML(ed.issueLabel || 'Edición n.º 1')}</span>
                     <span>MIRAVALLES-EL REDÍN</span>
                     <span>${this.escapeHTML(ed.dateLabel || '')}</span>
                 </div>
-                <h1 class="font-serif font-black text-[30pt] leading-none tracking-tight text-[#111111]">ORBITAL REPORT</h1>
-                <p class="font-serif italic text-[9pt] text-stone-700 mt-0.5">Edición Impresa MARS-KET • «La Ciencia Despega a Plena Luz»</p>
+                <h1 style="margin:0;font-family:${serifFont};font-weight:900;font-size:30pt;line-height:1;letter-spacing:-0.02em;color:#111111;">ORBITAL REPORT</h1>
+                <p style="margin:0.8mm 0 0 0;font-family:${serifFont};font-style:italic;font-size:9pt;line-height:1.2;color:#44403c;">Edición Impresa MARS-KET • «La Ciencia Despega a Plena Luz»</p>
             </div>
         ` : `
-            <div class="flex justify-between items-center gap-2 border-b-2 border-[#111111] pb-1 mb-2 text-[8pt] font-mono uppercase text-[#111111]">
-                <span class="font-bold truncate flex items-center gap-1.5">
-                    <span>ORBITAL REPORT // ${this.escapeHTML(page.sectionTitle || page.label)}</span>
-                    ${!forPrint ? `<button type="button" onclick="ui.modalEditPrintPageSection(${pageIdx})" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[9px] font-mono font-bold uppercase shrink-0" title="Editar sección de esta página">✏️ Sección</button>` : ''}
-                </span>
-                <div class="flex items-center gap-2 shrink-0">${pageControlsHtml}<span>PÁGINA ${page.pageNumber}</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:2mm;border-bottom:2px solid #111111;padding-bottom:1mm;margin-bottom:2mm;font-family:${monoFont};font-size:8pt;line-height:1.2;text-transform:uppercase;color:#111111;">
+                <span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">ORBITAL REPORT // ${this.escapeHTML(page.sectionTitle || page.label)}</span>
+                <span style="flex-shrink:0;">PÁGINA ${page.pageNumber}</span>
             </div>
         `;
 
-        const fitPill = !forPrint ? `<span id="print-fit-badge-${pageIdx}" class="text-[9px] font-mono px-1.5 py-0.5 bg-stone-300 text-[#111111] uppercase">Midiendo A3...</span>` : '';
-
+        const boxBorder = forPrint ? '' : 'border:1px solid #d6d3d1;';
         return `
-        <div data-print-page-box="${pageIdx}" style="height:297mm;max-height:297mm;" class="bg-[#FAF8F5] text-[#111111] p-[9mm] flex flex-col justify-between box-border overflow-hidden border border-stone-300">
+        <div data-print-page-box="${pageIdx}" style="width:210mm;min-width:210mm;max-width:210mm;height:297mm;min-height:297mm;max-height:297mm;padding:9mm;box-sizing:border-box;background:#FAF8F5;color:#111111;font-family:${serifFont};display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;position:relative;${boxBorder}">
             <div data-print-page-inner="${pageIdx}">
                 ${headerHtml}
-                ${!forPrint ? `<div class="flex justify-end mb-1">${fitPill}</div>` : ''}
                 ${mainContentHtml}
             </div>
             ${adHtml}
-            <div class="pt-1.5 mt-1.5 border-t border-stone-300 flex justify-between text-[7pt] font-mono text-stone-500 uppercase">
+            <div style="padding-top:1.5mm;margin-top:1.5mm;border-top:1px solid #d6d3d1;display:flex;justify-content:space-between;font-family:${monoFont};font-size:7pt;line-height:1.2;color:#78716c;text-transform:uppercase;">
                 <span>${this.escapeHTML(ed.issueLabel || '')}</span>
                 <span>Pág. ${page.pageNumber} / 8</span>
             </div>
@@ -1767,7 +2060,15 @@ Object.assign(ui, {
         const ed = this.ensureActivePrintEdition();
         const editions = state.data.printEditions || [];
         const mode = this.printStudioViewMode || 'reading';
+        const zoomMode = this.printStudioZoomMode || 'fit';
         const pendingAds = this.getPendingPrintAdRequests().filter(a => a.status === 'VALIDADO_CEO');
+
+        if (!this._printResizeBound) {
+            this._printResizeBound = true;
+            window.addEventListener('resize', () => {
+                if (this.printStudioActive) this.fitPrintPreviewStages();
+            });
+        }
 
         const imposedPairs = [
             { face: 1, title: 'Cara A3 n.º 1 (Pliego 1 Exterior)', leftIdx: 7, rightIdx: 0 },
@@ -1780,28 +2081,34 @@ Object.assign(ui, {
             ? `
                 <div class="space-y-6">
                     ${imposedPairs.map(sp => `
-                        <div class="space-y-2">
-                            <div class="flex items-center justify-between text-xs font-mono text-amber-300 uppercase font-bold">
+                        <div class="space-y-1.5">
+                            <div class="flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-amber-300 uppercase font-bold">
                                 <span>🖨️ ${sp.title}</span>
                                 <span>[ Pág. ${sp.leftIdx + 1} (Izq.) | Doblez Central | Pág. ${sp.rightIdx + 1} (Der.) ]</span>
                             </div>
-                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-0 border-2 border-amber-400/60 shadow-2xl overflow-hidden">
-                                <div class="min-h-[540px] border-r border-dashed border-red-500">${this.renderPrintStudioPageHtml(ed, ed.pages[sp.leftIdx], sp.leftIdx, false)}</div>
-                                <div class="min-h-[540px]">${this.renderPrintStudioPageHtml(ed, ed.pages[sp.rightIdx], sp.rightIdx, false)}</div>
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-1.5">
+                                ${this.renderPrintPageToolbarHtml(ed.pages[sp.leftIdx], sp.leftIdx, true)}
+                                ${this.renderPrintPageToolbarHtml(ed.pages[sp.rightIdx], sp.rightIdx, true)}
+                            </div>
+                            <div data-print-scale-outer class="w-full overflow-hidden border-2 border-amber-400/60 shadow-2xl bg-slate-900">
+                                <div data-print-scale-inner style="width:420mm;display:grid;grid-template-columns:210mm 210mm;">
+                                    <div style="border-right:1px dashed #ef4444;">${this.renderPrintStudioPageHtml(ed, ed.pages[sp.leftIdx], sp.leftIdx, false)}</div>
+                                    <div>${this.renderPrintStudioPageHtml(ed, ed.pages[sp.rightIdx], sp.rightIdx, false)}</div>
+                                </div>
                             </div>
                         </div>
                     `).join('')}
                 </div>
             `
             : `
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     ${(ed.pages || []).map((pg, idx) => `
-                        <div class="space-y-1.5">
-                            <div class="flex items-center justify-between text-xs font-mono text-mars-cyan uppercase font-bold">
-                                <span>📄 Página ${pg.pageNumber} — ${this.escapeHTML(pg.label)}</span>
-                            </div>
-                            <div class="min-h-[560px] shadow-xl">
-                                ${this.renderPrintStudioPageHtml(ed, pg, idx, false)}
+                        <div class="space-y-1.5 min-w-0">
+                            ${this.renderPrintPageToolbarHtml(pg, idx, false)}
+                            <div data-print-scale-outer class="w-full overflow-hidden shadow-xl bg-slate-900">
+                                <div data-print-scale-inner style="width:210mm;">
+                                    ${this.renderPrintStudioPageHtml(ed, pg, idx, false)}
+                                </div>
                             </div>
                         </div>
                     `).join('')}
@@ -1820,7 +2127,7 @@ Object.assign(ui, {
                                 ? `<span class="px-2 py-0.5 bg-emerald-950 border border-emerald-400 text-emerald-300 font-mono text-[10px] font-black uppercase">🔒 EDICIÓN DEFINITIVA</span>`
                                 : `<span class="px-2 py-0.5 bg-amber-950 border border-amber-400 text-amber-300 font-mono text-[10px] font-bold uppercase">📝 BORRADOR</span>`}
                         </div>
-                        <p class="text-xs text-slate-300 font-sans">8 páginas (4 caras A3 apaisadas con doblez en medio) · Estilo The Washington Post · Exclusivo Coordinación</p>
+                        <p class="text-xs text-slate-300 font-sans">8 páginas (4 caras A3 apaisadas con doblez en medio) · Proporción física real 210×297 mm · Exclusivo Coordinación</p>
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <button type="button" onclick="ui.closePrintEditionStudio()" class="min-h-[44px] px-4 py-2 bg-slate-800 border border-slate-600 text-white text-xs font-bold uppercase hover:bg-slate-700">⬅ Volver al Periódico Digital</button>
@@ -1841,9 +2148,15 @@ Object.assign(ui, {
                         <button type="button" onclick="ui.createNewPrintEditionModal()" class="min-h-[44px] px-3 py-2 bg-amber-400 text-black text-xs font-black uppercase hover:bg-white">+ Nueva Edición</button>
                         <button type="button" onclick="ui.autoLayoutPrintEdition(false)" class="min-h-[44px] px-3 py-2 bg-mars-cyan text-black text-xs font-black uppercase hover:bg-white">⚡ Auto-Maquetar Noticias</button>
                     </div>
-                    <div class="flex items-center border border-slate-700 bg-black p-0.5">
-                        <button type="button" onclick="ui.printStudioViewMode='reading'; ui.render();" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-bold uppercase ${mode === 'reading' ? 'bg-mars-cyan text-black' : 'text-slate-300'}">📖 Págs. 1–8</button>
-                        <button type="button" onclick="ui.printStudioViewMode='imposed'; ui.render();" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-bold uppercase ${mode === 'imposed' ? 'bg-amber-400 text-black' : 'text-slate-300'}">🖨️ 4 Caras A3</button>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="flex items-center border border-slate-700 bg-black p-0.5" title="Zoom de vista previa WYSIWYG">
+                            <button type="button" onclick="ui.printStudioZoomMode='fit'; ui.render();" class="min-h-[44px] px-2.5 py-1.5 text-xs font-mono font-bold uppercase ${zoomMode === 'fit' ? 'bg-white text-black' : 'text-slate-300'}">🔍 Ajustar</button>
+                            <button type="button" onclick="ui.printStudioZoomMode='actual'; ui.render();" class="min-h-[44px] px-2.5 py-1.5 text-xs font-mono font-bold uppercase ${zoomMode === 'actual' ? 'bg-white text-black' : 'text-slate-300'}">📏 100% Real</button>
+                        </div>
+                        <div class="flex items-center border border-slate-700 bg-black p-0.5">
+                            <button type="button" onclick="ui.printStudioViewMode='reading'; ui.render();" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-bold uppercase ${mode === 'reading' ? 'bg-mars-cyan text-black' : 'text-slate-300'}">📖 Págs. 1–8</button>
+                            <button type="button" onclick="ui.printStudioViewMode='imposed'; ui.render();" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-bold uppercase ${mode === 'imposed' ? 'bg-amber-400 text-black' : 'text-slate-300'}">🖨️ 4 Caras A3</button>
+                        </div>
                     </div>
                 </div>
 
@@ -1882,27 +2195,29 @@ Object.assign(ui, {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <base href="${this.escapeAttr(window.location.origin)}/">
     <title>ORBITAL REPORT — ${this.escapeHTML(ed.issueLabel || 'Edición A3')}</title>
+    <link rel="stylesheet" href="${this.escapeAttr(window.location.origin)}/css/tailwind.css">
     <style>
-        @page { size: A3 landscape; margin: 0; }
+        @page { size: 420mm 297mm; margin: 0; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        body { margin: 0; padding: 0; background: #1e293b; font-family: Georgia, "Times New Roman", serif; color: #111111; }
-        .no-print { position: sticky; top: 0; z-index: 99; background: #0b1120; color: #fff; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00f0ff; font-family: monospace; font-size: 12px; }
-        .btn-p { background: #00ff66; color: #000; border: 0; padding: 10px 18px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
+        html, body { margin: 0; padding: 0; background: #1e293b; font-family: Georgia, "Times New Roman", serif; color: #111111; font-size: 16px; }
+        .no-print { position: sticky; top: 0; z-index: 99; background: #0b1120; color: #fff; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 2px solid #00f0ff; font-family: ui-monospace, monospace; font-size: 12px; }
+        .btn-p { background: #00ff66; color: #000; border: 0; padding: 10px 18px; font-weight: 900; cursor: pointer; text-transform: uppercase; white-space: nowrap; }
         .a3-sheet { width: 420mm; height: 297mm; margin: 12px auto; background: #FAF8F5; display: grid; grid-template-columns: 210mm 210mm; page-break-after: always; break-after: page; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .a3-sheet:last-of-type { page-break-after: auto; break-after: auto; }
         .a4-half { width: 210mm; height: 297mm; overflow: hidden; }
         .left-half { border-right: 0.5pt dashed #cbd5e1; }
         @media print {
-            body { background: #FAF8F5; }
+            html, body { width: 420mm !important; margin: 0 !important; padding: 0 !important; background: #FAF8F5 !important; }
             .no-print { display: none !important; }
-            .a3-sheet { margin: 0; box-shadow: none; }
+            .a3-sheet { width: 420mm !important; height: 297mm !important; margin: 0 !important; box-shadow: none !important; }
         }
     </style>
-    <link rel="stylesheet" href="${window.location.origin}/css/tailwind.css">
 </head>
 <body>
     <div class="no-print">
-        <span>🖨️ ORBITAL REPORT (${this.escapeHTML(ed.issueLabel)}) — 4 Caras A3 Apaisadas (Impresión a doble cara y doblez en el centro = 8 Páginas)</span>
+        <span>🖨️ ORBITAL REPORT (${this.escapeHTML(ed.issueLabel)}) — Al imprimir selecciona: <strong>Papel A3 Horizontal · Márgenes: Ninguno · Escala: 100% (Tamaño real)</strong></span>
         <button class="btn-p" onclick="window.print()">🖨️ Imprimir / Guardar PDF A3</button>
     </div>
     ${sheetsHtml}
@@ -1914,6 +2229,6 @@ Object.assign(ui, {
         win.document.open();
         win.document.write(docHtml);
         win.document.close();
-        this.notify("🖨️ Maqueta A3 lista en nueva pestaña para imprimir o guardar como PDF.", "success");
+        this.notify("🖨️ Maqueta A3 lista en nueva pestaña (recuerda: A3 Horizontal · Márgenes Ninguno · Escala 100%).", "success");
     }
 });

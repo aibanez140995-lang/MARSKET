@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.53) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.54) ---
 
-const APP_VERSION = "2.0.53";
+const APP_VERSION = "2.0.54";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,20 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.54",
+      date: "2026-11-23",
+      title: "Edición Impresa A3 WYSIWYG, Gestión de Imágenes y Reportajes Periodísticos Rigurosos",
+      items: [
+        "Impresión A3 100% Fiel a la Vista Previa: Corregidos todos los tamaños tipográficos en puntos (pt), márgenes reales (9 mm) y escalado proporcional WYSIWYG para que la vista previa del Estudio coincida exactamente con el papel impreso.",
+        "Imágenes Digitales ⇄ Impresas sin Errores: Corregida la prioridad al pegar URLs sobre portadas anteriores, añadido soporte directo de Google Drive y botón rápido «🖼️» en todas las noticias digitales; al elegir un artículo en la edición impresa su foto se traslada y se muestra automáticamente.",
+        "Correlación por Secciones y Quién es quién A3: Filtros rápidos por sección (Actualidad, Un poco de Historia, Del Espacio a tu Casa) al maquetar el A3, Página 7 dividida entre Empresas Reales (con logos) y Startups Navarras (sin clases escolares), más botones en 1 clic para marcar toda una clase («☑️ Toda A», etc.).",
+        "Reportajes Periodísticos Rigurosos (ES/EN): Reescritos en formato periodístico los 11 artículos base y añadidos 4 nuevos reportajes históricos y científicos verificados (Valentina Tereshkova, Katherine Johnson, Gore-Tex vs. tela Beta y Filtros de agua con iones de plata)."
+      ],
+      highlights: [
+        { type: "ORBITAL REPORT A3", text: "Impresión A3 WYSIWYG, fotos Digital⇄A3, Quién es quién por clase en 1 clic y 15 reportajes periodísticos." }
+      ]
+    },
     {
       version: "2.0.53",
       date: "2026-11-23",

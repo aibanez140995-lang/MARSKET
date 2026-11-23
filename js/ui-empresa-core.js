@@ -2957,7 +2957,7 @@ Object.assign(ui, {
         }).filter(Boolean).join('');
     },
 
-    processNanoBananaImageFile(inputEl, targetHiddenId, previewContainerId) {
+    processNanoBananaImageFile(inputEl, targetHiddenId, previewContainerId, clearUrlId = null) {
         if (!inputEl || !inputEl.files || !inputEl.files[0]) return;
         const file = inputEl.files[0];
         if (!file.type.startsWith('image/')) {
@@ -2988,13 +2988,17 @@ Object.assign(ui, {
                 
                 const hiddenInput = document.getElementById(targetHiddenId);
                 if (hiddenInput) hiddenInput.value = compressedDataUrl;
+                if (clearUrlId) {
+                    const urlInput = document.getElementById(clearUrlId);
+                    if (urlInput) urlInput.value = '';
+                }
 
                 const previewEl = document.getElementById(previewContainerId);
                 if (previewEl) {
                     previewEl.innerHTML = `
                         <div class="relative group mt-2 border border-amber-400/50 rounded overflow-hidden max-h-48 bg-black flex items-center justify-center">
                             <img src="${compressedDataUrl}" alt="Vista previa Nano Banana 3" class="max-h-48 w-full object-contain">
-                            <span class="absolute bottom-1 right-1 bg-black/80 text-[10px] text-amber-300 font-mono px-1.5 py-0.5 rounded border border-amber-500/40">✓ Imagen Nano Banana 3 Optimizada</span>
+                            <span class="absolute bottom-1 right-1 bg-black/80 text-[10px] text-amber-300 font-mono px-1.5 py-0.5 rounded border border-amber-500/40">✓ Imagen Lista (Comprimida)</span>
                         </div>
                     `;
                     previewEl.classList.remove('hidden');
@@ -3014,10 +3018,16 @@ Object.assign(ui, {
             previewEl.classList.add('hidden');
             return;
         }
+        const driveMatch = cleanUrl.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/i)
+            || cleanUrl.match(/drive\.google\.com\/(?:open|uc|thumbnail)\?(?:[^#]*&)?id=([a-zA-Z0-9_-]+)/i);
+        const directSrc = (driveMatch && driveMatch[1])
+            ? `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w1000`
+            : cleanUrl;
+        const proxySrc = (!driveMatch && /^https?:\/\//i.test(cleanUrl)) ? ('/api/news/image?url=' + encodeURIComponent(cleanUrl)) : '';
         previewEl.innerHTML = `
             <div class="relative group mt-2 border border-cyan-400/50 rounded overflow-hidden max-h-48 bg-black flex items-center justify-center">
-                <img src="${this.escapeAttr(cleanUrl)}" alt="Vista previa" class="max-h-48 w-full object-contain" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-xs text-red-400 p-2 font-mono\\'>No se pudo cargar la imagen desde la URL. Comprueba el enlace.</span>'">
-                <span class="absolute bottom-1 right-1 bg-black/80 text-[10px] text-cyan-300 font-mono px-1.5 py-0.5 rounded border border-cyan-500/40">Enlace URL Externo</span>
+                <img src="${this.escapeAttr(directSrc)}" alt="Vista previa" data-proxy="${this.escapeAttr(proxySrc)}" class="max-h-48 w-full object-contain" onerror="if(this.dataset.proxy && !this.dataset.triedProxy){this.dataset.triedProxy='1';this.src=this.dataset.proxy;return;}this.onerror=null;this.parentElement.innerHTML='<span class=\\'text-xs text-red-400 p-2 font-mono\\'>No se pudo cargar la imagen desde la URL. Comprueba el enlace o descarga la foto y súbela como archivo.</span>'">
+                <span class="absolute bottom-1 right-1 bg-black/80 text-[10px] text-cyan-300 font-mono px-1.5 py-0.5 rounded border border-cyan-500/40">${driveMatch ? 'Google Drive' : 'Enlace URL'}</span>
             </div>
         `;
         previewEl.classList.remove('hidden');
@@ -3162,6 +3172,11 @@ Object.assign(ui, {
         const u = String(rawUrl || '').trim();
         if (!u) return '/api/news/image';
         if (u.startsWith('data:image/') || u.startsWith('/api/news/image')) return u;
+        const driveMatch = u.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/i)
+            || u.match(/drive\.google\.com\/(?:open|uc|thumbnail)\?(?:[^#]*&)?id=([a-zA-Z0-9_-]+)/i);
+        if (driveMatch && driveMatch[1]) {
+            return `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w1000`;
+        }
         if (/^https?:\/\//i.test(u)) return '/api/news/image?url=' + encodeURIComponent(u);
         return u;
     },
@@ -3849,15 +3864,15 @@ Object.assign(ui, {
                     <label class="text-xs text-amber-300 uppercase font-bold block font-mono">🎨 Imagen de Portada // URL o Nano Banana 3</label>
                     <div>
                         <span class="text-[11px] text-slate-400 block mb-1">Opción 1: Subir imagen generada (se comprime automáticamente)</span>
-                        <input type="file" id="offnews-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'offnews-img-data', 'offnews-preview')" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-none file:border-0 file:text-xs file:font-black file:uppercase file:bg-amber-400 file:text-black hover:file:bg-white cursor-pointer">
+                        <input type="file" id="offnews-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'offnews-img-data', 'offnews-preview', 'offnews-url')" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-none file:border-0 file:text-xs file:font-black file:uppercase file:bg-amber-400 file:text-black hover:file:bg-white cursor-pointer">
                     </div>
                     <div>
                         <span class="text-[11px] text-slate-400 block mb-1">Opción 2: URL de imagen (SNAPI / Google Drive / Web)</span>
-                        <input type="url" id="offnews-url" value="${this.escapeAttr(preImg)}" oninput="ui.previewNanoBananaUrl(this.value, 'offnews-preview')" placeholder="https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none font-mono">
+                        <input type="url" id="offnews-url" value="${this.escapeAttr(preImg)}" oninput="const h=document.getElementById('offnews-img-data'); if(h) h.value=''; ui.previewNanoBananaUrl(this.value, 'offnews-preview')" placeholder="https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white outline-none font-mono">
                     </div>
                     <input type="hidden" id="offnews-img-data" value="">
                     <div id="offnews-preview" class="${preImg ? '' : 'hidden'}">
-                        ${preImg ? `<img src="${this.escapeAttr(preImg)}" alt="Preview" class="max-h-40 w-full object-contain border border-cyan-500/40 bg-black">` : ''}
+                        ${preImg ? `<img src="${this.escapeAttr(this.getNewsImageSrc(preImg))}" alt="Preview" class="max-h-40 w-full object-contain border border-cyan-500/40 bg-black">` : ''}
                     </div>
                 </div>
 
@@ -3932,7 +3947,9 @@ Object.assign(ui, {
 
         const elImgData = document.getElementById('offnews-img-data');
         const elUrl = document.getElementById('offnews-url');
-        const imageUrl = (elImgData && elImgData.value) ? elImgData.value : (elUrl ? elUrl.value.trim() : '');
+        const typedUrl = elUrl ? elUrl.value.trim() : '';
+        const hiddenImg = elImgData ? elImgData.value.trim() : '';
+        const imageUrl = typedUrl ? typedUrl : hiddenImg;
 
         const coId = getVal('offnews-company');
         const coName = coId && state.data?.companies?.[coId] ? state.data.companies[coId].name : '';
@@ -3941,6 +3958,7 @@ Object.assign(ui, {
 
         const newsItem = state.normalizeNewsItem({
             id: 'NEWS-' + now + '-' + Math.floor(Math.random() * 1000).toString().padStart(3, '0'),
+            userEdited: true,
             section: getVal('offnews-section') || 'actualidad',
             category: getVal('offnews-category') || 'ACTUALIDAD AEROESPACIAL',
             categoryEn: getVal('offnews-category-en') || 'AEROSPACE DISPATCH',
@@ -4206,17 +4224,23 @@ Object.assign(ui, {
                 </div>
 
                 <div class="p-3 bg-black/60 border border-slate-800 rounded space-y-3">
-                    <label class="text-xs text-amber-300 uppercase font-bold block font-mono">🎨 Portada // URL o Nano Banana 3</label>
+                    <label class="text-xs text-amber-300 uppercase font-bold block font-mono">🎨 Portada // Subir Imagen o URL (Web / Google Drive)</label>
                     ${hasExistingImg ? `
                         <div id="offnews-edit-current-img" class="p-2 bg-slate-950 border border-amber-500/40 rounded flex items-center justify-between gap-2 flex-wrap">
-                            <img src="${this.escapeAttr(existingImg)}" class="w-16 h-10 object-cover rounded border border-slate-700" alt="Portada actual">
+                            <img src="${this.escapeAttr(this.getNewsImageSrc(existingImg))}" class="w-16 h-10 object-cover rounded border border-slate-700" alt="Portada actual">
                             <button type="button" onclick="document.getElementById('offnews-edit-img-data').value = ''; document.getElementById('offnews-edit-url').value = ''; document.getElementById('offnews-edit-current-img').classList.add('hidden');" class="min-h-[44px] px-3 py-1 bg-red-950/60 border border-red-500 text-red-300 text-xs font-bold uppercase">
                                 🗑️ Quitar Portada
                             </button>
                         </div>
                     ` : ''}
-                    <input type="file" id="offnews-edit-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'offnews-edit-img-data', 'offnews-edit-preview')" class="w-full text-xs text-slate-300">
-                    <input type="url" id="offnews-edit-url" value="${hasExistingImg && existingImg.startsWith('http') ? this.escapeAttr(existingImg) : ''}" oninput="ui.previewNanoBananaUrl(this.value, 'offnews-edit-preview')" placeholder="https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none font-mono">
+                    <div>
+                        <span class="text-[11px] text-slate-400 block mb-1">Opción 1: Subir imagen desde tu ordenador (PNG / JPG / WEBP)</span>
+                        <input type="file" id="offnews-edit-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'offnews-edit-img-data', 'offnews-edit-preview', 'offnews-edit-url')" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:border-0 file:text-xs file:font-black file:uppercase file:bg-amber-400 file:text-black hover:file:bg-white cursor-pointer">
+                    </div>
+                    <div>
+                        <span class="text-[11px] text-slate-400 block mb-1">Opción 2: Pegar URL directa o enlace de Google Drive</span>
+                        <input type="url" id="offnews-edit-url" value="${hasExistingImg && (/^https?:\/\//i.test(existingImg) || existingImg.startsWith('/api/')) ? this.escapeAttr(existingImg) : ''}" oninput="const h=document.getElementById('offnews-edit-img-data'); if(h) h.value=''; ui.previewNanoBananaUrl(this.value, 'offnews-edit-preview')" placeholder="https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white outline-none font-mono">
+                    </div>
                     <input type="hidden" id="offnews-edit-img-data" value="${hasExistingImg ? this.escapeAttr(existingImg) : ''}">
                     <div id="offnews-edit-preview" class="hidden"></div>
                 </div>
@@ -4256,7 +4280,9 @@ Object.assign(ui, {
 
         const elImgData = document.getElementById('offnews-edit-img-data');
         const elUrl = document.getElementById('offnews-edit-url');
-        const imageUrl = (elImgData && elImgData.value) ? elImgData.value : (elUrl ? elUrl.value.trim() : '');
+        const typedUrl = elUrl ? elUrl.value.trim() : '';
+        const hiddenImg = elImgData ? elImgData.value.trim() : '';
+        const imageUrl = typedUrl ? typedUrl : hiddenImg;
 
         const coId = getVal('offnews-edit-company');
         const coName = coId && state.data?.companies?.[coId] ? state.data.companies[coId].name : '';
@@ -4284,6 +4310,7 @@ Object.assign(ui, {
         news.companyName = coName || null;
         news.imageUrl = imageUrl || null;
         news.featured = isFeatured;
+        news.userEdited = true;
         news.updatedAt = now;
 
         const nextList = isFeatured
@@ -4291,6 +4318,9 @@ Object.assign(ui, {
             : list;
         state.data.news = state.resolveFeaturedNews(nextList);
         state.data.officialNews = state.data.news;
+        if (this.activeFullArticleReader && String(this.activeFullArticleReader.id) === String(newsId)) {
+            this.activeFullArticleReader = { ...news, isWire: false, loading: false };
+        }
 
         state.save();
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
@@ -4298,6 +4328,90 @@ Object.assign(ui, {
         this.closeModal();
         this.render();
         this.notify("✅ Artículo actualizado en ORBITAL REPORT.", "success");
+    },
+
+    modalEditNewsImage(newsId) {
+        if (!this.isNewsCoordinator()) return this.notify("Acceso restringido exclusivamente a Coordinación.", "error");
+        const news = (state.data?.news || []).find(n => String(n.id) === String(newsId));
+        if (!news) return this.notify("Artículo no localizado.", "error");
+        const existingImg = String(news.imageUrl || '').trim();
+        const isHttpOrProxy = /^https?:\/\//i.test(existingImg) || existingImg.startsWith('/api/');
+        const previewSrc = existingImg ? this.getNewsImageSrc(existingImg) : '';
+
+        const html = `
+            <div class="space-y-4 text-xs font-sans">
+                <div class="p-3 bg-slate-900 border border-slate-700 rounded">
+                    <span class="text-[10px] font-mono text-mars-cyan uppercase block">${this.escapeHTML(news.category || 'ORBITAL REPORT')}</span>
+                    <strong class="text-sm text-white block mt-0.5">${this.escapeHTML(news.title || '')}</strong>
+                </div>
+
+                <div class="p-3 bg-black/60 border border-slate-800 rounded space-y-3">
+                    <div>
+                        <label for="news-quick-img-file" class="text-xs text-amber-300 uppercase font-bold block mb-1 font-mono">Opción 1: Subir foto o ilustración desde tu equipo</label>
+                        <input type="file" id="news-quick-img-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'news-quick-img-data', 'news-quick-img-preview', 'news-quick-img-url')" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:border-0 file:text-xs file:font-black file:uppercase file:bg-amber-400 file:text-black hover:file:bg-white cursor-pointer">
+                    </div>
+                    <div>
+                        <label for="news-quick-img-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1 font-mono">Opción 2: Pegar URL directa o enlace de Google Drive</label>
+                        <input type="url" id="news-quick-img-url" value="${isHttpOrProxy ? this.escapeAttr(existingImg) : ''}" oninput="const h=document.getElementById('news-quick-img-data'); if(h) h.value=''; ui.previewNanoBananaUrl(this.value, 'news-quick-img-preview')" placeholder="https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white font-mono outline-none focus:border-mars-cyan">
+                    </div>
+                    <input type="hidden" id="news-quick-img-data" value="${this.escapeAttr(existingImg)}">
+                    <div id="news-quick-img-preview" class="${previewSrc ? '' : 'hidden'} bg-black border border-slate-700 p-2 flex items-center justify-center rounded">
+                        ${previewSrc ? `<img src="${this.escapeAttr(previewSrc)}" alt="Imagen actual" class="max-h-48 max-w-full object-contain">` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+        const actions = `
+            <div class="flex flex-wrap gap-2 justify-end w-full">
+                <button type="button" onclick="ui.closeModal()" class="min-h-[44px] px-4 py-2 bg-slate-800 text-white text-xs font-bold uppercase">Cancelar</button>
+                ${existingImg ? `<button type="button" onclick="ui.clearNewsImageOnly('${this.escapeAttr(newsId)}')" class="min-h-[44px] px-4 py-2 bg-red-950/70 border border-red-500 text-red-200 hover:bg-red-600 hover:text-white text-xs font-bold uppercase">🗑️ Quitar Foto</button>` : ''}
+                <button type="button" onclick="ui.saveNewsImageOnly('${this.escapeAttr(newsId)}')" class="min-h-[44px] px-5 py-2 bg-amber-400 text-black hover:bg-white text-xs font-black uppercase">💾 Guardar Imagen</button>
+            </div>
+        `;
+        this.showModal("🖼️ Cambiar Imagen del Artículo", html, actions);
+    },
+
+    saveNewsImageOnly(newsId) {
+        if (!this.isNewsCoordinator()) return this.notify("Acceso restringido exclusivamente a Coordinación.", "error");
+        const list = Array.isArray(state.data?.news) ? state.data.news : [];
+        const news = list.find(n => String(n.id) === String(newsId));
+        if (!news) return this.notify("Artículo no localizado.", "error");
+        const typedUrl = (document.getElementById('news-quick-img-url')?.value || '').trim();
+        const hiddenImg = (document.getElementById('news-quick-img-data')?.value || '').trim();
+        const nextImg = typedUrl ? typedUrl : hiddenImg;
+        news.imageUrl = nextImg || null;
+        news.userEdited = true;
+        news.updatedAt = Date.now();
+        state.data.news = state.resolveFeaturedNews(list);
+        state.data.officialNews = state.data.news;
+        if (this.activeFullArticleReader && String(this.activeFullArticleReader.id) === String(newsId)) {
+            this.activeFullArticleReader.imageUrl = news.imageUrl;
+        }
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.closeModal();
+        this.render();
+        this.notify("✅ Imagen del artículo guardada. Ya puedes usarla también en la Edición Impresa A3.", "success");
+    },
+
+    clearNewsImageOnly(newsId) {
+        if (!this.isNewsCoordinator()) return this.notify("Acceso restringido exclusivamente a Coordinación.", "error");
+        const list = Array.isArray(state.data?.news) ? state.data.news : [];
+        const news = list.find(n => String(n.id) === String(newsId));
+        if (!news) return this.notify("Artículo no localizado.", "error");
+        news.imageUrl = null;
+        news.userEdited = true;
+        news.updatedAt = Date.now();
+        state.data.news = state.resolveFeaturedNews(list);
+        state.data.officialNews = state.data.news;
+        if (this.activeFullArticleReader && String(this.activeFullArticleReader.id) === String(newsId)) {
+            this.activeFullArticleReader.imageUrl = null;
+        }
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.closeModal();
+        this.render();
+        this.notify("🗑️ Imagen retirada del artículo.", "info");
     },
 
     modalAttachNanoBananaToPR(prId) {
@@ -4855,6 +4969,7 @@ Object.assign(ui, {
                                 ${isCoord ? `
                                     <div class="flex items-center gap-1">
                                         ${sectionKey === 'actualidad' && !art.featured ? `<button type="button" onclick="ui.setNewsFeatured('${this.escapeAttr(art.id)}')" class="min-h-[44px] min-w-[44px] px-2 py-1 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-xs font-mono font-bold" title="Fijar en Portada">⭐</button>` : ''}
+                                        <button type="button" onclick="ui.modalEditNewsImage('${this.escapeAttr(art.id)}')" class="min-h-[44px] min-w-[44px] px-2.5 py-1 bg-stone-100 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-xs font-mono font-bold" title="Cambiar imagen">🖼️</button>
                                         <button type="button" onclick="ui.modalEditOfficialNews('${this.escapeAttr(art.id)}')" class="min-h-[44px] min-w-[44px] px-2.5 py-1 bg-stone-100 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-xs font-mono font-bold" title="Editar artículo">✏️</button>
                                         <button type="button" onclick="ui.deleteOfficialNews('${this.escapeAttr(art.id)}')" class="min-h-[44px] min-w-[44px] px-2.5 py-1 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-xs font-mono font-bold" title="Eliminar artículo">✕</button>
                                     </div>
@@ -5248,6 +5363,14 @@ Object.assign(ui, {
                                 <button type="button" onclick="ui.setNewsLang('ES')" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-black uppercase ${lang === 'ES' ? 'bg-[#111111] text-white' : 'text-[#111111] hover:bg-stone-100'}">🇪🇸 ES</button>
                                 <button type="button" onclick="ui.setNewsLang('EN')" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-black uppercase ${lang === 'EN' ? 'bg-[#111111] text-white' : 'text-[#111111] hover:bg-stone-100'}">🇬🇧 EN</button>
                             </div>
+                            ${(isCoord && !rd.isWire && rd.id) ? `
+                                <button type="button" onclick="ui.modalEditNewsImage('${this.escapeAttr(rd.id)}')" class="min-h-[44px] px-3 py-2 bg-white border border-[#111111] text-[#111111] hover:bg-[#111111] hover:text-white text-xs font-mono font-bold uppercase transition-colors">
+                                    🖼️ Imagen
+                                </button>
+                                <button type="button" onclick="ui.modalEditOfficialNews('${this.escapeAttr(rd.id)}')" class="min-h-[44px] px-3 py-2 bg-stone-200 border border-[#111111] text-[#111111] hover:bg-[#111111] hover:text-white text-xs font-mono font-bold uppercase transition-colors">
+                                    ✏️ Editar
+                                </button>
+                            ` : ''}
                             ${(isCoord && rd.isWire && !rd.loading) ? `
                                 <button type="button" onclick="ui.publishFullReaderArticleToBoard()" class="min-h-[44px] px-4 py-2 bg-[#8B0000] text-white hover:bg-[#111111] text-xs font-mono font-bold uppercase transition-colors">
                                     📌 Fijar en Portada
@@ -5412,6 +5535,7 @@ Object.assign(ui, {
                     </div>
                     ${isCoord ? `
                         <div class="flex items-center gap-2 flex-wrap">
+                            <button type="button" onclick="ui.modalEditNewsImage('${this.escapeAttr(art.id)}')" class="min-h-[44px] bg-white border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white px-3 py-1.5 text-xs font-mono font-bold uppercase">🖼️ Imagen</button>
                             <button type="button" onclick="ui.modalEditOfficialNews('${this.escapeAttr(art.id)}')" class="min-h-[44px] bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white px-3 py-1.5 text-xs font-mono font-bold uppercase">✏️ Editar</button>
                             <button type="button" onclick="ui.demoteNewsToArchive('${this.escapeAttr(art.id)}')" class="min-h-[44px] bg-white border border-stone-400 text-[#111111] hover:bg-stone-200 px-3 py-1.5 text-xs font-mono font-bold uppercase" title="Bajar a Hemeroteca sin borrar">📥 Hemeroteca</button>
                             <button type="button" onclick="ui.deleteOfficialNews('${this.escapeAttr(art.id)}')" class="min-h-[44px] px-3 py-1.5 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-xs font-mono font-bold uppercase" title="Eliminar del periódico">✕ Quitar</button>
@@ -5576,6 +5700,7 @@ Object.assign(ui, {
                                         <div class="flex items-center gap-2 flex-wrap pt-2 border-t border-stone-200">
                                             <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(item.id)}')" class="min-h-[44px] px-3 py-1 bg-[#111111] text-white hover:bg-[#8B0000] text-[11px] font-mono font-bold uppercase">📖 ${lang === 'EN' ? 'Read Full' : 'Leer Completa'}</button>
                                             ${isCoord ? `<button type="button" onclick="ui.setNewsFeatured('${this.escapeAttr(item.id)}')" class="min-h-[44px] min-w-[44px] px-2.5 py-1 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-xs font-mono font-bold" title="Promover a Portada">⭐</button>` : ''}
+                                            ${isCoord ? `<button type="button" onclick="ui.modalEditNewsImage('${this.escapeAttr(item.id)}')" class="min-h-[44px] min-w-[44px] px-2.5 py-1 bg-stone-100 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-xs font-mono font-bold" title="Cambiar imagen">🖼️</button>` : ''}
                                             ${isCoord ? `<button type="button" onclick="ui.modalEditOfficialNews('${this.escapeAttr(item.id)}')" class="min-h-[44px] min-w-[44px] px-2.5 py-1 bg-stone-100 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-xs font-mono font-bold" title="Editar">✏️</button>` : ''}
                                             ${isCoord ? `<button type="button" onclick="ui.deleteOfficialNews('${this.escapeAttr(item.id)}')" class="min-h-[44px] min-w-[44px] px-2.5 py-1 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-xs font-mono font-bold" title="Eliminar">✕</button>` : ''}
                                         </div>
@@ -5631,6 +5756,7 @@ Object.assign(ui, {
                                             ${isCoord ? `
                                                 <div class="flex items-center gap-1">
                                                     <button type="button" onclick="ui.setNewsFeatured('${this.escapeAttr(sub.id)}')" class="min-h-[44px] px-2 py-1 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[11px] font-mono font-bold uppercase" title="Subir a Portada Principal">⭐</button>
+                                                    <button type="button" onclick="ui.modalEditNewsImage('${this.escapeAttr(sub.id)}')" class="min-h-[44px] px-2 py-1 bg-white border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[11px] font-mono font-bold uppercase" title="Cambiar imagen">🖼️</button>
                                                     <button type="button" onclick="ui.demoteNewsToArchive('${this.escapeAttr(sub.id)}')" class="min-h-[44px] px-2 py-1 bg-white border border-stone-400 text-[#111111] hover:bg-stone-200 text-[11px] font-mono font-bold uppercase" title="Bajar a Hemeroteca">📥</button>
                                                     <button type="button" onclick="ui.deleteOfficialNews('${this.escapeAttr(sub.id)}')" class="min-h-[44px] px-2 py-1 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-[11px] font-mono font-bold uppercase" title="Eliminar del periódico">✕</button>
                                                 </div>
@@ -5698,6 +5824,7 @@ Object.assign(ui, {
                                                     📖 ${lang === 'EN' ? 'Read Full' : 'Leer Completa'}
                                                 </button>
                                                 ${isCoord ? `<button type="button" onclick="ui.setNewsFeatured('${this.escapeAttr(item.id)}')" class="min-h-[44px] px-2.5 py-1 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[11px] font-mono font-bold uppercase" title="Promover a Portada">⭐</button>` : ''}
+                                                ${isCoord ? `<button type="button" onclick="ui.modalEditNewsImage('${this.escapeAttr(item.id)}')" class="min-h-[44px] px-2.5 py-1 bg-white border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[11px] font-mono font-bold uppercase" title="Cambiar imagen">🖼️</button>` : ''}
                                                 ${isCoord ? `<button type="button" onclick="ui.deleteOfficialNews('${this.escapeAttr(item.id)}')" class="min-h-[44px] px-2.5 py-1 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-[11px] font-mono font-bold uppercase" title="Eliminar de Hemeroteca">✕</button>` : ''}
                                             </div>
                                         </article>`;
