@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.61) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.62) ---
 
-const APP_VERSION = "2.0.61";
+const APP_VERSION = "2.0.62";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1327,6 +1327,15 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.62",
+      date: "2026-11-23",
+      title: "Fix Crítico: Restauración visible de todos los campos de Logos y Noticias en Órbita",
+      items: [
+        "Corregido fallo CSS en index.html (.mars-touch-input con opacity: 0) que ocultaba visualmente los selectores de archivo, enlaces de imagen y campos de texto/titular/subtítulo en los modales de Órbita (Quién es quién y Edición/Publicación de noticias).",
+        "Añadida vista previa del logo actual y selector de archivo explícito en modalEditRealCompanyLogo (Quién es quién)."
+      ]
+    },
     {
       version: "2.0.61",
       date: "2026-11-23",

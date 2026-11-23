@@ -615,20 +615,20 @@ Object.assign(ui, {
                         <span class="text-[11px] font-mono text-mars-cyan font-bold uppercase">Importador de Noticias Reales (Spaceflight News API v4)</span>
                         <button type="button" onclick="ui.loadSnapiImporterList()" class="min-h-[44px] px-3 py-1 bg-cyan-950 border border-cyan-500/50 text-cyan-300 text-[11px] font-bold uppercase hover:bg-cyan-900">Buscar en API</button>
                     </div>
-                    <input type="text" id="snapi-importer-query" value="rocket" placeholder="Ej: SpaceX, Artemis, NASA, ESA..." class="mars-touch-input w-full bg-black border border-slate-700 p-2 text-xs text-white font-mono">
+                    <input type="text" id="snapi-importer-query" value="rocket" placeholder="Ej: SpaceX, Artemis, NASA, ESA..." class="min-h-[44px] w-full bg-black border border-slate-700 p-2 text-xs text-white font-mono">
                     <div id="snapi-importer-results" class="mt-2 space-y-1.5 max-h-40 overflow-y-auto"></div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="text-[11px] font-mono text-amber-300 uppercase block mb-1 font-bold">Sección de Órbita *</label>
-                        <select id="offnews-section" class="mars-touch-input w-full bg-slate-950 border border-amber-500/40 p-2.5 text-sm text-white">
+                        <select id="offnews-section" class="min-h-[44px] w-full bg-slate-950 border border-amber-500/40 p-2.5 text-sm text-white">
                             ${articleSections.map(s => `<option value="${this.escapeAttr(s.id)}" ${initSec === s.id ? 'selected' : ''}>${this.escapeHTML(s.titleEs)}</option>`).join('')}
                         </select>
                     </div>
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Estado y Edición de Salida *</label>
-                        <select id="offnews-publish-mode" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2.5 text-sm text-white">
+                        <select id="offnews-publish-mode" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2.5 text-sm text-white">
                             <option value="DRAFT" selected>Guardar como BORRADOR (Edición N.º ${curEd + 1} · Oculto)</option>
                             <option value="PUBLISHED">Publicar ahora en Edición N.º ${curEd} (Visible)</option>
                         </select>
@@ -638,14 +638,14 @@ Object.assign(ui, {
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Origen del Contenido *</label>
-                        <select id="offnews-origin" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2.5 text-sm text-white">
+                        <select id="offnews-origin" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2.5 text-sm text-white">
                             <option value="REAL" selected>ACTUALIDAD REAL (Periodismo / Ciencia)</option>
                             <option value="SIMULATION">SIMULACIÓN MARS-KET (Aula / DOC_15)</option>
                         </select>
                     </div>
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Ubicación en Portada (si se publica)</label>
-                        <select id="offnews-placement" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2.5 text-sm text-white">
+                        <select id="offnews-placement" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2.5 text-sm text-white">
                             <option value="archive" selected>Artículo de su sección</option>
                             <option value="front">Noticia Principal de Portada</option>
                             <option value="sub">Sub-portada destacada (Nivel 2)</option>
@@ -656,33 +656,33 @@ Object.assign(ui, {
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Antetítulo (ES)</label>
-                        <input type="text" id="offnews-category" value="${this.escapeAttr(this.getOrbitaSectionMeta(initSec).titleEs.toUpperCase())}" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-xs text-amber-300 uppercase font-mono">
+                        <input type="text" id="offnews-category" value="${this.escapeAttr(this.getOrbitaSectionMeta(initSec).titleEs.toUpperCase())}" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-xs text-amber-300 uppercase font-mono">
                     </div>
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Kicker (EN)</label>
-                        <input type="text" id="offnews-category-en" value="${this.escapeAttr(this.getOrbitaSectionMeta(initSec).titleEn.toUpperCase())}" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-xs text-cyan-300 uppercase font-mono">
+                        <input type="text" id="offnews-category-en" value="${this.escapeAttr(this.getOrbitaSectionMeta(initSec).titleEn.toUpperCase())}" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-xs text-cyan-300 uppercase font-mono">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Titular (Español) *</label>
-                        <input type="text" id="offnews-title" value="${this.escapeAttr(pTitleEs)}" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2.5 text-sm text-white">
+                        <input type="text" id="offnews-title" value="${this.escapeAttr(pTitleEs)}" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2.5 text-sm text-white">
                     </div>
                     <div>
                         <label class="text-[11px] font-mono text-cyan-300 uppercase block mb-1">Headline (English)</label>
-                        <input type="text" id="offnews-title-en" value="${this.escapeAttr(pTitleEn)}" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2.5 text-sm text-white">
+                        <input type="text" id="offnews-title-en" value="${this.escapeAttr(pTitleEn)}" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2.5 text-sm text-white">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Entradilla (Español)</label>
-                        <textarea id="offnews-subtitle" rows="2" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-xs text-slate-200">${this.escapeHTML(pSubEs)}</textarea>
+                        <textarea id="offnews-subtitle" rows="2" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-xs text-slate-200">${this.escapeHTML(pSubEs)}</textarea>
                     </div>
                     <div>
                         <label class="text-[11px] font-mono text-cyan-300 uppercase block mb-1">Subheadline (English)</label>
-                        <textarea id="offnews-subtitle-en" rows="2" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-xs text-slate-200">${this.escapeHTML(pSubEn)}</textarea>
+                        <textarea id="offnews-subtitle-en" rows="2" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-xs text-slate-200">${this.escapeHTML(pSubEn)}</textarea>
                     </div>
                 </div>
 
@@ -690,20 +690,20 @@ Object.assign(ui, {
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Cuerpo del Artículo (Español) *</label>
                         ${this.renderOrbitaFormatToolbar('offnews-body')}
-                        <textarea id="offnews-body" rows="5" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2.5 text-sm text-white leading-relaxed">${this.escapeHTML(pSubEs)}</textarea>
+                        <textarea id="offnews-body" rows="5" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2.5 text-sm text-white leading-relaxed">${this.escapeHTML(pSubEs)}</textarea>
                     </div>
                     <div>
                         <label class="text-[11px] font-mono text-cyan-300 uppercase block mb-1">Article Body (English — auto si vacío)</label>
                         ${this.renderOrbitaFormatToolbar('offnews-body-en')}
-                        <textarea id="offnews-body-en" rows="5" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2.5 text-sm text-white leading-relaxed">${this.escapeHTML(pSubEn)}</textarea>
+                        <textarea id="offnews-body-en" rows="5" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2.5 text-sm text-white leading-relaxed">${this.escapeHTML(pSubEn)}</textarea>
                     </div>
                 </div>
 
                 <div class="bg-slate-900 border border-slate-700 p-3 space-y-2 rounded">
                     <label class="text-[11px] font-mono text-amber-300 uppercase block font-bold">Imagen / Portada</label>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <input type="file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'offnews-img-data', 'offnews-img-preview', 'offnews-img-url')" class="mars-touch-input w-full text-xs text-slate-300 bg-slate-950 border border-slate-700 p-2">
-                        <input type="url" id="offnews-img-url" value="${this.escapeAttr(pImgUrl)}" oninput="ui.previewNanoBananaUrl(this.value, 'offnews-img-preview')" placeholder="O pega enlace https://..." class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-xs text-white font-mono">
+                        <input type="file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'offnews-img-data', 'offnews-img-preview', 'offnews-img-url')" class="min-h-[44px] w-full text-xs text-slate-300 bg-slate-950 border border-slate-700 p-2">
+                        <input type="url" id="offnews-img-url" value="${this.escapeAttr(pImgUrl)}" oninput="ui.previewNanoBananaUrl(this.value, 'offnews-img-preview')" placeholder="O pega enlace https://..." class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-xs text-white font-mono">
                     </div>
                     <input type="hidden" id="offnews-img-data" value="">
                     <div id="offnews-img-preview" class="hidden"></div>
@@ -712,22 +712,22 @@ Object.assign(ui, {
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Fuente / Autor</label>
-                        <input type="text" id="offnews-source-name" value="${this.escapeAttr(pSrcName)}" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-xs text-white">
+                        <input type="text" id="offnews-source-name" value="${this.escapeAttr(pSrcName)}" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-xs text-white">
                     </div>
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Enlace externo de referencia</label>
-                        <input type="url" id="offnews-source-url" value="${this.escapeAttr(pSrcUrl)}" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-xs text-white font-mono">
+                        <input type="url" id="offnews-source-url" value="${this.escapeAttr(pSrcUrl)}" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-xs text-white font-mono">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="text-[11px] font-mono text-amber-300 uppercase block mb-1">Conexión MARS-KET (ES)</label>
-                        <textarea id="offnews-impact" rows="2" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-xs text-slate-200"></textarea>
+                        <textarea id="offnews-impact" rows="2" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-xs text-slate-200"></textarea>
                     </div>
                     <div>
                         <label class="text-[11px] font-mono text-cyan-300 uppercase block mb-1">Pregunta Debate (ES)</label>
-                        <textarea id="offnews-debate" rows="2" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-xs text-slate-200"></textarea>
+                        <textarea id="offnews-debate" rows="2" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-xs text-slate-200"></textarea>
                     </div>
                 </div>
             </div>
@@ -916,20 +916,20 @@ Object.assign(ui, {
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                         <label class="text-[11px] font-mono text-amber-300 uppercase block mb-1 font-bold">Sección</label>
-                        <select id="offnews-edit-section" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-sm text-white">
+                        <select id="offnews-edit-section" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-sm text-white">
                             ${articleSections.map(s => `<option value="${this.escapeAttr(s.id)}" ${curSec === s.id ? 'selected' : ''}>${this.escapeHTML(s.titleEs)}</option>`).join('')}
                         </select>
                     </div>
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Estado</label>
-                        <select id="offnews-edit-status" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-sm text-white">
+                        <select id="offnews-edit-status" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-sm text-white">
                             <option value="PUBLISHED" ${curStatus === 'PUBLISHED' ? 'selected' : ''}>PUBLICADO (Ed. N.º ${news.editionNumber || 0})</option>
                             <option value="DRAFT" ${curStatus === 'DRAFT' ? 'selected' : ''}>BORRADOR (Oculto)</option>
                         </select>
                     </div>
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Origen</label>
-                        <select id="offnews-edit-origin" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-sm text-white">
+                        <select id="offnews-edit-origin" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-sm text-white">
                             <option value="REAL" ${curOrigin === 'REAL' ? 'selected' : ''}>ACTUALIDAD REAL</option>
                             <option value="SIMULATION" ${curOrigin === 'SIMULATION' ? 'selected' : ''}>SIMULACIÓN MARS-KET</option>
                         </select>
@@ -938,40 +938,40 @@ Object.assign(ui, {
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Titular (ES) *</label>
-                        <input type="text" id="offnews-edit-title" value="${this.escapeAttr(news.title || '')}" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-sm text-white">
+                        <input type="text" id="offnews-edit-title" value="${this.escapeAttr(news.title || '')}" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-sm text-white">
                     </div>
                     <div>
                         <label class="text-[11px] font-mono text-cyan-300 uppercase block mb-1">Headline (EN)</label>
-                        <input type="text" id="offnews-edit-title-en" value="${this.escapeAttr(news.titleEn || '')}" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-sm text-white">
+                        <input type="text" id="offnews-edit-title-en" value="${this.escapeAttr(news.titleEn || '')}" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-sm text-white">
                     </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Entradilla (ES)</label>
-                        <textarea id="offnews-edit-subtitle" rows="2" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-xs text-slate-200">${this.escapeHTML(news.subtitle || '')}</textarea>
+                        <textarea id="offnews-edit-subtitle" rows="2" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-xs text-slate-200">${this.escapeHTML(news.subtitle || '')}</textarea>
                     </div>
                     <div>
                         <label class="text-[11px] font-mono text-cyan-300 uppercase block mb-1">Subheadline (EN)</label>
-                        <textarea id="offnews-edit-subtitle-en" rows="2" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-xs text-slate-200">${this.escapeHTML(news.subtitleEn || '')}</textarea>
+                        <textarea id="offnews-edit-subtitle-en" rows="2" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-xs text-slate-200">${this.escapeHTML(news.subtitleEn || '')}</textarea>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Cuerpo (ES) *</label>
                         ${this.renderOrbitaFormatToolbar('offnews-edit-body')}
-                        <textarea id="offnews-edit-body" rows="5" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-sm text-white">${this.escapeHTML(news.body || '')}</textarea>
+                        <textarea id="offnews-edit-body" rows="5" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-sm text-white">${this.escapeHTML(news.body || '')}</textarea>
                     </div>
                     <div>
                         <label class="text-[11px] font-mono text-cyan-300 uppercase block mb-1">Body (EN)</label>
                         ${this.renderOrbitaFormatToolbar('offnews-edit-body-en')}
-                        <textarea id="offnews-edit-body-en" rows="5" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-sm text-white">${this.escapeHTML(news.bodyEn || '')}</textarea>
+                        <textarea id="offnews-edit-body-en" rows="5" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-sm text-white">${this.escapeHTML(news.bodyEn || '')}</textarea>
                     </div>
                 </div>
                 <div class="bg-slate-900 border border-slate-700 p-3 space-y-2 rounded">
                     <label class="text-[11px] font-mono text-amber-300 uppercase block font-bold">Imagen</label>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <input type="file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'offnews-edit-img-data', 'offnews-edit-img-preview', 'offnews-edit-img-url')" class="mars-touch-input w-full text-xs text-slate-300 bg-slate-950 border border-slate-700 p-2">
-                        <input type="url" id="offnews-edit-img-url" value="${this.escapeAttr(news.imageUrl && !String(news.imageUrl).startsWith('data:') ? news.imageUrl : '')}" oninput="ui.previewNanoBananaUrl(this.value, 'offnews-edit-img-preview')" placeholder="O pega enlace https://..." class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-xs text-white font-mono">
+                        <input type="file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'offnews-edit-img-data', 'offnews-edit-img-preview', 'offnews-edit-img-url')" class="min-h-[44px] w-full text-xs text-slate-300 bg-slate-950 border border-slate-700 p-2">
+                        <input type="url" id="offnews-edit-img-url" value="${this.escapeAttr(news.imageUrl && !String(news.imageUrl).startsWith('data:') ? news.imageUrl : '')}" oninput="ui.previewNanoBananaUrl(this.value, 'offnews-edit-img-preview')" placeholder="O pega enlace https://..." class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-xs text-white font-mono">
                     </div>
                     <input type="hidden" id="offnews-edit-img-data" value="${this.escapeAttr(news.imageUrl && String(news.imageUrl).startsWith('data:') ? news.imageUrl : '')}">
                     <div id="offnews-edit-img-preview" class="${curPreviewSrc ? '' : 'hidden'}">
@@ -981,11 +981,11 @@ Object.assign(ui, {
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Fuente</label>
-                        <input type="text" id="offnews-edit-source" value="${this.escapeAttr(news.sourceName || '')}" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-xs text-white">
+                        <input type="text" id="offnews-edit-source" value="${this.escapeAttr(news.sourceName || '')}" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-xs text-white">
                     </div>
                     <div>
                         <label class="text-[11px] font-mono text-slate-300 uppercase block mb-1">Enlace Fuente</label>
-                        <input type="url" id="offnews-edit-source-url" value="${this.escapeAttr(news.sourceUrl || '')}" class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-xs text-white font-mono">
+                        <input type="url" id="offnews-edit-source-url" value="${this.escapeAttr(news.sourceUrl || '')}" class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-xs text-white font-mono">
                     </div>
                 </div>
             </div>
@@ -1035,8 +1035,8 @@ Object.assign(ui, {
         const html = `
             <div class="space-y-3">
                 <p class="text-xs text-slate-300 font-mono">Sube una imagen o pega una URL (incluyendo Google Drive) para <strong>${this.escapeHTML(news.title)}</strong>.</p>
-                <input type="file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'imgonly-data', 'imgonly-preview', 'imgonly-url')" class="mars-touch-input w-full text-xs text-slate-300 bg-slate-950 border border-slate-700 p-2">
-                <input type="url" id="imgonly-url" value="${this.escapeAttr(news.imageUrl && !String(news.imageUrl).startsWith('data:') ? news.imageUrl : '')}" oninput="ui.previewNanoBananaUrl(this.value, 'imgonly-preview')" placeholder="https://..." class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-xs text-white font-mono">
+                <input type="file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'imgonly-data', 'imgonly-preview', 'imgonly-url')" class="min-h-[44px] w-full text-xs text-slate-300 bg-slate-950 border border-slate-700 p-2">
+                <input type="url" id="imgonly-url" value="${this.escapeAttr(news.imageUrl && !String(news.imageUrl).startsWith('data:') ? news.imageUrl : '')}" oninput="ui.previewNanoBananaUrl(this.value, 'imgonly-preview')" placeholder="https://..." class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-xs text-white font-mono">
                 <input type="hidden" id="imgonly-data" value="${this.escapeAttr(news.imageUrl && String(news.imageUrl).startsWith('data:') ? news.imageUrl : '')}">
                 <div id="imgonly-preview" class="hidden"></div>
             </div>
@@ -1507,13 +1507,22 @@ Object.assign(ui, {
         const preset = presets.find(p => p.id === presetId);
         if (!preset) return;
         const current = String(state.data?.realCompanyLogos?.[presetId] || '');
+        const curPreview = current ? this.getNewsImageSrc(current) : '';
         const html = `
             <div class="space-y-3">
                 <p class="text-xs text-slate-300 font-mono">Logo oficial para <strong>${this.escapeHTML(preset.name)}</strong>.</p>
-                <input type="file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'reallogo-data', 'reallogo-preview', 'reallogo-url')" class="mars-touch-input w-full text-xs text-slate-300 bg-slate-950 border border-slate-700 p-2">
-                <input type="url" id="reallogo-url" value="${this.escapeAttr(current && !current.startsWith('data:') ? current : '')}" oninput="ui.previewNanoBananaUrl(this.value, 'reallogo-preview')" placeholder="https://..." class="mars-touch-input w-full bg-slate-950 border border-slate-700 p-2 text-xs text-white font-mono">
+                <div>
+                    <label for="reallogo-file" class="text-[11px] font-mono text-amber-300 uppercase block mb-1 font-bold">Adjuntar imagen desde el ordenador</label>
+                    <input type="file" id="reallogo-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'reallogo-data', 'reallogo-preview', 'reallogo-url')" class="min-h-[44px] w-full text-xs text-slate-300 bg-slate-950 border border-slate-700 p-2 file:mr-2 file:py-1.5 file:px-3 file:border-0 file:text-xs file:font-black file:uppercase file:bg-amber-400 file:text-black cursor-pointer">
+                </div>
+                <div>
+                    <label for="reallogo-url" class="text-[11px] font-mono text-slate-300 uppercase block mb-1">O pegar enlace de imagen (https://...)</label>
+                    <input type="url" id="reallogo-url" value="${this.escapeAttr(current && !current.startsWith('data:') ? current : '')}" oninput="ui.previewNanoBananaUrl(this.value, 'reallogo-preview')" placeholder="https://..." class="min-h-[44px] w-full bg-slate-950 border border-slate-700 p-2 text-xs text-white font-mono">
+                </div>
                 <input type="hidden" id="reallogo-data" value="${this.escapeAttr(current && current.startsWith('data:') ? current : '')}">
-                <div id="reallogo-preview" class="hidden"></div>
+                <div id="reallogo-preview" class="${curPreview ? '' : 'hidden'} bg-white p-2 border border-slate-600 rounded flex items-center justify-center">
+                    ${curPreview ? `<img src="${this.escapeAttr(curPreview)}" alt="${this.escapeAttr(preset.name)}" class="max-h-24 object-contain">` : ''}
+                </div>
             </div>
         `;
         const actions = `
