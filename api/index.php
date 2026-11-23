@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.52
+// Versión: v2.0.53
 
 declare(strict_types=1);
 
@@ -324,6 +324,9 @@ function sanitizeStateForClient(array $state, bool $includeContestDraft = false,
     if (isset($state['finalContest']) && is_array($state['finalContest'])) {
         $state['finalContest'] = redactFinalContestForClient($state['finalContest'], $includeContestDraft);
     }
+    if (isset($state['realCompanyLogos']) && is_array($state['realCompanyLogos']) && count($state['realCompanyLogos']) === 0) {
+        $state['realCompanyLogos'] = new \stdClass();
+    }
     if (!$includeContestDraft) {
         unset($state['printEditions'], $state['printAdLibrary'], $state['deletedPrintEditionIds']);
     }
@@ -597,7 +600,6 @@ try {
                             $vipStartups[] = [
                                 'id' => (string)$vCid,
                                 'name' => (string)($vCo['name'] ?? strtoupper((string)$vCid)),
-                                'classGroup' => $clsUpper ?: 'A',
                                 'slogan' => (string)($vCo['slogan'] ?? ''),
                                 'logo' => $safeLogo,
                                 'bestE' => round($bestE, 4),
@@ -607,11 +609,16 @@ try {
                             ];
                         }
                     }
+                    $vipRealLogos = (isset($decoded['realCompanyLogos']) && is_array($decoded['realCompanyLogos']) && count($decoded['realCompanyLogos']) > 0)
+                        ? $decoded['realCompanyLogos']
+                        : new \stdClass();
                     $vipState = [
                         'version' => $decoded['version'] ?? 1,
                         'lastUpdated' => $decoded['lastUpdated'] ?? 0,
                         'news' => $vipNews,
                         'vipStartups' => $vipStartups,
+                        'realCompanyLogos' => $vipRealLogos,
+                        'realCompanyLogosUpdatedAt' => (int)($decoded['realCompanyLogosUpdatedAt'] ?? 0),
                         'deletedNewsIds' => array_values(is_array($decoded['deletedNewsIds'] ?? null) ? $decoded['deletedNewsIds'] : []),
                         'deletedOfficialNewsIds' => array_values(is_array($decoded['deletedOfficialNewsIds'] ?? null) ? $decoded['deletedOfficialNewsIds'] : []),
                         'printEditions' => [],
@@ -1071,6 +1078,12 @@ try {
                     }
                     if (isset($currentState['printAdLibrary'])) {
                         $payload['printAdLibrary'] = $currentState['printAdLibrary'];
+                    }
+                    if (isset($currentState['realCompanyLogos'])) {
+                        $payload['realCompanyLogos'] = $currentState['realCompanyLogos'];
+                    }
+                    if (isset($currentState['realCompanyLogosUpdatedAt'])) {
+                        $payload['realCompanyLogosUpdatedAt'] = $currentState['realCompanyLogosUpdatedAt'];
                     }
                 } elseif (isset($payload['printEditions']) && is_array($payload['printEditions'])) {
                     $delPrintSet = array_flip($mergedPrintTomb);

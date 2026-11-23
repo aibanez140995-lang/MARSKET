@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.52) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.53) ---
 
-const APP_VERSION = "2.0.52";
+const APP_VERSION = "2.0.53";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,18 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.53",
+      date: "2026-11-23",
+      title: "Quién es quién Integrado con Startups Navarras (Sin Clases) y Logos de Empresas Reales",
+      items: [
+        "Startups Navarras dentro de «Quién es quién»: Las startups del ecosistema navarro pasan a mostrarse en su propio apartado dentro de la sección Quién es quién, eliminando por completo las etiquetas y filtros de clases escolares.",
+        "Gestor de Logos de Empresas Reales (Coordinación): Botón «🖼️ Logo» en cada firma real (PLD Space, Sener, GMV, SpaceX, NASA, ESA, etc.) para subir archivo o pegar URL de imagen (con compresión automática a 200 px y persistencia multi-dispositivo)."
+      ],
+      highlights: [
+        { type: "ORBITAL REPORT", text: "Startups Navarras sin clases en Quién es quién + edición de logos reales." }
+      ]
+    },
     {
       version: "2.0.52",
       date: "2026-11-23",

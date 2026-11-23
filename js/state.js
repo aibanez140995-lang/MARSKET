@@ -761,6 +761,8 @@ const state = {
         d.news = this.resolveFeaturedNews(d.news);
         d.officialNews = d.news;
         d.vipStartups = Array.isArray(d.vipStartups) ? d.vipStartups : [];
+        d.realCompanyLogos = (d.realCompanyLogos && typeof d.realCompanyLogos === 'object' && !Array.isArray(d.realCompanyLogos)) ? d.realCompanyLogos : {};
+        d.realCompanyLogosUpdatedAt = Number(d.realCompanyLogosUpdatedAt) || 0;
         d.deletedPrintEditionIds = Array.isArray(d.deletedPrintEditionIds) ? d.deletedPrintEditionIds.map(String) : [];
         const delPrintSet = new Set(d.deletedPrintEditionIds);
         d.printEditions = Array.isArray(d.printEditions)
@@ -2192,6 +2194,12 @@ const state = {
         merged.vipStartups = Array.isArray(serverData.vipStartups)
             ? serverData.vipStartups
             : (Array.isArray(localData.vipStartups) ? localData.vipStartups : []);
+        const sLogoTs = Number(serverData.realCompanyLogosUpdatedAt) || 0;
+        const lLogoTs = Number(localData.realCompanyLogosUpdatedAt) || 0;
+        const sLogos = (serverData.realCompanyLogos && typeof serverData.realCompanyLogos === 'object' && !Array.isArray(serverData.realCompanyLogos)) ? serverData.realCompanyLogos : {};
+        const lLogos = (localData.realCompanyLogos && typeof localData.realCompanyLogos === 'object' && !Array.isArray(localData.realCompanyLogos)) ? localData.realCompanyLogos : {};
+        merged.realCompanyLogos = lLogoTs > sLogoTs ? { ...lLogos } : (sLogoTs > lLogoTs ? { ...sLogos } : { ...sLogos, ...lLogos });
+        merged.realCompanyLogosUpdatedAt = Math.max(sLogoTs, lLogoTs);
         const allDeletedPrintEditionIds = new Set([
             ...(Array.isArray(serverData.deletedPrintEditionIds) ? serverData.deletedPrintEditionIds.map(String) : []),
             ...(Array.isArray(localData.deletedPrintEditionIds) ? localData.deletedPrintEditionIds.map(String) : [])

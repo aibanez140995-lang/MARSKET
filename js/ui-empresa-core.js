@@ -4558,23 +4558,33 @@ Object.assign(ui, {
 
     newsSectionTab: 'portada',
     whoIsWhoRegionFilter: 'ALL',
-    startupsDirectoryClassFilter: 'ALL',
 
-    setNewsSectionTab(tab) {
-        const allowed = ['portada', 'actualidad', 'historia', 'inventos', 'quien', 'startups', 'hemeroteca'];
-        this.newsSectionTab = allowed.includes(tab) ? tab : 'portada';
+    setNewsSectionTab(tab, anchorId = null) {
+        if (tab === 'startups') {
+            this.newsSectionTab = 'quien';
+            anchorId = anchorId || 'who-startups-navarras';
+        } else {
+            const allowed = ['portada', 'actualidad', 'historia', 'inventos', 'quien', 'hemeroteca'];
+            this.newsSectionTab = allowed.includes(tab) ? tab : 'portada';
+        }
         this.activeFullArticleReader = null;
         this.render();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (anchorId) {
+            setTimeout(() => {
+                const targetEl = document.getElementById(anchorId);
+                if (targetEl) targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 60);
+        } else {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    },
+
+    openStartupsNavarrasSection() {
+        this.setNewsSectionTab('quien', 'who-startups-navarras');
     },
 
     setWhoIsWhoRegionFilter(reg) {
         this.whoIsWhoRegionFilter = String(reg || 'ALL').toUpperCase();
-        this.render();
-    },
-
-    setStartupsDirectoryClassFilter(cls) {
-        this.startupsDirectoryClassFilter = String(cls || 'ALL').toUpperCase();
         this.render();
     },
 
@@ -4590,7 +4600,6 @@ Object.assign(ui, {
                 .map(s => ({
                     id: String(s.id || ''),
                     name: String(s.name || s.id || 'Startup'),
-                    classGroup: String(s.classGroup || 'A').toUpperCase(),
                     slogan: String(s.slogan || ''),
                     logo: resolveLogo(s.logo),
                     bestE: Number(s.bestE || 0),
@@ -4598,7 +4607,7 @@ Object.assign(ui, {
                     flightCount: Number(s.flightCount || 0),
                     publishedPrCount: Number(s.publishedPrCount || 0)
                 }))
-                .sort((a, b) => a.classGroup.localeCompare(b.classGroup) || a.name.localeCompare(b.name));
+                .sort((a, b) => a.name.localeCompare(b.name));
         }
 
         const companies = state.data?.companies || {};
@@ -4628,7 +4637,6 @@ Object.assign(ui, {
                 return {
                     id: String(cid),
                     name: String(co.name || cid),
-                    classGroup: String(co.classGroup || 'A').toUpperCase(),
                     slogan: String(co.slogan || ''),
                     logo: isLogoAllowed ? resolveLogo(co.logo) : '',
                     bestE: Math.round(bestE * 10000) / 10000,
@@ -4637,19 +4645,24 @@ Object.assign(ui, {
                     publishedPrCount
                 };
             })
-            .sort((a, b) => a.classGroup.localeCompare(b.classGroup) || a.name.localeCompare(b.name));
+            .sort((a, b) => a.name.localeCompare(b.name));
     },
 
     renderBrandLogoBadge(company, small = false) {
         const sizeCls = small ? 'w-9 h-9 text-[10px]' : 'w-12 h-12 text-xs';
+        const customRaw = String(state.data?.realCompanyLogos?.[company?.id] || '').trim();
+        const customLogo = (customRaw && (/^https?:\/\//i.test(customRaw) || customRaw.startsWith('data:image/')))
+            ? (typeof this.getDirectDriveImageUrl === 'function' ? this.getDirectDriveImageUrl(customRaw) : customRaw)
+            : '';
         const domain = String(company?.domain || '').trim();
         const monogram = String(company?.monogram || (company?.name || 'SP').slice(0, 3)).toUpperCase();
         const accent = company?.accentColor || '#0f172a';
         const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128` : '';
+        const imgUrl = customLogo || faviconUrl;
         return `
         <div class="${sizeCls} shrink-0 bg-white border border-stone-300 flex items-center justify-center overflow-hidden p-1">
-            ${faviconUrl ? `
-                <img src="${this.escapeAttr(faviconUrl)}" alt="${this.escapeAttr(company?.name || '')}" loading="lazy"
+            ${imgUrl ? `
+                <img src="${this.escapeAttr(imgUrl)}" alt="${this.escapeAttr(company?.name || '')}" loading="lazy"
                     onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.classList.remove('hidden');"
                     class="w-full h-full object-contain">
                 <span class="hidden w-full h-full flex items-center justify-center font-mono font-black text-white" style="background:${this.escapeAttr(accent)}">${this.escapeHTML(monogram)}</span>
@@ -4657,6 +4670,116 @@ Object.assign(ui, {
                 <span class="w-full h-full flex items-center justify-center font-mono font-black text-white" style="background:${this.escapeAttr(accent)}">${this.escapeHTML(monogram)}</span>
             `}
         </div>`;
+    },
+
+    modalEditRealCompanyLogo(compId) {
+        if (!this.isNewsCoordinator()) return this.notify("Acceso restringido exclusivamente a Coordinación.", "error");
+        const presets = (typeof this.getWhoIsWhoRealPresets === 'function') ? this.getWhoIsWhoRealPresets() : [];
+        const comp = presets.find(c => String(c.id) === String(compId));
+        if (!comp) return this.notify("Empresa no encontrada en el directorio.", "warning");
+
+        const existingLogo = String(state.data?.realCompanyLogos?.[comp.id] || '').trim();
+        const hasCustom = Boolean(existingLogo);
+        const safePreview = existingLogo ? (typeof this.getDirectDriveImageUrl === 'function' ? this.getDirectDriveImageUrl(existingLogo) : existingLogo) : '';
+
+        const html = `
+            <div class="space-y-4 text-xs font-sans">
+                <div class="flex items-center gap-3 p-3 bg-slate-900 border border-slate-700 rounded">
+                    ${this.renderBrandLogoBadge(comp, false)}
+                    <div class="min-w-0">
+                        <strong class="text-sm text-white block">${this.escapeHTML(comp.name)}</strong>
+                        <span class="text-[11px] font-mono text-mars-cyan">${this.escapeHTML(comp.country || '')} · ${this.escapeHTML(comp.domain || '')}</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="real-co-logo-file" class="text-xs text-amber-300 uppercase font-bold block mb-1 font-mono">Opción 1: Subir imagen de logo (se comprime a 200 px)</label>
+                    <input type="file" id="real-co-logo-file" accept="image/*" onchange="ui.processRealCompanyLogoFile(this)" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:border-0 file:text-xs file:font-black file:uppercase file:bg-amber-400 file:text-black hover:file:bg-white cursor-pointer">
+                </div>
+
+                <div>
+                    <label for="real-co-logo-url" class="text-xs text-mars-cyan uppercase font-bold block mb-1 font-mono">Opción 2: Pegar URL directa del logotipo (https://...)</label>
+                    <input type="url" id="real-co-logo-url" value="${hasCustom && /^https?:\/\//i.test(existingLogo) ? this.escapeAttr(existingLogo) : ''}" oninput="ui.previewNanoBananaUrl(this.value, 'real-co-logo-preview'); const hd = document.getElementById('real-co-logo-data'); if(hd && this.value.trim()) hd.value = this.value.trim();" placeholder="https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white font-mono outline-none focus:border-mars-cyan">
+                </div>
+
+                <input type="hidden" id="real-co-logo-data" value="${this.escapeAttr(existingLogo)}">
+                <div id="real-co-logo-preview" class="${safePreview ? '' : 'hidden'} p-3 bg-white border border-slate-600 rounded flex items-center justify-center">
+                    ${safePreview ? `<img src="${this.escapeAttr(safePreview)}" alt="Logo actual" class="max-h-24 max-w-full object-contain">` : ''}
+                </div>
+            </div>
+        `;
+
+        const actions = `
+            <div class="flex flex-wrap gap-2 justify-end w-full">
+                <button type="button" onclick="ui.closeModal()" class="min-h-[44px] px-4 py-2 bg-slate-800 text-white text-xs font-bold uppercase">Cancelar</button>
+                ${hasCustom ? `<button type="button" onclick="ui.clearRealCompanyLogo('${this.escapeAttr(comp.id)}')" class="min-h-[44px] px-4 py-2 bg-red-950/70 border border-red-500 text-red-200 hover:bg-red-600 hover:text-white text-xs font-bold uppercase">🗑️ Restaurar automático</button>` : ''}
+                <button type="button" onclick="ui.saveRealCompanyLogo('${this.escapeAttr(comp.id)}')" class="min-h-[44px] px-5 py-2 bg-amber-400 text-black hover:bg-white text-xs font-black uppercase">💾 Guardar Logo</button>
+            </div>
+        `;
+        this.showModal(`🖼️ Logotipo // ${comp.name}`, html, actions);
+    },
+
+    processRealCompanyLogoFile(input) {
+        const file = input?.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const maxSide = 200;
+                const scale = Math.min(1, maxSide / Math.max(img.width || 1, img.height || 1));
+                const w = Math.max(1, Math.round((img.width || maxSide) * scale));
+                const h = Math.max(1, Math.round((img.height || maxSide) * scale));
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                const dataUrl = canvas.toDataURL('image/png');
+                const hiddenEl = document.getElementById('real-co-logo-data');
+                const urlEl = document.getElementById('real-co-logo-url');
+                const prevEl = document.getElementById('real-co-logo-preview');
+                if (hiddenEl) hiddenEl.value = dataUrl;
+                if (urlEl) urlEl.value = '';
+                if (prevEl) {
+                    prevEl.innerHTML = `<img src="${dataUrl}" alt="Vista previa" class="max-h-24 max-w-full object-contain">`;
+                    prevEl.classList.remove('hidden');
+                }
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    },
+
+    saveRealCompanyLogo(compId) {
+        if (!this.isNewsCoordinator()) return this.notify("Acceso restringido exclusivamente a Coordinación.", "error");
+        const dataVal = (document.getElementById('real-co-logo-data')?.value || '').trim();
+        const urlVal = (document.getElementById('real-co-logo-url')?.value || '').trim();
+        const finalVal = dataVal || urlVal;
+        if (!finalVal || (!/^https?:\/\//i.test(finalVal) && !finalVal.startsWith('data:image/'))) {
+            return this.notify("Sube una imagen o pega una URL válida (https://...) antes de guardar.", "warning");
+        }
+        state.data.realCompanyLogos = (state.data.realCompanyLogos && typeof state.data.realCompanyLogos === 'object') ? state.data.realCompanyLogos : {};
+        state.data.realCompanyLogos[String(compId)] = finalVal;
+        state.data.realCompanyLogosUpdatedAt = Date.now();
+        state.save('__GLOBAL__');
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.closeModal();
+        this.render();
+        this.notify("✅ Logotipo oficial guardado y sincronizado.", "success");
+    },
+
+    clearRealCompanyLogo(compId) {
+        if (!this.isNewsCoordinator()) return this.notify("Acceso restringido exclusivamente a Coordinación.", "error");
+        if (state.data?.realCompanyLogos) {
+            delete state.data.realCompanyLogos[String(compId)];
+        }
+        state.data.realCompanyLogosUpdatedAt = Date.now();
+        state.save('__GLOBAL__');
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.closeModal();
+        this.render();
+        this.notify("🗑️ Logotipo personalizado retirado (se usará el automático).", "info");
     },
 
     renderNewsSectionArticlesGrid(articles, sectionKey, isCoord, lang) {
@@ -4745,6 +4868,7 @@ Object.assign(ui, {
     },
 
     renderWhoIsWhoDirectoryView(lang) {
+        const isCoord = this.isNewsCoordinator();
         const allReal = (typeof this.getWhoIsWhoRealPresets === 'function') ? this.getWhoIsWhoRealPresets() : [];
         const activeReg = this.whoIsWhoRegionFilter || 'ALL';
         const filtered = allReal.filter(c => activeReg === 'ALL' || String(c.region || 'INTL').toUpperCase() === activeReg);
@@ -4756,19 +4880,22 @@ Object.assign(ui, {
         ];
 
         return `
-        <section class="space-y-5" aria-label="Quién es quién en el sector aeroespacial">
+        <section class="space-y-7" aria-label="Quién es quién en el sector aeroespacial">
             <div class="border-b-2 border-[#111111] pb-3 flex flex-col lg:flex-row lg:items-end justify-between gap-3">
                 <div>
                     <span class="text-[11px] font-mono font-black uppercase tracking-widest text-[#8B0000]">${lang === 'EN' ? 'DIRECTORY // WHO IS WHO' : 'DIRECTORIO // QUIÉN ES QUIÉN'}</span>
                     <h3 class="text-2xl sm:text-3xl font-serif font-black text-[#111111] mt-0.5">${lang === 'EN' ? 'Who is Who in Global Aerospace' : 'Quién es quién en el Sector Aeroespacial'}</h3>
                     <p class="text-xs sm:text-sm text-stone-700 font-serif mt-1">${lang === 'EN' ? 'Real agencies and aerospace companies shaping orbital transport, satellites, and propulsion.' : 'Empresas y agencias reales españolas, europeas e internacionales con acceso directo a su web oficial.'}</p>
                 </div>
-                <div class="flex flex-wrap gap-1.5">
+                <div class="flex flex-wrap gap-1.5 items-center">
                     ${regBtns.map(b => `
                         <button type="button" onclick="ui.setWhoIsWhoRegionFilter('${b.id}')" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-bold uppercase border transition-colors ${activeReg === b.id ? 'bg-[#111111] text-white border-[#111111]' : 'bg-white text-[#111111] border-stone-400 hover:border-[#111111]'}">
                             ${this.escapeHTML(b.label)}
                         </button>
                     `).join('')}
+                    <button type="button" onclick="document.getElementById('who-startups-navarras')?.scrollIntoView({ behavior: 'smooth', block: 'start' })" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-bold uppercase border border-[#8B0000] bg-[#8B0000] text-white hover:bg-[#111111] hover:border-[#111111] transition-colors">
+                        🚀 ${lang === 'EN' ? 'Navarra Startups ↓' : 'Startups Navarras ↓'}
+                    </button>
                 </div>
             </div>
 
@@ -4790,60 +4917,50 @@ Object.assign(ui, {
                             </div>
                             <p class="text-xs text-stone-700 font-serif leading-relaxed">${this.escapeHTML(comp.summary || '')}</p>
                         </div>
-                        <div class="pt-2 border-t border-stone-200 flex items-center justify-between gap-2">
+                        <div class="pt-2 border-t border-stone-200 flex items-center justify-between gap-2 flex-wrap">
                             <span class="text-[10px] font-mono text-stone-500 truncate">${this.escapeHTML(comp.domain || '')}</span>
-                            ${safeWeb ? `
-                                <a href="${safeWeb}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-3 py-1.5 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase shrink-0 transition-colors">
-                                    🌐 ${lang === 'EN' ? 'Website ↗' : 'Web oficial ↗'}
-                                </a>
-                            ` : ''}
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                ${isCoord ? `
+                                    <button type="button" onclick="ui.modalEditRealCompanyLogo('${this.escapeAttr(comp.id)}')" class="min-h-[44px] px-2.5 py-1.5 bg-stone-100 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-xs font-mono font-bold uppercase transition-colors" title="Subir o cambiar logotipo de esta empresa">
+                                        🖼️ Logo
+                                    </button>
+                                ` : ''}
+                                ${safeWeb ? `
+                                    <a href="${safeWeb}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-3 py-1.5 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase shrink-0 transition-colors">
+                                        🌐 ${lang === 'EN' ? 'Website ↗' : 'Web oficial ↗'}
+                                    </a>
+                                ` : ''}
+                            </div>
                         </div>
                     </article>`;
                 }).join('')}
             </div>
 
-            <div class="bg-[#EFECE4] border-2 border-[#111111] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div>
-                    <strong class="font-serif text-base text-[#111111] block">🚀 ${lang === 'EN' ? 'Discover Navarra Startups (School Ecosystem)' : '¿Quieres conocer el ecosistema aeroespacial de nuestro centro?'}</strong>
-                    <span class="text-xs text-stone-700 font-sans">${lang === 'EN' ? 'Explore the logos, slogans, and test flight milestones of our 4th ESO startups.' : 'Visita la sección propia de Startups Navarras con las insignias, lemas e hitos técnicos de los equipos de 4º ESO.'}</span>
-                </div>
-                <button type="button" onclick="ui.setNewsSectionTab('startups')" class="min-h-[44px] px-4 py-2 bg-[#8B0000] text-white hover:bg-[#111111] text-xs font-mono font-bold uppercase shrink-0 transition-colors">
-                    🚀 ${lang === 'EN' ? 'Open Navarra Startups ➔' : 'Ver Startups Navarras ➔'}
-                </button>
-            </div>
+            ${this.renderStartupsNavarrasView(lang)}
         </section>`;
     },
 
     renderStartupsNavarrasView(lang) {
         const allStartups = this.getPublicStartupsList();
-        const activeCls = this.startupsDirectoryClassFilter || 'ALL';
-        const filtered = allStartups.filter(s => activeCls === 'ALL' || s.classGroup === activeCls);
-        const classes = ['ALL', 'A', 'B', 'C', 'D', 'E', 'F'];
 
         return `
-        <section class="space-y-5" aria-label="Startups Navarras">
-            <div class="border-b-2 border-[#111111] pb-3 flex flex-col lg:flex-row lg:items-end justify-between gap-3">
+        <div id="who-startups-navarras" class="border-t-4 border-double border-[#111111] pt-6 space-y-5" aria-label="Startups Navarras">
+            <div class="border-b-2 border-[#111111] pb-3 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
                 <div>
-                    <span class="text-[11px] font-mono font-black uppercase tracking-widest text-[#8B0000]">${lang === 'EN' ? 'LOCAL ECOSYSTEM // NAVARRA STARTUPS' : 'ECOSISTEMA DE INNOVACIÓN // NAVARRA'}</span>
-                    <h3 class="text-2xl sm:text-3xl font-serif font-black text-[#111111] mt-0.5">${lang === 'EN' ? 'Navarra Aerospace Startups (4th ESO)' : 'Startups Navarras · Promoción Aeroespacial 4º ESO'}</h3>
-                    <p class="text-xs sm:text-sm text-stone-700 font-serif mt-1">${lang === 'EN' ? 'Student-founded aerospace ventures at Miravalles-El Redín: brand identity, R&D telemetry, and press milestones.' : 'Empresas aeroespaciales impulsadas en el ecosistema escolar navarro de Miravalles-El Redín: identidad corporativa, ensayos y comunicados.'}</p>
+                    <span class="text-[11px] font-mono font-black uppercase tracking-widest text-[#8B0000]">${lang === 'EN' ? 'REGIONAL ECOSYSTEM // NAVARRA' : 'ECOSISTEMA DE INNOVACIÓN // NAVARRA'}</span>
+                    <h3 class="text-2xl sm:text-3xl font-serif font-black text-[#111111] mt-0.5">🚀 ${lang === 'EN' ? 'Navarra Aerospace Startups' : 'Startups Navarras'}</h3>
+                    <p class="text-xs sm:text-sm text-stone-700 font-serif mt-1">${lang === 'EN' ? 'Emerging aerospace ventures in the Navarra ecosystem: corporate identity, flight telemetry, and official dispatches.' : 'Empresas aeroespaciales emergentes del ecosistema navarro: identidad corporativa, ensayos técnicos y comunicados oficiales.'}</p>
                 </div>
-                <div class="flex flex-wrap gap-1.5">
-                    ${classes.map(c => `
-                        <button type="button" onclick="ui.setStartupsDirectoryClassFilter('${c}')" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-bold uppercase border transition-colors ${activeCls === c ? 'bg-[#111111] text-white border-[#111111]' : 'bg-white text-[#111111] border-stone-400 hover:border-[#111111]'}">
-                            ${c === 'ALL' ? (lang === 'EN' ? `All (${allStartups.length})` : `Todas (${allStartups.length})`) : `4º ${c}`}
-                        </button>
-                    `).join('')}
-                </div>
+                <span class="text-xs font-mono font-bold px-3 py-1.5 bg-[#EFECE4] border border-stone-400 text-[#111111] shrink-0">${allStartups.length} ${lang === 'EN' ? 'companies' : 'empresas'}</span>
             </div>
 
-            ${filtered.length === 0 ? `
+            ${allStartups.length === 0 ? `
                 <div class="bg-white border border-stone-300 p-8 text-center">
-                    <p class="text-sm font-serif text-stone-700">${lang === 'EN' ? 'No startups found for this class.' : 'Todavía no hay startups registradas en este grupo.'}</p>
+                    <p class="text-sm font-serif text-stone-700">${lang === 'EN' ? 'Navarra startups will appear here once registered.' : 'Todavía no hay startups navarras registradas en el ecosistema.'}</p>
                 </div>
             ` : `
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    ${filtered.map(st => {
+                    ${allStartups.map(st => {
                         const mono = (st.name || 'ST').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase() || 'ST';
                         return `
                         <article class="bg-white border border-stone-300 p-4 flex flex-col justify-between gap-3 hover:border-[#111111] transition-colors">
@@ -4861,7 +4978,7 @@ Object.assign(ui, {
                                     </div>
                                     <div class="min-w-0 flex-1">
                                         <div class="flex items-center justify-between gap-1.5 flex-wrap">
-                                            <span class="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 bg-[#111111] text-white">NAVARRA · 4º ${this.escapeHTML(st.classGroup)}</span>
+                                            <span class="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 bg-[#111111] text-white">NAVARRA</span>
                                             ${st.publishedPrCount > 0 ? `<span class="text-[10px] font-mono font-bold text-[#8B0000]">📰 ${st.publishedPrCount} Prensa</span>` : ''}
                                         </div>
                                         <h4 class="text-base font-serif font-black text-[#111111] leading-snug mt-1 break-words">${this.escapeHTML(st.name)}</h4>
@@ -4881,7 +4998,7 @@ Object.assign(ui, {
                     }).join('')}
                 </div>
             `}
-        </section>`;
+        </div>`;
     },
 
     renderFrontPageSectionShowcases(historyArticles, inventionArticles, lang) {
@@ -4937,11 +5054,11 @@ Object.assign(ui, {
             <div class="bg-white border border-stone-300 p-4 sm:p-5 space-y-4">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-[#111111] pb-2">
                     <h3 class="font-serif font-black text-lg text-[#111111] uppercase">
-                        🌍 ${lang === 'EN' ? 'Who is Who & Navarra Startups' : 'Quién es quién en el Espacio & Startups Navarras'}
+                        🌍 ${lang === 'EN' ? 'Who is Who: Global Leaders & Navarra Startups' : 'Quién es quién: Líderes Globales y Startups Navarras'}
                     </h3>
                     <div class="flex flex-wrap gap-2">
                         <button type="button" onclick="ui.setNewsSectionTab('quien')" class="min-h-[44px] px-3 py-1.5 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase transition-colors">🌍 Quién es quién ➔</button>
-                        <button type="button" onclick="ui.setNewsSectionTab('startups')" class="min-h-[44px] px-3 py-1.5 bg-[#8B0000] text-white hover:bg-[#111111] text-xs font-mono font-bold uppercase transition-colors">🚀 Startups Navarras ➔</button>
+                        <button type="button" onclick="ui.openStartupsNavarrasSection()" class="min-h-[44px] px-3 py-1.5 bg-[#8B0000] text-white hover:bg-[#111111] text-xs font-mono font-bold uppercase transition-colors">🚀 Startups Navarras ➔</button>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -4962,18 +5079,18 @@ Object.assign(ui, {
                         </div>
                     </div>
                     <div class="space-y-2.5">
-                        <span class="text-[11px] font-mono font-black uppercase tracking-wider text-stone-600 block">${lang === 'EN' ? 'NAVARRA STARTUPS (4TH ESO)' : 'STARTUPS NAVARRAS (ECOSISTEMA 4º ESO)'}</span>
+                        <span class="text-[11px] font-mono font-black uppercase tracking-wider text-stone-600 block">${lang === 'EN' ? 'NAVARRA STARTUPS' : 'APARTADO STARTUPS NAVARRAS'}</span>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             ${navarraPreview.length === 0 ? `<p class="text-xs text-stone-600 font-serif italic">Las startups navarras aparecerán aquí al iniciar el curso.</p>` : navarraPreview.map(st => {
                                 const mono = (st.name || 'ST').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase() || 'ST';
                                 return `
-                                <button type="button" onclick="ui.setNewsSectionTab('startups')" class="min-h-[44px] text-left p-2.5 border border-stone-300 bg-[#FAF8F5] hover:border-[#111111] flex items-center gap-2.5 transition-colors">
+                                <button type="button" onclick="ui.openStartupsNavarrasSection()" class="min-h-[44px] text-left p-2.5 border border-stone-300 bg-[#FAF8F5] hover:border-[#111111] flex items-center gap-2.5 transition-colors">
                                     <div class="w-9 h-9 shrink-0 bg-[#111111] text-white flex items-center justify-center overflow-hidden font-serif font-black text-xs">
                                         ${st.logo ? `<img src="${this.escapeAttr(st.logo)}" alt="${this.escapeAttr(st.name)}" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.classList.remove('hidden');" class="w-full h-full object-cover"><span class="hidden">${this.escapeHTML(mono)}</span>` : this.escapeHTML(mono)}
                                     </div>
                                     <div class="min-w-0">
                                         <strong class="block text-xs font-serif font-black text-[#111111] truncate">${this.escapeHTML(st.name)}</strong>
-                                        <span class="block text-[10px] font-mono text-stone-600 truncate">4º ${this.escapeHTML(st.classGroup)} ${st.flightCount > 0 ? `· E: ${Number(st.bestE).toFixed(2)}` : '· Navarra'}</span>
+                                        <span class="block text-[10px] font-mono text-stone-600 truncate">Navarra${st.flightCount > 0 ? ` · E: ${Number(st.bestE).toFixed(2)}` : ''}</span>
                                     </div>
                                 </button>`;
                             }).join('')}
@@ -5091,9 +5208,9 @@ Object.assign(ui, {
             ...filteredReleases
         ].sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
 
-        const activeSectionTab = ['portada', 'actualidad', 'historia', 'inventos', 'quien', 'startups', 'hemeroteca'].includes(this.newsSectionTab)
+        const activeSectionTab = ['portada', 'actualidad', 'historia', 'inventos', 'quien', 'hemeroteca'].includes(this.newsSectionTab)
             ? this.newsSectionTab
-            : 'portada';
+            : (this.newsSectionTab === 'startups' ? 'quien' : 'portada');
 
         const currentCo = (!state.user.admin && state.user.coId) ? (companies[state.user.coId] || null) : null;
         const contestShowcaseHtml = (phaseFilter === 'ALL' || phaseFilter === 'V') && typeof this.renderContestNewsShowcase === 'function'
@@ -5362,7 +5479,6 @@ Object.assign(ui, {
                         { id: 'historia', label: lang === 'EN' ? `🏛️ History (${historyArticles.length})` : `🏛️ Un poco de Historia (${historyArticles.length})` },
                         { id: 'inventos', label: lang === 'EN' ? `🏠 Space Spin-Offs (${inventionArticles.length})` : `🏠 Del Espacio a tu Casa (${inventionArticles.length})` },
                         { id: 'quien', label: lang === 'EN' ? '🌍 Who is Who' : '🌍 Quién es quién' },
-                        { id: 'startups', label: lang === 'EN' ? '🚀 Navarra Startups' : '🚀 Startups Navarras' },
                         { id: 'hemeroteca', label: lang === 'EN' ? `🗂️ Archive (${archiveItems.length})` : `🗂️ Hemeroteca (${archiveItems.length})` }
                     ].map(tab => `
                         <button type="button" role="tab" aria-selected="${activeSectionTab === tab.id}" onclick="ui.setNewsSectionTab('${tab.id}')" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-bold uppercase whitespace-nowrap shrink-0 border transition-colors ${activeSectionTab === tab.id ? 'bg-[#111111] text-white border-[#111111]' : 'bg-white text-[#111111] border-stone-300 hover:border-[#111111]'}">
@@ -5425,8 +5541,6 @@ Object.assign(ui, {
                 ${this.renderNewsSectionArticlesGrid(inventionArticles, 'inventos', isCoord, lang)}
             ` : activeSectionTab === 'quien' ? `
                 ${this.renderWhoIsWhoDirectoryView(lang)}
-            ` : activeSectionTab === 'startups' ? `
-                ${this.renderStartupsNavarrasView(lang)}
             ` : activeSectionTab === 'hemeroteca' ? `
                 <section class="space-y-4" aria-label="Hemeroteca Completa">
                     <div class="border-b-2 border-[#111111] pb-3 flex items-center justify-between gap-2">
