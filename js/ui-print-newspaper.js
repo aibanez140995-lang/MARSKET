@@ -25,18 +25,25 @@ Object.assign(ui, {
 
     getWhoIsWhoRealPresets() {
         return [
-            { id: 'real-spacex', name: 'SpaceX', country: 'EE. UU.', summary: 'Falcon 9, Falcon Heavy y desarrollo de Starship.' },
-            { id: 'real-pld', name: 'PLD Space', country: 'España', summary: 'Fabricación y ensayo del lanzador orbital MIURA 5.' },
-            { id: 'real-blue', name: 'Blue Origin', country: 'EE. UU.', summary: 'Lanzador orbital New Glenn y vuelos suborbitales New Shepard.' },
-            { id: 'real-rocketlab', name: 'Rocket Lab', country: 'EE. UU.', summary: 'Lanzador ligero Electron y desarrollo del cohete Neutron.' },
-            { id: 'real-isar', name: 'Isar Aerospace', country: 'Alemania', summary: 'Lanzamiento de satélites pequeños con Spectrum.' },
-            { id: 'real-firefly', name: 'Firefly Aerospace', country: 'EE. UU.', summary: 'Cohete Alpha, módulo lunar Blue Ghost y vehículos Elytra.' },
-            { id: 'real-maia', name: 'MaiaSpace', country: 'Francia', summary: 'Lanzador orbital con primera etapa reutilizable.' },
-            { id: 'real-rfa', name: 'Rocket Factory Augsburg', country: 'Alemania', summary: 'Desarrollo del lanzador de satélites RFA ONE.' },
-            { id: 'real-arianegroup', name: 'ArianeGroup / Arianespace', country: 'Europa', summary: 'Desarrollo industrial y comercialización de Ariane 6.' },
-            { id: 'real-avio', name: 'Avio', country: 'Italia', summary: 'Desarrollo y servicios de lanzamiento de Vega-C.' },
-            { id: 'real-skyrora', name: 'Skyrora', country: 'R. Unido', summary: 'Desarrollo del lanzador ligero Skyrora XL.' },
-            { id: 'real-landspace', name: 'LandSpace', country: 'China', summary: 'Familia de lanzadores Zhuque.' }
+            { id: 'real-pld', name: 'PLD Space', country: 'España', region: 'ES', category: 'Lanzadores', website: 'https://www.pldspace.com', domain: 'pldspace.com', monogram: 'PLD', accentColor: '#0284c7', summary: 'Fabricación y ensayo del lanzador orbital MIURA 5.' },
+            { id: 'real-sener', name: 'Sener Aeroespacial', country: 'España', region: 'ES', category: 'Ingeniería & Defensa', website: 'https://www.group.sener', domain: 'group.sener', monogram: 'SEN', accentColor: '#dc2626', summary: 'Mecanismos espaciales, actuadores y aviónica de misión.' },
+            { id: 'real-gmv', name: 'GMV', country: 'España', region: 'ES', category: 'Navegación & Control', website: 'https://www.gmv.com', domain: 'gmv.com', monogram: 'GMV', accentColor: '#b91c1c', summary: 'Sistemas de control orbital, Galileo y segmento terreno.' },
+            { id: 'real-sateliot', name: 'Sateliot', country: 'España', region: 'ES', category: 'Constelaciones IoT', website: 'https://sateliot.space', domain: 'sateliot.space', monogram: 'SAT', accentColor: '#0f172a', summary: 'Constelación española de nanosatélites 5G IoT en órbita baja.' },
+            { id: 'real-airbus-es', name: 'Airbus España', country: 'España', region: 'ES', category: 'Estructuras & Espacio', website: 'https://www.airbus.com', domain: 'airbus.com', monogram: 'AIR', accentColor: '#1d4ed8', summary: 'Estructuras espaciales, lanzadores europeos y satélites.' },
+            { id: 'real-deimos', name: 'Deimos (Elecnor)', country: 'España', region: 'ES', category: 'Misiones & Análisis', website: 'https://www.elecnor-deimos.com', domain: 'elecnor-deimos.com', monogram: 'DEI', accentColor: '#0369a1', summary: 'Ingeniería de misión, observación terrestre y reentrada.' },
+            { id: 'real-esa', name: 'ESA (Agencia Espacial Europea)', country: 'Europa', region: 'EU', category: 'Agencia Espacial', website: 'https://www.esa.int', domain: 'esa.int', monogram: 'ESA', accentColor: '#003247', summary: 'Agencia intergubernamental europea de ciencia, exploración y transporte.' },
+            { id: 'real-arianegroup', name: 'ArianeGroup / Arianespace', country: 'Europa', region: 'EU', category: 'Lanzadores Pesados', website: 'https://www.ariane.group', domain: 'ariane.group', monogram: 'ARI', accentColor: '#0f172a', summary: 'Desarrollo industrial y comercialización de Ariane 6.' },
+            { id: 'real-isar', name: 'Isar Aerospace', country: 'Alemania', region: 'EU', category: 'Lanzadores', website: 'https://www.isaraerospace.com', domain: 'isaraerospace.com', monogram: 'ISA', accentColor: '#334155', summary: 'Lanzamiento de satélites pequeños con el cohete Spectrum.' },
+            { id: 'real-avio', name: 'Avio', country: 'Italia', region: 'EU', category: 'Propulsión & Lanzadores', website: 'https://www.avio.com', domain: 'avio.com', monogram: 'AVI', accentColor: '#1e3a8a', summary: 'Desarrollo de propulsión sólida y servicios de lanzamiento Vega-C.' },
+            { id: 'real-maia', name: 'MaiaSpace', country: 'Francia', region: 'EU', category: 'Lanzadores Reutilizables', website: 'https://www.maia-space.com', domain: 'maia-space.com', monogram: 'MAI', accentColor: '#4338ca', summary: 'Lanzador orbital europeo con primera etapa reutilizable.' },
+            { id: 'real-rfa', name: 'Rocket Factory Augsburg', country: 'Alemania', region: 'EU', category: 'Micro-lanzadores', website: 'https://www.rfa.space', domain: 'rfa.space', monogram: 'RFA', accentColor: '#0f766e', summary: 'Desarrollo del lanzador comercial de satélites RFA ONE.' },
+            { id: 'real-skyrora', name: 'Skyrora', country: 'R. Unido', region: 'EU', category: 'Lanzadores', website: 'https://www.skyrora.com', domain: 'skyrora.com', monogram: 'SKY', accentColor: '#0369a1', summary: 'Desarrollo del lanzador ligero Skyrora XL.' },
+            { id: 'real-nasa', name: 'NASA', country: 'EE. UU.', region: 'INTL', category: 'Agencia Espacial', website: 'https://www.nasa.gov', domain: 'nasa.gov', monogram: 'NAS', accentColor: '#0b3d91', summary: 'Agencia espacial pública estadounidense, programa Artemis e I+D.' },
+            { id: 'real-spacex', name: 'SpaceX', country: 'EE. UU.', region: 'INTL', category: 'Lanzadores Reutilizables', website: 'https://www.spacex.com', domain: 'spacex.com', monogram: 'SPX', accentColor: '#0f172a', summary: 'Falcon 9, Falcon Heavy y desarrollo del sistema Starship.' },
+            { id: 'real-blue', name: 'Blue Origin', country: 'EE. UU.', region: 'INTL', category: 'Lanzadores & Carga', website: 'https://www.blueorigin.com', domain: 'blueorigin.com', monogram: 'BLU', accentColor: '#0284c7', summary: 'Lanzador orbital New Glenn y vuelos suborbitales New Shepard.' },
+            { id: 'real-rocketlab', name: 'Rocket Lab', country: 'EE. UU.', region: 'INTL', category: 'Lanzadores & Satélites', website: 'https://www.rocketlabusa.com', domain: 'rocketlabusa.com', monogram: 'RKL', accentColor: '#111827', summary: 'Lanzador ligero Electron y desarrollo del cohete Neutron.' },
+            { id: 'real-firefly', name: 'Firefly Aerospace', country: 'EE. UU.', region: 'INTL', category: 'Lanzadores & Luna', website: 'https://fireflyspace.com', domain: 'fireflyspace.com', monogram: 'FIR', accentColor: '#ca8a04', summary: 'Cohete Alpha, módulo lunar Blue Ghost y vehículos Elytra.' },
+            { id: 'real-landspace', name: 'LandSpace', country: 'China', region: 'INTL', category: 'Propulsión Metano', website: 'https://www.landspace.com', domain: 'landspace.com', monogram: 'LDS', accentColor: '#475569', summary: 'Familia de lanzadores orbitales de metano líquido Zhuque.' }
         ];
     },
 
@@ -383,6 +390,7 @@ Object.assign(ui, {
         return [
             { label: 'Actualidad', title: 'ACTUALIDAD AEROESPACIAL' },
             { label: 'Un poco de historia', title: 'UN POCO DE HISTORIA' },
+            { label: 'Del Espacio a tu Casa', title: 'DEL ESPACIO A TU CASA // INVENTOS REALES' },
             { label: 'Entrevistas', title: 'ENTREVISTAS // VOCES DEL SECTOR' },
             { label: 'Reportaje Especial', title: 'REPORTAJE ESPECIAL' },
             { label: 'Ciencia y Propulsión', title: 'CIENCIA, PROPULSIÓN E I+D' },
@@ -393,6 +401,7 @@ Object.assign(ui, {
             { label: 'Mundo Aeroespacial', title: 'PANORAMA MUNDIAL AEROESPACIAL' },
             { label: 'Curiosidades Espaciales', title: 'CURIOSIDADES DEL ESPACIO' },
             { label: 'Quién es quién', title: 'DIRECTORIO // QUIÉN ES QUIÉN' },
+            { label: 'Startups Navarras', title: 'DIRECTORIO // STARTUPS NAVARRAS' },
             { label: 'Más allá del cohete', title: 'CONTRAPORTADA // MÁS ALLÁ DEL COHETE' }
         ];
     },
@@ -474,7 +483,10 @@ Object.assign(ui, {
                     <label for="print-slot-source-pick" class="text-xs text-mars-cyan font-bold uppercase block font-mono">📥 Cargar desde Noticias de la App o Teletipo Real (Opcional)</label>
                     <select id="print-slot-source-pick" onchange="ui.applySourceToPrintSlotEditor(this.value)" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white">
                         <option value="">-- Mantener / Editar texto manualmente --</option>
-                        ${savedNews.map((n, i) => `<option value="NEWS:${i}">[Tablón] ${this.escapeHTML((n.title || '').slice(0, 75))}</option>`).join('')}
+                        ${savedNews.map((n, i) => {
+                            const secLabel = n.section === 'historia' ? 'Historia' : (n.section === 'inventos' ? 'Del Espacio a tu Casa' : 'Actualidad');
+                            return `<option value="NEWS:${i}">[${secLabel}] ${this.escapeHTML((n.title || '').slice(0, 72))}</option>`;
+                        }).join('')}
                         ${wireNews.map((w, i) => `<option value="WIRE:${i}">[Real · ${this.escapeHTML(w.news_site || 'SNAPI')}] ${this.escapeHTML((w.titleEs || w.title || '').slice(0, 70))}</option>`).join('')}
                     </select>
                 </div>
@@ -1289,15 +1301,17 @@ Object.assign(ui, {
                 <div class="space-y-2">
                     <h4 class="text-xs font-mono font-bold text-amber-300 uppercase">🏛️ Noticias Creadas por Coordinación (${savedNews.length})</h4>
                     <div class="max-h-52 overflow-y-auto border border-slate-700 bg-slate-900/70 divide-y divide-slate-800 p-2 space-y-1.5">
-                        ${savedNews.length === 0 ? `<p class="text-slate-400 italic p-2">No hay noticias guardadas todavía.</p>` : savedNews.map((n, i) => `
+                        ${savedNews.length === 0 ? `<p class="text-slate-400 italic p-2">No hay noticias guardadas todavía.</p>` : savedNews.map((n, i) => {
+                            const secBadge = n.section === 'historia' ? 'HISTORIA' : (n.section === 'inventos' ? 'DEL ESPACIO A TU CASA' : 'ACTUALIDAD');
+                            return `
                             <div class="pt-1.5 first:pt-0 flex items-center justify-between gap-2">
                                 <div class="min-w-0 flex-1">
-                                    <span class="block text-[10px] font-mono text-mars-cyan uppercase">${this.escapeHTML(n.category || 'AEE')} · ${this.escapeHTML(n.publishedDate || '')}</span>
+                                    <span class="block text-[10px] font-mono text-mars-cyan uppercase">${secBadge} · ${this.escapeHTML(n.category || 'AEE')} · ${this.escapeHTML(n.publishedDate || '')}</span>
                                     <strong class="block text-xs text-white truncate">${this.escapeHTML(n.title || '')}</strong>
                                 </div>
                                 <button type="button" onclick="ui.applyPickedNewsToPrintSlot(${pageIdx}, ${slotIdx}, 'NEWS', ${i})" class="min-h-[38px] px-3 py-1 bg-amber-400 text-black font-black text-[11px] uppercase hover:bg-white shrink-0">Aplicar</button>
                             </div>
-                        `).join('')}
+                        `; }).join('')}
                     </div>
                 </div>
 

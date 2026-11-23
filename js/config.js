@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.51) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.52) ---
 
-const APP_VERSION = "2.0.51";
+const APP_VERSION = "2.0.52";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,19 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.52",
+      date: "2026-11-23",
+      title: "Fase B: ORBITAL REPORT Multi-Sección, Historia, Del Espacio a tu Casa, Quién es quién y Startups Navarras",
+      items: [
+        "Periódico Digital Multi-Sección ORBITAL REPORT: Nueva barra de secciones editoriales (Portada escaparate, Actualidad, Un poco de Historia, Del Espacio a tu Casa, Quién es quién, Startups Navarras y Hemeroteca) con visor amplio en ES/EN.",
+        "Secciones Precargadas y Editables (Conectadas al A3): 5 relatos históricos (Emilio Herrera, Juan de la Cierva, Sputnik 1, Apolo 11 y España en el Espacio) y 5 inventos cotidianos nacidos del espacio (cámara CMOS, espuma viscoelástica, mantas Mylar, lentes antiarañazos/UV y GPS/sin cables), seleccionables también en el Estudio Impreso A3.",
+        "Quién es quién & Startups Navarras (VIP-0000 Zero-PII): Ampliado el directorio real a 19 firmas/agencias (PLD Space, Sener, GMV, Sateliot, Airbus España, Deimos, ESA, NASA, SpaceX...) con logotipo de marca y web oficial, y nueva sección «Startups Navarras» para los equipos de 4º A–F accesible también desde VIP-0000 sin datos privados."
+      ],
+      highlights: [
+        { type: "ORBITAL REPORT", text: "Diario digital multi-sección con Historia, Del Espacio a tu Casa, Quién es quién y Startups Navarras." }
+      ]
+    },
     {
       version: "2.0.51",
       date: "2026-11-23",

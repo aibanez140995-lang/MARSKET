@@ -186,6 +186,7 @@ const state = {
         const seedImgUrl = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(seedImgSvg);
         return {
             id: 'NEWS-SEED-MUSK-PATENTS-001',
+            section: 'actualidad',
             category: 'PROPIEDAD INDUSTRIAL & B2B',
             categoryEn: 'INDUSTRIAL PROPERTY & B2B',
             title: 'Elon Musk sobre las patentes de SpaceX: «Mide nuestro cohete en la calle y cópialo»',
@@ -213,6 +214,210 @@ const state = {
         };
     },
 
+    _makeEditorialCoverSvg(kicker, line1, line2, accentHex = '#00f0ff', bgHex = '#0b1528') {
+        const escSvg = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#05070f"/><stop offset="100%" stop-color="${escSvg(bgHex)}"/></linearGradient></defs><rect width="1280" height="720" fill="url(#g)"/><g stroke="${escSvg(accentHex)}" stroke-opacity="0.16" stroke-width="1"><path d="M0 180H1280M0 360H1280M0 540H1280M320 0V720M640 0V720M960 0V720"/></g><circle cx="1020" cy="360" r="190" fill="${escSvg(accentHex)}" fill-opacity="0.12" stroke="${escSvg(accentHex)}" stroke-width="3"/><circle cx="1020" cy="360" r="95" fill="none" stroke="#ffffff" stroke-opacity="0.4" stroke-dasharray="10 8" stroke-width="2"/><text x="72" y="150" fill="${escSvg(accentHex)}" font-family="monospace" font-size="24" font-weight="bold" letter-spacing="4">${escSvg(kicker)}</text><text x="72" y="290" fill="#ffffff" font-family="sans-serif" font-size="54" font-weight="900">${escSvg(line1)}</text><text x="72" y="365" fill="#e2e8f0" font-family="sans-serif" font-size="40" font-weight="700">${escSvg(line2)}</text><rect x="72" y="460" width="380" height="52" fill="#05070f" stroke="${escSvg(accentHex)}" stroke-width="2"/><text x="92" y="494" fill="${escSvg(accentHex)}" font-family="monospace" font-size="20" font-weight="bold">ORBITAL REPORT // ARCHIVO AEE</text></svg>`;
+        return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+    },
+
+    getEditorialSectionSeeds() {
+        const baseTs = 1763740000000;
+        const make = (id, section, offsetMin, kickerEs, kickerEn, titleEs, subEs, bodyEs, titleEn, subEn, bodyEn, impactEs, impactEn, debateEs, debateEn, svg1, svg2, accent, bg, sourceName, sourceUrl) => ({
+            id,
+            section,
+            category: kickerEs,
+            categoryEn: kickerEn,
+            title: titleEs,
+            subtitle: subEs,
+            body: bodyEs,
+            titleEn,
+            subtitleEn: subEn,
+            bodyEn,
+            imageUrl: this._makeEditorialCoverSvg(kickerEs, svg1, svg2, accent, bg),
+            sourceName: sourceName || 'Archivo Histórico AEE',
+            sourceUrl: sourceUrl || '',
+            marsketImpact: impactEs,
+            marsketImpactEn: impactEn,
+            debateQuestion: debateEs,
+            debateQuestionEn: debateEn,
+            publishedAt: baseTs - (offsetMin * 60000),
+            updatedAt: baseTs,
+            placementUpdatedAt: baseTs,
+            publishedDate: '22/11/2026',
+            placement: 'archive',
+            subOrder: 0,
+            featured: false,
+            phase: 'ALL',
+            classGroup: 'ALL',
+            coId: null,
+            companyName: null,
+            author: 'Consejo Editorial AEE'
+        });
+
+        return [
+            make(
+                'SEED-HIST-EMILIO-HERRERA', 'historia', 10,
+                'UN POCO DE HISTORIA', 'A BIT OF HISTORY',
+                'Emilio Herrera Linares y la escafandra estratonauta (1935): el precursor español del traje espacial',
+                'Tres décadas antes del Programa Apolo, un ingeniero español diseñó un traje presurizado articulado con micrófono, visor antifrío y suministro de oxígeno para subir a la estratosfera.',
+                'En 1935, el ingeniero militar español **Emilio Herrera Linares** completó en Madrid y Granada un invento adelantado a su tiempo: la **escafandra estratonauta**. Pensada para ascender en globo hasta 26 kilómetros de altura, resolvía un problema físico crítico: a muy baja presión atmosférica, el agua y la sangre entran en ebullición a la temperatura corporal.\n\n- **Diseño articulado:** Usó fuelles metálicos tipo acordeón en codos y rodillas para que el piloto pudiera moverse sin que el traje se inflara como un globo rígido.\n- **Protección térmica y visual:** Incorporaba triple capa aislante, sistema de refrigeración y un visor tratado contra la radiación solar.\n- **Herencia directa en la NASA:** Décadas después, ingenieros del proyecto Apolo reconocieron el valor pionero del diseño de Herrera como antecedente directo de los trajes espaciales lunares.',
+                'Emilio Herrera Linares and the Stratospheric Space Suit (1935): A Spanish Pioneer',
+                'Three decades before Apollo, a Spanish engineer built a pressurized, articulated flight suit with oxygen supply and visor protection.',
+                'In 1935, Spanish engineer **Emilio Herrera Linares** designed the **escafandra estratonauta**, a pressurized stratospheric suit built to reach 26 km altitude. It solved boiling-point limits at low pressure using bellows-style metal joints, thermal insulation, and solar-shielded visors—laying conceptual groundwork later echoed in Apollo space suits.',
+                'Un buen diseño físico se anticipa a los límites de presión y temperatura; igual que vuestro sistema de sellado y unión en el cohete debe resistir la sobrepresión de la reacción sin fugas.',
+                'Great engineering anticipates pressure and thermal limits—just like your rocket seals must hold reaction pressure without leaks.',
+                '¿Qué falla primero en un prototipo escolar cuando aumenta la presión interna: la estructura principal o el sellado?',
+                'What fails first in a student rocket under higher pressure: the airframe or the sealing joint?',
+                'EMILIO HERRERA (1935)', 'LA ESCAFANDRA ESTRATONAUTA', '#ffb703', '#1d1407',
+                'Archivo Histórico AEE · Fundación Enaire', 'https://www.enaire.es'
+            ),
+            make(
+                'SEED-HIST-JUAN-CIERVA', 'historia', 20,
+                'UN POCO DE HISTORIA', 'A BIT OF HISTORY',
+                'Juan de la Cierva y el autogiro (1923): la solución española que hizo posible el vuelo vertical',
+                'Cuando los primeros helicópteros volcaban al despegar por la asimetría de sustentación, el ingeniero murciano inventó el rotor articulado.',
+                'En enero de 1923 despegó en Getafe el **autogiro C.4** diseñado por **Juan de la Cierva**. Hasta entonces, las aeronaves de alas rotatorias sufrían un problema aerodinámico grave: la pala que avanzaba contra el viento generaba más sustentación que la que retrocedía, provocando un vuelco inevitable.\n\n- **La idea clave:** La *articulación de batimiento*, que permite a cada pala subir y bajar ligeramente en cada giro, equilibrando automáticamente las fuerzas.\n- **Seguridad sin motor:** Al girar el rotor por autorrotación del aire, el autogiro podía descender suavemente aunque se detuviera el motor.\n- **Impacto histórico:** Casi todos los helicópteros modernos siguen utilizando la mecánica de rotor articulado ideada por De la Cierva.',
+                'Juan de la Cierva and the Autogyro (1923): Solving Rotor Aerodynamics',
+                'When early rotary aircraft rolled over on takeoff, a Spanish engineer invented the flapping hinge that still keeps helicopters stable.',
+                'In January 1923, **Juan de la Cierva** flew his **C.4 autogyro**, solving asymmetric lift roll-over with hinged blades that flap freely to balance aerodynamic forces automatically—an engineering principle still used in modern rotorcraft.',
+                'Al igual que las palas equilibradas del autogiro, el alineado y simetría de vuestras aletas determinan si el cohete sube recto o desvía su trayectoria.',
+                'Just like balanced rotor blades, fin symmetry determines whether your rocket climbs straight or tumbles.',
+                '¿Cuántos gramos extra vale la pena invertir en aletas rígidas si reducen la desviación horizontal en el lanzamiento?',
+                'How much budget is worth investing in stiffer fins if they eliminate lateral drift at launch?',
+                'JUAN DE LA CIERVA', 'AUTOGIRO Y AERODINÁMICA', '#00f0ff', '#071b26',
+                'Archivo Aeronáutico AEE', ''
+            ),
+            make(
+                'SEED-HIST-SPUTNIK-1957', 'historia', 30,
+                'UN POCO DE HISTORIA', 'A BIT OF HISTORY',
+                'Sputnik 1 (1957): los 83 kilos y el «bip-bip» que inauguraron la Era Espacial',
+                'Una esfera de aluminio de 58 centímetros con cuatro antenas demostró desde la órbita que la humanidad había vencido por primera vez a la gravedad terrestre.',
+                'El 4 de octubre de 1957 despegó el **Sputnik 1**, el primer satélite artificial de la historia. Pesaba solo **83,6 kg**, tenía el tamaño aproximado de un balón de playa y emitía pulsos de radio en dos frecuencias que cualquier radioaficionado del planeta podía escuchar mientras sobrevolaba su ciudad cada 96 minutos.\n\n- **Física pura:** Para quedarse en órbita sin caer, necesitó alcanzar una velocidad cercana a los **29.000 km/h** (~7,9 km/s).\n- **Simplicidad ganadora:** No llevaba cámaras ni experimentos complejos; su único objetivo científico era estudiar la densidad de la atmósfera alta y la propagación de ondas.\n- **Inicio de la carrera:** Aquella señal transformó la ciencia mundial, impulsó la creación de la NASA y aceleró la electrónica miniaturizada.',
+                'Sputnik 1 (1957): The 83 kg Sphere That Opened the Space Age',
+                'A 58-centimeter aluminum sphere with four antennas proved humanity could overcome gravity and stay in Earth orbit.',
+                'Launched on October 4, 1957, **Sputnik 1** weighed **83.6 kg** and circled Earth every 96 minutes at ~29,000 km/h, broadcasting simple radio beeps that triggered the global space race and modern orbital science.',
+                'Sputnik ganó con ligereza y fiabilidad, no con adornos caros. En MARS-KET, cada gramo y cada €v innecesario empeora vuestra eficiencia E = Altura / Coste.',
+                'Sputnik succeeded through low mass and simplicity—every extra gram or €v hurts your E = Height / Cost ratio.',
+                '¿Qué componente de vuestro cohete podríais aligerar o simplificar sin perder estabilidad?',
+                'Which part of your rocket could you simplify or lighten without losing stability?',
+                'SPUTNIK 1 (1957)', 'EL DESPEGUE DE LA ERA ESPACIAL', '#ff0055', '#1b0714',
+                'Archivo Histórico AEE · ESA/NASA', 'https://www.esa.int'
+            ),
+            make(
+                'SEED-HIST-APOLO-1969', 'historia', 40,
+                'UN POCO DE HISTORIA', 'A BIT OF HISTORY',
+                'Programa Apolo y Apolo 11 (1969): logística extrema, física orbital y llegada a la Luna',
+                'Para llevar un módulo lunar de unas pocas toneladas a la superficie lunar y traerlo de vuelta hizo falta un coloso de casi 3.000 toneladas en la rampa.',
+                'El **20 de julio de 1969**, el módulo *Eagle* del **Apolo 11** alunizó en el Mar de la Tranquilidad. Más allá de la épica, el programa Apolo supuso la mayor hazaña de **gestión de proyectos e ingeniería de sistemas** del siglo XX.\n\n- **La tiranía de la ecuación del cohete:** Más del 85% de la masa del cohete Saturn V al despegar era combustible para vencer la gravedad en los primeros minutos.\n- **Control de presupuesto y fases:** Trabajaron cientos de empresas contratistas bajo pruebas rigurosas de ensayo y error antes del vuelo tripulado.\n- **Ordenadores de navegación:** La computadora AGC del Apolo tenía menos memoria que una calculadora escolar actual, demostrando que la precisión matemática vale más que la fuerza bruta.',
+                'Project Apollo and Apollo 11 (1969): Orbital Physics and Systems Engineering',
+                'Landing a tiny lunar module on the Moon required nearly 3,000 tons at liftoff and unprecedented contractor coordination.',
+                'On July 20, 1969, **Apollo 11** reached the Moon. Over 85% of the Saturn V rocket’s liftoff mass was propellant—an unforgettable lesson in mass fractions, strict phase testing, and tight project management.',
+                'Igual que el Saturn V equilibró propelente, estructura y presupuesto por fases, vuestro equipo debe ajustar bicarbonato/vinagre y coste BOM antes de la validación.',
+                'Like Saturn V balancing propellant and payload, your team must balance reagents and BOM cost before testing.',
+                'Si dobláis la cantidad de reactivo sin mejorar el sellado o la aerodinámica, ¿sube proporcionalmente la altura?',
+                'If you double your propellant without improving aerodynamics or sealing, does height double too?',
+                'APOLO 11 (1969)', 'INGENIERÍA Y FÍSICA ORBITAL', '#38bdf8', '#081426',
+                'Archivo NASA / AEE', 'https://www.nasa.gov'
+            ),
+            make(
+                'SEED-HIST-ESPANA-ESPACIO', 'historia', 50,
+                'UN POCO DE HISTORIA', 'A BIT OF HISTORY',
+                'España en el espacio: del primer satélite Intasat (1974) a Pedro Duque y Sara García Alonso',
+                'Medio siglo de talento aeroespacial español: desde los pioneros científicos hasta las empresas nacionales de lanzadores y satélites.',
+                'La presencia española en la historia espacial es mucho más larga de lo que suele pensarse. El **15 de noviembre de 1974** despegó el **Intasat**, el primer satélite artificial diseñado y fabricado íntegramente en España.\n\n- **Estaciones clave:** Las antenas de Madrid (Robledo de Chavela) y Maspalomas recibieron señales históricas del Apolo 11 y de misiones a Marte.\n- **Astronautas españoles:** **Pedro Duque** voló al espacio en 1998 y 2003 en la ISS; en 2022, la biotecnóloga leonesa **Sara García Alonso** y **Pablo Álvarez** fueron seleccionados en la promoción de astronautas de la ESA.\n- **Ecosistema actual:** Hoy España lidera constelaciones IoT, navegación satelital, estructuras para Ariane 6 y el desarrollo de lanzadores propios como **MIURA**.',
+                'Spain in Space: From Intasat (1974) to Pedro Duque and Sara García Alonso',
+                'Half a century of Spanish aerospace milestones—from the nation’s first satellite to modern ESA astronauts and rocket firms.',
+                'Spain launched its first indigenous satellite, **Intasat**, in 1974 and played crucial tracking roles during Apollo 11. Today, ESA astronauts **Pedro Duque**, **Sara García Alonso**, and **Pablo Álvarez**, alongside Spanish aerospace firms, push national space technology forward.',
+                'El sector aeroespacial español demuestra que equipos medianos con alta especialización técnica pueden competir internacionalmente, igual que vuestras startups navarras.',
+                'Spain’s aerospace industry proves specialized medium-sized teams can compete globally—just like your school startups.',
+                '¿Qué empresas españolas aparecen hoy en la sección «Quién es quién» que no sabías que trabajaban en el espacio?',
+                'Which Spanish firms in "Who is Who" did you not know were active in space engineering?',
+                'ESPAÑA EN EL ESPACIO', 'DE INTASAT AL NEWSPACE', '#00ff66', '#061d14',
+                'Archivo Histórico AEE · INTA / ESA', 'https://www.esa.int'
+            ),
+            make(
+                'SEED-INV-CAMARA-CMOS', 'inventos', 15,
+                'DEL ESPACIO A TU CASA', 'FROM SPACE TO YOUR HOME',
+                'La cámara de tu móvil nació en los laboratorios de la NASA (sensor CMOS)',
+                'Para fotografiar planetas sin cargar pesadas cámaras de película ni gastar demasiada batería, la NASA miniaturizó el ojo digital que hoy llevas en el bolsillo.',
+                'En los años noventa, el ingeniero **Eric Fossum** trabajaba en el Jet Propulsion Laboratory (JPL) de la **NASA** con un reto urgente: reducir al mínimo el peso, tamaño y consumo eléctrico de las cámaras que viajaban en sondas interplanetarias.\n\n- **La solución espacial:** Desarrolló el sensor activo de píxeles **CMOS**, integrando toda la electrónica de lectura en un diminuto chip.\n- **Impacto en la Tierra:** Al abaratarse su fabricación industrial, aquella tecnología espacial saltó directamente a los **teléfonos móviles, cámaras de acción y endoscopios médicos**.\n- **Lección física:** Miniaturizar y bajar consumo energético en el espacio casi siempre genera revoluciones masivas en la vida cotidiana.',
+                'Your Phone Camera Was Born at NASA: The CMOS Image Sensor',
+                'To photograph distant worlds with minimal weight and battery power, NASA JPL miniaturized the sensor now inside every smartphone.',
+                'In the 1990s, **NASA JPL** engineer **Eric Fossum** created the active-pixel **CMOS image sensor** to cut spacecraft camera mass and power. That breakthrough soon became the standard inside virtually every smartphone and webcam on Earth.',
+                'Reducir peso y coste sin perder prestaciones es exactamente el mismo principio detrás de vuestro cálculo de eficiencia en 4º ESO.',
+                'Cutting mass and cost without sacrificing performance is the exact principle behind your 4th ESO efficiency metric.',
+                '¿Qué otra pieza de uso diario se beneficia cuando un ingeniero necesita hacerla diez veces más ligera?',
+                'What other everyday tool improves dramatically when engineers have to make it ten times lighter?',
+                'CÁMARA DEL MÓVIL', 'SENSOR CMOS · NASA JPL', '#00f0ff', '#071b26',
+                'NASA Spinoff / Archivo AEE', 'https://spinoff.nasa.gov'
+            ),
+            make(
+                'SEED-INV-VISCOELASTICA', 'inventos', 25,
+                'DEL ESPACIO A TU CASA', 'FROM SPACE TO YOUR HOME',
+                'Espuma viscoelástica: del asiento protector de los astronautas a tu colchón',
+                'Diseñada en los años sesenta para repartir uniformemente las enormes aceleraciones del despegue y aterrizaje, hoy mejora el descanso y los cascos deportivos.',
+                'Durante los lanzamientos, los astronautas soportan varias veces su propio peso (fuerzas G) contra el respaldo del asiento. En 1966, ingenieros contratados por el Centro Ames de la **NASA** inventaron la **espuma con memoria (*temper foam*)**.\n\n- **Cómo funciona:** Es un polímero de celda abierta que reacciona al calor corporal y la presión, adaptándose milimétricamente a la forma del cuerpo y recuperando su forma al retirarse la carga.\n- **Del espacio al hospital:** Primero se usó en asientos de aeronaves y camas clínicas para evitar úlceras por presión en pacientes inmóviles.\n- **En tu casa:** Hoy está en **colchones, almohadas ergonómicas, zapatillas y acolchados de cascos de ciclismo o fútbol americano**.',
+                'Memory Foam: From Astronaut Launch Seats to Your Mattress',
+                'Engineered in the 1960s to absorb high-G launch forces evenly, viscoelastic foam now cushions beds, helmets, and medical care.',
+                'Contracted by **NASA Ames**, engineers developed viscoelastic **memory foam** to redistribute astronaut G-forces safely during launch and landing. Today it cushions hospital beds, mattresses, athletic shoes, and protective helmets.',
+                'Aprender propiedades de materiales (elasticidad, amortiguación y densidad) permite transformar residuos o soluciones de taller en ventajas prácticas.',
+                'Understanding material properties—elasticity, damping, density—turns workshop choices into real performance gains.',
+                'Si tuvierais que proteger un sensor frágil dentro de la ojiva del cohete al caer al suelo, ¿qué material del catálogo usaríais?',
+                'If your rocket carried a fragile sensor at impact, which catalog material would absorb the shock best?',
+                'ESPUMA VISCOELÁSTICA', 'TEMPER FOAM · NASA AMES', '#ffb703', '#1c1506',
+                'NASA Spinoff / Archivo AEE', 'https://spinoff.nasa.gov'
+            ),
+            make(
+                'SEED-INV-MANTAS-MYLAR', 'inventos', 35,
+                'DEL ESPACIO A TU CASA', 'FROM SPACE TO YOUR HOME',
+                'Mantas térmicas de emergencia (Mylar): el escudo orbital dorado y plateado',
+                'Una lámina finísima de plástico aluminizado creada para proteger satélites del sol extremo hoy salva vidas contra la hipotermia en rescates y ambulancias.',
+                'En el vacío espacial no hay aire que conduzca el calor, así que la cara de una nave que mira al Sol supera los +120 °C mientras la cara en sombra cae por debajo de -150 °C. En 1964, la **NASA** desarrolló un aislante multicapa aluminizado conocido popularmente como **Mylar espacial**.\n\n- **Física de la radiación:** Su superficie metálica refleja hasta el **97% de la radiación térmica infrarroja** con un peso insignificante.\n- **Uso cotidiano:** Cabe doblada en el bolsillo de cualquier botiquín de montaña, coche de bomberos, ambulancia o meta de maratón para evitar la pérdida rápida de calor corporal.',
+                'Emergency Space Blankets (Mylar): An Orbital Radiation Shield',
+                'Developed to protect spacecraft from extreme solar radiation in vacuum, paper-thin aluminized film now saves lives in mountain rescues.',
+                'In 1964, **NASA** created ultralight aluminized **Mylar** radiant barriers that reflect up to **97% of infrared heat**—keeping satellites safe from extreme temperatures and now standard in ambulances and first-aid kits worldwide.',
+                'Una reacción química o exposición solar cambia la temperatura y la presión; saber cómo actúa la radiación y el aislamiento es pura Física y Química aplicada.',
+                'Controlling heat and radiation with ultralight materials is pure Physics and Chemistry in action.',
+                '¿Por qué una manta tan fina puede abrigar más que una chaqueta gruesa en una emergencia al aire libre?',
+                'Why can a paper-thin shiny blanket trap body heat so effectively in an emergency?',
+                'MANTA TÉRMICA MYLAR', 'AISLAMIENTO INFRARROJO · 1964', '#38bdf8', '#081826',
+                'NASA Spinoff / Archivo AEE', 'https://spinoff.nasa.gov'
+            ),
+            make(
+                'SEED-INV-LENTES-UV', 'inventos', 45,
+                'DEL ESPACIO A TU CASA', 'FROM SPACE TO YOUR HOME',
+                'Gafas antiarañazos y filtros UV: heredados de los visores de los cascos espaciales',
+                'Para que los visores transparentes resistieran el polvo abrasivo y la radiación ultravioleta sin filtrar por la atmósfera, la industria espacial creó recubrimientos invisibles.',
+                'Cuando se sustituyó el vidrio pesado por plásticos ligeros en los cascos de astronauta, surgió un problema inmediato: el plástico se rayaba con facilidad y empañaba la visión del piloto.\n\n- **Barrera física y química:** La investigación aeroespacial dio lugar a **recubrimientos duros ultrafinos** aplicados sobre policarbonato y filtros capaces de bloquear la radiación **UV** y la luz azul dañina.\n- **En tu mochila hoy:** Casi todas las **gafas graduadas, gafas de sol, máscaras de esquí y pantallas protectoras** actuales son ligeras, resistentes a golpes y llevan capa antirrayado gracias a aquellas patentes espaciales.',
+                'Scratch-Resistant Lenses and UV Filters: From Space Helmets to Your Glasses',
+                'Making lightweight plastic visors survive dust and unfiltered ultraviolet light produced the hard coatings used on modern eyewear.',
+                'When lightweight plastics replaced heavy glass in astronaut visors, aerospace research developed **ultrathin hard coatings** and **UV shields**—now standard in everyday prescription glasses, sunglasses, and sports goggles.',
+                'Al plastificar aletas o elegir PET frente a cartulina en nuestro catálogo, también buscáis equilibrar ligereza, rigidez superficial y resistencia.',
+                'Choosing plastic coatings or PET over cardboard in our catalog involves the exact same surface durability trade-off.',
+                '¿Cuándo compensa pagar unos €v más en el catálogo por un material plástico frente a cartulina o papel?',
+                'When is it worth paying a few extra €v in the catalog for plastic parts instead of cardboard?',
+                'LENTES ANTIARAÑAZOS', 'VISORES ESPACIALES Y FILTRO UV', '#00ff66', '#061d14',
+                'NASA Spinoff / Archivo AEE', 'https://spinoff.nasa.gov'
+            ),
+            make(
+                'SEED-INV-GPS-TALADRO', 'inventos', 55,
+                'DEL ESPACIO A TU CASA', 'FROM SPACE TO YOUR HOME',
+                'GPS en el bolsillo y herramientas sin cable: de la órbita y la Luna al uso diario',
+                'Sin satélites sincronizados por relojes atómicos ni taladros autónomos diseñados para recoger roca lunar, ni el mapa del móvil ni el bricolaje moderno existirían tal como los conocemos.',
+                'Dos inventos que usamos sin pensar tienen pasaporte espacial directo:\n\n- **Herramientas inalámbricas:** Durante el programa Apolo, los astronautas necesitaban perforar suelo lunar lejos de cualquier enchufe. **Black & Decker** colaboró con la NASA para optimizar motores y **baterías recargables compactas**, dando pie a los actuales taladros, aspiradores de mano y atornilladores sin cable.\n- **Navegación GPS y Galileo:** Calcular nuestra posición con margen de metros en el móvil requiere constelaciones enteras de satélites enviando señales de tiempo donde hasta la **Teoría de la Relatividad de Einstein** debe corregirse matemáticamente cada día.',
+                'Pocket GPS and Cordless Power Tools: Space Engineering in Daily Life',
+                'Lunar core drills spurred modern cordless tools, while satellite constellations turn relativity math into turn-by-turn maps.',
+                'Collecting lunar rock far from power outlets drove **NASA** and industry partners to optimize **cordless battery tools**, while modern **GPS and Galileo** navigation relies on satellite constellations correcting relativistic clock drift every day.',
+                'El seguimiento matemático de trayectorias (MAT 1–4 con goniómetro y triangulación) usa exactamente la misma geometría espacial que emplean las estaciones de rastreo.',
+                'Your math triangulation tracking (MAT 1–4) uses the exact same geometric principles as orbital tracking stations.',
+                '¿Por qué las mediciones desde dos puntos alineados (MAT 3) reducen el error frente a observar un lanzamiento desde un único punto?',
+                'Why do two-station aligned measurements reduce error compared to single-point tracking?',
+                'GPS Y SIN CABLES', 'RELATIVIDAD Y BATERÍAS APOLO', '#ff0055', '#1b0714',
+                'Archivo ESA / NASA Spinoff', 'https://www.esa.int'
+            )
+        ];
+    },
+
     normalizeNewsItem(item) {
         if (!item || typeof item !== 'object' || !item.id) return null;
         const pubTs = this._parseSafeTs(item.publishedAt) || this._parseSafeTs(item.timestamp) || Date.now();
@@ -222,8 +427,13 @@ const state = {
         const placement = (rawPlc === 'front' || rawPlc === 'sub' || rawPlc === 'archive')
             ? rawPlc
             : (item.featured ? 'front' : 'archive');
+        const rawSec = String(item.section || '').toLowerCase();
+        const section = (rawSec === 'historia' || rawSec === 'inventos' || rawSec === 'actualidad')
+            ? rawSec
+            : 'actualidad';
         return {
             id: String(item.id),
+            section,
             category: String(item.category || 'CRÓNICA AEE'),
             categoryEn: String(item.categoryEn || item.category || 'AEE DISPATCH'),
             title: String(item.title || 'Comunicado Orbital'),
@@ -258,7 +468,7 @@ const state = {
         const list = Array.isArray(newsList) ? newsList.filter(Boolean) : [];
         if (list.length === 0) return list;
         const sorted = [...list].sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
-        const frontPool = sorted.filter(n => n.placement === 'front' || n.featured);
+        const frontPool = sorted.filter(n => n.placement === 'front' || (n.featured && (n.section || 'actualidad') === 'actualidad'));
         const winner = frontPool.length > 0
             ? [...frontPool].sort((a, b) => Math.max(b.placementUpdatedAt || 0, b.updatedAt || 0, b.publishedAt || 0) - Math.max(a.placementUpdatedAt || 0, a.updatedAt || 0, a.publishedAt || 0))[0]
             : null;
@@ -538,11 +748,19 @@ const state = {
             if (norm) byNewsId.set(String(norm.id), norm);
         });
         d.news = Array.from(byNewsId.values());
-        if (d.news.length === 0 && !newsTombSet.has('NEWS-SEED-MUSK-PATENTS-001')) {
+        if (!byNewsId.has('NEWS-SEED-MUSK-PATENTS-001') && !newsTombSet.has('NEWS-SEED-MUSK-PATENTS-001') && d.news.filter(n => (n.section || 'actualidad') === 'actualidad').length === 0) {
             d.news.push(this.getDefaultOrbitalReportSeed());
         }
+        const existingNewsIds = new Set(d.news.map(n => String(n.id)));
+        this.getEditorialSectionSeeds().forEach(seed => {
+            if (!existingNewsIds.has(String(seed.id)) && !newsTombSet.has(String(seed.id))) {
+                d.news.push(seed);
+                existingNewsIds.add(String(seed.id));
+            }
+        });
         d.news = this.resolveFeaturedNews(d.news);
         d.officialNews = d.news;
+        d.vipStartups = Array.isArray(d.vipStartups) ? d.vipStartups : [];
         d.deletedPrintEditionIds = Array.isArray(d.deletedPrintEditionIds) ? d.deletedPrintEditionIds.map(String) : [];
         const delPrintSet = new Set(d.deletedPrintEditionIds);
         d.printEditions = Array.isArray(d.printEditions)
@@ -1958,11 +2176,22 @@ const state = {
             .filter(n => n && n.id && !allDeletedNewsIds.has(String(n.id)))
             .map(n => this.normalizeNewsItem(n))
             .filter(Boolean);
-        if (merged.news.length === 0 && !allDeletedNewsIds.has('NEWS-SEED-MUSK-PATENTS-001')) {
+        const mergedNewsIdSet = new Set(merged.news.map(n => String(n.id)));
+        if (!mergedNewsIdSet.has('NEWS-SEED-MUSK-PATENTS-001') && !allDeletedNewsIds.has('NEWS-SEED-MUSK-PATENTS-001') && merged.news.filter(n => (n.section || 'actualidad') === 'actualidad').length === 0) {
             merged.news.push(this.getDefaultOrbitalReportSeed());
+            mergedNewsIdSet.add('NEWS-SEED-MUSK-PATENTS-001');
         }
+        this.getEditorialSectionSeeds().forEach(seed => {
+            if (!mergedNewsIdSet.has(String(seed.id)) && !allDeletedNewsIds.has(String(seed.id))) {
+                merged.news.push(seed);
+                mergedNewsIdSet.add(String(seed.id));
+            }
+        });
         merged.news = this.resolveFeaturedNews(merged.news);
         merged.officialNews = merged.news;
+        merged.vipStartups = Array.isArray(serverData.vipStartups)
+            ? serverData.vipStartups
+            : (Array.isArray(localData.vipStartups) ? localData.vipStartups : []);
         const allDeletedPrintEditionIds = new Set([
             ...(Array.isArray(serverData.deletedPrintEditionIds) ? serverData.deletedPrintEditionIds.map(String) : []),
             ...(Array.isArray(localData.deletedPrintEditionIds) ? localData.deletedPrintEditionIds.map(String) : [])

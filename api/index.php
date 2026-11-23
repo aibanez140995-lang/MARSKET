@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.51
+// Versión: v2.0.52
 
 declare(strict_types=1);
 
@@ -562,10 +562,56 @@ try {
             if (is_array($decoded)) {
                 if ($isVipReader) {
                     $vipNews = array_values(is_array($decoded['news'] ?? null) ? $decoded['news'] : (is_array($decoded['officialNews'] ?? null) ? $decoded['officialNews'] : []));
+                    $vipStartups = [];
+                    if (!empty($decoded['companies']) && is_array($decoded['companies'])) {
+                        foreach ($decoded['companies'] as $vCid => $vCo) {
+                            if (!is_array($vCo)) continue;
+                            $clsUpper = strtoupper(trim((string)($vCo['classGroup'] ?? '')));
+                            if (!empty($vCo['isTestCompany']) || $vCid === 'sandbox_master' || $vCid === 'sandbox_student' || $clsUpper === 'TEST') {
+                                continue;
+                            }
+                            $flightCount = 0;
+                            $maxHeight = 0.0;
+                            $bestE = 0.0;
+                            if (!empty($vCo['flightTests']) && is_array($vCo['flightTests'])) {
+                                foreach ($vCo['flightTests'] as $ft) {
+                                    if (!is_array($ft)) continue;
+                                    $flightCount++;
+                                    $h = (float)($ft['height'] ?? $ft['apogee'] ?? 0);
+                                    $c = (float)($ft['cost'] ?? $ft['flightCost'] ?? 0);
+                                    $eVal = isset($ft['efficiency']) ? (float)$ft['efficiency'] : (isset($ft['e']) ? (float)$ft['e'] : ($c > 0 ? ($h / $c) : 0.0));
+                                    if ($h > $maxHeight) $maxHeight = $h;
+                                    if ($eVal > $bestE) $bestE = $eVal;
+                                }
+                            }
+                            $publishedPrCount = 0;
+                            if (!empty($vCo['pressReleases']) && is_array($vCo['pressReleases'])) {
+                                foreach ($vCo['pressReleases'] as $prEntry) {
+                                    if (is_array($prEntry) && ($prEntry['status'] ?? '') === 'PUBLISHED') {
+                                        $publishedPrCount++;
+                                    }
+                                }
+                            }
+                            $rawLogo = trim((string)($vCo['logo'] ?? ''));
+                            $safeLogo = (preg_match('#^(https://|data:image/)#i', $rawLogo) === 1) ? $rawLogo : '';
+                            $vipStartups[] = [
+                                'id' => (string)$vCid,
+                                'name' => (string)($vCo['name'] ?? strtoupper((string)$vCid)),
+                                'classGroup' => $clsUpper ?: 'A',
+                                'slogan' => (string)($vCo['slogan'] ?? ''),
+                                'logo' => $safeLogo,
+                                'bestE' => round($bestE, 4),
+                                'maxHeight' => round($maxHeight, 2),
+                                'flightCount' => $flightCount,
+                                'publishedPrCount' => $publishedPrCount
+                            ];
+                        }
+                    }
                     $vipState = [
                         'version' => $decoded['version'] ?? 1,
                         'lastUpdated' => $decoded['lastUpdated'] ?? 0,
                         'news' => $vipNews,
+                        'vipStartups' => $vipStartups,
                         'deletedNewsIds' => array_values(is_array($decoded['deletedNewsIds'] ?? null) ? $decoded['deletedNewsIds'] : []),
                         'deletedOfficialNewsIds' => array_values(is_array($decoded['deletedOfficialNewsIds'] ?? null) ? $decoded['deletedOfficialNewsIds'] : []),
                         'printEditions' => [],

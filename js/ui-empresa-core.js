@@ -3674,8 +3674,14 @@ Object.assign(ui, {
         setVal('offnews-debate-en', p.debateEn);
     },
 
-    modalPublishOfficialNews(prefillSnapi = null) {
+    modalPublishOfficialNews(prefillSnapi = null, defaultSection = null) {
         if (!this.isNewsCoordinator()) return this.notify("Acceso restringido exclusivamente a Coordinación.", "error");
+
+        const initSec = (defaultSection === 'historia' || defaultSection === 'inventos' || defaultSection === 'actualidad')
+            ? defaultSection
+            : ((this.newsSectionTab === 'historia' || this.newsSectionTab === 'inventos') ? this.newsSectionTab : 'actualidad');
+        const defaultCatEs = initSec === 'historia' ? 'UN POCO DE HISTORIA' : (initSec === 'inventos' ? 'DEL ESPACIO A TU CASA' : 'ACTUALIDAD AEROESPACIAL');
+        const defaultCatEn = initSec === 'historia' ? 'A BIT OF HISTORY' : (initSec === 'inventos' ? 'FROM SPACE TO YOUR HOME' : 'AEROSPACE DISPATCH');
 
         const companies = state.data?.companies || {};
         const coList = Object.keys(companies).map(cid => ({
@@ -3705,14 +3711,23 @@ Object.assign(ui, {
                     <div id="snapi-importer-results" class="space-y-1.5 max-h-48 overflow-y-auto"></div>
                 </div>
 
+                <div>
+                    <label for="offnews-section" class="text-xs text-mars-cyan uppercase font-bold block mb-1 font-mono">Sección del Periódico *</label>
+                    <select id="offnews-section" onchange="ui.onNewsSectionFormChange(this.value)" class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan/60 focus:border-amber-400 p-2.5 text-xs text-white font-bold outline-none">
+                        <option value="actualidad" ${initSec === 'actualidad' ? 'selected' : ''}>📡 Actualidad (Portada y Noticias Generales)</option>
+                        <option value="historia" ${initSec === 'historia' ? 'selected' : ''}>🏛️ Un poco de Historia (Pioneros y Hitos)</option>
+                        <option value="inventos" ${initSec === 'inventos' ? 'selected' : ''}>🏠 Del Espacio a tu Casa (Inventos Reales)</option>
+                    </select>
+                </div>
+
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label for="offnews-category" class="text-xs text-amber-400 uppercase font-bold block mb-1 font-mono">Antetítulo / Categoría (ES) *</label>
-                        <input type="text" id="offnews-category" value="ACTUALIDAD AEROESPACIAL" placeholder="Ej: PROPULSIÓN & I+D" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white uppercase outline-none">
+                        <input type="text" id="offnews-category" value="${this.escapeAttr(defaultCatEs)}" placeholder="Ej: PROPULSIÓN & I+D" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-amber-400 p-2.5 text-xs text-white uppercase outline-none">
                     </div>
                     <div>
                         <label for="offnews-category-en" class="text-xs text-cyan-300 uppercase font-bold block mb-1 font-mono">Category Kicker (EN)</label>
-                        <input type="text" id="offnews-category-en" value="AEROSPACE DISPATCH" placeholder="e.g. PROPULSION & R&D" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-mars-cyan p-2.5 text-xs text-white uppercase outline-none">
+                        <input type="text" id="offnews-category-en" value="${this.escapeAttr(defaultCatEn)}" placeholder="e.g. PROPULSION & R&D" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 focus:border-mars-cyan p-2.5 text-xs text-white uppercase outline-none">
                     </div>
                 </div>
 
@@ -3847,7 +3862,7 @@ Object.assign(ui, {
                 </div>
 
                 <label class="mars-checkbox-label text-xs text-amber-300 font-bold uppercase cursor-pointer">
-                    <input type="checkbox" id="offnews-featured" class="mars-touch-input" checked>
+                    <input type="checkbox" id="offnews-featured" class="mars-touch-input" ${initSec === 'actualidad' ? 'checked' : ''}>
                     <span class="mars-checkbox-visual"></span>
                     <span>⭐ Publicar como Noticia de Portada Principal (65% ancho)</span>
                 </label>
@@ -3861,6 +3876,23 @@ Object.assign(ui, {
         `;
 
         this.showModal("📰 Nueva Edición // ORBITAL REPORT", html, actions);
+    },
+
+    onNewsSectionFormChange(sec) {
+        const catEl = document.getElementById('offnews-category');
+        const catEnEl = document.getElementById('offnews-category-en');
+        const featEl = document.getElementById('offnews-featured');
+        const defaultsEs = { actualidad: 'ACTUALIDAD AEROESPACIAL', historia: 'UN POCO DE HISTORIA', inventos: 'DEL ESPACIO A TU CASA' };
+        const defaultsEn = { actualidad: 'AEROSPACE DISPATCH', historia: 'A BIT OF HISTORY', inventos: 'FROM SPACE TO YOUR HOME' };
+        if (catEl && Object.values(defaultsEs).includes(catEl.value.trim().toUpperCase())) {
+            catEl.value = defaultsEs[sec] || defaultsEs.actualidad;
+        }
+        if (catEnEl && Object.values(defaultsEn).includes(catEnEl.value.trim().toUpperCase())) {
+            catEnEl.value = defaultsEn[sec] || defaultsEn.actualidad;
+        }
+        if (featEl) {
+            featEl.checked = (sec === 'actualidad');
+        }
     },
 
     async submitOfficialNews() {
@@ -3909,6 +3941,7 @@ Object.assign(ui, {
 
         const newsItem = state.normalizeNewsItem({
             id: 'NEWS-' + now + '-' + Math.floor(Math.random() * 1000).toString().padStart(3, '0'),
+            section: getVal('offnews-section') || 'actualidad',
             category: getVal('offnews-category') || 'ACTUALIDAD AEROESPACIAL',
             categoryEn: getVal('offnews-category-en') || 'AEROSPACE DISPATCH',
             title: title,
@@ -4058,9 +4091,18 @@ Object.assign(ui, {
 
         const existingImg = news.imageUrl || '';
         const hasExistingImg = Boolean(existingImg);
+        const curEditSec = news.section || 'actualidad';
 
         const html = `
             <div class="space-y-4 text-xs font-sans">
+                <div>
+                    <label for="offnews-edit-section" class="text-xs text-mars-cyan uppercase font-bold block mb-1 font-mono">Sección del Periódico *</label>
+                    <select id="offnews-edit-section" class="w-full min-h-[44px] bg-slate-900 border border-mars-cyan/60 p-2.5 text-xs text-white font-bold outline-none">
+                        <option value="actualidad" ${curEditSec === 'actualidad' ? 'selected' : ''}>📡 Actualidad (Portada y Noticias Generales)</option>
+                        <option value="historia" ${curEditSec === 'historia' ? 'selected' : ''}>🏛️ Un poco de Historia (Pioneros y Hitos)</option>
+                        <option value="inventos" ${curEditSec === 'inventos' ? 'selected' : ''}>🏠 Del Espacio a tu Casa (Inventos Reales)</option>
+                    </select>
+                </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label for="offnews-edit-category" class="text-xs text-amber-400 uppercase font-bold block mb-1 font-mono">Categoría (ES)</label>
@@ -4221,6 +4263,7 @@ Object.assign(ui, {
         const isFeatured = Boolean(document.getElementById('offnews-edit-featured')?.checked);
         const now = Date.now();
 
+        news.section = getVal('offnews-edit-section') || news.section || 'actualidad';
         news.category = getVal('offnews-edit-category') || news.category || 'ACTUALIDAD AEROESPACIAL';
         news.categoryEn = getVal('offnews-edit-category-en') || news.categoryEn || 'AEROSPACE DISPATCH';
         news.title = title;
@@ -4513,6 +4556,434 @@ Object.assign(ui, {
         this.showModal(`ORBITAL REPORT // ${this.escapeHTML(cat)}`, html, actions, 'max-w-3xl');
     },
 
+    newsSectionTab: 'portada',
+    whoIsWhoRegionFilter: 'ALL',
+    startupsDirectoryClassFilter: 'ALL',
+
+    setNewsSectionTab(tab) {
+        const allowed = ['portada', 'actualidad', 'historia', 'inventos', 'quien', 'startups', 'hemeroteca'];
+        this.newsSectionTab = allowed.includes(tab) ? tab : 'portada';
+        this.activeFullArticleReader = null;
+        this.render();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+
+    setWhoIsWhoRegionFilter(reg) {
+        this.whoIsWhoRegionFilter = String(reg || 'ALL').toUpperCase();
+        this.render();
+    },
+
+    setStartupsDirectoryClassFilter(cls) {
+        this.startupsDirectoryClassFilter = String(cls || 'ALL').toUpperCase();
+        this.render();
+    },
+
+    getPublicStartupsList() {
+        const resolveLogo = (raw) => {
+            const s = String(raw || '').trim();
+            if (!s || (!/^https?:\/\//i.test(s) && !s.startsWith('data:image/'))) return '';
+            return (typeof this.getDirectDriveImageUrl === 'function') ? this.getDirectDriveImageUrl(s) : s;
+        };
+
+        if (state.user?.isVip && Array.isArray(state.data?.vipStartups)) {
+            return state.data.vipStartups
+                .map(s => ({
+                    id: String(s.id || ''),
+                    name: String(s.name || s.id || 'Startup'),
+                    classGroup: String(s.classGroup || 'A').toUpperCase(),
+                    slogan: String(s.slogan || ''),
+                    logo: resolveLogo(s.logo),
+                    bestE: Number(s.bestE || 0),
+                    maxHeight: Number(s.maxHeight || 0),
+                    flightCount: Number(s.flightCount || 0),
+                    publishedPrCount: Number(s.publishedPrCount || 0)
+                }))
+                .sort((a, b) => a.classGroup.localeCompare(b.classGroup) || a.name.localeCompare(b.name));
+        }
+
+        const companies = state.data?.companies || {};
+        return Object.keys(companies)
+            .filter(cid => {
+                const co = companies[cid];
+                if (!co) return false;
+                const cls = String(co.classGroup || '').toUpperCase();
+                return !co.isTestCompany && cid !== 'sandbox_master' && cid !== 'sandbox_student' && cls !== 'TEST';
+            })
+            .map(cid => {
+                const co = companies[cid];
+                const flights = Array.isArray(co.flightTests) ? co.flightTests : [];
+                let maxHeight = 0;
+                let bestE = 0;
+                flights.forEach(ft => {
+                    if (!ft) return;
+                    const h = Number(ft.height ?? ft.apogee ?? 0) || 0;
+                    const c = Number(ft.cost ?? ft.flightCost ?? 0) || 0;
+                    const eVal = Number(ft.efficiency ?? ft.e ?? (c > 0 ? h / c : 0)) || 0;
+                    if (h > maxHeight) maxHeight = h;
+                    if (eVal > bestE) bestE = eVal;
+                });
+                const prs = co.pressReleases || {};
+                const publishedPrCount = Object.keys(prs).filter(ph => prs[ph]?.status === 'PUBLISHED').length;
+                const isLogoAllowed = !co.brandStatus || co.brandStatus === 'APROBADO' || co.brandApproval?.status === 'APROBADO';
+                return {
+                    id: String(cid),
+                    name: String(co.name || cid),
+                    classGroup: String(co.classGroup || 'A').toUpperCase(),
+                    slogan: String(co.slogan || ''),
+                    logo: isLogoAllowed ? resolveLogo(co.logo) : '',
+                    bestE: Math.round(bestE * 10000) / 10000,
+                    maxHeight: Math.round(maxHeight * 100) / 100,
+                    flightCount: flights.length,
+                    publishedPrCount
+                };
+            })
+            .sort((a, b) => a.classGroup.localeCompare(b.classGroup) || a.name.localeCompare(b.name));
+    },
+
+    renderBrandLogoBadge(company, small = false) {
+        const sizeCls = small ? 'w-9 h-9 text-[10px]' : 'w-12 h-12 text-xs';
+        const domain = String(company?.domain || '').trim();
+        const monogram = String(company?.monogram || (company?.name || 'SP').slice(0, 3)).toUpperCase();
+        const accent = company?.accentColor || '#0f172a';
+        const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128` : '';
+        return `
+        <div class="${sizeCls} shrink-0 bg-white border border-stone-300 flex items-center justify-center overflow-hidden p-1">
+            ${faviconUrl ? `
+                <img src="${this.escapeAttr(faviconUrl)}" alt="${this.escapeAttr(company?.name || '')}" loading="lazy"
+                    onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.classList.remove('hidden');"
+                    class="w-full h-full object-contain">
+                <span class="hidden w-full h-full flex items-center justify-center font-mono font-black text-white" style="background:${this.escapeAttr(accent)}">${this.escapeHTML(monogram)}</span>
+            ` : `
+                <span class="w-full h-full flex items-center justify-center font-mono font-black text-white" style="background:${this.escapeAttr(accent)}">${this.escapeHTML(monogram)}</span>
+            `}
+        </div>`;
+    },
+
+    renderNewsSectionArticlesGrid(articles, sectionKey, isCoord, lang) {
+        const metaMap = {
+            actualidad: {
+                kicker: lang === 'EN' ? 'CURRENT AFFAIRS // AEROSPACE & SCHOOL MISSION' : 'SECCIÓN // ACTUALIDAD',
+                title: lang === 'EN' ? 'Aerospace & Mission News' : 'Actualidad Aeroespacial y de Misión',
+                desc: lang === 'EN' ? 'Latest dispatches, strategic announcements, and adapted international launch coverage.' : 'Últimas crónicas de Coordinación, anuncios de misión y noticias internacionales adaptadas.'
+            },
+            historia: {
+                kicker: lang === 'EN' ? 'HISTORICAL ARCHIVE // PIONEERS & MILESTONES' : 'SECCIÓN // UN POCO DE HISTORIA',
+                title: lang === 'EN' ? 'A Bit of History: Pioneers of Flight & Space' : 'Un poco de Historia: Pioneros e Hitos Aeroespaciales',
+                desc: lang === 'EN' ? 'From Emilio Herrera and Juan de la Cierva to Sputnik, Apollo, and Spain in space.' : 'De Emilio Herrera y Juan de la Cierva al Sputnik, el Programa Apolo y la presencia española en el espacio.'
+            },
+            inventos: {
+                kicker: lang === 'EN' ? 'EVERYDAY SPIN-OFFS // REAL WORLD IMPACT' : 'SECCIÓN // DEL ESPACIO A TU CASA',
+                title: lang === 'EN' ? 'From Space to Your Home: Everyday Inventions' : 'Del Espacio a tu Casa: Inventos Espaciales en tu Día a Día',
+                desc: lang === 'EN' ? 'How engineering breakthroughs built for rockets and orbit became everyday technology.' : 'Tecnologías creadas para cohetes, cascos o satélites que hoy usas en el móvil, en casa o en el deporte.'
+            }
+        };
+        const meta = metaMap[sectionKey] || metaMap.actualidad;
+
+        return `
+        <section class="space-y-5" aria-label="${this.escapeAttr(meta.title)}">
+            <div class="border-b-2 border-[#111111] pb-3 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+                <div>
+                    <span class="text-[11px] font-mono font-black uppercase tracking-widest text-[#8B0000]">${this.escapeHTML(meta.kicker)}</span>
+                    <h3 class="text-2xl sm:text-3xl font-serif font-black text-[#111111] mt-0.5">${this.escapeHTML(meta.title)}</h3>
+                    <p class="text-xs sm:text-sm text-stone-700 font-serif mt-1">${this.escapeHTML(meta.desc)}</p>
+                </div>
+                ${isCoord ? `
+                    <button type="button" onclick="ui.modalPublishOfficialNews(null, '${this.escapeAttr(sectionKey)}')" class="min-h-[44px] px-4 py-2 bg-[#8B0000] text-white hover:bg-[#111111] text-xs font-mono font-bold uppercase shrink-0 transition-colors">
+                        ✍️ + Añadir a esta sección
+                    </button>
+                ` : ''}
+            </div>
+
+            ${articles.length === 0 ? `
+                <div class="bg-white border border-stone-300 p-8 text-center">
+                    <p class="text-sm font-serif text-stone-700">${lang === 'EN' ? 'No articles published in this section yet.' : 'No hay artículos publicados en esta sección con el filtro actual.'}</p>
+                </div>
+            ` : `
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    ${articles.map(art => {
+                        const aCat = this.getLocalizedNewsField(art, 'category') || meta.kicker;
+                        const aTitle = this.getLocalizedNewsField(art, 'title');
+                        const aSub = this.getLocalizedNewsField(art, 'subtitle') || this.getLocalizedNewsField(art, 'body');
+                        const aImg = art.imageUrl ? this.getNewsImageSrc(art.imageUrl) : '';
+                        return `
+                        <article class="bg-white border border-stone-300 flex flex-col justify-between shadow-sm hover:border-[#111111] transition-colors">
+                            <div>
+                                ${aImg ? `
+                                    <div class="aspect-video w-full bg-stone-200 border-b border-stone-300 overflow-hidden">
+                                        <img src="${this.escapeAttr(aImg)}" alt="${this.escapeAttr(aTitle)}" class="w-full h-full object-cover cursor-pointer hover:scale-[1.02] transition-transform" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(art.id)}')">
+                                    </div>
+                                ` : ''}
+                                <div class="p-4 space-y-2">
+                                    <div class="flex items-center justify-between gap-2 text-[10px] font-mono">
+                                        <span class="text-[#8B0000] font-black uppercase truncate">${this.escapeHTML(aCat)}</span>
+                                        <span class="text-stone-500 shrink-0">${this.escapeHTML(art.publishedDate || '--')}</span>
+                                    </div>
+                                    <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(art.id)}')" class="text-left w-full text-lg font-serif font-black text-[#111111] hover:text-[#8B0000] leading-snug">
+                                        ${this.escapeHTML(aTitle)}
+                                    </button>
+                                    ${aSub ? `<p class="text-xs text-stone-700 font-serif line-clamp-3 leading-relaxed">${this.escapeHTML(aSub)}</p>` : ''}
+                                    <span class="block text-[10px] font-mono text-stone-500 pt-1">${this.escapeHTML(art.sourceName || 'ORBITAL REPORT')}</span>
+                                </div>
+                            </div>
+                            <div class="px-4 pb-4 pt-2 border-t border-stone-200 flex items-center justify-between gap-2 flex-wrap">
+                                <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(art.id)}')" class="min-h-[44px] px-3 py-1.5 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase transition-colors">
+                                    📖 ${lang === 'EN' ? 'Read Full Article' : 'Leer Completo'}
+                                </button>
+                                ${isCoord ? `
+                                    <div class="flex items-center gap-1">
+                                        ${sectionKey === 'actualidad' && !art.featured ? `<button type="button" onclick="ui.setNewsFeatured('${this.escapeAttr(art.id)}')" class="min-h-[44px] min-w-[44px] px-2 py-1 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-xs font-mono font-bold" title="Fijar en Portada">⭐</button>` : ''}
+                                        <button type="button" onclick="ui.modalEditOfficialNews('${this.escapeAttr(art.id)}')" class="min-h-[44px] min-w-[44px] px-2.5 py-1 bg-stone-100 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-xs font-mono font-bold" title="Editar artículo">✏️</button>
+                                        <button type="button" onclick="ui.deleteOfficialNews('${this.escapeAttr(art.id)}')" class="min-h-[44px] min-w-[44px] px-2.5 py-1 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-xs font-mono font-bold" title="Eliminar artículo">✕</button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </article>`;
+                    }).join('')}
+                </div>
+            `}
+        </section>`;
+    },
+
+    renderWhoIsWhoDirectoryView(lang) {
+        const allReal = (typeof this.getWhoIsWhoRealPresets === 'function') ? this.getWhoIsWhoRealPresets() : [];
+        const activeReg = this.whoIsWhoRegionFilter || 'ALL';
+        const filtered = allReal.filter(c => activeReg === 'ALL' || String(c.region || 'INTL').toUpperCase() === activeReg);
+        const regBtns = [
+            { id: 'ALL', label: lang === 'EN' ? `All (${allReal.length})` : `Todas (${allReal.length})` },
+            { id: 'ES', label: lang === 'EN' ? '🇪🇸 Spain' : '🇪🇸 España' },
+            { id: 'EU', label: lang === 'EN' ? '🇪🇺 Europe' : '🇪🇺 Europa' },
+            { id: 'INTL', label: lang === 'EN' ? '🌍 International' : '🌍 Internacional' }
+        ];
+
+        return `
+        <section class="space-y-5" aria-label="Quién es quién en el sector aeroespacial">
+            <div class="border-b-2 border-[#111111] pb-3 flex flex-col lg:flex-row lg:items-end justify-between gap-3">
+                <div>
+                    <span class="text-[11px] font-mono font-black uppercase tracking-widest text-[#8B0000]">${lang === 'EN' ? 'DIRECTORY // WHO IS WHO' : 'DIRECTORIO // QUIÉN ES QUIÉN'}</span>
+                    <h3 class="text-2xl sm:text-3xl font-serif font-black text-[#111111] mt-0.5">${lang === 'EN' ? 'Who is Who in Global Aerospace' : 'Quién es quién en el Sector Aeroespacial'}</h3>
+                    <p class="text-xs sm:text-sm text-stone-700 font-serif mt-1">${lang === 'EN' ? 'Real agencies and aerospace companies shaping orbital transport, satellites, and propulsion.' : 'Empresas y agencias reales españolas, europeas e internacionales con acceso directo a su web oficial.'}</p>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                    ${regBtns.map(b => `
+                        <button type="button" onclick="ui.setWhoIsWhoRegionFilter('${b.id}')" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-bold uppercase border transition-colors ${activeReg === b.id ? 'bg-[#111111] text-white border-[#111111]' : 'bg-white text-[#111111] border-stone-400 hover:border-[#111111]'}">
+                            ${this.escapeHTML(b.label)}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${filtered.map(comp => {
+                    const safeWeb = (comp.website && /^https?:\/\//i.test(comp.website)) ? this.escapeAttr(comp.website) : '';
+                    return `
+                    <article class="bg-white border border-stone-300 p-4 flex flex-col justify-between gap-3 hover:border-[#111111] transition-colors">
+                        <div class="space-y-2.5">
+                            <div class="flex items-start gap-3">
+                                ${this.renderBrandLogoBadge(comp, false)}
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center justify-between gap-1.5 flex-wrap">
+                                        <span class="text-[10px] font-mono font-bold uppercase text-[#8B0000]">${this.escapeHTML(comp.category || 'Aeroespacial')}</span>
+                                        <span class="text-[10px] font-mono px-1.5 py-0.5 bg-stone-100 border border-stone-300 text-stone-700">${this.escapeHTML(comp.country || '')}</span>
+                                    </div>
+                                    <h4 class="text-base font-serif font-black text-[#111111] leading-snug mt-0.5">${this.escapeHTML(comp.name)}</h4>
+                                </div>
+                            </div>
+                            <p class="text-xs text-stone-700 font-serif leading-relaxed">${this.escapeHTML(comp.summary || '')}</p>
+                        </div>
+                        <div class="pt-2 border-t border-stone-200 flex items-center justify-between gap-2">
+                            <span class="text-[10px] font-mono text-stone-500 truncate">${this.escapeHTML(comp.domain || '')}</span>
+                            ${safeWeb ? `
+                                <a href="${safeWeb}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-3 py-1.5 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase shrink-0 transition-colors">
+                                    🌐 ${lang === 'EN' ? 'Website ↗' : 'Web oficial ↗'}
+                                </a>
+                            ` : ''}
+                        </div>
+                    </article>`;
+                }).join('')}
+            </div>
+
+            <div class="bg-[#EFECE4] border-2 border-[#111111] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                    <strong class="font-serif text-base text-[#111111] block">🚀 ${lang === 'EN' ? 'Discover Navarra Startups (School Ecosystem)' : '¿Quieres conocer el ecosistema aeroespacial de nuestro centro?'}</strong>
+                    <span class="text-xs text-stone-700 font-sans">${lang === 'EN' ? 'Explore the logos, slogans, and test flight milestones of our 4th ESO startups.' : 'Visita la sección propia de Startups Navarras con las insignias, lemas e hitos técnicos de los equipos de 4º ESO.'}</span>
+                </div>
+                <button type="button" onclick="ui.setNewsSectionTab('startups')" class="min-h-[44px] px-4 py-2 bg-[#8B0000] text-white hover:bg-[#111111] text-xs font-mono font-bold uppercase shrink-0 transition-colors">
+                    🚀 ${lang === 'EN' ? 'Open Navarra Startups ➔' : 'Ver Startups Navarras ➔'}
+                </button>
+            </div>
+        </section>`;
+    },
+
+    renderStartupsNavarrasView(lang) {
+        const allStartups = this.getPublicStartupsList();
+        const activeCls = this.startupsDirectoryClassFilter || 'ALL';
+        const filtered = allStartups.filter(s => activeCls === 'ALL' || s.classGroup === activeCls);
+        const classes = ['ALL', 'A', 'B', 'C', 'D', 'E', 'F'];
+
+        return `
+        <section class="space-y-5" aria-label="Startups Navarras">
+            <div class="border-b-2 border-[#111111] pb-3 flex flex-col lg:flex-row lg:items-end justify-between gap-3">
+                <div>
+                    <span class="text-[11px] font-mono font-black uppercase tracking-widest text-[#8B0000]">${lang === 'EN' ? 'LOCAL ECOSYSTEM // NAVARRA STARTUPS' : 'ECOSISTEMA DE INNOVACIÓN // NAVARRA'}</span>
+                    <h3 class="text-2xl sm:text-3xl font-serif font-black text-[#111111] mt-0.5">${lang === 'EN' ? 'Navarra Aerospace Startups (4th ESO)' : 'Startups Navarras · Promoción Aeroespacial 4º ESO'}</h3>
+                    <p class="text-xs sm:text-sm text-stone-700 font-serif mt-1">${lang === 'EN' ? 'Student-founded aerospace ventures at Miravalles-El Redín: brand identity, R&D telemetry, and press milestones.' : 'Empresas aeroespaciales impulsadas en el ecosistema escolar navarro de Miravalles-El Redín: identidad corporativa, ensayos y comunicados.'}</p>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                    ${classes.map(c => `
+                        <button type="button" onclick="ui.setStartupsDirectoryClassFilter('${c}')" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-bold uppercase border transition-colors ${activeCls === c ? 'bg-[#111111] text-white border-[#111111]' : 'bg-white text-[#111111] border-stone-400 hover:border-[#111111]'}">
+                            ${c === 'ALL' ? (lang === 'EN' ? `All (${allStartups.length})` : `Todas (${allStartups.length})`) : `4º ${c}`}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+
+            ${filtered.length === 0 ? `
+                <div class="bg-white border border-stone-300 p-8 text-center">
+                    <p class="text-sm font-serif text-stone-700">${lang === 'EN' ? 'No startups found for this class.' : 'Todavía no hay startups registradas en este grupo.'}</p>
+                </div>
+            ` : `
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${filtered.map(st => {
+                        const mono = (st.name || 'ST').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase() || 'ST';
+                        return `
+                        <article class="bg-white border border-stone-300 p-4 flex flex-col justify-between gap-3 hover:border-[#111111] transition-colors">
+                            <div class="space-y-2.5">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-12 h-12 shrink-0 bg-[#EFECE4] border border-stone-300 flex items-center justify-center overflow-hidden">
+                                        ${st.logo ? `
+                                            <img src="${this.escapeAttr(st.logo)}" alt="${this.escapeAttr(st.name)}" loading="lazy"
+                                                onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.classList.remove('hidden');"
+                                                class="w-full h-full object-cover">
+                                            <span class="hidden w-full h-full flex items-center justify-center font-serif font-black text-sm bg-[#111111] text-white">${this.escapeHTML(mono)}</span>
+                                        ` : `
+                                            <span class="w-full h-full flex items-center justify-center font-serif font-black text-sm bg-[#111111] text-white">${this.escapeHTML(mono)}</span>
+                                        `}
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-center justify-between gap-1.5 flex-wrap">
+                                            <span class="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 bg-[#111111] text-white">NAVARRA · 4º ${this.escapeHTML(st.classGroup)}</span>
+                                            ${st.publishedPrCount > 0 ? `<span class="text-[10px] font-mono font-bold text-[#8B0000]">📰 ${st.publishedPrCount} Prensa</span>` : ''}
+                                        </div>
+                                        <h4 class="text-base font-serif font-black text-[#111111] leading-snug mt-1 break-words">${this.escapeHTML(st.name)}</h4>
+                                    </div>
+                                </div>
+                                ${st.slogan ? `<p class="text-xs text-stone-700 font-serif italic border-l-2 border-[#8B0000] pl-2.5 leading-relaxed">«${this.escapeHTML(st.slogan)}»</p>` : `<p class="text-xs text-stone-500 font-serif italic">Identidad corporativa en consolidación.</p>`}
+                            </div>
+                            <div class="pt-2.5 border-t border-stone-200 flex items-center justify-between gap-2 text-[11px] font-mono">
+                                ${st.flightCount > 0 ? `
+                                    <span class="text-emerald-800 font-bold">🚀 ${st.flightCount} ensayo(s) · Récord: ${Number(st.maxHeight).toFixed(1)} m</span>
+                                    <span class="px-2 py-0.5 bg-[#EFECE4] border border-stone-400 font-black text-[#111111]">E: ${Number(st.bestE).toFixed(2)}</span>
+                                ` : `
+                                    <span class="text-stone-600">⚙️ Prototipo en fase de diseño e I+D</span>
+                                `}
+                            </div>
+                        </article>`;
+                    }).join('')}
+                </div>
+            `}
+        </section>`;
+    },
+
+    renderFrontPageSectionShowcases(historyArticles, inventionArticles, lang) {
+        const renderMiniBand = (list, tabKey, badgeTitle, ctaLabel) => {
+            if (!list || list.length === 0) return '';
+            const lead = list[0];
+            const rest = list.slice(1, 3);
+            const leadTitle = this.getLocalizedNewsField(lead, 'title');
+            const leadSub = this.getLocalizedNewsField(lead, 'subtitle');
+            const leadImg = lead.imageUrl ? this.getNewsImageSrc(lead.imageUrl) : '';
+            return `
+            <div class="bg-white border border-stone-300 p-4 flex flex-col justify-between gap-3">
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between gap-2 border-b-2 border-[#111111] pb-1.5">
+                        <span class="font-serif font-black text-base text-[#111111] uppercase">${badgeTitle}</span>
+                        <button type="button" onclick="ui.setNewsSectionTab('${tabKey}')" class="min-h-[44px] px-2.5 py-1 text-[11px] font-mono font-bold text-[#8B0000] hover:underline uppercase">${ctaLabel} ➔</button>
+                    </div>
+                    ${leadImg ? `
+                        <div class="aspect-video w-full bg-stone-200 border border-stone-300 overflow-hidden">
+                            <img src="${this.escapeAttr(leadImg)}" alt="${this.escapeAttr(leadTitle)}" class="w-full h-full object-cover cursor-pointer" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(lead.id)}')">
+                        </div>
+                    ` : ''}
+                    <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(lead.id)}')" class="text-left w-full text-base font-serif font-black text-[#111111] hover:text-[#8B0000] leading-snug">
+                        ${this.escapeHTML(leadTitle)}
+                    </button>
+                    ${leadSub ? `<p class="text-xs text-stone-700 font-serif line-clamp-2">${this.escapeHTML(leadSub)}</p>` : ''}
+                    ${rest.length > 0 ? `
+                        <div class="border-t border-stone-200 pt-2 space-y-1.5">
+                            ${rest.map(r => `
+                                <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(r.id)}')" class="block text-left w-full text-xs font-serif font-bold text-stone-800 hover:text-[#8B0000] leading-snug">
+                                    ▪ ${this.escapeHTML(this.getLocalizedNewsField(r, 'title'))}
+                                </button>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+                <button type="button" onclick="ui.setNewsSectionTab('${tabKey}')" class="min-h-[44px] w-full py-2 bg-[#EFECE4] border border-[#111111] hover:bg-[#111111] hover:text-white text-[#111111] text-xs font-mono font-bold uppercase transition-colors">
+                    ${ctaLabel} (${list.length}) ➔
+                </button>
+            </div>`;
+        };
+
+        const realPreview = (typeof this.getWhoIsWhoRealPresets === 'function' ? this.getWhoIsWhoRealPresets() : []).slice(0, 4);
+        const navarraPreview = this.getPublicStartupsList().slice(0, 4);
+
+        return `
+        <section class="border-t-4 border-double border-[#111111] pt-6 space-y-6" aria-label="Secciones del Periódico">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                ${renderMiniBand(historyArticles, 'historia', lang === 'EN' ? '🏛️ A Bit of History' : '🏛️ Un poco de Historia', lang === 'EN' ? 'Explore History' : 'Ver Historia')}
+                ${renderMiniBand(inventionArticles, 'inventos', lang === 'EN' ? '🏠 From Space to Your Home' : '🏠 Del Espacio a tu Casa', lang === 'EN' ? 'Explore Spin-Offs' : 'Ver Inventos')}
+            </div>
+
+            <div class="bg-white border border-stone-300 p-4 sm:p-5 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-[#111111] pb-2">
+                    <h3 class="font-serif font-black text-lg text-[#111111] uppercase">
+                        🌍 ${lang === 'EN' ? 'Who is Who & Navarra Startups' : 'Quién es quién en el Espacio & Startups Navarras'}
+                    </h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="ui.setNewsSectionTab('quien')" class="min-h-[44px] px-3 py-1.5 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase transition-colors">🌍 Quién es quién ➔</button>
+                        <button type="button" onclick="ui.setNewsSectionTab('startups')" class="min-h-[44px] px-3 py-1.5 bg-[#8B0000] text-white hover:bg-[#111111] text-xs font-mono font-bold uppercase transition-colors">🚀 Startups Navarras ➔</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    <div class="space-y-2.5">
+                        <span class="text-[11px] font-mono font-black uppercase tracking-wider text-stone-600 block">${lang === 'EN' ? 'REAL AEROSPACE COMPANIES (OFFICIAL WEBSITES)' : 'EMPRESAS Y AGENCIAS REALES'}</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            ${realPreview.map(comp => {
+                                const safeWeb = (comp.website && /^https?:\/\//i.test(comp.website)) ? this.escapeAttr(comp.website) : '#';
+                                return `
+                                <a href="${safeWeb}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] p-2.5 border border-stone-300 bg-[#FAF8F5] hover:border-[#111111] flex items-center gap-2.5 transition-colors">
+                                    ${this.renderBrandLogoBadge(comp, true)}
+                                    <div class="min-w-0">
+                                        <strong class="block text-xs font-serif font-black text-[#111111] truncate">${this.escapeHTML(comp.name)}</strong>
+                                        <span class="block text-[10px] font-mono text-[#8B0000] truncate">${this.escapeHTML(comp.country)} · Web ↗</span>
+                                    </div>
+                                </a>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                    <div class="space-y-2.5">
+                        <span class="text-[11px] font-mono font-black uppercase tracking-wider text-stone-600 block">${lang === 'EN' ? 'NAVARRA STARTUPS (4TH ESO)' : 'STARTUPS NAVARRAS (ECOSISTEMA 4º ESO)'}</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            ${navarraPreview.length === 0 ? `<p class="text-xs text-stone-600 font-serif italic">Las startups navarras aparecerán aquí al iniciar el curso.</p>` : navarraPreview.map(st => {
+                                const mono = (st.name || 'ST').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase() || 'ST';
+                                return `
+                                <button type="button" onclick="ui.setNewsSectionTab('startups')" class="min-h-[44px] text-left p-2.5 border border-stone-300 bg-[#FAF8F5] hover:border-[#111111] flex items-center gap-2.5 transition-colors">
+                                    <div class="w-9 h-9 shrink-0 bg-[#111111] text-white flex items-center justify-center overflow-hidden font-serif font-black text-xs">
+                                        ${st.logo ? `<img src="${this.escapeAttr(st.logo)}" alt="${this.escapeAttr(st.name)}" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.classList.remove('hidden');" class="w-full h-full object-cover"><span class="hidden">${this.escapeHTML(mono)}</span>` : this.escapeHTML(mono)}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <strong class="block text-xs font-serif font-black text-[#111111] truncate">${this.escapeHTML(st.name)}</strong>
+                                        <span class="block text-[10px] font-mono text-stone-600 truncate">4º ${this.escapeHTML(st.classGroup)} ${st.flightCount > 0 ? `· E: ${Number(st.bestE).toFixed(2)}` : '· Navarra'}</span>
+                                    </div>
+                                </button>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>`;
+    },
+
     viewNewsBoard(el) {
         if (!el || !state.user) return;
         const isCoord = this.isNewsCoordinator();
@@ -4604,17 +5075,25 @@ Object.assign(ui, {
         const filteredReleases = publishedReleases.filter(matchesFilters);
         const filteredPending = pendingReleases.filter(matchesFilters);
 
+        const actualidadArticles = filteredOfficial.filter(n => (n.section || 'actualidad') === 'actualidad');
+        const historyArticles = officialNews.filter(n => n.section === 'historia');
+        const inventionArticles = officialNews.filter(n => n.section === 'inventos');
+
         // Portada Principal (1) + Debajo de la portada (2-3) + Hemeroteca (35%)
-        const coverArticle = filteredOfficial.find(n => n.placement === 'front' || n.featured) || null;
-        const subCoverArticles = filteredOfficial
+        const coverArticle = filteredOfficial.find(n => n.placement === 'front' || (n.featured && (n.section || 'actualidad') === 'actualidad')) || actualidadArticles[0] || null;
+        const subCoverArticles = actualidadArticles
             .filter(n => (!coverArticle || String(n.id) !== String(coverArticle.id)) && n.placement === 'sub')
             .sort((a, b) => (Number(a.subOrder) || 99) - (Number(b.subOrder) || 99))
             .slice(0, 3);
         const subCoverIds = new Set(subCoverArticles.map(n => String(n.id)));
         const archiveItems = [
-            ...filteredOfficial.filter(n => (!coverArticle || String(n.id) !== String(coverArticle.id)) && !subCoverIds.has(String(n.id))),
+            ...actualidadArticles.filter(n => (!coverArticle || String(n.id) !== String(coverArticle.id)) && !subCoverIds.has(String(n.id))),
             ...filteredReleases
         ].sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
+
+        const activeSectionTab = ['portada', 'actualidad', 'historia', 'inventos', 'quien', 'startups', 'hemeroteca'].includes(this.newsSectionTab)
+            ? this.newsSectionTab
+            : 'portada';
 
         const currentCo = (!state.user.admin && state.user.coId) ? (companies[state.user.coId] || null) : null;
         const contestShowcaseHtml = (phaseFilter === 'ALL' || phaseFilter === 'V') && typeof this.renderContestNewsShowcase === 'function'
@@ -4645,7 +5124,7 @@ Object.assign(ui, {
                 <div class="max-w-3xl mx-auto space-y-5">
                     <div class="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[#111111] pb-3">
                         <button type="button" onclick="ui.closeFullArticleReader()" class="min-h-[44px] px-4 py-2 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase transition-colors">
-                            ⬅ ${lang === 'EN' ? 'Back to Front Page' : 'Volver a la Portada'}
+                            ⬅ ${lang === 'EN' ? 'Back to Newspaper' : 'Volver al Periódico'}
                         </button>
                         <div class="flex items-center gap-2 flex-wrap">
                             <div class="flex items-center border border-[#111111] bg-white p-0.5" role="group" aria-label="Idioma del artículo">
@@ -4711,7 +5190,7 @@ Object.assign(ui, {
 
                         <div class="pt-4 border-t border-stone-300 flex flex-wrap items-center justify-between gap-3">
                             <button type="button" onclick="ui.closeFullArticleReader()" class="min-h-[44px] px-4 py-2 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase transition-colors">
-                                ⬅ ${lang === 'EN' ? 'Back to Front Page' : 'Volver a la Portada'}
+                                ⬅ ${lang === 'EN' ? 'Back to Newspaper' : 'Volver al Periódico'}
                             </button>
                             ${safeSrcUrl ? `
                                 <a href="${safeSrcUrl}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1 px-4 py-2 bg-white border border-[#111111] text-[#111111] hover:bg-[#111111] hover:text-white text-xs font-mono font-bold uppercase transition-colors">
@@ -4874,6 +5353,23 @@ Object.assign(ui, {
                         </select>
                     </div>
                 </div>
+
+                <!-- BARRA DE SECCIONES EDITORIALES ESTILO DIARIO REAL -->
+                <nav aria-label="Secciones de Orbital Report" role="tablist" class="border-b-2 border-[#111111] pb-2.5 flex items-center gap-1.5 overflow-x-auto">
+                    ${[
+                        { id: 'portada', label: lang === 'EN' ? '🗞️ Front Page' : '🗞️ Portada' },
+                        { id: 'actualidad', label: lang === 'EN' ? `📡 News (${actualidadArticles.length})` : `📡 Actualidad (${actualidadArticles.length})` },
+                        { id: 'historia', label: lang === 'EN' ? `🏛️ History (${historyArticles.length})` : `🏛️ Un poco de Historia (${historyArticles.length})` },
+                        { id: 'inventos', label: lang === 'EN' ? `🏠 Space Spin-Offs (${inventionArticles.length})` : `🏠 Del Espacio a tu Casa (${inventionArticles.length})` },
+                        { id: 'quien', label: lang === 'EN' ? '🌍 Who is Who' : '🌍 Quién es quién' },
+                        { id: 'startups', label: lang === 'EN' ? '🚀 Navarra Startups' : '🚀 Startups Navarras' },
+                        { id: 'hemeroteca', label: lang === 'EN' ? `🗂️ Archive (${archiveItems.length})` : `🗂️ Hemeroteca (${archiveItems.length})` }
+                    ].map(tab => `
+                        <button type="button" role="tab" aria-selected="${activeSectionTab === tab.id}" onclick="ui.setNewsSectionTab('${tab.id}')" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-bold uppercase whitespace-nowrap shrink-0 border transition-colors ${activeSectionTab === tab.id ? 'bg-[#111111] text-white border-[#111111]' : 'bg-white text-[#111111] border-stone-300 hover:border-[#111111]'}">
+                            ${this.escapeHTML(tab.label)}
+                        </button>
+                    `).join('')}
+                </nav>
             </header>
 
             ${(canModeratePR && filteredPending.length > 0) ? `
@@ -4905,6 +5401,90 @@ Object.assign(ui, {
 
             ${contestShowcaseHtml ? `<div class="bg-[#0b1120] text-white p-4 border border-stone-400">${contestShowcaseHtml}</div>` : ''}
 
+            ${activeSectionTab === 'actualidad' ? `
+                <div class="space-y-7">
+                    ${this.renderNewsSectionArticlesGrid(actualidadArticles, 'actualidad', isCoord, lang)}
+                    <div class="bg-white border border-stone-300 p-4 space-y-3">
+                        <div class="flex items-center justify-between gap-2 border-b-2 border-[#111111] pb-1.5">
+                            <div>
+                                <h3 class="font-serif font-black text-base uppercase text-[#111111] tracking-tight">
+                                    📡 ${lang === 'EN' ? 'Aerospace Wire (Live)' : 'Actualidad Aeroespacial Internacional (En Vivo)'}
+                                </h3>
+                                <span class="text-[10px] font-mono text-stone-600 uppercase">Spaceflight News • ${lang === 'EN' ? 'Original EN' : 'Traducción Directa ES'}</span>
+                            </div>
+                            <button type="button" onclick="ui.fetchSpaceflightWire(true)" class="min-h-[44px] min-w-[44px] px-2.5 py-1 bg-white border border-stone-400 hover:border-[#111111] text-xs text-[#111111] font-mono font-bold uppercase" title="Actualizar noticias">🔄</button>
+                        </div>
+                        <div id="orbital-wire-list" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <p class="text-xs font-mono text-stone-600 p-2">🛰️ ${lang === 'EN' ? 'Loading Aerospace Wire...' : 'Cargando y traduciendo noticias reales...'}</p>
+                        </div>
+                    </div>
+                </div>
+            ` : activeSectionTab === 'historia' ? `
+                ${this.renderNewsSectionArticlesGrid(historyArticles, 'historia', isCoord, lang)}
+            ` : activeSectionTab === 'inventos' ? `
+                ${this.renderNewsSectionArticlesGrid(inventionArticles, 'inventos', isCoord, lang)}
+            ` : activeSectionTab === 'quien' ? `
+                ${this.renderWhoIsWhoDirectoryView(lang)}
+            ` : activeSectionTab === 'startups' ? `
+                ${this.renderStartupsNavarrasView(lang)}
+            ` : activeSectionTab === 'hemeroteca' ? `
+                <section class="space-y-4" aria-label="Hemeroteca Completa">
+                    <div class="border-b-2 border-[#111111] pb-3 flex items-center justify-between gap-2">
+                        <div>
+                            <span class="text-[11px] font-mono font-black uppercase tracking-widest text-[#8B0000]">${lang === 'EN' ? 'SECTION // ARCHIVE & DOC_15' : 'SECCIÓN // HEMEROTECA Y COMUNICADOS'}</span>
+                            <h3 class="text-2xl sm:text-3xl font-serif font-black text-[#111111] mt-0.5">${lang === 'EN' ? 'Editorial Archive & Startup Press (DOC_15)' : 'Hemeroteca & Notas de Prensa de Startups'}</h3>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-stone-600">${archiveItems.length}</span>
+                    </div>
+                    ${archiveItems.length === 0 ? `
+                        <div class="bg-white border border-stone-300 p-8 text-center">
+                            <p class="text-sm font-serif text-stone-700">${lang === 'EN' ? 'No archived items match this filter.' : 'No hay artículos archivados ni notas de prensa publicadas para este filtro.'}</p>
+                        </div>
+                    ` : `
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            ${archiveItems.map(item => {
+                                if (item.isOfficial) {
+                                    const t = this.getLocalizedNewsField(item, 'title');
+                                    const c = this.getLocalizedNewsField(item, 'category') || 'AEE';
+                                    const artImg = item.imageUrl ? this.getNewsImageSrc(item.imageUrl) : '';
+                                    return `
+                                    <article class="bg-white border border-stone-300 p-4 flex flex-col justify-between gap-2.5">
+                                        <div class="space-y-1.5">
+                                            <div class="flex items-center justify-between gap-2 text-[10px] font-mono">
+                                                <span class="text-[#8B0000] font-bold uppercase truncate">${this.escapeHTML(c)}</span>
+                                                <span class="text-stone-500 shrink-0">${this.escapeHTML(item.publishedDate || '--')}</span>
+                                            </div>
+                                            ${artImg ? `<img src="${this.escapeAttr(artImg)}" alt="${this.escapeAttr(t)}" class="w-full h-32 object-cover border border-stone-300 cursor-pointer" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(item.id)}')">` : ''}
+                                            <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(item.id)}')" class="text-left w-full text-base font-serif font-bold text-[#111111] hover:text-[#8B0000] leading-snug">
+                                                ${this.escapeHTML(t)}
+                                            </button>
+                                        </div>
+                                        <div class="flex items-center gap-2 flex-wrap pt-2 border-t border-stone-200">
+                                            <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(item.id)}')" class="min-h-[44px] px-3 py-1 bg-[#111111] text-white hover:bg-[#8B0000] text-[11px] font-mono font-bold uppercase">📖 ${lang === 'EN' ? 'Read Full' : 'Leer Completa'}</button>
+                                            ${isCoord ? `<button type="button" onclick="ui.setNewsFeatured('${this.escapeAttr(item.id)}')" class="min-h-[44px] min-w-[44px] px-2.5 py-1 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-xs font-mono font-bold" title="Promover a Portada">⭐</button>` : ''}
+                                            ${isCoord ? `<button type="button" onclick="ui.modalEditOfficialNews('${this.escapeAttr(item.id)}')" class="min-h-[44px] min-w-[44px] px-2.5 py-1 bg-stone-100 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-xs font-mono font-bold" title="Editar">✏️</button>` : ''}
+                                            ${isCoord ? `<button type="button" onclick="ui.deleteOfficialNews('${this.escapeAttr(item.id)}')" class="min-h-[44px] min-w-[44px] px-2.5 py-1 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-xs font-mono font-bold" title="Eliminar">✕</button>` : ''}
+                                        </div>
+                                    </article>`;
+                                }
+                                const hasPrImg = Boolean(item.nanoBananaImage && /^(https?:\/\/|data:image\/)/i.test(item.nanoBananaImage));
+                                return `
+                                <article class="bg-white border border-stone-300 p-4 space-y-2">
+                                    <div class="flex items-center justify-between gap-2 text-[10px] font-mono">
+                                        <span class="text-[#1E3A8A] font-bold uppercase">DOC_15 • FASE ${this.escapeHTML(item.phase)} • CLASE ${this.escapeHTML(item.classGroup || 'A')}</span>
+                                        <span class="text-stone-500 shrink-0">${this.escapeHTML(item.publishedDate || '--')}</span>
+                                    </div>
+                                    ${hasPrImg ? `<img src="${this.escapeAttr(item.nanoBananaImage)}" alt="${this.escapeAttr(item.companyName || '')}" class="w-full h-32 object-cover border border-stone-300 cursor-pointer" onclick="ui.modalViewNewsImage('${this.escapeAttr(item.nanoBananaImage)}', '${this.escapeAttr(item.title)}')">` : ''}
+                                    <h4 class="text-base font-serif font-bold text-[#111111] uppercase leading-snug">${this.escapeHTML(item.companyName || '')}</h4>
+                                    <p class="text-xs text-stone-700 font-sans">${this.escapeHTML(item.title || '')}</p>
+                                    ${item.editorialNote ? `<p class="text-xs text-stone-700 border-l-2 border-[#8B0000] pl-2 italic">${this.escapeHTML(item.editorialNote)}</p>` : ''}
+                                    ${isCoord ? `<button type="button" onclick="ui.modalAttachNanoBananaToPR('${this.escapeAttr(item.id)}')" class="min-h-[44px] px-3 py-1 bg-stone-200 border border-stone-400 text-[#111111] text-xs font-bold uppercase">🖼️ Imagen</button>` : ''}
+                                </article>`;
+                            }).join('')}
+                        </div>
+                    `}
+                </section>
+            ` : `
             <!-- GRID EDITORIAL 65% / 35% CON FILETE DIVISOR -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
                 <!-- COLUMNA IZQUIERDA (65% -> 8/12 cols): PORTADA PRINCIPAL + DEBAJO DE LA PORTADA -->
@@ -4973,7 +5553,7 @@ Object.assign(ui, {
                             <h3 class="font-serif font-black text-base uppercase text-[#111111] tracking-tight">
                                 🗂️ ${lang === 'EN' ? 'Archive & Startup Press' : 'Hemeroteca & Startups'}
                             </h3>
-                            <span class="text-xs font-mono font-bold text-stone-600">${archiveItems.length}</span>
+                            <button type="button" onclick="ui.setNewsSectionTab('hemeroteca')" class="text-xs font-mono font-bold text-[#8B0000] hover:underline">${archiveItems.length} ➔</button>
                         </div>
 
                         ${archiveItems.length === 0 ? `
@@ -5032,9 +5612,13 @@ Object.assign(ui, {
                     </div>
                 </aside>
             </div>
+            ${this.renderFrontPageSectionShowcases(historyArticles, inventionArticles, lang)}
+            `}
         `;
         el.appendChild(wrapper);
-        this.fetchSpaceflightWire(false);
+        if (document.getElementById('orbital-wire-list')) {
+            this.fetchSpaceflightWire(false);
+        }
     },
 
     getCurrentPhaseKey() {
