@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.49) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.50) ---
 
-const APP_VERSION = "2.0.49";
+const APP_VERSION = "2.0.50";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,18 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.50",
+      date: "2026-11-23",
+      title: "Fase A: Lista de la Compra Exportable (PDF/Google Sheets/CSV) y Foto PDF de Entregables por Clase",
+      items: [
+        "Lista de la Compra Exportable (I+D, Finanzas y Taller): Nuevos botones táctiles en Carrito, Órdenes y Taller para descargar presupuesto A4 en PDF, copiar la tabla con fórmulas (=D*E y =SUMA) para pegar directo en Google Sheets (con enlace sheets.new) o descargar en CSV.",
+        "PDF «Foto de Clase» y Descarga en Lote por Entregable: Nuevo panel en Archivo Documental Central y Rúbricas por materia que genera una hoja A4 de auditoría por clase (A–F/TEST) con estado, fecha, cumplimiento de plazo y enlaces Drive/PDF, además de descarga directa en PDF (/export?format=pdf) de los Google Docs entregados de toda la clase."
+      ],
+      highlights: [
+        { type: "PRODUCTIVIDAD", text: "Exportación de lista de compra (PDF/Sheets/CSV) y Foto PDF docente por clase." }
+      ]
+    },
     {
       version: "2.0.49",
       date: "2026-11-23",

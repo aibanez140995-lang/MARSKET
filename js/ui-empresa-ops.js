@@ -58,6 +58,7 @@ Object.assign(ui, {
                             <p class="text-xs text-slate-300 uppercase">${this.escapeHTML(order.date)}</p>
                         </div>
                     </div>
+                    ${(itemsArr.length > 0 && typeof this.renderShoppingExportBar === 'function') ? `<div class="mb-3">${this.renderShoppingExportBar(order.id, true)}</div>` : ''}
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
                         <p class="text-xs text-mars-yellow uppercase font-bold">${isB2B ? 'Registra la recepción física de la pieza B2B de segunda mano en taller:' : 'Registra el coste real físico (€) y el comercio oficial de adquisición (desmarca si algún componente aún no se ha comprado):'}</p>
                         ${(!isB2B && isOperario && pendingItemsCount >= 2) ? `

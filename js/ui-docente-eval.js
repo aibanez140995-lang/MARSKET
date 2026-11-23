@@ -9,6 +9,356 @@ Object.assign(ui, {
         this.render();
     },
 
+    _snapshotSelectedDocKey: '',
+    _snapshotSelectedClass: '',
+
+    _getSnapshotDeliverableOptions(subjectFilter = null) {
+        const all = [
+            { key: 'preliminaryReport', label: 'FYQ 1: Informe Preliminar', subject: 'FYQ' },
+            { key: 'technicalReport', label: 'FYQ 2: Informe Técnico Final', subject: 'FYQ' },
+            { key: 'hoja_taller_fyq', label: 'FYQ 3: Hoja de Taller', subject: 'FYQ' },
+            { key: 'brandIdentity_dec', label: 'LYE 1A: Marca e Identidad (Dic)', subject: 'LYE' },
+            { key: 'brandIdentity_apr', label: 'LYE 1B: Evolución Marca (Abr)', subject: 'LYE' },
+            { key: 'businessModelDoc', label: 'LYE 2: Business Model', subject: 'LYE' },
+            { key: 'businessModelCanvas', label: 'LYE 3: Business Model Canvas', subject: 'LYE' },
+            { key: 'decisionDiary_dec', label: 'LYE 4A: Diario Decisiones (Dic)', subject: 'LYE' },
+            { key: 'decisionDiary_apr', label: 'LYE 4B: Diario Decisiones (Abr)', subject: 'LYE' },
+            { key: 'investorDossier', label: 'LEN: Dossier de Inversores', subject: 'LEN' },
+            { key: 'pressReleasesSummary', label: 'LEN: Notas de Prensa DOC_15 (I–IV)', subject: 'LEN', isPress: true },
+            { key: 'budgetInitial', label: 'ECO 1: Presupuesto Inicial', subject: 'ECO' },
+            { key: 'budgetPostProto', label: 'ECO 2: Presupuesto Post-Prototipo', subject: 'ECO' },
+            { key: 'balanceSheet', label: 'ECO 3: Balance de Situación', subject: 'ECO' },
+            { key: 'incomeStatement', label: 'ECO 4: Cuenta de Resultados', subject: 'ECO' },
+            { key: 'goniometerEvidence', label: 'MAT 1: Goniómetro (Foto + Inf.)', subject: 'MAT' },
+            { key: 'mathReportDist', label: 'MAT 2: Altura 1 Punto (Distancia)', subject: 'MAT' },
+            { key: 'mathReportTwoPoints', label: 'MAT 3: Altura 2 Puntos (Alineados)', subject: 'MAT' },
+            { key: 'mathReportFinal', label: 'MAT 4: Estudio Matemático Final', subject: 'MAT' }
+        ];
+        return subjectFilter ? all.filter(o => o.subject === subjectFilter) : all;
+    },
+
+    renderClassSnapshotBar(subjectFilter = null) {
+        const options = this._getSnapshotDeliverableOptions(subjectFilter);
+        if (!options || options.length === 0) return '';
+        const selectedDoc = (this._snapshotSelectedDocKey && options.some(o => o.key === this._snapshotSelectedDocKey))
+            ? this._snapshotSelectedDocKey
+            : options[0].key;
+        const activeCls = this._snapshotSelectedClass || this.evalClassFilter || this.currentClassFilter || 'A';
+        return `
+        <div class="mb-4 p-3 bg-slate-950/90 border border-mars-cyan/40 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-orbitron font-bold text-mars-cyan uppercase">📸 Foto de Clase por Entregable</span>
+                <span class="hidden sm:inline text-[11px] text-slate-400">Genera un PDF de control o descarga los Docs de una clase completa</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <select id="snapshot-doc-select" aria-label="Entregable para foto de clase" onchange="ui._snapshotSelectedDocKey = this.value" class="min-h-[44px] w-full sm:w-auto max-w-full bg-black border border-slate-700 text-white text-xs p-2 font-bold outline-none focus:border-mars-cyan">
+                    ${options.map(o => `<option value="${this.escapeAttr(o.key)}" ${o.key === selectedDoc ? 'selected' : ''}>${this.escapeHTML(o.label)}</option>`).join('')}
+                </select>
+                <select id="snapshot-class-select" aria-label="Clase para foto de entregable" onchange="ui._snapshotSelectedClass = this.value" class="min-h-[44px] w-full sm:w-auto bg-black border border-mars-yellow/70 text-mars-yellow text-xs p-2 font-bold uppercase outline-none focus:border-mars-cyan">
+                    ${['A', 'B', 'C', 'D', 'E', 'F', 'TEST'].map(c => `<option value="${c}" ${activeCls === c ? 'selected' : ''}>Clase ${c}</option>`).join('')}
+                    <option value="ALL" ${activeCls === 'ALL' ? 'selected' : ''}>Todas las Clases (A–F)</option>
+                </select>
+                <button type="button" onclick="ui.exportClassDeliverableSnapshotPDF()" class="min-h-[44px] w-full sm:w-auto bg-mars-cyan text-black px-3.5 py-2 text-xs font-black uppercase hover:bg-white transition-colors">
+                    📄 PDF Foto de Clase
+                </button>
+                <button type="button" onclick="ui.downloadClassDeliverableDocsPDF()" class="min-h-[44px] w-full sm:w-auto bg-emerald-950/70 text-emerald-300 border border-emerald-500/60 px-3.5 py-2 text-xs font-black uppercase hover:bg-emerald-500 hover:text-black transition-colors">
+                    📥 Descargar PDFs Docs
+                </button>
+            </div>
+        </div>`;
+    },
+
+    _collectClassDeliverableRows(docKeyOverride = null, classOverride = null) {
+        const allOpts = this._getSnapshotDeliverableOptions(null);
+        const selDocEl = typeof document !== 'undefined' ? document.getElementById('snapshot-doc-select') : null;
+        const selClsEl = typeof document !== 'undefined' ? document.getElementById('snapshot-class-select') : null;
+        const docKey = docKeyOverride || (selDocEl ? selDocEl.value : '') || this._snapshotSelectedDocKey || allOpts[0].key;
+        const cls = classOverride || (selClsEl ? selClsEl.value : '') || this._snapshotSelectedClass || this.evalClassFilter || this.currentClassFilter || 'A';
+        const opt = allOpts.find(o => o.key === docKey) || { key: docKey, label: docKey, subject: 'FYQ', isPress: docKey === 'pressReleasesSummary' };
+        const defObj = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).find(d => d.key === docKey) || null;
+        const deadlineTs = (defObj && typeof this.getDeliverableDeadlineTs === 'function') ? this.getDeliverableDeadlineTs(defObj) : 9999999999999;
+
+        const companies = state.data?.companies || {};
+        const cids = Object.keys(companies).filter(cid => {
+            const co = companies[cid];
+            if (!co) return false;
+            if (cls === 'ALL') {
+                return !co.isTestCompany && String(co.classGroup || '').toUpperCase() !== 'TEST';
+            }
+            return String(co.classGroup || '').toUpperCase() === String(cls).toUpperCase();
+        }).sort((a, b) => {
+            const ca = companies[a];
+            const cb = companies[b];
+            const cmp = String(ca.classGroup || '').localeCompare(String(cb.classGroup || ''));
+            return cmp !== 0 ? cmp : String(ca.name || a).localeCompare(String(cb.name || b));
+        });
+
+        const statusLabels = {
+            DELIVERED_TO_TEACHER: 'Entregado',
+            SUBMITTED_TO_CEO: 'En CEO',
+            CEO_REVISION: 'Subsanar',
+            DEVUELTO_A_TECNICO: 'Subsanar',
+            EN_TALLER_OPERARIO: 'En Taller',
+            DRAFT_TECNICO: 'Borrador'
+        };
+
+        const rows = cids.map(cid => {
+            const co = companies[cid];
+            const subjGrade = co.grades?.[opt.subject];
+            const gradeVal = (subjGrade && subjGrade.final !== null && subjGrade.final !== undefined) ? Number(subjGrade.final).toFixed(2) : '--';
+
+            if (opt.isPress) {
+                const prs = co.pressReleases || {};
+                const prItems = ['I', 'II', 'III', 'IV'].map(ph => {
+                    const entry = prs[ph];
+                    if (!entry || !entry.driveUrl || entry.status === 'RETURNED') return null;
+                    const rawUrl = String(entry.driveUrl).trim();
+                    const safeUrl = this.sanitizeDriveUrl ? this.sanitizeDriveUrl(rawUrl) : rawUrl;
+                    const pdfUrl = this.getGooglePdfExportUrl ? this.getGooglePdfExportUrl(rawUrl) : '';
+                    const ts = Number(entry.publishedAt || entry.updatedAt || 0);
+                    return { phase: ph, status: entry.status || 'PUBLISHED', safeUrl, pdfUrl, ts, dateLabel: entry.publishedDate || (ts ? new Date(ts).toLocaleString('es-ES') : '--') };
+                }).filter(Boolean);
+                const latestTs = prItems.reduce((mx, p) => Math.max(mx, p.ts || 0), 0);
+                return {
+                    cid,
+                    name: co.name || cid,
+                    classGroup: co.classGroup || '--',
+                    delivered: prItems.length > 0,
+                    statusText: prItems.length > 0 ? `${prItems.length}/4 Fases (${prItems.map(p => p.phase).join(', ')})` : 'Pendiente (0/4)',
+                    dateText: latestTs ? new Date(latestTs).toLocaleString('es-ES') : '--',
+                    deadlineText: prItems.length > 0 ? 'Registrado' : 'Pendiente',
+                    gradeText: gradeVal,
+                    safeUrl: prItems[0]?.safeUrl || '',
+                    pdfUrl: prItems[0]?.pdfUrl || '',
+                    extraLinks: prItems
+                };
+            }
+
+            const rawDoc = co.deliverables?.[docKey];
+            const isObj = rawDoc && typeof rawDoc === 'object';
+            const rawUrl = isObj ? String(rawDoc.driveUrl || rawDoc.url || rawDoc.dataUrl || '').trim() : String(rawDoc || '').trim();
+            const safeUrl = rawUrl ? (this.sanitizeDriveUrl ? this.sanitizeDriveUrl(rawUrl) : rawUrl) : '';
+            const pdfUrl = rawUrl && this.getGooglePdfExportUrl ? this.getGooglePdfExportUrl(rawUrl) : '';
+            const st = !rawDoc ? 'PENDING' : (isObj ? (rawDoc.status || 'DELIVERED_TO_TEACHER') : 'DELIVERED_TO_TEACHER');
+            const statusText = statusLabels[st] || (rawDoc ? 'Entregado' : 'Pendiente');
+            const rawTs = isObj ? (rawDoc.updatedAt || rawDoc.date || 0) : 0;
+            const parsedTs = typeof rawTs === 'number' ? rawTs : (rawTs ? Date.parse(rawTs) : 0);
+            const docTs = isNaN(parsedTs) ? 0 : parsedTs;
+            const dateText = docTs ? new Date(docTs).toLocaleString('es-ES') : (isObj && rawDoc.date ? String(rawDoc.date) : '--');
+            const hasActiveDelivery = Boolean(rawDoc && st !== 'DRAFT_TECNICO');
+
+            let deadlineText = 'Pendiente';
+            if (!hasActiveDelivery || !safeUrl) {
+                deadlineText = (deadlineTs < 9999999999999 && Date.now() > deadlineTs) ? 'Vencido sin entregar' : 'Pendiente';
+            } else if (deadlineTs >= 9999999999999) {
+                deadlineText = 'Sin límite';
+            } else if (docTs > 0) {
+                deadlineText = docTs <= deadlineTs ? 'En plazo' : 'Fuera de plazo';
+            } else {
+                deadlineText = 'Entregado';
+            }
+
+            return {
+                cid,
+                name: co.name || cid,
+                classGroup: co.classGroup || '--',
+                delivered: st === 'DELIVERED_TO_TEACHER' && Boolean(safeUrl),
+                statusText,
+                dateText,
+                deadlineText,
+                gradeText: gradeVal,
+                safeUrl,
+                pdfUrl,
+                extraLinks: []
+            };
+        });
+
+        return { opt, cls, defObj, deadlineTs, rows };
+    },
+
+    exportClassDeliverableSnapshotPDF(docKeyOverride = null, classOverride = null) {
+        if (!state.user?.admin) return;
+        const { opt, cls, deadlineTs, rows } = this._collectClassDeliverableRows(docKeyOverride, classOverride);
+        if (rows.length === 0) {
+            return this.notify(`No hay startups registradas en Clase ${cls} para generar la foto PDF.`, "warning");
+        }
+
+        const total = rows.length;
+        const deliveredCount = rows.filter(r => r.delivered).length;
+        const onTimeCount = rows.filter(r => r.deadlineText === 'En plazo').length;
+        const pendingCount = total - deliveredCount;
+        const deadlineLabel = deadlineTs < 9999999999999 ? new Date(deadlineTs).toLocaleString('es-ES') : 'Sin fecha límite';
+        const nowStr = new Date().toLocaleString('es-ES');
+        const classLabel = cls === 'ALL' ? 'Todas las Clases (4º A–F)' : `Clase 4º ${cls}`;
+
+        const rowsHtml = rows.map((r, i) => {
+            const stColor = r.delivered ? '#059669' : (r.statusText === 'Pendiente' || r.statusText === 'Pendiente (0/4)' ? '#dc2626' : '#d97706');
+            const dlColor = r.deadlineText === 'En plazo' ? '#059669' : ((r.deadlineText === 'Fuera de plazo' || r.deadlineText === 'Vencido sin entregar') ? '#dc2626' : '#475569');
+            let linksHtml = '<span style="color:#94a3b8; font-style:italic;">Sin enlace</span>';
+            if (opt.isPress && r.extraLinks.length > 0) {
+                linksHtml = r.extraLinks.map(p => {
+                    const href = this.escapeAttr(p.safeUrl || '#');
+                    const pdfH = p.pdfUrl ? ` <a href="${this.escapeAttr(p.pdfUrl)}" target="_blank" rel="noopener noreferrer" style="color:#059669; font-weight:bold; text-decoration:none;">[PDF]</a>` : '';
+                    return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color:#0284c7; font-weight:bold;">F.${this.escapeHTML(p.phase)} ↗</a>${pdfH}`;
+                }).join(' · ');
+            } else if (r.safeUrl) {
+                linksHtml = `<a href="${this.escapeAttr(r.safeUrl)}" target="_blank" rel="noopener noreferrer" style="color:#0284c7; font-weight:bold;">Abrir Drive ↗</a>`;
+                if (r.pdfUrl) {
+                    linksHtml += ` &nbsp;<a href="${this.escapeAttr(r.pdfUrl)}" target="_blank" rel="noopener noreferrer" style="color:#059669; font-weight:bold;">[PDF ⬇]</a>`;
+                }
+            }
+            return `
+            <tr style="border-bottom: 1px solid #e2e8f0; background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                <td style="padding: 7px 8px; font-weight: 700; color: #0f172a;">${this.escapeHTML(r.name)}</td>
+                <td style="padding: 7px 6px; text-align: center; font-family: monospace;">${this.escapeHTML(r.classGroup)}</td>
+                <td style="padding: 7px 8px; font-weight: 700; color: ${stColor};">${this.escapeHTML(r.statusText)}</td>
+                <td style="padding: 7px 8px; font-family: monospace; font-size: 10px; color: #334155;">${this.escapeHTML(r.dateText)}</td>
+                <td style="padding: 7px 8px; font-weight: 700; color: ${dlColor};">${this.escapeHTML(r.deadlineText)}</td>
+                <td style="padding: 7px 6px; text-align: center; font-family: monospace; font-weight: bold;">${this.escapeHTML(r.gradeText)}</td>
+                <td style="padding: 7px 8px; font-size: 10px;">${linksHtml}</td>
+            </tr>`;
+        }).join('');
+
+        const docHtml = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foto de Entregables - ${this.escapeHTML(opt.label)} (${this.escapeHTML(classLabel)})</title>
+    <style>
+        @page { size: A4 portrait; margin: 12mm; }
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: #ffffff; color: #0f172a; margin: 0; padding: 0; line-height: 1.35; }
+        .no-print { position: sticky; top: 0; z-index: 999; background: #0b0f19; color: #ffffff; padding: 12px 20px; border-bottom: 2px solid #00f0ff; display: flex; justify-content: space-between; align-items: center; gap: 10px; font-family: monospace; }
+        .btn-print { background: #00f0ff; color: #000000; font-weight: 800; padding: 10px 18px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; text-transform: uppercase; }
+        .btn-close { background: #334155; color: #ffffff; font-weight: 600; padding: 10px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .doc-container { max-width: 900px; margin: 0 auto; padding: 20px; background: #ffffff; }
+        @media print { .no-print { display: none !important; } .doc-container { max-width: 100% !important; padding: 0 !important; } }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <div>
+            <strong style="color: #00f0ff; font-size: 13px;">📸 FOTO DE ENTREGA POR CLASE // MARS-KET OS</strong>
+            <span style="color: #94a3b8; font-size: 12px; margin-left: 10px;">${this.escapeHTML(classLabel)} · ${this.escapeHTML(opt.label)}</span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn-print" onclick="window.print()">🖨️ Guardar como PDF / Imprimir</button>
+            <button class="btn-close" onclick="window.close()">✕ Cerrar</button>
+        </div>
+    </div>
+    <div class="doc-container">
+        <div style="border: 2px solid #0f172a; padding: 14px 18px; margin-bottom: 16px; background: #f8fafc;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <span style="font-family: monospace; font-size: 10px; font-weight: bold; color: #0284c7; text-transform: uppercase; display: block;">
+                        ACTA DE AUDITORÍA DOCENTE · FOTO DE ENTREGABLES
+                    </span>
+                    <h1 style="margin: 4px 0 0 0; font-size: 19px; font-weight: 900; text-transform: uppercase;">${this.escapeHTML(opt.label)}</h1>
+                </div>
+                <div style="text-align: right; font-family: monospace; font-size: 11px; color: #334155;">
+                    <div style="font-size: 14px; font-weight: 900; color: #0f172a;">${this.escapeHTML(classLabel)}</div>
+                    <div>Plazo oficial: ${this.escapeHTML(deadlineLabel)}</div>
+                    <div>Foto tomada el: ${this.escapeHTML(nowStr)}</div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 18px; flex-wrap: wrap; font-size: 11px;">
+                <span><strong>Empresas evaluadas:</strong> ${total}</span>
+                <span style="color: #059669;"><strong>Entregados al docente:</strong> ${deliveredCount}/${total}</span>
+                <span style="color: #0284c7;"><strong>En plazo:</strong> ${onTimeCount}</span>
+                <span style="color: ${pendingCount > 0 ? '#dc2626' : '#059669'};"><strong>Faltan / en revisión:</strong> ${pendingCount}</span>
+            </div>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+            <thead>
+                <tr style="background: #0f172a; color: #ffffff; text-transform: uppercase; font-size: 10px;">
+                    <th style="padding: 8px; text-align: left;">Startup</th>
+                    <th style="padding: 8px 6px; text-align: center;">Clase</th>
+                    <th style="padding: 8px; text-align: left;">Estado</th>
+                    <th style="padding: 8px; text-align: left;">Último Envío</th>
+                    <th style="padding: 8px; text-align: left;">Plazo</th>
+                    <th style="padding: 8px 6px; text-align: center;">Nota ${this.escapeHTML(opt.subject)}</th>
+                    <th style="padding: 8px; text-align: left;">Evidencia Drive / PDF</th>
+                </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>
+        <p style="margin-top: 14px; font-size: 10px; color: #64748b; font-family: monospace;">
+            Los enlaces [PDF ⬇] exportan una copia PDF congelada directamente desde Google Docs/Drive con la sesión del profesorado del centro.
+        </p>
+    </div>
+</body>
+</html>`;
+        const win = window.open('', '_blank');
+        if (!win) {
+            return this.notify("⚠️ Tu navegador bloqueó la ventana emergente. Permite popups para abrir el informe PDF.", "warning");
+        }
+        win.document.open();
+        win.document.write(docHtml);
+        win.document.close();
+        win.focus();
+    },
+
+    downloadClassDeliverableDocsPDF(docKeyOverride = null, classOverride = null) {
+        if (!state.user?.admin) return;
+        const { opt, cls, rows } = this._collectClassDeliverableRows(docKeyOverride, classOverride);
+        const downloadItems = [];
+        rows.forEach(r => {
+            if (opt.isPress && r.extraLinks.length > 0) {
+                r.extraLinks.forEach(p => {
+                    if (p.pdfUrl) {
+                        downloadItems.push({ name: `${r.name} (Fase ${p.phase})`, classGroup: r.classGroup, pdfUrl: p.pdfUrl, driveUrl: p.safeUrl });
+                    }
+                });
+            } else if (r.pdfUrl) {
+                downloadItems.push({ name: r.name, classGroup: r.classGroup, pdfUrl: r.pdfUrl, driveUrl: r.safeUrl });
+            }
+        });
+
+        if (downloadItems.length === 0) {
+            return this.notify("⚠️ No hay Google Docs/Sheets/Slides entregados con enlace exportable a PDF en esta selección.", "warning");
+        }
+
+        let blockedByPopup = false;
+        let autoLaunched = 0;
+        if (downloadItems.length <= 8) {
+            downloadItems.forEach(item => {
+                const w = window.open(item.pdfUrl, '_blank', 'noopener,noreferrer');
+                if (w) autoLaunched++;
+                else blockedByPopup = true;
+            });
+        }
+
+        const listHtml = downloadItems.map(it => `
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 bg-slate-900 border border-slate-800 rounded">
+                <div class="min-w-0">
+                    <span class="text-xs font-bold text-white uppercase">${this.escapeHTML(it.name)}</span>
+                    <span class="ml-2 text-[10px] font-mono text-mars-yellow">Clase ${this.escapeHTML(it.classGroup)}</span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <a href="${this.escapeAttr(it.pdfUrl)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-3 py-1.5 bg-emerald-950/60 text-emerald-300 border border-emerald-500/50 hover:bg-emerald-500 hover:text-black rounded text-xs font-mono font-bold">⬇️ Descargar PDF</a>
+                    <a href="${this.escapeAttr(it.driveUrl)}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-3 py-1.5 bg-slate-950 text-mars-cyan border border-mars-cyan/40 hover:bg-mars-cyan hover:text-black rounded text-xs font-mono font-bold">Drive ↗</a>
+                </div>
+            </div>
+        `).join('');
+
+        const noteHtml = downloadItems.length > 8
+            ? `<p class="text-xs text-amber-300 bg-amber-950/40 border border-amber-500/40 p-2.5 rounded">Hay ${downloadItems.length} documentos en esta selección. Para no bloquear el navegador, descárgalos desde la lista inferior o filtra por una única clase (A–F).</p>`
+            : (blockedByPopup
+                ? `<p class="text-xs text-amber-300 bg-amber-950/40 border border-amber-500/40 p-2.5 rounded">Tu navegador ha bloqueado parte de las descargas simultáneas (${autoLaunched}/${downloadItems.length} abiertas). Pulsa aquí debajo las que falten:</p>`
+                : `<p class="text-xs text-emerald-300 bg-emerald-950/40 border border-emerald-500/40 p-2.5 rounded">✅ Se han lanzado ${autoLaunched} descargas PDF desde Google Docs. Si alguna no se guardó, puedes relanzarla aquí:</p>`);
+
+        const modalBody = `
+        <div class="space-y-3 font-sans">
+            <div class="text-xs text-slate-300">
+                <strong class="text-mars-cyan uppercase">${this.escapeHTML(opt.label)}</strong> · Clase: <strong class="text-white">${this.escapeHTML(cls)}</strong>
+            </div>
+            ${noteHtml}
+            <div class="space-y-2 max-h-72 overflow-y-auto pr-1">${listHtml}</div>
+        </div>`;
+        this.showModal(`📥 PDFs de Clase ${cls} · ${opt.label}`, modalBody, '');
+    },
+
     getPendingEvalDocsForSubject(co, subject) {
         if (!co || !subject) return { pendingCount: 0, readyTotal: 0 };
         const docToCrit = {
@@ -205,13 +555,14 @@ Object.assign(ui, {
                         </button>
                     </div>
                 </div>
+                ${this.renderClassSnapshotBar(null)}
                 <div class="overflow-x-auto w-full pb-2">
                     <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
                         <thead class="text-slate-300 uppercase border-b border-mars-border sticky top-0 bg-slate-900 z-20">
                             <tr>
                                 <th class="py-3 px-2 sticky left-0 bg-slate-900 z-10 border-r border-mars-border">Empresa</th>
                                 <th class="py-3 px-2 text-center">Progreso</th>
-                                ${docCols.map(col => `<th class="py-3 px-2 text-center">${col.label}</th>`).join('')}
+                                ${docCols.map(col => `<th class="py-3 px-2 text-center"><div class="flex flex-col items-center gap-1"><span>${col.label}</span><button type="button" onclick="ui.exportClassDeliverableSnapshotPDF('${this.escapeAttr(col.key)}')" title="Sacar Foto PDF de ${this.escapeAttr(col.label)}" class="min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2 py-0.5 text-[10px] bg-slate-950 border border-mars-cyan/40 text-mars-cyan hover:bg-mars-cyan hover:text-black rounded font-mono font-bold">📸 Foto</button></div></th>`).join('')}
                                 <th class="py-3 px-2 text-center">IA Prompts</th>
                             </tr>
                         </thead>
@@ -323,7 +674,8 @@ Object.assign(ui, {
                 </div>
 
                 ${this.renderClassStartupCards(activeSubject, this.evalClassFilter)}
-            </div>`;
+            </div>
+            ${this.renderClassSnapshotBar(activeSubject)}`;
 
             if (this.evalSelectedCo && !state.data.companies?.[this.evalSelectedCo]) {
                 this.evalSelectedCo = '';

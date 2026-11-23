@@ -28,6 +28,263 @@ Object.assign(ui, {
         this.render();
     },
 
+    _resolvePurchaseExportContext(orderId = null) {
+        const companies = state.data?.companies || {};
+        let co = state.user?.coId ? companies[state.user.coId] : null;
+        let order = null;
+        if (orderId) {
+            if (co && Array.isArray(co.orders)) {
+                order = co.orders.find(o => String(o.id) === String(orderId)) || null;
+            }
+            if (!order) {
+                for (const cid of Object.keys(companies)) {
+                    const candidate = companies[cid];
+                    const found = (candidate?.orders || []).find(o => String(o.id) === String(orderId));
+                    if (found) {
+                        co = candidate;
+                        order = found;
+                        break;
+                    }
+                }
+            }
+        }
+        if (!co) return null;
+
+        const rawItems = order ? (order.items || []) : (co.cart || []);
+        const items = rawItems.map(it => {
+            const qty = Math.max(1, Number(it?.qty) || 1);
+            const price = Number(it?.price) || 0;
+            return {
+                id: String(it?.id || '--'),
+                name: String(it?.name || 'Material'),
+                unit: String(it?.unit || 'Unidad'),
+                qty,
+                price,
+                subtotal: Math.round(price * qty * 100) / 100,
+                executed: Boolean(it?.executed)
+            };
+        });
+        const totalEurV = Math.round(items.reduce((s, it) => s + it.subtotal, 0) * 100) / 100;
+        const balance = Number(co.balance || 0);
+        const freeBalance = state.getFreeVirtualBalance ? state.getFreeVirtualBalance(co) : balance;
+        const isB2B = Boolean(order && (order.type === 'B2B_BUY_REQUEST' || order.offerId));
+        return {
+            co,
+            order,
+            isB2B,
+            title: order ? `${isB2B ? 'Orden B2B' : 'Orden de Compra'} #${order.id}` : 'Lista de la Compra (Borrador I+D)',
+            statusLabel: order ? String(order.status || 'EN_PROCESO') : 'BORRADOR EN CARRITO',
+            dateStr: order?.date || new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' }),
+            items,
+            totalEurV,
+            balance,
+            freeBalance
+        };
+    },
+
+    renderShoppingExportBar(orderId = null, compact = false) {
+        const arg = orderId ? `'${this.escapeAttr(orderId)}'` : '';
+        return `
+        <div class="flex flex-wrap items-center gap-2 ${compact ? 'my-1' : 'my-2'}">
+            <button type="button" onclick="ui.exportShoppingListPDF(${arg})" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-900 text-mars-cyan border border-mars-cyan/60 hover:bg-mars-cyan hover:text-black rounded font-mono font-bold uppercase transition-colors">
+                <span>📄 PDF Presupuesto</span>
+            </button>
+            <button type="button" onclick="ui.copyShoppingListForSheets(${arg})" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-emerald-950/50 text-emerald-300 border border-emerald-500/50 hover:bg-emerald-500 hover:text-black rounded font-mono font-bold uppercase transition-colors">
+                <span>📊 Copiar para Google Sheets</span>
+            </button>
+            <a href="https://sheets.new" target="_blank" rel="noopener noreferrer" title="Abrir una hoja nueva en Google Sheets para pegar con Ctrl+V" class="min-h-[44px] inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-slate-900 text-slate-200 border border-slate-600 hover:border-emerald-400 hover:text-emerald-300 rounded font-mono font-bold uppercase transition-colors">
+                <span>sheets.new ↗</span>
+            </a>
+            <button type="button" onclick="ui.exportShoppingListCSV(${arg})" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-900 text-amber-300 border border-amber-500/50 hover:bg-amber-400 hover:text-black rounded font-mono font-bold uppercase transition-colors">
+                <span>⬇️ CSV</span>
+            </button>
+        </div>`;
+    },
+
+    exportShoppingListPDF(orderId = null) {
+        const ctx = this._resolvePurchaseExportContext(orderId);
+        if (!ctx || ctx.items.length === 0) {
+            return this.notify("No hay materiales en esta lista para exportar a PDF.", "warning");
+        }
+        const rowsHtml = ctx.items.map((it, idx) => `
+            <tr style="border-bottom: 1px solid #e2e8f0; background: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                <td style="padding: 7px 8px; font-family: monospace; font-weight: bold; color: #0284c7;">${this.escapeHTML(it.id)}</td>
+                <td style="padding: 7px 8px; font-weight: 600; color: #0f172a;">${this.escapeHTML(it.name)}${it.executed ? ' <span style="color:#059669; font-size:10px;">(Recibido)</span>' : ''}</td>
+                <td style="padding: 7px 8px; text-align: center; color: #475569;">${this.escapeHTML(it.unit)}</td>
+                <td style="padding: 7px 8px; text-align: center; font-family: monospace; font-weight: bold;">${it.qty}</td>
+                <td style="padding: 7px 8px; text-align: right; font-family: monospace; color: #334155;">${it.price.toFixed(2)} €v</td>
+                <td style="padding: 7px 8px; text-align: right; font-family: monospace; font-weight: bold; color: #059669;">${it.subtotal.toFixed(2)} €v</td>
+            </tr>
+        `).join('');
+
+        const docHtml = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${this.escapeHTML(ctx.title)} - ${this.escapeHTML(ctx.co.name)}</title>
+    <style>
+        @page { size: A4 portrait; margin: 14mm 12mm; }
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: #ffffff; color: #0f172a; margin: 0; padding: 0; line-height: 1.4; }
+        .no-print { position: sticky; top: 0; z-index: 999; background: #0b0f19; color: #ffffff; padding: 12px 20px; border-bottom: 2px solid #00f0ff; display: flex; justify-content: space-between; align-items: center; gap: 10px; font-family: monospace; }
+        .btn-print { background: #00f0ff; color: #000000; font-weight: 800; padding: 10px 18px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; text-transform: uppercase; }
+        .btn-close { background: #334155; color: #ffffff; font-weight: 600; padding: 10px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .doc-container { max-width: 800px; margin: 0 auto; padding: 24px 20px; background: #ffffff; }
+        @media print { .no-print { display: none !important; } .doc-container { max-width: 100% !important; padding: 0 !important; } }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <div>
+            <strong style="color: #00f0ff; font-size: 13px;">🚀 MARS-KET OS // SOLICITUD DE MATERIALES PARA FINANZAS</strong>
+            <span style="color: #94a3b8; font-size: 12px; margin-left: 10px;">${this.escapeHTML(ctx.co.name)} (${ctx.items.length} partidas)</span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn-print" onclick="window.print()">🖨️ Guardar como PDF / Imprimir</button>
+            <button class="btn-close" onclick="window.close()">✕ Cerrar</button>
+        </div>
+    </div>
+    <div class="doc-container">
+        <div style="border: 2px solid #0f172a; padding: 16px 20px; margin-bottom: 18px; background: #f8fafc;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <span style="font-family: monospace; font-size: 10px; font-weight: bold; color: #0284c7; text-transform: uppercase; letter-spacing: 0.08em; display: block;">
+                        HOJA DE PREVISIÓN DE COMPRA · USO INTERNO I+D ➔ FINANZAS
+                    </span>
+                    <h1 style="margin: 4px 0 0 0; font-size: 20px; font-weight: 900; text-transform: uppercase;">${this.escapeHTML(ctx.title)}</h1>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 15px; font-weight: 900; color: #0f172a;">${this.escapeHTML(ctx.co.name || 'Startup')}</div>
+                    <div style="font-family: monospace; font-size: 11px; color: #475569;">Clase 4º ${this.escapeHTML(ctx.co.classGroup || '--')} · Estado: ${this.escapeHTML(ctx.statusLabel)}</div>
+                    <div style="font-family: monospace; font-size: 11px; color: #475569;">Fecha: ${this.escapeHTML(ctx.dateStr)}</div>
+                </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 11px;">
+                <div><strong>Saldo actual en cuenta:</strong> <span style="font-family: monospace;">${ctx.balance.toFixed(2)} €v</span></div>
+                <div><strong>Saldo libre real tras compromisos:</strong> <span style="font-family: monospace; color: ${ctx.freeBalance <= 0 ? '#dc2626' : '#059669'}; font-weight: bold;">${ctx.freeBalance.toFixed(2)} €v</span></div>
+                <div><strong>Total lista:</strong> <span style="font-family: monospace; color: #0284c7; font-weight: 900;">${ctx.totalEurV.toFixed(2)} €v</span></div>
+            </div>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 16px;">
+            <thead>
+                <tr style="background: #0f172a; color: #ffffff; text-transform: uppercase; font-size: 10px;">
+                    <th style="padding: 8px; text-align: left; width: 70px;">Código</th>
+                    <th style="padding: 8px; text-align: left;">Material / Concepto</th>
+                    <th style="padding: 8px; text-align: center; width: 95px;">Unidad</th>
+                    <th style="padding: 8px; text-align: center; width: 65px;">Cant.</th>
+                    <th style="padding: 8px; text-align: right; width: 95px;">Precio Unit.</th>
+                    <th style="padding: 8px; text-align: right; width: 100px;">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+            <tfoot>
+                <tr style="background: #f1f5f9; border-top: 2px solid #0f172a;">
+                    <td colspan="5" style="padding: 9px 8px; text-align: right; font-weight: 900; text-transform: uppercase;">Total Presupuesto Estimado (€v)</td>
+                    <td style="padding: 9px 8px; text-align: right; font-family: monospace; font-size: 14px; font-weight: 900; color: #059669;">${ctx.totalEurV.toFixed(2)} €v</td>
+                </tr>
+            </tfoot>
+        </table>
+        <div style="border: 1px solid #cbd5e1; background: #f8fafc; padding: 12px 14px; font-size: 11px; color: #334155;">
+            <strong>Uso recomendado en Finanzas y Taller:</strong> Utiliza este desglose como base oficial para redactar el Presupuesto (ECO) y la Orden de Adquisición (DOC_9). Los precios mostrados son virtuales (€v) del catálogo regulado SUPER-MARSKET.
+        </div>
+    </div>
+</body>
+</html>`;
+        const win = window.open('', '_blank');
+        if (!win) {
+            return this.notify("⚠️ Tu navegador bloqueó la ventana emergente. Permite las ventanas emergentes para abrir el PDF.", "warning");
+        }
+        win.document.open();
+        win.document.write(docHtml);
+        win.document.close();
+        win.focus();
+    },
+
+    async copyShoppingListForSheets(orderId = null) {
+        const ctx = this._resolvePurchaseExportContext(orderId);
+        if (!ctx || ctx.items.length === 0) {
+            return this.notify("No hay materiales en esta lista para copiar.", "warning");
+        }
+        const fmtNum = (n) => Number(n || 0).toFixed(2).replace('.', ',');
+        const lines = ['Código\tMaterial / Concepto\tUnidad\tCantidad\tPrecio Unit. (€v)\tSubtotal (€v)'];
+        ctx.items.forEach((it, idx) => {
+            const rowNum = idx + 2;
+            const safeName = String(it.name).replace(/[\t\r\n]+/g, ' ');
+            const safeUnit = String(it.unit).replace(/[\t\r\n]+/g, ' ');
+            lines.push(`${it.id}\t${safeName}\t${safeUnit}\t${it.qty}\t${fmtNum(it.price)}\t=D${rowNum}*E${rowNum}`);
+        });
+        const lastRow = ctx.items.length + 1;
+        lines.push(`TOTAL\t${ctx.co.name || ''}\t\t\t\t=SUMA(F2:F${lastRow})`);
+        const tsv = lines.join('\n');
+
+        let copied = false;
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            try {
+                await navigator.clipboard.writeText(tsv);
+                copied = true;
+            } catch (e) {}
+        }
+        if (!copied) {
+            try {
+                const ta = document.createElement('textarea');
+                ta.value = tsv;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                copied = document.execCommand('copy');
+                document.body.removeChild(ta);
+            } catch (e) {}
+        }
+        if (copied) {
+            return this.notify("✅ Tabla copiada con fórmulas. Abre sheets.new (o tu plantilla ECO/DOC_9) y pulsa Ctrl+V.", "success");
+        }
+        return this.notify("No se pudo copiar automáticamente; usa el botón ⬇️ CSV como alternativa.", "warning");
+    },
+
+    exportShoppingListCSV(orderId = null) {
+        const ctx = this._resolvePurchaseExportContext(orderId);
+        if (!ctx || ctx.items.length === 0) {
+            return this.notify("No hay materiales en esta lista para descargar CSV.", "warning");
+        }
+        const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+        const rows = [['Startup', 'Lista', 'Código', 'Material', 'Unidad', 'Cantidad', 'Precio Unit. (€v)', 'Subtotal (€v)'].map(esc).join(';')];
+        ctx.items.forEach(it => {
+            rows.push([
+                ctx.co.name || '',
+                ctx.title,
+                it.id,
+                it.name,
+                it.unit,
+                it.qty,
+                it.price.toFixed(2).replace('.', ','),
+                it.subtotal.toFixed(2).replace('.', ',')
+            ].map(esc).join(';'));
+        });
+        rows.push([ctx.co.name || '', ctx.title, 'TOTAL', '', '', '', '', ctx.totalEurV.toFixed(2).replace('.', ',')].map(esc).join(';'));
+        const csvContent = '\uFEFF' + rows.join('\r\n');
+        const safeCo = String(ctx.co.id || 'startup').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const safeRef = orderId ? String(orderId).replace(/[^a-zA-Z0-9_-]/g, '_') : 'carrito';
+        const filename = `lista_compra_${safeCo}_${safeRef}.csv`;
+        if (typeof this.downloadFile === 'function') {
+            this.downloadFile(csvContent, 'csv', filename);
+        } else {
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        this.notify("⬇️ Archivo CSV de lista de la compra descargado.", "success");
+    },
+
     viewOrders(el) {
         if (!el || !state.user) return;
         const co = state.data.companies[state.user.coId];
@@ -235,6 +492,10 @@ Object.assign(ui, {
                                     : ''
                                 }
                             </div>
+                            ${(order.items && order.items.length > 0 && typeof this.renderShoppingExportBar === 'function') ? `
+                            <div class="mb-2">
+                                ${this.renderShoppingExportBar(order.id, true)}
+                            </div>` : ''}
                             ${st === 'PENDIENTE_DOCENTE' ? `<p class="text-xs text-purple-300 font-mono mt-1 mb-2 p-2 bg-purple-950/30 border border-purple-500/30 rounded">🛃 Compra autorizada por Finanzas. Retenida en Aduana Docente a la espera de validación oficial.</p>` : ''}
                             ${st === 'DENEGADO_DOCENTE' ? `<p class="text-xs text-rose-300 font-mono mt-1 mb-2 p-2 bg-rose-950/30 border border-rose-500/30 rounded">❌ Traspaso denegado por Aduana Docente. El 100% del importe ha sido reembolsado en vuestra tesorería.</p>` : ''}
                             ${(st === 'RECHAZADO' && order.rejectReason) ? `<p class="text-xs text-rose-300 font-sans mt-1 mb-2 p-2 bg-rose-950/30 border border-rose-500/40 rounded"><strong>Motivo Finanzas:</strong> "${this.escapeHTML(order.rejectReason)}"</p>` : ''}
@@ -647,6 +908,10 @@ Object.assign(ui, {
                 <span class="${freeBalCart <= 0 ? 'text-rose-400 font-bold' : 'text-mars-green font-bold'}">${freeBalCart.toFixed(2)} €v</span>
             </div>
             <p id="cart-free-balance-warning" class="${total > freeBalCart ? '' : 'hidden '}text-[11px] text-amber-300 font-sans pt-1">⚠️ El pedido supera tu Saldo Libre Real. Finanzas deberá recortar partidas o esperar nuevos ingresos.</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 p-2.5 mb-4 rounded">
+            <span class="text-[11px] text-slate-300 font-sans block mb-1">💡 Exportar lista de la compra para elaborar el presupuesto (Finanzas / DOC_9):</span>
+            ${this.renderShoppingExportBar(null, true)}
         </div>
         <div class="space-y-1.5 mb-2">
             <label for="order-drive-url" class="text-xs text-mars-cyan font-bold uppercase block">Informe Técnico de Especificación (Google Drive / Docs)</label>
