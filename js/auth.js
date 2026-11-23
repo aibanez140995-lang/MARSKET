@@ -285,23 +285,32 @@ const auth = (function() {
             }
 
             if (!matchedCoId) {
-                try {
-                    const res = await fetch('/api/state', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'validate_company_code', code })
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data && data.matchedCoId) {
-                            matchedCoId = data.matchedCoId;
-                            _serverCompanyMeta = data.companyMeta;
+                for (let attempt = 0; attempt < 2 && !matchedCoId; attempt++) {
+                    networkFailed = false;
+                    try {
+                        const res = await fetch('/api/state', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'validate_company_code', code })
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data && data.matchedCoId) {
+                                matchedCoId = data.matchedCoId;
+                                _serverCompanyMeta = data.companyMeta;
+                            }
+                            break;
+                        } else if (res.status === 404 || res.status === 400 || res.status === 401 || res.status === 403) {
+                            break;
+                        } else {
+                            networkFailed = true;
                         }
-                    } else if (res.status !== 404 && res.status !== 400 && res.status !== 401 && res.status !== 403) {
+                    } catch(e) {
                         networkFailed = true;
                     }
-                } catch(e) {
-                    networkFailed = true;
+                    if (networkFailed && attempt === 0) {
+                        await new Promise(r => setTimeout(r, 600));
+                    }
                 }
             }
 
@@ -429,20 +438,34 @@ const auth = (function() {
                 let serverToken = null;
                 let serverPinStamp = null;
 
-                // 1. Verificación en servidor Zero-Trust
-                try {
-                    const res = await fetch('/api/state', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'verify_teacher_login', role, pin: pinAttempt })
-                    });
-                    if (res.ok) {
-                        const json = await res.json();
-                        teacherOk = !!json.verified;
-                        if (json.token) serverToken = json.token;
-                        if (json.pinStamp !== undefined && json.pinStamp !== null) serverPinStamp = json.pinStamp;
+                let teacherNetErr = false;
+                // 1. Verificación en servidor Zero-Trust (con 1 reintento ante micro-corte)
+                for (let attempt = 0; attempt < 2; attempt++) {
+                    teacherNetErr = false;
+                    try {
+                        const res = await fetch('/api/state', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'verify_teacher_login', role, pin: pinAttempt })
+                        });
+                        if (res.ok) {
+                            const json = await res.json();
+                            teacherOk = !!json.verified;
+                            if (json.token) serverToken = json.token;
+                            if (json.pinStamp !== undefined && json.pinStamp !== null) serverPinStamp = json.pinStamp;
+                            break;
+                        } else if (res.status === 401 || res.status === 403 || res.status === 400) {
+                            break;
+                        } else {
+                            teacherNetErr = true;
+                        }
+                    } catch(e) {
+                        teacherNetErr = true;
                     }
-                } catch(e) {}
+                    if (teacherNetErr && attempt === 0) {
+                        await new Promise(r => setTimeout(r, 600));
+                    }
+                }
 
                 // 2. Fallback local si el pin estuviera presente en memoria
                 if (!teacherOk) {
@@ -457,32 +480,48 @@ const auth = (function() {
                     } finally {
                         _internalExecutionGuard = false;
                     }
+                } else if (teacherNetErr) {
+                    ui.notify("⚠️ No se pudo conectar con el servidor para comprobar el PIN. Revisa tu conexión e inténtalo de nuevo.", "warning");
                 } else {
                     ui.notify("❌ PIN Docente incorrecto.", "error");
                     this.clear();
                 }
             } else {
                 let studentOk = false;
+                let studentNetErr = false;
                 let serverToken = null;
                 let serverAuthStamp = null;
                 const co = state.data.companies[_verifiedCoId];
                 let coName = co?.name || 'EMPRESA';
 
-                // 1. Verificación en servidor Zero-Trust
-                try {
-                    const res = await fetch('/api/state', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'verify_student_login', coId: _verifiedCoId, role, pin: pinAttempt })
-                    });
-                    if (res.ok) {
-                        const json = await res.json();
-                        studentOk = !!json.verified;
-                        if (json.companyName) coName = json.companyName;
-                        if (json.token) serverToken = json.token;
-                        if (json.authStamp !== undefined && json.authStamp !== null) serverAuthStamp = json.authStamp;
+                // 1. Verificación en servidor Zero-Trust (con 1 reintento ante micro-corte)
+                for (let attempt = 0; attempt < 2; attempt++) {
+                    studentNetErr = false;
+                    try {
+                        const res = await fetch('/api/state', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'verify_student_login', coId: _verifiedCoId, role, pin: pinAttempt })
+                        });
+                        if (res.ok) {
+                            const json = await res.json();
+                            studentOk = !!json.verified;
+                            if (json.companyName) coName = json.companyName;
+                            if (json.token) serverToken = json.token;
+                            if (json.authStamp !== undefined && json.authStamp !== null) serverAuthStamp = json.authStamp;
+                            break;
+                        } else if (res.status === 401 || res.status === 403 || res.status === 400) {
+                            break;
+                        } else {
+                            studentNetErr = true;
+                        }
+                    } catch(e) {
+                        studentNetErr = true;
                     }
-                } catch(e) {}
+                    if (studentNetErr && attempt === 0) {
+                        await new Promise(r => setTimeout(r, 600));
+                    }
+                }
 
                 // 2. Fallback local si el pin estuviera presente en memoria (o acceso VIP 0000)
                 if (!studentOk && _verifiedCoId === 'vip_reader' && role === 'VIP_READER' && pinAttempt === '0000') {
@@ -509,6 +548,8 @@ const auth = (function() {
                     } finally {
                         _internalExecutionGuard = false;
                     }
+                } else if (studentNetErr) {
+                    ui.notify("⚠️ No se pudo conectar con el servidor para comprobar el PIN. Revisa tu conexión e inténtalo de nuevo.", "warning");
                 } else {
                     ui.notify("❌ PIN de departamento incorrecto.", "error");
                     this.clear();

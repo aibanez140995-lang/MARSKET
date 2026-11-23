@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.48) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.49) ---
 
-const APP_VERSION = "2.0.48";
+const APP_VERSION = "2.0.49";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,20 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.49",
+      date: "2026-11-23",
+      title: "Plan de Choque de Conectividad y Rendimiento en Aula Masiva",
+      items: [
+        "Optimización del Servidor (SQLite + PHP): Eliminada la lectura completa de la base de datos en cada petición HTTP y ampliado busy_timeout a 10 s; al guardar un alumno solo se actualiza su propia empresa en company_state.",
+        "Reducción >90% del Tráfico de Alumnos: GET /api/state ya no envía el estudio impreso A3 ni el array duplicado officialNews al alumnado, y POST /api/state envía únicamente los datos de la empresa del alumno (~50 KB en lugar de varios MB).",
+        "Fin del Efecto Dominó entre Startups: Nuevo marcador sharedUpdatedAt para que las acciones internas de una startup no obliguen a las otras 29 empresas a redescargar el estado global.",
+        "Tope 8 MB y Red Resiliente: Ampliado el límite POST a 8 MB para Coordinación, latidos escalonados (18-24 s con desfase aleatorio), umbral de 3 fallos antes del aviso offline y reintento automático en el login."
+      ],
+      highlights: [
+        { type: "RED & RENDIMIENTO", text: "Optimización masiva de red, servidor SQLite y login para aulas concurrentes." }
+      ]
+    },
     {
       version: "2.0.48",
       date: "2026-11-23",

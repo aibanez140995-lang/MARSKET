@@ -1972,6 +1972,7 @@ const state = {
             .filter(pe => pe && pe.id && !allDeletedPrintEditionIds.has(String(pe.id)));
         merged.printAdLibrary = mergeArraysGlobal(merged.printAdLibrary, localData.printAdLibrary)
             .filter(ad => ad && ad.id);
+        merged.sharedUpdatedAt = Math.max(Number(serverData.sharedUpdatedAt) || 0, Number(localData.sharedUpdatedAt) || 0);
 
         merged.pressReleases = mergeArraysGlobal(merged.pressReleases, localData.pressReleases)
             .filter(pr => pr && !allDeletedCompanyIds.has(String(pr.coId)) && !allDeletedCompanyIds.has(String(pr.authorCoId)) && !isStaleTestArtifact(pr.authorCoId || pr.coId, pr));
@@ -2518,12 +2519,15 @@ const state = {
 
         if (!this._listenersAttached) {
             this._listenersAttached = true;
+            if (!this._pollIntervalMs) {
+                this._pollIntervalMs = 18000 + Math.floor(Math.random() * 6000);
+            }
             if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
             this.heartbeatTimer = setInterval(() => {
                 if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
                     this.checkFastVersion();
                 }
-            }, 12000);
+            }, this._pollIntervalMs);
 
             if (typeof document !== 'undefined') {
                 document.addEventListener('visibilitychange', () => {
@@ -2578,12 +2582,15 @@ const state = {
 
     resumePolling() {
         this.pausePolling = false;
+        if (!this._pollIntervalMs) {
+            this._pollIntervalMs = 18000 + Math.floor(Math.random() * 6000);
+        }
         if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
         this.heartbeatTimer = setInterval(() => {
             if (!this.pausePolling && typeof document !== 'undefined' && document.visibilityState === 'visible') {
                 this.checkFastVersion();
             }
-        }, 12000);
+        }, this._pollIntervalMs);
     },
 
     async checkFastVersion() {
@@ -2632,12 +2639,17 @@ const state = {
                 this.lastCompanyVersion = remoteCompanyVersion;
                 const remoteGlobalVersion = Number(info.globalVersion || 0);
                 const localGlobalVersion = Number(this.data.version || 0);
+                const remoteSharedUpdated = Number(info.sharedUpdatedAt || 0);
+                const localSharedUpdated = Number(this.data.sharedUpdatedAt || 0);
+                const hasSharedUpdate = remoteSharedUpdated > 0
+                    ? (remoteSharedUpdated > localSharedUpdated)
+                    : (remoteGlobalVersion > 0 && remoteGlobalVersion > localGlobalVersion);
 
-                // Si la versión global, de empresa o la configuración docente es posterior a la local, sincronizar estado completo
+                // Sincronizar estado completo solo si cambió esta empresa, la configuración docente o los datos compartidos
                 if (
                     remoteUpdated > localUpdated ||
                     configUpdated > localConfigUpdated ||
-                    (remoteGlobalVersion > 0 && remoteGlobalVersion > localGlobalVersion) ||
+                    hasSharedUpdate ||
                     (prevCompanyVersion > 0 && remoteCompanyVersion > prevCompanyVersion) ||
                     !this.lastETag
                 ) {
@@ -2649,7 +2661,7 @@ const state = {
             }
         } catch (e) {
             this.consecutiveNetworkFailures++;
-            if (this.consecutiveNetworkFailures >= 2) {
+            if (this.consecutiveNetworkFailures >= 3) {
                 this.isCloudOnline = false;
                 this.setOfflineContainment(true);
             }
@@ -3484,6 +3496,9 @@ const state = {
                     const merged = this.mergeData(this.migrate(json), this.data);
                     this.data = merged;
                     this.data.version = json.version || this.data.version;
+                    if (json.sharedUpdatedAt) {
+                        this.data.sharedUpdatedAt = Math.max(Number(this.data.sharedUpdatedAt) || 0, Number(json.sharedUpdatedAt) || 0);
+                    }
                     this.saveLocalOnly();
                     this.isCloudOnline = true;
 
@@ -3519,7 +3534,7 @@ const state = {
             }
             this.isCloudOnline = false;
             this.consecutiveNetworkFailures++;
-            if (this.consecutiveNetworkFailures >= 2 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+            if (this.consecutiveNetworkFailures >= 3 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
                 this.setOfflineContainment(true);
             }
         } finally { 
@@ -3742,6 +3757,34 @@ const state = {
         this.pushToCloud(true);
     },
 
+    _buildPushPayload() {
+        const nextVersion = (Number(this.data.version) || 0) + 1;
+        if (this.user && !this.user.admin && !this.user.isVip && this.user.coId) {
+            const cid = this.user.coId;
+            const co = this.data.companies?.[cid];
+            return JSON.parse(JSON.stringify({
+                version: nextVersion,
+                coId: cid,
+                lastUpdated: this.data.lastUpdated || Date.now(),
+                companies: co ? { [cid]: co } : {},
+                b2bMarket: Array.isArray(this.data.b2bMarket) ? this.data.b2bMarket : [],
+                b2bContracts: Array.isArray(this.data.b2bContracts) ? this.data.b2bContracts : [],
+                pendingCustom: Array.isArray(this.data.pendingCustom) ? this.data.pendingCustom : [],
+                suggestions: Array.isArray(this.data.suggestions) ? this.data.suggestions : [],
+                suggestionsToAlex: Array.isArray(this.data.suggestionsToAlex) ? this.data.suggestionsToAlex : [],
+                securityIncidents: Array.isArray(this.data.securityIncidents) ? this.data.securityIncidents : [],
+                dismissedNotificationIds: Array.isArray(this.data.dismissedNotificationIds) ? this.data.dismissedNotificationIds : []
+            }));
+        }
+        const fullPayload = JSON.parse(JSON.stringify(this.data));
+        delete fullPayload.officialNews;
+        if (this.user?.coId) {
+            fullPayload.coId = this.user.coId;
+        }
+        fullPayload.version = nextVersion;
+        return fullPayload;
+    },
+
     async pushWithBackoff(payload, attempt = 0) {
         const MAX_RETRIES = 4;
         const token = this.user?.authToken || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('marsket_token') : '') || '';
@@ -3762,12 +3805,7 @@ const state = {
             
             // Forzar descarga real sin ETag para reconciliar versión y datos más recientes antes de reintentar
             await this.fetchFromCloud(true);
-            const newPayload = JSON.parse(JSON.stringify(this.data));
-            if (this.user?.coId) {
-                newPayload.coId = this.user.coId;
-            }
-            newPayload.version = (Number(this.data.version) || 0) + 1;
-            return this.pushWithBackoff(newPayload, attempt + 1);
+            return this.pushWithBackoff(this._buildPushPayload(), attempt + 1);
         }
         return res;
     },
@@ -3800,17 +3838,16 @@ const state = {
             try {
                 do {
                     this._pushDirty = false;
-                    const payload = JSON.parse(JSON.stringify(this.data));
-                    if (this.user?.coId) {
-                        payload.coId = this.user.coId;
-                    }
-                    payload.version = (Number(this.data.version) || 0) + 1;
+                    const payload = this._buildPushPayload();
                     const res = await this.pushWithBackoff(payload);
 
                     if (res.ok) {
                         const json = await res.json().catch(() => null);
                         if (json && json.version) {
                             this.data.version = json.version;
+                            if (json.sharedUpdatedAt) {
+                                this.data.sharedUpdatedAt = Math.max(Number(this.data.sharedUpdatedAt) || 0, Number(json.sharedUpdatedAt) || 0);
+                            }
                             this.saveLocalOnly();
                         }
                         const etag = res.headers.get('ETag') || (json && json.etag);
@@ -3825,6 +3862,12 @@ const state = {
                         this.consecutiveNetworkFailures = 0;
                         if (this.isOfflineContained) this.setOfflineContainment(false);
                         finalSuccess = true;
+                    } else if (res.status === 413) {
+                        this._pushDirty = false;
+                        finalSuccess = false;
+                        if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
+                            ui.notify("⚠️ El archivo o imagen supera el máximo permitido por el servidor. Reduce su tamaño e inténtalo de nuevo.", "warning");
+                        }
                     } else if (res.status === 409) {
                         this._pushDirty = false;
                         shouldRenderConflict = true;
@@ -3861,7 +3904,7 @@ const state = {
                 }
                 this.isCloudOnline = false;
                 this.consecutiveNetworkFailures++;
-                if (this.consecutiveNetworkFailures >= 2 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+                if (this.consecutiveNetworkFailures >= 3 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
                     this.setOfflineContainment(true);
                 }
                 finalSuccess = false;

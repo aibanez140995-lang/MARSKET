@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.48
+// Versión: v2.0.49
 
 declare(strict_types=1);
 
@@ -21,14 +21,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// 2. Control de Tamaño de Carga (Tope 2 MB)
-$maxBytes = 2 * 1024 * 1024;
+// 2. Control de Tamaño de Carga (Tope 8 MB para soportar ediciones A3 de Coordinación)
+$maxBytes = 8 * 1024 * 1024;
 $rawInput = file_get_contents('php://input', false, null, 0, $maxBytes + 1);
 if ($rawInput !== false && strlen($rawInput) > $maxBytes) {
     http_response_code(413);
     echo json_encode([
         'error' => 'PAYLOAD_TOO_LARGE',
-        'message' => 'El cuerpo de la petición excede el límite máximo permitido de 2 MB.'
+        'message' => 'El cuerpo de la petición excede el límite máximo permitido de 8 MB.'
     ], JSON_UNESCAPED_UNICODE);
     exit;
 }
@@ -324,6 +324,10 @@ function sanitizeStateForClient(array $state, bool $includeContestDraft = false,
     if (isset($state['finalContest']) && is_array($state['finalContest'])) {
         $state['finalContest'] = redactFinalContestForClient($state['finalContest'], $includeContestDraft);
     }
+    if (!$includeContestDraft) {
+        unset($state['printEditions'], $state['printAdLibrary'], $state['deletedPrintEditionIds']);
+    }
+    unset($state['officialNews']);
     return $state;
 }
 
@@ -562,7 +566,6 @@ try {
                         'version' => $decoded['version'] ?? 1,
                         'lastUpdated' => $decoded['lastUpdated'] ?? 0,
                         'news' => $vipNews,
-                        'officialNews' => $vipNews,
                         'deletedNewsIds' => array_values(is_array($decoded['deletedNewsIds'] ?? null) ? $decoded['deletedNewsIds'] : []),
                         'deletedOfficialNewsIds' => array_values(is_array($decoded['deletedOfficialNewsIds'] ?? null) ? $decoded['deletedOfficialNewsIds'] : []),
                         'printEditions' => [],
@@ -1076,13 +1079,20 @@ try {
                 if (isset($currentState['deletedCompanyIds'])) {
                     $payload['deletedCompanyIds'] = $currentState['deletedCompanyIds'];
                 }
-                // 2. Prohibir a alumnos alterar el catálogo oficial
+                // 2. Prohibir a alumnos alterar el catálogo oficial ni colecciones globales de evaluación/concurso
                 if (isset($currentState['catalog'])) {
                     $payload['catalog'] = $currentState['catalog'];
                 }
+                foreach (['pressReleases', 'finalContest', 'telemetry', 'loginStats'] as $globalROKey) {
+                    if (isset($currentState[$globalROKey])) {
+                        $payload[$globalROKey] = $currentState[$globalROKey];
+                    }
+                }
+                $dirtyCompanyIds = [];
                 // 3. Si el alumno tiene empresa fijada, aislar el resto de empresas competidoras y proteger campos docentes propios
                 $studentCoId = $auth['coId'] ?? null;
                 if ($studentCoId) {
+                    $dirtyCompanyIds[(string)$studentCoId] = true;
                     // Preservar solicitudes I+D especiales (pendingCustom) de otras startups y filtrar eliminadas
                     $delPcSet = array_flip($payload['deletedPendingCustomIds'] ?? []);
                     $currPc = is_array($currentState['pendingCustom'] ?? null) ? $currentState['pendingCustom'] : [];
@@ -1268,6 +1278,7 @@ try {
                                 ]);
                                 $payload['companies'][$sellerCid]['notifications'] = array_slice($sellerNotifs, 0, 150);
                                 $payload['companies'][$sellerCid]['updatedAt'] = $nowB2B;
+                                $dirtyCompanyIds[$sellerCid] = true;
                             }
                         }
 
@@ -1288,6 +1299,7 @@ try {
                                 }
                                 if ($changedComp) {
                                     $oCo['updatedAt'] = $nowB2B;
+                                    $dirtyCompanyIds[(string)$oCid] = true;
                                 }
                             }
                             unset($oCo);
@@ -1515,23 +1527,29 @@ try {
                 exit;
             }
 
+            $nowMs = round(microtime(true) * 1000);
+            $prevSharedUpdatedAt = (int)($currentState['sharedUpdatedAt'] ?? $currentState['lastUpdated'] ?? 0);
+            $sharedChanged = ($isTeacher || $isRestoreBackup);
+            if (!$sharedChanged) {
+                foreach (['b2bMarket', 'b2bContracts', 'pendingCustom', 'suggestions', 'suggestionsToAlex', 'securityIncidents'] as $sharedKey) {
+                    $prevJson = json_encode($currentState[$sharedKey] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    $nextJson = json_encode($payload[$sharedKey] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    if ($prevJson !== $nextJson) {
+                        $sharedChanged = true;
+                        break;
+                    }
+                }
+            }
+            $payload['sharedUpdatedAt'] = $sharedChanged ? $nowMs : $prevSharedUpdatedAt;
             $payload['version'] = $serverVersion + 1;
-            $payload['lastUpdated'] = round(microtime(true) * 1000);
+            $payload['lastUpdated'] = $nowMs;
             $jsonString = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
             $saveStmt = $pdo->prepare("INSERT OR REPLACE INTO state (id, data, updated_at) VALUES ('current', :data, CURRENT_TIMESTAMP)");
             $saveStmt->execute([':data' => $jsonString]);
 
-            // Sincronizar también la tabla company_state dentro de la misma transacción
+            // Sincronizar la tabla company_state dentro de la misma transacción (solo empresas modificadas cuando guarda un alumno)
             if (!empty($payload['companies']) && is_array($payload['companies'])) {
-                $pdo->exec("
-                    CREATE TABLE IF NOT EXISTS company_state (
-                        company_id VARCHAR(100) PRIMARY KEY,
-                        data LONGTEXT NOT NULL,
-                        version INT NOT NULL DEFAULT 1,
-                        updated_at BIGINT NOT NULL
-                    )
-                ");
                 if ($isRestoreBackup) {
                     $pdo->exec("DELETE FROM company_state");
                 }
@@ -1540,12 +1558,17 @@ try {
                     VALUES (:cid, :data, :version, :updated_at)
                 ");
                 $syncVer = (int)$payload['version'];
-                foreach ($payload['companies'] as $compCid => $compData) {
+                $syncTargets = (!$isTeacher && !$isRestoreBackup && !empty($dirtyCompanyIds))
+                    ? array_keys($dirtyCompanyIds)
+                    : array_keys($payload['companies']);
+                foreach ($syncTargets as $compCid) {
+                    if (!isset($payload['companies'][$compCid]) || !is_array($payload['companies'][$compCid])) continue;
+                    $compData = $payload['companies'][$compCid];
                     $coStmt->execute([
                         ':cid' => $compCid,
                         ':data' => json_encode($compData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                         ':version' => $syncVer,
-                        ':updated_at' => (int)($compData['updatedAt'] ?? $payload['lastUpdated'] ?? round(microtime(true) * 1000))
+                        ':updated_at' => (int)($compData['updatedAt'] ?? $payload['lastUpdated'] ?? $nowMs)
                     ]);
                 }
             }
@@ -1560,6 +1583,7 @@ try {
                 'success' => true,
                 'version' => $payload['version'],
                 'configUpdatedAt' => $savedCfgUpdated,
+                'sharedUpdatedAt' => $payload['sharedUpdatedAt'],
                 'etag' => $savedETag
             ]);
             exit;
@@ -1583,15 +1607,6 @@ try {
             exit;
         }
 
-        $pdo->exec("
-            CREATE TABLE IF NOT EXISTS company_state (
-                company_id VARCHAR(100) PRIMARY KEY,
-                data LONGTEXT NOT NULL,
-                version INT NOT NULL DEFAULT 1,
-                updated_at BIGINT NOT NULL
-            )
-        ");
-
         $stmt = $pdo->prepare("SELECT version, updated_at FROM company_state WHERE company_id = :cid");
         $stmt->execute([':cid' => $cid]);
         $row = $stmt->fetch();
@@ -1614,17 +1629,19 @@ try {
         $configUpdatedAt = 0;
         $globalVersion = 1;
         $globalUpdatedAt = 0;
+        $sharedUpdatedAt = 0;
         try {
-            $stmtCfg = $pdo->query("SELECT json_extract(data, '$.config.updatedAt') AS cu, json_extract(data, '$.version') AS gv, json_extract(data, '$.lastUpdated') AS gu FROM state WHERE id = 'current'");
+            $stmtCfg = $pdo->query("SELECT json_extract(data, '$.config.updatedAt') AS cu, json_extract(data, '$.version') AS gv, json_extract(data, '$.lastUpdated') AS gu, json_extract(data, '$.sharedUpdatedAt') AS su FROM state WHERE id = 'current'");
             $cRow = $stmtCfg ? $stmtCfg->fetch() : null;
             if ($cRow) {
                 $configUpdatedAt = (int)($cRow['cu'] ?? 0);
                 $globalVersion = (int)($cRow['gv'] ?? 1);
                 $globalUpdatedAt = (int)($cRow['gu'] ?? 0);
+                $sharedUpdatedAt = (int)($cRow['su'] ?? 0);
             }
         } catch (\Exception $e) {}
 
-        $serverETag = 'W/"co-' . $cid . '-' . $version . '-' . $updatedAt . '-' . $configUpdatedAt . '-g' . $globalVersion . '"';
+        $serverETag = 'W/"co-' . $cid . '-' . $version . '-' . $updatedAt . '-' . $configUpdatedAt . '-s' . $sharedUpdatedAt . '"';
         $clientETag = $_SERVER['HTTP_IF_NONE_MATCH'] ?? '';
 
         if ($clientETag === $serverETag) {
@@ -1646,6 +1663,7 @@ try {
             'configUpdatedAt' => $configUpdatedAt,
             'globalVersion' => $globalVersion,
             'globalUpdatedAt' => $globalUpdatedAt,
+            'sharedUpdatedAt' => $sharedUpdatedAt,
             'etag' => $serverETag
         ], JSON_UNESCAPED_UNICODE);
         exit;

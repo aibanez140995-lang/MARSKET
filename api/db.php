@@ -155,47 +155,47 @@ function getDatabaseConnection(): PDO {
     $pdo = new PDO('sqlite:' . $dbPath, null, null, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_TIMEOUT => 5
+        PDO::ATTR_TIMEOUT => 10
     ]);
 
     // Concurrencia crítica: Pragmas para soporte de 180 alumnos concurrentes en CDMON
-    $pdo->exec("PRAGMA journal_mode = WAL;");
-    $pdo->exec("PRAGMA busy_timeout = 5000;");
+    $pdo->exec("PRAGMA busy_timeout = 10000;");
+    if ($isNewDb) { $pdo->exec("PRAGMA journal_mode = WAL;"); $pdo->exec("PRAGMA wal_autocheckpoint = 1000;"); }
     $pdo->exec("PRAGMA synchronous = NORMAL;");
     $pdo->exec("PRAGMA foreign_keys = ON;");
     $pdo->exec("PRAGMA temp_store = MEMORY;");
-    $pdo->exec("PRAGMA wal_autocheckpoint = 1000;");
+    
+    if ($isNewDb) {
+        // Auto-creación de tablas solo si la BD es nueva
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS state (
+                id TEXT PRIMARY KEY,
+                data TEXT NOT NULL,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS company_state (
+                company_id VARCHAR(100) PRIMARY KEY,
+                data LONGTEXT NOT NULL,
+                version INT NOT NULL DEFAULT 1,
+                updated_at BIGINT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS moderation_alerts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                team_id TEXT,
+                student_alias TEXT,
+                offending_text TEXT,
+                matched_term TEXT,
+                timestamp TEXT
+            );
+        ");
+    }
 
-    // Auto-creación de tablas si no existen
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS state (
-            id TEXT PRIMARY KEY,
-            data TEXT NOT NULL,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS company_state (
-            company_id VARCHAR(100) PRIMARY KEY,
-            data LONGTEXT NOT NULL,
-            version INT NOT NULL DEFAULT 1,
-            updated_at BIGINT NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS moderation_alerts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            team_id TEXT,
-            student_alias TEXT,
-            offending_text TEXT,
-            matched_term TEXT,
-            timestamp TEXT
-        );
-    ");
-
-    // Inicialización del estado base virgen si la tabla state está vacía
-    $stmt = $pdo->query("SELECT COUNT(*) as count FROM state WHERE id = 'current'");
-    $row = $stmt->fetch();
-    if (!$row || (int)$row['count'] === 0) {
+    // Inicialización del estado base virgen o migración puntual sin leer todo el JSON en cada petición
+    $stmt = $pdo->query("SELECT json_extract(data, '$.config.catalogBaselineVersion') AS cat_ver FROM state WHERE id = 'current'");
+    $row = $stmt ? $stmt->fetch() : null;
+    if (!$row) {
         seedInitialState($pdo);
-    } else {
-        // Auto-migración atómica del catálogo oficial a v1.1.31 si la base ya existe
+    } elseif ((int)($row['cat_ver'] ?? 0) < 1131) {
         $stateStmt = $pdo->query("SELECT data FROM state WHERE id = 'current'");
         $stateRow = $stateStmt->fetch();
         if ($stateRow && !empty($stateRow['data'])) {
