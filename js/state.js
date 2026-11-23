@@ -3678,17 +3678,49 @@ const state = {
         this.saveLocalOnly();
     },
 
+    _stripHeavyImagesForLocal(obj) {
+        if (!obj || typeof obj !== 'object') return obj;
+        if (Array.isArray(obj)) {
+            return obj.map(item => this._stripHeavyImagesForLocal(item));
+        }
+        const out = {};
+        for (const k in obj) {
+            if (!Object.prototype.hasOwnProperty.call(obj, k)) continue;
+            const v = obj[k];
+            if (typeof v === 'string' && v.startsWith('data:image/') && v.length > 8000) {
+                out[k] = '';
+            } else if (v && typeof v === 'object') {
+                out[k] = this._stripHeavyImagesForLocal(v);
+            } else {
+                out[k] = v;
+            }
+        }
+        return out;
+    },
+
     saveLocalOnly() {
         if (this.user?.isVip) return;
         try {
             const clean = this.sanitizeForLocalStorage(this.data);
-            localStorage.setItem(this.storageKey, JSON.stringify(clean));
+            const rawStr = JSON.stringify(clean);
+            if (rawStr.length > 3200000) {
+                const lite = this._stripHeavyImagesForLocal(clean);
+                localStorage.setItem(this.storageKey, JSON.stringify(lite));
+            } else {
+                localStorage.setItem(this.storageKey, rawStr);
+            }
         } catch (e) {
-            console.error("Aviso: almacenamiento local lleno o restringido:", e);
-            if (!this._warnedStorageQuota) {
-                this._warnedStorageQuota = true;
-                if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
-                    ui.notify("⚠️ Espacio local del navegador lleno: usa conexión estable al servidor para no perder trabajo.", "warning");
+            try {
+                const clean = this.sanitizeForLocalStorage(this.data);
+                const lite = this._stripHeavyImagesForLocal(clean);
+                localStorage.setItem(this.storageKey, JSON.stringify(lite));
+            } catch (e2) {
+                console.error("Aviso: almacenamiento local lleno o restringido:", e2);
+                if (!this._warnedStorageQuota) {
+                    this._warnedStorageQuota = true;
+                    if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
+                        ui.notify("⚠️ Espacio local del navegador lleno: usa conexión estable al servidor para no perder trabajo.", "warning");
+                    }
                 }
             }
         }

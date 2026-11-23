@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.47) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.48) ---
 
-const APP_VERSION = "2.0.47";
+const APP_VERSION = "2.0.48";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,18 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.48",
+      date: "2026-11-23",
+      title: "Fix Almacenamiento Local (Cuota 5 MB) y Compresión de Imágenes Optimizada",
+      items: [
+        "Caché Local Inteligente (state.js): Al superar 3,2 MB o producirse un QuotaExceededError en localStorage, se guarda automáticamente una copia ligera sin cadenas Base64 pesadas de imágenes, manteniendo las fotos intactas en memoria y en el servidor CDMON.",
+        "Compresión de Imágenes Optimizada: Redimensionado máximo ajustado a 720 px (calidad 0.75 WebP/JPEG) para reducir 3–4× el peso de catálogo, prensa y anuncios."
+      ],
+      highlights: [
+        { type: "RENDIMIENTO", text: "Solucionado el aviso de almacenamiento local lleno." }
+      ]
+    },
     {
       version: "2.0.47",
       date: "2026-11-23",

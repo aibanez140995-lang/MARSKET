@@ -2967,7 +2967,7 @@ Object.assign(ui, {
         reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
-                const maxDim = 1200;
+                const maxDim = 720;
                 let w = img.width;
                 let h = img.height;
                 if (w > maxDim || h > maxDim) {
@@ -2984,7 +2984,7 @@ Object.assign(ui, {
                 canvas.height = h;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, w, h);
-                const compressedDataUrl = canvas.toDataURL('image/webp', 0.82) || canvas.toDataURL('image/jpeg', 0.82);
+                const compressedDataUrl = canvas.toDataURL('image/webp', 0.75) || canvas.toDataURL('image/jpeg', 0.75);
                 
                 const hiddenInput = document.getElementById(targetHiddenId);
                 if (hiddenInput) hiddenInput.value = compressedDataUrl;
