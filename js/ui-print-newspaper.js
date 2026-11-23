@@ -571,7 +571,7 @@ Object.assign(ui, {
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
                             <label for="print-slot-img-file" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Subir Imagen desde Equipo (Opcional)</label>
-                            <input type="file" id="print-slot-img-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'print-slot-img', 'print-slot-img-preview'); const h=document.getElementById('print-slot-img-height'); if(h && h.value==='0') h.value='35';" class="w-full text-xs text-slate-300 file:mr-2 file:py-1.5 file:px-3 file:border-0 file:text-xs file:font-black file:uppercase file:bg-amber-400 file:text-black cursor-pointer">
+                            <input type="file" id="print-slot-img-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'print-slot-img', 'print-slot-img-preview', null, { maxDim: 1600, quality: 0.92, keepOriginalUnderBytes: 420 * 1024 }); const h=document.getElementById('print-slot-img-height'); if(h && h.value==='0') h.value='35';" class="w-full text-xs text-slate-300 file:mr-2 file:py-1.5 file:px-3 file:border-0 file:text-xs file:font-black file:uppercase file:bg-amber-400 file:text-black cursor-pointer">
                         </div>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
@@ -749,17 +749,31 @@ Object.assign(ui, {
                     <label for="print-ad-text" class="text-[11px] text-slate-300 font-bold uppercase block mb-1">Texto Publicitario (Opcional)</label>
                     <textarea id="print-ad-text" rows="2" class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-white">${this.escapeHTML(ad.bodyText || '')}</textarea>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div>
-                        <label for="print-ad-height" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Tamaño del Anuncio (Alto en papel)</label>
+                        <label for="print-ad-height" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Alto Máx. Anuncio</label>
                         <select id="print-ad-height" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
-                            ${[
-                                { mm: 14, label: '14 mm (Compacto)' },
-                                { mm: 18, label: '18 mm (Estándar)' },
-                                { mm: 24, label: '24 mm (Mediano)' },
-                                { mm: 32, label: '32 mm (Grande)' },
-                                { mm: 42, label: '42 mm (Destacado)' }
-                            ].map(o => `<option value="${o.mm}" ${Number(ad.adHeightMm || 18) === o.mm ? 'selected' : ''}>${o.label}</option>`).join('')}
+                            ${(() => {
+                                const presets = [
+                                    { mm: 14, label: '14 mm (Compacto)' },
+                                    { mm: 18, label: '18 mm (Estándar)' },
+                                    { mm: 24, label: '24 mm (Mediano)' },
+                                    { mm: 32, label: '32 mm (Grande)' },
+                                    { mm: 42, label: '42 mm (Destacado)' },
+                                    { mm: 55, label: '55 mm (Faldón XL)' },
+                                    { mm: 70, label: '70 mm (Cuarto pág.)' },
+                                    { mm: 90, label: '90 mm (Media pág.)' },
+                                    { mm: 110, label: '110 mm (Gran formato)' },
+                                    { mm: 130, label: '130 mm (Cartel A4)' },
+                                    { mm: 150, label: '150 mm (Gigante)' }
+                                ];
+                                const curH = Number(ad.adHeightMm || 18);
+                                if (!presets.some(o => o.mm === curH)) {
+                                    presets.push({ mm: curH, label: `${curH} mm (Personalizado)` });
+                                    presets.sort((a, b) => a.mm - b.mm);
+                                }
+                                return presets.map(o => `<option value="${o.mm}" ${curH === o.mm ? 'selected' : ''}>${o.label}</option>`).join('');
+                            })()}
                         </select>
                     </div>
                     <div>
@@ -769,18 +783,25 @@ Object.assign(ui, {
                             <option value="banner" ${ad.adLayout === 'banner' ? 'selected' : ''}>Banner imagen ancho completo</option>
                         </select>
                     </div>
+                    <div>
+                        <label for="print-ad-fit" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Encuadre Imagen</label>
+                        <select id="print-ad-fit" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
+                            <option value="contain" ${(ad.adFit || 'contain') === 'contain' ? 'selected' : ''}>Completa (Ancho hasta 192 mm)</option>
+                            <option value="cover" ${ad.adFit === 'cover' ? 'selected' : ''}>Rellenar caja (Cover)</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="p-2.5 bg-black/50 border border-slate-800 rounded space-y-2">
                     <label class="text-[11px] text-amber-300 font-bold uppercase block font-mono">🖼️ Subir Foto / Creatividad del Anuncio (Opcional)</label>
                     <p class="text-[11px] text-cyan-300 font-mono bg-cyan-950/35 border border-cyan-500/30 px-2 py-1 rounded">
-                        📐 Tamaño en papel A3: <strong>18×18 mm</strong> (logo cuadrado) hasta <strong>190×42 mm</strong> (banner ancho). Recomendado: mín. <strong>400×400 px</strong> o <strong>1200×300 px</strong> para banner.
+                        📐 Papel A3: ancho completo hasta <strong>192 mm</strong> y alto hasta <strong>160 mm</strong> · Subida en alta definición (hasta 1600 px).
                     </p>
-                    <input type="file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'print-ad-img-data', 'print-ad-img-preview')" class="w-full text-xs text-slate-300">
-                    <input type="url" id="print-ad-img-url" value="${(ad.imageUrl && ad.imageUrl.startsWith('http')) ? this.escapeAttr(ad.imageUrl) : ''}" oninput="ui.previewNanoBananaUrl(this.value, 'print-ad-img-preview')" placeholder="O pega URL de imagen..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
+                    <input type="file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'print-ad-img-data', 'print-ad-img-preview', 'print-ad-img-url', { maxDim: 1600, quality: 0.92, keepOriginalUnderBytes: 420 * 1024 })" class="w-full text-xs text-slate-300 file:mr-2 file:py-1.5 file:px-3 file:border-0 file:text-xs file:font-black file:uppercase file:bg-amber-400 file:text-black cursor-pointer">
+                    <input type="url" id="print-ad-img-url" value="${(ad.imageUrl && /^https?:\/\//i.test(ad.imageUrl)) ? this.escapeAttr(ad.imageUrl) : ''}" oninput="const h=document.getElementById('print-ad-img-data'); if(h) h.value=''; ui.previewNanoBananaUrl(this.value, 'print-ad-img-preview')" placeholder="O pega URL de imagen / Google Drive..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
                     <input type="hidden" id="print-ad-img-data" value="${this.escapeAttr(ad.imageUrl || '')}">
                     <div id="print-ad-img-preview" class="${ad.imageUrl ? '' : 'hidden'}">
-                        ${ad.imageUrl ? `<img src="${this.escapeAttr(ad.imageUrl)}" alt="Vista previa anuncio" class="max-h-28 w-full object-contain border border-amber-400/50 bg-white p-1">` : ''}
+                        ${ad.imageUrl ? `<img src="${this.escapeAttr(this.resolvePrintImageUrl(ad.imageUrl, false))}" alt="Vista previa anuncio" class="max-h-36 w-full object-contain border border-amber-400/50 bg-white p-1">` : ''}
                     </div>
                 </div>
             </div>
@@ -810,7 +831,7 @@ Object.assign(ui, {
         if (sloganEl) sloganEl.value = co.slogan || `${co.name} — Innovación Aeroespacial`;
         if (textEl) textEl.value = `Startup oficial de Clase ${co.classGroup || 'A'} • Programa MARS-KET 2.0.`;
         if (imgEl && !imgEl.value && co.logo) {
-            imgEl.value = this.getDirectDriveImageUrl ? this.getDirectDriveImageUrl(co.logo) : co.logo;
+            imgEl.value = this.resolvePrintImageUrl(co.logo, false);
         }
         const req = this.getPendingPrintAdRequests().find(r => r.coId === cid);
         if (doc12Box) {
@@ -842,6 +863,7 @@ Object.assign(ui, {
             imageUrl: ad.imageUrl || '',
             adHeightMm: Number(ad.adHeightMm || 18),
             adLayout: ad.adLayout || 'card',
+            adFit: ad.adFit || 'contain',
             updatedAt: Date.now()
         };
         const idx = state.data.printAdLibrary.findIndex(x => x && String(x.id) === libId);
@@ -857,15 +879,26 @@ Object.assign(ui, {
         setVal('print-ad-company', item.coId || '');
         setVal('print-ad-slogan', item.slogan || '');
         setVal('print-ad-text', item.bodyText || '');
-        setVal('print-ad-height', String(item.adHeightMm || 18));
+        const hEl = document.getElementById('print-ad-height');
+        if (hEl) {
+            const hVal = String(item.adHeightMm || 18);
+            if (!Array.from(hEl.options).some(o => o.value === hVal)) {
+                const opt = document.createElement('option');
+                opt.value = hVal;
+                opt.textContent = `${hVal} mm (Personalizado)`;
+                hEl.appendChild(opt);
+            }
+            hEl.value = hVal;
+        }
         setVal('print-ad-layout', item.adLayout || 'card');
+        setVal('print-ad-fit', item.adFit || 'contain');
         setVal('print-ad-img-data', item.imageUrl || '');
-        setVal('print-ad-img-url', (item.imageUrl && item.imageUrl.startsWith('http')) ? item.imageUrl : '');
+        setVal('print-ad-img-url', (item.imageUrl && /^https?:\/\//i.test(item.imageUrl)) ? item.imageUrl : '');
         const prev = document.getElementById('print-ad-img-preview');
         if (prev) {
             if (item.imageUrl) {
                 prev.classList.remove('hidden');
-                prev.innerHTML = `<img src="${this.escapeAttr(item.imageUrl)}" alt="Vista previa anuncio" class="max-h-28 w-full object-contain border border-amber-400/50 bg-white p-1">`;
+                prev.innerHTML = `<img src="${this.escapeAttr(this.resolvePrintImageUrl(item.imageUrl, false))}" alt="Vista previa anuncio" class="max-h-36 w-full object-contain border border-amber-400/50 bg-white p-1">`;
             } else {
                 prev.classList.add('hidden');
                 prev.innerHTML = '';
@@ -970,6 +1003,7 @@ Object.assign(ui, {
         ad.imageUrl = finalImg;
         ad.adHeightMm = parseInt(document.getElementById('print-ad-height')?.value || '18', 10) || 18;
         ad.adLayout = document.getElementById('print-ad-layout')?.value || 'card';
+        ad.adFit = document.getElementById('print-ad-fit')?.value || 'contain';
         ad.campId = document.getElementById('print-ad-camp-id')?.value || '';
         ad.actId = document.getElementById('print-ad-act-id')?.value || '';
         ed.updatedAt = Date.now();
@@ -1674,7 +1708,7 @@ Object.assign(ui, {
         const ad = ed?.pages?.[pageIdx]?.adSlot;
         if (!ad) return;
         const cur = Number(ad.adHeightMm || 18);
-        ad.adHeightMm = Math.max(12, Math.min(60, cur + deltaMm));
+        ad.adHeightMm = Math.max(12, Math.min(160, cur + deltaMm));
         ed.updatedAt = Date.now();
         state.save();
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
@@ -1985,30 +2019,36 @@ Object.assign(ui, {
             const adHeightMm = Number(ad.adHeightMm || 18);
             const isActiveAd = Boolean(ad.companyName || ad.imageUrl || ad.slogan || ad.bodyText);
             const adImgSrc = ad.imageUrl ? this.resolvePrintImageUrl(ad.imageUrl, forPrint) : '';
+            const adFit = ad.adFit === 'cover' ? 'cover' : 'contain';
+            const adSizeTag = !forPrint ? ` (${adHeightMm} mm)` : '';
             const adBtn = !forPrint ? `
                 <div style="position:absolute;top:2px;right:2px;z-index:20;display:flex;align-items:center;gap:2px;background:rgba(250,248,245,0.95);border:1px solid #cbd5e1;padding:2px;">
                     ${isActiveAd ? `
-                        <button type="button" onclick="ui.adjustPrintAdHeight(${pageIdx}, -4)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Reducir tamaño del anuncio">➖</button>
-                        <button type="button" onclick="ui.adjustPrintAdHeight(${pageIdx}, 4)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Aumentar tamaño del anuncio">➕</button>
+                        <button type="button" onclick="ui.adjustPrintAdHeight(${pageIdx}, -6)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Reducir tamaño del anuncio (-6 mm)">➖</button>
+                        <button type="button" onclick="ui.adjustPrintAdHeight(${pageIdx}, 6)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Aumentar tamaño del anuncio (+6 mm)">➕</button>
                     ` : ''}
                     <button type="button" onclick="ui.modalConfigurePrintAd(${pageIdx})" class="px-2 py-0.5 bg-[#8B0000] text-white hover:bg-[#111111] text-[10px] font-mono font-bold uppercase">📢 Anuncio</button>
                     ${isActiveAd ? `<button type="button" onclick="ui.clearPrintAdSlot(${pageIdx})" class="px-2 py-0.5 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-[10px] font-mono font-bold uppercase" title="Quitar anuncio">✕</button>` : ''}
                 </div>` : '';
 
             if (isActiveAd && ad.adLayout === 'banner' && adImgSrc) {
+                const bannerImgStyle = adFit === 'cover'
+                    ? `width:100%;height:${adHeightMm}mm;object-fit:cover;background:#ffffff;border:1px solid #d6d3d1;display:block;`
+                    : `width:100%;height:auto;max-height:${adHeightMm}mm;object-fit:contain;margin:0 auto;background:#ffffff;border:1px solid #d6d3d1;display:block;`;
                 adHtml = `
                 <div style="position:relative;margin-top:auto;border:2px solid #111111;background:#EFECE4;padding:1.5mm;display:flex;flex-direction:column;gap:1mm;">
                     ${adBtn}
-                    <span style="font-family:${monoFont};font-size:7pt;line-height:1.2;text-transform:uppercase;letter-spacing:0.08em;color:#8B0000;font-weight:700;">PUBLICIDAD · ${this.escapeHTML(ad.companyName || 'ORBITAL REPORT')} (${adHeightMm} mm)</span>
-                    <img src="${this.escapeAttr(adImgSrc)}" alt="" style="width:100%;height:${adHeightMm}mm;object-fit:contain;background:#ffffff;border:1px solid #d6d3d1;display:block;">
+                    <span style="font-family:${monoFont};font-size:7pt;line-height:1.2;text-transform:uppercase;letter-spacing:0.08em;color:#8B0000;font-weight:700;">PUBLICIDAD · ${this.escapeHTML(ad.companyName || 'ORBITAL REPORT')}${adSizeTag}</span>
+                    <img src="${this.escapeAttr(adImgSrc)}" alt="" style="${bannerImgStyle}">
                 </div>`;
             } else if (isActiveAd) {
+                const cardImgMm = Math.min(adHeightMm, 90);
                 adHtml = `
                 <div style="position:relative;margin-top:auto;min-height:${adHeightMm}mm;border:2px solid #111111;background:#EFECE4;padding:2mm;display:flex;align-items:center;gap:2.5mm;">
                     ${adBtn}
-                    ${adImgSrc ? `<img src="${this.escapeAttr(adImgSrc)}" alt="" style="width:${adHeightMm}mm;height:${adHeightMm}mm;object-fit:contain;background:#ffffff;border:1px solid #d6d3d1;flex-shrink:0;display:block;">` : ''}
+                    ${adImgSrc ? `<img src="${this.escapeAttr(adImgSrc)}" alt="" style="width:${cardImgMm}mm;height:${cardImgMm}mm;object-fit:${adFit};background:#ffffff;border:1px solid #d6d3d1;flex-shrink:0;display:block;">` : ''}
                     <div style="min-width:0;flex:1;">
-                        <span style="display:block;font-family:${monoFont};font-size:7pt;line-height:1.2;text-transform:uppercase;letter-spacing:0.08em;color:#8B0000;font-weight:700;">ESPACIO PUBLICITARIO${ad.classGroup ? ' • CLASE ' + this.escapeHTML(ad.classGroup) : ''} (${adHeightMm} mm)</span>
+                        <span style="display:block;font-family:${monoFont};font-size:7pt;line-height:1.2;text-transform:uppercase;letter-spacing:0.08em;color:#8B0000;font-weight:700;">ESPACIO PUBLICITARIO${ad.classGroup ? ' • CLASE ' + this.escapeHTML(ad.classGroup) : ''}${adSizeTag}</span>
                         <h4 style="margin:0.4mm 0 0 0;font-family:${serifFont};font-weight:900;font-size:10pt;line-height:1.15;color:#111111;text-transform:uppercase;">${this.escapeHTML(ad.companyName || 'ESPACIO PATROCINADO')}</h4>
                         ${ad.slogan ? `<p style="margin:0.4mm 0 0 0;font-family:${serifFont};font-style:italic;font-size:8.5pt;line-height:1.2;color:#111111;">«${this.escapeHTML(ad.slogan)}»</p>` : ''}
                         ${ad.bodyText ? `<p style="margin:0.5mm 0 0 0;font-family:${sansFont};font-size:7.5pt;line-height:1.2;color:#44403c;">${this.escapeHTML(ad.bodyText)}</p>` : ''}

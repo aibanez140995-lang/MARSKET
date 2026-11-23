@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.54) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.55) ---
 
-const APP_VERSION = "2.0.54";
+const APP_VERSION = "2.0.55";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,18 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.55",
+      date: "2026-11-23",
+      title: "Anuncios y Fotos A3 en Alta Definición (1600 px) y Ancho Completo (192 × 160 mm)",
+      items: [
+        "Cero Pérdida de Calidad en Anuncios y Fotos A3: Subida en alta definición hasta 1600 px (conservando originales ligeros de ≤ 420 KB sin recomprimir), suavizado de alta calidad al redimensionar y enlaces de Google Drive servidos a 1600 px de resolución.",
+        "Anuncios A3 hasta Ancho Completo (192 mm) y 160 mm de Alto: Ampliado el máximo desde 60 mm hasta 160 mm (en el modal y con botones ➕/➖ en pasos de 6 mm), añadido selector de encuadre (proporcional hasta llenar los 192 mm de ancho o Cover completo) y retirada de la etiqueta técnica «(mm)» en el PDF final."
+      ],
+      highlights: [
+        { type: "ORBITAL REPORT A3", text: "Anuncios A3 en alta definición (1600 px) y escalables hasta 192×160 mm." }
+      ]
+    },
     {
       version: "2.0.54",
       date: "2026-11-23",

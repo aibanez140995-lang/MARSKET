@@ -2957,37 +2957,50 @@ Object.assign(ui, {
         }).filter(Boolean).join('');
     },
 
-    processNanoBananaImageFile(inputEl, targetHiddenId, previewContainerId, clearUrlId = null) {
+    processNanoBananaImageFile(inputEl, targetHiddenId, previewContainerId, clearUrlId = null, opts = null) {
         if (!inputEl || !inputEl.files || !inputEl.files[0]) return;
         const file = inputEl.files[0];
         if (!file.type.startsWith('image/')) {
             return this.notify("Por favor, selecciona un archivo de imagen válido (PNG, JPG, WEBP).", "warning");
         }
+        const maxDim = Number(opts?.maxDim) || 1000;
+        const quality = Number(opts?.quality) || 0.85;
+        const keepOrigBytes = Number(opts?.keepOriginalUnderBytes) || (220 * 1024);
+
         const reader = new FileReader();
         reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
-                const maxDim = 720;
-                let w = img.width;
-                let h = img.height;
-                if (w > maxDim || h > maxDim) {
-                    if (w > h) {
-                        h = Math.round((h * maxDim) / w);
-                        w = maxDim;
-                    } else {
-                        w = Math.round((w * maxDim) / h);
-                        h = maxDim;
+                let w = img.width || maxDim;
+                let h = img.height || maxDim;
+                let outDataUrl = '';
+
+                if (file.size <= keepOrigBytes && w <= maxDim && h <= maxDim && typeof e.target?.result === 'string') {
+                    outDataUrl = e.target.result;
+                } else {
+                    if (w > maxDim || h > maxDim) {
+                        if (w > h) {
+                            h = Math.max(1, Math.round((h * maxDim) / w));
+                            w = maxDim;
+                        } else {
+                            w = Math.max(1, Math.round((w * maxDim) / h));
+                            h = maxDim;
+                        }
                     }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
+                        ctx.drawImage(img, 0, 0, w, h);
+                    }
+                    outDataUrl = canvas.toDataURL('image/webp', quality) || canvas.toDataURL('image/jpeg', quality);
                 }
-                const canvas = document.createElement('canvas');
-                canvas.width = w;
-                canvas.height = h;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, w, h);
-                const compressedDataUrl = canvas.toDataURL('image/webp', 0.75) || canvas.toDataURL('image/jpeg', 0.75);
-                
+
                 const hiddenInput = document.getElementById(targetHiddenId);
-                if (hiddenInput) hiddenInput.value = compressedDataUrl;
+                if (hiddenInput) hiddenInput.value = outDataUrl;
                 if (clearUrlId) {
                     const urlInput = document.getElementById(clearUrlId);
                     if (urlInput) urlInput.value = '';
@@ -2997,8 +3010,8 @@ Object.assign(ui, {
                 if (previewEl) {
                     previewEl.innerHTML = `
                         <div class="relative group mt-2 border border-amber-400/50 rounded overflow-hidden max-h-48 bg-black flex items-center justify-center">
-                            <img src="${compressedDataUrl}" alt="Vista previa Nano Banana 3" class="max-h-48 w-full object-contain">
-                            <span class="absolute bottom-1 right-1 bg-black/80 text-[10px] text-amber-300 font-mono px-1.5 py-0.5 rounded border border-amber-500/40">✓ Imagen Lista (Comprimida)</span>
+                            <img src="${outDataUrl}" alt="Vista previa Nano Banana 3" class="max-h-48 w-full object-contain">
+                            <span class="absolute bottom-1 right-1 bg-black/80 text-[10px] text-amber-300 font-mono px-1.5 py-0.5 rounded border border-amber-500/40">✓ ${w}×${h} px · Alta calidad</span>
                         </div>
                     `;
                     previewEl.classList.remove('hidden');
@@ -3021,7 +3034,7 @@ Object.assign(ui, {
         const driveMatch = cleanUrl.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/i)
             || cleanUrl.match(/drive\.google\.com\/(?:open|uc|thumbnail)\?(?:[^#]*&)?id=([a-zA-Z0-9_-]+)/i);
         const directSrc = (driveMatch && driveMatch[1])
-            ? `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w1000`
+            ? `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w1600`
             : cleanUrl;
         const proxySrc = (!driveMatch && /^https?:\/\//i.test(cleanUrl)) ? ('/api/news/image?url=' + encodeURIComponent(cleanUrl)) : '';
         previewEl.innerHTML = `
@@ -3175,7 +3188,7 @@ Object.assign(ui, {
         const driveMatch = u.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/i)
             || u.match(/drive\.google\.com\/(?:open|uc|thumbnail)\?(?:[^#]*&)?id=([a-zA-Z0-9_-]+)/i);
         if (driveMatch && driveMatch[1]) {
-            return `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w1000`;
+            return `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w1600`;
         }
         if (/^https?:\/\//i.test(u)) return '/api/news/image?url=' + encodeURIComponent(u);
         return u;
