@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.58) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.59) ---
 
-const APP_VERSION = "2.0.58";
+const APP_VERSION = "2.0.59";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1327,6 +1327,18 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.59",
+      date: "2026-11-23",
+      title: "Apertura del Estudio de Edición Impresa A3 y Aislamiento de «Quién es quién» Digital/Impreso",
+      items: [
+        "Fix Estudio A3 (js/ui-orbita.js): Conectada la apertura de renderPrintEditionStudio(el) al inicio de viewNewsBoard() para que el botón «Estudio A3» abra directamente el estudio de 8 páginas de Órbita.",
+        "Separación Digital/Impreso de Quién es quién: Renombrado getOrbitaWhoIsWhoRealPresets() en la edición digital para no colisionar con los presets del estudio A3."
+      ],
+      highlights: [
+        { type: "ÓRBITA. A3", text: "Arreglo inmediato del botón «Estudio A3» y aislamiento de presets reales." }
+      ]
+    },
     {
       version: "2.0.58",
       date: "2026-11-23",

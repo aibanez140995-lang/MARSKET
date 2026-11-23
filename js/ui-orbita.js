@@ -1418,7 +1418,7 @@ Object.assign(ui, {
         </div>`;
     },
 
-    getWhoIsWhoRealPresets() {
+    getOrbitaWhoIsWhoRealPresets() {
         return [
             { id: 'nasa', name: 'NASA', domain: 'nasa.gov', countryEs: 'EE. UU.', countryEn: 'USA', roleEs: 'Agencia espacial civil de referencia (programa lunar Artemis, telescopio Webb y exploración robótica de Marte).', roleEn: 'Leading civil space agency behind the Artemis lunar program, James Webb telescope, and Mars rovers.' },
             { id: 'esa', name: 'ESA', domain: 'esa.int', countryEs: 'Europa (22 Estados)', countryEn: 'Europe (22 States)', roleEs: 'Agencia Espacial Europea: impulsa Ariane 6, Galileo, observación terrestre Copernicus y vocaciones STEM.', roleEn: 'European Space Agency driving Ariane 6, Galileo navigation, Copernicus Earth observation, and STEM outreach.' },
@@ -1435,7 +1435,7 @@ Object.assign(ui, {
 
     modalEditRealCompanyLogo(presetId) {
         if (!this.isNewsCoordinator()) return this.notify("Solo Coordinación puede editar logos reales.", "error");
-        const preset = this.getWhoIsWhoRealPresets().find(p => p.id === presetId);
+        const preset = this.getOrbitaWhoIsWhoRealPresets().find(p => p.id === presetId);
         if (!preset) return;
         const current = String(state.data?.realCompanyLogos?.[presetId] || '');
         const html = `
@@ -1483,7 +1483,7 @@ Object.assign(ui, {
 
     renderWhoIsWhoDirectoryView(lang) {
         const isCoord = this.isNewsCoordinator();
-        const presets = this.getWhoIsWhoRealPresets();
+        const presets = this.getOrbitaWhoIsWhoRealPresets();
         const customLogos = (state.data && state.data.realCompanyLogos) || {};
         const isVipMode = state.user && state.user.role === 'VIP_READER';
         let startups = [];
@@ -1848,6 +1848,9 @@ Object.assign(ui, {
         el.innerHTML = '';
 
         const isCoord = this.isNewsCoordinator();
+        if (this.printStudioActive && isCoord && typeof this.renderPrintEditionStudio === 'function') {
+            return this.renderPrintEditionStudio(el);
+        }
         const lang = this.getNewsLang();
         const curEdition = this.getOrbitaEditionNumber();
 

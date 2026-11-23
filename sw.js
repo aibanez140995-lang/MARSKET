@@ -1,32 +1,32 @@
-// sw.js — MARS-KET 2.0 Service Worker (Caché estática versionada v2.0.58, excluyendo /api/*)
-const CACHE_NAME = 'marsket-cache-v2.0.58';
+// sw.js — MARS-KET 2.0 Service Worker (Caché estática versionada v2.0.59, excluyendo /api/*)
+const CACHE_NAME = 'marsket-cache-v2.0.59';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './logo.png',
-  './logo.jpg?v=2.0.58',
-  './manifest.json?v=2.0.58',
-  './css/tailwind.css?v=2.0.58',
+  './logo.jpg?v=2.0.59',
+  './manifest.json?v=2.0.59',
+  './css/tailwind.css?v=2.0.59',
   './css/fonts/newsreader-latin-400-normal.woff2',
   './css/fonts/newsreader-latin-700-normal.woff2',
   './css/fonts/newsreader-latin-400-italic.woff2',
-  './js/lexicon-data.js?v=2.0.58',
-  './js/config.js?v=2.0.58',
-  './js/state.js?v=2.0.58',
-  './js/auth.js?v=2.0.58',
-  './js/ui-core.js?v=2.0.58',
-  './js/ui-empresa-core.js?v=2.0.58',
-  './js/ui-orbita.js?v=2.0.58',
-  './js/ui-print-newspaper.js?v=2.0.58',
-  './js/ui-empresa-market.js?v=2.0.58',
-  './js/ui-empresa-tech.js?v=2.0.58',
-  './js/ui-empresa-finance.js?v=2.0.58',
-  './js/ui-empresa-ops.js?v=2.0.58',
-  './js/ui-empresa-gov-brand.js?v=2.0.58',
-  './js/ui-docente-core.js?v=2.0.58',
-  './js/ui-docente-eval.js?v=2.0.58',
-  './js/ui-docente-management.js?v=2.0.58',
-  './js/ui-docente-contest.js?v=2.0.58'
+  './js/lexicon-data.js?v=2.0.59',
+  './js/config.js?v=2.0.59',
+  './js/state.js?v=2.0.59',
+  './js/auth.js?v=2.0.59',
+  './js/ui-core.js?v=2.0.59',
+  './js/ui-empresa-core.js?v=2.0.59',
+  './js/ui-orbita.js?v=2.0.59',
+  './js/ui-print-newspaper.js?v=2.0.59',
+  './js/ui-empresa-market.js?v=2.0.59',
+  './js/ui-empresa-tech.js?v=2.0.59',
+  './js/ui-empresa-finance.js?v=2.0.59',
+  './js/ui-empresa-ops.js?v=2.0.59',
+  './js/ui-empresa-gov-brand.js?v=2.0.59',
+  './js/ui-docente-core.js?v=2.0.59',
+  './js/ui-docente-eval.js?v=2.0.59',
+  './js/ui-docente-management.js?v=2.0.59',
+  './js/ui-docente-contest.js?v=2.0.59'
 ].map((path) => new URL(path, self.registration.scope).toString());
 
 self.addEventListener('install', (event) => {
