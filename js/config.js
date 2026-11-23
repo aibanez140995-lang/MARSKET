@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.46) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.47) ---
 
-const APP_VERSION = "2.0.46";
+const APP_VERSION = "2.0.47";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,17 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.47",
+      date: "2026-11-23",
+      title: "Editor Modal de Secciones en Edición Impresa A3",
+      items: [
+        "Modal «✏️ Sección» por Página: Permite cambiar la sección y cabecera de cada página de la edición impresa (con catálogo sugerido: Actualidad, Un poco de historia, Entrevistas, Reportaje Especial, Ciencia y Propulsión, Economía y Startups, Taller y Prototipos, Opinión y Debate, Curiosidades Espaciales) o escribir un título personalizado."
+      ],
+      highlights: [
+        { type: "ESTUDIO A3", text: "Editor modal de secciones (Historia, Entrevistas, Actualidad...)." }
+      ]
+    },
     {
       version: "2.0.46",
       date: "2026-11-23",

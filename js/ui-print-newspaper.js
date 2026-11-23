@@ -379,6 +379,85 @@ Object.assign(ui, {
         this.render();
     },
 
+    getPrintSectionPresets() {
+        return [
+            { label: 'Actualidad', title: 'ACTUALIDAD AEROESPACIAL' },
+            { label: 'Un poco de historia', title: 'UN POCO DE HISTORIA' },
+            { label: 'Entrevistas', title: 'ENTREVISTAS // VOCES DEL SECTOR' },
+            { label: 'Reportaje Especial', title: 'REPORTAJE ESPECIAL' },
+            { label: 'Ciencia y Propulsión', title: 'CIENCIA, PROPULSIÓN E I+D' },
+            { label: 'Economía y Startups', title: 'ECONOMÍA ESPACIAL Y STARTUPS' },
+            { label: 'Taller y Prototipos', title: 'TALLER, BOM Y PROTOTIPOS' },
+            { label: 'Opinión y Debate', title: 'OPINIÓN Y DEBATE EN EL AULA' },
+            { label: 'Crónicas AEE', title: 'CRÓNICAS DE LA MISIÓN & EDITORIAL' },
+            { label: 'Mundo Aeroespacial', title: 'PANORAMA MUNDIAL AEROESPACIAL' },
+            { label: 'Curiosidades Espaciales', title: 'CURIOSIDADES DEL ESPACIO' },
+            { label: 'Quién es quién', title: 'DIRECTORIO // QUIÉN ES QUIÉN' },
+            { label: 'Más allá del cohete', title: 'CONTRAPORTADA // MÁS ALLÁ DEL COHETE' }
+        ];
+    },
+
+    modalEditPrintPageSection(pageIdx) {
+        if (!this.isNewsCoordinator()) return;
+        const ed = this.getActivePrintEdition();
+        const page = ed?.pages?.[pageIdx];
+        if (!page) return;
+        const presets = this.getPrintSectionPresets();
+        const html = `
+            <div class="space-y-3 text-xs font-sans">
+                <div>
+                    <label for="print-sec-preset" class="text-xs text-amber-300 font-bold uppercase block mb-1 font-mono">Secciones Sugeridas (1 clic)</label>
+                    <select id="print-sec-preset" onchange="ui.applyPrintSectionPreset(this.value)" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white">
+                        <option value="">-- Elegir una sección predefinida --</option>
+                        ${presets.map((p, i) => `<option value="${i}">${this.escapeHTML(p.label)} — (${this.escapeHTML(p.title)})</option>`).join('')}
+                    </select>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                        <label for="print-sec-label" class="text-[11px] text-mars-cyan font-bold uppercase block mb-1">Nombre Corto (Sumario)</label>
+                        <input type="text" id="print-sec-label" value="${this.escapeAttr(page.label || '')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white">
+                    </div>
+                    <div>
+                        <label for="print-sec-title" class="text-[11px] text-mars-cyan font-bold uppercase block mb-1">Cabecera de la Página</label>
+                        <input type="text" id="print-sec-title" value="${this.escapeAttr(page.sectionTitle || '')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white uppercase">
+                    </div>
+                </div>
+            </div>
+        `;
+        const actions = `
+            <button type="button" onclick="ui.closeModal()" class="min-h-[44px] px-4 py-2 bg-slate-800 text-white text-xs font-bold uppercase">Cancelar</button>
+            <button type="button" onclick="ui.savePrintPageSection(${pageIdx})" class="min-h-[44px] px-5 py-2 bg-amber-400 text-black font-black text-xs uppercase hover:bg-white">💾 Guardar Sección</button>
+        `;
+        this.showModal(`✏️ Editar Sección // Página ${page.pageNumber}`, html, actions);
+    },
+
+    applyPrintSectionPreset(idxStr) {
+        if (idxStr === '') return;
+        const p = this.getPrintSectionPresets()[parseInt(idxStr, 10)];
+        if (!p) return;
+        const lblEl = document.getElementById('print-sec-label');
+        const titEl = document.getElementById('print-sec-title');
+        if (lblEl) lblEl.value = p.label;
+        if (titEl) titEl.value = p.title;
+    },
+
+    savePrintPageSection(pageIdx) {
+        if (!this.isNewsCoordinator()) return;
+        const ed = this.getActivePrintEdition();
+        const page = ed?.pages?.[pageIdx];
+        if (!page) return;
+        const lbl = (document.getElementById('print-sec-label')?.value || '').trim();
+        const tit = (document.getElementById('print-sec-title')?.value || '').trim();
+        if (lbl) page.label = lbl;
+        if (tit) page.sectionTitle = tit;
+        ed.updatedAt = Date.now();
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.closeModal();
+        this.render();
+        this.notify(`✅ Sección de Página ${page.pageNumber} actualizada.`, "success");
+    },
+
     modalEditPrintSlot(pageIdx, slotIdx) {
         if (!this.isNewsCoordinator()) return;
         const ed = this.getActivePrintEdition();
@@ -403,7 +482,18 @@ Object.assign(ui, {
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
                         <label for="print-slot-kicker" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Antetítulo / Sección</label>
-                        <input type="text" id="print-slot-kicker" value="${this.escapeAttr(slot.kicker || '')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white">
+                        <input type="text" id="print-slot-kicker" list="print-kicker-presets" value="${this.escapeAttr(slot.kicker || '')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white">
+                        <datalist id="print-kicker-presets">
+                            <option value="ACTUALIDAD">
+                            <option value="UN POCO DE HISTORIA">
+                            <option value="ENTREVISTAS">
+                            <option value="REPORTAJE ESPECIAL">
+                            <option value="CIENCIA Y PROPULSIÓN">
+                            <option value="ECONOMÍA Y STARTUPS">
+                            <option value="OPINIÓN Y DEBATE">
+                            <option value="TALLER Y PROTOTIPOS">
+                            <option value="CURIOSIDADES ESPACIALES">
+                        </datalist>
                     </div>
                     <div>
                         <label for="print-slot-source" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Fuente / Medio Original</label>
@@ -1633,7 +1723,10 @@ Object.assign(ui, {
             </div>
         ` : `
             <div class="flex justify-between items-center gap-2 border-b-2 border-[#111111] pb-1 mb-2 text-[8pt] font-mono uppercase text-[#111111]">
-                <span class="font-bold truncate">ORBITAL REPORT // ${this.escapeHTML(page.sectionTitle || page.label)}</span>
+                <span class="font-bold truncate flex items-center gap-1.5">
+                    <span>ORBITAL REPORT // ${this.escapeHTML(page.sectionTitle || page.label)}</span>
+                    ${!forPrint ? `<button type="button" onclick="ui.modalEditPrintPageSection(${pageIdx})" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[9px] font-mono font-bold uppercase shrink-0" title="Editar sección de esta página">✏️ Sección</button>` : ''}
+                </span>
                 <div class="flex items-center gap-2 shrink-0">${pageControlsHtml}<span>PÁGINA ${page.pageNumber}</span></div>
             </div>
         `;
