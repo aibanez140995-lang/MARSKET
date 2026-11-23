@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.45) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.46) ---
 
-const APP_VERSION = "2.0.45";
+const APP_VERSION = "2.0.46";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1159,6 +1159,18 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.46",
+      date: "2026-11-23",
+      title: "Guardado Manual, Biblioteca Reutilizable de Anuncios y Cierre Definitivo de Edición A3",
+      items: [
+        "Botón «💾 Guardar Cambios» y Biblioteca de Anuncios (printAdLibrary): Guarda la edición en la nube y almacena automáticamente los anuncios configurados (imagen, texto y tamaño) para reutilizarlos en 1 clic en próximas ediciones.",
+        "Botón «🔒 Guardar Edición Definitiva»: Permite cerrar la edición mensual una vez revisada y probada, manteniendo el acceso de impresión PDF A3 y opción de reabrir si hace falta ajustar algo."
+      ],
+      highlights: [
+        { type: "ESTUDIO A3", text: "Guardado explícito, biblioteca de anuncios y edición definitiva." }
+      ]
+    },
     {
       version: "2.0.45",
       date: "2026-11-22",

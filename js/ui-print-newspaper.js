@@ -543,9 +543,19 @@ Object.assign(ui, {
             return `<option value="${this.escapeAttr(cid)}" ${ad.coId === cid ? 'selected' : ''}>${this.escapeHTML(co.name)} [Clase ${this.escapeHTML(co.classGroup || 'A')}]${tag}</option>`;
         }).join('');
 
+        const savedAds = Array.isArray(state.data?.printAdLibrary) ? state.data.printAdLibrary : [];
         const curReq = ad.coId ? pendingAds.find(r => r.coId === ad.coId) : null;
         const html = `
             <div class="space-y-3 text-xs font-sans">
+                ${savedAds.length > 0 ? `
+                    <div class="p-2.5 bg-amber-950/30 border border-amber-400/50 rounded space-y-1.5">
+                        <label for="print-ad-lib-pick" class="text-[11px] text-amber-300 font-bold uppercase block font-mono">📂 Reutilizar Anuncio Guardado (${savedAds.length} en biblioteca)</label>
+                        <select id="print-ad-lib-pick" onchange="ui.applySavedAdFromLibrary(this.value)" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white">
+                            <option value="">-- Elegir anuncio guardado de ediciones anteriores --</option>
+                            ${savedAds.map(sa => `<option value="${this.escapeAttr(sa.id)}">${this.escapeHTML(sa.companyName || sa.slogan || 'Anuncio')}${sa.classGroup ? ` [${this.escapeHTML(sa.classGroup)}]` : ''} (${Number(sa.adHeightMm || 18)} mm)</option>`).join('')}
+                        </select>
+                    </div>
+                ` : ''}
                 <div>
                     <label for="print-ad-company" class="text-xs text-amber-300 font-bold uppercase block mb-1 font-mono">Startup Anunciante (Página ${page.pageNumber})</label>
                     <select id="print-ad-company" onchange="ui.onSelectPrintAdCompany(this.value)" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2.5 text-xs text-white">
@@ -646,6 +656,106 @@ Object.assign(ui, {
         }
     },
 
+    saveAdToLibrary(ad) {
+        if (!ad) return;
+        const hasData = Boolean(ad.companyName || ad.slogan || ad.imageUrl || ad.bodyText);
+        if (!hasData) return;
+        state.data.printAdLibrary = Array.isArray(state.data.printAdLibrary) ? state.data.printAdLibrary : [];
+        const libId = ad.coId ? `AD-CO-${ad.coId}` : `AD-CUSTOM-${String(ad.companyName || ad.slogan || 'ITEM').toUpperCase().replace(/[^A-Z0-9]+/g, '-').slice(0, 32)}`;
+        const entry = {
+            id: libId,
+            coId: ad.coId || '',
+            companyName: ad.companyName || 'ESPACIO PATROCINADO',
+            classGroup: ad.classGroup || '',
+            slogan: ad.slogan || '',
+            bodyText: ad.bodyText || '',
+            imageUrl: ad.imageUrl || '',
+            adHeightMm: Number(ad.adHeightMm || 18),
+            adLayout: ad.adLayout || 'card',
+            updatedAt: Date.now()
+        };
+        const idx = state.data.printAdLibrary.findIndex(x => x && String(x.id) === libId);
+        if (idx >= 0) state.data.printAdLibrary[idx] = entry;
+        else state.data.printAdLibrary.unshift(entry);
+    },
+
+    applySavedAdFromLibrary(libId) {
+        if (!libId) return;
+        const item = (state.data?.printAdLibrary || []).find(x => x && String(x.id) === String(libId));
+        if (!item) return;
+        const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+        setVal('print-ad-company', item.coId || '');
+        setVal('print-ad-slogan', item.slogan || '');
+        setVal('print-ad-text', item.bodyText || '');
+        setVal('print-ad-height', String(item.adHeightMm || 18));
+        setVal('print-ad-layout', item.adLayout || 'card');
+        setVal('print-ad-img-data', item.imageUrl || '');
+        setVal('print-ad-img-url', (item.imageUrl && item.imageUrl.startsWith('http')) ? item.imageUrl : '');
+        const prev = document.getElementById('print-ad-img-preview');
+        if (prev) {
+            if (item.imageUrl) {
+                prev.classList.remove('hidden');
+                prev.innerHTML = `<img src="${this.escapeAttr(item.imageUrl)}" alt="Vista previa anuncio" class="max-h-28 w-full object-contain border border-amber-400/50 bg-white p-1">`;
+            } else {
+                prev.classList.add('hidden');
+                prev.innerHTML = '';
+            }
+        }
+        this.notify("📂 Anuncio cargado desde tu biblioteca.", "info");
+    },
+
+    async saveActivePrintEditionDraft() {
+        if (!this.isNewsCoordinator()) return;
+        const ed = this.getActivePrintEdition();
+        if (!ed) return;
+        (ed.pages || []).forEach(pg => {
+            if (pg?.adSlot && (pg.adSlot.companyName || pg.adSlot.imageUrl || pg.adSlot.slogan)) {
+                this.saveAdToLibrary(pg.adSlot);
+            }
+        });
+        ed.updatedAt = Date.now();
+        state.save();
+        if (typeof state.pushToCloud === 'function') await state.pushToCloud(false);
+        this.notify("💾 Borrador de edición y anuncios guardados en la nube.", "success");
+    },
+
+    finalizePrintEdition() {
+        if (!this.isNewsCoordinator()) return;
+        const ed = this.getActivePrintEdition();
+        if (!ed) return;
+        this.confirmModal(
+            "🔒 Guardar Edición Definitiva",
+            `¿Confirmas que «${ed.issueLabel}» ya está maquetada y revisada? Se guardará en la nube con todos sus anuncios y quedará marcada como Edición Definitiva lista para imprenta.`,
+            async () => {
+                (ed.pages || []).forEach(pg => {
+                    if (pg?.adSlot && (pg.adSlot.companyName || pg.adSlot.imageUrl || pg.adSlot.slogan)) {
+                        this.saveAdToLibrary(pg.adSlot);
+                    }
+                });
+                ed.status = 'FINALIZED';
+                ed.finalizedAt = Date.now();
+                ed.updatedAt = Date.now();
+                state.save();
+                if (typeof state.pushToCloud === 'function') await state.pushToCloud(false);
+                this.closeModal();
+                this.render();
+                this.notify("🔒 Edición definitiva guardada y lista para imprimir.", "success");
+            }
+        );
+    },
+
+    reopenPrintEditionDraft() {
+        if (!this.isNewsCoordinator()) return;
+        const ed = this.getActivePrintEdition();
+        if (!ed) return;
+        ed.status = 'DRAFT';
+        ed.updatedAt = Date.now();
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.render();
+        this.notify("🔓 Edición reabierta como borrador para ajustes.", "info");
+    },
+
     clearPrintAdSlot(pageIdx) {
         if (!this.isNewsCoordinator()) return;
         const ed = this.getActivePrintEdition();
@@ -693,6 +803,7 @@ Object.assign(ui, {
         ad.campId = document.getElementById('print-ad-camp-id')?.value || '';
         ad.actId = document.getElementById('print-ad-act-id')?.value || '';
         ed.updatedAt = Date.now();
+        this.saveAdToLibrary(ad);
 
         if (approveDoc12 && cid && ad.campId && ad.actId) {
             this.approveMktActionByCoordinator(cid, ad.campId, ad.actId);
@@ -1596,11 +1707,20 @@ Object.assign(ui, {
             <div class="terminal-border bg-mars-card p-5 border-t-4 border-t-amber-400 space-y-4">
                 <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
                     <div>
-                        <h2 class="font-orbitron font-black text-base sm:text-xl text-white uppercase">🖨️ Estudio de Edición Impresa A3 // ORBITAL REPORT</h2>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h2 class="font-orbitron font-black text-base sm:text-xl text-white uppercase">🖨️ Estudio de Edición Impresa A3 // ORBITAL REPORT</h2>
+                            ${ed.status === 'FINALIZED'
+                                ? `<span class="px-2 py-0.5 bg-emerald-950 border border-emerald-400 text-emerald-300 font-mono text-[10px] font-black uppercase">🔒 EDICIÓN DEFINITIVA</span>`
+                                : `<span class="px-2 py-0.5 bg-amber-950 border border-amber-400 text-amber-300 font-mono text-[10px] font-bold uppercase">📝 BORRADOR</span>`}
+                        </div>
                         <p class="text-xs text-slate-300 font-sans">8 páginas (4 caras A3 apaisadas con doblez en medio) · Estilo The Washington Post · Exclusivo Coordinación</p>
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <button type="button" onclick="ui.closePrintEditionStudio()" class="min-h-[44px] px-4 py-2 bg-slate-800 border border-slate-600 text-white text-xs font-bold uppercase hover:bg-slate-700">⬅ Volver al Periódico Digital</button>
+                        <button type="button" onclick="ui.saveActivePrintEditionDraft()" class="min-h-[44px] px-4 py-2 bg-mars-cyan text-black font-black text-xs uppercase hover:bg-white">💾 Guardar Cambios</button>
+                        ${ed.status === 'FINALIZED'
+                            ? `<button type="button" onclick="ui.reopenPrintEditionDraft()" class="min-h-[44px] px-4 py-2 bg-amber-400 text-black font-black text-xs uppercase hover:bg-white">🔓 Reabrir Edición</button>`
+                            : `<button type="button" onclick="ui.finalizePrintEdition()" class="min-h-[44px] px-4 py-2 bg-emerald-400 text-black font-black text-xs uppercase hover:bg-white">🔒 Guardar Edición Definitiva</button>`}
                         <button type="button" onclick="ui.printA3NewspaperPDF()" class="min-h-[44px] px-5 py-2 bg-mars-green text-black font-black text-xs uppercase hover:bg-white shadow-[0_0_15px_rgba(0,255,102,0.35)]">🖨️ Imprimir / Guardar PDF A3 (4 Caras)</button>
                     </div>
                 </div>
@@ -1608,7 +1728,7 @@ Object.assign(ui, {
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div class="flex flex-wrap items-center gap-2">
                         <select aria-label="Seleccionar edición mensual" onchange="ui.printStudioEditionId=this.value; ui.render();" class="min-h-[44px] bg-slate-900 border border-amber-400/60 px-3 py-2 text-xs text-white font-bold">
-                            ${editions.map(e => `<option value="${this.escapeAttr(e.id)}" ${e.id === ed.id ? 'selected' : ''}>${this.escapeHTML(e.issueLabel)}</option>`).join('')}
+                            ${editions.map(e => `<option value="${this.escapeAttr(e.id)}" ${e.id === ed.id ? 'selected' : ''}>${e.status === 'FINALIZED' ? '🔒 ' : '📝 '}${this.escapeHTML(e.issueLabel)}</option>`).join('')}
                         </select>
                         <button type="button" onclick="ui.modalEditPrintEditionMeta()" class="min-h-[44px] px-3 py-2 bg-slate-900 border border-slate-700 text-slate-200 text-xs font-bold uppercase hover:border-mars-cyan">✏️ Cabecera</button>
                         <button type="button" onclick="ui.createNewPrintEditionModal()" class="min-h-[44px] px-3 py-2 bg-amber-400 text-black text-xs font-black uppercase hover:bg-white">+ Nueva Edición</button>

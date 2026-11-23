@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.45
+// Versión: v2.0.46
 
 declare(strict_types=1);
 
@@ -1019,6 +1019,9 @@ try {
                 if (!$isCoord) {
                     if (isset($currentState['printEditions'])) {
                         $payload['printEditions'] = $currentState['printEditions'];
+                    }
+                    if (isset($currentState['printAdLibrary'])) {
+                        $payload['printAdLibrary'] = $currentState['printAdLibrary'];
                     }
                 } elseif (isset($payload['printEditions']) && is_array($payload['printEditions'])) {
                     $delPrintSet = array_flip($mergedPrintTomb);
@@ -3156,6 +3159,7 @@ try {
             $currentState['news'] = [];
             $currentState['officialNews'] = [];
             $currentState['printEditions'] = [];
+            $currentState['printAdLibrary'] = [];
             $currentState['deletedPrintEditionIds'] = [];
             $currentState['pressReleases'] = [];
             $currentState['deletedNewsIds'] = [];
