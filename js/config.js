@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.63) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.64) ---
 
-const APP_VERSION = "2.0.63";
+const APP_VERSION = "2.0.64";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1327,6 +1327,16 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.64",
+      date: "2026-11-24",
+      title: "Fix móvil en Órbita Digital (sin recorte lateral), tilde de portada A3 y tabla de compras para Técnico",
+      items: [
+        "Corregido el recorte lateral en móvil dentro de Órbita Digital (js/ui-orbita.js): añadido w-full min-w-0 al contenedor principal y al lector de artículos para que las imágenes y textos nunca queden partidos por la mitad en pantallas estrechas.",
+        "Ajustado el margen superior de la cabecera «Órbita.» en la portada impresa A3 (js/ui-print-newspaper.js) para que la tilde de la «Ó» no toque ni invada la línea superior.",
+        "Retirado el botón de PDF de la barra de exportación de órdenes del Técnico (js/ui-empresa-finance.js) y añadida la columna en blanco «Justificación Técnica» al copiar para Google Sheets y descargar CSV."
+      ]
+    },
     {
       version: "2.0.63",
       date: "2026-11-24",

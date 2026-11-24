@@ -86,9 +86,6 @@ Object.assign(ui, {
         const arg = orderId ? `'${this.escapeAttr(orderId)}'` : '';
         return `
         <div class="flex flex-wrap items-center gap-2 ${compact ? 'my-1' : 'my-2'}">
-            <button type="button" onclick="ui.exportShoppingListPDF(${arg})" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-900 text-mars-cyan border border-mars-cyan/60 hover:bg-mars-cyan hover:text-black rounded font-mono font-bold uppercase transition-colors">
-                <span>📄 PDF Presupuesto</span>
-            </button>
             <button type="button" onclick="ui.copyShoppingListForSheets(${arg})" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-emerald-950/50 text-emerald-300 border border-emerald-500/50 hover:bg-emerald-500 hover:text-black rounded font-mono font-bold uppercase transition-colors">
                 <span>📊 Copiar para Google Sheets</span>
             </button>
@@ -207,13 +204,13 @@ Object.assign(ui, {
             return this.notify("No hay materiales en esta lista para copiar.", "warning");
         }
         const fmtNum = (n) => Number(n || 0).toFixed(2).replace('.', ',');
-        const lines = ['Código\tMaterial / Concepto\tUnidad\tCantidad\tPrecio Unit. (€v)\tSubtotal (€v)'];
+        const lines = ['Código\tMaterial / Concepto\tUnidad\tCantidad\tPrecio Unit. (€v)\tSubtotal (€v)\tJustificación Técnica'];
         ctx.items.forEach((it) => {
             const safeName = String(it.name).replace(/[\t\r\n]+/g, ' ');
             const safeUnit = String(it.unit).replace(/[\t\r\n]+/g, ' ');
-            lines.push(`${it.id}\t${safeName}\t${safeUnit}\t${it.qty}\t${fmtNum(it.price)}\t`);
+            lines.push(`${it.id}\t${safeName}\t${safeUnit}\t${it.qty}\t${fmtNum(it.price)}\t\t`);
         });
-        lines.push(`TOTAL\t${ctx.co.name || ''}\t\t\t\t`);
+        lines.push(`TOTAL\t${ctx.co.name || ''}\t\t\t\t\t`);
         const tsv = lines.join('\n');
 
         let copied = false;
@@ -248,7 +245,7 @@ Object.assign(ui, {
             return this.notify("No hay materiales en esta lista para descargar CSV.", "warning");
         }
         const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-        const rows = [['Startup', 'Lista', 'Código', 'Material', 'Unidad', 'Cantidad', 'Precio Unit. (€v)', 'Subtotal (€v)'].map(esc).join(';')];
+        const rows = [['Startup', 'Lista', 'Código', 'Material', 'Unidad', 'Cantidad', 'Precio Unit. (€v)', 'Subtotal (€v)', 'Justificación Técnica'].map(esc).join(';')];
         ctx.items.forEach(it => {
             rows.push([
                 ctx.co.name || '',
@@ -258,10 +255,11 @@ Object.assign(ui, {
                 it.unit,
                 it.qty,
                 it.price.toFixed(2).replace('.', ','),
+                '',
                 ''
             ].map(esc).join(';'));
         });
-        rows.push([ctx.co.name || '', ctx.title, 'TOTAL', '', '', '', '', ''].map(esc).join(';'));
+        rows.push([ctx.co.name || '', ctx.title, 'TOTAL', '', '', '', '', '', ''].map(esc).join(';'));
         const csvContent = '\uFEFF' + rows.join('\r\n');
         const safeCo = String(ctx.co.id || 'startup').replace(/[^a-zA-Z0-9_-]/g, '_');
         const safeRef = orderId ? String(orderId).replace(/[^a-zA-Z0-9_-]/g, '_') : 'carrito';

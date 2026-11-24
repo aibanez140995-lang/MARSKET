@@ -1952,7 +1952,7 @@ Object.assign(ui, {
             const readerHtml = this.renderFullArticleReaderHtml(lang);
             if (readerHtml) {
                 const wrap = document.createElement('div');
-                wrap.className = 'fade-in bg-[#FAF8F5] text-[#111111] border border-stone-300 shadow-xl p-4 sm:p-8 max-w-6xl mx-auto my-2 space-y-6';
+                wrap.className = 'fade-in w-full min-w-0 bg-[#FAF8F5] text-[#111111] border border-stone-300 shadow-xl p-3 sm:p-8 max-w-6xl mx-auto my-0 sm:my-2 space-y-5 sm:space-y-6 overflow-x-hidden';
                 wrap.innerHTML = readerHtml;
                 el.appendChild(wrap);
                 return;
@@ -1981,7 +1981,7 @@ Object.assign(ui, {
         const activeMeta = this.getOrbitaSectionMeta(activeTab);
 
         const wrapper = document.createElement('div');
-        wrapper.className = 'fade-in bg-[#FAF8F5] text-[#111111] border border-stone-300 shadow-2xl p-3 sm:p-8 max-w-6xl mx-auto my-0 sm:my-2 space-y-5 sm:space-y-6 overflow-x-hidden';
+        wrapper.className = 'fade-in w-full min-w-0 bg-[#FAF8F5] text-[#111111] border border-stone-300 shadow-2xl p-3 sm:p-8 max-w-6xl mx-auto my-0 sm:my-2 space-y-5 sm:space-y-6 overflow-x-hidden';
         wrapper.innerHTML = `
             ${isCoord && draftsList.length > 0 ? `
                 <div class="bg-amber-100 border-2 border-amber-700 px-3 sm:px-4 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">

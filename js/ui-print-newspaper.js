@@ -2190,12 +2190,12 @@ Object.assign(ui, {
 
         const headerHtml = isCover ? `
             <div style="border-bottom:2px solid #111111;padding-bottom:2mm;margin-bottom:2.8mm;text-align:center;">
-                <div style="display:flex;justify-content:space-between;font-family:${monoFont};font-size:7.5pt;line-height:1.2;text-transform:uppercase;color:#57534e;border-bottom:1px solid #d6d3d1;padding-bottom:1mm;margin-bottom:1mm;">
+                <div style="display:flex;justify-content:space-between;font-family:${monoFont};font-size:7.5pt;line-height:1.2;text-transform:uppercase;color:#57534e;border-bottom:1px solid #d6d3d1;padding-bottom:1mm;margin-bottom:2.2mm;">
                     <span>${this.escapeHTML(ed.issueLabel || 'Edición n.º 1')}</span>
                     <span>MIRAVALLES-EL REDÍN</span>
                     <span>${this.escapeHTML(ed.dateLabel || '')}</span>
                 </div>
-                <h1 style="margin:0;font-family:${serifFont};font-weight:900;font-size:32pt;line-height:1;letter-spacing:-0.02em;color:#111111;">Órbita<span style="color:#8B0000;">.</span></h1>
+                <h1 style="margin:0.8mm 0 0 0;padding-top:1.5mm;font-family:${serifFont};font-weight:900;font-size:32pt;line-height:1.06;letter-spacing:-0.02em;color:#111111;">Órbita<span style="color:#8B0000;">.</span></h1>
                 <p style="margin:0.8mm 0 0 0;font-family:${serifFont};font-style:italic;font-size:9pt;line-height:1.2;color:#44403c;">EL DIARIO AEROESPACIAL &bull; Lanzamientos, ciencia e industria</p>
             </div>
         ` : `
