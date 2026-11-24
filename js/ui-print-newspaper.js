@@ -2344,17 +2344,19 @@ Object.assign(ui, {
         const ed = this.getActivePrintEdition();
         const imposedPairs = [
             [7, 0], // Cara 1: Pág 8 | Pág 1
-            [6, 1], // Cara 2: Pág 7 | Pág 2
+            [1, 6], // Cara 2: Pág 2 | Pág 7 (se gira 180° en modo borde largo)
             [5, 2], // Cara 3: Pág 6 | Pág 3
-            [4, 3]  // Cara 4: Pág 5 | Pág 4
+            [3, 4]  // Cara 4: Pág 4 | Pág 5 (se gira 180° en modo borde largo)
         ];
 
-        const sheetsHtml = imposedPairs.map(([lIdx, rIdx]) => `
-            <section class="a3-sheet">
+        const sheetsHtml = imposedPairs.map(([lIdx, rIdx], sheetIdx) => {
+            const isBack = sheetIdx % 2 === 1;
+            return `
+            <section class="a3-sheet ${isBack ? 'is-back-sheet' : ''}">
                 <div class="a4-half left-half">${this.renderPrintStudioPageHtml(ed, ed.pages[lIdx], lIdx, true)}</div>
                 <div class="a4-half right-half">${this.renderPrintStudioPageHtml(ed, ed.pages[rIdx], rIdx, true)}</div>
-            </section>
-        `).join('');
+            </section>`;
+        }).join('');
 
         const cssVer = encodeURIComponent(typeof APP_VERSION !== 'undefined' ? APP_VERSION : Date.now());
         const docHtml = `<!DOCTYPE html>
@@ -2368,9 +2370,12 @@ Object.assign(ui, {
         @page { size: 420mm 297mm; margin: 0; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         html, body { margin: 0; padding: 0; background: #1e293b; font-family: 'Newsreader', Georgia, "Times New Roman", serif; color: #111111; font-size: 16px; }
-        .no-print { position: sticky; top: 0; z-index: 99; background: #0b1120; color: #fff; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 2px solid #00f0ff; font-family: ui-monospace, monospace; font-size: 12px; }
+        .no-print { position: sticky; top: 0; z-index: 99; background: #0b1120; color: #fff; padding: 10px 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; border-bottom: 2px solid #00f0ff; font-family: ui-monospace, monospace; font-size: 12px; }
         .btn-p { background: #00ff66; color: #000; border: 0; padding: 10px 18px; font-weight: 900; cursor: pointer; text-transform: uppercase; white-space: nowrap; }
+        .btn-duplex { background: #f59e0b; color: #000; border: 0; padding: 10px 14px; font-weight: 800; cursor: pointer; text-transform: uppercase; white-space: nowrap; font-size: 11px; }
+        .btn-duplex.is-off { background: #334155; color: #e2e8f0; border: 1px solid #64748b; }
         .a3-sheet { width: 420mm; height: 296.5mm; margin: 12px auto; background: #FAF8F5; display: grid; grid-template-columns: 210mm 210mm; page-break-after: always; break-after: page; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        body.duplex-long-edge .a3-sheet.is-back-sheet { transform: rotate(180deg); transform-origin: center center; }
         .a3-sheet:last-of-type { page-break-after: auto; break-after: auto; }
         .a4-half { width: 210mm; height: 296.5mm; overflow: hidden; }
         .left-half { border-right: 0.5pt dashed #cbd5e1; }
@@ -2378,13 +2383,17 @@ Object.assign(ui, {
             html, body { width: 420mm !important; margin: 0 !important; padding: 0 !important; background: #FAF8F5 !important; }
             .no-print { display: none !important; }
             .a3-sheet { width: 420mm !important; height: 296.5mm !important; margin: 0 !important; box-shadow: none !important; }
+            body.duplex-long-edge .a3-sheet.is-back-sheet { transform: rotate(180deg) !important; transform-origin: center center !important; }
         }
     </style>
 </head>
-<body>
+<body class="duplex-long-edge">
     <div class="no-print">
-        <span>Órbita. (${this.escapeHTML(ed.issueLabel)}) — Al imprimir selecciona: <strong>Papel A3 Horizontal · Márgenes: Ninguno · Escala: 100% (Tamaño real)</strong></span>
-        <button id="orbita-print-btn" class="btn-p" onclick="window.print()">Imprimir / Guardar PDF A3</button>
+        <span>Órbita. (${this.escapeHTML(ed.issueLabel)}) — Selecciona <strong>Papel A3 Horizontal · Márgenes: Ninguno · Escala: 100%</strong></span>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <button id="orbita-duplex-btn" type="button" class="btn-duplex" onclick="const on=document.body.classList.toggle('duplex-long-edge'); this.classList.toggle('is-off', !on); this.textContent = on ? '🔄 Caras 2 y 4 giradas 180° (Borde Largo): SÍ' : '🔄 Caras 2 y 4 giradas 180° (Borde Corto): NO';">🔄 Caras 2 y 4 giradas 180° (Borde Largo): SÍ</button>
+            <button id="orbita-print-btn" class="btn-p" onclick="window.print()">Imprimir / Guardar PDF A3</button>
+        </div>
     </div>
     ${sheetsHtml}
     <script>

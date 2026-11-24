@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.65) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.66) ---
 
-const APP_VERSION = "2.0.65";
+const APP_VERSION = "2.0.66";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1327,6 +1327,14 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.66",
+      date: "2026-11-24",
+      title: "Impresión A3 doble cara: giro automático 180° de caras traseras (Borde Largo / Corto)",
+      items: [
+        "Corregida la impresión a doble cara en fotocopiadoras de centro (js/ui-print-newspaper.js): las caras traseras (2|7 y 4|5) ahora se generan giradas 180° por defecto para compensar el volteo por borde largo y evitar que queden boca abajo, con un botón en la barra superior para alternar entre Borde Largo (SÍ) y Borde Corto (NO)."
+      ]
+    },
     {
       version: "2.0.65",
       date: "2026-11-24",
