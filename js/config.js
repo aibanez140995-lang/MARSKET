@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.64) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.65) ---
 
-const APP_VERSION = "2.0.64";
+const APP_VERSION = "2.0.65";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1327,6 +1327,14 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.65",
+      date: "2026-11-24",
+      title: "Fix imposición doble cara A3 (caras 2/7 y 4/5)",
+      items: [
+        "Corregido el orden de imposición en doble cara del PDF A3 de Órbita (js/ui-print-newspaper.js): las caras traseras ahora salen como Pág. 7 | Pág. 2 y Pág. 5 | Pág. 4 para evitar que queden invertidas al imprimir en el centro."
+      ]
+    },
     {
       version: "2.0.64",
       date: "2026-11-24",

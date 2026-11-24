@@ -2344,9 +2344,9 @@ Object.assign(ui, {
         const ed = this.getActivePrintEdition();
         const imposedPairs = [
             [7, 0], // Cara 1: Pág 8 | Pág 1
-            [1, 6], // Cara 2: Pág 2 | Pág 7
+            [6, 1], // Cara 2: Pág 7 | Pág 2
             [5, 2], // Cara 3: Pág 6 | Pág 3
-            [3, 4]  // Cara 4: Pág 4 | Pág 5
+            [4, 3]  // Cara 4: Pág 5 | Pág 4
         ];
 
         const sheetsHtml = imposedPairs.map(([lIdx, rIdx]) => `
