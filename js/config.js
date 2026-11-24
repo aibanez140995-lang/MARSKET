@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.62) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.63) ---
 
-const APP_VERSION = "2.0.62";
+const APP_VERSION = "2.0.63";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1327,6 +1327,15 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.63",
+      date: "2026-11-24",
+      title: "Órbita: Optimización móvil del acceso digital y arrastrar para intercambiar anuncios en Estudio A3",
+      items: [
+        "Optimización móvil de Órbita Digital (js/ui-orbita.js): cabecera, selector ES/EN, botones de Coordinación en rejilla 2 columnas, barra de secciones con scroll snap, lector completo y Hemeroteca adaptados sin desbordamiento horizontal en pantallas de 360px.",
+        "Intercambio de anuncios mediante arrastrar y soltar (js/ui-print-newspaper.js): en el Estudio de Edición Impresa A3, los faldones publicitarios ahora se pueden arrastrar de una página a otra para moverlos o intercambiarlos con un solo gesto."
+      ]
+    },
     {
       version: "2.0.62",
       date: "2026-11-23",

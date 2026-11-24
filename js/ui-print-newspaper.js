@@ -981,6 +981,83 @@ Object.assign(ui, {
         this.notify("🗑️ Anuncio retirado de la página.", "info");
     },
 
+    handlePrintAdDragStart(e, pageIdx) {
+        if (!this.isNewsCoordinator()) return;
+        this._draggingPrintAdPageIdx = Number(pageIdx);
+        if (e && e.dataTransfer) {
+            e.dataTransfer.effectAllowed = 'move';
+            try { e.dataTransfer.setData('text/plain', String(pageIdx)); } catch (_) {}
+        }
+        const el = e?.currentTarget;
+        if (el) el.style.opacity = '0.55';
+    },
+
+    handlePrintAdDragEnd(e) {
+        const el = e?.currentTarget;
+        if (el) el.style.opacity = '1';
+        this._draggingPrintAdPageIdx = null;
+        document.querySelectorAll('[data-print-ad-drop]').forEach(node => {
+            node.style.outline = '';
+            node.style.outlineOffset = '';
+        });
+    },
+
+    handlePrintAdDragOver(e, targetPageIdx) {
+        if (!this.isNewsCoordinator()) return;
+        const srcIdx = this._draggingPrintAdPageIdx;
+        if (srcIdx === null || srcIdx === undefined || Number(srcIdx) === Number(targetPageIdx)) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        const el = e.currentTarget;
+        if (el) {
+            el.style.outline = '3px dashed #0284c7';
+            el.style.outlineOffset = '-3px';
+        }
+    },
+
+    handlePrintAdDragLeave(e) {
+        const el = e?.currentTarget;
+        if (el) {
+            el.style.outline = '';
+            el.style.outlineOffset = '';
+        }
+    },
+
+    handlePrintAdDrop(e, targetPageIdx) {
+        e.preventDefault();
+        const el = e?.currentTarget;
+        if (el) {
+            el.style.outline = '';
+            el.style.outlineOffset = '';
+        }
+        if (!this.isNewsCoordinator()) return;
+        let srcIdx = this._draggingPrintAdPageIdx;
+        if ((srcIdx === null || srcIdx === undefined) && e.dataTransfer) {
+            const raw = e.dataTransfer.getData('text/plain');
+            if (raw !== '') srcIdx = Number(raw);
+        }
+        this._draggingPrintAdPageIdx = null;
+        const dstIdx = Number(targetPageIdx);
+        if (srcIdx === null || srcIdx === undefined || Number.isNaN(srcIdx) || srcIdx === dstIdx) return;
+
+        const ed = this.getActivePrintEdition();
+        const srcPage = ed?.pages?.[srcIdx];
+        const dstPage = ed?.pages?.[dstIdx];
+        if (!srcPage?.adSlot || !dstPage?.adSlot) return;
+
+        const keys = ['coId', 'companyName', 'classGroup', 'slogan', 'bodyText', 'imageUrl', 'actId', 'campId', 'adHeightMm', 'adFit', 'adLayout'];
+        const snapshotSrc = {};
+        keys.forEach(k => { snapshotSrc[k] = srcPage.adSlot[k]; });
+        keys.forEach(k => { srcPage.adSlot[k] = dstPage.adSlot[k]; });
+        keys.forEach(k => { dstPage.adSlot[k] = snapshotSrc[k]; });
+
+        ed.updatedAt = Date.now();
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.render();
+        this.notify(`📢 Anuncio movido/intercambiado entre Pág. ${srcPage.pageNumber} y Pág. ${dstPage.pageNumber}.`, "success");
+    },
+
     savePrintAdSlot(pageIdx, approveDoc12 = false) {
         if (!this.isNewsCoordinator()) return;
         const ed = this.getActivePrintEdition();
@@ -2065,9 +2142,13 @@ Object.assign(ui, {
             const adImgSrc = ad.imageUrl ? this.resolvePrintImageUrl(ad.imageUrl, forPrint) : '';
             const adFit = ad.adFit === 'cover' ? 'cover' : 'contain';
             const adSizeTag = !forPrint ? ` (${adHeightMm} mm)` : '';
+            const dragAttrs = !forPrint
+                ? `data-print-ad-drop="${pageIdx}" ${isActiveAd ? `draggable="true" ondragstart="ui.handlePrintAdDragStart(event, ${pageIdx})" ondragend="ui.handlePrintAdDragEnd(event)"` : ''} ondragover="ui.handlePrintAdDragOver(event, ${pageIdx})" ondragleave="ui.handlePrintAdDragLeave(event)" ondrop="ui.handlePrintAdDrop(event, ${pageIdx})"`
+                : '';
             const adBtn = !forPrint ? `
                 <div style="position:absolute;top:2px;right:2px;z-index:20;display:flex;align-items:center;gap:2px;background:rgba(250,248,245,0.95);border:1px solid #cbd5e1;padding:2px;">
                     ${isActiveAd ? `
+                        <span style="padding:0 3px;font-size:10px;font-family:${monoFont};color:#57534e;cursor:grab;" title="Arrastra este anuncio a otra página para intercambiarlo">⋮⋮</span>
                         <button type="button" onclick="ui.adjustPrintAdHeight(${pageIdx}, -6)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Reducir tamaño del anuncio (-6 mm)">➖</button>
                         <button type="button" onclick="ui.adjustPrintAdHeight(${pageIdx}, 6)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Aumentar tamaño del anuncio (+6 mm)">➕</button>
                     ` : ''}
@@ -2080,7 +2161,7 @@ Object.assign(ui, {
                     ? `width:100%;height:${adHeightMm}mm;object-fit:cover;background:#ffffff;border:1px solid #d6d3d1;display:block;`
                     : `width:100%;height:auto;max-height:${adHeightMm}mm;object-fit:contain;margin:0 auto;background:#ffffff;border:1px solid #d6d3d1;display:block;`;
                 adHtml = `
-                <div style="position:relative;margin-top:auto;border:2px solid #111111;background:#EFECE4;padding:1.5mm;display:flex;flex-direction:column;gap:1mm;">
+                <div ${dragAttrs} style="position:relative;margin-top:auto;border:2px solid #111111;background:#EFECE4;padding:1.5mm;display:flex;flex-direction:column;gap:1mm;${!forPrint ? 'cursor:grab;' : ''}">
                     ${adBtn}
                     <span style="font-family:${monoFont};font-size:7pt;line-height:1.2;text-transform:uppercase;letter-spacing:0.08em;color:#8B0000;font-weight:700;">PUBLICIDAD · ${this.escapeHTML(ad.companyName || 'Órbita.')}${adSizeTag}</span>
                     <img src="${this.escapeAttr(adImgSrc)}" alt="" style="${bannerImgStyle}">
@@ -2088,7 +2169,7 @@ Object.assign(ui, {
             } else if (isActiveAd) {
                 const cardImgMm = Math.min(adHeightMm, 90);
                 adHtml = `
-                <div style="position:relative;margin-top:auto;min-height:${adHeightMm}mm;border:2px solid #111111;background:#EFECE4;padding:2mm;display:flex;align-items:center;gap:2.5mm;">
+                <div ${dragAttrs} style="position:relative;margin-top:auto;min-height:${adHeightMm}mm;border:2px solid #111111;background:#EFECE4;padding:2mm;display:flex;align-items:center;gap:2.5mm;${!forPrint ? 'cursor:grab;' : ''}">
                     ${adBtn}
                     ${adImgSrc ? `<img src="${this.escapeAttr(adImgSrc)}" alt="" style="width:${cardImgMm}mm;height:${cardImgMm}mm;object-fit:${adFit};background:#ffffff;border:1px solid #d6d3d1;flex-shrink:0;display:block;">` : ''}
                     <div style="min-width:0;flex:1;">
@@ -2100,7 +2181,7 @@ Object.assign(ui, {
                 </div>`;
             } else {
                 adHtml = `
-                <div style="position:relative;margin-top:auto;min-height:9.5mm;border:1px dashed #a8a29e;background:#f5f5f4;padding:2mm;display:flex;align-items:center;">
+                <div ${dragAttrs} style="position:relative;margin-top:auto;min-height:9.5mm;border:1px dashed #a8a29e;background:#f5f5f4;padding:2mm;display:flex;align-items:center;">
                     ${adBtn}
                     <span style="font-family:${monoFont};font-size:8pt;line-height:1.2;color:#57534e;text-transform:uppercase;">[ ${this.escapeHTML(ad.label || 'Espacio Publicitario Startup')} ]</span>
                 </div>`;

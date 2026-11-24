@@ -1386,12 +1386,12 @@ Object.assign(ui, {
             : `<span class="px-2 py-0.5 border border-[#111111] text-[#111111] text-[10px] font-mono font-bold uppercase">${lang === 'EN' ? 'REAL JOURNALISM' : 'ACTUALIDAD REAL'}</span>`;
 
         return `
-            <article class="bg-white border border-stone-300 p-5 sm:p-10 max-w-4xl mx-auto shadow-sm">
-                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-stone-300 pb-4 mb-6">
-                    <button type="button" onclick="ui.closeFullArticleReader()" class="min-h-[44px] px-4 py-2 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase transition-colors">
+            <article class="bg-white border border-stone-300 p-3.5 sm:p-10 max-w-4xl mx-auto shadow-sm overflow-x-hidden">
+                <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3 border-b border-stone-300 pb-3 sm:pb-4 mb-4 sm:mb-6">
+                    <button type="button" onclick="ui.closeFullArticleReader()" class="min-h-[44px] px-3 sm:px-4 py-2 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase transition-colors">
                         &larr; ${lang === 'EN' ? 'Back to Órbita' : 'Volver a Órbita'}
                     </button>
-                    <div class="flex items-center gap-2 flex-wrap">
+                    <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                         ${isDraft ? `<span class="px-2 py-0.5 bg-amber-100 border border-amber-600 text-amber-900 text-[10px] font-mono font-bold uppercase">BORRADOR OCULTO</span>` : ''}
                         ${originBadge}
                         <button type="button" onclick="ui.setNewsLang('ES')" class="min-h-[44px] px-3 py-1 text-xs font-mono font-bold border ${lang === 'ES' ? 'bg-[#111111] text-white border-[#111111]' : 'bg-white text-[#111111] border-stone-400'}">ES</button>
@@ -1405,17 +1405,17 @@ Object.assign(ui, {
                     </div>
                 ` : ''}
 
-                <div class="flex flex-wrap items-center justify-between gap-2 text-xs font-mono uppercase tracking-widest mb-3">
+                <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs font-mono uppercase tracking-wider sm:tracking-widest mb-2.5 sm:mb-3">
                     <span class="text-[#8B0000] font-bold">${this.escapeHTML(category)}</span>
-                    <span class="text-stone-500">${this.escapeHTML(sourceName)} &bull; ${this.escapeHTML(dateStr)}</span>
+                    <span class="text-stone-500 break-words">${this.escapeHTML(sourceName)} &bull; ${this.escapeHTML(dateStr)}</span>
                 </div>
 
-                <h2 class="text-3xl sm:text-5xl font-orbita-serif font-black text-[#111111] leading-[1.08] tracking-tight mb-4">
+                <h2 class="text-2xl sm:text-5xl font-orbita-serif font-black text-[#111111] leading-[1.12] sm:leading-[1.08] tracking-tight mb-3 sm:mb-4 break-words">
                     ${this.escapeHTML(title)}
                 </h2>
 
                 ${subtitle ? `
-                    <p class="text-lg sm:text-xl font-orbita-serif text-stone-700 leading-relaxed mb-6 border-l-2 border-[#8B0000] pl-4">
+                    <p class="text-base sm:text-xl font-orbita-serif text-stone-700 leading-relaxed mb-5 sm:mb-6 border-l-2 border-[#8B0000] pl-3 sm:pl-4 break-words">
                         ${this.escapeHTML(subtitle)}
                     </p>
                 ` : ''}
@@ -1877,16 +1877,16 @@ Object.assign(ui, {
                             const title = this.getLocalizedNewsField(art, 'title');
                             const secMeta = this.getOrbitaSectionMeta(art.section);
                             return `
-                            <article class="bg-white border border-stone-300 p-4 flex items-center justify-between gap-3">
+                            <article class="bg-white border border-stone-300 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
                                 <div class="min-w-0 flex-1">
                                     <div class="text-[10px] font-mono text-[#8B0000] font-bold uppercase mb-1">
                                         ${this.escapeHTML(lang === 'EN' ? secMeta.shortLabelEn : secMeta.shortLabelEs)} &bull; Ed. N.º ${art.editionNumber || 0} &bull; ${this.escapeHTML(art.publishedDate || '')}
                                     </div>
-                                    <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(art.id)}')" class="text-left text-base font-orbita-serif font-bold text-[#111111] hover:text-[#8B0000] leading-snug">
+                                    <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(art.id)}')" class="text-left text-base font-orbita-serif font-bold text-[#111111] hover:text-[#8B0000] leading-snug break-words">
                                         ${this.escapeHTML(title)}
                                     </button>
                                 </div>
-                                <div class="flex items-center gap-1.5 shrink-0">
+                                <div class="flex items-center justify-end gap-1.5 shrink-0">
                                     ${this.isNewsCoordinator() ? `<button type="button" onclick="ui.modalEditOfficialNews('${this.escapeAttr(art.id)}')" class="min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2.5 bg-stone-100 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white" title="Editar artículo">${this.getOrbitaIcon('edit')}</button>` : ''}
                                     <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(art.id)}')" class="min-h-[44px] px-3 py-1.5 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase shrink-0">
                                         ${lang === 'EN' ? 'Read' : 'Leer'}
@@ -1981,27 +1981,27 @@ Object.assign(ui, {
         const activeMeta = this.getOrbitaSectionMeta(activeTab);
 
         const wrapper = document.createElement('div');
-        wrapper.className = 'fade-in bg-[#FAF8F5] text-[#111111] border border-stone-300 shadow-2xl p-4 sm:p-8 max-w-6xl mx-auto my-2 space-y-6';
+        wrapper.className = 'fade-in bg-[#FAF8F5] text-[#111111] border border-stone-300 shadow-2xl p-3 sm:p-8 max-w-6xl mx-auto my-0 sm:my-2 space-y-5 sm:space-y-6 overflow-x-hidden';
         wrapper.innerHTML = `
             ${isCoord && draftsList.length > 0 ? `
-                <div class="bg-amber-100 border-2 border-amber-700 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+                <div class="bg-amber-100 border-2 border-amber-700 px-3 sm:px-4 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
                     <div class="text-xs font-mono text-amber-950">
                         <strong>BORRADOR EN PREPARACIÓN (Edición N.º ${curEdition + 1}):</strong> ${draftsList.length} artículo(s) ocultos para alumnado y VIP-0000.
                     </div>
-                    <button type="button" onclick="ui.publishOrbitaDraftEdition()" class="min-h-[44px] px-4 py-2 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase transition-colors">
+                    <button type="button" onclick="ui.publishOrbitaDraftEdition()" class="min-h-[44px] w-full sm:w-auto px-4 py-2 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase transition-colors">
                         Publicar Edición N.º ${curEdition + 1}
                     </button>
                 </div>
             ` : ''}
 
-            <header class="border-b-4 border-double border-[#111111] pb-4 space-y-3">
-                <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-stone-700 border-b border-stone-300 pb-2">
-                    <span class="uppercase tracking-wider font-bold">
+            <header class="border-b-4 border-double border-[#111111] pb-3 sm:pb-4 space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[10px] sm:text-[11px] font-mono text-stone-700 border-b border-stone-300 pb-2">
+                    <span class="uppercase tracking-wider font-bold leading-snug">
                         ${lang === 'EN' ? `Edition No. ${curEdition}` : `Edición N.º ${curEdition}`}
                         &bull; MIRAVALLES-EL REDÍN &bull; ${this.escapeHTML(todayLabel)}
                     </span>
-                    <div class="flex items-center gap-3">
-                        <button type="button" onclick="ui.scrollToOrbitaColophon()" class="min-h-[44px] px-2 text-xs font-mono font-bold underline text-[#111111] hover:text-[#8B0000]">
+                    <div class="flex items-center justify-between sm:justify-end gap-3">
+                        <button type="button" onclick="ui.scrollToOrbitaColophon()" class="min-h-[44px] px-1 sm:px-2 text-xs font-mono font-bold underline text-[#111111] hover:text-[#8B0000]">
                             ${lang === 'EN' ? 'About this edition' : 'Sobre esta edición'}
                         </button>
                         <div class="inline-flex border border-[#111111]" role="group" aria-label="Idioma">
@@ -2013,18 +2013,18 @@ Object.assign(ui, {
 
                 <div class="flex flex-col md:flex-row md:items-end justify-between gap-3">
                     <div>
-                        <h1 class="text-5xl sm:text-6xl font-orbita-serif font-black tracking-tight text-[#111111] leading-none">Órbita<span class="text-[#8B0000]">.</span></h1>
-                        <p class="text-[11px] sm:text-xs font-mono uppercase tracking-[0.2em] text-stone-600 mt-1.5">
+                        <h1 class="text-4xl sm:text-6xl font-orbita-serif font-black tracking-tight text-[#111111] leading-none">Órbita<span class="text-[#8B0000]">.</span></h1>
+                        <p class="text-[10px] sm:text-xs font-mono uppercase tracking-[0.12em] sm:tracking-[0.2em] text-stone-600 mt-1.5">
                             ${lang === 'EN' ? 'THE AEROSPACE DAILY · Launches, science & industry' : 'EL DIARIO AEROESPACIAL · Lanzamientos, ciencia e industria'}
                         </p>
                     </div>
                     ${isCoord ? `
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <button type="button" onclick="ui.modalPublishOfficialNews()" class="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase transition-colors">
+                        <div class="grid grid-cols-2 sm:flex sm:items-center gap-2">
+                            <button type="button" onclick="ui.modalPublishOfficialNews()" class="min-h-[44px] inline-flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-2 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase transition-colors">
                                 ${this.getOrbitaIcon('edit')}
                                 <span>Nuevo Artículo</span>
                             </button>
-                            <button type="button" onclick="ui.openPrintEditionStudio()" class="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-[#111111] text-[#111111] hover:bg-[#111111] hover:text-white text-xs font-mono font-bold uppercase transition-colors">
+                            <button type="button" onclick="ui.openPrintEditionStudio()" class="min-h-[44px] inline-flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-2 bg-white border border-[#111111] text-[#111111] hover:bg-[#111111] hover:text-white text-xs font-mono font-bold uppercase transition-colors">
                                 ${this.getOrbitaIcon('portada')}
                                 <span>Estudio A3</span>
                             </button>
@@ -2032,13 +2032,13 @@ Object.assign(ui, {
                     ` : ''}
                 </div>
 
-                <nav class="relative border-t border-stone-300 pt-2 overflow-x-auto" aria-label="Secciones de Órbita">
+                <nav class="relative -mx-3 px-3 sm:mx-0 sm:px-0 border-t border-stone-300 pt-2 overflow-x-auto snap-x snap-mandatory" aria-label="Secciones de Órbita">
                     <div class="flex items-center gap-1.5 min-w-max pb-1">
                         ${sections.map(sec => {
                             const isActive = activeTab === sec.id;
                             const label = lang === 'EN' ? sec.shortLabelEn : sec.shortLabelEs;
                             return `
-                            <button type="button" data-orbita-tab="${this.escapeAttr(sec.id)}" onclick="ui.setNewsSectionTab('${this.escapeAttr(sec.id)}')" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-bold uppercase whitespace-nowrap border transition-colors ${isActive ? 'bg-[#111111] text-white border-[#111111]' : 'bg-white text-[#111111] border-stone-300 hover:border-[#111111]'}">
+                            <button type="button" data-orbita-tab="${this.escapeAttr(sec.id)}" onclick="ui.setNewsSectionTab('${this.escapeAttr(sec.id)}')" class="snap-start min-h-[44px] inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-mono font-bold uppercase whitespace-nowrap border transition-colors ${isActive ? 'bg-[#111111] text-white border-[#111111]' : 'bg-white text-[#111111] border-stone-300 hover:border-[#111111]'}">
                                 ${this.getOrbitaIcon(sec.iconKey)}
                                 <span>${this.escapeHTML(label)}</span>
                             </button>`;
