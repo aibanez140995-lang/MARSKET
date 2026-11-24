@@ -2351,10 +2351,14 @@ Object.assign(ui, {
 
         const sheetsHtml = imposedPairs.map(([lIdx, rIdx], sheetIdx) => {
             const isBack = sheetIdx % 2 === 1;
+            const sheetLabel = `HOJA ${Math.floor(sheetIdx / 2) + 1} · ${isBack ? 'DORSO (CARA ' + (sheetIdx + 1) + ' — Pág. ' + (lIdx + 1) + ' | Pág. ' + (rIdx + 1) + ')' : 'FRENTE (CARA ' + (sheetIdx + 1) + ' — Pág. ' + (lIdx + 1) + ' | Pág. ' + (rIdx + 1) + ')'}`;
             return `
+            <div class="sheet-banner no-print">${sheetLabel}</div>
             <section class="a3-sheet ${isBack ? 'is-back-sheet' : ''}">
-                <div class="a4-half left-half">${this.renderPrintStudioPageHtml(ed, ed.pages[lIdx], lIdx, true)}</div>
-                <div class="a4-half right-half">${this.renderPrintStudioPageHtml(ed, ed.pages[rIdx], rIdx, true)}</div>
+                <div class="a3-sheet-inner">
+                    <div class="a4-half left-half">${this.renderPrintStudioPageHtml(ed, ed.pages[lIdx], lIdx, true)}</div>
+                    <div class="a4-half right-half">${this.renderPrintStudioPageHtml(ed, ed.pages[rIdx], rIdx, true)}</div>
+                </div>
             </section>`;
         }).join('');
 
@@ -2371,11 +2375,13 @@ Object.assign(ui, {
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         html, body { margin: 0; padding: 0; background: #1e293b; font-family: 'Newsreader', Georgia, "Times New Roman", serif; color: #111111; font-size: 16px; }
         .no-print { position: sticky; top: 0; z-index: 99; background: #0b1120; color: #fff; padding: 10px 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; border-bottom: 2px solid #00f0ff; font-family: ui-monospace, monospace; font-size: 12px; }
+        .sheet-banner { position: static; background: #0f172a; color: #38bdf8; width: 420mm; margin: 14px auto 0 auto; padding: 6px 14px; border: 1px solid #334155; border-bottom: 0; font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700; text-transform: uppercase; }
         .btn-p { background: #00ff66; color: #000; border: 0; padding: 10px 18px; font-weight: 900; cursor: pointer; text-transform: uppercase; white-space: nowrap; }
         .btn-duplex { background: #f59e0b; color: #000; border: 0; padding: 10px 14px; font-weight: 800; cursor: pointer; text-transform: uppercase; white-space: nowrap; font-size: 11px; }
         .btn-duplex.is-off { background: #334155; color: #e2e8f0; border: 1px solid #64748b; }
-        .a3-sheet { width: 420mm; height: 296.5mm; margin: 12px auto; background: #FAF8F5; display: grid; grid-template-columns: 210mm 210mm; page-break-after: always; break-after: page; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        body.duplex-long-edge .a3-sheet.is-back-sheet { transform: rotate(180deg); transform-origin: center center; }
+        .a3-sheet { width: 420mm; height: 296.5mm; margin: 0 auto 14px auto; background: #FAF8F5; page-break-after: always; break-after: page; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; }
+        .a3-sheet-inner { width: 420mm; height: 296.5mm; display: grid; grid-template-columns: 210mm 210mm; }
+        body.duplex-long-edge .a3-sheet.is-back-sheet .a3-sheet-inner { transform: rotate(180deg); -webkit-transform: rotate(180deg); transform-origin: center center; -webkit-transform-origin: center center; }
         .a3-sheet:last-of-type { page-break-after: auto; break-after: auto; }
         .a4-half { width: 210mm; height: 296.5mm; overflow: hidden; }
         .left-half { border-right: 0.5pt dashed #cbd5e1; }
@@ -2383,7 +2389,8 @@ Object.assign(ui, {
             html, body { width: 420mm !important; margin: 0 !important; padding: 0 !important; background: #FAF8F5 !important; }
             .no-print { display: none !important; }
             .a3-sheet { width: 420mm !important; height: 296.5mm !important; margin: 0 !important; box-shadow: none !important; }
-            body.duplex-long-edge .a3-sheet.is-back-sheet { transform: rotate(180deg) !important; transform-origin: center center !important; }
+            .a3-sheet-inner { width: 420mm !important; height: 296.5mm !important; }
+            body.duplex-long-edge .a3-sheet.is-back-sheet .a3-sheet-inner { transform: rotate(180deg) !important; -webkit-transform: rotate(180deg) !important; transform-origin: center center !important; -webkit-transform-origin: center center !important; }
         }
     </style>
 </head>

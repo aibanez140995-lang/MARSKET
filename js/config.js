@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.66) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.67) ---
 
-const APP_VERSION = "2.0.66";
+const APP_VERSION = "2.0.67";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1327,6 +1327,14 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.67",
+      date: "2026-11-24",
+      title: "Fix rotación 180° en PDF A3 (contenedor interno .a3-sheet-inner)",
+      items: [
+        "Movida la rotación de 180° de las caras traseras (2|7 y 4|5) al contenedor interior .a3-sheet-inner (js/ui-print-newspaper.js) para que Chrome/Edge conserve el giro al generar el PDF impreso sin que el paginador lo ignore, añadiendo además etiquetas visuales de Hoja/Cara en la vista previa."
+      ]
+    },
     {
       version: "2.0.66",
       date: "2026-11-24",
