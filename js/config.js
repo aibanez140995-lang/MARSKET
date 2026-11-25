@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.71) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.72) ---
 
-const APP_VERSION = "2.0.71";
+const APP_VERSION = "2.0.72";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1341,6 +1341,15 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.72",
+      date: "2026-11-25",
+      title: "Estudio A3: límites físicos reales con imagen en continuaciones y quitar/añadir anuncio",
+      items: [
+        "Ajuste exacto a límites A3 al continuar noticias (js/ui-print-newspaper.js): medición física en tiempo real del espacio de la página (incluyendo foto, titular, resto de noticias y faldón publicitario) mediante búsqueda binaria para cortar el texto justo donde cabe sin desbordar, indicador en vivo dentro del editor y opción de mantener la imagen en la página actual o moverla a la página siguiente.",
+        "Quitar y añadir espacio de anuncio por página (js/ui-print-newspaper.js): nuevos botones [− Anuncio] / [+ 📢 Anuncio] en la barra de cada página y [🚫 Quitar hueco de página] para liberar espacio vertical para noticias y evitar imprimir recuadros vacíos en el PDF."
+      ]
+    },
     {
       version: "2.0.71",
       date: "2026-11-25",

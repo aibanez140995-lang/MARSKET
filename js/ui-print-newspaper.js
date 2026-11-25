@@ -303,6 +303,108 @@ Object.assign(ui, {
         return null;
     },
 
+    _splitWordsPreservingParagraphs(fullText, keepWordCount) {
+        const rawParas = String(fullText || '').split(/\n+/).map(p => p.trim()).filter(Boolean);
+        const paraTokens = rawParas.map(p => p.split(/\s+/).filter(Boolean)).filter(arr => arr.length > 0);
+        const totalWords = paraTokens.reduce((sum, arr) => sum + arr.length, 0);
+        if (keepWordCount <= 0) {
+            return { part1: '', part2: rawParas.join('\n\n'), totalWords };
+        }
+        if (keepWordCount >= totalWords) {
+            return { part1: rawParas.join('\n\n'), part2: '', totalWords };
+        }
+        let remaining = keepWordCount;
+        const p1 = [];
+        const p2 = [];
+        paraTokens.forEach(tokens => {
+            if (remaining >= tokens.length) {
+                p1.push(tokens.join(' '));
+                remaining -= tokens.length;
+            } else if (remaining > 0) {
+                p1.push(tokens.slice(0, remaining).join(' '));
+                p2.push(tokens.slice(remaining).join(' '));
+                remaining = 0;
+            } else {
+                p2.push(tokens.join(' '));
+            }
+        });
+        return {
+            part1: p1.join('\n\n'),
+            part2: p2.join('\n\n'),
+            totalWords
+        };
+    },
+
+    measurePrintPageFit(ed, pageIdx, slotIdx, slotOverride = null) {
+        if (typeof document === 'undefined' || !ed?.pages?.[pageIdx]) {
+            return { fits: true, overflowPx: 0, innerClientH: 0, innerScrollH: 0 };
+        }
+        const origPage = ed.pages[pageIdx];
+        const origSlots = Array.isArray(origPage.slots) ? origPage.slots : [];
+        const origSlot = origSlots[slotIdx] || {};
+        const simCont = Boolean(slotOverride?.simulateContinuation);
+        const nextIdx = Math.min(ed.pages.length - 1, pageIdx + 1);
+        const fakeContId = '__measure_cont__';
+
+        const clonedSlot = { ...origSlot, ...(slotOverride || {}) };
+        delete clonedSlot.simulateContinuation;
+        if (simCont && pageIdx < ed.pages.length - 1) {
+            clonedSlot.continuesToSlotId = fakeContId;
+        }
+        const clonedSlots = origSlots.map((s, i) => (i === slotIdx ? clonedSlot : s));
+        const clonedPage = { ...origPage, slots: clonedSlots };
+
+        const clonedPages = ed.pages.map((p, i) => {
+            if (i === pageIdx) return clonedPage;
+            if (simCont && i === nextIdx && nextIdx !== pageIdx) {
+                const nextSlots = Array.isArray(p.slots) ? [...p.slots] : [];
+                if (!nextSlots.some(s => s && String(s.id) === fakeContId)) {
+                    nextSlots.unshift({ id: fakeContId });
+                }
+                return { ...p, slots: nextSlots };
+            }
+            return p;
+        });
+        const tempEd = { ...ed, pages: clonedPages };
+
+        let sandbox = this._printMeasureSandbox;
+        if (!sandbox || !sandbox.isConnected) {
+            sandbox = document.createElement('div');
+            sandbox.style.cssText = 'position:fixed;left:-20000px;top:0;width:210mm;visibility:hidden;pointer-events:none;z-index:-1;';
+            document.body.appendChild(sandbox);
+            this._printMeasureSandbox = sandbox;
+        }
+        sandbox.innerHTML = this.renderPrintStudioPageHtml(tempEd, clonedPage, pageIdx, true);
+
+        const box = sandbox.querySelector('[data-print-page-box]');
+        const inner = sandbox.querySelector('[data-print-page-inner]');
+        let overflowPx = 0;
+        let innerClientH = 0;
+        let innerScrollH = 0;
+
+        if (box && inner) {
+            innerClientH = inner.clientHeight;
+            innerScrollH = inner.scrollHeight;
+            const innerOver = Math.max(0, inner.scrollHeight - inner.clientHeight - 1);
+            const boxOver = Math.max(0, box.scrollHeight - box.clientHeight - 1);
+            let colOver = 0;
+            box.querySelectorAll('.orbita-print-cols-2').forEach(colBox => {
+                const cw = Math.max(0, colBox.scrollWidth - colBox.clientWidth - 2);
+                const ch = Math.max(0, colBox.scrollHeight - colBox.clientHeight - 2);
+                if (cw > colOver) colOver = cw;
+                if (ch > colOver) colOver = ch;
+            });
+            overflowPx = Math.max(innerOver, boxOver, colOver);
+        }
+        sandbox.innerHTML = '';
+        return {
+            fits: overflowPx <= 1,
+            overflowPx,
+            innerClientH,
+            innerScrollH
+        };
+    },
+
     normalizePrintEditionPages(ed) {
         if (!ed) return;
         ed.pages = Array.isArray(ed.pages) ? ed.pages.filter(Boolean) : [];
@@ -754,52 +856,65 @@ Object.assign(ui, {
 
                 <div>
                     <label for="print-slot-title" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Titular</label>
-                    <input type="text" id="print-slot-title" value="${this.escapeAttr(slot.title || '')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-bold">
+                    <input type="text" id="print-slot-title" value="${this.escapeAttr(slot.title || '')}" oninput="ui.updatePrintSlotModalFitIndicator(${pageIdx}, ${slotIdx})" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-bold">
                 </div>
                 <div>
                     <label for="print-slot-subtitle" class="text-[11px] text-slate-300 font-bold uppercase block mb-1">Entradilla (Opcional)</label>
-                    <input type="text" id="print-slot-subtitle" value="${this.escapeAttr(slot.subtitle || '')}" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white">
+                    <input type="text" id="print-slot-subtitle" value="${this.escapeAttr(slot.subtitle || '')}" oninput="ui.updatePrintSlotModalFitIndicator(${pageIdx}, ${slotIdx})" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white">
                 </div>
                 <div>
+                    <div id="print-slot-fit-live-status" class="mb-2 px-2.5 py-1.5 bg-slate-900 border border-slate-700 text-[11px] font-mono text-slate-300 rounded">
+                        Midiendo espacio real en Página ${page.pageNumber}...
+                    </div>
                     <div class="flex flex-wrap justify-between items-center gap-2 mb-1">
                         <label for="print-slot-body" class="text-[11px] text-amber-300 font-bold uppercase">Cuerpo de la Noticia (Castellano)</label>
-                        <select id="print-slot-fontsize" class="bg-slate-900 border border-slate-700 px-2 py-1 text-[11px] text-cyan-300 font-mono">
+                        <select id="print-slot-fontsize" onchange="ui.updatePrintSlotModalFitIndicator(${pageIdx}, ${slotIdx})" class="bg-slate-900 border border-slate-700 px-2 py-1 text-[11px] text-cyan-300 font-mono">
                             ${[7.5, 8, 8.5, 9, 9.5, 10, 10.5].map(pt => `<option value="${pt}" ${Number(slot.fontSizePt || 9.5) === pt ? 'selected' : ''}>Letra ${pt} pt</option>`).join('')}
                         </select>
                     </div>
                     ${this.renderOrbitaFormatToolbar('print-slot-body')}
-                    <textarea id="print-slot-body" rows="6" class="w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white font-sans">${this.escapeHTML(slot.body || '')}</textarea>
+                    <textarea id="print-slot-body" rows="6" oninput="ui.updatePrintSlotModalFitIndicator(${pageIdx}, ${slotIdx})" class="w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white font-sans">${this.escapeHTML(slot.body || '')}</textarea>
                 </div>
 
-                ${hasNextPage ? `
+                ${hasNextPage ? (() => {
+                    const linkedImgInNext = Boolean(!slot.imageUrl && linkedLoc?.slot?.imageUrl);
+                    return `
                     <div class="p-3 bg-amber-950/30 border border-amber-500/50 rounded space-y-2.5">
                         <label class="flex items-center gap-2.5 cursor-pointer select-none">
-                            <input type="checkbox" id="print-slot-continue-next" class="w-5 h-5 accent-amber-400 cursor-pointer shrink-0" ${initContChecked ? 'checked' : ''} onchange="const box=document.getElementById('print-slot-cont-box'); if(box) box.classList.toggle('hidden', !this.checked);">
+                            <input type="checkbox" id="print-slot-continue-next" class="w-5 h-5 accent-amber-400 cursor-pointer shrink-0" ${initContChecked ? 'checked' : ''} onchange="const box=document.getElementById('print-slot-cont-box'); if(box) box.classList.toggle('hidden', !this.checked); ui.updatePrintSlotModalFitIndicator(${pageIdx}, ${slotIdx});">
                             <span class="text-xs font-mono font-bold text-amber-300 uppercase">↪ Continuar esta noticia en la Página ${nextPage.pageNumber}</span>
                         </label>
                         ${nextPageHasSpecialMode ? `<p class="text-[11px] text-amber-200/90 font-mono">La Página ${nextPage.pageNumber} cambiará a modo Noticias para alojar la continuación.</p>` : ''}
                         <div id="print-slot-cont-box" class="${initContChecked ? '' : 'hidden'} space-y-2 pt-1 border-t border-amber-500/30">
-                            <div class="flex flex-wrap items-center justify-between gap-2">
-                                <span class="text-[11px] text-slate-300">Texto de continuación (Pág. ${nextPage.pageNumber}):</span>
-                                <button type="button" onclick="ui.splitPrintSlotBodyForContinuation(false)" class="min-h-[36px] px-3 py-1 bg-amber-400 text-black font-black text-[11px] uppercase hover:bg-white">✂️ Dividir texto automáticamente a la mitad</button>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 items-end">
+                                <div>
+                                    <label for="print-slot-img-placement" class="text-[11px] text-amber-200 font-bold uppercase block mb-1">Ubicación de la imagen (si tiene)</label>
+                                    <select id="print-slot-img-placement" onchange="ui.updatePrintSlotModalFitIndicator(${pageIdx}, ${slotIdx})" class="w-full min-h-[38px] bg-slate-900 border border-slate-700 px-2 py-1 text-xs text-white font-mono">
+                                        <option value="origin" ${!linkedImgInNext ? 'selected' : ''}>📷 Mantener en Página ${page.pageNumber} (actual)</option>
+                                        <option value="next" ${linkedImgInNext ? 'selected' : ''}>➡️ Mover a Página ${nextPage.pageNumber} (continuación)</option>
+                                    </select>
+                                </div>
+                                <button type="button" onclick="ui.splitPrintSlotBodyForContinuation(${pageIdx}, ${slotIdx}, false)" class="min-h-[38px] px-3 py-1 bg-amber-400 text-black font-black text-[11px] uppercase hover:bg-white">📐 Ajustar corte a límites A3</button>
                             </div>
+                            <span class="block text-[11px] text-slate-300">Texto de continuación (Pág. ${nextPage.pageNumber}):</span>
                             <textarea id="print-slot-cont-body" rows="5" placeholder="Texto que aparecerá en la Página ${nextPage.pageNumber} bajo «← Viene de la pág. ${page.pageNumber}»..." class="w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white font-sans">${this.escapeHTML(linkedLoc?.slot?.body || '')}</textarea>
                         </div>
-                    </div>
-                ` : ''}
+                    </div>`;
+                })() : ''}
 
                 <div class="p-2.5 bg-black/60 border border-slate-800 rounded space-y-2">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
                             <label for="print-slot-img-file" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Subir Imagen desde Equipo (Opcional)</label>
-                            <input type="file" id="print-slot-img-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'print-slot-img', 'print-slot-img-preview', null, { maxDim: 1600, quality: 0.92, keepOriginalUnderBytes: 420 * 1024 }); const h=document.getElementById('print-slot-img-height'); if(h && h.value==='0') h.value='35';" class="w-full text-xs text-slate-300 file:mr-2 file:py-1.5 file:px-3 file:border-0 file:text-xs file:font-black file:uppercase file:bg-amber-400 file:text-black cursor-pointer">
+                            <input type="file" id="print-slot-img-file" accept="image/*" onchange="ui.processNanoBananaImageFile(this, 'print-slot-img', 'print-slot-img-preview', null, { maxDim: 1600, quality: 0.92, keepOriginalUnderBytes: 420 * 1024 }); const h=document.getElementById('print-slot-img-height'); if(h && h.value==='0') h.value='35'; setTimeout(() => ui.updatePrintSlotModalFitIndicator(${pageIdx}, ${slotIdx}), 120);" class="w-full text-xs text-slate-300 file:mr-2 file:py-1.5 file:px-3 file:border-0 file:text-xs file:font-black file:uppercase file:bg-amber-400 file:text-black cursor-pointer">
                         </div>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
                                 <label for="print-slot-img-height" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Alto Imagen</label>
-                                <select id="print-slot-img-height" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
+                                <select id="print-slot-img-height" onchange="ui.updatePrintSlotModalFitIndicator(${pageIdx}, ${slotIdx})" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
                                     ${[0, 15, 20, 25, 30, 32, 35, 40, 50, 60, 70, 85].map(mm => {
-                                        const curMm = (slot.imgHeightMm !== undefined && slot.imgHeightMm !== null) ? Number(slot.imgHeightMm) : (page.pageNumber === 1 && slotIdx === 0 ? 60 : 32);
+                                        const effectiveH = (!slot.imageUrl && linkedLoc?.slot?.imageUrl) ? linkedLoc.slot.imgHeightMm : slot.imgHeightMm;
+                                        const curMm = (effectiveH !== undefined && effectiveH !== null) ? Number(effectiveH) : (page.pageNumber === 1 && slotIdx === 0 ? 60 : 32);
                                         return `<option value="${mm}" ${curMm === mm ? 'selected' : ''}>${mm === 0 ? 'Ocultar' : mm + ' mm'}</option>`;
                                     }).join('')}
                                 </select>
@@ -807,18 +922,18 @@ Object.assign(ui, {
                             <div>
                                 <label for="print-slot-img-fit" class="text-[11px] text-amber-300 font-bold uppercase block mb-1">Encuadre</label>
                                 <select id="print-slot-img-fit" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
-                                    <option value="cover" ${(slot.imgFit || 'cover') === 'cover' ? 'selected' : ''}>Recortar (Cover)</option>
-                                    <option value="contain" ${slot.imgFit === 'contain' ? 'selected' : ''}>Completa (Contain)</option>
+                                    <option value="cover" ${(((!slot.imageUrl && linkedLoc?.slot?.imageUrl) ? linkedLoc.slot.imgFit : slot.imgFit) || 'cover') === 'cover' ? 'selected' : ''}>Recortar (Cover)</option>
+                                    <option value="contain" ${((!slot.imageUrl && linkedLoc?.slot?.imageUrl) ? linkedLoc.slot.imgFit : slot.imgFit) === 'contain' ? 'selected' : ''}>Completa (Contain)</option>
                                 </select>
                             </div>
                         </div>
                     </div>
                     <div>
                         <label for="print-slot-img" class="text-[11px] text-slate-300 font-bold uppercase block mb-1">O URL de Imagen / Google Drive</label>
-                        <input type="text" id="print-slot-img" value="${this.escapeAttr(slot.imageUrl || '')}" oninput="ui.previewNanoBananaUrl(this.value, 'print-slot-img-preview'); const h=document.getElementById('print-slot-img-height'); if(this.value.trim() && h && h.value==='0') h.value='35';" placeholder="/api/news/image?url=... o https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
+                        <input type="text" id="print-slot-img" value="${this.escapeAttr(slot.imageUrl || linkedLoc?.slot?.imageUrl || '')}" oninput="ui.previewNanoBananaUrl(this.value, 'print-slot-img-preview'); const h=document.getElementById('print-slot-img-height'); if(this.value.trim() && h && h.value==='0') h.value='35'; ui.updatePrintSlotModalFitIndicator(${pageIdx}, ${slotIdx});" placeholder="/api/news/image?url=... o https://..." class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white font-mono">
                     </div>
-                    <div id="print-slot-img-preview" class="${curImgPreview ? '' : 'hidden'} bg-black border border-slate-700 p-1.5 flex items-center justify-center rounded">
-                        ${curImgPreview ? `<img src="${this.escapeAttr(curImgPreview)}" alt="Vista previa" class="max-h-32 w-full object-contain">` : ''}
+                    <div id="print-slot-img-preview" class="${(curImgPreview || linkedLoc?.slot?.imageUrl) ? '' : 'hidden'} bg-black border border-slate-700 p-1.5 flex items-center justify-center rounded">
+                        ${(curImgPreview || linkedLoc?.slot?.imageUrl) ? `<img src="${this.escapeAttr(curImgPreview || this.resolvePrintImageUrl(linkedLoc.slot.imageUrl, false))}" alt="Vista previa" class="max-h-32 w-full object-contain">` : ''}
                     </div>
                 </div>
             </div>
@@ -829,7 +944,9 @@ Object.assign(ui, {
         `;
         this.showModal(`✏️ Editar Hueco // Página ${page.pageNumber} (${page.label})`, html, actions);
         if (opts?.focusContinuation && !linkedLoc && hasNextPage) {
-            setTimeout(() => this.splitPrintSlotBodyForContinuation(true), 30);
+            setTimeout(() => this.splitPrintSlotBodyForContinuation(pageIdx, slotIdx, false), 40);
+        } else {
+            setTimeout(() => this.updatePrintSlotModalFitIndicator(pageIdx, slotIdx), 60);
         }
     },
 
@@ -900,7 +1017,47 @@ Object.assign(ui, {
         this.modalEditPrintSlot(pageIdx, slotIdx, { focusContinuation: true });
     },
 
-    splitPrintSlotBodyForContinuation(silent = false) {
+    _readPrintSlotModalDraft(pageIdx, slotIdx) {
+        const getVal = (id) => (document.getElementById(id)?.value || '').trim();
+        const contChecked = Boolean(document.getElementById('print-slot-continue-next')?.checked);
+        const imgPlacement = getVal('print-slot-img-placement') || 'origin';
+        const rawImg = getVal('print-slot-img');
+        const imgH = parseInt(getVal('print-slot-img-height'), 10);
+        return {
+            kicker: getVal('print-slot-kicker') || 'ACTUALIDAD',
+            mediaSource: getVal('print-slot-source') || 'ORBITAL REPORT',
+            title: getVal('print-slot-title'),
+            subtitle: getVal('print-slot-subtitle'),
+            body: getVal('print-slot-body'),
+            fontSizePt: parseFloat(getVal('print-slot-fontsize')) || 9.5,
+            imageUrl: (contChecked && imgPlacement === 'next') ? '' : rawImg,
+            rawImageUrl: rawImg,
+            imgHeightMm: !isNaN(imgH) ? imgH : 32,
+            imgFit: getVal('print-slot-img-fit') || 'cover',
+            simulateContinuation: contChecked,
+            imgPlacement
+        };
+    },
+
+    updatePrintSlotModalFitIndicator(pageIdx, slotIdx) {
+        const statusEl = document.getElementById('print-slot-fit-live-status');
+        if (!statusEl) return;
+        const ed = this.getActivePrintEdition();
+        const page = ed?.pages?.[pageIdx];
+        if (!ed || !page) return;
+        const draft = this._readPrintSlotModalDraft(pageIdx, slotIdx);
+        const fit = this.measurePrintPageFit(ed, pageIdx, slotIdx, draft);
+        if (fit.fits) {
+            statusEl.className = 'mb-2 px-2.5 py-1.5 bg-emerald-950/60 border border-emerald-500/60 text-[11px] font-mono text-emerald-300 font-bold rounded';
+            statusEl.textContent = `✅ Cabe dentro de los límites A3 (Pág. ${page.pageNumber})`;
+        } else {
+            const excessMm = Math.max(1, Math.ceil(fit.overflowPx / 3.78));
+            statusEl.className = 'mb-2 px-2.5 py-1.5 bg-red-950/70 border border-red-500 text-[11px] font-mono text-red-200 font-bold rounded';
+            statusEl.textContent = `⚠️ Excede límites A3 en ~${excessMm} mm — usa «📐 Ajustar corte a límites A3», reduce/mueve la imagen o quita el anuncio.`;
+        }
+    },
+
+    splitPrintSlotBodyForContinuation(pageIdx, slotIdx, silent = false) {
         const bodyEl = document.getElementById('print-slot-body');
         const contEl = document.getElementById('print-slot-cont-body');
         if (!bodyEl || !contEl) return;
@@ -913,41 +1070,91 @@ Object.assign(ui, {
             if (!silent) this.notify("Escribe primero el cuerpo de la noticia para poder dividirlo.", "info");
             return;
         }
-        const paras = combined.split(/\n+/).map(p => p.trim()).filter(Boolean);
-        let p1 = '', p2 = '';
-        if (paras.length >= 2) {
-            const totalLen = paras.reduce((acc, p) => acc + p.length, 0);
-            const target = totalLen / 2;
-            let bestIdx = 1;
-            let bestDiff = Infinity;
-            let running = 0;
-            for (let i = 0; i < paras.length - 1; i++) {
-                running += paras[i].length;
-                const diff = Math.abs(running - target);
-                if (diff < bestDiff) {
-                    bestDiff = diff;
-                    bestIdx = i + 1;
+
+        const ed = this.getActivePrintEdition();
+        const page = ed?.pages?.[pageIdx];
+        if (!ed || !page) return;
+
+        const draft = this._readPrintSlotModalDraft(pageIdx, slotIdx);
+        draft.simulateContinuation = true;
+        const contChk = document.getElementById('print-slot-continue-next');
+        if (contChk && !contChk.checked) {
+            contChk.checked = true;
+            const box = document.getElementById('print-slot-cont-box');
+            if (box) box.classList.remove('hidden');
+        }
+        draft.imageUrl = (draft.imgPlacement === 'next') ? '' : draft.rawImageUrl;
+
+        const { totalWords } = this._splitWordsPreservingParagraphs(combined, 0);
+        let adjustedImgMm = null;
+
+        let emptyFit = this.measurePrintPageFit(ed, pageIdx, slotIdx, { ...draft, body: '' });
+        if (!emptyFit.fits && draft.imageUrl && draft.imgHeightMm > 15) {
+            const heights = [70, 60, 50, 40, 35, 30, 25, 20, 15].filter(h => h < draft.imgHeightMm);
+            let fallbackH = null;
+            for (const h of heights) {
+                const testEmpty = this.measurePrintPageFit(ed, pageIdx, slotIdx, { ...draft, imgHeightMm: h, body: '' });
+                if (!testEmpty.fits) continue;
+                if (fallbackH === null) fallbackH = h;
+                const probeWords = Math.min(totalWords, 18);
+                const { part1: probeTxt } = this._splitWordsPreservingParagraphs(combined, probeWords);
+                const testWithText = this.measurePrintPageFit(ed, pageIdx, slotIdx, { ...draft, imgHeightMm: h, body: probeTxt });
+                if (testWithText.fits) {
+                    fallbackH = h;
+                    break;
                 }
             }
-            p1 = paras.slice(0, bestIdx).join('\n\n');
-            p2 = paras.slice(bestIdx).join('\n\n');
-        } else {
-            const sentences = combined.match(/[^.!?]+[.!?]+(?:\s|$)/g);
-            if (sentences && sentences.length >= 2) {
-                const half = Math.ceil(sentences.length / 2);
-                p1 = sentences.slice(0, half).join('').trim();
-                p2 = sentences.slice(half).join('').trim();
-            } else {
-                const words = combined.split(/\s+/).filter(Boolean);
-                const halfW = Math.ceil(words.length / 2);
-                p1 = words.slice(0, halfW).join(' ');
-                p2 = words.slice(halfW).join(' ');
+            if (fallbackH !== null) {
+                draft.imgHeightMm = fallbackH;
+                adjustedImgMm = fallbackH;
+                const hEl = document.getElementById('print-slot-img-height');
+                if (hEl) hEl.value = String(fallbackH);
+                emptyFit = this.measurePrintPageFit(ed, pageIdx, slotIdx, { ...draft, body: '' });
             }
         }
-        bodyEl.value = p1;
-        contEl.value = p2;
+
+        if (!emptyFit.fits) {
+            bodyEl.value = '';
+            contEl.value = combined;
+            this.updatePrintSlotModalFitIndicator(pageIdx, slotIdx);
+            if (!silent) {
+                this.notify(`⚠️ La imagen y los bloques actuales llenan la Pág. ${page.pageNumber}: mueve la foto a Pág. ${page.pageNumber + 1}, redúcela o quita el anuncio.`, "warning");
+            }
+            return;
+        }
+
+        let lo = 0;
+        let hi = totalWords;
+        let bestWords = 0;
+        while (lo <= hi) {
+            const mid = Math.floor((lo + hi) / 2);
+            const { part1: cand } = this._splitWordsPreservingParagraphs(combined, mid);
+            const res = this.measurePrintPageFit(ed, pageIdx, slotIdx, { ...draft, body: cand });
+            if (res.fits) {
+                bestWords = mid;
+                lo = mid + 1;
+            } else {
+                hi = mid - 1;
+            }
+        }
+
+        if (bestWords > 6 && bestWords < totalWords) {
+            bestWords = Math.max(0, bestWords - 2);
+        }
+
+        const { part1, part2 } = this._splitWordsPreservingParagraphs(combined, bestWords);
+        bodyEl.value = part1;
+        contEl.value = part2;
+        this.updatePrintSlotModalFitIndicator(pageIdx, slotIdx);
+
         if (!silent) {
-            this.notify("✂️ Texto dividido entre ambas páginas. Puedes ajustarlo manualmente antes de guardar.", "info");
+            if (!part2) {
+                this.notify(`✅ Todo el texto cabe en la Página ${page.pageNumber} dentro de los límites A3.`, "success");
+            } else if (adjustedImgMm !== null) {
+                this.notify(`📐 Corte ajustado a límites A3 (imagen reducida a ${adjustedImgMm} mm para que quepa).`, "success");
+            } else {
+                this.notify(`📐 Corte ajustado exactamente a los límites A3 de la Página ${page.pageNumber}.`, "success");
+            }
         }
     },
 
@@ -964,11 +1171,13 @@ Object.assign(ui, {
         slot.title = getVal('print-slot-title') || slot.title;
         slot.subtitle = getVal('print-slot-subtitle');
         slot.body = getVal('print-slot-body');
-        slot.imageUrl = getVal('print-slot-img');
         slot.fontSizePt = parseFloat(getVal('print-slot-fontsize')) || 9.5;
+
+        const finalImgUrl = getVal('print-slot-img');
         const imgH = parseInt(getVal('print-slot-img-height'), 10);
-        if (!isNaN(imgH)) slot.imgHeightMm = imgH;
-        slot.imgFit = getVal('print-slot-img-fit') || 'cover';
+        const finalImgH = !isNaN(imgH) ? imgH : (slot.imgHeightMm ?? 32);
+        const finalImgFit = getVal('print-slot-img-fit') || 'cover';
+        const imgPlacement = getVal('print-slot-img-placement') || 'origin';
 
         const contChk = document.getElementById('print-slot-continue-next');
         const contBody = getVal('print-slot-cont-body');
@@ -979,6 +1188,11 @@ Object.assign(ui, {
             if (nextPage.pageMode === 'who_is_who' || nextPage.pageMode === 'beyond_rocket') {
                 nextPage.pageMode = 'news';
             }
+            const imgInNext = imgPlacement === 'next';
+            slot.imageUrl = imgInNext ? '' : finalImgUrl;
+            slot.imgHeightMm = finalImgH;
+            slot.imgFit = finalImgFit;
+
             if (existingLoc) {
                 existingLoc.slot.kicker = slot.kicker;
                 existingLoc.slot.title = slot.title;
@@ -986,6 +1200,13 @@ Object.assign(ui, {
                 existingLoc.slot.fontSizePt = slot.fontSizePt;
                 existingLoc.slot.body = contBody || existingLoc.slot.body || '(Escribe aquí la continuación de la noticia...)';
                 existingLoc.slot.continuationOfSlotId = slot.id;
+                if (imgInNext) {
+                    existingLoc.slot.imageUrl = finalImgUrl;
+                    existingLoc.slot.imgHeightMm = finalImgH;
+                    existingLoc.slot.imgFit = finalImgFit;
+                } else if (existingLoc.slot.imageUrl === finalImgUrl) {
+                    existingLoc.slot.imageUrl = '';
+                }
             } else {
                 nextPage.slots = Array.isArray(nextPage.slots) ? nextPage.slots : [];
                 const newContId = `p${nextPage.pageNumber}-cont-${Date.now()}`;
@@ -996,22 +1217,29 @@ Object.assign(ui, {
                     title: slot.title,
                     subtitle: '',
                     body: contBody || '(Escribe aquí la continuación de la noticia...)',
-                    imageUrl: '',
+                    imageUrl: imgInNext ? finalImgUrl : '',
+                    imgHeightMm: finalImgH,
+                    imgFit: finalImgFit,
                     mediaSource: slot.mediaSource,
                     fontSizePt: slot.fontSizePt,
                     continuationOfSlotId: slot.id
                 });
                 slot.continuesToSlotId = newContId;
             }
-        } else if (slot.continuesToSlotId) {
-            if (existingLoc) {
-                existingLoc.slot.continuationOfSlotId = '';
-                const b = String(existingLoc.slot.body || '').trim();
-                if (!b || b === '(Escribe aquí la continuación de la noticia...)') {
-                    existingLoc.page.slots.splice(existingLoc.slotIdx, 1);
+        } else {
+            slot.imageUrl = finalImgUrl;
+            slot.imgHeightMm = finalImgH;
+            slot.imgFit = finalImgFit;
+            if (slot.continuesToSlotId) {
+                if (existingLoc) {
+                    existingLoc.slot.continuationOfSlotId = '';
+                    const b = String(existingLoc.slot.body || '').trim();
+                    if (!b || b === '(Escribe aquí la continuación de la noticia...)') {
+                        existingLoc.page.slots.splice(existingLoc.slotIdx, 1);
+                    }
                 }
+                slot.continuesToSlotId = '';
             }
-            slot.continuesToSlotId = '';
         }
 
         ed.updatedAt = Date.now();
@@ -1135,7 +1363,8 @@ Object.assign(ui, {
         `;
         const actions = `
             <button type="button" onclick="ui.closeModal()" class="min-h-[44px] px-4 py-2 bg-slate-800 text-white text-xs font-bold uppercase">Cancelar</button>
-            ${ad.companyName ? `<button type="button" onclick="ui.clearPrintAdSlot(${pageIdx})" class="min-h-[44px] px-4 py-2 bg-red-900/70 border border-red-400 text-red-200 hover:bg-red-700 hover:text-white text-xs font-bold uppercase">🗑️ Quitar Anuncio</button>` : ''}
+            ${ad.companyName ? `<button type="button" onclick="ui.clearPrintAdSlot(${pageIdx})" class="min-h-[44px] px-4 py-2 bg-red-900/70 border border-red-400 text-red-200 hover:bg-red-700 hover:text-white text-xs font-bold uppercase">🗑️ Vaciar Anuncio</button>` : ''}
+            <button type="button" onclick="ui.removePrintAdSlot(${pageIdx})" class="min-h-[44px] px-4 py-2 bg-slate-900 border border-red-500/70 text-red-300 hover:bg-red-700 hover:text-white text-xs font-bold uppercase">🚫 Quitar hueco de página</button>
             <button type="button" onclick="ui.savePrintAdSlot(${pageIdx}, false)" class="min-h-[44px] px-4 py-2 bg-mars-cyan text-black font-black text-xs uppercase hover:bg-white">💾 Guardar Anuncio</button>
             <button type="button" onclick="ui.savePrintAdSlot(${pageIdx}, true)" class="min-h-[44px] px-4 py-2 bg-mars-green text-black font-black text-xs uppercase hover:bg-white">✅ Guardar y Aprobar Acción DOC_12</button>
         `;
@@ -1304,7 +1533,49 @@ Object.assign(ui, {
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.closeModal();
         this.render();
-        this.notify("🗑️ Anuncio retirado de la página.", "info");
+        this.notify("🗑️ Anuncio vaciado de la página.", "info");
+    },
+
+    addPrintAdSlot(pageIdx) {
+        if (!this.isNewsCoordinator()) return;
+        const ed = this.getActivePrintEdition();
+        const page = ed?.pages?.[pageIdx];
+        if (!page) return;
+        page.adSlot = {
+            id: `ad-p${page.pageNumber}-${Date.now()}`,
+            label: `Faldón Publicitario Pág. ${page.pageNumber}`,
+            coId: '',
+            companyName: '',
+            classGroup: '',
+            slogan: '',
+            bodyText: '',
+            imageUrl: '',
+            actId: '',
+            campId: '',
+            adHeightMm: 18,
+            adLayout: 'card',
+            adFit: 'contain'
+        };
+        ed.updatedAt = Date.now();
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.render();
+        this.notify(`📢 Espacio publicitario añadido a la Página ${page.pageNumber}.`, "success");
+        this.modalConfigurePrintAd(pageIdx);
+    },
+
+    removePrintAdSlot(pageIdx) {
+        if (!this.isNewsCoordinator()) return;
+        const ed = this.getActivePrintEdition();
+        const page = ed?.pages?.[pageIdx];
+        if (!page) return;
+        page.adSlot = null;
+        ed.updatedAt = Date.now();
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.closeModal();
+        this.render();
+        this.notify(`🚫 Espacio publicitario eliminado de la Página ${page.pageNumber} (más espacio libre para noticias).`, "info");
     },
 
     handlePrintAdDragStart(e, pageIdx) {
@@ -2174,7 +2445,8 @@ Object.assign(ui, {
                     colOverflows = true;
                 }
             });
-            const overflows = (box.scrollHeight > (box.clientHeight + 4)) || (box.scrollWidth > (box.clientWidth + 4)) || colOverflows;
+            const innerOverflows = (inner.scrollHeight > (inner.clientHeight + 2)) || (inner.scrollWidth > (inner.clientWidth + 2));
+            const overflows = innerOverflows || (box.scrollHeight > (box.clientHeight + 4)) || (box.scrollWidth > (box.clientWidth + 4)) || colOverflows;
             if (overflows) {
                 badge.className = 'text-[10px] font-mono px-2 py-0.5 bg-red-700 text-white font-bold uppercase shrink-0';
                 badge.innerText = 'Excede A3 (recorta)';
@@ -2214,7 +2486,12 @@ Object.assign(ui, {
                     <button type="button" onclick="ui.togglePrintPageMode(${pageIdx})" class="px-2 py-1 bg-slate-800 border border-slate-500 text-white hover:bg-[#8B0000] text-[10px] font-mono font-bold uppercase">${isBeyondRocket ? '📰 Noticias' : '🚀 Más allá'}</button>
                 ` : ''}
                 ${showArticleTools ? `<button type="button" onclick="ui.addPrintSlot(${pageIdx})" class="px-2 py-1 bg-emerald-700 text-white hover:bg-emerald-600 text-[10px] font-mono font-bold uppercase">+ Noticia</button>` : ''}
-                ${page.adSlot ? `<button type="button" onclick="ui.modalConfigurePrintAd(${pageIdx})" class="px-2 py-1 bg-[#8B0000] text-white hover:bg-red-700 text-[10px] font-mono font-bold uppercase">📢 Anuncio</button>` : ''}
+                ${page.adSlot ? `
+                    <button type="button" onclick="ui.modalConfigurePrintAd(${pageIdx})" class="px-2 py-1 bg-[#8B0000] text-white hover:bg-red-700 text-[10px] font-mono font-bold uppercase">📢 Anuncio</button>
+                    <button type="button" onclick="ui.removePrintAdSlot(${pageIdx})" class="px-2 py-1 bg-slate-900 border border-red-500/70 text-red-300 hover:bg-red-700 hover:text-white text-[10px] font-mono font-bold uppercase" title="Quitar espacio de anuncio de esta página">− Anuncio</button>
+                ` : `
+                    <button type="button" onclick="ui.addPrintAdSlot(${pageIdx})" class="px-2 py-1 bg-amber-500/20 border border-amber-400 text-amber-200 hover:bg-amber-400 hover:text-black text-[10px] font-mono font-bold uppercase" title="Añadir espacio publicitario a esta página">+ 📢 Anuncio</button>
+                `}
             </div>
         </div>`;
     },
@@ -2512,7 +2789,8 @@ Object.assign(ui, {
                         <button type="button" onclick="ui.adjustPrintAdHeight(${pageIdx}, 6)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Aumentar tamaño del anuncio (+6 mm)">➕</button>
                     ` : ''}
                     <button type="button" onclick="ui.modalConfigurePrintAd(${pageIdx})" class="px-2 py-0.5 bg-[#8B0000] text-white hover:bg-[#111111] text-[10px] font-mono font-bold uppercase">📢 Anuncio</button>
-                    ${isActiveAd ? `<button type="button" onclick="ui.clearPrintAdSlot(${pageIdx})" class="px-2 py-0.5 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-[10px] font-mono font-bold uppercase" title="Quitar anuncio">✕</button>` : ''}
+                    ${isActiveAd ? `<button type="button" onclick="ui.clearPrintAdSlot(${pageIdx})" class="px-2 py-0.5 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-[10px] font-mono font-bold uppercase" title="Vaciar anunciante">✕</button>` : ''}
+                    <button type="button" onclick="ui.removePrintAdSlot(${pageIdx})" class="px-2 py-0.5 bg-stone-200 border border-stone-500 text-[#111111] hover:bg-red-700 hover:text-white text-[10px] font-mono font-bold uppercase" title="Quitar espacio publicitario de esta página">🚫 Quitar</button>
                 </div>` : '';
 
             if (isActiveAd && ad.adLayout === 'banner' && adImgSrc) {
@@ -2520,7 +2798,7 @@ Object.assign(ui, {
                     ? `width:100%;height:${adHeightMm}mm;object-fit:cover;background:#ffffff;border:1px solid #d6d3d1;display:block;`
                     : `width:100%;height:auto;max-height:${adHeightMm}mm;object-fit:contain;margin:0 auto;background:#ffffff;border:1px solid #d6d3d1;display:block;`;
                 adHtml = `
-                <div ${dragAttrs} style="position:relative;margin-top:auto;border:2px solid #111111;background:#EFECE4;padding:1.5mm;display:flex;flex-direction:column;gap:1mm;${!forPrint ? 'cursor:grab;' : ''}">
+                <div ${dragAttrs} style="position:relative;flex-shrink:0;margin-top:2mm;border:2px solid #111111;background:#EFECE4;padding:1.5mm;display:flex;flex-direction:column;gap:1mm;${!forPrint ? 'cursor:grab;' : ''}">
                     ${adBtn}
                     <span style="font-family:${monoFont};font-size:7pt;line-height:1.2;text-transform:uppercase;letter-spacing:0.08em;color:#8B0000;font-weight:700;">PUBLICIDAD · ${this.escapeHTML(ad.companyName || 'Órbita.')}${adSizeTag}</span>
                     <img src="${this.escapeAttr(adImgSrc)}" alt="" style="${bannerImgStyle}">
@@ -2528,7 +2806,7 @@ Object.assign(ui, {
             } else if (isActiveAd) {
                 const cardImgMm = Math.min(adHeightMm, 90);
                 adHtml = `
-                <div ${dragAttrs} style="position:relative;margin-top:auto;min-height:${adHeightMm}mm;border:2px solid #111111;background:#EFECE4;padding:2mm;display:flex;align-items:center;gap:2.5mm;${!forPrint ? 'cursor:grab;' : ''}">
+                <div ${dragAttrs} style="position:relative;flex-shrink:0;margin-top:2mm;min-height:${adHeightMm}mm;border:2px solid #111111;background:#EFECE4;padding:2mm;display:flex;align-items:center;gap:2.5mm;${!forPrint ? 'cursor:grab;' : ''}">
                     ${adBtn}
                     ${adImgSrc ? `<img src="${this.escapeAttr(adImgSrc)}" alt="" style="width:${cardImgMm}mm;height:${cardImgMm}mm;object-fit:${adFit};background:#ffffff;border:1px solid #d6d3d1;flex-shrink:0;display:block;">` : ''}
                     <div style="min-width:0;flex:1;">
@@ -2538,9 +2816,9 @@ Object.assign(ui, {
                         ${ad.bodyText ? `<p style="margin:0.5mm 0 0 0;font-family:${sansFont};font-size:7.5pt;line-height:1.2;color:#44403c;">${this.escapeHTML(ad.bodyText)}</p>` : ''}
                     </div>
                 </div>`;
-            } else {
+            } else if (!forPrint) {
                 adHtml = `
-                <div ${dragAttrs} style="position:relative;margin-top:auto;min-height:9.5mm;border:1px dashed #a8a29e;background:#f5f5f4;padding:2mm;display:flex;align-items:center;">
+                <div ${dragAttrs} style="position:relative;flex-shrink:0;margin-top:2mm;min-height:9.5mm;border:1px dashed #a8a29e;background:#f5f5f4;padding:2mm;display:flex;align-items:center;">
                     ${adBtn}
                     <span style="font-family:${monoFont};font-size:8pt;line-height:1.2;color:#57534e;text-transform:uppercase;">[ ${this.escapeHTML(ad.label || 'Espacio Publicitario Startup')} ]</span>
                 </div>`;
@@ -2567,12 +2845,12 @@ Object.assign(ui, {
         const boxBorder = forPrint ? '' : 'border:1px solid #d6d3d1;';
         return `
         <div data-print-page-box="${pageIdx}" style="width:210mm;min-width:210mm;max-width:210mm;height:297mm;min-height:297mm;max-height:297mm;padding:9mm;box-sizing:border-box;background:#FAF8F5;color:#111111;font-family:${serifFont};display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;position:relative;${boxBorder}">
-            <div data-print-page-inner="${pageIdx}">
+            <div data-print-page-inner="${pageIdx}" style="flex:1;min-height:0;overflow:hidden;">
                 ${headerHtml}
                 ${mainContentHtml}
             </div>
             ${adHtml}
-            <div style="padding-top:1.5mm;margin-top:1.5mm;border-top:1px solid #d6d3d1;display:flex;justify-content:space-between;font-family:${monoFont};font-size:7pt;line-height:1.2;color:#78716c;text-transform:uppercase;">
+            <div data-print-page-footer="${pageIdx}" style="flex-shrink:0;padding-top:1.5mm;margin-top:1.5mm;border-top:1px solid #d6d3d1;display:flex;justify-content:space-between;font-family:${monoFont};font-size:7pt;line-height:1.2;color:#78716c;text-transform:uppercase;">
                 <span>${this.escapeHTML(ed.issueLabel || '')}</span>
                 <span>Pág. ${page.pageNumber} / ${totalPages}</span>
             </div>
