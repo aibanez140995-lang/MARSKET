@@ -3137,7 +3137,7 @@ const ui = {
             let pendingDossier = 0;
             const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
             if (effectiveRole === 'CEO') {
-                pendingDossier = Object.values(co.deliverables || {}).filter(d => d && d.status === 'SUBMITTED_TO_CEO').length;
+                pendingDossier = Object.values(co.deliverables || {}).filter(d => d && (d.status === 'SUBMITTED_TO_CEO' || ((d.status === 'CEO_REVISION' || d.status === 'DEVUELTO_A_TECNICO') && d.returnByTeacher))).length;
             } else {
                 const myDefs = (effectiveRole === 'OPERACIONES_IA')
                     ? defs.filter(d => d.role === 'OPERACIONES_IA' || d.role === 'OPERACIONES').map(d => d.key)
@@ -3160,7 +3160,7 @@ const ui = {
                     : defs.filter(d => d.role === effectiveRole).map(d => d.key));
 
             if (effectiveRole === 'CEO') {
-                pendingDeliverables = Object.values(co.deliverables || {}).filter(d => d && d.status === 'SUBMITTED_TO_CEO').length;
+                pendingDeliverables = Object.values(co.deliverables || {}).filter(d => d && (d.status === 'SUBMITTED_TO_CEO' || ((d.status === 'CEO_REVISION' || d.status === 'DEVUELTO_A_TECNICO') && d.returnByTeacher))).length;
             } else if (role === 'AUXILIAR' && !co?.auxRoleDept) {
                 pendingDeliverables = 0;
             } else {
@@ -3866,11 +3866,14 @@ const ui = {
         const status = item.status || 'DELIVERED_TO_TEACHER';
         
         let statusBadgeHtml = '';
+        const isResubmitted = status === 'DELIVERED_TO_TEACHER' && Boolean(item.resubmittedAfterTeacherReturn);
         if (status === 'SUBMITTED_TO_CEO') {
             statusBadgeHtml = `<span class="bg-mars-yellow/20 text-mars-yellow border border-mars-yellow px-2 py-0.5 text-[10px] font-black uppercase shrink-0">[PENDIENTE SUPERVISIÓN CEO]</span>`;
         } else if (status === 'CEO_REVISION') {
             const isTeacher = !!item.returnByTeacher;
             statusBadgeHtml = `<span class="bg-mars-magenta/20 text-mars-magenta border border-mars-magenta px-2 py-0.5 text-[10px] font-black uppercase shrink-0">[⚠️ ${isTeacher ? 'SUBSANACIÓN DOCENTE' : 'REVISIÓN REQUERIDA CEO'}]</span>`;
+        } else if (isResubmitted) {
+            statusBadgeHtml = `<span class="bg-mars-cyan/25 text-mars-cyan border border-mars-cyan px-2 py-0.5 text-[10px] font-black uppercase shrink-0 animate-pulse">[🔄 SUBSANADO POR CEO · REVISAR]</span>`;
         } else {
             statusBadgeHtml = `<span class="bg-mars-green/20 text-mars-green border border-mars-green px-2 py-0.5 text-[10px] font-black uppercase shrink-0">[✓ ENTREGADO A DOCENTE]</span>`;
         }
@@ -3912,14 +3915,19 @@ const ui = {
         const reasonBanner = (status === 'CEO_REVISION' && (item.returnReason || item.returnReasonId))
             ? `<div class="mt-2 bg-red-950/50 border border-red-500/40 p-2 text-[11px] text-red-300 rounded"><strong class="text-red-400 uppercase">Motivo de Subsanación (${isTeacherOrigin ? 'Claustro Docente' : 'CEO'}):</strong> ${this.escapeHTML(item.returnReason || item.returnReasonId)}</div>`
             : '';
+        const resubmittedAtLabel = item.resubmittedAt ? String(item.resubmittedAt).slice(0, 16).replace('T', ' ') : '';
+        const resubmittedNote = isResubmitted
+            ? `<div class="mt-2 bg-cyan-950/60 border border-mars-cyan/60 p-2 text-[11px] text-cyan-100 rounded font-mono"><strong class="text-mars-cyan uppercase">🔄 Reenviado tras subsanación${resubmittedAtLabel ? ` (${this.escapeHTML(resubmittedAtLabel)})` : ''}:</strong> Revisa el documento y guarda la calificación para cerrar el aviso.</div>`
+            : '';
 
-        return `<div class="bg-mars-cyan/10 border border-mars-cyan/60 p-3 mb-2 text-xs rounded">
+        return `<div class="${isResubmitted ? 'bg-cyan-950/25 border-2 border-mars-cyan ring-1 ring-mars-cyan/50' : 'bg-mars-cyan/10 border border-mars-cyan/60'} p-3 mb-2 text-xs rounded">
                     <div class="mb-2">
                         <span class="text-mars-cyan font-bold uppercase block break-words leading-snug">${this.escapeHTML(title)}</span>
                         <span class="text-[10px] text-slate-300 font-mono block mt-0.5">GOOGLE DRIVE | ${this.escapeHTML(String(dateStr).slice(0,10))}</span>
                     </div>
                     ${actionHtml}
                     ${reasonBanner}
+                    ${resubmittedNote}
                 </div>`;
     },
     
@@ -4085,6 +4093,13 @@ const ui = {
             <div class="bg-slate-950 border border-mars-cyan/40 p-3 mt-2 flex flex-col sm:flex-row gap-2 justify-end">
                 <button type="button" onclick="ui.approveDeliverableByCEO('${docKey}')" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all">[ ✓ APROBAR Y ELEVAR A DOCENTE ]</button>
                 <button type="button" onclick="ui.modalCeoReturnDeliverable('${docKey}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-4 py-2 hover:bg-mars-magenta hover:text-white transition-all">[ ⚠️ DEVOLVER PARA SUBSANACIÓN ]</button>
+            </div>
+            `;
+        } else if (isCEO && item && (status === 'CEO_REVISION' || status === 'DEVUELTO_A_TECNICO') && item.returnByTeacher) {
+            ceoControlsHtml = `
+            <div class="bg-red-950/40 border border-red-500/60 p-3 mt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <span class="text-[11px] text-red-200 font-mono">⚠️ Devuelto por docente (${this.escapeHTML(item.returnByTeacherRole || 'Claustro')}): ${this.escapeHTML(item.returnReason || item.returnReasonId || 'Subsanar')}</span>
+                <button type="button" onclick="ui.modalCeoResubmitDeliverable('${docKey}')" class="min-h-[44px] bg-amber-400 text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all shrink-0">[ 🔄 REENVIAR SUBSANADO AL DOCENTE ]</button>
             </div>
             `;
         }
@@ -4356,6 +4371,10 @@ const ui = {
             }
             else pipelineLabel = '<span class="text-mars-green font-bold uppercase text-xs">[✓ ENTREGADO A DOCENTE]</span>';
 
+            const safeDrawerReturnUrl = (status === 'CEO_REVISION' && item.returnDriveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(item.returnDriveUrl)))
+                ? (this.sanitizeDriveUrl ? this.sanitizeDriveUrl(item.returnDriveUrl) : encodeURI(item.returnDriveUrl).replace(/"/g, '&quot;'))
+                : '';
+
             if (isValidDriveUrl) {
                 const tipoDoc = item.driveUrl.includes('/document/') ? 'Doc'
                   : item.driveUrl.includes('/spreadsheets/') ? 'Sheet'
@@ -4368,21 +4387,28 @@ const ui = {
                         ${pipelineLabel}
                         <span class="text-slate-400 text-xs font-mono">(${this.escapeHTML(String(dateStr).slice(0, 10))})</span>
                     </div>
-                    ${status === 'CEO_REVISION' && (item.returnReason || item.returnReasonId) ? `<div class="bg-red-950/40 border border-red-500/40 p-2 text-xs text-red-300 mb-2 rounded"><strong class="uppercase">Motivo:</strong> ${this.escapeHTML(item.returnReason || item.returnReasonId)}</div>` : ''}
+                    ${status === 'CEO_REVISION' && (item.returnReason || item.returnReasonId) ? `<div class="bg-red-950/40 border border-red-500/40 p-2 text-xs text-red-300 mb-2 rounded"><strong class="uppercase">Motivo (${item.returnByTeacher ? `Claustro Docente · ${this.escapeHTML(item.returnByTeacherRole || '')}` : 'CEO'}):</strong> ${this.escapeHTML(item.returnReason || item.returnReasonId)}</div>` : ''}
                     <div class="mt-2 flex items-center gap-2 flex-wrap">
                         <a href="${safeHref}" data-doc-url="${this.escapeAttr(item.driveUrl)}" onclick="ui.markDocOpened(this.dataset.docUrl)" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-950/40 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-900/50 transition-colors">
                             <span>Abrir ${tipoDoc} ↗</span>
                         </a>
+                        ${safeDrawerReturnUrl ? `<a href="${safeDrawerReturnUrl}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-950/60 text-red-200 border border-red-500/50 rounded hover:bg-red-900 transition-colors font-bold"><span>📄 Correcciones Docente ↗</span></a>` : ''}
                         ${(state.user && this.getEffectiveRole(co) === 'CEO' && status === 'SUBMITTED_TO_CEO') ? `
                             <button type="button" onclick="ui.approveDeliverableByCEO('${docKey}'); ui.closeDrawer()" class="min-h-[44px] px-4 py-2 text-xs bg-mars-green text-black font-black uppercase hover:bg-white transition-all">Aprobar CEO</button>
                             <button type="button" onclick="ui.modalCeoReturnDeliverable('${docKey}'); ui.closeDrawer()" class="min-h-[44px] px-4 py-2 text-xs bg-red-700 text-white font-black uppercase hover:bg-white hover:text-red-700 transition-all border border-red-500">Devolver para Subsanación</button>
-                        ` : ''}
+                        ` : ((state.user && this.getEffectiveRole(co) === 'CEO' && status === 'CEO_REVISION' && item.returnByTeacher) ? `
+                            <button type="button" onclick="ui.closeDrawer(); ui.modalCeoResubmitDeliverable('${docKey}')" class="min-h-[44px] px-4 py-2 text-xs bg-amber-400 text-black font-black uppercase hover:bg-white transition-all">[ 🔄 Reenviar Subsanado al Docente ]</button>
+                        ` : '')}
                     </div>
                 `;
             } else {
                 deliveryStatusHtml = `
                     <div class="flex items-center gap-2 mb-1">${pipelineLabel} <span class="text-slate-400 text-xs font-mono">(${this.escapeHTML(String(dateStr).slice(0, 10))})</span></div>
-                    <div class="mt-1"><span class="text-xs text-amber-500/80 font-mono italic">[Contenido legacy no accesible por directiva RGPD]</span></div>
+                    ${status === 'CEO_REVISION' && (item.returnReason || item.returnReasonId) ? `<div class="bg-red-950/40 border border-red-500/40 p-2 text-xs text-red-300 mb-2 rounded"><strong class="uppercase">Motivo (${item.returnByTeacher ? 'Claustro Docente' : 'CEO'}):</strong> ${this.escapeHTML(item.returnReason || item.returnReasonId)}</div>` : ''}
+                    <div class="mt-1 flex items-center gap-2 flex-wrap">
+                        <span class="text-xs text-amber-500/80 font-mono italic">[Contenido legacy no accesible por directiva RGPD]</span>
+                        ${(state.user && this.getEffectiveRole(co) === 'CEO' && status === 'CEO_REVISION' && item.returnByTeacher) ? `<button type="button" onclick="ui.closeDrawer(); ui.modalCeoResubmitDeliverable('${docKey}')" class="min-h-[44px] px-4 py-2 text-xs bg-amber-400 text-black font-black uppercase hover:bg-white transition-all">[ 🔄 Reenviar Subsanado al Docente ]</button>` : ''}
+                    </div>
                 `;
             }
         } else {

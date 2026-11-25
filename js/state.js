@@ -3534,13 +3534,21 @@ const state = {
         const isCEO = Boolean(this.user.admin) || (effectiveRole === 'CEO' && def && def.role === 'CEO');
         const targetStatus = isCEO ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
 
-        const prevDelivMs = this._parseSafeTs ? this._parseSafeTs(co.deliverables[docType]?.updatedAt) : (Date.parse(co.deliverables[docType]?.updatedAt) || 0);
+        const prevDoc = co.deliverables[docType];
+        const prevTeacherReturned = Boolean(prevDoc && typeof prevDoc === 'object' && (prevDoc.returnByTeacher || prevDoc.wasTeacherReturned));
+        const prevTeacherRole = (prevDoc && typeof prevDoc === 'object' && prevDoc.returnByTeacherRole) ? String(prevDoc.returnByTeacherRole) : null;
+
+        const prevDelivMs = this._parseSafeTs ? this._parseSafeTs(prevDoc?.updatedAt) : (Date.parse(prevDoc?.updatedAt) || 0);
+        const monoIso = new Date(Math.max(Date.now(), prevDelivMs + 1)).toISOString();
         const sanitizedItem = { 
             driveUrl, 
             status: targetStatus,
             returnReasonId: null,
             returnReason: null,
-            updatedAt: new Date(Math.max(Date.now(), prevDelivMs + 1)).toISOString()
+            returnByTeacher: false,
+            ...(isCEO && prevTeacherReturned ? { resubmittedAfterTeacherReturn: true, resubmittedAt: monoIso } : {}),
+            ...(!isCEO && prevTeacherReturned ? { wasTeacherReturned: true, ...(prevTeacherRole ? { returnByTeacherRole: prevTeacherRole } : {}) } : {}),
+            updatedAt: monoIso
         };
         co.deliverables[docType] = sanitizedItem;
 
@@ -3574,7 +3582,10 @@ const state = {
             await this.executeAction('SUBMIT_DELIVERABLE', {
                 key: docType,
                 driveUrl: sanitizedItem.driveUrl,
-                status: targetStatus
+                status: targetStatus,
+                ...(sanitizedItem.wasTeacherReturned ? { wasTeacherReturned: true } : {}),
+                ...(sanitizedItem.returnByTeacherRole ? { returnByTeacherRole: sanitizedItem.returnByTeacherRole } : {}),
+                ...(sanitizedItem.resubmittedAfterTeacherReturn ? { resubmittedAfterTeacherReturn: true, resubmittedAt: sanitizedItem.resubmittedAt } : {})
             });
         } catch(e) {
             console.warn("[ACTION] Error sincronizando entrega:", e);
@@ -3815,18 +3826,26 @@ const state = {
             return;
         }
 
+        const cameFromTeacher = Boolean(co.deliverables[docType].returnByTeacher || co.deliverables[docType].wasTeacherReturned);
         co.deliverables[docType].status = 'DELIVERED_TO_TEACHER';
         delete co.deliverables[docType].returnReasonId;
         delete co.deliverables[docType].returnReason;
         delete co.deliverables[docType].returnDriveUrl;
         delete co.deliverables[docType].returnByTeacher;
+        delete co.deliverables[docType].returnByTeacherRole;
+        delete co.deliverables[docType].wasTeacherReturned;
         const prevCeoApprMs = this._parseSafeTs ? this._parseSafeTs(co.deliverables[docType].updatedAt) : (Date.parse(co.deliverables[docType].updatedAt) || 0);
-        co.deliverables[docType].updatedAt = new Date(Math.max(Date.now(), prevCeoApprMs + 1)).toISOString();
+        const monoIso = new Date(Math.max(Date.now(), prevCeoApprMs + 1)).toISOString();
+        co.deliverables[docType].updatedAt = monoIso;
+        if (cameFromTeacher) {
+            co.deliverables[docType].resubmittedAfterTeacherReturn = true;
+            co.deliverables[docType].resubmittedAt = monoIso;
+        }
         if (docType === 'hoja_taller_fyq') {
             this._appendHojaHistoryEntry(co.deliverables[docType], co, {
                 actor: (typeof ui !== 'undefined' && typeof ui.getActorRoleLabel === 'function') ? ui.getActorRoleLabel(co) : 'CEO',
                 action: 'VISADO_CEO',
-                summary: 'El CEO visó el histórico y la Hoja de Taller definitiva y la elevó a FyQ.',
+                summary: cameFromTeacher ? 'El CEO visó la Hoja de Taller subsanada y la elevó a FyQ.' : 'El CEO visó el histórico y la Hoja de Taller definitiva y la elevó a FyQ.',
                 driveUrl: co.deliverables[docType].driveUrl || ''
             });
         }
@@ -3857,11 +3876,90 @@ const state = {
             await this.executeAction('CEO_REVIEW_DELIVERABLE', {
                 key: docType,
                 action: 'APPROVE',
+                ...(cameFromTeacher ? { resubmittedAfterTeacherReturn: true } : {}),
                 ...(docType === 'hoja_taller_fyq' ? { history: co.deliverables[docType].history } : {})
             });
         } catch(e) {
             console.warn("[ACTION] Error sincronizando aprobación del CEO:", e);
         }
+    },
+
+    async resubmitDeliverableByCEO(docType, newDriveUrl = null) {
+        if (!this.user || !this.user.coId || this.getEffectiveRole() !== 'CEO') return;
+        const coId = this.user.coId;
+        const co = this.data.companies?.[coId];
+        const doc = co?.deliverables?.[docType];
+        if (!doc || !doc.returnByTeacher || (doc.status !== 'CEO_REVISION' && doc.status !== 'DEVUELTO_A_TECNICO')) {
+            if (typeof ui !== 'undefined' && ui.notify) {
+                ui.notify("Este entregable ya fue reenviado o no corresponde a una subsanación docente.", "warning");
+            }
+            return;
+        }
+        const finalUrl = String(newDriveUrl || doc.driveUrl || '').trim();
+        if (!finalUrl) {
+            if (typeof ui !== 'undefined' && ui.notify) {
+                ui.notify("Falta un enlace válido de Google Drive para reenviar al docente.", "error");
+            }
+            return;
+        }
+
+        const prevMs = this._parseSafeTs ? this._parseSafeTs(doc.updatedAt) : (Date.parse(doc.updatedAt) || 0);
+        const monoIso = new Date(Math.max(Date.now(), prevMs + 1)).toISOString();
+
+        doc.driveUrl = finalUrl;
+        doc.status = 'DELIVERED_TO_TEACHER';
+        doc.resubmittedAfterTeacherReturn = true;
+        doc.resubmittedAt = monoIso;
+        doc.updatedAt = monoIso;
+        delete doc.returnReasonId;
+        delete doc.returnReason;
+        delete doc.returnDriveUrl;
+        delete doc.returnByTeacher;
+        delete doc.returnByTeacherRole;
+        delete doc.wasTeacherReturned;
+
+        if (docType === 'hoja_taller_fyq') {
+            this._appendHojaHistoryEntry(doc, co, {
+                actor: (typeof ui !== 'undefined' && typeof ui.getActorRoleLabel === 'function') ? ui.getActorRoleLabel(co) : 'CEO',
+                action: 'SUBSANADO_CEO',
+                summary: 'El CEO confirmó la subsanación docente y reenvió la Hoja de Taller a FyQ.',
+                driveUrl: finalUrl
+            });
+        }
+
+        if (typeof telemetry !== 'undefined' && telemetry.log) {
+            telemetry.log("CEO_SUBSANACION", `Documento subsanado reenviado a evaluación docente: ${docType}`);
+        }
+
+        const defs = typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : [];
+        const def = defs.find(d => d.key === docType);
+        const docName = def ? (def.shortName || def.name) : docType;
+        const targetRole = def ? (def.role === 'OPERACIONES' ? 'OPERACIONES_IA' : def.role) : null;
+        if (targetRole && targetRole !== 'CEO' && typeof ui !== 'undefined' && typeof ui.pushNotification === 'function') {
+            ui.pushNotification(coId, targetRole, `El CEO ha confirmado la subsanación de "${docName}" y lo ha reenviado al docente para revisión.`, 'info', {
+                view: 'role_deliverables',
+                section: 'deliverables',
+                docKey: docType
+            });
+        }
+
+        this.save(coId);
+        if (typeof ui !== 'undefined' && typeof ui.render === 'function') {
+            ui.render();
+            ui.notify("✅ Documento subsanado reenviado al docente para su revisión.", "success");
+        }
+
+        try {
+            await this.executeAction('CEO_REVIEW_DELIVERABLE', {
+                key: docType,
+                action: 'RESUBMIT_TO_TEACHER',
+                driveUrl: finalUrl,
+                ...(docType === 'hoja_taller_fyq' ? { history: doc.history } : {})
+            });
+        } catch(e) {
+            console.warn("[ACTION] Error sincronizando reenvío subsanado del CEO:", e);
+        }
+        if (typeof this.pushToCloud === 'function') this.pushToCloud(false);
     },
 
     async returnDeliverableByCEO(docType, reasonId, returnDriveUrl = null) {
@@ -3940,11 +4038,16 @@ const state = {
         const reasonObj = reasonList.find(r => r.id === reasonId);
         const reasonText = reasonObj ? reasonObj.label : (reasonId || 'Revisión y subsanación requerida por el profesorado');
 
+        const teacherRoleLabel = this.user.role || 'DOCENTE';
         co.deliverables[docType].status = 'CEO_REVISION';
         co.deliverables[docType].returnReasonId = reasonId;
         co.deliverables[docType].returnReason = reasonText;
         co.deliverables[docType].returnDriveUrl = returnDriveUrl || null;
         co.deliverables[docType].returnByTeacher = true;
+        co.deliverables[docType].returnByTeacherRole = teacherRoleLabel;
+        delete co.deliverables[docType].resubmittedAfterTeacherReturn;
+        delete co.deliverables[docType].resubmittedAt;
+        delete co.deliverables[docType].wasTeacherReturned;
         const prevCeoApprMs = this._parseSafeTs ? this._parseSafeTs(co.deliverables[docType].updatedAt) : (Date.parse(co.deliverables[docType].updatedAt) || 0);
         co.deliverables[docType].updatedAt = new Date(Math.max(Date.now(), prevCeoApprMs + 1)).toISOString();
 
@@ -3956,10 +4059,10 @@ const state = {
         const def = defs.find(d => d.key === docType);
         const docName = def ? (def.shortName || def.name) : docType;
         const targetRole = def ? (def.role === 'OPERACIONES' ? 'OPERACIONES_IA' : def.role) : null;
-        const teacherName = this.user.role || 'Docente';
+        const teacherName = teacherRoleLabel;
 
         if (typeof ui !== 'undefined' && typeof ui.pushNotification === 'function') {
-            if (targetRole) {
+            if (targetRole && targetRole !== 'CEO') {
                 ui.pushNotification(coId, targetRole, `El Profesorado (${teacherName}) ha DEVUELTO vuestro entregable "${docName}" para subsanación urgente. Motivo: ${reasonText}`, 'error', {
                     view: 'role_deliverables',
                     section: 'deliverables',
@@ -3986,11 +4089,13 @@ const state = {
                 action: 'RETURN',
                 reasonId: reasonId,
                 reasonText: reasonText,
-                returnDriveUrl: returnDriveUrl || null
+                returnDriveUrl: returnDriveUrl || null,
+                returnByTeacherRole: teacherRoleLabel
             });
         } catch(e) {
             console.warn("[ACTION] Error sincronizando devolución docente:", e);
         }
+        if (typeof this.pushToCloud === 'function') this.pushToCloud(false);
     },
 
     async decideMktAction(campId, actId, approved, feedback = '', returnDriveUrl = '') {
@@ -4354,6 +4459,10 @@ const state = {
                                     returnReason: d.returnReason || null,
                                     returnDriveUrl: d.returnDriveUrl || null,
                                     returnByTeacher: Boolean(d.returnByTeacher),
+                                    ...(d.returnByTeacherRole ? { returnByTeacherRole: String(d.returnByTeacherRole) } : {}),
+                                    ...(d.wasTeacherReturned ? { wasTeacherReturned: true } : {}),
+                                    ...(d.resubmittedAfterTeacherReturn ? { resubmittedAfterTeacherReturn: true } : {}),
+                                    ...(d.resubmittedAt ? { resubmittedAt: String(d.resubmittedAt) } : {}),
                                     updatedAt: d.updatedAt || d.date || new Date().toISOString()
                                 };
                             }

@@ -360,7 +360,7 @@ Object.assign(ui, {
     },
 
     getPendingEvalDocsForSubject(co, subject) {
-        if (!co || !subject) return { pendingCount: 0, readyTotal: 0 };
+        if (!co || !subject) return { pendingCount: 0, readyTotal: 0, resubmittedCount: 0, awaitingSubsanacionCount: 0 };
         const docToCrit = {
             FYQ: { preliminaryReport: 'c1', hoja_taller_fyq: 'c_ws', technicalReport: 'c2' },
             ECO: { budgetInitial: 'c2', incomeStatement: 'c3', budgetPostProto: 'c4', balanceSheet: 'c5' },
@@ -377,17 +377,25 @@ Object.assign(ui, {
 
         let pendingCount = 0;
         let readyTotal = 0;
+        let resubmittedCount = 0;
+        let awaitingSubsanacionCount = 0;
 
         Object.entries(docToCrit).forEach(([docKey, critId]) => {
             const docItem = docs[docKey];
             if (!docItem) return;
             const isLegacyStr = typeof docItem === 'string' && docItem.trim().length > 0;
             const st = isLegacyStr ? 'DELIVERED_TO_TEACHER' : docItem.status;
+            if ((st === 'CEO_REVISION' || st === 'DEVUELTO_A_TECNICO') && typeof docItem === 'object' && docItem.returnByTeacher) {
+                awaitingSubsanacionCount++;
+                return;
+            }
             if (st !== 'DELIVERED_TO_TEACHER') return;
             readyTotal++;
+            const isResubmitted = Boolean(!isLegacyStr && typeof docItem === 'object' && docItem.resubmittedAfterTeacherReturn);
+            if (isResubmitted) resubmittedCount++;
             const hasScore = scores[critId] !== undefined && scores[critId] !== null && scores[critId] !== '';
             const docTs = (typeof docItem === 'object' && docItem.updatedAt) ? Date.parse(docItem.updatedAt) : 0;
-            if (!hasScore || (docTs && gradeTs && docTs > gradeTs)) {
+            if (isResubmitted || !hasScore || (docTs && gradeTs && docTs > gradeTs)) {
                 pendingCount++;
             }
         });
@@ -403,7 +411,7 @@ Object.assign(ui, {
                 }
             }
         }
-        return { pendingCount, readyTotal };
+        return { pendingCount, readyTotal, resubmittedCount, awaitingSubsanacionCount };
     },
 
     renderAdminEval() {
@@ -415,7 +423,7 @@ Object.assign(ui, {
         let adminHtml = `<div class="mb-6 flex flex-wrap gap-3 items-center bg-slate-900 p-3 border border-mars-border">`;
         if(isCoord) {
             adminHtml += `
-            <select aria-label="Vista de evaluación de coordinación" onchange="ui.coordEvalView=this.value; ui.evalSelectedCo=''; ui.render()" class="min-h-[44px] w-full sm:w-auto max-w-full bg-black border border-mars-cyan text-mars-cyan text-xs p-2.5 uppercase font-bold outline-none cursor-pointer">
+            <select aria-label="Vista de evaluación de coordinación" onchange="ui.coordEvalView=this.value; ui.evalSelectedCo=''; ui.evalOnlyResubmitted=false; ui.render()" class="min-h-[44px] w-full sm:w-auto max-w-full bg-black border border-mars-cyan text-mars-cyan text-xs p-2.5 uppercase font-bold outline-none cursor-pointer">
                 <option value="ACTA" ${this.coordEvalView==='ACTA'?'selected':''}>📊 Acta General Calificaciones (100% Ponderada)</option>
                 <option value="ARCHIVE" ${this.coordEvalView==='ARCHIVE'?'selected':''}>📁 Archivo Documental Central (Entregables Drive)</option>
                 ${['FYQ','LYE','LEN','ECO','MAT','ING'].map(s => `<option value="${s}" ${this.coordEvalView===s?'selected':''}>Evaluar: ${this.escapeHTML(RUBRIC_CONFIG[s]?.name || s)} (${Math.round((weights[s]||0)*100)}%)</option>`).join('')}
@@ -1103,6 +1111,12 @@ Object.assign(ui, {
         </div>`;
     },
 
+    toggleEvalOnlyResubmitted() {
+        this.evalOnlyResubmitted = !this.evalOnlyResubmitted;
+        this.evalSelectedCo = '';
+        this.render();
+    },
+
     renderClassStartupCards(activeSubject, classFilter) {
         const companies = state.data.companies || {};
         const classes = ['ALL', 'A', 'B', 'C', 'D', 'E', 'F', 'TEST'];
@@ -1112,15 +1126,6 @@ Object.assign(ui, {
             const co = companies[cid];
             return co && (currentCls === 'ALL' || co.classGroup === currentCls);
         });
-
-        const subjectDocKeys = {
-            FYQ: ['preliminaryReport', 'hoja_taller_fyq', 'technicalReport'],
-            ECO: ['budgetInitial', 'incomeStatement', 'budgetPostProto', 'balanceSheet'],
-            LYE: ['brandIdentity_dec', 'brandIdentity_apr', 'businessModelDoc', 'businessModelCanvas', 'decisionDiary_dec', 'decisionDiary_apr'],
-            LEN: ['investorDossier'],
-            MAT: ['goniometerEvidence', 'mathReportDist', 'mathReportTwoPoints', 'mathReportFinal'],
-            ING: []
-        }[activeSubject] || [];
 
         // Conteo de startups con entregas pendientes de evaluar por clase (multi-fase)
         const pendingCounts = {};
@@ -1138,6 +1143,12 @@ Object.assign(ui, {
                 }
             }
         });
+
+        const totalResubmittedCos = filteredCids.filter(cid => this.getPendingEvalDocsForSubject(companies[cid], activeSubject).resubmittedCount > 0).length;
+        const onlyResubmitted = Boolean(this.evalOnlyResubmitted);
+        const displayCids = onlyResubmitted
+            ? filteredCids.filter(cid => this.getPendingEvalDocsForSubject(companies[cid], activeSubject).resubmittedCount > 0)
+            : filteredCids;
 
         const classTabsHtml = `
         <div class="flex flex-wrap gap-1.5 mb-3 items-center">
@@ -1158,24 +1169,33 @@ Object.assign(ui, {
                     ${badge}
                 </button>`;
             }).join('')}
+            <button type="button" onclick="ui.toggleEvalOnlyResubmitted()" class="min-h-[44px] inline-flex items-center px-2.5 py-1 text-xs font-mono font-bold uppercase transition-all rounded border ${
+                onlyResubmitted
+                    ? 'bg-mars-cyan text-black border-mars-cyan font-black shadow-[0_0_10px_rgba(0,240,255,0.3)]'
+                    : (totalResubmittedCos > 0 ? 'bg-cyan-950/70 text-mars-cyan border-mars-cyan/60 hover:bg-mars-cyan hover:text-black animate-pulse' : 'bg-black text-slate-400 border-slate-800 hover:text-white hover:border-slate-700')
+            }">
+                <span>🔄 Solo Subsanados (${totalResubmittedCos})</span>
+            </button>
         </div>`;
 
-        if (filteredCids.length === 0) {
+        if (displayCids.length === 0) {
             return `
             <div class="mb-4">
                 ${classTabsHtml}
                 <div class="bg-black/50 border border-slate-800 p-4 text-center text-xs text-slate-400 italic">
-                    No se encontraron startups registradas para la clase seleccionada (${currentCls}).
+                    ${onlyResubmitted
+                        ? 'No hay startups con documentos subsanados pendientes de revisar en esta clase y materia.'
+                        : `No se encontraron startups registradas para la clase seleccionada (${currentCls}).`}
                 </div>
             </div>`;
         }
 
-        const cardsHtml = filteredCids.map(cid => {
+        const cardsHtml = displayCids.map(cid => {
             const co = companies[cid];
             const isSelected = (this.evalSelectedCo === cid);
             const g = co?.grades?.[activeSubject];
             const hasGrade = g && g.final !== null && g.final !== undefined;
-            const { pendingCount } = this.getPendingEvalDocsForSubject(co, activeSubject);
+            const { pendingCount, resubmittedCount, awaitingSubsanacionCount } = this.getPendingEvalDocsForSubject(co, activeSubject);
 
             let statusPill = '';
             if (hasGrade && pendingCount > 0) {
@@ -1184,9 +1204,14 @@ Object.assign(ui, {
                 statusPill = `<span class="text-[10px] font-mono bg-emerald-950/70 text-emerald-300 border border-emerald-500/50 px-2 py-0.5 rounded font-bold">🟢 Nota: ${Number(g.final).toFixed(2)}</span>`;
             } else if (pendingCount > 0) {
                 statusPill = `<span class="text-[10px] font-mono bg-amber-950/70 text-amber-300 border border-amber-500/50 px-2 py-0.5 rounded font-bold animate-pulse">🟡 ${pendingCount} doc(s) listos</span>`;
+            } else if (awaitingSubsanacionCount > 0) {
+                statusPill = `<span class="text-[10px] font-mono bg-red-950/60 text-red-300 border border-red-500/40 px-2 py-0.5 rounded font-bold">↩️ Esperando subsanación</span>`;
             } else {
                 statusPill = `<span class="text-[10px] font-mono bg-slate-900 text-slate-400 border border-slate-800 px-2 py-0.5 rounded">⚪ Sin entregas</span>`;
             }
+            const resubmittedPill = resubmittedCount > 0
+                ? `<span class="text-[10px] font-mono bg-cyan-950/90 text-mars-cyan border border-mars-cyan px-2 py-0.5 rounded font-black animate-pulse">🔄 ${resubmittedCount} Subsanado${resubmittedCount > 1 ? 's' : ''} (Revisar)</span>`
+                : '';
 
             const phaseClock = this.getPhaseClockMetrics ? this.getPhaseClockMetrics(co) : { isTeacherBottleneck: false };
             const bottleneckBadge = phaseClock.isTeacherBottleneck
@@ -1197,7 +1222,7 @@ Object.assign(ui, {
             <button type="button" onclick="ui.selectEvalCo('${this.escapeHTML(cid)}')" class="text-left p-3 rounded transition-all min-h-[56px] flex flex-col justify-between gap-1.5 ${
                 isSelected 
                     ? 'bg-slate-900 border-2 border-mars-cyan ring-2 ring-mars-cyan/30 shadow-[0_0_12px_rgba(0,240,255,0.25)]' 
-                    : 'bg-black/60 border border-slate-800 hover:border-slate-700 hover:bg-slate-900/60'
+                    : (resubmittedCount > 0 ? 'bg-cyan-950/20 border border-mars-cyan/60 hover:border-mars-cyan hover:bg-slate-900/80' : 'bg-black/60 border border-slate-800 hover:border-slate-700 hover:bg-slate-900/60')
             }">
                 <div class="flex justify-between items-start gap-1 w-full">
                     <span class="font-orbitron font-bold text-xs ${isSelected ? 'text-mars-cyan' : 'text-white'} truncate" title="${this.escapeHTML(co.name)}">
@@ -1209,6 +1234,7 @@ Object.assign(ui, {
                 </div>
                 <div class="w-full flex flex-wrap justify-between items-center gap-1">
                     <div class="flex items-center gap-1 flex-wrap">
+                        ${resubmittedPill}
                         ${statusPill}
                         ${bottleneckBadge}
                     </div>
@@ -1310,9 +1336,17 @@ Object.assign(ui, {
             const subjDefs = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).filter(d => d.subject === subject);
             subjDefs.forEach(d => {
                 const docItem = liveCo.deliverables?.[d.key];
-                if (docItem && typeof docItem === 'object' && docItem.updatedAt) {
-                    const ts = Date.parse(docItem.updatedAt) || Number(docItem.updatedAt) || 0;
-                    if (ts > maxDocTs) maxDocTs = ts;
+                if (docItem && typeof docItem === 'object') {
+                    if (docItem.status === 'DELIVERED_TO_TEACHER' && docItem.resubmittedAfterTeacherReturn) {
+                        delete docItem.resubmittedAfterTeacherReturn;
+                        const prevTs = Date.parse(docItem.updatedAt) || Number(docItem.updatedAt) || 0;
+                        const clearedTs = Math.max(Date.now(), prevTs + 1);
+                        docItem.updatedAt = new Date(clearedTs).toISOString();
+                        if (clearedTs > maxDocTs) maxDocTs = clearedTs;
+                    } else if (docItem.updatedAt) {
+                        const ts = Date.parse(docItem.updatedAt) || Number(docItem.updatedAt) || 0;
+                        if (ts > maxDocTs) maxDocTs = ts;
+                    }
                 }
             });
             if (subject === 'LEN' && liveCo.pressReleases) {

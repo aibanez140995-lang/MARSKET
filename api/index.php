@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.68
+// Versión: v2.0.69
 
 declare(strict_types=1);
 
@@ -2340,13 +2340,22 @@ try {
                 if ($rawKey !== '') {
                     $driveUrl = trim((string)($inner['driveUrl'] ?? $inner['url'] ?? ''));
                     $isAdminOverride = !empty($auth['isCoordinator']) || !empty($auth['isAdmin']);
-                    $status = $isAdminOverride ? 'DELIVERED_TO_TEACHER' : 'SUBMITTED_TO_CEO';
+                    $reqDelivStatus = trim((string)($inner['status'] ?? ''));
+                    if ($isAdminOverride) {
+                        $status = 'DELIVERED_TO_TEACHER';
+                    } elseif ($effectiveRole === 'CEO' && $reqDelivStatus === 'DELIVERED_TO_TEACHER') {
+                        $status = 'DELIVERED_TO_TEACHER';
+                    } else {
+                        $status = 'SUBMITTED_TO_CEO';
+                    }
                     $returnReasonId = null;
                     $returnReason = null;
 
                     $existingDoc = is_array($co['deliverables'][$rawKey] ?? null) ? $co['deliverables'][$rawKey] : [];
                     $existingHistory = is_array($existingDoc['history'] ?? null) ? $existingDoc['history'] : [];
                     $lastWorkshopCheckAt = $existingDoc['lastWorkshopCheckAt'] ?? null;
+                    $prevTeacherReturned = !empty($existingDoc['returnByTeacher']) || !empty($existingDoc['wasTeacherReturned']);
+                    $prevTeacherRole = $existingDoc['returnByTeacherRole'] ?? null;
 
                     if ($rawKey === 'hoja_taller_fyq') {
                         $reqStatus = trim((string)($inner['status'] ?? ''));
@@ -2376,6 +2385,7 @@ try {
                     }
 
                     $prevDocMs = parseMsTimestamp($co['deliverables'][$rawKey]['updatedAt'] ?? 0);
+                    $monoDelivIso = isoMsNow($prevDocMs + 1);
                     $newDelivObj = [
                         'driveUrl' => $driveUrl,
                         'status' => $status,
@@ -2383,8 +2393,18 @@ try {
                         'returnReason' => $returnReason,
                         'returnDriveUrl' => $inner['returnDriveUrl'] ?? null,
                         'returnByTeacher' => !empty($inner['returnByTeacher']),
-                        'updatedAt' => isoMsNow($prevDocMs + 1)
+                        'updatedAt' => $monoDelivIso
                     ];
+                    if ($status === 'DELIVERED_TO_TEACHER' && (!empty($inner['resubmittedAfterTeacherReturn']) || $prevTeacherReturned)) {
+                        $newDelivObj['resubmittedAfterTeacherReturn'] = true;
+                        $newDelivObj['resubmittedAt'] = !empty($inner['resubmittedAt']) ? (string)$inner['resubmittedAt'] : $monoDelivIso;
+                    } elseif ($status === 'SUBMITTED_TO_CEO' && (!empty($inner['wasTeacherReturned']) || $prevTeacherReturned)) {
+                        $newDelivObj['wasTeacherReturned'] = true;
+                        $tRole = trim((string)($inner['returnByTeacherRole'] ?? $prevTeacherRole ?? ''));
+                        if ($tRole !== '') {
+                            $newDelivObj['returnByTeacherRole'] = $tRole;
+                        }
+                    }
                     if ($rawKey === 'hoja_taller_fyq') {
                         $newDelivObj['history'] = $existingHistory;
                         if ($lastWorkshopCheckAt) {
@@ -2416,12 +2436,48 @@ try {
                 $rawSubAction = (string)($inner['ceoAction'] ?? $inner['subAction'] ?? $inner['action'] ?? '');
                 $subAction = strtoupper(trim($rawSubAction === 'CEO_REVIEW_DELIVERABLE' ? '' : $rawSubAction));
                 if ($subAction === 'APPROVE') {
+                    $cameFromTeacher = (is_array($currentDoc) && (!empty($currentDoc['returnByTeacher']) || !empty($currentDoc['wasTeacherReturned'])))
+                        || !empty($inner['resubmittedAfterTeacherReturn']);
                     if (is_string($currentDoc)) {
                         $currentDoc = ['driveUrl' => $currentDoc, 'status' => 'DELIVERED_TO_TEACHER', 'updatedAt' => $monoIso];
                     } else {
                         $currentDoc['status'] = 'DELIVERED_TO_TEACHER';
-                        unset($currentDoc['returnReasonId'], $currentDoc['returnReason'], $currentDoc['returnDriveUrl'], $currentDoc['returnByTeacher']);
+                        unset($currentDoc['returnReasonId'], $currentDoc['returnReason'], $currentDoc['returnDriveUrl'], $currentDoc['returnByTeacher'], $currentDoc['returnByTeacherRole'], $currentDoc['wasTeacherReturned']);
                         $currentDoc['updatedAt'] = $monoIso;
+                    }
+                    if ($cameFromTeacher) {
+                        $currentDoc['resubmittedAfterTeacherReturn'] = true;
+                        $currentDoc['resubmittedAt'] = $monoIso;
+                    }
+                    if ($rawKey === 'hoja_taller_fyq' && is_array($inner['history'] ?? null)) {
+                        $histById = [];
+                        foreach ((is_array($currentDoc['history'] ?? null) ? $currentDoc['history'] : []) as $ev) {
+                            if (is_array($ev) && !empty($ev['id'])) $histById[(string)$ev['id']] = $ev;
+                        }
+                        foreach ($inner['history'] as $ev) {
+                            if (is_array($ev) && !empty($ev['id'])) $histById[(string)$ev['id']] = $ev;
+                        }
+                        $currentDoc['history'] = array_values($histById);
+                    }
+                } elseif ($subAction === 'RESUBMIT_TO_TEACHER') {
+                    $newUrl = trim((string)($inner['driveUrl'] ?? ''));
+                    if (is_string($currentDoc)) {
+                        $currentDoc = [
+                            'driveUrl' => $newUrl !== '' ? $newUrl : $currentDoc,
+                            'status' => 'DELIVERED_TO_TEACHER',
+                            'resubmittedAfterTeacherReturn' => true,
+                            'resubmittedAt' => $monoIso,
+                            'updatedAt' => $monoIso
+                        ];
+                    } else {
+                        if ($newUrl !== '') {
+                            $currentDoc['driveUrl'] = $newUrl;
+                        }
+                        $currentDoc['status'] = 'DELIVERED_TO_TEACHER';
+                        $currentDoc['resubmittedAfterTeacherReturn'] = true;
+                        $currentDoc['resubmittedAt'] = $monoIso;
+                        $currentDoc['updatedAt'] = $monoIso;
+                        unset($currentDoc['returnReasonId'], $currentDoc['returnReason'], $currentDoc['returnDriveUrl'], $currentDoc['returnByTeacher'], $currentDoc['returnByTeacherRole'], $currentDoc['wasTeacherReturned']);
                     }
                     if ($rawKey === 'hoja_taller_fyq' && is_array($inner['history'] ?? null)) {
                         $histById = [];
@@ -2454,7 +2510,7 @@ try {
                         if ($retDriveUrl) {
                             $currentDoc['returnDriveUrl'] = $retDriveUrl;
                         }
-                        unset($currentDoc['returnByTeacher']);
+                        unset($currentDoc['returnByTeacher'], $currentDoc['returnByTeacherRole'], $currentDoc['wasTeacherReturned']);
                         $currentDoc['updatedAt'] = $monoIso;
                     }
                     if ($rawKey === 'hoja_taller_fyq' && is_array($inner['history'] ?? null)) {
@@ -2497,6 +2553,7 @@ try {
 
                 $prevDocMs = is_array($currentDoc) ? parseMsTimestamp($currentDoc['updatedAt'] ?? 0) : 0;
                 $returnDriveUrl = trim((string)($inner['returnDriveUrl'] ?? ''));
+                $returnByTeacherRole = trim((string)($inner['returnByTeacherRole'] ?? $auth['role'] ?? 'DOCENTE'));
                 $preservedDoc = [
                     'driveUrl' => $driveUrl,
                     'status' => 'CEO_REVISION',
@@ -2504,6 +2561,7 @@ try {
                     'returnReason' => $reasonText,
                     'returnDriveUrl' => !empty($returnDriveUrl) ? $returnDriveUrl : null,
                     'returnByTeacher' => true,
+                    'returnByTeacherRole' => $returnByTeacherRole !== '' ? $returnByTeacherRole : 'DOCENTE',
                     'updatedAt' => isoMsNow($prevDocMs + 1)
                 ];
                 if (is_array($currentDoc)) {

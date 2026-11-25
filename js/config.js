@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.68) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.69) ---
 
-const APP_VERSION = "2.0.68";
+const APP_VERSION = "2.0.69";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1327,6 +1327,16 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.69",
+      date: "2026-11-25",
+      title: "Circuito Cerrado de Subsanación Docente ⇄ CEO («🔄 Subsanado por CEO · Revisar»)",
+      items: [
+        "Visibilidad y reenvío directo para el CEO (js/ui-empresa-core.js, js/ui-core.js): los entregables devueltos por el profesorado con [↩ Subsanar] aparecen ahora en la Bandeja de Visado Ejecutivo del CEO, el Radar, los badges y Supervisión Entregas con el motivo docente, enlace a correcciones en Docs y botón [🔄 REENVIAR SUBSANADO AL DOCENTE] (con verificación de permisos de lectura Drive).",
+        "Aviso claro de documento solucionado para el Docente (js/ui-docente-eval.js, js/ui-core.js): en Rúbricas y Entregas las empresas muestran [↩️ Esperando subsanación] hasta que el CEO reenvía, y pasan a mostrar [🔄 Subsanado (Revisar)] tanto en tarjetas como en Evidencias Adjuntas, con botón de filtro rápido [🔄 Solo Subsanados].",
+        "Limpieza automática y sincronización blindada (js/state.js, api/index.php): al guardar la calificación del docente se apaga automáticamente el aviso de subsanado para esa materia y se preserva todo el estado en CDMON y entre dispositivos."
+      ]
+    },
     {
       version: "2.0.68",
       date: "2026-11-24",

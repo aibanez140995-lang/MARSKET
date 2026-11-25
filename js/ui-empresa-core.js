@@ -560,7 +560,16 @@ Object.assign(ui, {
                             <button type="button" onclick="ui.approveDeliverableByCEO('${docKey}')" class="min-h-[44px] bg-mars-green text-black font-black uppercase text-xs px-3 py-1.5 hover:bg-white transition-all shadow-sm" title="Aprobar y Elevar a Evaluación Docente">[ ✓ VISAR ]</button>
                             <button type="button" onclick="ui.modalCeoReturnDeliverable('${docKey}')" class="min-h-[44px] bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-3 py-1.5 hover:bg-mars-magenta hover:text-white transition-all" title="Devolver para Subsanación">[ ⚠️ DEVOLVER PARA SUBSANACIÓN ]</button>
                         </div>`;
+                    } else if (isCEO && docObj && (st === 'CEO_REVISION' || st === 'DEVUELTO_A_TECNICO') && docObj.returnByTeacher) {
+                        ceoDirectActions = `
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button type="button" onclick="ui.modalCeoResubmitDeliverable('${docKey}')" class="min-h-[44px] bg-amber-400 text-black font-black uppercase text-xs px-3 py-1.5 hover:bg-white transition-all shadow-sm" title="Confirmar corrección y reenviar al docente">[ 🔄 REENVIAR SUBSANADO ]</button>
+                        </div>`;
                     }
+
+                    const safeReturnDocHref = ((st === 'CEO_REVISION' || st === 'DEVUELTO_A_TECNICO') && docObj?.returnDriveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(docObj.returnDriveUrl)))
+                        ? (this.sanitizeDriveUrl ? this.sanitizeDriveUrl(docObj.returnDriveUrl) : encodeURI(docObj.returnDriveUrl).replace(/"/g, '&quot;'))
+                        : '';
 
                     return `
                     <div class="bg-slate-900/90 border ${borderColor} p-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -573,7 +582,8 @@ Object.assign(ui, {
                             </div>
                             <p class="text-white font-bold uppercase text-xs sm:text-sm break-words">${this.escapeHTML(def.name)}</p>
                             <p class="hidden sm:block text-xs text-slate-300 uppercase mt-0.5">Responsable: <span class="text-mars-yellow font-bold">${this.escapeHTML(def.role.replace('_',' '))}</span> | Plazo: ${this.escapeHTML(dlDate.replace('T', ' '))}</p>
-                            ${(st === 'CEO_REVISION' && (docObj.returnReason || docObj.returnReasonId)) ? `<p class="text-[11px] text-red-400 mt-1 font-mono uppercase">⚠️ Motivo Devolución CEO: ${this.escapeHTML(docObj.returnReason || docObj.returnReasonId)}</p>` : ''}
+                            ${((st === 'CEO_REVISION' || st === 'DEVUELTO_A_TECNICO') && (docObj.returnReason || docObj.returnReasonId)) ? `<p class="text-[11px] text-red-400 mt-1 font-mono uppercase">⚠️ ${docObj.returnByTeacher ? `Motivo Subsanación Docente (${this.escapeHTML(docObj.returnByTeacherRole || 'Claustro')})` : 'Motivo Devolución CEO'}: ${this.escapeHTML(docObj.returnReason || docObj.returnReasonId)}</p>` : ''}
+                            ${safeReturnDocHref ? `<a href="${safeReturnDocHref}" target="_blank" rel="noopener noreferrer" class="mt-1 inline-flex items-center gap-1 text-[11px] text-amber-300 hover:underline font-mono">📄 Ver Correcciones Docente ↗</a>` : ''}
                         </div>
                         <div class="flex items-center gap-2 w-full sm:w-auto shrink-0 flex-wrap">
                             ${templateBtn}
@@ -662,8 +672,9 @@ Object.assign(ui, {
         }
 
         const submittedCeoDefs = defs.filter(d => docs[d.key] && docs[d.key].status === 'SUBMITTED_TO_CEO');
+        const teacherReturnedDefs = defs.filter(d => docs[d.key] && (docs[d.key].status === 'CEO_REVISION' || docs[d.key].status === 'DEVUELTO_A_TECNICO') && docs[d.key].returnByTeacher);
         const pendingPhaseBalances = Object.values(co.phaseBalances || {}).filter(b => b && b.status === 'PENDIENTE_CEO');
-        const pendingCeoDeliverables = Object.values(docs).filter(d => d && d.status === 'SUBMITTED_TO_CEO').length + pendingPhaseBalances.length;
+        const pendingCeoDeliverables = Object.values(docs).filter(d => d && (d.status === 'SUBMITTED_TO_CEO' || ((d.status === 'CEO_REVISION' || d.status === 'DEVUELTO_A_TECNICO') && d.returnByTeacher))).length + pendingPhaseBalances.length;
         const returnedDeliverables = Object.values(docs).filter(d => d && (d.status === 'CEO_REVISION' || d.status === 'DEVUELTO_A_TECNICO')).length;
         const deliveredCount = Object.values(docs).filter(d => d && d.status === 'DELIVERED_TO_TEACHER').length;
 
@@ -707,16 +718,17 @@ Object.assign(ui, {
         });
 
         const pendingSpecialItemsCount = (co.specialItemRequests || []).filter(r => r && r.status === 'PENDIENTE_CEO').length;
-        const totalTrayPendingItems = submittedCeoDefs.length + pendingPhaseBalances.length + pendingMktActionsList.length + (pendingSlogan ? 1 : 0);
+        const totalTrayPendingItems = submittedCeoDefs.length + teacherReturnedDefs.length + pendingPhaseBalances.length + pendingMktActionsList.length + (pendingSlogan ? 1 : 0);
         const totalPendingCeoItems = totalTrayPendingItems + pendingSpecialItemsCount;
-        const urgentCount = (isSloganUrgent ? 1 : 0) + (isMktUrgent ? pendingMktActionsList.length : 0) + pendingPhaseBalances.length + classifiedCeoDefs.filter(x => x.isUrgent).length;
+        const urgentCount = teacherReturnedDefs.length + (isSloganUrgent ? 1 : 0) + (isMktUrgent ? pendingMktActionsList.length : 0) + pendingPhaseBalances.length + classifiedCeoDefs.filter(x => x.isUrgent).length;
         const activeTrayFilter = (this.ceoTrayFilter === 'URGENT') ? 'URGENT' : 'ALL';
 
         const visibleSlogan = (activeTrayFilter === 'ALL' || isSloganUrgent) ? pendingSlogan : null;
         const visibleMktActions = (activeTrayFilter === 'ALL') ? pendingMktActionsList : (isMktUrgent ? pendingMktActionsList : []);
         const visiblePhaseBalances = pendingPhaseBalances;
+        const visibleTeacherReturnedDefs = teacherReturnedDefs;
         const visibleCeoDefs = (activeTrayFilter === 'URGENT') ? classifiedCeoDefs.filter(x => x.isUrgent) : classifiedCeoDefs;
-        const visibleTotalCount = (visibleSlogan ? 1 : 0) + visibleMktActions.length + visiblePhaseBalances.length + visibleCeoDefs.length;
+        const visibleTotalCount = visibleTeacherReturnedDefs.length + (visibleSlogan ? 1 : 0) + visibleMktActions.length + visiblePhaseBalances.length + visibleCeoDefs.length;
 
         let ceoTrayHtml = '';
         if (isCEO) {
@@ -867,6 +879,43 @@ Object.assign(ui, {
                                 </div>
                             </div>
                         `).join('')}
+                        ${visibleTeacherReturnedDefs.map(d => {
+                            const doc = docs[d.key];
+                            const tRole = doc?.returnByTeacherRole || 'Claustro';
+                            const reasonTxt = doc?.returnReason || doc?.returnReasonId || 'Requiere subsanación docente';
+                            const safeRetDocHref = (doc?.returnDriveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(doc.returnDriveUrl)))
+                                ? (this.sanitizeDriveUrl ? this.sanitizeDriveUrl(doc.returnDriveUrl) : encodeURI(doc.returnDriveUrl).replace(/"/g, '&quot;'))
+                                : '';
+                            return `
+                            <div class="bg-red-950/35 border-2 border-red-500 p-4 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-[0_0_12px_rgba(239,68,68,0.2)]">
+                                <div class="min-w-0 flex-grow">
+                                    <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                                        <span class="text-xs font-black uppercase px-2 py-0.5 bg-red-600 text-white animate-pulse">🚨 SUBSANACIÓN DOCENTE · ${this.escapeHTML(tRole)}</span>
+                                        <span class="text-xs font-black uppercase px-2 py-0.5 bg-black border border-mars-cyan text-mars-cyan">FASE ${ui.getDeliverablePhase ? ui.getDeliverablePhase(d.key) : (d.phase || 'I')}</span>
+                                        <span class="text-xs font-bold uppercase text-amber-300 bg-amber-950/40 border border-amber-500/40 px-2 py-0.5">Resp: ${this.escapeHTML(d.role.replace('_', ' '))}</span>
+                                        <span class="text-xs text-slate-300 font-mono">${this.escapeHTML(d.subject)} • ${this.escapeHTML(d.weight)}</span>
+                                    </div>
+                                    <h4 class="text-white font-bold text-sm uppercase leading-snug">${this.escapeHTML(d.name)}</h4>
+                                    <p class="text-xs text-red-200 mt-1 font-mono">Motivo: <span class="text-amber-300 italic">"${this.escapeHTML(reasonTxt)}"</span></p>
+                                    <div class="mt-2.5 flex flex-wrap items-center gap-2">
+                                        ${this.renderDocTemplateBtn(d.key)}
+                                        ${doc?.driveUrl ? `
+                                            <a href="${encodeURI(doc.driveUrl).replace(/"/g, '&quot;')}" data-doc-url="${this.escapeAttr(doc.driveUrl)}" onclick="ui.markDocOpened(this.dataset.docUrl)" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 rounded font-mono hover:bg-cyan-900/70 transition-colors">
+                                                <span>📄 Abrir Documento Actual ↗</span>
+                                            </a>
+                                        ` : ''}
+                                        ${safeRetDocHref ? `
+                                            <a href="${safeRetDocHref}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-900/60 text-white border border-red-400 rounded font-mono hover:bg-red-800 transition-colors">
+                                                <span>📄 Ver Correcciones Docente ↗</span>
+                                            </a>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                                <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-red-900/50">
+                                    <button type="button" onclick="ui.modalCeoResubmitDeliverable('${this.escapeHTML(d.key)}')" class="min-h-[44px] bg-amber-400 text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all shadow-[0_0_10px_rgba(255,204,0,0.3)]">[ 🔄 REENVIAR SUBSANADO AL DOCENTE ]</button>
+                                </div>
+                            </div>`;
+                        }).join('')}
                         ${visibleCeoDefs.map(({ def: d, isUrgent, urgentReason }) => {
                             const doc = docs[d.key];
                             return `
@@ -1479,7 +1528,9 @@ Object.assign(ui, {
                             badgeHtml = '<span style="background-color: #f59e0b !important; color: #000000 !important; font-weight: 900 !important;" class="text-[9px] uppercase px-1.5 py-0.5 rounded font-orbitron">🚨 Turno de: CEO (Visar)</span>';
                         } else if (isReturned) {
                             cardBorder = 'border-red-500/80 bg-red-950/30 shadow-[0_0_10px_rgba(255,0,0,0.2)]';
-                            badgeHtml = `<span style="background-color: #ef4444 !important; color: #ffffff !important; font-weight: 900 !important;" class="text-[9px] uppercase px-1.5 py-0.5 rounded font-mono">↩️ Turno de: ${this.escapeHTML(shortDeptName)}</span>`;
+                            badgeHtml = doc?.returnByTeacher
+                                ? '<span style="background-color: #ef4444 !important; color: #ffffff !important; font-weight: 900 !important;" class="text-[9px] uppercase px-1.5 py-0.5 rounded font-mono">🚨 Subsanar (Docente)</span>'
+                                : `<span style="background-color: #ef4444 !important; color: #ffffff !important; font-weight: 900 !important;" class="text-[9px] uppercase px-1.5 py-0.5 rounded font-mono">↩️ Turno de: ${this.escapeHTML(shortDeptName)}</span>`;
                         } else if (isDelivered) {
                             cardBorder = 'border-slate-700 bg-black/50';
                             badgeHtml = '<span style="background-color: rgba(0, 255, 102, 0.15) !important; border: 1px solid #00ff66 !important; color: #00ff66 !important; font-weight: bold !important;" class="text-[9px] uppercase px-1.5 py-0.5 rounded font-mono">🏛️ En Claustro</span>';
@@ -1732,7 +1783,7 @@ Object.assign(ui, {
         // 4. Filtrado por Rol / Ámbito
         let myRolePhaseDefs = phaseDefs;
         if (isCEO) {
-            myRolePhaseDefs = phaseDefs.filter(d => docs[d.key] && docs[d.key].status === 'SUBMITTED_TO_CEO');
+            myRolePhaseDefs = phaseDefs.filter(d => docs[d.key] && (docs[d.key].status === 'SUBMITTED_TO_CEO' || ((docs[d.key].status === 'CEO_REVISION' || docs[d.key].status === 'DEVUELTO_A_TECNICO') && Boolean(docs[d.key].returnByTeacher))));
         } else if (effectiveRole === 'OPERACIONES_IA' || effectiveRole === 'OPERACIONES') {
             myRolePhaseDefs = phaseDefs.filter(d => d.role === 'OPERACIONES_IA' || d.role === 'OPERACIONES');
         } else {
@@ -1915,7 +1966,7 @@ Object.assign(ui, {
         const scopeSwitchHtml = `
             <div class="flex items-center gap-2 bg-black p-1 border border-mars-border">
                 <button type="button" onclick="ui.setRoleDeliverablesScopeFilter('MY_ROLE')" class="min-h-[44px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${scope === 'MY_ROLE' ? 'bg-mars-cyan text-black font-bold' : 'text-slate-400 hover:text-white'}">
-                    ${isCEO ? `🟡 Pendientes de Visar (${myRolePhaseDefs.length})` : `🎯 Mis Entregables (${myRolePhaseDefs.length})`}
+                    ${isCEO ? `🟡 Pendientes CEO (${myRolePhaseDefs.length})` : `🎯 Mis Entregables (${myRolePhaseDefs.length})`}
                 </button>
                 <button type="button" onclick="ui.setRoleDeliverablesScopeFilter('ALL')" class="min-h-[44px] px-3 py-1.5 text-xs font-bold uppercase transition-colors ${scope === 'ALL' ? 'bg-mars-cyan text-black font-bold' : 'text-slate-400 hover:text-white'}">
                     🏢 Toda la Startup (${allStartupPhaseDefs.length})
@@ -2006,14 +2057,21 @@ Object.assign(ui, {
                 </div>`;
 
                 // Banner de correcciones devueltas
+                const isTeacherReturn = !!docObj?.returnByTeacher;
                 let returnBannerHtml = '';
                 if (isReturned) {
                     const retReason = docObj.returnReason || docObj.returnReasonId || 'El documento requiere correcciones antes de su evaluación.';
+                    const originLabel = isTeacherReturn
+                        ? `Devuelto por Claustro Docente (${docObj.returnByTeacherRole || 'Profesorado'})`
+                        : 'Devuelto por Dirección (CEO)';
+                    const instructionMsg = isTeacherReturn
+                        ? 'Subsanad las observaciones en Google Docs y el CEO podrá pulsar [ 🔄 Reenviar Subsanado al Docente ] (o el departamento subir un enlace nuevo para visado CEO).'
+                        : 'Subsanad las observaciones en vuestro Google Doc y pulsad [ Reenviar al CEO ] para continuar la evaluación.';
                     returnBannerHtml = `
                     <div role="alert" class="bg-red-950/70 border-2 border-red-500 p-3 sm:p-4 mb-3 rounded shadow-[0_0_15px_rgba(255,0,0,0.3)]">
-                        <div class="flex items-center gap-2 mb-1">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
                             <span class="bg-red-600 text-white text-[10px] font-black uppercase px-2 py-0.5 tracking-wider">⚠️ REVISIÓN REQUERIDA // SUBSANACIÓN</span>
-                            <span class="text-[11px] text-red-300 font-mono">Devuelto por Dirección / Docente</span>
+                            <span class="text-[11px] text-red-300 font-mono">${this.escapeHTML(originLabel)}</span>
                         </div>
                         <p class="text-xs text-white font-bold mb-2 break-words">Motivo de Devolución: <span class="text-amber-300 font-normal italic">"${this.escapeHTML(retReason)}"</span></p>
                         ${docObj.returnDriveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(docObj.returnDriveUrl)) ? `
@@ -2023,7 +2081,7 @@ Object.assign(ui, {
                                 </a>
                             </div>
                         ` : ''}
-                        <p class="text-[11px] text-slate-300 font-mono">Subsanad las observaciones en vuestro Google Doc y pulsada [ Reenviar al CEO ] para continuar la evaluación.</p>
+                        <p class="text-[11px] text-slate-300 font-mono">${instructionMsg}</p>
                     </div>`;
                 }
 
@@ -2039,6 +2097,15 @@ Object.assign(ui, {
                     <div class="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-800">
                         <button type="button" onclick="ui.approveDeliverableByCEO('${this.escapeHTML(def.key)}')" class="min-h-[44px] flex-1 bg-mars-green text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,102,0.3)]">[ ✓ VISAR Y ENTREGAR AL DOCENTE ]</button>
                         <button type="button" onclick="ui.modalCeoReturnDeliverable('${this.escapeHTML(def.key)}')" class="min-h-[44px] flex-1 bg-mars-magenta/20 border border-mars-magenta text-mars-magenta font-black uppercase text-xs px-4 py-2 hover:bg-mars-magenta hover:text-white transition-all">[ ↩ DEVOLVER POR CORRECCIONES ]</button>
+                    </div>`;
+                } else if (isCEO && isReturned && isTeacherReturn) {
+                    const deptLabel = this.escapeHTML((def.role || '').replace('_', ' '));
+                    actionControlsHtml = `
+                    <div class="space-y-2 pt-2 border-t border-red-900/50">
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <button type="button" onclick="ui.modalCeoResubmitDeliverable('${this.escapeHTML(def.key)}')" class="min-h-[44px] flex-1 bg-amber-400 text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-all shadow-[0_0_12px_rgba(255,204,0,0.35)]">[ 🔄 REENVIAR DOCUMENTO SUBSANADO AL DOCENTE ]</button>
+                        </div>
+                        ${!canRoleEdit ? `<p class="text-[10px] font-mono text-slate-400">También puede subir un enlace nuevo el departamento responsable (<strong>${deptLabel}</strong>) para que vuelva a tu bandeja de visado.</p>` : ''}
                     </div>`;
                 } else if (def.key === 'hoja_taller_fyq' && isWorkshopWork && (effectiveRole === 'OPERACIONES_IA' || effectiveRole === 'OPERACIONES')) {
                     const isHojaPrePhaseIII = !state.user?.admin && this.isDeliverableLocked('hoja_taller_fyq', co);
@@ -2076,10 +2143,11 @@ Object.assign(ui, {
                         ` : ''}
                     </div>`;
                 } else {
+                    const submitVerb = (isCEO && def.role === 'CEO') ? 'AL DOCENTE' : 'AL CEO';
                     actionControlsHtml = `
                     <div class="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-800">
                         <button type="button" onclick="ui.modalSubmitRoleDeliverable('${this.escapeHTML(def.key)}')" class="min-h-[44px] flex-1 ${isReturned ? 'bg-amber-400 text-black hover:bg-white' : 'bg-mars-cyan text-black hover:bg-white'} font-black uppercase text-xs px-4 py-2 transition-all shadow-[0_0_10px_rgba(0,240,255,0.3)]">
-                            ${isReturned ? '[ ✏️ SUBSANAR ENLACE Y REENVIAR AL CEO ]' : (docObj?.driveUrl ? '[ ✏️ ACTUALIZAR ENLACE DRIVE ]' : '[ 📤 SUBIR ENLACE DRIVE Y ENVIAR AL CEO ]')}
+                            ${isReturned ? `[ ✏️ SUBSANAR ENLACE Y REENVIAR ${submitVerb} ]` : (docObj?.driveUrl ? '[ ✏️ ACTUALIZAR ENLACE DRIVE ]' : `[ 📤 SUBIR ENLACE DRIVE Y ENVIAR ${submitVerb} ]`)}
                         </button>
                     </div>`;
                 }
@@ -2206,6 +2274,106 @@ Object.assign(ui, {
 
     modalDeliverRoleDoc(docKey) {
         return this.modalSubmitRoleDeliverable(docKey);
+    },
+
+    modalCeoResubmitDeliverable(docKey) {
+        if (!state.user || !state.user.coId) return;
+        const co = state.data.companies?.[state.user.coId];
+        if (!co || this.getEffectiveRole(co) !== 'CEO') {
+            return this.notify("Solo el CEO puede reenviar entregables subsanados al docente.", "warning");
+        }
+        const def = (typeof DELIVERABLES_DEF !== 'undefined' ? DELIVERABLES_DEF : []).find(d => d.key === docKey);
+        if (!def) return;
+        const docObj = co.deliverables?.[docKey];
+        if (!docObj || !docObj.returnByTeacher || (docObj.status !== 'CEO_REVISION' && docObj.status !== 'DEVUELTO_A_TECNICO')) {
+            return this.notify("Este entregable ya fue reenviado o no tiene pendiente una subsanación docente.", "warning");
+        }
+
+        const existingUrl = docObj.driveUrl || '';
+        const teacherRole = docObj.returnByTeacherRole || 'Claustro';
+        const retReason = docObj.returnReason || docObj.returnReasonId || 'Requiere subsanación docente.';
+        const safeRetDocHref = (docObj.returnDriveUrl && (!this.sanitizeDriveUrl || this.sanitizeDriveUrl(docObj.returnDriveUrl)))
+            ? (this.sanitizeDriveUrl ? this.sanitizeDriveUrl(docObj.returnDriveUrl) : encodeURI(docObj.returnDriveUrl).replace(/"/g, '&quot;'))
+            : '';
+
+        const bodyHtml = `
+        <div class="space-y-4 font-mono text-xs">
+            <div class="bg-slate-900 border border-mars-cyan/40 p-3 text-slate-200">
+                <span class="text-mars-cyan font-bold uppercase block mb-1">SUBSANACIÓN DOCENTE // FASE ${ui.getDeliverablePhase ? ui.getDeliverablePhase(def.key) : (def.phase || 'I')} · ${this.escapeHTML(def.subject)}</span>
+                <p class="font-bold text-white uppercase text-sm">${this.escapeHTML(def.name)}</p>
+                <p class="text-slate-400 mt-0.5">Dpto. Responsable: <span class="text-mars-yellow font-bold">${this.escapeHTML(def.role.replace('_', ' '))}</span></p>
+            </div>
+
+            <div class="bg-red-950/60 border border-red-500 p-3 text-red-200 space-y-1.5">
+                <strong class="uppercase text-red-300 block">⚠️ Revisión solicitada por Docente (${this.escapeHTML(teacherRole)}):</strong>
+                <p class="italic text-white">"${this.escapeHTML(retReason)}"</p>
+                ${safeRetDocHref ? `<a href="${safeRetDocHref}" target="_blank" rel="noopener noreferrer" class="mt-1 min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-900/70 border border-red-400 text-white font-bold rounded hover:bg-red-800 transition-colors"><span>📄 Ver Correcciones del Docente en Docs ↗</span></a>` : ''}
+            </div>
+
+            <div class="p-3 bg-amber-950/35 border-2 border-amber-400/70 rounded space-y-2 mb-2">
+                <div class="flex items-start gap-2">
+                    <span class="text-base shrink-0">🔐</span>
+                    <div class="text-xs font-sans text-amber-100 leading-snug">
+                        <strong class="text-amber-300 uppercase font-mono block text-[11px]">PASO 1 OBLIGATORIO — Permisos de Lectura en Google Drive:</strong>
+                        <span>En tu Google Doc/Drive pulsa <strong>Compartir</strong> ➔ Acceso general ➔ <strong>«Fomento centros de enseñanza (Lector)»</strong>.</span>
+                    </div>
+                </div>
+                <label class="mars-checkbox-label text-xs text-white font-bold cursor-pointer bg-black/50 border border-amber-500/40 px-2.5 py-1.5 rounded w-full">
+                    <input type="checkbox" id="ceo-resubmit-perm-check" class="mars-touch-input">
+                    <span class="mars-checkbox-visual"></span>
+                    <span class="text-[11px] font-sans">✓ He comprobado que el documento está compartido con «Fomento centros de enseñanza (Lector)»</span>
+                </label>
+            </div>
+
+            <div class="space-y-2">
+                <label for="ceo-resubmit-drive-input" class="text-xs text-mars-cyan uppercase font-bold block">Paso 2: Enlace del Documento Subsanado en Google Drive / Docs</label>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="url" id="ceo-resubmit-drive-input" value="${this.escapeAttr(existingUrl)}" placeholder="https://docs.google.com/document/d/..." onfocus="this.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="flex-1 bg-black border-2 border-mars-cyan p-3 text-base sm:text-xs text-mars-cyan font-mono outline-none focus:shadow-neon-cyan min-h-[44px]">
+                    ${this.renderDriveTestBtnHtml ? this.renderDriveTestBtnHtml('ceo-resubmit-drive-input') : ''}
+                </div>
+                <p class="text-[11px] text-slate-300 font-sans">Si ya corregisteis el mismo Google Doc o arreglasteis sus permisos de lectura, deja este enlace tal cual; si creasteis un documento nuevo, pégalo aquí.</p>
+            </div>
+        </div>`;
+
+        const actionsHtml = `
+            <button type="button" id="btn-ceo-resubmit-doc" onclick="ui.confirmCeoResubmitDeliverable('${this.escapeAttr(docKey)}')" class="min-h-[44px] bg-amber-400 text-black font-black uppercase text-xs px-5 py-2.5 hover:bg-white transition-all shadow-sm">
+                [ 🔄 Reenviar Documento Subsanado al Docente ]
+            </button>
+        `;
+
+        this.showModal(`Reenviar Subsanado: ${def.shortName || def.name}`, bodyHtml, actionsHtml);
+    },
+
+    async confirmCeoResubmitDeliverable(docKey) {
+        const inputEl = document.getElementById('ceo-resubmit-drive-input');
+        const permCheckEl = document.getElementById('ceo-resubmit-perm-check');
+        if (!inputEl) return;
+        const url = this.cleanInput(inputEl.value);
+
+        if (!url) {
+            if (this.highlightInvalidField) this.highlightInvalidField(url, inputEl);
+            return this.notify("Debes indicar un enlace válido de Google Drive / Docs.", "warning");
+        }
+        if (typeof GOOGLE_DRIVE_REGEX !== 'undefined' && !GOOGLE_DRIVE_REGEX.test(url)) {
+            if (this.highlightInvalidField) this.highlightInvalidField(url, inputEl);
+            return this.notify("El enlace debe ser una URL válida de Google Drive / Docs.", "error");
+        }
+        const tplCheck = this.isTemplateDriveUrl ? this.isTemplateDriveUrl(url) : { isTemplate: false };
+        if (tplCheck.isTemplate) {
+            if (this.highlightInvalidField) this.highlightInvalidField(url, inputEl);
+            return this.notify(`⚠️ ${tplCheck.reason}`, "error");
+        }
+        if (permCheckEl && !permCheckEl.checked) {
+            return this.notify("Marca la casilla confirmando que el documento tiene permisos de lectura en Google Drive.", "warning");
+        }
+        const btn = document.getElementById('btn-ceo-resubmit-doc');
+        if (btn && btn.disabled) return;
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = '⏳ Reenviando...';
+        }
+        this.closeModal();
+        await state.resubmitDeliverableByCEO(docKey, url);
     },
 
     modalSubmitRoleDeliverable(docKey) {
