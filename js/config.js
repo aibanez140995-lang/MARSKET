@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.73) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.74) ---
 
-const APP_VERSION = "2.0.73";
+const APP_VERSION = "2.0.74";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1341,6 +1341,17 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.74",
+      date: "2026-11-25",
+      title: "Contador real de noticias, Informes PDF de Logins (Global e Individual) y Reset de TEST",
+      items: [
+        "Contador real de lecturas de «Órbita.» (api/index.php, js/ui-orbita.js): creada automáticamente la tabla news_views en SQLite y blindada la deduplicación por sesión para registrar un máximo de 1 lectura por noticia abierta.",
+        "Informes PDF de Logins (js/ui-docente-management.js): nuevos botones [📄 Informe PDF Logins] (global o por clase filtrada) y [📄 PDF] individual por empresa en la Matriz de Conexiones y en Auditoría Conexiones, en formato A4 vertical de fondo blanco.",
+        "Reinicio real de logins al resetear empresa TEST (js/ui-docente-management.js, js/state.js, api/index.php): al pulsar 🔄 Resetear en TEST-0000 o TEST-1111 se ponen a 0 sus logins y se limpian sus sesiones previas sin resucitar tras sincronizar.",
+        "Corrección UI en Telemetría de Lecturas (js/ui-docente-management.js): evitado el salto de línea en números de 2 dígitos (10, 11...) de la columna #."
+      ]
+    },
     {
       version: "2.0.73",
       date: "2026-11-25",

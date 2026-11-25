@@ -2299,7 +2299,15 @@ const state = {
                         if (Array.isArray(sCo.previousNames)) merged.companies[k].previousNames = JSON.parse(JSON.stringify(sCo.previousNames));
                         merged.companies[k].nameUpdatedAt = sNameTsL;
                     }
-                    merged.companies[k].loginStats = mergeLoginStats(sCo.loginStats, lCo.loginStats);
+                    const sResetTs = Number(sCo.resetAt || 0);
+                    const lResetTs = Number(lCo.resetAt || 0);
+                    if (lResetTs > sResetTs) {
+                        merged.companies[k].loginStats = JSON.parse(JSON.stringify(lCo.loginStats || { totalLogins: 0, roles: {} }));
+                    } else if (sResetTs > lResetTs) {
+                        merged.companies[k].loginStats = JSON.parse(JSON.stringify(sCo.loginStats || { totalLogins: 0, roles: {} }));
+                    } else {
+                        merged.companies[k].loginStats = mergeLoginStats(sCo.loginStats, lCo.loginStats);
+                    }
 
                     // Fusión de entregables: no pisar entregables docentes ni estados más recientes
                     merged.companies[k].deliverables = merged.companies[k].deliverables || {};
@@ -2412,7 +2420,15 @@ const state = {
                             if (Array.isArray(lCo.previousNames)) sCo.previousNames = JSON.parse(JSON.stringify(lCo.previousNames));
                             sCo.nameUpdatedAt = lNameTs2;
                         }
-                        sCo.loginStats = mergeLoginStats(sCo.loginStats, lCo.loginStats);
+                        const lResetTs2 = Number(lCo.resetAt || 0);
+                        const sResetTs2 = Number(sCo.resetAt || 0);
+                        if (lResetTs2 > sResetTs2) {
+                            sCo.loginStats = JSON.parse(JSON.stringify(lCo.loginStats || { totalLogins: 0, roles: {} }));
+                        } else if (sResetTs2 > lResetTs2) {
+                            sCo.loginStats = JSON.parse(JSON.stringify(sCo.loginStats || { totalLogins: 0, roles: {} }));
+                        } else {
+                            sCo.loginStats = mergeLoginStats(sCo.loginStats, lCo.loginStats);
+                        }
                         sCo.deliverables = sCo.deliverables || {};
                         if (lCo.deliverables) {
                             for (const dKey in lCo.deliverables) {

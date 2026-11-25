@@ -1600,7 +1600,7 @@ Object.assign(ui, {
 
         if (companies.length === 0) {
             this._telemetryLastScale = { maxRole: 0, maxTotal: 0 };
-            return `<tr><td colspan="8" class="py-4 text-center text-slate-400 italic text-xs">No hay startups registradas en el grupo seleccionado.</td></tr>`;
+            return `<tr><td colspan="9" class="py-4 text-center text-slate-400 italic text-xs">No hay startups registradas en el grupo seleccionado.</td></tr>`;
         }
 
         const nonTestCos = companies.filter(cid => {
@@ -1649,6 +1649,7 @@ Object.assign(ui, {
                     matRows += `<td class="py-3 font-mono ${meta.cls} text-center font-bold px-2" title="${count} accesos · ${meta.pctOfMax}% del máx. rol (${maxRole}) · Percentil P${meta.percentile} (${meta.tierLabel})">${count}</td>`;
                 }
             });
+            matRows += `<td class="py-2 px-2 text-center"><button type="button" onclick="ui.exportCompanyLoginsPDF('${this.escapeAttr(cid)}')" class="min-h-[36px] px-2.5 py-1 bg-slate-900 border border-mars-cyan/60 text-mars-cyan hover:bg-mars-cyan hover:text-black text-[11px] font-mono font-bold uppercase" title="Exportar informe de logins en PDF de ${this.escapeAttr(co.name)}">📄 PDF</button></td>`;
             matRows += `</tr>`;
         });
         return matRows;
@@ -1665,6 +1666,273 @@ Object.assign(ui, {
             const sc = this._telemetryLastScale;
             sumEl.textContent = `Referencia máxima actual: ${sc.maxRole} accesos por rol / ${sc.maxTotal} total empresa${sc.excludeTest ? ' (sin contar TEST)' : ''}`;
         }
+    },
+
+    _getTelemetryPrintColor(value, maxVal) {
+        const val = Number(value) || 0;
+        const max = Number(maxVal) || 0;
+        if (val <= 0 || max <= 0) {
+            return { bg: '#fff1f2', fg: '#be123c', pct: 0, label: 'Sin accesos' };
+        }
+        const pct = Math.min(100, Math.round((val / max) * 100));
+        if (pct >= 75) return { bg: '#dcfce7', fg: '#15803d', pct, label: 'Alto (75–100%)' };
+        if (pct >= 50) return { bg: '#e0f2fe', fg: '#0369a1', pct, label: 'Medio-alto (50–74%)' };
+        if (pct >= 25) return { bg: '#fef3c7', fg: '#b45309', pct, label: 'Medio-bajo (25–49%)' };
+        return { bg: '#ffedd5', fg: '#c2410c', pct, label: 'Bajo (1–24%)' };
+    },
+
+    exportLoginsReportPDF() {
+        const targetClass = this.telemetryClassFilter || 'ALL';
+        const allCos = state.data.companies || {};
+        const cids = Object.keys(allCos).filter(cid => {
+            const co = allCos[cid];
+            if (!co) return false;
+            return targetClass === 'ALL' || String(co.classGroup || 'A') === String(targetClass);
+        }).sort((a, b) => {
+            const ca = allCos[a];
+            const cb = allCos[b];
+            return String(ca.classGroup || 'A').localeCompare(String(cb.classGroup || 'A')) || String(ca.name || '').localeCompare(String(cb.name || ''));
+        });
+
+        if (cids.length === 0) {
+            return this.notify('No hay empresas en el filtro actual para exportar.', 'warning');
+        }
+
+        const nonTestCids = cids.filter(cid => {
+            const co = allCos[cid];
+            return co && !co.isTestCompany && String(co.classGroup || '').toUpperCase() !== 'TEST';
+        });
+        const refCids = (targetClass === 'ALL' && nonTestCids.length > 0) ? nonTestCids : cids;
+        const roleKeys = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'];
+
+        let maxTotal = 0;
+        let maxRole = 0;
+        refCids.forEach(cid => {
+            const co = allCos[cid];
+            const s = co?.loginStats || { totalLogins: 0, roles: {} };
+            const tVal = Number(s.totalLogins) || 0;
+            if (tVal > maxTotal) maxTotal = tVal;
+            const hasAux = Boolean(co?.auxRoleDept || co?.auxRoleRequest?.status === 'APROBADO');
+            roleKeys.forEach(r => {
+                const c = Number(s.roles?.[r]?.count) || 0;
+                if (r === 'AUXILIAR' && !hasAux && c === 0) return;
+                if (c > maxRole) maxRole = c;
+            });
+        });
+
+        const rowsHtml = cids.map(cid => {
+            const co = allCos[cid];
+            const s = co.loginStats || { totalLogins: 0, roles: {} };
+            const hasAux = Boolean(co.auxRoleDept || co.auxRoleRequest?.status === 'APROBADO');
+            const tot = Number(s.totalLogins) || 0;
+            const totStyle = this._getTelemetryPrintColor(tot, maxTotal);
+            const roleCells = roleKeys.map(r => {
+                const cnt = Number(s.roles?.[r]?.count) || 0;
+                if (r === 'AUXILIAR' && !hasAux && cnt === 0) {
+                    return '<td style="text-align:center;color:#94a3b8;">--</td>';
+                }
+                const st = this._getTelemetryPrintColor(cnt, maxRole);
+                return `<td style="text-align:center;font-weight:700;background:${st.bg};color:${st.fg};">${cnt}</td>`;
+            }).join('');
+            return `
+                <tr>
+                    <td style="font-weight:700;">${this.escapeHTML(co.name || cid)}</td>
+                    <td style="text-align:center;">${this.escapeHTML(co.classGroup || 'A')}</td>
+                    <td style="text-align:center;font-weight:700;background:${totStyle.bg};color:${totStyle.fg};">${tot} (${totStyle.pct}%)</td>
+                    ${roleCells}
+                </tr>`;
+        }).join('');
+
+        const scopeLabel = targetClass === 'ALL' ? 'Todas las Clases' : `Clase ${targetClass}`;
+        const nowStr = new Date().toLocaleString('es-ES');
+        const docHtml = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Informe de Logins — ${this.escapeHTML(scopeLabel)}</title>
+    <style>
+        @page { size: A4 portrait; margin: 12mm; }
+        body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; color: #0f172a; background: #ffffff; margin: 0; padding: 16px; font-size: 11px; }
+        .no-print { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 14px; background: #0f172a; color: #ffffff; margin-bottom: 14px; border-radius: 4px; }
+        .btn-print { background: #22c55e; color: #000; border: 0; padding: 8px 14px; font-weight: 800; cursor: pointer; text-transform: uppercase; font-size: 11px; }
+        h1 { margin: 0 0 4px 0; font-size: 18px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .meta { color: #475569; font-size: 10px; margin-bottom: 10px; }
+        .legend { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; font-size: 9.5px; font-weight: 700; }
+        .legend span { padding: 2px 7px; border: 1px solid #cbd5e1; }
+        table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+        th, td { border: 1px solid #cbd5e1; padding: 5px 6px; }
+        th { background: #f1f5f9; text-transform: uppercase; font-size: 9.5px; }
+        @media print { body { padding: 0; } .no-print { display: none !important; } }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <span>Informe PDF de Accesos (${this.escapeHTML(scopeLabel)}) · Fondo blanco ahorro de tinta</span>
+        <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+    </div>
+    <h1>MARS-KET OS · Informe de Accesos y Logins (${this.escapeHTML(scopeLabel)})</h1>
+    <div class="meta">
+        Emitido: ${this.escapeHTML(nowStr)} · Empresas incluidas: ${cids.length} · Logins globales sistema: ${Number(state.data.telemetry?.totalLogins || 0)} · Referencia máx.: ${maxRole} por rol / ${maxTotal} por empresa${(targetClass === 'ALL' && nonTestCids.length > 0) ? ' (sin TEST)' : ''}
+    </div>
+    <div class="legend">
+        <span style="background:#dcfce7;color:#15803d;">75–100% del máx. (Alto)</span>
+        <span style="background:#e0f2fe;color:#0369a1;">50–74% (Medio-alto)</span>
+        <span style="background:#fef3c7;color:#b45309;">25–49% (Medio-bajo)</span>
+        <span style="background:#ffedd5;color:#c2410c;">1–24% (Bajo)</span>
+        <span style="background:#fff1f2;color:#be123c;">0 (Sin accesos)</span>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align:left;">Startup</th>
+                <th>Clase</th>
+                <th>Total (% máx.)</th>
+                <th>CEO</th>
+                <th>TEC</th>
+                <th>FIN</th>
+                <th>MKT</th>
+                <th>OP_IA</th>
+                <th>AUX</th>
+            </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+    </table>
+</body>
+</html>`;
+        const win = window.open('', '_blank');
+        if (!win) return this.notify('El navegador bloqueó la ventana del PDF. Permite ventanas emergentes.', 'warning');
+        win.document.open();
+        win.document.write(docHtml);
+        win.document.close();
+    },
+
+    exportCompanyLoginsPDF(cid) {
+        const allCos = state.data.companies || {};
+        const co = allCos[cid];
+        if (!co) return;
+        const s = co.loginStats || { totalLogins: 0, roles: {} };
+        const hasAux = Boolean(co.auxRoleDept || co.auxRoleRequest?.status === 'APROBADO');
+        const roleKeys = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'];
+        const roleLabels = {
+            CEO: 'CEO / Dirección General',
+            TECNICO: 'Técnico / I+D',
+            FINANZAS: 'Finanzas / Economía',
+            MARKETING: 'Marketing / Marca',
+            OPERACIONES_IA: 'Operaciones e IA',
+            AUXILIAR: 'Rol Auxiliar'
+        };
+
+        const refCids = Object.keys(allCos).filter(k => {
+            const c = allCos[k];
+            return c && !c.isTestCompany && String(c.classGroup || '').toUpperCase() !== 'TEST';
+        });
+        const pool = refCids.length > 0 ? refCids : Object.keys(allCos);
+        let maxRole = 0;
+        let maxTotal = 0;
+        pool.forEach(k => {
+            const c = allCos[k];
+            const st = c?.loginStats || { totalLogins: 0, roles: {} };
+            if ((Number(st.totalLogins) || 0) > maxTotal) maxTotal = Number(st.totalLogins) || 0;
+            roleKeys.forEach(r => {
+                const cnt = Number(st.roles?.[r]?.count) || 0;
+                if (cnt > maxRole) maxRole = cnt;
+            });
+        });
+
+        const tot = Number(s.totalLogins) || 0;
+        const totStyle = this._getTelemetryPrintColor(tot, maxTotal);
+        const roleRows = roleKeys.map(r => {
+            const info = s.roles?.[r] || { count: 0, lastLogin: null };
+            const cnt = Number(info.count) || 0;
+            const inactiveAux = (r === 'AUXILIAR' && !hasAux && cnt === 0);
+            const st = this._getTelemetryPrintColor(cnt, maxRole);
+            return `
+                <tr>
+                    <td style="font-weight:700;">${this.escapeHTML(roleLabels[r] || r)}</td>
+                    <td style="text-align:center;font-weight:700;${inactiveAux ? 'color:#94a3b8;' : `background:${st.bg};color:${st.fg};`}">${inactiveAux ? 'No activado' : cnt}</td>
+                    <td style="text-align:center;">${inactiveAux ? '--' : `${st.pct}%`}</td>
+                    <td>${this.escapeHTML(info.lastLogin || '--')}</td>
+                    <td>${inactiveAux ? 'Inactivo' : this.escapeHTML(st.label)}</td>
+                </tr>`;
+        }).join('');
+
+        const coNameLower = String(co.name || '').trim().toLowerCase();
+        const cidLower = String(cid || '').trim().toLowerCase();
+        const sessions = (Array.isArray(state.data.telemetry?.sessions) ? state.data.telemetry.sessions : [])
+            .filter(sess => {
+                const ent = String(sess?.entity || '').trim().toLowerCase();
+                return ent === coNameLower || ent === cidLower;
+            })
+            .slice(0, 25);
+
+        const sessionsHtml = sessions.length === 0
+            ? '<p style="color:#64748b;font-style:italic;">No hay sesiones recientes registradas en el historial táctico.</p>'
+            : `<table>
+                <thead><tr><th style="text-align:left;">Fecha / Hora</th><th style="text-align:left;">Rol</th><th style="text-align:left;">Actividad</th></tr></thead>
+                <tbody>
+                    ${sessions.map(sess => {
+                        const evs = (sess.events || []).map(ev => `[${ev.time}] ${ev.action}: ${ev.details}`).join(' · ') || 'Sin eventos registrados';
+                        return `<tr>
+                            <td style="white-space:nowrap;">${this.escapeHTML((sess.timestamp || '').replace('T', ' ').slice(0, 19))}</td>
+                            <td style="font-weight:700;">${this.escapeHTML((sess.role || '').replace('_', ' '))}</td>
+                            <td>${this.escapeHTML(evs)}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>`;
+
+        const code = typeof state.getCompanyCode === 'function' ? (state.getCompanyCode(co) || cid) : cid;
+        const nowStr = new Date().toLocaleString('es-ES');
+        const docHtml = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Informe Logins — ${this.escapeHTML(co.name || cid)}</title>
+    <style>
+        @page { size: A4 portrait; margin: 12mm; }
+        body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; color: #0f172a; background: #ffffff; margin: 0; padding: 16px; font-size: 11px; }
+        .no-print { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 14px; background: #0f172a; color: #ffffff; margin-bottom: 14px; border-radius: 4px; }
+        .btn-print { background: #22c55e; color: #000; border: 0; padding: 8px 14px; font-weight: 800; cursor: pointer; text-transform: uppercase; font-size: 11px; }
+        h1 { margin: 0 0 4px 0; font-size: 18px; text-transform: uppercase; }
+        h2 { margin: 16px 0 6px 0; font-size: 13px; text-transform: uppercase; border-bottom: 1px solid #cbd5e1; padding-bottom: 3px; }
+        .meta { color: #475569; font-size: 10.5px; margin-bottom: 12px; }
+        .kpi { display: inline-block; padding: 8px 14px; border: 1px solid #cbd5e1; background: ${totStyle.bg}; color: ${totStyle.fg}; font-weight: 800; margin-bottom: 12px; }
+        table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+        th, td { border: 1px solid #cbd5e1; padding: 6px; }
+        th { background: #f1f5f9; text-transform: uppercase; font-size: 9.5px; }
+        @media print { body { padding: 0; } .no-print { display: none !important; } }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <span>Auditoría Individual de Accesos — ${this.escapeHTML(co.name || cid)}</span>
+        <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+    </div>
+    <h1>MARS-KET OS · Auditoría de Accesos: ${this.escapeHTML(co.name || cid)}</h1>
+    <div class="meta">Clase: <strong>${this.escapeHTML(co.classGroup || 'A')}</strong> · Código empresa: <strong>${this.escapeHTML(code)}</strong> · Emitido: ${this.escapeHTML(nowStr)}</div>
+    <div class="kpi">Total conexiones: ${tot} (${totStyle.pct}% del máx. de aula: ${maxTotal})</div>
+    <h2>Desglose por Departamento</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align:left;">Departamento</th>
+                <th>Accesos</th>
+                <th>% del Máx. (${maxRole})</th>
+                <th style="text-align:left;">Última Conexión</th>
+                <th style="text-align:left;">Nivel</th>
+            </tr>
+        </thead>
+        <tbody>${roleRows}</tbody>
+    </table>
+    <h2>Últimas Sesiones Registradas (máx. 25)</h2>
+    ${sessionsHtml}
+</body>
+</html>`;
+        const win = window.open('', '_blank');
+        if (!win) return this.notify('El navegador bloqueó la ventana del PDF. Permite ventanas emergentes.', 'warning');
+        win.document.open();
+        win.document.write(docHtml);
+        win.document.close();
     },
 
     async loadAdminNewsTelemetry(forceToast = false) {
@@ -1772,7 +2040,7 @@ Object.assign(ui, {
                 <table class="w-full text-left text-xs border-collapse">
                     <thead class="text-slate-300 uppercase border-b border-mars-border bg-slate-900 sticky top-0 z-10">
                         <tr>
-                            <th class="p-2.5 w-10 text-center">#</th>
+                            <th class="py-2.5 px-3 w-12 text-center whitespace-nowrap">#</th>
                             <th class="p-2.5">Sección</th>
                             <th class="p-2.5">Titular</th>
                             <th class="p-2.5 whitespace-nowrap">Publicada</th>
@@ -1787,7 +2055,7 @@ Object.assign(ui, {
                             const lastReadStr = r.updatedAt ? new Date(r.updatedAt * 1000).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '--';
                             return `
                             <tr class="border-b border-slate-800/70 hover:bg-slate-900/50">
-                                <td class="p-2.5 text-center font-mono text-slate-400">${idx + 1}</td>
+                                <td class="py-2.5 px-3 text-center font-mono text-slate-400 whitespace-nowrap">${idx + 1}</td>
                                 <td class="p-2.5 font-mono text-[10px] uppercase text-mars-cyan whitespace-nowrap">${this.escapeHTML(r.section)}</td>
                                 <td class="p-2.5 text-white font-medium max-w-[360px] truncate ${r.archived ? 'italic text-slate-400' : ''}" title="${this.escapeAttr(r.title)}">${this.escapeHTML(r.title)}</td>
                                 <td class="p-2.5 font-mono text-[11px] text-slate-400 whitespace-nowrap">${this.escapeHTML(r.publishedDate)}</td>
@@ -1841,11 +2109,12 @@ Object.assign(ui, {
                         <h3 class="font-orbitron text-mars-yellow text-xs uppercase tracking-widest font-bold">Matriz de Conexiones por Departamento</h3>
                         <span id="telemetry-scale-summary" class="text-[10px] font-mono text-slate-400">Referencia máxima actual: ${scale.maxRole} accesos por rol / ${scale.maxTotal} total empresa${scale.excludeTest ? ' (sin contar TEST)' : ''}</span>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <label for="telemetry-class-filter" class="text-xs text-slate-300 font-bold uppercase">Filtrar por Clase:</label>
                         <select id="telemetry-class-filter" onchange="ui.onTelemetryClassFilterChange(this.value)" class="min-h-[44px] bg-black border border-mars-yellow text-mars-yellow text-xs p-2 uppercase font-bold outline-none cursor-pointer">
                             ${classOptions}
                         </select>
+                        <button type="button" onclick="ui.exportLoginsReportPDF()" class="min-h-[44px] px-3 py-2 bg-mars-cyan text-black font-black text-xs uppercase hover:bg-white transition-colors">📄 Informe PDF Logins</button>
                     </div>
                 </div>
                 <div class="flex flex-wrap items-center gap-2 mb-3 text-[10px] font-mono">
@@ -1857,7 +2126,7 @@ Object.assign(ui, {
                 </div>
                 <div class="overflow-x-auto w-full">
                     <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
-                        <thead class="text-slate-300 uppercase border-b border-mars-border"><tr><th class="py-2 pr-4">Startup</th><th class="pr-4 text-center border-r border-mars-border/50">Total</th><th class="text-center px-2">CEO</th><th class="text-center px-2">TEC</th><th class="text-center px-2">FIN</th><th class="text-center px-2">MKT</th><th class="text-center px-2">OP_IA</th><th class="text-center px-2">AUX</th></tr></thead>
+                        <thead class="text-slate-300 uppercase border-b border-mars-border"><tr><th class="py-2 pr-4">Startup</th><th class="pr-4 text-center border-r border-mars-border/50">Total</th><th class="text-center px-2">CEO</th><th class="text-center px-2">TEC</th><th class="text-center px-2">FIN</th><th class="text-center px-2">MKT</th><th class="text-center px-2">OP_IA</th><th class="text-center px-2">AUX</th><th class="text-center px-2">PDF</th></tr></thead>
                         <tbody id="telemetry-matrix-tbody">${matrixRowsHtml}</tbody>
                     </table>
                 </div>
@@ -2837,6 +3106,15 @@ Object.assign(ui, {
         co.resetAt = now;
         co.updatedAt = now;
 
+        if (state.data.telemetry && Array.isArray(state.data.telemetry.sessions)) {
+            const coNameLow = String(coName || '').trim().toLowerCase();
+            const cidLow = String(cid || '').trim().toLowerCase();
+            state.data.telemetry.sessions = state.data.telemetry.sessions.filter(sess => {
+                const ent = String(sess?.entity || '').trim().toLowerCase();
+                return ent !== coNameLow && ent !== cidLow;
+            });
+        }
+
         // Mantener credenciales maestras intactas
         if (!state.getCompanyCode(co)) {
             state.setCompanyCode(co, defaultCode, false);
@@ -2903,19 +3181,24 @@ Object.assign(ui, {
             <div class="overflow-x-auto max-w-full">
                 <table class="w-full text-left text-xs whitespace-nowrap">
                     <thead class="text-slate-300 uppercase border-b border-mars-border">
-                        <tr><th class="py-2">Rol</th><th class="text-right">Logins</th></tr>
+                        <tr><th class="py-2">Rol</th><th class="py-2">Último acceso</th><th class="text-right">Logins</th></tr>
                     </thead>
                     <tbody>
                         ${['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA','AUXILIAR'].map(r => `
                         <tr class="border-b border-mars-border/30">
                             <td class="py-2 font-bold text-white">${this.escapeHTML(r)}</td>
+                            <td class="py-2 text-slate-400 font-mono text-[11px]">${this.escapeHTML(s.roles[r]?.lastLogin || '--')}</td>
                             <td class="py-2 text-right font-mono text-mars-yellow">${s.roles[r]?.count || 0}</td>
                         </tr>`).join('')}
                     </tbody>
                 </table>
             </div>
         </div>`;
-        this.showModal(`Auditoría Conexiones: ${this.escapeHTML(co.name)}`, html, "");
+        const actions = `
+            <button type="button" onclick="ui.closeModal()" class="min-h-[44px] px-4 py-2 bg-slate-800 text-white text-xs font-bold uppercase">Cerrar</button>
+            <button type="button" onclick="ui.exportCompanyLoginsPDF('${this.escapeAttr(cid)}')" class="min-h-[44px] px-4 py-2 bg-mars-cyan text-black font-black text-xs uppercase hover:bg-white">📄 Exportar PDF Empresa</button>
+        `;
+        this.showModal(`Auditoría Conexiones: ${this.escapeHTML(co.name)}`, html, actions);
     },
 
     resolveSecurityIncident(id) {

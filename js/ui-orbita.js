@@ -1152,15 +1152,18 @@ Object.assign(ui, {
         if (!id || !/^[A-Za-z0-9_.-]{3,80}$/.test(id)) return;
         const authToken = this.getOrbitaAuthToken();
         if (!authToken) return;
-        const seenKey = 'orbita_viewed_ids_v1';
+        const seenKey = 'orbita_viewed_ids_v2';
+        let seenSet = new Set();
         try {
             const raw = sessionStorage.getItem(seenKey);
             const list = raw ? JSON.parse(raw) : [];
-            const seenSet = new Set(Array.isArray(list) ? list : []);
+            seenSet = new Set(Array.isArray(list) ? list : []);
             if (seenSet.has(id)) return;
-            seenSet.add(id);
-            sessionStorage.setItem(seenKey, JSON.stringify(Array.from(seenSet)));
         } catch (e) {}
+        this._orbitaInFlightViews = this._orbitaInFlightViews || new Set();
+        if (this._orbitaInFlightViews.has(id)) return;
+        this._orbitaInFlightViews.add(id);
+
         fetch('/api/news/view', {
             method: 'POST',
             headers: {
@@ -1170,17 +1173,27 @@ Object.assign(ui, {
             body: JSON.stringify({ articleId: id })
         }).then(r => r.ok ? r.json() : null).then(data => {
             if (data && data.ok && typeof data.views === 'number') {
+                try {
+                    const rawCur = sessionStorage.getItem(seenKey);
+                    const listCur = rawCur ? JSON.parse(rawCur) : [];
+                    const curSet = new Set(Array.isArray(listCur) ? listCur : []);
+                    curSet.add(id);
+                    sessionStorage.setItem(seenKey, JSON.stringify(Array.from(curSet)));
+                } catch (e) {}
                 this._orbitaTopViewCounts = Array.isArray(this._orbitaTopViewCounts) ? this._orbitaTopViewCounts : [];
                 const idx = this._orbitaTopViewCounts.findIndex(x => String(x.articleId) === id);
                 if (idx >= 0) {
                     this._orbitaTopViewCounts[idx].views = data.views;
+                    this._orbitaTopViewCounts[idx].updatedAt = Math.floor(Date.now() / 1000);
                 } else {
-                    this._orbitaTopViewCounts.push({ articleId: id, views: data.views });
+                    this._orbitaTopViewCounts.push({ articleId: id, views: data.views, updatedAt: Math.floor(Date.now() / 1000) });
                 }
                 this._orbitaTopViewCounts.sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0));
                 this.renderOrbitaTopReadsIntoDom();
             }
-        }).catch(() => {});
+        }).catch(() => {}).finally(() => {
+            if (this._orbitaInFlightViews) this._orbitaInFlightViews.delete(id);
+        });
     },
 
     async loadOrbitaTopReads() {

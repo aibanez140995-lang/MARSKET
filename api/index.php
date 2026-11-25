@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.73
+// Versión: v2.0.74
 
 declare(strict_types=1);
 
@@ -1577,7 +1577,8 @@ try {
                             if (!empty($sCo['roles'])) $co['roles'] = $sCo['roles'];
                             if (!empty($sCo['authUpdatedAt'])) $co['authUpdatedAt'] = $sCo['authUpdatedAt'];
                         }
-                        if (!empty($sCo['loginStats']) && is_array($sCo['loginStats'])) {
+                        $clientResetNewer = ((int)($co['resetAt'] ?? 0) > (int)($sCo['resetAt'] ?? 0));
+                        if (!$clientResetNewer && !empty($sCo['loginStats']) && is_array($sCo['loginStats'])) {
                             $co['loginStats'] = mergeLoginStatsArr($sCo['loginStats'], is_array($co['loginStats'] ?? null) ? $co['loginStats'] : []);
                         }
                         // Unión e imposición de tombstones contables (deletedLedgerTxIds) para impedir resurrección de asientos rectificados
@@ -2024,7 +2025,8 @@ try {
                                 return $tid === '' || !isset($delSet[$tid]);
                             }));
                         }
-                        if (!empty($sCo['loginStats']) && is_array($sCo['loginStats'])) {
+                        $clientResetNewer = ((int)($co['resetAt'] ?? 0) > (int)($sCo['resetAt'] ?? 0));
+                        if (!$clientResetNewer && !empty($sCo['loginStats']) && is_array($sCo['loginStats'])) {
                             $co['loginStats'] = mergeLoginStatsArr($sCo['loginStats'], is_array($co['loginStats'] ?? null) ? $co['loginStats'] : []);
                         }
                     }
@@ -3490,6 +3492,14 @@ try {
             CREATE TABLE IF NOT EXISTS news_cache (
                 cache_key TEXT PRIMARY KEY,
                 payload LONGTEXT NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+        ");
+
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS news_views (
+                article_id TEXT PRIMARY KEY,
+                views INTEGER NOT NULL DEFAULT 0,
                 updated_at INTEGER NOT NULL
             )
         ");
