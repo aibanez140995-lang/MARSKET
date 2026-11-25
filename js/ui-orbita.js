@@ -200,6 +200,21 @@ Object.assign(ui, {
         }, wasReaderOpen ? 60 : 10);
     },
 
+    getOrbitaAuthToken() {
+        try {
+            if (typeof auth !== 'undefined' && typeof auth.getSessionToken === 'function') {
+                const tok = auth.getSessionToken();
+                if (tok) return String(tok);
+            }
+        } catch (e) {}
+        if (state?.user?.authToken) return String(state.user.authToken);
+        try {
+            const stored = sessionStorage.getItem('marsket_token');
+            if (stored) return String(stored);
+        } catch (e) {}
+        return '';
+    },
+
     getSpaceflightWireFallback(sec = 'lanzamientos') {
         const common = [
             {
@@ -248,6 +263,18 @@ Object.assign(ui, {
                 news_site: 'Space Economy Wire',
                 published_at: '2026-11-17T16:00:00Z',
                 url: 'https://www.esa.int',
+                image_url: ''
+            },
+            {
+                id: 'fallback-toys-lego',
+                section: 'juguetes',
+                title: 'Scale Rocket Models and LEGO Artemis Sets Inspire Classroom Aerospace Engineering',
+                titleEs: 'Las maquetas de cohetes y los sets espaciales de LEGO inspiran la ingeniería aeroespacial en el aula',
+                summary: 'Educational rocket kits, LEGO space architectures, and scale launchpad models help students grasp staging and stability.',
+                summaryEs: 'Las maquetas educativas, los sets espaciales de LEGO y los modelos a escala ayudan a comprender la aerodinámica y las etapas de un cohete.',
+                news_site: 'Space Education Wire',
+                published_at: '2026-11-16T10:00:00Z',
+                url: 'https://www.nasa.gov/learning-resources/',
                 image_url: ''
             }
         ];
@@ -315,8 +342,9 @@ Object.assign(ui, {
         let payloadMeta = { cachedAt: Math.floor(Date.now() / 1000), source: 'live' };
         try {
             const headers = {};
-            if (force && state?.token) {
-                headers['X-Marsket-Auth'] = state.token;
+            const authToken = this.getOrbitaAuthToken();
+            if (force && authToken) {
+                headers['X-Marsket-Auth'] = authToken;
             }
             const resp = await fetch(`/api/news/wire?section=${encodeURIComponent(sec)}&force=${force ? '1' : '0'}`, {
                 method: 'GET',
@@ -745,7 +773,7 @@ Object.assign(ui, {
         if (!this.isNewsCoordinator()) return this.notify("Solo Coordinación puede redactar noticias en Órbita.", "error");
         const co = state.data.companies?.[coId];
         const pr = co?.pressReleases?.[phase] || null;
-        this.modalPublishOfficialNews(null, 'industria');
+        this.modalPublishOfficialNews(null, 'marsket');
         setTimeout(() => {
             const originEl = document.getElementById('offnews-origin');
             const catEl = document.getElementById('offnews-category');
@@ -754,11 +782,12 @@ Object.assign(ui, {
             const srcEl = document.getElementById('offnews-source-name');
             const srcUrlEl = document.getElementById('offnews-source-url');
             if (originEl) originEl.value = 'SIMULATION';
-            if (catEl) catEl.value = `ECOSISTEMA MARS-KET · FASE ${phase}`;
+            if (catEl) catEl.value = `MARS-KET 2.0 · FASE ${phase}`;
             if (titleEl && co) titleEl.value = `Comunicado corporativo de ${co.name} (Fase ${phase})`;
             if (subEl && co) subEl.value = `Resumen editorial redactado por Coordinación a partir del documento DOC_15 entregado por ${co.name}.`;
             if (srcEl && co) srcEl.value = `Órbita. / Dossier ${co.name}`;
-            if (srcUrlEl && pr?.docUrl) srcUrlEl.value = pr.docUrl;
+            const prUrl = pr?.driveUrl || pr?.docUrl || '';
+            if (srcUrlEl && prUrl) srcUrlEl.value = prUrl;
         }, 40);
     },
 
@@ -831,10 +860,10 @@ Object.assign(ui, {
         this.render();
         state.save();
         if (publishMode === 'DRAFT') {
-            this.notify(`Borrador guardado para la Edición N.º ${curEd + 1} (oculto al alumnado y VIP-0000).`, "success");
+            this.notify(`Borrador guardado en redacción (oculto al alumnado y VIP-0000).`, "success");
         } else {
-            ui.pushNotification('ALL', 'ALL', `Nueva publicación en «Órbita.»: "${title}".`, 'info', { view: 'news' });
-            this.notify(`Artículo publicado en la Edición N.º ${curEd} de Órbita.`, "success");
+            ui.pushNotification('ALL', 'ALL', `📰 Órbita: 1 nueva noticia publicada en el periódico ("${title}").`, 'info', { view: 'news', groupKey: 'orbita_news', count: 1 });
+            this.notify(`Artículo publicado en la Edición Digital de Órbita.`, "success");
         }
     },
 
@@ -848,8 +877,8 @@ Object.assign(ui, {
         const curEd = this.getOrbitaEditionNumber();
         const nextEd = curEd + 1;
         this.confirmAction(
-            `Publicar Edición N.º ${nextEd} de Órbita.`,
-            `Se publicarán ${drafts.length} artículo(s) en borrador y pasarán a ser visibles para alumnado, profesorado y acceso invitado VIP-0000. El número de edición vigente avanzará de N.º ${curEd} a N.º ${nextEd}.`,
+            `Publicar borrador en Órbita Digital.`,
+            `Se publicarán ${drafts.length} artículo(s) en borrador y pasarán a ser visibles en la Edición Digital para alumnado, profesorado y acceso invitado VIP-0000.`,
             () => {
                 const nowTs = Date.now();
                 const isoDate = state._toMadridIsoDate(nowTs);
@@ -870,10 +899,10 @@ Object.assign(ui, {
                 state.data.config.orbita = { currentEditionNumber: nextEd };
                 state.data.news = state.resolveFeaturedNews(state.data.news);
                 this.orbitaDraftPreview = false;
-                ui.pushNotification('ALL', 'ALL', `Ya disponible la Edición N.º ${nextEd} de «Órbita.».`, 'info', { view: 'news' });
+                ui.pushNotification('ALL', 'ALL', `📰 Órbita: ${drafts.length} ${drafts.length === 1 ? 'nueva noticia publicada' : 'nuevas noticias publicadas'} en el periódico.`, 'info', { view: 'news', groupKey: 'orbita_news', count: drafts.length });
                 state.save();
                 this.render();
-                this.notify(`Edición N.º ${nextEd} publicada con ${drafts.length} artículo(s).`, "success");
+                this.notify(`Publicados ${drafts.length} artículo(s) en la Edición Digital de Órbita.`, "success");
             }
         );
     },
@@ -1120,8 +1149,9 @@ Object.assign(ui, {
 
     recordOrbitaArticleView(articleId) {
         const id = String(articleId || '').trim();
-        if (!id || !/^[A-Za-z0-9_-]{3,80}$/.test(id)) return;
-        if (!state?.token) return;
+        if (!id || !/^[A-Za-z0-9_.-]{3,80}$/.test(id)) return;
+        const authToken = this.getOrbitaAuthToken();
+        if (!authToken) return;
         const seenKey = 'orbita_viewed_ids_v1';
         try {
             const raw = sessionStorage.getItem(seenKey);
@@ -1135,9 +1165,21 @@ Object.assign(ui, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Marsket-Auth': state.token
+                'X-Marsket-Auth': authToken
             },
             body: JSON.stringify({ articleId: id })
+        }).then(r => r.ok ? r.json() : null).then(data => {
+            if (data && data.ok && typeof data.views === 'number') {
+                this._orbitaTopViewCounts = Array.isArray(this._orbitaTopViewCounts) ? this._orbitaTopViewCounts : [];
+                const idx = this._orbitaTopViewCounts.findIndex(x => String(x.articleId) === id);
+                if (idx >= 0) {
+                    this._orbitaTopViewCounts[idx].views = data.views;
+                } else {
+                    this._orbitaTopViewCounts.push({ articleId: id, views: data.views });
+                }
+                this._orbitaTopViewCounts.sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0));
+                this.renderOrbitaTopReadsIntoDom();
+            }
         }).catch(() => {});
     },
 
@@ -1145,7 +1187,7 @@ Object.assign(ui, {
         const box = document.getElementById('orbita-top-reads-list');
         if (!box) return;
         try {
-            const resp = await fetch('/api/news/top?limit=20', { method: 'GET' });
+            const resp = await fetch(`/api/news/top?limit=20&t=${Date.now()}`, { method: 'GET', cache: 'no-store' });
             if (resp.ok) {
                 const data = await resp.json();
                 this._orbitaTopViewCounts = Array.isArray(data?.items) ? data.items : [];
@@ -1211,17 +1253,22 @@ Object.assign(ui, {
 
         const expanded = Boolean(this._orbitaTop10Expanded);
         const visibleMobileCount = expanded ? 10 : 5;
+        const viewsById = new Map(ranked.map(r => [String(r.art.id), r.views]));
 
         box.innerHTML = finalItems.map((art, idx) => {
             const title = this.getLocalizedNewsField(art, 'title');
             const secMeta = this.getOrbitaSectionMeta(art.section);
             const secLabel = lang === 'EN' ? secMeta.shortLabelEn : secMeta.shortLabelEs;
+            const vCount = viewsById.get(String(art.id)) || 0;
+            const viewsBadge = (!isRandomFallback && vCount > 0)
+                ? ` <span class="text-stone-400">&bull;</span> <span class="text-[#8B0000] font-bold">${vCount} ${lang === 'EN' ? (vCount === 1 ? 'read' : 'reads') : (vCount === 1 ? 'lectura' : 'lecturas')}</span>`
+                : '';
             const hiddenMobileCls = idx >= visibleMobileCount ? 'hidden md:flex' : 'flex';
             return `
                 <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(art.id)}')" class="${hiddenMobileCls} items-start gap-3 py-2.5 border-b border-stone-200 last:border-b-0 text-left w-full group min-h-[44px]">
                     <span class="font-orbita-serif font-black text-lg leading-none text-[#8B0000] w-5 shrink-0 pt-0.5">${idx + 1}</span>
                     <div class="min-w-0 flex-1">
-                        <span class="block text-[10px] font-mono uppercase tracking-wider text-stone-500">${this.escapeHTML(secLabel)}</span>
+                        <span class="block text-[10px] font-mono uppercase tracking-wider text-stone-500">${this.escapeHTML(secLabel)}${viewsBadge}</span>
                         <span class="block text-sm font-orbita-serif font-bold text-[#111111] group-hover:text-[#8B0000] leading-snug">${this.escapeHTML(title)}</span>
                     </div>
                 </button>
@@ -1972,7 +2019,7 @@ Object.assign(ui, {
         const usedFrontIds = new Set([coverArticle?.id, ...subCovers.map(s => s.id)].filter(Boolean).map(String));
 
         const articlesBySec = {};
-        ['nasa', 'lanzamientos', 'tecnologia', 'industria', 'inventos', 'historia', 'juguetes', 'entrevistas'].forEach(sec => {
+        ['nasa', 'lanzamientos', 'tecnologia', 'industria', 'marsket', 'inventos', 'historia', 'juguetes', 'entrevistas'].forEach(sec => {
             articlesBySec[sec] = visibleNews.filter(n => n.section === sec);
         });
 
@@ -1989,10 +2036,10 @@ Object.assign(ui, {
             ${isCoord && draftsList.length > 0 ? `
                 <div class="bg-amber-100 border-2 border-amber-700 px-3 sm:px-4 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
                     <div class="text-xs font-mono text-amber-950">
-                        <strong>BORRADOR EN PREPARACIÓN (Edición N.º ${curEdition + 1}):</strong> ${draftsList.length} artículo(s) ocultos para alumnado y VIP-0000.
+                        <strong>BORRADOR EN PREPARACIÓN (Edición Digital):</strong> ${draftsList.length} artículo(s) ocultos para alumnado y VIP-0000.
                     </div>
                     <button type="button" onclick="ui.publishOrbitaDraftEdition()" class="min-h-[44px] w-full sm:w-auto px-4 py-2 bg-[#111111] text-white hover:bg-[#8B0000] text-xs font-mono font-bold uppercase transition-colors">
-                        Publicar Edición N.º ${curEdition + 1}
+                        Publicar en Edición Digital
                     </button>
                 </div>
             ` : ''}
@@ -2000,7 +2047,7 @@ Object.assign(ui, {
             <header class="border-b-4 border-double border-[#111111] pb-3 sm:pb-4 space-y-3">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[10px] sm:text-[11px] font-mono text-stone-700 border-b border-stone-300 pb-2">
                     <span class="uppercase tracking-wider font-bold leading-snug">
-                        ${lang === 'EN' ? `Edition No. ${curEdition}` : `Edición N.º ${curEdition}`}
+                        ${lang === 'EN' ? 'Digital Edition' : 'Edición Digital'}
                         &bull; MIRAVALLES-EL REDÍN &bull; ${this.escapeHTML(todayLabel)}
                     </span>
                     <div class="flex items-center justify-between sm:justify-end gap-3">
@@ -2092,11 +2139,13 @@ Object.assign(ui, {
                                 ${subCovers.map(sc => {
                                     const sTitle = this.getLocalizedNewsField(sc, 'title');
                                     const sSec = this.getOrbitaSectionMeta(sc.section);
+                                    const scImg = sc.imageUrl ? this.getNewsImageSrc(sc.imageUrl) : '';
                                     return `
                                     <article class="bg-white border border-stone-300 p-4 flex flex-col justify-between gap-2">
-                                        <div>
-                                            <span class="text-[10px] font-mono font-bold uppercase text-[#8B0000]">${this.escapeHTML(lang === 'EN' ? sSec.shortLabelEn : sSec.shortLabelEs)}</span>
-                                            <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(sc.id)}')" class="text-left block w-full text-base font-orbita-serif font-bold text-[#111111] hover:text-[#8B0000] leading-snug mt-1">
+                                        <div class="space-y-2">
+                                            ${scImg ? `<img src="${this.escapeAttr(scImg)}" alt="${this.escapeAttr(sTitle)}" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(sc.id)}')" class="w-full h-28 object-cover border border-stone-200 cursor-pointer">` : ''}
+                                            <span class="block text-[10px] font-mono font-bold uppercase text-[#8B0000]">${this.escapeHTML(lang === 'EN' ? sSec.shortLabelEn : sSec.shortLabelEs)}</span>
+                                            <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(sc.id)}')" class="text-left block w-full text-base font-orbita-serif font-bold text-[#111111] hover:text-[#8B0000] leading-snug">
                                                 ${this.escapeHTML(sTitle)}
                                             </button>
                                         </div>
@@ -2115,6 +2164,8 @@ Object.assign(ui, {
                                 if (pool.length === 0) return '';
                                 const pick = pool[0];
                                 const sm = this.getOrbitaSectionMeta(secKey);
+                                const pickTitle = this.getLocalizedNewsField(pick, 'title');
+                                const pickImg = pick.imageUrl ? this.getNewsImageSrc(pick.imageUrl) : '';
                                 return `
                                 <div class="bg-white border border-stone-300 p-4 space-y-2">
                                     <div class="flex items-center justify-between border-b border-stone-200 pb-1.5">
@@ -2129,10 +2180,15 @@ Object.assign(ui, {
                                             </button>
                                         </div>
                                     </div>
-                                    <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(pick.id)}')" class="text-left block w-full text-base font-orbita-serif font-bold text-[#111111] hover:text-[#8B0000] leading-snug">
-                                        ${this.escapeHTML(this.getLocalizedNewsField(pick, 'title'))}
-                                    </button>
-                                    <p class="text-xs font-orbita-serif text-stone-600 line-clamp-2">${this.escapeHTML(this.getLocalizedNewsField(pick, 'subtitle'))}</p>
+                                    <div class="flex items-start gap-3">
+                                        ${pickImg ? `<img src="${this.escapeAttr(pickImg)}" alt="${this.escapeAttr(pickTitle)}" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(pick.id)}')" class="w-20 h-20 object-cover border border-stone-200 shrink-0 cursor-pointer">` : ''}
+                                        <div class="min-w-0 flex-1 space-y-1">
+                                            <button type="button" onclick="ui.openSavedArticleFullReader('${this.escapeAttr(pick.id)}')" class="text-left block w-full text-base font-orbita-serif font-bold text-[#111111] hover:text-[#8B0000] leading-snug">
+                                                ${this.escapeHTML(pickTitle)}
+                                            </button>
+                                            <p class="text-xs font-orbita-serif text-stone-600 line-clamp-2">${this.escapeHTML(this.getLocalizedNewsField(pick, 'subtitle'))}</p>
+                                        </div>
+                                    </div>
                                 </div>`;
                             }).join('')}
                         </div>
@@ -2196,7 +2252,7 @@ Object.assign(ui, {
                         ${lang === 'EN' ? 'About this edition' : 'Sobre esta edición'}
                     </h2>
                     <span class="text-xs font-mono font-bold uppercase text-[#8B0000]">
-                        Órbita. &bull; ${lang === 'EN' ? `Edition No. ${curEdition}` : `Edición N.º ${curEdition}`}
+                        Órbita. &bull; ${lang === 'EN' ? 'Digital Edition' : 'Edición Digital'}
                     </span>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs sm:text-sm font-orbita-serif text-stone-700 leading-relaxed">

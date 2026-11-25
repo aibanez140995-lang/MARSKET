@@ -842,16 +842,19 @@ const state = {
             ? rawPlc
             : (item.featured ? 'front' : 'archive');
         const rawSec = String(item.section || '').toLowerCase().trim();
-        const validSections = ['nasa', 'lanzamientos', 'tecnologia', 'industria', 'inventos', 'historia', 'juguetes', 'entrevistas'];
-        const section = validSections.includes(rawSec)
-            ? rawSec
-            : 'industria';
-        const status = String(item.status || 'PUBLISHED').toUpperCase() === 'DRAFT' ? 'DRAFT' : 'PUBLISHED';
-        const edNum = Number(item.editionNumber);
-        const editionNumber = (Number.isFinite(edNum) && edNum >= 0) ? Math.floor(edNum) : 0;
+        const validSections = ['nasa', 'lanzamientos', 'tecnologia', 'industria', 'marsket', 'inventos', 'historia', 'juguetes', 'entrevistas'];
         const origin = String(item.origin || '').toUpperCase() === 'SIMULATION' || item.coId
             ? 'SIMULATION'
             : 'REAL';
+        let section = validSections.includes(rawSec)
+            ? rawSec
+            : (origin === 'SIMULATION' ? 'marsket' : 'industria');
+        if (origin === 'SIMULATION' && section === 'industria' && (item.doc15Phase || item.coId)) {
+            section = 'marsket';
+        }
+        const status = String(item.status || 'PUBLISHED').toUpperCase() === 'DRAFT' ? 'DRAFT' : 'PUBLISHED';
+        const edNum = Number(item.editionNumber);
+        const editionNumber = (Number.isFinite(edNum) && edNum >= 0) ? Math.floor(edNum) : 0;
         const pubDateLabel = String(item.publishedDate || item.date || new Date(pubTs).toLocaleDateString('es-ES'));
         const publishedIsoDate = this._toMadridIsoDate(pubTs, item.publishedIsoDate || pubDateLabel);
         return {

@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.69) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.70) ---
 
-const APP_VERSION = "2.0.69";
+const APP_VERSION = "2.0.70";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -104,7 +104,7 @@ const ORBITA_SECTIONS = Object.freeze([
         subtitleEs: 'Despegues orbitales, cohetes, pruebas de motores y cuentas atrás.',
         subtitleEn: 'Orbital liftoffs, launch vehicles, static fires, and countdowns.',
         kind: 'articles',
-        wireQuery: 'launches',
+        wireQuery: 'launch',
         allowDrafts: true,
         iconKey: 'lanzamientos'
     },
@@ -125,14 +125,27 @@ const ORBITA_SECTIONS = Object.freeze([
         id: 'industria',
         shortLabelEs: 'Industria',
         shortLabelEn: 'Industry',
-        titleEs: 'Industria y Ecosistema MARS-KET',
-        titleEn: 'Industry & MARS-KET Ecosystem',
-        subtitleEs: 'Economía espacial, proveedores europeos y crónicas de las startups del proyecto.',
-        subtitleEn: 'Space economy, suppliers, and classroom startup dispatches.',
+        titleEs: 'Industria Aeroespacial',
+        titleEn: 'Aerospace Industry',
+        subtitleEs: 'Economía espacial, contratos orbitales y proveedores europeos del sector.',
+        subtitleEn: 'Space economy, orbital contracts, and European aerospace suppliers.',
         kind: 'articles',
         wireQuery: 'industry',
         allowDrafts: true,
         iconKey: 'industria'
+    },
+    {
+        id: 'marsket',
+        shortLabelEs: 'MARS-KET 2.0',
+        shortLabelEn: 'MARS-KET 2.0',
+        titleEs: 'MARS-KET 2.0',
+        titleEn: 'MARS-KET 2.0',
+        subtitleEs: 'Crónicas, notas de prensa (DOC_15) e hitos de las startups del proyecto.',
+        subtitleEn: 'Dispatches, press releases (DOC_15), and classroom startup milestones.',
+        kind: 'articles',
+        wireQuery: null,
+        allowDrafts: true,
+        iconKey: 'marsket'
     },
     {
         id: 'quien',
@@ -162,10 +175,10 @@ const ORBITA_SECTIONS = Object.freeze([
     },
     {
         id: 'historia',
-        shortLabelEs: 'Historia',
-        shortLabelEn: 'History',
-        titleEs: 'Industria aeroespacial en la historia',
-        titleEn: 'Aerospace Industry in History',
+        shortLabelEs: 'Un poco de Historia',
+        shortLabelEn: 'A Bit of History',
+        titleEs: 'Un poco de Historia',
+        titleEn: 'A Bit of History',
         subtitleEs: 'Hitos, pioneras e ingeniería histórica que construyeron la era espacial.',
         subtitleEn: 'Milestones, pioneers, and historic engineering that built the space age.',
         kind: 'articles',
@@ -175,14 +188,14 @@ const ORBITA_SECTIONS = Object.freeze([
     },
     {
         id: 'juguetes',
-        shortLabelEs: 'Juguetes',
-        shortLabelEn: 'Toys & Space',
-        titleEs: 'Juguetes y el espacio',
-        titleEn: 'Toys and Space',
-        subtitleEs: 'Maquetas, LEGO espacial, cohetería educativa, Playmobil y simuladores orbitales.',
-        subtitleEn: 'Scale models, space LEGO, educational rocketry, Playmobil, and flight sims.',
+        shortLabelEs: 'Juguetes en el espacio',
+        shortLabelEn: 'Toys in Space',
+        titleEs: 'Juguetes en el espacio',
+        titleEn: 'Toys in Space',
+        subtitleEs: 'Maquetas, LEGO espacial, cohetería educativa, Playmobil y juguetes que viajaron a órbita.',
+        subtitleEn: 'Scale models, space LEGO, educational rocketry, Playmobil, and toys flown to orbit.',
         kind: 'articles',
-        wireQuery: null,
+        wireQuery: 'toys',
         allowDrafts: true,
         iconKey: 'juguetes'
     },
@@ -221,6 +234,7 @@ const ORBITA_ICONS = Object.freeze({
     lanzamientos: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2c3 3 4 7 4 11l-4 3-4-3c0-4 1-8 4-11z"/><path d="M8 13l-3 3v3l3-2M16 13l3 3v3l-3-2M10 19l2 3 2-3"/></svg>',
     tecnologia: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>',
     industria: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M4 21V9l6 4V9l6 4V4h4v17"/></svg>',
+    marsket: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>',
     quien: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14c2.8.3 5 2.5 5 5.5"/></svg>',
     inventos: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
     historia: '<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -944,10 +958,10 @@ const RUBRIC_CONFIG = {
     ] },
     ECO: { name: "Economía", criteria: [
         {id: 'c1', name: 'Test Evaluación', weight: 0.20}, 
-        {id: 'c2', name: 'Presupuesto Inicial', weight: 0.20}, 
-        {id: 'c3', name: 'Cuenta Resultados', weight: 0.20}, 
-        {id: 'c4', name: 'Presupuesto Post-Prototipo', weight: 0.20}, 
-        {id: 'c5', name: 'Balance Situación', weight: 0.20}
+        {id: 'c2', name: '1. Presupuesto Inicial', weight: 0.20}, 
+        {id: 'c3', name: '3. Ingresos-gastos reales', weight: 0.20}, 
+        {id: 'c4', name: '2. Presupuesto post-prototipo', weight: 0.20}, 
+        {id: 'c5', name: '4. Estudio de Variaciones Previsión vs Realidad', weight: 0.20}
     ] },
     LYE: { name: "Liderazgo y Emprend.", criteria: [
         {id: 'c1', name: 'Identidad y Misión Dic', weight: 0.10}, 
@@ -1211,7 +1225,7 @@ const DELIVERABLES_DEF = [
       subject: "ECO",
       phase: "I",
       name: "1. Presupuesto Inicial",
-      shortName: "Presupuesto Inicial",
+      shortName: "1. Presupuesto Inicial",
       desc: "Presupuesto inicial de aprovisionamiento y proyección financiera de la startup.",
       role: "FINANZAS",
       defaultOpenDate: "2026-11-02T00:00",
@@ -1223,8 +1237,8 @@ const DELIVERABLES_DEF = [
       key: "budgetPostProto",
       subject: "ECO",
       phase: "II",
-      name: "2. Presupuesto tras Presentación de Prototipo",
-      shortName: "Presupuesto Post-Proto",
+      name: "2. Presupuesto post-prototipo",
+      shortName: "2. Presupuesto post-prototipo",
       desc: "Presupuesto recalculado tras las pruebas físicas de apogeo y taller.",
       role: "FINANZAS",
       defaultOpenDate: "2026-12-15T00:00",
@@ -1236,9 +1250,9 @@ const DELIVERABLES_DEF = [
       key: "balanceSheet",
       subject: "ECO",
       phase: "III",
-      name: "3. Balance",
-      shortName: "Balance de Situación",
-      desc: "Balance de situación cerrado con activo, pasivo y patrimonio neto final.",
+      name: "3. Ingresos-gastos reales",
+      shortName: "3. Ingresos-gastos reales",
+      desc: "Registro real de ingresos y gastos ejecutados al cierre de la Fase III.",
       role: "FINANZAS",
       defaultOpenDate: "2027-02-15T00:00",
       defaultDate: "2027-03-31T23:59",
@@ -1249,9 +1263,9 @@ const DELIVERABLES_DEF = [
       key: "incomeStatement",
       subject: "ECO",
       phase: "IV",
-      name: "4. Cuenta de Resultados",
-      shortName: "Cuenta de Resultados",
-      desc: "Cuenta de pérdidas y ganancias provisional y control de márgenes.",
+      name: "4. Estudio de Variaciones Previsión vs Realidad",
+      shortName: "4. Estudio Variaciones",
+      desc: "Estudio comparativo de variaciones entre la previsión financiera y la realidad ejecutada.",
       role: "FINANZAS",
       defaultOpenDate: "2027-03-31T00:00",
       defaultDate: "2027-04-23T23:59",
@@ -1327,6 +1341,18 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.70",
+      date: "2026-11-25",
+      title: "Órbita Digital renovada (MARS-KET 2.0, teletipos, lecturas) + Economía y Lengua DOC_15",
+      items: [
+        "Renombrados los entregables y rúbricas de Economía (js/config.js, js/ui-docente-eval.js): 1. Presupuesto Inicial, 2. Presupuesto post-prototipo, 3. Ingresos-gastos reales (Fase III) y 4. Estudio de Variaciones Previsión vs Realidad (Fase IV).",
+        "Órbita Digital sin número de edición (js/ui-orbita.js): sustituido «Edición N.º 0» por «Edición Digital», miniaturas de portada bajo la noticia principal y notificaciones agrupadas (js/ui-core.js) para evitar saturación.",
+        "Secciones y teletipos de Órbita (js/config.js, js/state.js, js/ui-orbita.js, api/index.php): nueva sección «MARS-KET 2.0» entre Industria y Quién es quién, renombradas «Un poco de Historia» y «Juguetes en el espacio» (con teletipo de maquetas/LEGO espacial), corregido el teletipo de Lanzamientos y reparado el contador real de lecturas y Top 10.",
+        "Directorio Quién es quién (js/ui-print-newspaper.js): incorporadas Open Cosmos, Arkadia Space, Anteral y EOSOL.",
+        "Notas de Prensa DOC_15 para Lengua y Coordinación (js/ui-docente-core.js, js/ui-docente-eval.js, js/ui-empresa-core.js): bandeja de recepción en panel docente para LEN y Coordinación, seguimiento por fases en Rúbricas/Archivo y enlaces directos Drive."
+      ]
+    },
     {
       version: "2.0.69",
       date: "2026-11-25",

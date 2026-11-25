@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.69
+// Versión: v2.0.70
 
 declare(strict_types=1);
 
@@ -3538,7 +3538,7 @@ try {
             }
             $vBody = json_decode($rawInput, true);
             $articleId = trim((string)($vBody['articleId'] ?? ($vBody['article_id'] ?? '')));
-            if (!preg_match('/^[A-Za-z0-9_-]{3,80}$/', $articleId)) {
+            if (!preg_match('/^[A-Za-z0-9_.-]{3,80}$/', $articleId)) {
                 http_response_code(400);
                 echo json_encode(['error' => 'INVALID_ARTICLE_ID']);
                 exit;
@@ -3574,7 +3574,7 @@ try {
                     'views' => (int)$trRow['views']
                 ];
             }
-            header('Cache-Control: public, max-age=60');
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
             echo json_encode(['items' => $topItems], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -3582,9 +3582,10 @@ try {
         if ($endpoint === 'news/wire') {
             $sectionMap = [
                 'nasa' => 'nasa',
-                'lanzamientos' => 'launches',
+                'lanzamientos' => 'launch',
                 'tecnologia' => 'technology',
-                'industria' => 'industry'
+                'industria' => 'industry',
+                'juguetes' => 'lego'
             ];
             $rawSection = strtolower(trim((string)($_GET['section'] ?? '')));
             $secKey = isset($sectionMap[$rawSection]) ? $rawSection : '';
@@ -3696,12 +3697,27 @@ try {
                 return $out;
             };
 
-            $snapiUrl = 'https://api.spaceflightnewsapi.net/v4/articles/?limit=6&search=' . rawurlencode($q);
-            $res = $httpGetServer($snapiUrl, 8, false);
+            $queries = [$q];
+            if ($secKey === 'lanzamientos') {
+                $queries = ['launch', 'rocket'];
+            } elseif ($secKey === 'juguetes') {
+                $queries = ['lego', 'toy', 'model'];
+            }
+            $rawResults = [];
+            foreach ($queries as $tryQ) {
+                $snapiUrl = 'https://api.spaceflightnewsapi.net/v4/articles/?limit=6&search=' . rawurlencode($tryQ);
+                $res = $httpGetServer($snapiUrl, 8, false);
+                if ($res['ok'] && $res['body'] !== '') {
+                    $decoded = json_decode($res['body'], true);
+                    $cand = is_array($decoded['results'] ?? null) ? $decoded['results'] : [];
+                    if (!empty($cand)) {
+                        $rawResults = $cand;
+                        break;
+                    }
+                }
+            }
             $items = [];
-            if ($res['ok'] && $res['body'] !== '') {
-                $decoded = json_decode($res['body'], true);
-                $rawResults = is_array($decoded['results'] ?? null) ? $decoded['results'] : [];
+            if (!empty($rawResults)) {
                 $titlesToTr = [];
                 $summariesToTr = [];
                 $filtered = [];

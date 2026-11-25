@@ -25,10 +25,10 @@ Object.assign(ui, {
             { key: 'decisionDiary_apr', label: 'LYE 4B: Diario Decisiones (Abr)', subject: 'LYE' },
             { key: 'investorDossier', label: 'LEN: Dossier de Inversores', subject: 'LEN' },
             { key: 'pressReleasesSummary', label: 'LEN: Notas de Prensa DOC_15 (I–IV)', subject: 'LEN', isPress: true },
-            { key: 'budgetInitial', label: 'ECO 1: Presupuesto Inicial', subject: 'ECO' },
-            { key: 'budgetPostProto', label: 'ECO 2: Presupuesto Post-Prototipo', subject: 'ECO' },
-            { key: 'balanceSheet', label: 'ECO 3: Balance de Situación', subject: 'ECO' },
-            { key: 'incomeStatement', label: 'ECO 4: Cuenta de Resultados', subject: 'ECO' },
+            { key: 'budgetInitial', label: 'ECO 1: 1. Presupuesto Inicial', subject: 'ECO' },
+            { key: 'budgetPostProto', label: 'ECO 2: 2. Presupuesto post-prototipo', subject: 'ECO' },
+            { key: 'balanceSheet', label: 'ECO 3: 3. Ingresos-gastos reales', subject: 'ECO' },
+            { key: 'incomeStatement', label: 'ECO 4: 4. Estudio de Variaciones Previsión vs Realidad', subject: 'ECO' },
             { key: 'goniometerEvidence', label: 'MAT 1: Goniómetro (Foto + Inf.)', subject: 'MAT' },
             { key: 'mathReportDist', label: 'MAT 2: Altura 1 Punto (Distancia)', subject: 'MAT' },
             { key: 'mathReportTwoPoints', label: 'MAT 3: Altura 2 Puntos (Alineados)', subject: 'MAT' },
@@ -401,15 +401,25 @@ Object.assign(ui, {
         });
 
         if (subject === 'LEN' && co.pressReleases) {
-            const prs = Object.values(co.pressReleases).filter(p => p && p.driveUrl && p.status !== 'RETURNED');
-            if (prs.length > 0) {
-                readyTotal += prs.length;
-                const hasPrScore = scores.c3 !== undefined && scores.c3 !== null && scores.c3 !== '';
-                const maxPrTs = prs.reduce((mx, p) => Math.max(mx, Number(p.publishedAt || 0)), 0);
-                if (!hasPrScore || (maxPrTs && gradeTs && maxPrTs > gradeTs)) {
+            const phaseCritMap = { I: 'c3', II: 'c4', III: 'c5', IV: 'c6' };
+            ['I', 'II', 'III', 'IV'].forEach(ph => {
+                const pr = co.pressReleases[ph];
+                if (!pr) return;
+                if (pr.status === 'RETURNED') {
+                    awaitingSubsanacionCount++;
+                    return;
+                }
+                if (!pr.driveUrl) return;
+                readyTotal++;
+                const isResub = Boolean(pr.resubmittedAfterTeacherReturn);
+                if (isResub) resubmittedCount++;
+                const cId = phaseCritMap[ph];
+                const hasPrScore = scores[cId] !== undefined && scores[cId] !== null && scores[cId] !== '';
+                const prTs = Math.max(Number(pr.updatedAt || 0), Number(pr.publishedAt || 0));
+                if (isResub || !hasPrScore || (prTs && gradeTs && prTs > gradeTs)) {
                     pendingCount++;
                 }
-            }
+            });
         }
         return { pendingCount, readyTotal, resubmittedCount, awaitingSubsanacionCount };
     },
@@ -524,9 +534,9 @@ Object.assign(ui, {
                 { key: 'investorDossier', label: 'LEN: Dossier Inv.' },
                 { key: 'pressReleasesSummary', label: 'LEN: Notas Prensa', isPress: true },
                 { key: 'budgetInitial', label: 'ECO 1: Pres. Ini' },
-                { key: 'budgetPostProto', label: 'ECO 2: Pres. Post' },
-                { key: 'balanceSheet', label: 'ECO 3: Balance' },
-                { key: 'incomeStatement', label: 'ECO 4: Cta. Res.' },
+                { key: 'budgetPostProto', label: 'ECO 2: Post-Proto' },
+                { key: 'balanceSheet', label: 'ECO 3: Ing-Gas Reales' },
+                { key: 'incomeStatement', label: 'ECO 4: Variaciones' },
                 { key: 'goniometerEvidence', label: 'MAT 1: Gonióm.' },
                 { key: 'mathReportDist', label: 'MAT 2: Dist. Base' },
                 { key: 'mathReportTwoPoints', label: 'MAT 3: 2 Puntos' },
@@ -599,7 +609,12 @@ Object.assign(ui, {
                                     if (colObj?.isPress) {
                                         const prPublished = ['I','II','III','IV'].filter(ph => prs[ph]?.driveUrl && prs[ph]?.status !== 'RETURNED');
                                         if (prPublished.length > 0) {
-                                            return `<div class="flex flex-col items-center gap-1"><span class="min-h-[44px] flex items-center justify-center bg-mars-cyan/15 text-mars-cyan border border-mars-cyan px-2 py-1 font-bold text-center font-mono">📰 ${prPublished.length}/4</span></div>`;
+                                            const prLinks = prPublished.map(ph => {
+                                                const prUrlRaw = prs[ph].driveUrl;
+                                                const prSafe = (typeof this.sanitizeDriveUrl === 'function') ? this.sanitizeDriveUrl(prUrlRaw) : encodeURI(String(prUrlRaw)).replace(/"/g, '&quot;');
+                                                return `<a href="${prSafe}" target="_blank" rel="noopener noreferrer" class="px-1.5 py-0.5 bg-mars-cyan/15 text-mars-cyan border border-mars-cyan/60 hover:bg-mars-cyan hover:text-black text-[10px] font-mono font-bold">F.${ph} ↗</a>`;
+                                            }).join('');
+                                            return `<div class="flex flex-col items-center gap-1"><span class="text-[10px] font-mono text-mars-cyan font-bold">📰 ${prPublished.length}/4</span><div class="flex flex-wrap justify-center gap-1">${prLinks}</div></div>`;
                                         }
                                         return `<div class="flex flex-col items-center gap-1"><span class="min-h-[44px] flex items-center justify-center text-slate-500 border border-slate-800 px-2 py-1 text-center font-mono">0/4</span></div>`;
                                     }
@@ -725,9 +740,9 @@ Object.assign(ui, {
                 } else if (activeSubject === 'ECO') {
                     evidenceHtml += `<p class="text-xs text-mars-yellow uppercase font-bold mb-2">Nota: El criterio 1 corresponde al Test Evaluativo (20%).</p>`;
                     evidenceHtml += this.renderDocBadge('1. Presupuesto Inicial (20% - Fase I)', docs.budgetInitial, false, this.evalSelectedCo, 'budgetInitial');
-                    evidenceHtml += this.renderDocBadge('2. Presupuesto Post-Prototipo (20% - Fase II)', docs.budgetPostProto, false, this.evalSelectedCo, 'budgetPostProto');
-                    evidenceHtml += this.renderDocBadge('3. Balance de Situación (20% - Fase III)', docs.balanceSheet, false, this.evalSelectedCo, 'balanceSheet');
-                    evidenceHtml += this.renderDocBadge('4. Cuenta de Resultados (20% - Fase IV)', docs.incomeStatement, false, this.evalSelectedCo, 'incomeStatement');
+                    evidenceHtml += this.renderDocBadge('2. Presupuesto post-prototipo (20% - Fase II)', docs.budgetPostProto, false, this.evalSelectedCo, 'budgetPostProto');
+                    evidenceHtml += this.renderDocBadge('3. Ingresos-gastos reales (20% - Fase III)', docs.balanceSheet, false, this.evalSelectedCo, 'balanceSheet');
+                    evidenceHtml += this.renderDocBadge('4. Estudio de Variaciones Previsión vs Realidad (20% - Fase IV)', docs.incomeStatement, false, this.evalSelectedCo, 'incomeStatement');
                 } else if (activeSubject === 'LYE') {
                     evidenceHtml += this.renderDocBadge('1A. Identidad y Misión (Diciembre)', docs.brandIdentity_dec, false, this.evalSelectedCo, 'brandIdentity_dec');
                     evidenceHtml += this.renderDocBadge('1B. Identidad y Misión (Abril)', docs.brandIdentity_apr, false, this.evalSelectedCo, 'brandIdentity_apr');
@@ -1351,6 +1366,9 @@ Object.assign(ui, {
             });
             if (subject === 'LEN' && liveCo.pressReleases) {
                 Object.values(liveCo.pressReleases).forEach(pr => {
+                    if (pr && pr.resubmittedAfterTeacherReturn) {
+                        pr.resubmittedAfterTeacherReturn = false;
+                    }
                     const ts = pr ? Math.max(Number(pr.updatedAt) || 0, Number(pr.publishedAt) || 0) : 0;
                     if (ts > maxDocTs) maxDocTs = ts;
                 });

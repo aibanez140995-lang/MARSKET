@@ -1515,7 +1515,19 @@ const ui = {
         }
         const now = Date.now();
         const dateStr = new Date().toLocaleString();
+        const groupKey = targetMeta && targetMeta.groupKey ? String(targetMeta.groupKey) : '';
         recipients.forEach((roleKey, idx) => {
+            if (groupKey === 'orbita_news') {
+                const existing = co.notifications.find(n => !n.read && n.role === roleKey && n.target && n.target.groupKey === 'orbita_news');
+                if (existing) {
+                    const nextCount = (Number(existing.target.count) || 1) + (Number(targetMeta.count) || 1);
+                    existing.target = { ...existing.target, ...targetMeta, count: nextCount };
+                    existing.message = `📰 Órbita: ${nextCount} ${nextCount === 1 ? 'nueva noticia publicada' : 'nuevas noticias publicadas'} en el periódico.`;
+                    existing.date = dateStr;
+                    existing.updatedAt = now;
+                    return;
+                }
+            }
             co.notifications.unshift({
                 id: 'NOTIF-' + now + '-' + idx + '-' + Math.random().toString(36).substr(2, 4),
                 role: roleKey,

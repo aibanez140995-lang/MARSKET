@@ -3023,6 +3023,7 @@ Object.assign(ui, {
         const prevPr = co.pressReleases?.[phaseKey];
         const prevPrTs = prevPr ? Math.max(Number(prevPr.updatedAt) || 0, Number(prevPr.publishedAt) || 0, Number(prevPr.returnedAt) || 0) : 0;
         const nowTs = Math.max(Date.now(), prevPrTs + 1);
+        const wasReturned = Boolean(prevPr && prevPr.status === 'RETURNED');
         co.pressReleases = co.pressReleases || {};
         co.pressReleases[phaseKey] = {
             id: 'PR-' + coId + '-' + phaseKey,
@@ -3030,6 +3031,8 @@ Object.assign(ui, {
             status: 'PENDING_REVIEW',
             returnReason: '',
             returnDriveUrl: '',
+            resubmittedAfterTeacherReturn: wasReturned,
+            resubmittedAt: wasReturned ? nowTs : 0,
             title: `Nota de Prensa Oficial Fase ${phaseKey} — ${co.name}`,
             driveUrl: driveUrl,
             publishedAt: nowTs,

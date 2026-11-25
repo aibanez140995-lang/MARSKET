@@ -19,6 +19,7 @@ Object.assign(ui, {
                 pendingAux: 0,
                 pendingIncidents: 0,
                 pendingHR: 0,
+                pendingPressReleases: 0,
                 pendingCustom: 0,
                 totalPending: 0,
                 deliveredDeliverables: 0,
@@ -64,6 +65,11 @@ Object.assign(ui, {
                 if (hrPend > 0) {
                     s.pendingHR += hrPend;
                     s.totalPending += hrPend;
+                }
+                const prPend = Object.values(co.pressReleases || {}).filter(p => p && p.driveUrl && p.status === 'PENDING_REVIEW').length;
+                if (prPend > 0) {
+                    s.pendingPressReleases += prPend;
+                    s.totalPending += prPend;
                 }
 
                 const delivs = co.deliverables || {};
@@ -234,7 +240,8 @@ Object.assign(ui, {
         const isCoord = Boolean(state.user?.isCoordinator || String(state.user?.role || '').toUpperCase().startsWith('COORD') || String(state.user?.role || '').toLowerCase() === 'coordinador');
         const isFyqTeacher = state.user.role === 'FYQ';
         const isLyeTeacher = state.user.role === 'LYE';
-        const canSeeAduanaTab = isCoord || isFyqTeacher || isLyeTeacher;
+        const isLenTeacher = state.user.role === 'LEN';
+        const canSeeAduanaTab = isCoord || isFyqTeacher || isLyeTeacher || isLenTeacher;
         this.adminMode = isCoord ? (this.adminMode || 'aula') : 'aula';
         let currentTab = this.adminTab || (this.adminMode === 'coord' ? 'startups' : (isCoord ? 'dash' : 'eval'));
         const coordOnlyTabs = ['contest', 'startups', 'settings', 'backups', 'telemetry', 'catalog'];
@@ -263,7 +270,9 @@ Object.assign(ui, {
         }
         let customsPendingCount = isCoord
             ? (activeStats?.totalPending ?? 0)
-            : (isFyqTeacher ? Number(activeStats?.pendingAesa || 0) : 0);
+            : (isFyqTeacher
+                ? Number(activeStats?.pendingAesa || 0)
+                : (isLenTeacher ? Number(activeStats?.pendingPressReleases || 0) : 0));
         const pendingAuxAll = stats.ALL?.pendingAux || 0;
         const pendingHrAll = stats.ALL?.pendingHR || 0;
 
@@ -319,7 +328,7 @@ Object.assign(ui, {
                             ? 'bg-mars-cyan text-black border-mars-cyan shadow-[0_0_10px_rgba(0,240,255,0.3)]'
                             : 'bg-mars-card text-slate-300 border-mars-border hover:text-white'
                     }">
-                    <span>🛃 ${isCoord ? 'Validaciones y Aduana' : (isFyqTeacher ? 'AESA, I+D y Recepción FyQ' : 'Supervisión Acciones MKT')}</span>
+                    <span>🛃 ${isCoord ? 'Validaciones y Aduana' : (isFyqTeacher ? 'AESA, I+D y Recepción FyQ' : (isLenTeacher ? 'Notas de Prensa (DOC_15)' : 'Supervisión Acciones MKT'))}</span>
                     ${customsPendingCount > 0 ? `<span class="bg-amber-400 text-black px-1.5 py-0.5 rounded text-[10px] font-mono font-black animate-pulse">${customsPendingCount}</span>` : ''}
                 </button>` : ''}
                 <button type="button" role="tab" aria-selected="${currentTab === 'contracts'}"
@@ -444,10 +453,12 @@ Object.assign(ui, {
                 case 'dash': {
                     const isFyqOrCoord = state.user.role === 'FYQ' || isCoord || Boolean(state.user.isCoordinator) || (state.user.role && String(state.user.role).startsWith('COORD'));
                     const isLyeOrCoord = state.user.role === 'LYE' || isCoord || Boolean(state.user.isCoordinator) || (state.user.role && String(state.user.role).startsWith('COORD'));
+                    const isLenOrCoord = state.user.role === 'LEN' || isCoord || Boolean(state.user.isCoordinator) || (state.user.role && String(state.user.role).startsWith('COORD'));
                     const launchLicensePanel = isFyqOrCoord ? this.renderAdminLaunchLicensePanel() : '';
                     const fyqPanel = isFyqOrCoord ? this.renderFyqReceptionPanel() : '';
                     const mktActionPanel = isLyeOrCoord ? this.renderMktActionReceptionPanel() : '';
-                    subContainer.innerHTML = launchLicensePanel + fyqPanel + mktActionPanel + this.renderAdminDash();
+                    const pressReleasePanel = isLenOrCoord && typeof this.renderPressReleaseReceptionPanel === 'function' ? this.renderPressReleaseReceptionPanel() : '';
+                    subContainer.innerHTML = launchLicensePanel + fyqPanel + mktActionPanel + pressReleasePanel + this.renderAdminDash();
                     break;
                 }
                 case 'contracts': subContainer.innerHTML = this.renderAdminContracts(); break;
@@ -546,6 +557,84 @@ Object.assign(ui, {
             </div>
         </div>
         `;
+    },
+
+    renderPressReleaseReceptionPanel() {
+        const activeFilter = this.currentClassFilter || 'ALL';
+        const companies = state.data.companies || {};
+        const isCoord = this.isNewsCoordinator ? this.isNewsCoordinator() : false;
+        let rows = '';
+        let count = 0;
+
+        for (const cid in companies) {
+            const co = companies[cid];
+            if (!co) continue;
+            if (activeFilter !== 'ALL' && (co.classGroup || 'A') !== activeFilter) continue;
+            const coName = co.name || cid.toUpperCase();
+            const prs = co.pressReleases || {};
+            ['I', 'II', 'III', 'IV'].forEach(ph => {
+                const pr = prs[ph];
+                if (!pr || !pr.driveUrl || pr.status !== 'PENDING_REVIEW') return;
+                count++;
+                const safeHref = (typeof this.sanitizeDriveUrl === 'function')
+                    ? this.sanitizeDriveUrl(pr.driveUrl)
+                    : encodeURI(String(pr.driveUrl)).replace(/"/g, '&quot;');
+                const dateFormatted = pr.publishedAt ? new Date(pr.publishedAt).toLocaleDateString('es-ES') : (pr.publishedDate || '--');
+                rows += `
+                    <tr class="border-b border-slate-800 text-xs hover:bg-slate-900/60 transition-colors">
+                        <td class="p-2.5 font-bold text-mars-cyan uppercase">${this.escapeHTML(coName)} <span class="text-[10px] text-slate-400">(${this.escapeHTML(co.classGroup || 'A')})</span></td>
+                        <td class="p-2.5 text-white font-mono">Fase ${this.escapeHTML(ph)}${pr.resubmittedAfterTeacherReturn ? ' <span class="ml-1 px-1.5 py-0.5 bg-amber-500/20 border border-amber-400 text-amber-300 text-[10px] font-bold">REENVIADA</span>' : ''}</td>
+                        <td class="p-2.5 text-slate-300 font-mono">${this.escapeHTML(dateFormatted)}</td>
+                        <td class="p-2.5">
+                            <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] inline-flex items-center px-2.5 py-1 bg-slate-950 border border-mars-cyan/60 text-mars-cyan hover:bg-mars-cyan hover:text-black font-bold uppercase text-[11px]">
+                                📄 Abrir DOC_15 ↗
+                            </a>
+                        </td>
+                        <td class="p-2.5">
+                            <div class="flex flex-wrap gap-1.5">
+                                <button type="button" onclick="ui.adminTab='eval'; ui.coordEvalView='LEN'; ui.evalSelectedCo='${this.escapeAttr(cid)}'; ui.render();" class="min-h-[44px] px-2.5 py-1 bg-emerald-950/70 border border-emerald-500/60 text-emerald-300 hover:bg-emerald-500 hover:text-black text-[11px] font-bold uppercase">
+                                    📝 Evaluar en LEN
+                                </button>
+                                ${isCoord ? `
+                                <button type="button" onclick="ui.openOrbitaDraftFromDoc15('${this.escapeAttr(cid)}', '${this.escapeAttr(ph)}')" class="min-h-[44px] px-2.5 py-1 bg-amber-950/70 border border-amber-500/60 text-amber-300 hover:bg-amber-400 hover:text-black text-[11px] font-bold uppercase">
+                                    ✍️ Redactar en Órbita
+                                </button>` : ''}
+                            </div>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        return `
+        <div class="terminal-border bg-mars-card p-5 mb-6 border-l-4 border-l-mars-cyan">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div>
+                    <h4 class="font-orbitron text-mars-cyan text-xs sm:text-sm font-bold uppercase">📰 Notas de Prensa Corporativas (DOC_15 · Lengua y Coordinación)</h4>
+                    <p class="text-[11px] text-slate-300 mt-0.5">Entregas de Notas de Prensa pendientes de revisión editorial o evaluación en Lengua.</p>
+                </div>
+                <span class="px-2.5 py-1 text-xs font-mono font-bold ${count > 0 ? 'bg-amber-400 text-black' : 'bg-slate-900 text-slate-400 border border-slate-700'}">
+                    ${count} pendiente(s)
+                </span>
+            </div>
+            ${count === 0 ? `
+                <p class="text-xs text-slate-400 font-mono">No hay Notas de Prensa (DOC_15) pendientes de revisión en el filtro actual.</p>
+            ` : `
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-700 text-[10px] font-mono text-slate-400 uppercase">
+                                <th class="p-2.5">Empresa</th>
+                                <th class="p-2.5">Fase</th>
+                                <th class="p-2.5">Fecha</th>
+                                <th class="p-2.5">Documento Drive</th>
+                                <th class="p-2.5">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            `}
+        </div>`;
     },
 
     renderMktActionReceptionPanel() {
