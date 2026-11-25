@@ -1540,22 +1540,25 @@ Object.assign(ui, {
         if (urlVal || dataVal) {
             state.data.realCompanyLogos[presetId] = urlVal || dataVal;
         } else {
-            delete state.data.realCompanyLogos[presetId];
+            state.data.realCompanyLogos[presetId] = '';
         }
         state.data.realCompanyLogosUpdatedAt = Date.now();
         this.closeModal();
         this.render();
         state.save();
-        this.notify("Logo de empresa real actualizado.", "success");
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.notify("Logo de empresa real guardado en la nube.", "success");
     },
 
     clearRealCompanyLogo(presetId) {
         if (!this.isNewsCoordinator()) return;
-        if (state.data.realCompanyLogos) delete state.data.realCompanyLogos[presetId];
+        state.data.realCompanyLogos = state.data.realCompanyLogos || {};
+        state.data.realCompanyLogos[presetId] = '';
         state.data.realCompanyLogosUpdatedAt = Date.now();
         this.closeModal();
         this.render();
         state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
         this.notify("Logo eliminado.", "info");
     },
 

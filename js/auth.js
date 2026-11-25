@@ -584,7 +584,7 @@ const auth = (function() {
 
             if (isVipUser) {
                 nav.innerHTML = `
-                    <button type="button" role="tab" data-tab-id="news" onclick="ui.navigate('news')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">Periódico Órbita.</button>
+                    <button type="button" role="tab" data-tab-id="news" onclick="ui.navigate('news')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">Órbita.</button>
                 `;
                 return;
             }
@@ -594,7 +594,7 @@ const auth = (function() {
                     <button type="button" role="tab" data-tab-id="admin" onclick="ui.navigate('admin')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">🎖️ Centro de Mando</button>
                     <button type="button" role="tab" data-tab-id="market" onclick="ui.navigate('market')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">🛒 Inspeccionar Mercado</button>
                     <button type="button" role="tab" data-tab-id="dossier" onclick="ui.navigate('dossier')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">📁 Inspeccionar Dossiers</button>
-                    <button type="button" role="tab" data-tab-id="news" onclick="ui.navigate('news')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">📰 Tablón de Noticias</button>
+                    <button type="button" role="tab" data-tab-id="news" onclick="ui.navigate('news')" class="nav-tab min-h-[44px] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white whitespace-nowrap flex items-center">📰 Órbita.</button>
                 `;
                 return;
             }
@@ -615,7 +615,7 @@ const auth = (function() {
                 'ailog': { id: 'ailog', label: '🤖 Bitácora IA', badge: 'badge-ailog' },
                 'dossier': { id: 'dossier', label: '📋 Dossier', badge: 'badge-dossier' },
                 'resolutions': { id: 'resolutions', label: '⚖️ Trámites', badge: 'badge-resolutions' },
-                'news': { id: 'news', label: '📰 Tablón de Noticias', badge: 'badge-news' }
+                'news': { id: 'news', label: '📰 Órbita.', badge: 'badge-news' }
             };
 
             const roleTabOrders = {

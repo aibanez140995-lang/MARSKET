@@ -1207,7 +1207,7 @@ Object.assign(ui, {
                     </div>
                     <h3 class="font-orbitron font-black text-sm sm:text-base text-white uppercase">📰 Notas de Prensa Corporativas (CEO)</h3>
                     <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
-                        Publica los comunicados oficiales de balance con 7 días de margen tras el corte de cada fase en el Tablón de Noticias mediante la plantilla DOC_15.
+                        Publica los comunicados oficiales de balance con 7 días de margen tras el corte de cada fase en el Órbita. mediante la plantilla DOC_15.
                     </p>
                     <div class="mt-3 space-y-2">
                         ${prPhases.map(p => {
@@ -1270,7 +1270,7 @@ Object.assign(ui, {
                     </div>
                 </div>
                 <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center">
-                    <span class="text-[11px] text-slate-400 font-mono">Tablón de Noticias</span>
+                    <span class="text-[11px] text-slate-400 font-mono">Órbita.</span>
                     <button type="button" onclick="ui.navigate('news')" class="min-h-[44px] bg-slate-900 border border-mars-cyan text-mars-cyan hover:bg-mars-cyan hover:text-black font-black uppercase text-xs px-4 py-2 transition-all">Ver Tablón ➔</button>
                 </div>
             </div>`;
@@ -2790,7 +2790,7 @@ Object.assign(ui, {
                 <div class="p-3 bg-cyan-950/40 border border-cyan-500/40 text-slate-200 space-y-1">
                     <p class="text-cyan-400 font-bold uppercase">${this.escapeHTML(phaseDef.title)}</p>
                     <p class="font-sans text-[11px] leading-relaxed">
-                        Fecha límite de emisión: <strong>${this.escapeHTML(phaseDef.deadlineLabel)}</strong> (7 días de cortesía tras corte de fase). Sintetiza los avances de todas las áreas antes de su publicación en el Tablón de Noticias.
+                        Fecha límite de emisión: <strong>${this.escapeHTML(phaseDef.deadlineLabel)}</strong> (7 días de cortesía tras corte de fase). Sintetiza los avances de todas las áreas antes de su publicación en el Órbita..
                     </p>
                 </div>
                 ${balanceIntegrationHtml}
@@ -2826,7 +2826,7 @@ Object.assign(ui, {
                 </div>
             </div>
         `;
-        const actions = `<button type="button" onclick="ui.submitPressRelease('${this.escapeHTML(phaseDef.phase)}')" class="min-h-[44px] bg-mars-cyan text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)]">[ 📰 Publicar en Tablón de Noticias ]</button>`;
+        const actions = `<button type="button" onclick="ui.submitPressRelease('${this.escapeHTML(phaseDef.phase)}')" class="min-h-[44px] bg-mars-cyan text-black px-6 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-white transition-all shadow-[0_0_10px_rgba(0,255,204,0.3)]">[ 📰 Publicar en Órbita. ]</button>`;
         this.showModal(`Publicar Nota de Prensa (${phaseDef.title})`, html, actions);
     },
 
@@ -2871,7 +2871,7 @@ Object.assign(ui, {
         };
         co.updatedAt = nowTs;
 
-        // Registro en listado global para el Tablón de Noticias (pendiente de aprobación LEN / COORD)
+        // Registro en listado global para el Órbita. (pendiente de aprobación LEN / COORD)
         state.data.pressReleases = Array.isArray(state.data.pressReleases)
             ? state.data.pressReleases.filter(p => !(p && String(p.coId) === String(coId) && String(p.phase) === String(phaseKey)))
             : [];

@@ -546,7 +546,7 @@ Object.assign(ui, {
             }
             this.confirmAction(
                 "Publicar Veredicto Oficial del Concurso Final",
-                "Al publicar, el marcador en directo (Altura, Coste, E), los vídeos, el Podio y los 6 Galardones pasarán a ser visibles para todas las clases en el Tablón de Noticias y en Sala de Mando. ¿Deseas publicar el veredicto ahora?",
+                "Al publicar, el marcador en directo (Altura, Coste, E), los vídeos, el Podio y los 6 Galardones pasarán a ser visibles para todas las clases en el Órbita. y en Sala de Mando. ¿Deseas publicar el veredicto ahora?",
                 () => this.setContestPublished(true),
                 "🟢 Publicar Veredicto Oficial",
                 false
@@ -1467,7 +1467,7 @@ Object.assign(ui, {
         return `
         <div class="terminal-border bg-mars-card p-3.5 border-l-4 border-mars-green mb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div class="text-xs text-slate-200">
-                <strong class="text-mars-green uppercase">🏆 Resultados Oficiales Fase V (19/05/2027):</strong> El Podio Absoluto, los 6 Galardones Oficiales y las marcas de E ya están publicados en el Tablón de Noticias.
+                <strong class="text-mars-green uppercase">🏆 Resultados Oficiales Fase V (19/05/2027):</strong> El Podio Absoluto, los 6 Galardones Oficiales y las marcas de E ya están publicados en el Órbita..
             </div>
             <button type="button" onclick="ui.openPhaseVNews()"
                 class="min-h-[44px] px-4 py-2 bg-mars-green text-black font-black text-xs uppercase hover:bg-white transition-all shrink-0">

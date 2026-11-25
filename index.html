@@ -9,11 +9,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MARS-KET 2.0">
-    <link rel="manifest" href="manifest.json?v=2.0.67">
-    <link rel="icon" type="image/jpeg" href="logo.jpg?v=2.0.67">
-    <link rel="shortcut icon" href="logo.jpg?v=2.0.67">
-    <link rel="apple-touch-icon" href="logo.jpg?v=2.0.67">
-    <link rel="apple-touch-icon-precomposed" href="logo.jpg?v=2.0.67">
+    <link rel="manifest" href="manifest.json?v=2.0.68">
+    <link rel="icon" type="image/jpeg" href="logo.jpg?v=2.0.68">
+    <link rel="shortcut icon" href="logo.jpg?v=2.0.68">
+    <link rel="apple-touch-icon" href="logo.jpg?v=2.0.68">
+    <link rel="apple-touch-icon-precomposed" href="logo.jpg?v=2.0.68">
     
     <!-- Script de Precarga de Zoom y Modo Calma (Zero-Shift / Cero Parpadeo) -->
     <script>
@@ -31,7 +31,7 @@
     </script>
 
     <!-- Tailwind CSS (Compilado localmente v1.1.03 - Bloque T) -->
-    <link rel="stylesheet" href="css/tailwind.css?v=2.0.67">
+    <link rel="stylesheet" href="css/tailwind.css?v=2.0.68">
     <style>
         :root {
             color-scheme: dark;
@@ -528,7 +528,7 @@
                         <h1 class="font-orbitron font-black text-xs sm:text-lg text-white tracking-wider sm:tracking-widest leading-none flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
                             MARS-KET <span class="text-mars-cyan">2.0</span>
                         </h1>
-                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v2.0.67</span>
+                        <span id="hud-version" class="text-xs text-slate-300 font-mono tracking-widest block mt-0.5">v2.0.68</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -545,13 +545,13 @@
 
             <!-- Fila 2: Barra de Utilidades Táctica (44px Touch Targets, 2x2 en móvil, 4 cols en sm+) -->
             <div id="hud-action-bar" style="visibility: hidden;" class="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full mt-3">
-                <button type="button" onclick="ui.modalChangelog()" class="min-h-[44px] bg-mars-green/10 border border-mars-green text-mars-green py-2 px-2 text-xs font-bold uppercase tracking-wider hover:bg-mars-green hover:text-black transition-all flex items-center justify-center text-center">
+                <button type="button" id="hud-btn-changelog" onclick="ui.modalChangelog()" class="min-h-[44px] bg-mars-green/10 border border-mars-green text-mars-green py-2 px-2 text-xs font-bold uppercase tracking-wider hover:bg-mars-green hover:text-black transition-all flex items-center justify-center text-center">
                     [ 🚀 NOVEDADES ]
                 </button>
                 <button type="button" id="hud-btn-suggs" onclick="ui.handleHudSuggClick()" class="min-h-[44px] bg-mars-yellow/10 border border-mars-yellow text-mars-yellow py-2 px-2 text-xs font-bold uppercase tracking-wider hover:bg-mars-yellow hover:text-black transition-all flex items-center justify-center text-center">
                     [ 💡 SUGERENCIA ]
                 </button>
-                <button type="button" onclick="ui.showGuide()" class="min-h-[44px] bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-2 px-2 text-xs font-bold uppercase tracking-wider hover:bg-mars-cyan hover:text-black transition-all flex items-center justify-center text-center">
+                <button type="button" id="hud-btn-guide" onclick="ui.showGuide()" class="min-h-[44px] bg-mars-cyan/10 border border-mars-cyan text-mars-cyan py-2 px-2 text-xs font-bold uppercase tracking-wider hover:bg-mars-cyan hover:text-black transition-all flex items-center justify-center text-center">
                     [ ❓ GUÍA ]
                 </button>
                 <button type="button" onclick="auth.logout()" class="min-h-[44px] bg-mars-magenta/10 border border-mars-magenta text-mars-magenta py-2 px-2 text-xs font-black uppercase tracking-wider hover:bg-mars-magenta hover:text-white transition-all flex items-center justify-center text-center">
@@ -593,7 +593,7 @@
             <div class="font-orbitron font-black text-xs sm:text-sm tracking-[0.2em] text-white uppercase mb-1.5 flex items-center justify-center gap-2">
                 <span>MARS-KET <span class="text-mars-cyan">2.0</span></span>
                 <span class="text-slate-600 font-mono">|</span>
-                <span id="footer-version" class="text-slate-400 font-mono text-[11px] sm:text-xs tracking-widest font-normal">v2.0.67</span>
+                <span id="footer-version" class="text-slate-400 font-mono text-[11px] sm:text-xs tracking-widest font-normal">v2.0.68</span>
             </div>
 
             <!-- Capa 2: Descriptor Institucional y Académico -->
@@ -674,23 +674,23 @@
     <div id="credentials-print-area" class="hidden"></div>
 
     <!-- SCRIPTS ORDENADOS DEL SISTEMA -->
-    <script src="js/lexicon-data.js?v=2.0.67"></script>
-    <script src="js/config.js?v=2.0.67"></script>
-    <script src="js/state.js?v=2.0.67"></script>
-    <script src="js/auth.js?v=2.0.67"></script>
-    <script src="js/ui-core.js?v=2.0.67"></script>
-    <script src="js/ui-empresa-core.js?v=2.0.67"></script>
-    <script src="js/ui-orbita.js?v=2.0.67"></script>
-    <script src="js/ui-print-newspaper.js?v=2.0.67"></script>
-    <script src="js/ui-empresa-market.js?v=2.0.67"></script>
-    <script src="js/ui-empresa-tech.js?v=2.0.67"></script>
-    <script src="js/ui-empresa-finance.js?v=2.0.67"></script>
-    <script src="js/ui-empresa-ops.js?v=2.0.67"></script>
-    <script src="js/ui-empresa-gov-brand.js?v=2.0.67"></script>
-    <script src="js/ui-docente-core.js?v=2.0.67"></script>
-    <script src="js/ui-docente-eval.js?v=2.0.67"></script>
-    <script src="js/ui-docente-management.js?v=2.0.67"></script>
-    <script src="js/ui-docente-contest.js?v=2.0.67"></script>
+    <script src="js/lexicon-data.js?v=2.0.68"></script>
+    <script src="js/config.js?v=2.0.68"></script>
+    <script src="js/state.js?v=2.0.68"></script>
+    <script src="js/auth.js?v=2.0.68"></script>
+    <script src="js/ui-core.js?v=2.0.68"></script>
+    <script src="js/ui-empresa-core.js?v=2.0.68"></script>
+    <script src="js/ui-orbita.js?v=2.0.68"></script>
+    <script src="js/ui-print-newspaper.js?v=2.0.68"></script>
+    <script src="js/ui-empresa-market.js?v=2.0.68"></script>
+    <script src="js/ui-empresa-tech.js?v=2.0.68"></script>
+    <script src="js/ui-empresa-finance.js?v=2.0.68"></script>
+    <script src="js/ui-empresa-ops.js?v=2.0.68"></script>
+    <script src="js/ui-empresa-gov-brand.js?v=2.0.68"></script>
+    <script src="js/ui-docente-core.js?v=2.0.68"></script>
+    <script src="js/ui-docente-eval.js?v=2.0.68"></script>
+    <script src="js/ui-docente-management.js?v=2.0.68"></script>
+    <script src="js/ui-docente-contest.js?v=2.0.68"></script>
 
     <script>
         window.addEventListener('DOMContentLoaded', () => {
@@ -730,7 +730,7 @@
                 }).observe(loginScreenEl, { childList: true, subtree: true });
             }
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-                navigator.serviceWorker.register('sw.js?v=2.0.67').then(reg => {
+                navigator.serviceWorker.register('sw.js?v=2.0.68').then(reg => {
                     reg.update().catch(() => {});
                 }).catch(() => {});
                 navigator.serviceWorker.addEventListener('controllerchange', () => {

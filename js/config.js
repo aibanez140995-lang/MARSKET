@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.67) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.68) ---
 
-const APP_VERSION = "2.0.67";
+const APP_VERSION = "2.0.68";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1327,6 +1327,16 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.68",
+      date: "2026-11-24",
+      title: "Nombre «Órbita.» en navegación, blindaje anti-reseteo de logos y perfil Lector limpio",
+      items: [
+        "Sustituido «Tablón de Noticias» por «Órbita.» en la navegación de alumnado, docentes, notas de prensa y Fase V (js/auth.js, js/ui-empresa-core.js, js/ui-docente-contest.js).",
+        "Blindaje anti-reseteo de logos de empresas reales (js/state.js, api/index.php, js/ui-orbita.js): fusión clave a clave en local y en servidor CDMON con empuje inmediato a la nube para conservar siempre los archivos subidos.",
+        "Perfil Lector VIP-0000 sin acceso ni botones de Novedades, Guía ni Sugerencias (index.html, js/ui-core.js)."
+      ]
+    },
     {
       version: "2.0.67",
       date: "2026-11-24",

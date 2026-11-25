@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.67
+// Versión: v2.0.68
 
 declare(strict_types=1);
 
@@ -1108,11 +1108,30 @@ try {
                     if (isset($currentState['realCompanyLogosUpdatedAt'])) {
                         $payload['realCompanyLogosUpdatedAt'] = $currentState['realCompanyLogosUpdatedAt'];
                     }
-                } elseif (isset($payload['printEditions']) && is_array($payload['printEditions'])) {
-                    $delPrintSet = array_flip($mergedPrintTomb);
-                    $payload['printEditions'] = array_values(array_filter($payload['printEditions'], function ($pe) use ($delPrintSet) {
-                        return is_array($pe) && !empty($pe['id']) && !isset($delPrintSet[(string)$pe['id']]);
-                    }));
+                } else {
+                    $currLogos = (isset($currentState['realCompanyLogos']) && is_array($currentState['realCompanyLogos'])) ? $currentState['realCompanyLogos'] : [];
+                    $incLogos = (isset($payload['realCompanyLogos']) && is_array($payload['realCompanyLogos'])) ? $payload['realCompanyLogos'] : [];
+                    $mergedLogos = $currLogos;
+                    foreach ($incLogos as $k => $v) {
+                        $kStr = (string)$k;
+                        $vStr = is_string($v) ? trim($v) : '';
+                        if ($vStr === '') {
+                            $mergedLogos[$kStr] = '';
+                        } else {
+                            $mergedLogos[$kStr] = $vStr;
+                        }
+                    }
+                    $payload['realCompanyLogos'] = $mergedLogos;
+                    $payload['realCompanyLogosUpdatedAt'] = max(
+                        (int)($currentState['realCompanyLogosUpdatedAt'] ?? 0),
+                        (int)($payload['realCompanyLogosUpdatedAt'] ?? 0)
+                    );
+                    if (isset($payload['printEditions']) && is_array($payload['printEditions'])) {
+                        $delPrintSet = array_flip($mergedPrintTomb);
+                        $payload['printEditions'] = array_values(array_filter($payload['printEditions'], function ($pe) use ($delPrintSet) {
+                            return is_array($pe) && !empty($pe['id']) && !isset($delPrintSet[(string)$pe['id']]);
+                        }));
+                    }
                 }
                 if (!$isCoord) {
                     if (isset($currentState['news'])) {

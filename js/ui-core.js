@@ -2525,6 +2525,7 @@ const ui = {
     },
 
     modalChangelog() {
+        if (state.user && state.user.isVip) return;
         const logs = typeof APP_CHANGELOG !== 'undefined' ? APP_CHANGELOG : [];
         let html = `<div class="space-y-4 font-mono text-xs">`;
         
@@ -2615,6 +2616,7 @@ const ui = {
     },
 
     showGuide(defaultRole = null) {
+        if (state.user && state.user.isVip) return;
         const currentVer = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.1.44';
         let initialRole = defaultRole;
         if (!initialRole) {
@@ -2832,6 +2834,7 @@ const ui = {
     },
 
     handleHudSuggClick() {
+        if (state.user && state.user.isVip) return;
         if (state.user && state.user.admin && state.user.role && String(state.user.role).startsWith('COORD')) {
             this.modalCoordinatorInbox();
         } else {
@@ -3486,7 +3489,19 @@ const ui = {
             if (hdr) hdr.classList.remove('hidden');
             if (nav) nav.classList.remove('hidden');
             if (ftr) ftr.classList.remove('hidden');
-            if (actionBar) actionBar.style.visibility = 'visible';
+            const isVip = !!(state.user && state.user.isVip);
+            const btnChangelog = document.getElementById('hud-btn-changelog');
+            const btnSuggs = document.getElementById('hud-btn-suggs');
+            const btnGuide = document.getElementById('hud-btn-guide');
+            if (btnChangelog) btnChangelog.classList.toggle('hidden', isVip);
+            if (btnSuggs) btnSuggs.classList.toggle('hidden', isVip);
+            if (btnGuide) btnGuide.classList.toggle('hidden', isVip);
+            if (actionBar) {
+                actionBar.classList.toggle('grid-cols-1', isVip);
+                actionBar.classList.toggle('grid-cols-2', !isVip);
+                actionBar.classList.toggle('sm:grid-cols-4', !isVip);
+                actionBar.style.visibility = 'visible';
+            }
             if (navContainer) navContainer.style.visibility = 'visible';
         } else {
             if (ftr) ftr.classList.add('hidden');

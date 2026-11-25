@@ -2628,7 +2628,22 @@ const state = {
         const lLogoTs = Number(localData.realCompanyLogosUpdatedAt) || 0;
         const sLogos = (serverData.realCompanyLogos && typeof serverData.realCompanyLogos === 'object' && !Array.isArray(serverData.realCompanyLogos)) ? serverData.realCompanyLogos : {};
         const lLogos = (localData.realCompanyLogos && typeof localData.realCompanyLogos === 'object' && !Array.isArray(localData.realCompanyLogos)) ? localData.realCompanyLogos : {};
-        merged.realCompanyLogos = lLogoTs > sLogoTs ? { ...lLogos } : (sLogoTs > lLogoTs ? { ...sLogos } : { ...sLogos, ...lLogos });
+        const mergedLogos = lLogoTs > sLogoTs ? { ...sLogos, ...lLogos } : { ...lLogos, ...sLogos };
+        Object.keys(mergedLogos).forEach(k => {
+            if (typeof mergedLogos[k] !== 'string' || mergedLogos[k].trim() === '') {
+                const newerHasEmpty = lLogoTs > sLogoTs
+                    ? (Object.prototype.hasOwnProperty.call(lLogos, k) && String(lLogos[k] || '').trim() === '')
+                    : (Object.prototype.hasOwnProperty.call(sLogos, k) && String(sLogos[k] || '').trim() === '');
+                if (newerHasEmpty) {
+                    mergedLogos[k] = '';
+                } else {
+                    const fallback = String(sLogos[k] || lLogos[k] || '').trim();
+                    if (fallback) mergedLogos[k] = fallback;
+                    else delete mergedLogos[k];
+                }
+            }
+        });
+        merged.realCompanyLogos = mergedLogos;
         merged.realCompanyLogosUpdatedAt = Math.max(sLogoTs, lLogoTs);
         const allDeletedPrintEditionIds = new Set([
             ...(Array.isArray(serverData.deletedPrintEditionIds) ? serverData.deletedPrintEditionIds.map(String) : []),
