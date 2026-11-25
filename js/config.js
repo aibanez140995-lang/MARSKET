@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.72) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.73) ---
 
-const APP_VERSION = "2.0.72";
+const APP_VERSION = "2.0.73";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -958,10 +958,10 @@ const RUBRIC_CONFIG = {
     ] },
     ECO: { name: "Economía", criteria: [
         {id: 'c1', name: 'Test Evaluación', weight: 0.20}, 
-        {id: 'c2', name: '1. Presupuesto Inicial', weight: 0.20}, 
-        {id: 'c3', name: '3. Ingresos-gastos reales', weight: 0.20}, 
-        {id: 'c4', name: '2. Presupuesto post-prototipo', weight: 0.20}, 
-        {id: 'c5', name: '4. Estudio de Variaciones Previsión vs Realidad', weight: 0.20}
+        {id: 'c2', name: 'Presupuesto inicial', weight: 0.20}, 
+        {id: 'c3', name: 'Ingresos-gastos reales', weight: 0.20}, 
+        {id: 'c4', name: 'Presupuesto post-prototipo', weight: 0.20}, 
+        {id: 'c5', name: 'Estudio de Variaciones Previsión vs Realidad', weight: 0.20}
     ] },
     LYE: { name: "Liderazgo y Emprend.", criteria: [
         {id: 'c1', name: 'Identidad y Misión Dic', weight: 0.10}, 
@@ -1224,8 +1224,8 @@ const DELIVERABLES_DEF = [
       key: "budgetInitial",
       subject: "ECO",
       phase: "I",
-      name: "1. Presupuesto Inicial",
-      shortName: "1. Presupuesto Inicial",
+      name: "Presupuesto inicial",
+      shortName: "Presupuesto inicial",
       desc: "Presupuesto inicial de aprovisionamiento y proyección financiera de la startup.",
       role: "FINANZAS",
       defaultOpenDate: "2026-11-02T00:00",
@@ -1237,8 +1237,8 @@ const DELIVERABLES_DEF = [
       key: "budgetPostProto",
       subject: "ECO",
       phase: "II",
-      name: "2. Presupuesto post-prototipo",
-      shortName: "2. Presupuesto post-prototipo",
+      name: "Presupuesto post-prototipo",
+      shortName: "Presupuesto post-prototipo",
       desc: "Presupuesto recalculado tras las pruebas físicas de apogeo y taller.",
       role: "FINANZAS",
       defaultOpenDate: "2026-12-15T00:00",
@@ -1250,8 +1250,8 @@ const DELIVERABLES_DEF = [
       key: "balanceSheet",
       subject: "ECO",
       phase: "III",
-      name: "3. Ingresos-gastos reales",
-      shortName: "3. Ingresos-gastos reales",
+      name: "Ingresos-gastos reales",
+      shortName: "Ingresos-gastos reales",
       desc: "Registro real de ingresos y gastos ejecutados al cierre de la Fase III.",
       role: "FINANZAS",
       defaultOpenDate: "2027-02-15T00:00",
@@ -1263,8 +1263,8 @@ const DELIVERABLES_DEF = [
       key: "incomeStatement",
       subject: "ECO",
       phase: "IV",
-      name: "4. Estudio de Variaciones Previsión vs Realidad",
-      shortName: "4. Estudio Variaciones",
+      name: "Estudio de Variaciones Previsión vs Realidad",
+      shortName: "Estudio Variaciones",
       desc: "Estudio comparativo de variaciones entre la previsión financiera y la realidad ejecutada.",
       role: "FINANZAS",
       defaultOpenDate: "2027-03-31T00:00",
@@ -1341,6 +1341,16 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.73",
+      date: "2026-11-25",
+      title: "Entregables de Economía sin numeración, Telemetría de Noticias y Escala por Percentil en Accesos",
+      items: [
+        "Entregables de Economía sin prefijos numéricos (js/config.js, js/ui-docente-eval.js, js/ui-core.js): actualizados a «Presupuesto inicial», «Presupuesto post-prototipo», «Ingresos-gastos reales» y «Estudio de Variaciones Previsión vs Realidad».",
+        "Telemetría de lecturas de «Órbita.» (js/ui-docente-management.js, api/index.php): nuevo panel en Telemetría de Red y Accesos con el ranking completo de noticias publicadas, total de lecturas, media, última lectura y filtros rápidas (Todas / Con lecturas / Sin lecturas).",
+        "Escala cromática por percentil frente al máximo en Accesos (js/ui-docente-management.js): la Matriz de Conexiones por Departamento colorea ahora cada celda según su porcentaje respecto al mayor número de accesos (75–100%, 50–74%, 25–49%, 1–24%, 0%) excluyendo empresas TEST en la vista global."
+      ]
+    },
     {
       version: "2.0.72",
       date: "2026-11-25",

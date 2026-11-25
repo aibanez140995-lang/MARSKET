@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.72
+// Versión: v2.0.73
 
 declare(strict_types=1);
 
@@ -3562,8 +3562,8 @@ try {
         }
 
         if ($endpoint === 'news/top' && $method === 'GET') {
-            $limit = max(1, min(30, (int)($_GET['limit'] ?? 20)));
-            $stmtTop = $pdo->prepare("SELECT article_id, views FROM news_views WHERE views > 0 ORDER BY views DESC, updated_at DESC LIMIT :lim");
+            $limit = max(1, min(200, (int)($_GET['limit'] ?? 20)));
+            $stmtTop = $pdo->prepare("SELECT article_id, views, updated_at FROM news_views WHERE views > 0 ORDER BY views DESC, updated_at DESC LIMIT :lim");
             $stmtTop->bindValue(':lim', $limit, \PDO::PARAM_INT);
             $stmtTop->execute();
             $topRows = $stmtTop->fetchAll();
@@ -3571,7 +3571,8 @@ try {
             foreach ($topRows as $trRow) {
                 $topItems[] = [
                     'articleId' => (string)$trRow['article_id'],
-                    'views' => (int)$trRow['views']
+                    'views' => (int)$trRow['views'],
+                    'updatedAt' => (int)($trRow['updated_at'] ?? 0)
                 ];
             }
             header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');

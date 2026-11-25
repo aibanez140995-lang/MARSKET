@@ -25,10 +25,10 @@ Object.assign(ui, {
             { key: 'decisionDiary_apr', label: 'LYE 4B: Diario Decisiones (Abr)', subject: 'LYE' },
             { key: 'investorDossier', label: 'LEN: Dossier de Inversores', subject: 'LEN' },
             { key: 'pressReleasesSummary', label: 'LEN: Notas de Prensa DOC_15 (I–IV)', subject: 'LEN', isPress: true },
-            { key: 'budgetInitial', label: 'ECO 1: 1. Presupuesto Inicial', subject: 'ECO' },
-            { key: 'budgetPostProto', label: 'ECO 2: 2. Presupuesto post-prototipo', subject: 'ECO' },
-            { key: 'balanceSheet', label: 'ECO 3: 3. Ingresos-gastos reales', subject: 'ECO' },
-            { key: 'incomeStatement', label: 'ECO 4: 4. Estudio de Variaciones Previsión vs Realidad', subject: 'ECO' },
+            { key: 'budgetInitial', label: 'ECO: Presupuesto inicial', subject: 'ECO' },
+            { key: 'budgetPostProto', label: 'ECO: Presupuesto post-prototipo', subject: 'ECO' },
+            { key: 'balanceSheet', label: 'ECO: Ingresos-gastos reales', subject: 'ECO' },
+            { key: 'incomeStatement', label: 'ECO: Estudio de Variaciones Previsión vs Realidad', subject: 'ECO' },
             { key: 'goniometerEvidence', label: 'MAT 1: Goniómetro (Foto + Inf.)', subject: 'MAT' },
             { key: 'mathReportDist', label: 'MAT 2: Altura 1 Punto (Distancia)', subject: 'MAT' },
             { key: 'mathReportTwoPoints', label: 'MAT 3: Altura 2 Puntos (Alineados)', subject: 'MAT' },
@@ -533,10 +533,10 @@ Object.assign(ui, {
                 { key: 'decisionDiary_apr', label: 'LYE 4B: Diario Abr' },
                 { key: 'investorDossier', label: 'LEN: Dossier Inv.' },
                 { key: 'pressReleasesSummary', label: 'LEN: Notas Prensa', isPress: true },
-                { key: 'budgetInitial', label: 'ECO 1: Pres. Ini' },
-                { key: 'budgetPostProto', label: 'ECO 2: Post-Proto' },
-                { key: 'balanceSheet', label: 'ECO 3: Ing-Gas Reales' },
-                { key: 'incomeStatement', label: 'ECO 4: Variaciones' },
+                { key: 'budgetInitial', label: 'ECO: Pres. inicial' },
+                { key: 'budgetPostProto', label: 'ECO: Post-proto' },
+                { key: 'balanceSheet', label: 'ECO: Ing-Gas reales' },
+                { key: 'incomeStatement', label: 'ECO: Variaciones' },
                 { key: 'goniometerEvidence', label: 'MAT 1: Gonióm.' },
                 { key: 'mathReportDist', label: 'MAT 2: Dist. Base' },
                 { key: 'mathReportTwoPoints', label: 'MAT 3: 2 Puntos' },
@@ -739,10 +739,10 @@ Object.assign(ui, {
                     }
                 } else if (activeSubject === 'ECO') {
                     evidenceHtml += `<p class="text-xs text-mars-yellow uppercase font-bold mb-2">Nota: El criterio 1 corresponde al Test Evaluativo (20%).</p>`;
-                    evidenceHtml += this.renderDocBadge('1. Presupuesto Inicial (20% - Fase I)', docs.budgetInitial, false, this.evalSelectedCo, 'budgetInitial');
-                    evidenceHtml += this.renderDocBadge('2. Presupuesto post-prototipo (20% - Fase II)', docs.budgetPostProto, false, this.evalSelectedCo, 'budgetPostProto');
-                    evidenceHtml += this.renderDocBadge('3. Ingresos-gastos reales (20% - Fase III)', docs.balanceSheet, false, this.evalSelectedCo, 'balanceSheet');
-                    evidenceHtml += this.renderDocBadge('4. Estudio de Variaciones Previsión vs Realidad (20% - Fase IV)', docs.incomeStatement, false, this.evalSelectedCo, 'incomeStatement');
+                    evidenceHtml += this.renderDocBadge('Presupuesto inicial (20% - Fase I)', docs.budgetInitial, false, this.evalSelectedCo, 'budgetInitial');
+                    evidenceHtml += this.renderDocBadge('Presupuesto post-prototipo (20% - Fase II)', docs.budgetPostProto, false, this.evalSelectedCo, 'budgetPostProto');
+                    evidenceHtml += this.renderDocBadge('Ingresos-gastos reales (20% - Fase III)', docs.balanceSheet, false, this.evalSelectedCo, 'balanceSheet');
+                    evidenceHtml += this.renderDocBadge('Estudio de Variaciones Previsión vs Realidad (20% - Fase IV)', docs.incomeStatement, false, this.evalSelectedCo, 'incomeStatement');
                 } else if (activeSubject === 'LYE') {
                     evidenceHtml += this.renderDocBadge('1A. Identidad y Misión (Diciembre)', docs.brandIdentity_dec, false, this.evalSelectedCo, 'brandIdentity_dec');
                     evidenceHtml += this.renderDocBadge('1B. Identidad y Misión (Abril)', docs.brandIdentity_apr, false, this.evalSelectedCo, 'brandIdentity_apr');
@@ -967,10 +967,10 @@ Object.assign(ui, {
                 V: "En la Fase V evalúa la <strong>Media de Tests de Rol y Defensa Q&A</strong> (20% de tu materia)."
             },
             ECO: {
-                I: "En la Fase I te corresponde calificar el <strong>Presupuesto Inicial</strong> (20%) y el <strong>Test Evaluativo</strong> (20%).",
-                II: "En la Fase II evalúa el <strong>Presupuesto Post-Prototipo</strong> (20% de tu materia) tras los ensayos de apogeo y taller.",
-                III: "En la Fase III evalúa el <strong>Balance de Situación</strong> (20% de tu materia) cerrado con activo, pasivo y patrimonio neto.",
-                IV: "En la Fase IV evalúa la <strong>Cuenta de Resultados</strong> (20% de tu materia) con pérdidas, ganancias y control de márgenes.",
+                I: "En la Fase I te corresponde calificar el <strong>Presupuesto inicial</strong> (20%) y el <strong>Test Evaluativo</strong> (20%).",
+                II: "En la Fase II evalúa el <strong>Presupuesto post-prototipo</strong> (20% de tu materia) tras los ensayos de apogeo y taller.",
+                III: "En la Fase III evalúa <strong>Ingresos-gastos reales</strong> (20% de tu materia) al cierre de fase.",
+                IV: "En la Fase IV evalúa el <strong>Estudio de Variaciones Previsión vs Realidad</strong> (20% de tu materia).",
                 V: "En la Fase V se audita el balance definitivo y la solvencia contable para la liquidación final."
             },
             LYE: {

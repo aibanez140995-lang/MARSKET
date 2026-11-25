@@ -1557,32 +1557,96 @@ Object.assign(ui, {
         this.render();
     },
 
+    getTelemetryPercentileColor(value, maxVal, allPositiveSorted = []) {
+        const val = Number(value) || 0;
+        const max = Number(maxVal) || 0;
+        if (val <= 0 || max <= 0) {
+            return {
+                cls: 'text-mars-magenta bg-mars-magenta/10 animate-pulse',
+                pctOfMax: 0,
+                percentile: 0,
+                tierLabel: 'Sin accesos (0%)'
+            };
+        }
+        const pctOfMax = Math.min(100, Math.round((val / max) * 100));
+        let percentile = pctOfMax;
+        if (Array.isArray(allPositiveSorted) && allPositiveSorted.length > 0) {
+            const leqCount = allPositiveSorted.filter(v => v <= val).length;
+            percentile = Math.round((leqCount / allPositiveSorted.length) * 100);
+        }
+        let cls = 'text-orange-400 bg-orange-950/40';
+        let tierLabel = 'P1–P24 (Bajo)';
+        if (pctOfMax >= 75) {
+            cls = 'text-mars-green bg-emerald-950/40';
+            tierLabel = 'P75–P100 (Alto)';
+        } else if (pctOfMax >= 50) {
+            cls = 'text-mars-cyan bg-cyan-950/35';
+            tierLabel = 'P50–P74 (Medio-alto)';
+        } else if (pctOfMax >= 25) {
+            cls = 'text-mars-yellow bg-amber-950/35';
+            tierLabel = 'P25–P49 (Medio-bajo)';
+        }
+        return { cls, pctOfMax, percentile, tierLabel };
+    },
+
     renderTelemetryMatrixRows(filterClass = 'ALL') {
         let matRows = '';
         const targetClass = filterClass || 'ALL';
-        const companies = Object.keys(state.data.companies || {}).filter(cid => {
+        const allCos = state.data.companies || {};
+        const companies = Object.keys(allCos).filter(cid => {
             if (targetClass === 'ALL') return true;
-            return state.data.companies[cid].classGroup === targetClass;
+            return allCos[cid].classGroup === targetClass;
         });
 
         if (companies.length === 0) {
+            this._telemetryLastScale = { maxRole: 0, maxTotal: 0 };
             return `<tr><td colspan="8" class="py-4 text-center text-slate-400 italic text-xs">No hay startups registradas en el grupo seleccionado.</td></tr>`;
         }
 
+        const nonTestCos = companies.filter(cid => {
+            const co = allCos[cid];
+            return co && !co.isTestCompany && String(co.classGroup || '').toUpperCase() !== 'TEST';
+        });
+        const refCos = (targetClass === 'ALL' && nonTestCos.length > 0) ? nonTestCos : companies;
+        const roleKeys = ['CEO', 'TECNICO', 'FINANZAS', 'MARKETING', 'OPERACIONES_IA', 'AUXILIAR'];
+
+        const totalDist = [];
+        const roleDist = [];
+        refCos.forEach(cid => {
+            const co = allCos[cid];
+            const s = co?.loginStats || { totalLogins: 0, roles: {} };
+            const tVal = Number(s.totalLogins) || 0;
+            if (tVal > 0) totalDist.push(tVal);
+            const hasAux = Boolean(co?.auxRoleDept || co?.auxRoleRequest?.status === 'APROBADO');
+            roleKeys.forEach(r => {
+                const c = Number(s.roles?.[r]?.count) || 0;
+                if (r === 'AUXILIAR' && !hasAux && c === 0) return;
+                if (c > 0) roleDist.push(c);
+            });
+        });
+        totalDist.sort((a, b) => a - b);
+        roleDist.sort((a, b) => a - b);
+
+        const maxTotal = totalDist.length > 0 ? totalDist[totalDist.length - 1] : 0;
+        const maxRole = roleDist.length > 0 ? roleDist[roleDist.length - 1] : 0;
+        this._telemetryLastScale = { maxRole, maxTotal, excludeTest: (targetClass === 'ALL' && nonTestCos.length > 0) };
+
         companies.forEach(cid => {
-            const co = state.data.companies[cid];
-            const s = co.loginStats || { totalLogins:0, roles:{} }; 
+            const co = allCos[cid];
+            const s = co.loginStats || { totalLogins: 0, roles: {} };
             const hasAux = Boolean(co.auxRoleDept || co.auxRoleRequest?.status === 'APROBADO');
+            const totVal = Number(s.totalLogins) || 0;
+            const totMeta = this.getTelemetryPercentileColor(totVal, maxTotal, totalDist);
             matRows += `<tr class="border-b border-mars-border/30 hover:bg-slate-900/50">
                 <td class="py-3 font-orbitron text-white font-bold pr-4 max-w-[220px] truncate" title="${this.escapeHTML(co.name)}">${this.escapeHTML(co.name)} <span class="text-[10px] text-slate-400 font-mono">[Clase ${this.escapeHTML(co.classGroup || 'A')}]</span></td>
-                <td class="py-3 font-mono text-mars-cyan font-bold pr-4 text-center border-r border-mars-border/50">${s.totalLogins}</td>`;
-            ['CEO','TECNICO','FINANZAS','MARKETING','OPERACIONES_IA','AUXILIAR'].forEach(r => {
-                const count = s.roles[r]?.count || 0;
+                <td class="py-3 font-mono ${totMeta.cls} font-bold pr-4 pl-2 text-center border-r border-mars-border/50" title="${totVal} accesos · ${totMeta.pctOfMax}% del máx. (${maxTotal}) · Percentil P${totMeta.percentile} (${totMeta.tierLabel})">${totVal} <span class="text-[9px] opacity-75">(${totMeta.pctOfMax}%)</span></td>`;
+            roleKeys.forEach(r => {
+                const count = Number(s.roles?.[r]?.count) || 0;
                 if (r === 'AUXILIAR' && !hasAux && count === 0) {
                     matRows += `<td class="py-3 font-mono text-slate-500 text-center font-bold px-2" title="Startup sin rol Auxiliar activo">--</td>`;
                 } else {
-                    const color = count > 4 ? 'text-mars-green' : (count > 0 ? 'text-mars-yellow' : 'text-mars-magenta animate-pulse');
-                    matRows += `<td class="py-3 font-mono ${color} text-center font-bold px-2">${count}</td>`;
+                    const meta = this.getTelemetryPercentileColor(count, maxRole, roleDist);
+                    matRows += `<td class="py-3 font-mono ${meta.cls} text-center font-bold px-2" title="${count} accesos · ${meta.pctOfMax}% del máx. rol (${maxRole}) · Percentil P${meta.percentile} (${meta.tierLabel})">${count}</td>`;
                 }
             });
             matRows += `</tr>`;
@@ -1596,6 +1660,149 @@ Object.assign(ui, {
         if (tbody) {
             tbody.innerHTML = this.renderTelemetryMatrixRows(cls);
         }
+        const sumEl = document.getElementById('telemetry-scale-summary');
+        if (sumEl && this._telemetryLastScale) {
+            const sc = this._telemetryLastScale;
+            sumEl.textContent = `Referencia máxima actual: ${sc.maxRole} accesos por rol / ${sc.maxTotal} total empresa${sc.excludeTest ? ' (sin contar TEST)' : ''}`;
+        }
+    },
+
+    async loadAdminNewsTelemetry(forceToast = false) {
+        try {
+            const resp = await fetch(`/api/news/top?limit=200&t=${Date.now()}`, { method: 'GET', cache: 'no-store' });
+            if (resp.ok) {
+                const data = await resp.json();
+                this._adminNewsTelemetryItems = Array.isArray(data?.items) ? data.items : [];
+                this._adminNewsTelemetryLoadedAt = Date.now();
+                const box = document.getElementById('telemetry-news-reads-container');
+                if (box) box.innerHTML = this.renderAdminNewsTelemetryContent();
+                if (forceToast) this.notify('📰 Lecturas de Órbita actualizadas.', 'success');
+            }
+        } catch (e) {
+            if (forceToast) this.notify('No se pudieron cargar las lecturas del servidor.', 'warning');
+        }
+    },
+
+    setAdminNewsTelemetryFilter(mode) {
+        this.adminNewsTelemetryFilter = mode || 'all';
+        const box = document.getElementById('telemetry-news-reads-container');
+        if (box) box.innerHTML = this.renderAdminNewsTelemetryContent();
+    },
+
+    renderAdminNewsTelemetryContent() {
+        const items = Array.isArray(this._adminNewsTelemetryItems) ? this._adminNewsTelemetryItems : [];
+        const viewsMap = new Map(items.map(it => [String(it.articleId), { views: Number(it.views) || 0, updatedAt: Number(it.updatedAt) || 0 }]));
+        const published = (Array.isArray(state.data.news) ? state.data.news : []).filter(n => n && n.status !== 'DRAFT');
+
+        const rows = [];
+        const seenIds = new Set();
+        published.forEach(art => {
+            const id = String(art.id);
+            seenIds.add(id);
+            const stats = viewsMap.get(id) || { views: 0, updatedAt: 0 };
+            const secMeta = typeof this.getOrbitaSectionMeta === 'function' ? this.getOrbitaSectionMeta(art.section) : { shortLabelEs: art.section || 'Órbita' };
+            rows.push({
+                id,
+                title: art.title || id,
+                section: secMeta.shortLabelEs || art.section || 'Órbita',
+                publishedDate: art.publishedDate || '',
+                publishedAt: Number(art.publishedAt) || 0,
+                views: stats.views,
+                updatedAt: stats.updatedAt,
+                archived: false
+            });
+        });
+
+        items.forEach(it => {
+            const id = String(it.articleId);
+            if (seenIds.has(id)) return;
+            rows.push({
+                id,
+                title: `(Artículo archivado / antiguo · ${id})`,
+                section: 'Histórico',
+                publishedDate: '--',
+                publishedAt: 0,
+                views: Number(it.views) || 0,
+                updatedAt: Number(it.updatedAt) || 0,
+                archived: true
+            });
+        });
+
+        rows.sort((a, b) => (b.views - a.views) || (b.publishedAt - a.publishedAt));
+
+        const totalReads = rows.reduce((sum, r) => sum + r.views, 0);
+        const readArticles = rows.filter(r => r.views > 0).length;
+        const maxViews = rows.reduce((mx, r) => Math.max(mx, r.views), 0);
+        const avgReads = rows.length > 0 ? (totalReads / rows.length).toFixed(1) : '0.0';
+        const filterMode = this.adminNewsTelemetryFilter || 'all';
+        const filteredRows = rows.filter(r => {
+            if (filterMode === 'read') return r.views > 0;
+            if (filterMode === 'unread') return r.views === 0;
+            return true;
+        });
+
+        return `
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div class="bg-slate-900/70 border border-slate-700 p-3 text-center">
+                    <p class="text-2xl font-orbitron text-mars-cyan font-bold">${totalReads}</p>
+                    <p class="text-[10px] text-slate-300 uppercase font-mono mt-1">Lecturas Totales</p>
+                </div>
+                <div class="bg-slate-900/70 border border-slate-700 p-3 text-center">
+                    <p class="text-2xl font-orbitron text-mars-green font-bold">${readArticles}/${rows.length}</p>
+                    <p class="text-[10px] text-slate-300 uppercase font-mono mt-1">Noticias Leídas</p>
+                </div>
+                <div class="bg-slate-900/70 border border-slate-700 p-3 text-center">
+                    <p class="text-2xl font-orbitron text-amber-300 font-bold">${maxViews}</p>
+                    <p class="text-[10px] text-slate-300 uppercase font-mono mt-1">Máx. en 1 Noticia</p>
+                </div>
+                <div class="bg-slate-900/70 border border-slate-700 p-3 text-center">
+                    <p class="text-2xl font-orbitron text-white font-bold">${avgReads}</p>
+                    <p class="text-[10px] text-slate-300 uppercase font-mono mt-1">Media / Noticia</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div class="flex flex-wrap gap-1.5">
+                    <button type="button" onclick="ui.setAdminNewsTelemetryFilter('all')" class="min-h-[36px] px-3 py-1 text-xs font-mono font-bold uppercase border ${filterMode === 'all' ? 'bg-mars-cyan text-black border-mars-cyan' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-white'}">Todas (${rows.length})</button>
+                    <button type="button" onclick="ui.setAdminNewsTelemetryFilter('read')" class="min-h-[36px] px-3 py-1 text-xs font-mono font-bold uppercase border ${filterMode === 'read' ? 'bg-mars-green text-black border-mars-green' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-white'}">Con lecturas (${readArticles})</button>
+                    <button type="button" onclick="ui.setAdminNewsTelemetryFilter('unread')" class="min-h-[36px] px-3 py-1 text-xs font-mono font-bold uppercase border ${filterMode === 'unread' ? 'bg-mars-magenta text-white border-mars-magenta' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-white'}">Sin lecturas (${rows.length - readArticles})</button>
+                </div>
+                <span class="text-[10px] font-mono text-slate-400">Nota: cuenta 1 lectura por artículo y sesión abierta.</span>
+            </div>
+            <div class="overflow-x-auto max-h-[320px] overflow-y-auto border border-slate-800">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead class="text-slate-300 uppercase border-b border-mars-border bg-slate-900 sticky top-0 z-10">
+                        <tr>
+                            <th class="p-2.5 w-10 text-center">#</th>
+                            <th class="p-2.5">Sección</th>
+                            <th class="p-2.5">Titular</th>
+                            <th class="p-2.5 whitespace-nowrap">Publicada</th>
+                            <th class="p-2.5 whitespace-nowrap">Última lectura</th>
+                            <th class="p-2.5 text-right whitespace-nowrap">Lecturas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filteredRows.length === 0 ? `<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">No hay noticias en este filtro.</td></tr>` : filteredRows.map((r, idx) => {
+                            const pct = maxViews > 0 ? Math.round((r.views / maxViews) * 100) : 0;
+                            const meta = this.getTelemetryPercentileColor(r.views, maxViews);
+                            const lastReadStr = r.updatedAt ? new Date(r.updatedAt * 1000).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '--';
+                            return `
+                            <tr class="border-b border-slate-800/70 hover:bg-slate-900/50">
+                                <td class="p-2.5 text-center font-mono text-slate-400">${idx + 1}</td>
+                                <td class="p-2.5 font-mono text-[10px] uppercase text-mars-cyan whitespace-nowrap">${this.escapeHTML(r.section)}</td>
+                                <td class="p-2.5 text-white font-medium max-w-[360px] truncate ${r.archived ? 'italic text-slate-400' : ''}" title="${this.escapeAttr(r.title)}">${this.escapeHTML(r.title)}</td>
+                                <td class="p-2.5 font-mono text-[11px] text-slate-400 whitespace-nowrap">${this.escapeHTML(r.publishedDate)}</td>
+                                <td class="p-2.5 font-mono text-[11px] text-slate-300 whitespace-nowrap">${this.escapeHTML(lastReadStr)}</td>
+                                <td class="p-2.5 text-right whitespace-nowrap">
+                                    <div class="inline-flex items-center gap-2 justify-end">
+                                        <div class="w-16 h-1.5 bg-slate-800 overflow-hidden hidden sm:block"><div class="h-full ${r.views > 0 ? 'bg-mars-cyan' : 'bg-transparent'}" style="width:${pct}%"></div></div>
+                                        <span class="px-2 py-0.5 font-mono font-bold ${meta.cls}">${r.views}</span>
+                                    </div>
+                                </td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>`;
     },
 
     renderAdminTelemetry() {
@@ -1612,8 +1819,15 @@ Object.assign(ui, {
             ${uniqueClasses.map(cls => `<option value="${this.escapeHTML(cls)}" ${currentFilter === cls ? 'selected' : ''}>Clase ${this.escapeHTML(cls)}</option>`).join('')}
         `;
 
+        const matrixRowsHtml = this.renderTelemetryMatrixRows(currentFilter);
+        const scale = this._telemetryLastScale || { maxRole: 0, maxTotal: 0, excludeTest: false };
+
         const allSessions = Array.isArray(state.data.telemetry?.sessions) ? state.data.telemetry.sessions : [];
         const visibleSessions = allSessions.slice(0, 100);
+
+        if (!this._adminNewsTelemetryLoadedAt || (Date.now() - this._adminNewsTelemetryLoadedAt) > 15000) {
+            setTimeout(() => this.loadAdminNewsTelemetry(false), 30);
+        }
 
         return `
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
@@ -1622,8 +1836,11 @@ Object.assign(ui, {
                 <p class="text-xs text-slate-300 uppercase mt-2 font-bold tracking-widest">Logins Globales</p>
             </div>
             <div class="md:col-span-3 terminal-border bg-mars-card p-6 w-full overflow-hidden">
-                <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-                    <h3 class="font-orbitron text-mars-yellow text-xs uppercase tracking-widest font-bold">Matriz de Conexiones por Departamento</h3>
+                <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+                    <div>
+                        <h3 class="font-orbitron text-mars-yellow text-xs uppercase tracking-widest font-bold">Matriz de Conexiones por Departamento</h3>
+                        <span id="telemetry-scale-summary" class="text-[10px] font-mono text-slate-400">Referencia máxima actual: ${scale.maxRole} accesos por rol / ${scale.maxTotal} total empresa${scale.excludeTest ? ' (sin contar TEST)' : ''}</span>
+                    </div>
                     <div class="flex items-center gap-2">
                         <label for="telemetry-class-filter" class="text-xs text-slate-300 font-bold uppercase">Filtrar por Clase:</label>
                         <select id="telemetry-class-filter" onchange="ui.onTelemetryClassFilterChange(this.value)" class="min-h-[44px] bg-black border border-mars-yellow text-mars-yellow text-xs p-2 uppercase font-bold outline-none cursor-pointer">
@@ -1631,13 +1848,30 @@ Object.assign(ui, {
                         </select>
                     </div>
                 </div>
+                <div class="flex flex-wrap items-center gap-2 mb-3 text-[10px] font-mono">
+                    <span class="px-2 py-0.5 bg-emerald-950/50 text-mars-green border border-mars-green/40 font-bold">75–100% del máx. (Alto)</span>
+                    <span class="px-2 py-0.5 bg-cyan-950/40 text-mars-cyan border border-mars-cyan/40 font-bold">50–74% (Medio-alto)</span>
+                    <span class="px-2 py-0.5 bg-amber-950/40 text-mars-yellow border border-mars-yellow/40 font-bold">25–49% (Medio-bajo)</span>
+                    <span class="px-2 py-0.5 bg-orange-950/40 text-orange-400 border border-orange-400/40 font-bold">1–24% (Bajo)</span>
+                    <span class="px-2 py-0.5 bg-mars-magenta/10 text-mars-magenta border border-mars-magenta/40 font-bold">0 (Sin accesos)</span>
+                </div>
                 <div class="overflow-x-auto w-full">
                     <table class="w-full text-left text-xs whitespace-nowrap min-w-max">
                         <thead class="text-slate-300 uppercase border-b border-mars-border"><tr><th class="py-2 pr-4">Startup</th><th class="pr-4 text-center border-r border-mars-border/50">Total</th><th class="text-center px-2">CEO</th><th class="text-center px-2">TEC</th><th class="text-center px-2">FIN</th><th class="text-center px-2">MKT</th><th class="text-center px-2">OP_IA</th><th class="text-center px-2">AUX</th></tr></thead>
-                        <tbody id="telemetry-matrix-tbody">${this.renderTelemetryMatrixRows(currentFilter)}</tbody>
+                        <tbody id="telemetry-matrix-tbody">${matrixRowsHtml}</tbody>
                     </table>
                 </div>
             </div>
+        </div>
+        <div class="terminal-border bg-mars-card p-6 mb-6 border-t-4 border-t-amber-400">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4 border-b border-mars-border/50 pb-3">
+                <div>
+                    <h3 class="font-orbitron text-amber-300 text-xs sm:text-sm uppercase tracking-widest font-bold">📰 Telemetría de Lecturas de «Órbita.»</h3>
+                    <p class="text-[11px] text-slate-300 mt-0.5">Seguimiento real de cuántas veces se ha abierto cada noticia publicada en el periódico.</p>
+                </div>
+                <button type="button" onclick="ui.loadAdminNewsTelemetry(true)" class="min-h-[44px] px-3.5 py-2 bg-amber-400 text-black font-black text-xs uppercase hover:bg-white transition-colors">🔄 Actualizar lecturas</button>
+            </div>
+            <div id="telemetry-news-reads-container">${this.renderAdminNewsTelemetryContent()}</div>
         </div>
         <div class="terminal-border bg-mars-card p-6 overflow-y-auto max-h-[400px]">
             <div class="flex justify-between items-center mb-4 flex-wrap gap-2">

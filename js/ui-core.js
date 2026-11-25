@@ -1947,10 +1947,10 @@ const ui = {
                                 <span class="text-[10px] font-mono text-emerald-300">5 Criterios</span>
                             </div>
                             <ul class="text-[11px] text-slate-300 space-y-1 pl-1">
-                                <li>• <strong>1. Presupuesto Inicial (20%):</strong> Fase I (Dpto. Financiero).</li>
-                                <li>• <strong>2. Presupuesto Post-Prototipo (20%):</strong> Fase II (Dpto. Financiero).</li>
-                                <li>• <strong>3. Balance de Situación (20%):</strong> Fase III (Dpto. Financiero).</li>
-                                <li>• <strong>4. Cuenta de Resultados (20%):</strong> Fase IV (Dpto. Financiero).</li>
+                                <li>• <strong>Presupuesto inicial (20%):</strong> Fase I (Dpto. Financiero).</li>
+                                <li>• <strong>Presupuesto post-prototipo (20%):</strong> Fase II (Dpto. Financiero).</li>
+                                <li>• <strong>Ingresos-gastos reales (20%):</strong> Fase III (Dpto. Financiero).</li>
+                                <li>• <strong>Estudio de Variaciones Previsión vs Realidad (20%):</strong> Fase IV (Dpto. Financiero).</li>
                                 <li>• <strong>Test Evaluativo de Economía (20%):</strong> Fases I a IV (Evaluación directa en aula).</li>
                             </ul>
                         </div>
