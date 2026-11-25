@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.74) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.75) ---
 
-const APP_VERSION = "2.0.74";
+const APP_VERSION = "2.0.75";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1341,6 +1341,15 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.75",
+      date: "2026-11-25",
+      title: "Fix definitivo del contador de noticias y Telemetría del Lector VIP-0000",
+      items: [
+        "Desbloqueado el contador real de lecturas de «Órbita.» (api/index.php): incluidos news/view y news/top en el enrutador de noticias del backend para registrar y consultar cada lectura (máximo 1 por noticia y sesión, incluyendo también al lector VIP-0000).",
+        "Telemetría real de accesos del lector VIP-0000 (api/index.php, js/ui-docente-management.js): registro en servidor de cada entrada de familias/invitados con VIP-0000 + PIN 0000, desglose diario (últimos 14 días), últimas 30 conexiones, contador específico de lecturas VIP en «Órbita.» e inclusión en el Informe PDF de Logins."
+      ]
+    },
     {
       version: "2.0.74",
       date: "2026-11-25",

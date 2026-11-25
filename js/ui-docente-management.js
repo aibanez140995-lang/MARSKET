@@ -1743,6 +1743,21 @@ Object.assign(ui, {
                 </tr>`;
         }).join('');
 
+        const vipData = this._adminVipTelemetry || null;
+        const vipLastStr = vipData?.lastLoginAt
+            ? new Date(vipData.lastLoginAt * 1000).toLocaleString('es-ES')
+            : '--';
+        const vipPdfHtml = vipData ? `
+            <div style="margin-top:14px;padding:10px 12px;border:1px solid #cbd5e1;background:#f8fafc;">
+                <strong style="font-size:11px;text-transform:uppercase;">Lector Invitado · Órbita (VIP-0000 / Familias / QR)</strong>
+                <div style="margin-top:4px;font-size:10.5px;color:#334155;">
+                    Accesos totales: <strong>${Number(vipData.totalLogins || 0)}</strong> ·
+                    Hoy: <strong>${Number(vipData.todayLogins || 0)}</strong> ·
+                    Últimos 7 días: <strong>${Number(vipData.last7DaysLogins || 0)}</strong> ·
+                    Último acceso: <strong>${this.escapeHTML(vipLastStr)}</strong>
+                </div>
+            </div>` : '';
+
         const scopeLabel = targetClass === 'ALL' ? 'Todas las Clases' : `Clase ${targetClass}`;
         const nowStr = new Date().toLocaleString('es-ES');
         const docHtml = `<!DOCTYPE html>
@@ -1797,6 +1812,7 @@ Object.assign(ui, {
         </thead>
         <tbody>${rowsHtml}</tbody>
     </table>
+    ${vipPdfHtml}
 </body>
 </html>`;
         const win = window.open('', '_blank');
@@ -1935,6 +1951,86 @@ Object.assign(ui, {
         win.document.close();
     },
 
+    async loadAdminVipTelemetry(forceToast = false) {
+        try {
+            const token = (typeof auth !== 'undefined' && typeof auth.getSessionToken === 'function' && auth.getSessionToken())
+                || state.user?.authToken
+                || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('marsket_token') : '')
+                || '';
+            const headers = token ? { 'X-Marsket-Auth': token } : {};
+            const resp = await fetch(`/api/telemetry/vip?t=${Date.now()}`, { method: 'GET', headers, cache: 'no-store' });
+            if (resp.ok) {
+                const data = await resp.json();
+                this._adminVipTelemetry = data || null;
+                this._adminVipTelemetryLoadedAt = Date.now();
+                const box = document.getElementById('telemetry-vip-container');
+                if (box) box.innerHTML = this.renderAdminVipTelemetryContent();
+                if (forceToast) this.notify('📰 Accesos VIP-0000 actualizados.', 'success');
+            }
+        } catch (e) {
+            if (forceToast) this.notify('No se pudieron cargar los accesos de VIP-0000.', 'warning');
+        }
+    },
+
+    renderAdminVipTelemetryContent() {
+        const d = this._adminVipTelemetry;
+        if (!d) {
+            return `<p class="text-xs font-mono text-slate-400">Cargando accesos del lector VIP-0000...</p>`;
+        }
+        const total = Number(d.totalLogins) || 0;
+        const today = Number(d.todayLogins) || 0;
+        const week = Number(d.last7DaysLogins) || 0;
+        const lastStr = d.lastLoginAt
+            ? new Date(d.lastLoginAt * 1000).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            : 'Sin accesos';
+        const daily = Array.isArray(d.dailySummary) ? d.dailySummary : [];
+        const recent = Array.isArray(d.recentAccesses) ? d.recentAccesses : [];
+
+        return `
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div class="bg-slate-900/70 border border-slate-700 p-3 text-center">
+                    <p class="text-2xl font-orbitron text-mars-cyan font-bold">${total}</p>
+                    <p class="text-[10px] text-slate-300 uppercase font-mono mt-1">Accesos Totales VIP</p>
+                </div>
+                <div class="bg-slate-900/70 border border-slate-700 p-3 text-center">
+                    <p class="text-2xl font-orbitron text-mars-green font-bold">${today}</p>
+                    <p class="text-[10px] text-slate-300 uppercase font-mono mt-1">Hoy</p>
+                </div>
+                <div class="bg-slate-900/70 border border-slate-700 p-3 text-center">
+                    <p class="text-2xl font-orbitron text-amber-300 font-bold">${week}</p>
+                    <p class="text-[10px] text-slate-300 uppercase font-mono mt-1">Últimos 7 días</p>
+                </div>
+                <div class="bg-slate-900/70 border border-slate-700 p-3 text-center flex flex-col justify-center">
+                    <p class="text-xs sm:text-sm font-mono text-white font-bold">${this.escapeHTML(lastStr)}</p>
+                    <p class="text-[10px] text-slate-300 uppercase font-mono mt-1">Último Acceso</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="border border-slate-800 bg-black/40 p-3">
+                    <h4 class="text-[11px] font-mono text-mars-cyan uppercase font-bold mb-2">Accesos por Día (Últimos 14 días)</h4>
+                    ${daily.length === 0 ? `<p class="text-xs text-slate-400 italic">Todavía no hay accesos registrados con VIP-0000.</p>` : `
+                        <div class="max-h-40 overflow-y-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead class="text-slate-400 border-b border-slate-800 text-[10px] uppercase"><tr><th class="py-1">Fecha</th><th class="py-1 text-right">Entradas VIP</th></tr></thead>
+                                <tbody>
+                                    ${daily.map(row => `<tr class="border-b border-slate-800/50"><td class="py-1.5 font-mono text-slate-200">${this.escapeHTML(row.date)}</td><td class="py-1.5 text-right font-mono font-bold text-mars-cyan">${Number(row.count) || 0}</td></tr>`).join('')}
+                                </tbody>
+                            </table>
+                        </div>`}
+                </div>
+                <div class="border border-slate-800 bg-black/40 p-3">
+                    <h4 class="text-[11px] font-mono text-amber-300 uppercase font-bold mb-2">Últimas Conexiones VIP-0000 (máx. 30)</h4>
+                    ${recent.length === 0 ? `<p class="text-xs text-slate-400 italic">Sin conexiones registradas.</p>` : `
+                        <div class="max-h-40 overflow-y-auto flex flex-wrap gap-1.5">
+                            ${recent.map(ts => {
+                                const lbl = new Date(Number(ts) * 1000).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                                return `<span class="px-2 py-0.5 bg-slate-900 border border-slate-700 text-[11px] font-mono text-slate-200">${this.escapeHTML(lbl)}</span>`;
+                            }).join('')}
+                        </div>`}
+                </div>
+            </div>`;
+    },
+
     async loadAdminNewsTelemetry(forceToast = false) {
         try {
             const resp = await fetch(`/api/news/top?limit=200&t=${Date.now()}`, { method: 'GET', cache: 'no-store' });
@@ -1959,7 +2055,7 @@ Object.assign(ui, {
 
     renderAdminNewsTelemetryContent() {
         const items = Array.isArray(this._adminNewsTelemetryItems) ? this._adminNewsTelemetryItems : [];
-        const viewsMap = new Map(items.map(it => [String(it.articleId), { views: Number(it.views) || 0, updatedAt: Number(it.updatedAt) || 0 }]));
+        const viewsMap = new Map(items.map(it => [String(it.articleId), { views: Number(it.views) || 0, vipViews: Number(it.vipViews) || 0, updatedAt: Number(it.updatedAt) || 0 }]));
         const published = (Array.isArray(state.data.news) ? state.data.news : []).filter(n => n && n.status !== 'DRAFT');
 
         const rows = [];
@@ -1967,7 +2063,7 @@ Object.assign(ui, {
         published.forEach(art => {
             const id = String(art.id);
             seenIds.add(id);
-            const stats = viewsMap.get(id) || { views: 0, updatedAt: 0 };
+            const stats = viewsMap.get(id) || { views: 0, vipViews: 0, updatedAt: 0 };
             const secMeta = typeof this.getOrbitaSectionMeta === 'function' ? this.getOrbitaSectionMeta(art.section) : { shortLabelEs: art.section || 'Órbita' };
             rows.push({
                 id,
@@ -1976,6 +2072,7 @@ Object.assign(ui, {
                 publishedDate: art.publishedDate || '',
                 publishedAt: Number(art.publishedAt) || 0,
                 views: stats.views,
+                vipViews: stats.vipViews,
                 updatedAt: stats.updatedAt,
                 archived: false
             });
@@ -1991,6 +2088,7 @@ Object.assign(ui, {
                 publishedDate: '--',
                 publishedAt: 0,
                 views: Number(it.views) || 0,
+                vipViews: Number(it.vipViews) || 0,
                 updatedAt: Number(it.updatedAt) || 0,
                 archived: true
             });
@@ -1999,6 +2097,7 @@ Object.assign(ui, {
         rows.sort((a, b) => (b.views - a.views) || (b.publishedAt - a.publishedAt));
 
         const totalReads = rows.reduce((sum, r) => sum + r.views, 0);
+        const vipTotalReads = rows.reduce((sum, r) => sum + (Number(r.vipViews) || 0), 0);
         const readArticles = rows.filter(r => r.views > 0).length;
         const maxViews = rows.reduce((mx, r) => Math.max(mx, r.views), 0);
         const avgReads = rows.length > 0 ? (totalReads / rows.length).toFixed(1) : '0.0';
@@ -2013,7 +2112,7 @@ Object.assign(ui, {
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                 <div class="bg-slate-900/70 border border-slate-700 p-3 text-center">
                     <p class="text-2xl font-orbitron text-mars-cyan font-bold">${totalReads}</p>
-                    <p class="text-[10px] text-slate-300 uppercase font-mono mt-1">Lecturas Totales</p>
+                    <p class="text-[10px] text-slate-300 uppercase font-mono mt-1">Lecturas Totales${vipTotalReads > 0 ? ` <span class="text-amber-300">(VIP: ${vipTotalReads})</span>` : ''}</p>
                 </div>
                 <div class="bg-slate-900/70 border border-slate-700 p-3 text-center">
                     <p class="text-2xl font-orbitron text-mars-green font-bold">${readArticles}/${rows.length}</p>
@@ -2034,7 +2133,7 @@ Object.assign(ui, {
                     <button type="button" onclick="ui.setAdminNewsTelemetryFilter('read')" class="min-h-[36px] px-3 py-1 text-xs font-mono font-bold uppercase border ${filterMode === 'read' ? 'bg-mars-green text-black border-mars-green' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-white'}">Con lecturas (${readArticles})</button>
                     <button type="button" onclick="ui.setAdminNewsTelemetryFilter('unread')" class="min-h-[36px] px-3 py-1 text-xs font-mono font-bold uppercase border ${filterMode === 'unread' ? 'bg-mars-magenta text-white border-mars-magenta' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-white'}">Sin lecturas (${rows.length - readArticles})</button>
                 </div>
-                <span class="text-[10px] font-mono text-slate-400">Nota: cuenta 1 lectura por artículo y sesión abierta.</span>
+                <span class="text-[10px] font-mono text-slate-400">Nota: cuenta 1 lectura por artículo y sesión abierta (incluye VIP-0000).</span>
             </div>
             <div class="overflow-x-auto max-h-[320px] overflow-y-auto border border-slate-800">
                 <table class="w-full text-left text-xs border-collapse">
@@ -2062,6 +2161,7 @@ Object.assign(ui, {
                                 <td class="p-2.5 font-mono text-[11px] text-slate-300 whitespace-nowrap">${this.escapeHTML(lastReadStr)}</td>
                                 <td class="p-2.5 text-right whitespace-nowrap">
                                     <div class="inline-flex items-center gap-2 justify-end">
+                                        ${r.vipViews > 0 ? `<span class="px-1.5 py-0.5 bg-amber-950/60 border border-amber-500/50 text-amber-300 text-[10px] font-mono font-bold" title="Lecturas desde VIP-0000">VIP ${r.vipViews}</span>` : ''}
                                         <div class="w-16 h-1.5 bg-slate-800 overflow-hidden hidden sm:block"><div class="h-full ${r.views > 0 ? 'bg-mars-cyan' : 'bg-transparent'}" style="width:${pct}%"></div></div>
                                         <span class="px-2 py-0.5 font-mono font-bold ${meta.cls}">${r.views}</span>
                                     </div>
@@ -2095,6 +2195,9 @@ Object.assign(ui, {
 
         if (!this._adminNewsTelemetryLoadedAt || (Date.now() - this._adminNewsTelemetryLoadedAt) > 15000) {
             setTimeout(() => this.loadAdminNewsTelemetry(false), 30);
+        }
+        if (!this._adminVipTelemetryLoadedAt || (Date.now() - this._adminVipTelemetryLoadedAt) > 15000) {
+            setTimeout(() => this.loadAdminVipTelemetry(false), 45);
         }
 
         return `
@@ -2131,6 +2234,16 @@ Object.assign(ui, {
                     </table>
                 </div>
             </div>
+        </div>
+        <div class="terminal-border bg-mars-card p-6 mb-6 border-t-4 border-t-mars-cyan">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4 border-b border-mars-border/50 pb-3">
+                <div>
+                    <h3 class="font-orbitron text-mars-cyan text-xs sm:text-sm uppercase tracking-widest font-bold">📰 Accesos Lector Invitado (VIP-0000 · Familias / QR)</h3>
+                    <p class="text-[11px] text-slate-300 mt-0.5">Entradas registradas con el código público VIP-0000 / PIN 0000 desde el QR del periódico o la web.</p>
+                </div>
+                <button type="button" onclick="ui.loadAdminVipTelemetry(true)" class="min-h-[44px] px-3.5 py-2 bg-mars-cyan text-black font-black text-xs uppercase hover:bg-white transition-colors">🔄 Actualizar VIP</button>
+            </div>
+            <div id="telemetry-vip-container">${this.renderAdminVipTelemetryContent()}</div>
         </div>
         <div class="terminal-border bg-mars-card p-6 mb-6 border-t-4 border-t-amber-400">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-4 border-b border-mars-border/50 pb-3">

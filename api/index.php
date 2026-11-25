@@ -1,7 +1,7 @@
 <?php
 // api/index.php
 // Front-Controller Atómico de MARS-KET OS para Hosting CDMON (Apache + PHP 8.x + SQLite3)
-// Versión: v2.0.74
+// Versión: v2.0.75
 
 declare(strict_types=1);
 
@@ -824,6 +824,17 @@ try {
 
                 if ($coId === 'vip_reader' && $role === 'VIP_READER') {
                     $verified = ($pinAttempt === '0000');
+                    if ($verified) {
+                        try {
+                            $pdo->exec("
+                                CREATE TABLE IF NOT EXISTS vip_access_log (
+                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    accessed_at INTEGER NOT NULL
+                                )
+                            ");
+                            $pdo->prepare("INSERT INTO vip_access_log (accessed_at) VALUES (:t)")->execute([':t' => time()]);
+                        } catch (\Throwable $e) {}
+                    }
                     http_response_code($verified ? 200 : 401);
                     echo json_encode([
                         'verified' => $verified,
@@ -3378,6 +3389,9 @@ try {
 
             $pdo->exec("DELETE FROM company_state");
             $pdo->exec("DELETE FROM news_views");
+            try {
+                $pdo->exec("DELETE FROM vip_access_log");
+            } catch (\Throwable $e) {}
             commitTx($pdo);
 
             echo json_encode([
@@ -3395,9 +3409,71 @@ try {
     }
 
     // -------------------------------------------------------------------------
+    // C2. ENDPOINT: /api/telemetry/vip (Accesos del lector invitado VIP-0000)
+    // -------------------------------------------------------------------------
+    if ($endpoint === 'telemetry/vip' && $method === 'GET') {
+        $vAuth = verifySession($pdo);
+        if (empty($vAuth['isCoordinator'])) {
+            http_response_code(403);
+            echo json_encode(['error' => 'COORDINATOR_ONLY']);
+            exit;
+        }
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS vip_access_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                accessed_at INTEGER NOT NULL
+            )
+        ");
+        $nowSec = time();
+        $tz = new \DateTimeZone('Europe/Madrid');
+        $todayDt = new \DateTimeImmutable('today', $tz);
+        $todayStart = $todayDt->getTimestamp();
+        $weekStart = $nowSec - (7 * 86400);
+
+        $totalLogins = (int)$pdo->query("SELECT COUNT(*) FROM vip_access_log")->fetchColumn();
+        $stmtToday = $pdo->prepare("SELECT COUNT(*) FROM vip_access_log WHERE accessed_at >= :t");
+        $stmtToday->execute([':t' => $todayStart]);
+        $todayLogins = (int)$stmtToday->fetchColumn();
+
+        $stmtWeek = $pdo->prepare("SELECT COUNT(*) FROM vip_access_log WHERE accessed_at >= :w");
+        $stmtWeek->execute([':w' => $weekStart]);
+        $last7DaysLogins = (int)$stmtWeek->fetchColumn();
+
+        $lastLoginAt = (int)$pdo->query("SELECT COALESCE(MAX(accessed_at), 0) FROM vip_access_log")->fetchColumn();
+
+        $stmtRecent = $pdo->query("SELECT accessed_at FROM vip_access_log ORDER BY accessed_at DESC, id DESC LIMIT 30");
+        $recentRows = $stmtRecent ? $stmtRecent->fetchAll(\PDO::FETCH_COLUMN) : [];
+        $recentAccesses = array_map('intval', $recentRows ?: []);
+
+        $cutoff14 = $todayDt->modify('-13 days')->getTimestamp();
+        $stmt14 = $pdo->prepare("SELECT accessed_at FROM vip_access_log WHERE accessed_at >= :c ORDER BY accessed_at DESC");
+        $stmt14->execute([':c' => $cutoff14]);
+        $dayCounts = [];
+        foreach (($stmt14->fetchAll(\PDO::FETCH_COLUMN) ?: []) as $tsVal) {
+            $dKey = (new \DateTimeImmutable('@' . (int)$tsVal))->setTimezone($tz)->format('Y-m-d');
+            $dayCounts[$dKey] = ($dayCounts[$dKey] ?? 0) + 1;
+        }
+        $dailySummary = [];
+        foreach ($dayCounts as $day => $cnt) {
+            $dailySummary[] = ['date' => $day, 'count' => $cnt];
+        }
+
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        echo json_encode([
+            'totalLogins' => $totalLogins,
+            'todayLogins' => $todayLogins,
+            'last7DaysLogins' => $last7DaysLogins,
+            'lastLoginAt' => $lastLoginAt,
+            'dailySummary' => $dailySummary,
+            'recentAccesses' => $recentAccesses
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
     // D. ENDPOINTS DE PERIÓDICO ORBITAL REPORT (SNAPI v4 + EXTRACTOR + TRADUCTOR + PROXY IMG)
     // -------------------------------------------------------------------------
-    if ($endpoint === 'news/image' || $endpoint === 'news/wire' || $endpoint === 'news/article' || $endpoint === 'news/translate') {
+    if ($endpoint === 'news/image' || $endpoint === 'news/wire' || $endpoint === 'news/article' || $endpoint === 'news/translate' || $endpoint === 'news/view' || $endpoint === 'news/top') {
         $isAllowedNewsHttpUrl = function (string $url): bool {
             $parts = @parse_url($url);
             if (!$parts || empty($parts['scheme']) || empty($parts['host'])) return false;
@@ -3500,9 +3576,13 @@ try {
             CREATE TABLE IF NOT EXISTS news_views (
                 article_id TEXT PRIMARY KEY,
                 views INTEGER NOT NULL DEFAULT 0,
+                vip_views INTEGER NOT NULL DEFAULT 0,
                 updated_at INTEGER NOT NULL
             )
         ");
+        try {
+            $pdo->exec("ALTER TABLE news_views ADD COLUMN vip_views INTEGER NOT NULL DEFAULT 0");
+        } catch (\Throwable $e) {}
 
         if ($endpoint === 'news/translate' && $method === 'POST') {
             $tBody = json_decode($rawInput, true);
@@ -3554,26 +3634,29 @@ try {
                 exit;
             }
             $nowSec = time();
+            $isVipViewer = !empty($vAuth['isVip']) || strtoupper((string)($vAuth['role'] ?? '')) === 'VIP_READER';
+            $vipInc = $isVipViewer ? 1 : 0;
             $stmtV = $pdo->prepare("
-                INSERT INTO news_views (article_id, views, updated_at)
-                VALUES (:id, 1, :u)
-                ON CONFLICT(article_id) DO UPDATE SET views = views + 1, updated_at = :u
+                INSERT INTO news_views (article_id, views, vip_views, updated_at)
+                VALUES (:id, 1, :vip, :u)
+                ON CONFLICT(article_id) DO UPDATE SET views = views + 1, vip_views = COALESCE(vip_views, 0) + :vip, updated_at = :u
             ");
-            $stmtV->execute([':id' => $articleId, ':u' => $nowSec]);
-            $stmtGet = $pdo->prepare("SELECT views FROM news_views WHERE article_id = :id");
+            $stmtV->execute([':id' => $articleId, ':vip' => $vipInc, ':u' => $nowSec]);
+            $stmtGet = $pdo->prepare("SELECT views, COALESCE(vip_views, 0) AS vip_views FROM news_views WHERE article_id = :id");
             $stmtGet->execute([':id' => $articleId]);
             $vRow = $stmtGet->fetch();
             echo json_encode([
                 'ok' => true,
                 'articleId' => $articleId,
-                'views' => (int)($vRow['views'] ?? 1)
+                'views' => (int)($vRow['views'] ?? 1),
+                'vipViews' => (int)($vRow['vip_views'] ?? $vipInc)
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
 
         if ($endpoint === 'news/top' && $method === 'GET') {
             $limit = max(1, min(200, (int)($_GET['limit'] ?? 20)));
-            $stmtTop = $pdo->prepare("SELECT article_id, views, updated_at FROM news_views WHERE views > 0 ORDER BY views DESC, updated_at DESC LIMIT :lim");
+            $stmtTop = $pdo->prepare("SELECT article_id, views, COALESCE(vip_views, 0) AS vip_views, updated_at FROM news_views WHERE views > 0 ORDER BY views DESC, updated_at DESC LIMIT :lim");
             $stmtTop->bindValue(':lim', $limit, \PDO::PARAM_INT);
             $stmtTop->execute();
             $topRows = $stmtTop->fetchAll();
@@ -3582,6 +3665,7 @@ try {
                 $topItems[] = [
                     'articleId' => (string)$trRow['article_id'],
                     'views' => (int)$trRow['views'],
+                    'vipViews' => (int)($trRow['vip_views'] ?? 0),
                     'updatedAt' => (int)($trRow['updated_at'] ?? 0)
                 ];
             }
