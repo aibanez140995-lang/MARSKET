@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.70) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.71) ---
 
-const APP_VERSION = "2.0.70";
+const APP_VERSION = "2.0.71";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1341,6 +1341,15 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.71",
+      date: "2026-11-25",
+      title: "Estudio A3 Dinámico (pliegos de 4 en 4) y continuación de noticias entre páginas",
+      items: [
+        "Pliegos A3 dinámicos de 4 en 4 páginas (js/ui-print-newspaper.js): botones [+ 4 Págs. (+1 Pliego A3)] y [- 4 Págs.] para maquetar ediciones de 8, 12, 16, 20 o 24 páginas conservando Portada, Quién es quién y Contraportada, con imposición automática de frentes/dorsos y rotación dúplex de todas las caras pares al generar el PDF A3.",
+        "Continuación de noticias en la página siguiente (js/ui-print-newspaper.js): opción en el editor de hueco y botón rápido [↪ Seguir P.X] con división automática del texto por párrafos, aviso «Sigue en la pág. X ➔» al pie del artículo y cabecera «← Viene de la pág. Y (continuación)» en la página siguiente."
+      ]
+    },
     {
       version: "2.0.70",
       date: "2026-11-25",

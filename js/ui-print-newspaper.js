@@ -161,17 +161,17 @@ Object.assign(ui, {
             },
             {
                 pageNumber: 8,
-                label: 'Contraportada / Juguetes y el espacio',
-                sectionTitle: 'CONTRAPORTADA // JUGUETES Y EL ESPACIO',
+                label: 'Contraportada / Juguetes en el espacio',
+                sectionTitle: 'CONTRAPORTADA // JUGUETES EN EL ESPACIO',
                 pageMode: 'news',
                 beyondRocketConfig: {
-                    subtitle: 'Maquetas, LEGO espacial, cohetería educativa, Playmobil y simuladores orbitales.',
+                    subtitle: 'Maquetas, LEGO espacial, cohetería educativa, Playmobil y juguetes que viajaron a órbita.',
                     directoryItems: this.getBeyondRocketDefaultDirectory(),
                     ll2Launches: [],
                     ll2SyncedAt: 0
                 },
                 slots: [
-                    { id: 'p8-lead', role: 'lead', kicker: 'JUGUETES Y EL ESPACIO', title: 'El espacio a escala en maquetas y simuladores', subtitle: 'Cómo los juegos y modelos didácticos acercan la ingeniería orbital al aula.', body: 'Selecciona un reportaje de Juguetes y el espacio (o Entrevistas) para la contraportada de Órbita.', imageUrl: '', mediaSource: 'Órbita.', fontSizePt: 9.5 }
+                    { id: 'p8-lead', role: 'lead', kicker: 'JUGUETES EN EL ESPACIO', title: 'El espacio a escala en maquetas y simuladores', subtitle: 'Cómo los juegos y modelos didácticos acercan la ingeniería orbital al aula.', body: 'Selecciona un reportaje de Juguetes en el espacio (o Entrevistas) para la contraportada de Órbita.', imageUrl: '', mediaSource: 'Órbita.', fontSizePt: 9.5 }
                 ],
                 adSlot: { id: 'ad-p8', label: 'Faldón Destacado de Contraportada (Pág. 8)', coId: '', companyName: '', classGroup: '', slogan: '', bodyText: '', imageUrl: '', actId: '', campId: '' }
             }
@@ -196,6 +196,7 @@ Object.assign(ui, {
             state.data.printEditions.unshift(firstEd);
             this.printStudioEditionId = firstEd.id;
             this.autoLayoutPrintEdition(true);
+            this.normalizePrintEditionPages(firstEd);
             return firstEd;
         }
         let ed = state.data.printEditions.find(e => e && String(e.id) === String(this.printStudioEditionId));
@@ -203,11 +204,187 @@ Object.assign(ui, {
             ed = state.data.printEditions[0];
             this.printStudioEditionId = ed.id;
         }
+        this.normalizePrintEditionPages(ed);
         return ed;
     },
 
     getActivePrintEdition() {
         return this.ensureActivePrintEdition();
+    },
+
+    getPrintImposedPairs(totalPages) {
+        const n = Math.max(8, Math.floor((Number(totalPages) || 8) / 4) * 4);
+        const sheets = n / 4;
+        const pairs = [];
+        for (let s = 0; s < sheets; s++) {
+            const frontFace = 2 * s + 1;
+            const backFace = 2 * s + 2;
+            const isCenter = (s === sheets - 1);
+            pairs.push({
+                face: frontFace,
+                sheet: s + 1,
+                isBack: false,
+                title: `Cara A3 n.º ${frontFace} (Pliego ${s + 1} Exterior)`,
+                leftIdx: n - 1 - 2 * s,
+                rightIdx: 2 * s
+            });
+            pairs.push({
+                face: backFace,
+                sheet: s + 1,
+                isBack: true,
+                title: `Cara A3 n.º ${backFace} (Pliego ${s + 1} Interior${isCenter ? ' / Centro' : ''})`,
+                leftIdx: 2 * s + 1,
+                rightIdx: n - 2 - 2 * s
+            });
+        }
+        return pairs;
+    },
+
+    createInteriorPrintPage(pageNumber) {
+        const ts = Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+        return {
+            pageNumber,
+            label: 'Actualidad / Reportaje',
+            sectionTitle: 'ACTUALIDAD AEROESPACIAL',
+            pageMode: 'news',
+            slots: [
+                {
+                    id: `p${pageNumber}-a1-${ts}`,
+                    role: 'article',
+                    kicker: 'ACTUALIDAD',
+                    title: `Reportaje de Página ${pageNumber}`,
+                    subtitle: '',
+                    body: 'Pulsa «Elegir» o «Editar» para añadir una noticia de Órbita. o del teletipo.',
+                    imageUrl: '',
+                    mediaSource: 'Órbita.',
+                    fontSizePt: 9.5
+                },
+                {
+                    id: `p${pageNumber}-a2-${ts}`,
+                    role: 'article',
+                    kicker: 'BREVE',
+                    title: 'Noticia secundaria',
+                    subtitle: '',
+                    body: 'Espacio para una segunda noticia o crónica breve en esta página.',
+                    imageUrl: '',
+                    mediaSource: 'Órbita.',
+                    fontSizePt: 9
+                }
+            ],
+            adSlot: {
+                id: `ad-p${pageNumber}-${ts}`,
+                label: `Faldón Publicitario Pág. ${pageNumber}`,
+                coId: '',
+                companyName: '',
+                classGroup: '',
+                slogan: '',
+                bodyText: '',
+                imageUrl: '',
+                actId: '',
+                campId: '',
+                adHeightMm: 18,
+                adLayout: 'card'
+            }
+        };
+    },
+
+    findPrintSlotLocation(ed, slotId) {
+        if (!ed || !Array.isArray(ed.pages) || !slotId) return null;
+        const targetId = String(slotId);
+        for (let pIdx = 0; pIdx < ed.pages.length; pIdx++) {
+            const pg = ed.pages[pIdx];
+            const slots = Array.isArray(pg?.slots) ? pg.slots : [];
+            for (let sIdx = 0; sIdx < slots.length; sIdx++) {
+                if (slots[sIdx] && String(slots[sIdx].id) === targetId) {
+                    return { pageIdx: pIdx, slotIdx: sIdx, page: pg, slot: slots[sIdx] };
+                }
+            }
+        }
+        return null;
+    },
+
+    normalizePrintEditionPages(ed) {
+        if (!ed) return;
+        ed.pages = Array.isArray(ed.pages) ? ed.pages.filter(Boolean) : [];
+        if (ed.pages.length < 8) {
+            const defaults = this.getPrintEditionDefaultPages();
+            while (ed.pages.length < 8) {
+                const idx = ed.pages.length;
+                ed.pages.push(defaults[idx] || this.createInteriorPrintPage(idx + 1));
+            }
+        }
+        while (ed.pages.length % 4 !== 0) {
+            const insertAt = Math.max(1, ed.pages.length - 2);
+            ed.pages.splice(insertAt, 0, this.createInteriorPrintPage(insertAt + 1));
+        }
+        const allSlotIds = new Set();
+        ed.pages.forEach((pg, idx) => {
+            pg.pageNumber = idx + 1;
+            pg.slots = Array.isArray(pg.slots) ? pg.slots : [];
+            pg.slots.forEach(sl => {
+                if (sl && sl.id) allSlotIds.add(String(sl.id));
+            });
+        });
+        ed.pages.forEach(pg => {
+            pg.slots.forEach(sl => {
+                if (!sl) return;
+                if (sl.continuesToSlotId && !allSlotIds.has(String(sl.continuesToSlotId))) {
+                    sl.continuesToSlotId = '';
+                }
+                if (sl.continuationOfSlotId && !allSlotIds.has(String(sl.continuationOfSlotId))) {
+                    sl.continuationOfSlotId = '';
+                }
+            });
+        });
+    },
+
+    addPrintEditionSheet() {
+        if (!this.isNewsCoordinator()) return;
+        const ed = this.getActivePrintEdition();
+        if (!ed) return;
+        this.normalizePrintEditionPages(ed);
+        if (ed.pages.length >= 24) {
+            return this.notify("Máximo recomendado de 24 páginas (6 pliegos A3 / 12 caras) alcanzado.", "warning");
+        }
+        const insertAt = Math.max(1, ed.pages.length - 2);
+        const newPages = [
+            this.createInteriorPrintPage(insertAt + 1),
+            this.createInteriorPrintPage(insertAt + 2),
+            this.createInteriorPrintPage(insertAt + 3),
+            this.createInteriorPrintPage(insertAt + 4)
+        ];
+        ed.pages.splice(insertAt, 0, ...newPages);
+        this.normalizePrintEditionPages(ed);
+        ed.updatedAt = Date.now();
+        state.save();
+        if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+        this.render();
+        this.notify(`✅ Añadido +1 pliego A3 (+4 páginas). Ahora la edición tiene ${ed.pages.length} páginas (${ed.pages.length / 2} caras A3).`, "success");
+    },
+
+    removePrintEditionSheet() {
+        if (!this.isNewsCoordinator()) return;
+        const ed = this.getActivePrintEdition();
+        if (!ed) return;
+        this.normalizePrintEditionPages(ed);
+        if (ed.pages.length <= 8) {
+            return this.notify("La edición mínima en formato periódico A3 es de 8 páginas (2 pliegos).", "warning");
+        }
+        const startIdx = ed.pages.length - 6;
+        this.confirmModal(
+            "🗑️ Quitar 1 Pliego A3 (-4 Páginas)",
+            `Se eliminarán las páginas interiores <strong>Págs. ${startIdx + 1} a ${startIdx + 4}</strong> (conservando la Portada, Quién es quién y Contraportada). La edición pasará a tener <strong>${ed.pages.length - 4} páginas</strong> (${(ed.pages.length - 4) / 2} caras A3).`,
+            () => {
+                ed.pages.splice(startIdx, 4);
+                this.normalizePrintEditionPages(ed);
+                ed.updatedAt = Date.now();
+                state.save();
+                if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
+                this.closeModal();
+                this.render();
+                this.notify(`🗑️ Pliego retirado. Ahora la edición tiene ${ed.pages.length} páginas (${ed.pages.length / 2} caras A3).`, "info");
+            }
+        );
     },
 
     createNewPrintEditionModal() {
@@ -316,15 +493,15 @@ Object.assign(ui, {
         if ((actNews[0] || savedNews[0]) && ed.pages[0]?.slots?.[0]) fillSlotFromNews(ed.pages[0].slots[0], actNews[0] || savedNews[0], 60);
 
         // Pág. 2: Crónicas AEE
-        if (actNews[1] || savedNews[2]) fillSlotFromNews(ed.pages[1].slots[0], actNews[1] || savedNews[2], 32);
-        if (histNews[0] || savedNews[3]) fillSlotFromNews(ed.pages[1].slots[1], histNews[0] || savedNews[3], 32);
+        if ((actNews[1] || savedNews[2]) && ed.pages[1]?.slots?.[0]) fillSlotFromNews(ed.pages[1].slots[0], actNews[1] || savedNews[2], 32);
+        if ((histNews[0] || savedNews[3]) && ed.pages[1]?.slots?.[1]) fillSlotFromNews(ed.pages[1].slots[1], histNews[0] || savedNews[3], 32);
 
         // Pág. 3: Actualidad Aeroespacial Internacional (SNAPI traducido + fuente)
-        if (wireNews[0]) fillSlotFromWire(ed.pages[2].slots[0], wireNews[0], 32);
-        if (wireNews[1]) fillSlotFromWire(ed.pages[2].slots[1], wireNews[1], 32);
+        if (wireNews[0] && ed.pages[2]?.slots?.[0]) fillSlotFromWire(ed.pages[2].slots[0], wireNews[0], 32);
+        if (wireNews[1] && ed.pages[2]?.slots?.[1]) fillSlotFromWire(ed.pages[2].slots[1], wireNews[1], 32);
 
         // Pág. 4: Notas de Prensa DOC_15
-        if (publishedPRs[0]) {
+        if (publishedPRs[0] && ed.pages[3]?.slots?.[0]) {
             const p = publishedPRs[0];
             ed.pages[3].slots[0].kicker = `COMUNICADO DOC_15`;
             ed.pages[3].slots[0].title = `${p.companyName}: ${p.title}`;
@@ -332,7 +509,7 @@ Object.assign(ui, {
             ed.pages[3].slots[0].imageUrl = p.nanoBananaImage || '';
             ed.pages[3].slots[0].mediaSource = `${p.companyName} (DOC_15)`;
         }
-        if (publishedPRs[1]) {
+        if (publishedPRs[1] && ed.pages[3]?.slots?.[1]) {
             const p = publishedPRs[1];
             ed.pages[3].slots[1].kicker = `COMUNICADO DOC_15`;
             ed.pages[3].slots[1].title = `${p.companyName}: ${p.title}`;
@@ -341,18 +518,20 @@ Object.assign(ui, {
             ed.pages[3].slots[1].mediaSource = `${p.companyName} (DOC_15)`;
         }
 
-        // Pág. 6 y 8: Noticias reales o de secciones Historia/Inventos según sección de página
-        if (invNews[0]) fillSlotFromNews(ed.pages[5].slots[0], invNews[0], 32);
-        else if (wireNews[2]) fillSlotFromWire(ed.pages[5].slots[0], wireNews[2], 32);
-        if (wireNews[3]) fillSlotFromWire(ed.pages[6].slots[0], wireNews[3], 32);
-        if (wireNews[4]) fillSlotFromWire(ed.pages[7].slots[0], wireNews[4], 32);
+        // Págs. 6, penúltima y contraportada: Noticias reales o de secciones Historia/Inventos
+        const penultPage = ed.pages[ed.pages.length - 2];
+        const backPage = ed.pages[ed.pages.length - 1];
+        if (invNews[0] && ed.pages[5]?.slots?.[0]) fillSlotFromNews(ed.pages[5].slots[0], invNews[0], 32);
+        else if (wireNews[2] && ed.pages[5]?.slots?.[0]) fillSlotFromWire(ed.pages[5].slots[0], wireNews[2], 32);
+        if (wireNews[3] && penultPage?.slots?.[0]) fillSlotFromWire(penultPage.slots[0], wireNews[3], 32);
+        if (wireNews[4] && backPage?.slots?.[0]) fillSlotFromWire(backPage.slots[0], wireNews[4], 32);
 
         ed.updatedAt = Date.now();
         if (!silent) {
             state.save();
             if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
             this.render();
-            this.notify("⚡ Edición de 8 páginas autocompletada con las noticias actuales.", "success");
+            this.notify(`⚡ Edición de ${ed.pages.length} páginas autocompletada con las noticias actuales.`, "success");
         }
     },
 
@@ -500,7 +679,7 @@ Object.assign(ui, {
         this.notify(`✅ Sección de Página ${page.pageNumber} actualizada.`, "success");
     },
 
-    modalEditPrintSlot(pageIdx, slotIdx) {
+    modalEditPrintSlot(pageIdx, slotIdx, opts = {}) {
         if (!this.isNewsCoordinator()) return;
         const ed = this.getActivePrintEdition();
         const page = ed?.pages?.[pageIdx];
@@ -509,14 +688,33 @@ Object.assign(ui, {
 
         const savedNews = Array.isArray(state.data.news) ? state.data.news : [];
         const wireNews = Array.isArray(this._snapiWireArticles) ? this._snapiWireArticles : [];
+        const articleSections = (typeof ORBITA_SECTIONS !== 'undefined' && Array.isArray(ORBITA_SECTIONS))
+            ? ORBITA_SECTIONS.filter(s => s.kind === 'articles')
+            : [
+                { id: 'nasa', shortLabelEs: 'NASA' },
+                { id: 'lanzamientos', shortLabelEs: 'Lanzamientos' },
+                { id: 'tecnologia', shortLabelEs: 'Tecnología' },
+                { id: 'industria', shortLabelEs: 'Industria' },
+                { id: 'marsket', shortLabelEs: 'MARS-KET 2.0' },
+                { id: 'inventos', shortLabelEs: 'En tu casa' },
+                { id: 'historia', shortLabelEs: 'Un poco de Historia' },
+                { id: 'juguetes', shortLabelEs: 'Juguetes en el espacio' },
+                { id: 'entrevistas', shortLabelEs: 'Entrevistas' }
+            ];
         const optGroupFor = (secKey, label) => {
             const items = savedNews
                 .map((n, i) => ({ n, i }))
-                .filter(x => x.n && (x.n.section || 'actualidad') === secKey);
+                .filter(x => x.n && (x.n.section || 'industria') === secKey);
             if (items.length === 0) return '';
             return `<optgroup label="${this.escapeAttr(label)}">${items.map(({ n, i }) => `<option value="NEWS:${i}">${this.escapeHTML((n.title || '').slice(0, 74))}</option>`).join('')}</optgroup>`;
         };
         const curImgPreview = slot.imageUrl ? this.resolvePrintImageUrl(slot.imageUrl, false) : '';
+
+        const hasNextPage = pageIdx < ((ed.pages || []).length - 1);
+        const nextPage = hasNextPage ? ed.pages[pageIdx + 1] : null;
+        const linkedLoc = slot.continuesToSlotId ? this.findPrintSlotLocation(ed, slot.continuesToSlotId) : null;
+        const initContChecked = Boolean(linkedLoc || opts?.focusContinuation);
+        const nextPageHasSpecialMode = Boolean(nextPage && (nextPage.pageMode === 'who_is_who' || nextPage.pageMode === 'beyond_rocket'));
 
         const html = `
             <div class="space-y-3 text-xs font-sans">
@@ -524,9 +722,7 @@ Object.assign(ui, {
                     <label for="print-slot-source-pick" class="text-xs text-mars-cyan font-bold uppercase block font-mono">📥 Cargar desde Periódico Digital o Teletipo Real (Opcional)</label>
                     <select id="print-slot-source-pick" data-page-num="${page.pageNumber}" data-slot-idx="${slotIdx}" onchange="ui.applySourceToPrintSlotEditor(this.value, this)" class="w-full min-h-[44px] bg-slate-900 border border-slate-700 p-2 text-xs text-white">
                         <option value="">-- Mantener / Editar texto manualmente --</option>
-                        ${optGroupFor('actualidad', '📡 Actualidad (Edición Digital)')}
-                        ${optGroupFor('historia', '🏛️ Un poco de Historia')}
-                        ${optGroupFor('inventos', '🏠 Del Espacio a tu Casa')}
+                        ${articleSections.map(s => optGroupFor(s.id, s.shortLabelEs)).join('')}
                         ${wireNews.length > 0 ? `<optgroup label="🌐 Teletipo Aeroespacial Real">${wireNews.map((w, i) => `<option value="WIRE:${i}">[${this.escapeHTML(w.news_site || 'SNAPI')}] ${this.escapeHTML((w.titleEs || w.title || '').slice(0, 70))}</option>`).join('')}</optgroup>` : ''}
                     </select>
                 </div>
@@ -539,6 +735,8 @@ Object.assign(ui, {
                             <option value="ACTUALIDAD">
                             <option value="UN POCO DE HISTORIA">
                             <option value="DEL ESPACIO A TU CASA">
+                            <option value="MARS-KET 2.0">
+                            <option value="JUGUETES EN EL ESPACIO">
                             <option value="ENTREVISTAS">
                             <option value="REPORTAJE ESPECIAL">
                             <option value="CIENCIA Y PROPULSIÓN">
@@ -572,6 +770,24 @@ Object.assign(ui, {
                     ${this.renderOrbitaFormatToolbar('print-slot-body')}
                     <textarea id="print-slot-body" rows="6" class="w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white font-sans">${this.escapeHTML(slot.body || '')}</textarea>
                 </div>
+
+                ${hasNextPage ? `
+                    <div class="p-3 bg-amber-950/30 border border-amber-500/50 rounded space-y-2.5">
+                        <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                            <input type="checkbox" id="print-slot-continue-next" class="w-5 h-5 accent-amber-400 cursor-pointer shrink-0" ${initContChecked ? 'checked' : ''} onchange="const box=document.getElementById('print-slot-cont-box'); if(box) box.classList.toggle('hidden', !this.checked);">
+                            <span class="text-xs font-mono font-bold text-amber-300 uppercase">↪ Continuar esta noticia en la Página ${nextPage.pageNumber}</span>
+                        </label>
+                        ${nextPageHasSpecialMode ? `<p class="text-[11px] text-amber-200/90 font-mono">La Página ${nextPage.pageNumber} cambiará a modo Noticias para alojar la continuación.</p>` : ''}
+                        <div id="print-slot-cont-box" class="${initContChecked ? '' : 'hidden'} space-y-2 pt-1 border-t border-amber-500/30">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <span class="text-[11px] text-slate-300">Texto de continuación (Pág. ${nextPage.pageNumber}):</span>
+                                <button type="button" onclick="ui.splitPrintSlotBodyForContinuation(false)" class="min-h-[36px] px-3 py-1 bg-amber-400 text-black font-black text-[11px] uppercase hover:bg-white">✂️ Dividir texto automáticamente a la mitad</button>
+                            </div>
+                            <textarea id="print-slot-cont-body" rows="5" placeholder="Texto que aparecerá en la Página ${nextPage.pageNumber} bajo «← Viene de la pág. ${page.pageNumber}»..." class="w-full bg-slate-900 border border-slate-700 p-2.5 text-xs text-white font-sans">${this.escapeHTML(linkedLoc?.slot?.body || '')}</textarea>
+                        </div>
+                    </div>
+                ` : ''}
+
                 <div class="p-2.5 bg-black/60 border border-slate-800 rounded space-y-2">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
@@ -612,6 +828,9 @@ Object.assign(ui, {
             <button type="button" onclick="ui.savePrintSlot(${pageIdx}, ${slotIdx})" class="min-h-[44px] px-5 py-2 bg-mars-cyan text-black font-black text-xs uppercase hover:bg-white">💾 Aplicar a Página ${page.pageNumber}</button>
         `;
         this.showModal(`✏️ Editar Hueco // Página ${page.pageNumber} (${page.label})`, html, actions);
+        if (opts?.focusContinuation && !linkedLoc && hasNextPage) {
+            setTimeout(() => this.splitPrintSlotBodyForContinuation(true), 30);
+        }
     },
 
     async applySourceToPrintSlotEditor(val, selectEl = null) {
@@ -676,12 +895,70 @@ Object.assign(ui, {
         }
     },
 
+    toggleOrCreateSlotContinuation(pageIdx, slotIdx) {
+        if (!this.isNewsCoordinator()) return;
+        this.modalEditPrintSlot(pageIdx, slotIdx, { focusContinuation: true });
+    },
+
+    splitPrintSlotBodyForContinuation(silent = false) {
+        const bodyEl = document.getElementById('print-slot-body');
+        const contEl = document.getElementById('print-slot-cont-body');
+        if (!bodyEl || !contEl) return;
+        const part1Cur = bodyEl.value.trim();
+        const part2Cur = contEl.value.trim();
+        const combined = part2Cur && part2Cur !== '(Escribe aquí la continuación de la noticia...)'
+            ? (part1Cur ? `${part1Cur}\n\n${part2Cur}` : part2Cur)
+            : part1Cur;
+        if (!combined) {
+            if (!silent) this.notify("Escribe primero el cuerpo de la noticia para poder dividirlo.", "info");
+            return;
+        }
+        const paras = combined.split(/\n+/).map(p => p.trim()).filter(Boolean);
+        let p1 = '', p2 = '';
+        if (paras.length >= 2) {
+            const totalLen = paras.reduce((acc, p) => acc + p.length, 0);
+            const target = totalLen / 2;
+            let bestIdx = 1;
+            let bestDiff = Infinity;
+            let running = 0;
+            for (let i = 0; i < paras.length - 1; i++) {
+                running += paras[i].length;
+                const diff = Math.abs(running - target);
+                if (diff < bestDiff) {
+                    bestDiff = diff;
+                    bestIdx = i + 1;
+                }
+            }
+            p1 = paras.slice(0, bestIdx).join('\n\n');
+            p2 = paras.slice(bestIdx).join('\n\n');
+        } else {
+            const sentences = combined.match(/[^.!?]+[.!?]+(?:\s|$)/g);
+            if (sentences && sentences.length >= 2) {
+                const half = Math.ceil(sentences.length / 2);
+                p1 = sentences.slice(0, half).join('').trim();
+                p2 = sentences.slice(half).join('').trim();
+            } else {
+                const words = combined.split(/\s+/).filter(Boolean);
+                const halfW = Math.ceil(words.length / 2);
+                p1 = words.slice(0, halfW).join(' ');
+                p2 = words.slice(halfW).join(' ');
+            }
+        }
+        bodyEl.value = p1;
+        contEl.value = p2;
+        if (!silent) {
+            this.notify("✂️ Texto dividido entre ambas páginas. Puedes ajustarlo manualmente antes de guardar.", "info");
+        }
+    },
+
     savePrintSlot(pageIdx, slotIdx) {
         if (!this.isNewsCoordinator()) return;
         const ed = this.getActivePrintEdition();
-        const slot = ed?.pages?.[pageIdx]?.slots?.[slotIdx];
+        const page = ed?.pages?.[pageIdx];
+        const slot = page?.slots?.[slotIdx];
         if (!slot) return;
         const getVal = (id) => (document.getElementById(id)?.value || '').trim();
+        slot.id = slot.id || `p${page.pageNumber}-slot-${Date.now()}`;
         slot.kicker = getVal('print-slot-kicker') || 'ACTUALIDAD';
         slot.mediaSource = getVal('print-slot-source') || 'ORBITAL REPORT';
         slot.title = getVal('print-slot-title') || slot.title;
@@ -692,6 +969,51 @@ Object.assign(ui, {
         const imgH = parseInt(getVal('print-slot-img-height'), 10);
         if (!isNaN(imgH)) slot.imgHeightMm = imgH;
         slot.imgFit = getVal('print-slot-img-fit') || 'cover';
+
+        const contChk = document.getElementById('print-slot-continue-next');
+        const contBody = getVal('print-slot-cont-body');
+        const nextPage = (ed.pages || [])[pageIdx + 1] || null;
+        const existingLoc = slot.continuesToSlotId ? this.findPrintSlotLocation(ed, slot.continuesToSlotId) : null;
+
+        if (contChk && contChk.checked && nextPage) {
+            if (nextPage.pageMode === 'who_is_who' || nextPage.pageMode === 'beyond_rocket') {
+                nextPage.pageMode = 'news';
+            }
+            if (existingLoc) {
+                existingLoc.slot.kicker = slot.kicker;
+                existingLoc.slot.title = slot.title;
+                existingLoc.slot.mediaSource = slot.mediaSource;
+                existingLoc.slot.fontSizePt = slot.fontSizePt;
+                existingLoc.slot.body = contBody || existingLoc.slot.body || '(Escribe aquí la continuación de la noticia...)';
+                existingLoc.slot.continuationOfSlotId = slot.id;
+            } else {
+                nextPage.slots = Array.isArray(nextPage.slots) ? nextPage.slots : [];
+                const newContId = `p${nextPage.pageNumber}-cont-${Date.now()}`;
+                nextPage.slots.unshift({
+                    id: newContId,
+                    role: 'article',
+                    kicker: slot.kicker,
+                    title: slot.title,
+                    subtitle: '',
+                    body: contBody || '(Escribe aquí la continuación de la noticia...)',
+                    imageUrl: '',
+                    mediaSource: slot.mediaSource,
+                    fontSizePt: slot.fontSizePt,
+                    continuationOfSlotId: slot.id
+                });
+                slot.continuesToSlotId = newContId;
+            }
+        } else if (slot.continuesToSlotId) {
+            if (existingLoc) {
+                existingLoc.slot.continuationOfSlotId = '';
+                const b = String(existingLoc.slot.body || '').trim();
+                if (!b || b === '(Escribe aquí la continuación de la noticia...)') {
+                    existingLoc.page.slots.splice(existingLoc.slotIdx, 1);
+                }
+            }
+            slot.continuesToSlotId = '';
+        }
+
         ed.updatedAt = Date.now();
         state.save();
         if (typeof state.pushToCloud === 'function') state.pushToCloud(false);
@@ -1107,10 +1429,11 @@ Object.assign(ui, {
         const ed = this.getActivePrintEdition();
         const page = ed?.pages?.[pageIdx];
         if (!page) return;
-        if (page.pageNumber === 7) {
+        const totalPages = (ed.pages || []).length || 8;
+        if (pageIdx === totalPages - 2 || page.pageMode === 'who_is_who') {
             page.pageMode = (page.pageMode === 'who_is_who') ? 'news' : 'who_is_who';
             page.sectionTitle = page.pageMode === 'who_is_who' ? 'DIRECTORIO // QUIÉN ES QUIÉN' : 'ECONOMÍA ESPACIAL, CONTRATOS Y LIDERAZGO';
-        } else if (page.pageNumber === 8) {
+        } else if (pageIdx === totalPages - 1) {
             page.pageMode = (page.pageMode === 'beyond_rocket') ? 'news' : 'beyond_rocket';
             page.sectionTitle = page.pageMode === 'beyond_rocket' ? 'CONTRAPORTADA // MÁS ALLÁ DEL COHETE' : 'CONTRAPORTADA // MIRADA AL FUTURO';
         }
@@ -1184,7 +1507,7 @@ Object.assign(ui, {
 
         const html = `
             <div class="space-y-4 text-xs font-sans">
-                <p class="text-[11px] text-slate-300">Selecciona empresas aeroespaciales reales y Startups Navarras para la Página 7 impresa. <strong>Nota:</strong> la clase solo se muestra aquí para ayudarte a marcar rápido por aula; en el periódico impreso nunca aparecen clases (<code class="text-amber-300">NAVARRA</code>).</p>
+                <p class="text-[11px] text-slate-300">Selecciona empresas aeroespaciales reales y Startups Navarras para la Página ${page.pageNumber} impresa. <strong>Nota:</strong> la clase solo se muestra aquí para ayudarte a marcar rápido por aula; en el periódico impreso nunca aparecen clases (<code class="text-amber-300">NAVARRA</code>).</p>
 
                 <div class="space-y-2">
                     <div class="flex flex-wrap items-center justify-between gap-2">
@@ -1251,7 +1574,7 @@ Object.assign(ui, {
             <button type="button" onclick="ui.closeModal()" class="min-h-[44px] px-4 py-2 bg-slate-800 text-white text-xs font-bold uppercase">Cancelar</button>
             <button type="button" onclick="ui.saveWhoIsWhoConfig(${pageIdx})" class="min-h-[44px] px-5 py-2 bg-amber-400 text-black font-black text-xs uppercase hover:bg-white">💾 Guardar Quién es quién</button>
         `;
-        this.showModal("🌍 Configurar «Quién es quién» (Pág. 7)", html, actions, 'max-w-3xl');
+        this.showModal(`🌍 Configurar «Quién es quién» (Pág. ${page.pageNumber})`, html, actions, 'max-w-3xl');
     },
 
     saveWhoIsWhoConfig(pageIdx) {
@@ -1373,7 +1696,7 @@ Object.assign(ui, {
             <button type="button" onclick="ui.closeModal()" class="min-h-[44px] px-4 py-2 bg-slate-800 text-white text-xs font-bold uppercase">Cancelar</button>
             <button type="button" onclick="ui.saveBeyondRocketDirectory(${pageIdx})" class="min-h-[44px] px-5 py-2 bg-mars-cyan text-black font-black text-xs uppercase hover:bg-white">💾 Guardar Directorio</button>
         `;
-        this.showModal("🛰️ Editar «Más allá del cohete» (Pág. 8)", html, actions);
+        this.showModal(`🛰️ Editar «Más allá del cohete» (Pág. ${page.pageNumber})`, html, actions);
     },
 
     saveBeyondRocketDirectory(pageIdx) {
@@ -1768,6 +2091,15 @@ Object.assign(ui, {
         if (page.pageNumber === 1 && page.slots.length <= 1) {
             return this.notify("La Portada debe conservar al menos 1 noticia principal.", "warning");
         }
+        const removed = page.slots[slotIdx];
+        if (removed?.continuesToSlotId) {
+            const targetLoc = this.findPrintSlotLocation(ed, removed.continuesToSlotId);
+            if (targetLoc?.slot) targetLoc.slot.continuationOfSlotId = '';
+        }
+        if (removed?.continuationOfSlotId) {
+            const originLoc = this.findPrintSlotLocation(ed, removed.continuationOfSlotId);
+            if (originLoc?.slot) originLoc.slot.continuesToSlotId = '';
+        }
         page.slots.splice(slotIdx, 1);
         ed.updatedAt = Date.now();
         state.save();
@@ -1853,10 +2185,13 @@ Object.assign(ui, {
         });
     },
 
-    renderPrintPageToolbarHtml(page, pageIdx, compact = false) {
+    renderPrintPageToolbarHtml(page, pageIdx, compact = false, totalPagesOverride = null) {
+        const totalPages = totalPagesOverride || this.getActivePrintEdition()?.pages?.length || 8;
         const isCover = page.pageNumber === 1;
-        const isWhoIsWho = page.pageNumber === 7 && (page.pageMode || 'who_is_who') === 'who_is_who';
-        const isBeyondRocket = page.pageNumber === 8 && (page.pageMode || 'beyond_rocket') === 'beyond_rocket';
+        const isWhoIsWhoSlot = (pageIdx === totalPages - 2) || (page.pageMode === 'who_is_who');
+        const isWhoIsWho = (page.pageMode === 'who_is_who');
+        const isBackCover = (pageIdx === totalPages - 1);
+        const isBeyondRocket = isBackCover && (page.pageMode === 'beyond_rocket');
         const showArticleTools = !isCover && !isWhoIsWho && !isBeyondRocket;
 
         return `
@@ -1867,11 +2202,11 @@ Object.assign(ui, {
             </div>
             <div class="flex flex-wrap items-center gap-1">
                 ${!isCover ? `<button type="button" onclick="ui.modalEditPrintPageSection(${pageIdx})" class="px-2 py-1 bg-slate-800 border border-slate-600 text-slate-200 hover:border-white text-[10px] font-mono font-bold uppercase" title="Editar título de sección">✏️ Sección</button>` : ''}
-                ${page.pageNumber === 7 ? `
+                ${isWhoIsWhoSlot ? `
                     ${isWhoIsWho ? `<button type="button" onclick="ui.modalConfigureWhoIsWho(${pageIdx})" class="px-2 py-1 bg-amber-400 text-black hover:bg-white text-[10px] font-mono font-black uppercase">🌍 Elegir Empresas</button>` : ''}
                     <button type="button" onclick="ui.togglePrintPageMode(${pageIdx})" class="px-2 py-1 bg-slate-800 border border-slate-500 text-white hover:bg-[#8B0000] text-[10px] font-mono font-bold uppercase">${isWhoIsWho ? '📰 Noticias' : '🌍 Quién es quién'}</button>
                 ` : ''}
-                ${page.pageNumber === 8 ? `
+                ${isBackCover ? `
                     ${isBeyondRocket ? `
                         <button type="button" onclick="ui.syncLaunchLibrary2ForPrint(${pageIdx})" class="px-2 py-1 bg-emerald-700 text-white hover:bg-emerald-600 text-[10px] font-mono font-bold uppercase">🛰️ Sync LL2</button>
                         <button type="button" onclick="ui.modalEditBeyondRocketDirectory(${pageIdx})" class="px-2 py-1 bg-amber-400 text-black hover:bg-white text-[10px] font-mono font-black uppercase">✏️ Fichas</button>
@@ -1885,9 +2220,11 @@ Object.assign(ui, {
     },
 
     renderPrintStudioPageHtml(ed, page, pageIdx, forPrint = false) {
+        const totalPages = (ed.pages || []).length || 8;
         const isCover = page.pageNumber === 1;
-        const isWhoIsWho = page.pageNumber === 7 && (page.pageMode || 'who_is_who') === 'who_is_who';
-        const isBeyondRocket = page.pageNumber === 8 && (page.pageMode || 'beyond_rocket') === 'beyond_rocket';
+        const isWhoIsWho = (page.pageMode === 'who_is_who');
+        const isBackCover = (pageIdx === totalPages - 1);
+        const isBeyondRocket = isBackCover && (page.pageMode === 'beyond_rocket');
         const hasAd = Boolean(page.adSlot && page.adSlot.companyName);
         const monoFont = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
         const sansFont = "ui-sans-serif, system-ui, -apple-system, sans-serif";
@@ -2082,12 +2419,20 @@ Object.assign(ui, {
                     ? `font-family:${serifFont};font-size:${fontPt}pt;line-height:1.38;color:#1f2937;column-count:2;column-gap:4.5mm;column-rule:0.4pt solid #d6d3d1;column-fill:balance;hyphens:auto;orphans:2;widows:2;`
                     : `font-family:${serifFont};font-size:${fontPt}pt;line-height:1.38;color:#1f2937;`;
                 const bodyColClass = useTwoCols ? ' class="orbita-print-cols-2"' : '';
+                const contTarget = slot.continuesToSlotId ? this.findPrintSlotLocation(ed, slot.continuesToSlotId) : null;
+                const contOrigin = slot.continuationOfSlotId ? this.findPrintSlotLocation(ed, slot.continuationOfSlotId) : null;
+                const contToolbarBtn = (!forPrint && pageIdx < totalPages - 1)
+                    ? (contTarget
+                        ? `<button type="button" onclick="ui.modalEditPrintSlot(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-cyan-900 text-cyan-200 border border-cyan-500 hover:bg-cyan-700 text-[10px] font-mono font-bold uppercase" title="Editar continuación en página siguiente">↪ Pág. ${contTarget.page.pageNumber}</button>`
+                        : `<button type="button" onclick="ui.toggleOrCreateSlotContinuation(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-slate-800 text-amber-300 border border-amber-400/60 hover:bg-amber-400 hover:text-black text-[10px] font-mono font-bold uppercase" title="Continuar esta noticia en la Página ${page.pageNumber + 1}">↪ Seguir P.${page.pageNumber + 1}</button>`)
+                    : '';
                 const editBtn = !forPrint ? `
                     <div style="position:absolute;top:0;right:0;z-index:20;display:flex;align-items:center;gap:2px;flex-wrap:wrap;background:rgba(250,248,245,0.95);border:1px solid #cbd5e1;padding:2px;box-shadow:0 1px 4px rgba(0,0,0,0.12);">
                         ${imgSrc ? `
                             <button type="button" onclick="ui.adjustPrintSlotImageHeight(${pageIdx}, ${sIdx}, -5)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Reducir altura de foto (-5 mm)">Img-</button>
                             <button type="button" onclick="ui.adjustPrintSlotImageHeight(${pageIdx}, ${sIdx}, 5)" class="px-1.5 py-0.5 bg-stone-200 border border-stone-400 text-[#111111] hover:bg-[#111111] hover:text-white text-[10px] font-mono font-bold" title="Aumentar altura de foto (+5 mm)">Img+</button>
                         ` : ''}
+                        ${contToolbarBtn}
                         <button type="button" onclick="ui.modalPickPrintSlotNews(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-amber-400 text-black hover:bg-white text-[10px] font-mono font-bold uppercase">Elegir</button>
                         <button type="button" onclick="ui.modalEditPrintSlot(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-[#111111] text-white hover:bg-[#8B0000] text-[10px] font-mono font-bold uppercase">Editar</button>
                         ${(!isCover || (page.slots || []).length > 1) ? `<button type="button" onclick="ui.removePrintSlot(${pageIdx}, ${sIdx})" class="px-2 py-0.5 bg-white border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white text-[10px] font-mono font-bold uppercase" title="Quitar noticia de esta página">✕</button>` : ''}
@@ -2098,10 +2443,17 @@ Object.assign(ui, {
                 const h3Style = (isCover && sIdx === 0)
                     ? `margin:0 0 1mm 0;font-family:${serifFont};font-weight:900;color:#111111;font-size:21pt;line-height:1.08;`
                     : `margin:0 0 1mm 0;font-family:${serifFont};font-weight:900;color:#111111;font-size:13pt;line-height:1.14;`;
+                const originRibbonHtml = contOrigin
+                    ? `<div style="margin-bottom:0.8mm;padding:0.5mm 1.4mm;background:#EFECE4;border-left:2px solid #8B0000;font-family:${monoFont};font-size:7pt;font-weight:700;text-transform:uppercase;color:#8B0000;">&#8592; Viene de la pág. ${contOrigin.page.pageNumber} (continuación)</div>`
+                    : '';
+                const continueFooterHtml = contTarget
+                    ? `<div style="margin-top:1.4mm;padding-top:0.8mm;border-top:0.6pt dashed #a8a29e;text-align:right;font-family:${serifFont};font-style:italic;font-weight:700;font-size:8.5pt;color:#8B0000;">Sigue en la pág. ${contTarget.page.pageNumber} &#8594;</div>`
+                    : '';
 
                 return `
                 <article style="position:relative;${borderStyle}">
                     ${editBtn}
+                    ${originRibbonHtml}
                     <div style="margin-bottom:0.8mm;">
                         <span style="font-family:${monoFont};font-size:8.5pt;line-height:1.2;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#8B0000;">${this.escapeHTML(slot.kicker || '')}</span>
                     </div>
@@ -2114,18 +2466,21 @@ Object.assign(ui, {
                         </figure>
                     ` : `<p style="margin:0 0 1mm 0;font-family:${monoFont};font-size:7.5pt;line-height:1.2;color:#57534e;">Fuente: ${this.escapeHTML(slot.mediaSource || 'Órbita.')}</p>`}
                     <div${bodyColClass} style="${bodyColStyle}">${this.formatPrintEditorialText(slot.body || '')}</div>
+                    ${continueFooterHtml}
                 </article>`;
             }).join('');
 
+            const summaryCols = totalPages > 8 ? '1fr 1fr 1fr' : '1fr 1fr';
+            const summaryFontPt = totalPages > 8 ? '6.8pt' : '7.5pt';
             const coverSummaryHtml = isCover ? `
                 <div style="margin-top:2.8mm;padding-top:2.2mm;border-top:2px solid #111111;">
                     <div style="font-family:${monoFont};font-size:7.5pt;line-height:1.2;font-weight:900;text-transform:uppercase;letter-spacing:0.08em;color:#8B0000;margin-bottom:1.4mm;">EN ESTE NÚMERO // SUMARIO DE PÁGINAS</div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1mm 3mm;font-size:7.5pt;line-height:1.25;">
-                        ${(ed.pages || []).slice(1).map(p => {
+                    <div style="display:grid;grid-template-columns:${summaryCols};gap:1mm 3mm;font-size:${summaryFontPt};line-height:1.25;">
+                        ${(ed.pages || []).slice(1).map((p, pSliceIdx) => {
                             let summaryTitle = p.label || '';
-                            if (p.pageNumber === 7 && (p.pageMode || 'who_is_who') === 'who_is_who') {
+                            if ((p.pageMode || '') === 'who_is_who') {
                                 summaryTitle = 'Quién es quién: Sector Real y Startups Navarras';
-                            } else if (p.pageNumber === 8 && (p.pageMode || 'beyond_rocket') === 'beyond_rocket') {
+                            } else if (pSliceIdx === totalPages - 2 && (p.pageMode || '') === 'beyond_rocket') {
                                 summaryTitle = 'Más allá del cohete y Acceso QR';
                             } else if (p.slots && p.slots[0]?.title) {
                                 summaryTitle = p.slots[0].title;
@@ -2219,7 +2574,7 @@ Object.assign(ui, {
             ${adHtml}
             <div style="padding-top:1.5mm;margin-top:1.5mm;border-top:1px solid #d6d3d1;display:flex;justify-content:space-between;font-family:${monoFont};font-size:7pt;line-height:1.2;color:#78716c;text-transform:uppercase;">
                 <span>${this.escapeHTML(ed.issueLabel || '')}</span>
-                <span>Pág. ${page.pageNumber} / 8</span>
+                <span>Pág. ${page.pageNumber} / ${totalPages}</span>
             </div>
         </div>`;
     },
@@ -2239,12 +2594,10 @@ Object.assign(ui, {
             });
         }
 
-        const imposedPairs = [
-            { face: 1, title: 'Cara A3 n.º 1 (Pliego 1 Exterior)', leftIdx: 7, rightIdx: 0 },
-            { face: 2, title: 'Cara A3 n.º 2 (Pliego 1 Interior)', leftIdx: 1, rightIdx: 6 },
-            { face: 3, title: 'Cara A3 n.º 3 (Pliego 2 Exterior)', leftIdx: 5, rightIdx: 2 },
-            { face: 4, title: 'Cara A3 n.º 4 (Pliego 2 Interior / Centro)', leftIdx: 3, rightIdx: 4 }
-        ];
+        const totalPages = (ed.pages || []).length || 8;
+        const faceCount = totalPages / 2;
+        const sheetCount = totalPages / 4;
+        const imposedPairs = this.getPrintImposedPairs(totalPages);
 
         const bodyContentHtml = mode === 'imposed'
             ? `
@@ -2256,8 +2609,8 @@ Object.assign(ui, {
                                 <span>[ Pág. ${sp.leftIdx + 1} (Izq.) | Doblez Central | Pág. ${sp.rightIdx + 1} (Der.) ]</span>
                             </div>
                             <div class="grid grid-cols-1 lg:grid-cols-2 gap-1.5">
-                                ${this.renderPrintPageToolbarHtml(ed.pages[sp.leftIdx], sp.leftIdx, true)}
-                                ${this.renderPrintPageToolbarHtml(ed.pages[sp.rightIdx], sp.rightIdx, true)}
+                                ${this.renderPrintPageToolbarHtml(ed.pages[sp.leftIdx], sp.leftIdx, true, totalPages)}
+                                ${this.renderPrintPageToolbarHtml(ed.pages[sp.rightIdx], sp.rightIdx, true, totalPages)}
                             </div>
                             <div data-print-scale-outer class="w-full overflow-hidden border-2 border-amber-400/60 shadow-2xl bg-slate-900">
                                 <div data-print-scale-inner style="width:420mm;display:grid;grid-template-columns:210mm 210mm;">
@@ -2273,7 +2626,7 @@ Object.assign(ui, {
                 <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     ${(ed.pages || []).map((pg, idx) => `
                         <div class="space-y-1.5 min-w-0">
-                            ${this.renderPrintPageToolbarHtml(pg, idx, false)}
+                            ${this.renderPrintPageToolbarHtml(pg, idx, false, totalPages)}
                             <div data-print-scale-outer class="w-full overflow-hidden shadow-xl bg-slate-900">
                                 <div data-print-scale-inner style="width:210mm;">
                                     ${this.renderPrintStudioPageHtml(ed, pg, idx, false)}
@@ -2296,7 +2649,7 @@ Object.assign(ui, {
                                 ? `<span class="px-2 py-0.5 bg-emerald-950 border border-emerald-400 text-emerald-300 font-mono text-[10px] font-black uppercase">🔒 EDICIÓN DEFINITIVA</span>`
                                 : `<span class="px-2 py-0.5 bg-amber-950 border border-amber-400 text-amber-300 font-mono text-[10px] font-bold uppercase">📝 BORRADOR</span>`}
                         </div>
-                        <p class="text-xs text-slate-300 font-sans">8 páginas (4 caras A3 apaisadas con doblez en medio) · Proporción física real 210×297 mm · Exclusivo Coordinación</p>
+                        <p class="text-xs text-slate-300 font-sans">${totalPages} páginas (${faceCount} caras A3 · ${sheetCount} pliegos con doblez en medio) · Proporción física real 210×297 mm · Exclusivo Coordinación</p>
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <button type="button" onclick="ui.closePrintEditionStudio()" class="min-h-[44px] px-4 py-2 bg-slate-800 border border-slate-600 text-white text-xs font-bold uppercase hover:bg-slate-700">⬅ Volver al Periódico Digital</button>
@@ -2304,7 +2657,7 @@ Object.assign(ui, {
                         ${ed.status === 'FINALIZED'
                             ? `<button type="button" onclick="ui.reopenPrintEditionDraft()" class="min-h-[44px] px-4 py-2 bg-amber-400 text-black font-black text-xs uppercase hover:bg-white">🔓 Reabrir Edición</button>`
                             : `<button type="button" onclick="ui.finalizePrintEdition()" class="min-h-[44px] px-4 py-2 bg-emerald-400 text-black font-black text-xs uppercase hover:bg-white">🔒 Guardar Edición Definitiva</button>`}
-                        <button type="button" onclick="ui.printA3NewspaperPDF()" class="min-h-[44px] px-5 py-2 bg-mars-green text-black font-black text-xs uppercase hover:bg-white shadow-[0_0_15px_rgba(0,255,102,0.35)]">🖨️ Imprimir / Guardar PDF A3 (4 Caras)</button>
+                        <button type="button" onclick="ui.printA3NewspaperPDF()" class="min-h-[44px] px-5 py-2 bg-mars-green text-black font-black text-xs uppercase hover:bg-white shadow-[0_0_15px_rgba(0,255,102,0.35)]">🖨️ Imprimir / Guardar PDF A3 (${faceCount} Caras)</button>
                     </div>
                 </div>
 
@@ -2316,6 +2669,8 @@ Object.assign(ui, {
                         <button type="button" onclick="ui.modalEditPrintEditionMeta()" class="min-h-[44px] px-3 py-2 bg-slate-900 border border-slate-700 text-slate-200 text-xs font-bold uppercase hover:border-mars-cyan">✏️ Cabecera</button>
                         <button type="button" onclick="ui.createNewPrintEditionModal()" class="min-h-[44px] px-3 py-2 bg-amber-400 text-black text-xs font-black uppercase hover:bg-white">+ Nueva Edición</button>
                         <button type="button" onclick="ui.autoLayoutPrintEdition(false)" class="min-h-[44px] px-3 py-2 bg-mars-cyan text-black text-xs font-black uppercase hover:bg-white">⚡ Auto-Maquetar Noticias</button>
+                        <button type="button" onclick="ui.addPrintEditionSheet()" class="min-h-[44px] px-3 py-2 bg-emerald-700 text-white text-xs font-black uppercase hover:bg-emerald-500">+ 4 Págs. (+1 Pliego A3)</button>
+                        ${totalPages > 8 ? `<button type="button" onclick="ui.removePrintEditionSheet()" class="min-h-[44px] px-3 py-2 bg-red-950 border border-red-500/70 text-red-200 text-xs font-bold uppercase hover:bg-red-700 hover:text-white">- 4 Págs.</button>` : ''}
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
                         <div class="flex items-center border border-slate-700 bg-black p-0.5" title="Zoom de vista previa WYSIWYG">
@@ -2323,8 +2678,8 @@ Object.assign(ui, {
                             <button type="button" onclick="ui.printStudioZoomMode='actual'; ui.render();" class="min-h-[44px] px-2.5 py-1.5 text-xs font-mono font-bold uppercase ${zoomMode === 'actual' ? 'bg-white text-black' : 'text-slate-300'}">📏 100% Real</button>
                         </div>
                         <div class="flex items-center border border-slate-700 bg-black p-0.5">
-                            <button type="button" onclick="ui.printStudioViewMode='reading'; ui.render();" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-bold uppercase ${mode === 'reading' ? 'bg-mars-cyan text-black' : 'text-slate-300'}">📖 Págs. 1–8</button>
-                            <button type="button" onclick="ui.printStudioViewMode='imposed'; ui.render();" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-bold uppercase ${mode === 'imposed' ? 'bg-amber-400 text-black' : 'text-slate-300'}">🖨️ 4 Caras A3</button>
+                            <button type="button" onclick="ui.printStudioViewMode='reading'; ui.render();" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-bold uppercase ${mode === 'reading' ? 'bg-mars-cyan text-black' : 'text-slate-300'}">📖 Págs. 1–${totalPages}</button>
+                            <button type="button" onclick="ui.printStudioViewMode='imposed'; ui.render();" class="min-h-[44px] px-3 py-1.5 text-xs font-mono font-bold uppercase ${mode === 'imposed' ? 'bg-amber-400 text-black' : 'text-slate-300'}">🖨️ ${faceCount} Caras A3</button>
                         </div>
                     </div>
                 </div>
@@ -2346,22 +2701,16 @@ Object.assign(ui, {
     printA3NewspaperPDF() {
         if (!this.isNewsCoordinator()) return;
         const ed = this.getActivePrintEdition();
-        const imposedPairs = [
-            [7, 0], // Cara 1: Pág 8 | Pág 1
-            [1, 6], // Cara 2: Pág 2 | Pág 7 (se gira 180° en modo borde largo)
-            [5, 2], // Cara 3: Pág 6 | Pág 3
-            [3, 4]  // Cara 4: Pág 4 | Pág 5 (se gira 180° en modo borde largo)
-        ];
+        const imposedPairs = this.getPrintImposedPairs((ed.pages || []).length);
 
-        const sheetsHtml = imposedPairs.map(([lIdx, rIdx], sheetIdx) => {
-            const isBack = sheetIdx % 2 === 1;
-            const sheetLabel = `HOJA ${Math.floor(sheetIdx / 2) + 1} · ${isBack ? 'DORSO (CARA ' + (sheetIdx + 1) + ' — Pág. ' + (lIdx + 1) + ' | Pág. ' + (rIdx + 1) + ')' : 'FRENTE (CARA ' + (sheetIdx + 1) + ' — Pág. ' + (lIdx + 1) + ' | Pág. ' + (rIdx + 1) + ')'}`;
+        const sheetsHtml = imposedPairs.map(sp => {
+            const sheetLabel = `HOJA ${sp.sheet} · ${sp.isBack ? 'DORSO' : 'FRENTE'} (CARA ${sp.face} — Pág. ${sp.leftIdx + 1} | Pág. ${sp.rightIdx + 1})`;
             return `
             <div class="sheet-banner no-print">${sheetLabel}</div>
-            <section class="a3-sheet ${isBack ? 'is-back-sheet' : ''}">
+            <section class="a3-sheet ${sp.isBack ? 'is-back-sheet' : ''}">
                 <div class="a3-sheet-inner">
-                    <div class="a4-half left-half">${this.renderPrintStudioPageHtml(ed, ed.pages[lIdx], lIdx, true)}</div>
-                    <div class="a4-half right-half">${this.renderPrintStudioPageHtml(ed, ed.pages[rIdx], rIdx, true)}</div>
+                    <div class="a4-half left-half">${this.renderPrintStudioPageHtml(ed, ed.pages[sp.leftIdx], sp.leftIdx, true)}</div>
+                    <div class="a4-half right-half">${this.renderPrintStudioPageHtml(ed, ed.pages[sp.rightIdx], sp.rightIdx, true)}</div>
                 </div>
             </section>`;
         }).join('');
@@ -2402,7 +2751,7 @@ Object.assign(ui, {
     <div class="no-print">
         <span>Órbita. (${this.escapeHTML(ed.issueLabel)}) — Selecciona <strong>Papel A3 Horizontal · Márgenes: Ninguno · Escala: 100%</strong></span>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <button id="orbita-duplex-btn" type="button" class="btn-duplex" onclick="const on=document.body.classList.toggle('duplex-long-edge'); this.classList.toggle('is-off', !on); this.textContent = on ? '🔄 Caras 2 y 4 giradas 180° (Borde Largo): SÍ' : '🔄 Caras 2 y 4 giradas 180° (Borde Corto): NO';">🔄 Caras 2 y 4 giradas 180° (Borde Largo): SÍ</button>
+            <button id="orbita-duplex-btn" type="button" class="btn-duplex" onclick="const on=document.body.classList.toggle('duplex-long-edge'); this.classList.toggle('is-off', !on); this.textContent = on ? '🔄 Caras pares (dorsos) giradas 180° (Borde Largo): SÍ' : '🔄 Caras pares (dorsos) giradas 180° (Borde Corto): NO';">🔄 Caras pares (dorsos) giradas 180° (Borde Largo): SÍ</button>
             <button id="orbita-print-btn" class="btn-p" onclick="window.print()">Imprimir / Guardar PDF A3</button>
         </div>
     </div>
