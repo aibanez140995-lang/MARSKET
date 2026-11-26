@@ -1,32 +1,32 @@
-// sw.js — MARS-KET 2.0 Service Worker (Caché estática versionada v2.0.75, excluyendo /api/*)
-const CACHE_NAME = 'marsket-cache-v2.0.75';
+// sw.js — MARS-KET 2.0 Service Worker (Caché estática versionada v2.0.76, excluyendo /api/*)
+const CACHE_NAME = 'marsket-cache-v2.0.76';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './logo.png',
-  './logo.jpg?v=2.0.75',
-  './manifest.json?v=2.0.75',
-  './css/tailwind.css?v=2.0.75',
+  './logo.jpg?v=2.0.76',
+  './manifest.json?v=2.0.76',
+  './css/tailwind.css?v=2.0.76',
   './css/fonts/newsreader-latin-400-normal.woff2',
   './css/fonts/newsreader-latin-700-normal.woff2',
   './css/fonts/newsreader-latin-400-italic.woff2',
-  './js/lexicon-data.js?v=2.0.75',
-  './js/config.js?v=2.0.75',
-  './js/state.js?v=2.0.75',
-  './js/auth.js?v=2.0.75',
-  './js/ui-core.js?v=2.0.75',
-  './js/ui-empresa-core.js?v=2.0.75',
-  './js/ui-orbita.js?v=2.0.75',
-  './js/ui-print-newspaper.js?v=2.0.75',
-  './js/ui-empresa-market.js?v=2.0.75',
-  './js/ui-empresa-tech.js?v=2.0.75',
-  './js/ui-empresa-finance.js?v=2.0.75',
-  './js/ui-empresa-ops.js?v=2.0.75',
-  './js/ui-empresa-gov-brand.js?v=2.0.75',
-  './js/ui-docente-core.js?v=2.0.75',
-  './js/ui-docente-eval.js?v=2.0.75',
-  './js/ui-docente-management.js?v=2.0.75',
-  './js/ui-docente-contest.js?v=2.0.75'
+  './js/lexicon-data.js?v=2.0.76',
+  './js/config.js?v=2.0.76',
+  './js/state.js?v=2.0.76',
+  './js/auth.js?v=2.0.76',
+  './js/ui-core.js?v=2.0.76',
+  './js/ui-empresa-core.js?v=2.0.76',
+  './js/ui-orbita.js?v=2.0.76',
+  './js/ui-print-newspaper.js?v=2.0.76',
+  './js/ui-empresa-market.js?v=2.0.76',
+  './js/ui-empresa-tech.js?v=2.0.76',
+  './js/ui-empresa-finance.js?v=2.0.76',
+  './js/ui-empresa-ops.js?v=2.0.76',
+  './js/ui-empresa-gov-brand.js?v=2.0.76',
+  './js/ui-docente-core.js?v=2.0.76',
+  './js/ui-docente-eval.js?v=2.0.76',
+  './js/ui-docente-management.js?v=2.0.76',
+  './js/ui-docente-contest.js?v=2.0.76'
 ].map((path) => new URL(path, self.registration.scope).toString());
 
 self.addEventListener('install', (event) => {
@@ -57,11 +57,35 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-First con cache no-store para garantizar que siempre se sirva la versión más reciente del servidor
+  const isSameOrigin = url.origin === self.location.origin;
+  const isVersionedAsset = isSameOrigin && (
+    url.searchParams.has('v') ||
+    url.pathname.endsWith('.woff2') ||
+    url.pathname.endsWith('/logo.png')
+  );
+
+  // Assets estáticos versionados (?v=..., fuentes, logo): Cache-First para no saturar la Wi-Fi del aula
+  if (isVersionedAsset) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          }
+          return networkResponse;
+        });
+      })
+    );
+    return;
+  }
+
+  // HTML / navegación: Network-First con cache no-store para garantizar que siempre se sirva la última versión
   event.respondWith(
     fetch(event.request, { cache: 'no-store' })
       .then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && url.origin === self.location.origin) {
+        if (networkResponse && networkResponse.status === 200 && isSameOrigin) {
           const responseClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
         }

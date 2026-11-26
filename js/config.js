@@ -1,7 +1,7 @@
 // js/config.js
-// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.75) ---
+// --- CONFIGURACIÓN GLOBAL, CATÁLOGO, PONDERACIONES Y CRONOGRAMA MAESTRO (v2.0.76) ---
 
-const APP_VERSION = "2.0.75";
+const APP_VERSION = "2.0.76";
 
 const SPONSOR_TIERS_DEF = Object.freeze({
     ORO: { id: 'ORO', name: 'Nivel ORO', amount: 500, colorHex: '#FFD700', badgeClass: 'text-[#ffd700] border-[#ffd700]', emoji: '🥇' },
@@ -1341,6 +1341,19 @@ const AEROSPACE_WHITELIST = [
 
 // Changelog Oficial de Producción v2.0.27
 const APP_CHANGELOG = [
+    {
+      version: "2.0.76",
+      date: "2026-11-26",
+      title: "Resiliencia Wi-Fi en Aula, Desbloqueo del Login y Caché Estática en Chromebooks",
+      items: [
+        "Pantalla de Login Nunca Bloqueada (js/state.js, js/auth.js): El telón de contención offline ya no bloquea el teclado ni el acceso cuando el usuario aún no ha iniciado sesión, e hidrata la empresa automáticamente si faltara al hacer login.",
+        "Desbloqueo Garantizado y Botón de Recarga (js/state.js, index.html): Corregido el retorno anticipado de resetEpoch para ocultar siempre el cartel al recuperar conexión y añadida recarga rápida + botón Reintentar con feedback.",
+        "Antisaturación Wi-Fi del Aula (sw.js, js/state.js): Los archivos estáticos versionados (?v=2.0.76 y fuentes) pasan a Cache-First para no saturar la Wi-Fi de clase; anti-solapamiento y timeout de 20 s en /api/state; margen de 4 s con sondeo ligero antes de activar contención ante microcortes."
+      ],
+      highlights: [
+        { type: "RED & AULA", text: "Login siempre desbloqueado, Cache-First estático y tolerancia a microcortes Wi-Fi." }
+      ]
+    },
     {
       version: "2.0.75",
       date: "2026-11-25",

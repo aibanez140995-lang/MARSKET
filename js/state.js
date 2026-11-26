@@ -122,6 +122,8 @@ const state = {
     consecutiveNetworkFailures: 0, isOfflineContained: false, _listenersAttached: false,
     _hasWarnedCloudNetwork: false,
     _clockInterval: null,
+    _activeFetchPromise: null,
+    _offlineConfirmTimer: null,
     _vaultKey: 'MARS_AEE_2026_SECRET_KEY',
     _adminCredentialsFetched: false,
     _fetchingCredentials: false,
@@ -2791,6 +2793,7 @@ const state = {
         this.lastCompanyETag = null;
         this.lastCompanyVersion = 0;
         this._adminCredentialsFetched = false;
+        this.setOfflineContainment(false);
         if (typeof auth !== 'undefined') auth.verifiedCoId = null;
         try { localStorage.removeItem(this.sessionKey); } catch(e) {}
         try { sessionStorage.removeItem(this.sessionKey); } catch(e) {}
@@ -2813,7 +2816,13 @@ const state = {
     },
 
     setOfflineContainment(active) {
-        this.isOfflineContained = !!active;
+        if (!active && this._offlineConfirmTimer) {
+            clearTimeout(this._offlineConfirmTimer);
+            this._offlineConfirmTimer = null;
+        }
+        // Nunca bloquear la pantalla de Login: solo se retienen escrituras cuando ya hay sesión iniciada
+        const shouldContain = Boolean(active && this.user);
+        this.isOfflineContained = shouldContain;
         if (typeof ui !== 'undefined' && typeof ui.setOfflineContainment === 'function') {
             ui.setOfflineContainment(this.isOfflineContained);
         }
@@ -3226,6 +3235,8 @@ const state = {
             if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
             this.heartbeatTimer = setInterval(() => {
                 if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+                    // En pantalla de Login sin sesión, no sondear periódicamente si la nube ya cargó
+                    if (!this.user && this.isCloudOnline) return;
                     this.checkFastVersion();
                 }
             }, this._pollIntervalMs);
@@ -3233,6 +3244,7 @@ const state = {
             if (typeof document !== 'undefined') {
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'visible') {
+                        if (!this.user && this.isCloudOnline) return;
                         this.checkFastVersion();
                     }
                 });
@@ -3241,13 +3253,45 @@ const state = {
             if (typeof window !== 'undefined') {
                 window.addEventListener('offline', () => {
                     this.isCloudOnline = false;
-                    this.consecutiveNetworkFailures = Math.max(this.consecutiveNetworkFailures, 1);
-                    this.setOfflineContainment(true);
                     try { if (this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
+                    if (!this.user) return;
+                    if (this._offlineConfirmTimer) clearTimeout(this._offlineConfirmTimer);
+                    // Margen de 4 s para tolerar microcortes de Wi-Fi en Chromebooks antes de bloquear escrituras
+                    this._offlineConfirmTimer = setTimeout(async () => {
+                        this._offlineConfirmTimer = null;
+                        if (!this.user) return;
+                        try {
+                            const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+                            const tId = ctrl ? setTimeout(() => ctrl.abort(), 4500) : null;
+                            try {
+                                const probe = await fetch('/api/state?action=fast_version', {
+                                    cache: 'no-store',
+                                    signal: ctrl ? ctrl.signal : undefined
+                                });
+                                if (probe.ok) {
+                                    this.isCloudOnline = true;
+                                    this.consecutiveNetworkFailures = 0;
+                                    if (this.isOfflineContained) this.setOfflineContainment(false);
+                                    try { if (this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
+                                    return;
+                                }
+                            } finally {
+                                if (tId) clearTimeout(tId);
+                            }
+                        } catch(e) {}
+                        this.consecutiveNetworkFailures = Math.max(this.consecutiveNetworkFailures, 1);
+                        this.setOfflineContainment(true);
+                        try { if (this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
+                    }, 4000);
                 });
 
                 window.addEventListener('online', async () => {
-                    const ok = await this.fetchFromCloud();
+                    if (this._offlineConfirmTimer) {
+                        clearTimeout(this._offlineConfirmTimer);
+                        this._offlineConfirmTimer = null;
+                    }
+                    this.consecutiveNetworkFailures = 0;
+                    const ok = await this.fetchFromCloud(true);
                     if (ok && this.verifySessionIntegrity(this.data)) {
                         this.setOfflineContainment(false);
                     }
@@ -4229,8 +4273,46 @@ const state = {
         }
     },
 
+    async retryCloudConnection() {
+        const btn = typeof document !== 'undefined' ? document.getElementById('btn-offline-retry') : null;
+        const origText = btn ? btn.textContent : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = '[ ⏳ CONECTANDO... ]';
+        }
+        try {
+            this.consecutiveNetworkFailures = 0;
+            const ok = await this.fetchFromCloud(true);
+            if (ok && this.verifySessionIntegrity(this.data)) {
+                this.setOfflineContainment(false);
+                if (this.user && typeof ui !== 'undefined' && typeof ui.notify === 'function') {
+                    ui.notify('✅ Conexión con el servidor restablecida.', 'success');
+                }
+                return true;
+            }
+            if (typeof ui !== 'undefined' && typeof ui.notify === 'function') {
+                ui.notify('⚠️ El servidor aún no responde. Comprueba la Wi-Fi o pulsa Recargar página.', 'warning');
+            }
+            return false;
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = origText || '[ 🔄 REINTENTAR CONEXIÓN ]';
+            }
+        }
+    },
+
     async fetchFromCloud(force = false) {
         if (!force && this.pausePolling) return false;
+        if (this._activeFetchPromise && !force) {
+            return await this._activeFetchPromise;
+        }
+        while (this._activeFetchPromise) {
+            try { await this._activeFetchPromise; } catch(e) {}
+        }
+
+        let shouldPushEmpty = false;
+        const runFetch = async () => {
         if (force) {
             this.lastETag = null;
         }
@@ -4238,6 +4320,9 @@ const state = {
         try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
         let shouldRender = false;
         let networkOk = false;
+
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timeoutId = controller ? setTimeout(() => controller.abort(), 20000) : null;
 
         try {
             const reqHeaders = { 
@@ -4247,7 +4332,11 @@ const state = {
             if (this.lastETag && !force) {
                 reqHeaders['If-None-Match'] = this.lastETag;
             }
-            const res = await fetch('/api/state', { cache: 'no-store', headers: reqHeaders });
+            const res = await fetch('/api/state', {
+                cache: 'no-store',
+                headers: reqHeaders,
+                signal: controller ? controller.signal : undefined
+            });
 
             // Mitigación ETag / HTTP 304: abortar inmediatamente la reconciliación y evitar redibujados (0 bytes)
             if (res.status === 304) {
@@ -4295,6 +4384,9 @@ const state = {
                         else if (typeof ui !== 'undefined' && ui.render) ui.render();
                         
                         this.isCloudOnline = true;
+                        if (this.verifySessionIntegrity(this.data) && this.isOfflineContained) {
+                            this.setOfflineContainment(false);
+                        }
                         return true; // ABORTAR ejecución posterior de mergeData
                     }
 
@@ -4319,13 +4411,13 @@ const state = {
                     if (this.verifySessionIntegrity(this.data) && this.isOfflineContained) {
                         this.setOfflineContainment(false);
                     }
-                    await this.pushToCloud(false);
+                    shouldPushEmpty = true;
                 }
             } else {
                 this.isCloudOnline = false;
                 this.consecutiveNetworkFailures = 0;
                 console.error(`Error HTTP inesperado en fetchFromCloud (${res.status}):`, res.statusText);
-                if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+                if (this.user && typeof navigator !== 'undefined' && navigator.onLine === false) {
                     this.setOfflineContainment(true);
                 }
             }
@@ -4339,11 +4431,14 @@ const state = {
                 console.debug("[CDMON: OFFLINE] Modo sin conexión activado (/api/state no alcanzable).");
             }
             this.isCloudOnline = false;
-            this.consecutiveNetworkFailures++;
-            if (this.consecutiveNetworkFailures >= 3 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
-                this.setOfflineContainment(true);
+            if (this.user) {
+                this.consecutiveNetworkFailures++;
+                if (this.consecutiveNetworkFailures >= 3 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+                    this.setOfflineContainment(true);
+                }
             }
         } finally { 
+            if (timeoutId) clearTimeout(timeoutId);
             this.isSyncing = false; 
             try { if(this.user && typeof ui !== 'undefined' && ui.updateHUD) ui.updateHUD(); } catch(e) {}
         }
@@ -4374,6 +4469,19 @@ const state = {
             }
         }
         return networkOk;
+        };
+
+        this._activeFetchPromise = runFetch();
+        let fetchResult = false;
+        try {
+            fetchResult = await this._activeFetchPromise;
+        } finally {
+            this._activeFetchPromise = null;
+        }
+        if (shouldPushEmpty) {
+            await this.pushToCloud(false);
+        }
+        return fetchResult;
     },
 
     recordDeletedCatalogItem(itemId) {

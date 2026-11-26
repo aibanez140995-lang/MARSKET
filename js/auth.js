@@ -89,7 +89,8 @@ const auth = (function() {
             localStorage.removeItem(state.sessionKey);
         } catch (e) {}
 
-        // Rehidratar estado completo autenticado para Coordinación (desbloquea borrador interno Fase V) o lector VIP (solo noticias)
+        // Rehidratar estado completo autenticado para Coordinación (desbloquea borrador interno Fase V), lector VIP (solo noticias)
+        // o alumnos cuya empresa aún no estuviera descargada localmente (p. ej. tras microcorte de Wi-Fi en el login)
         if (userObj.isVip && typeof state.fetchFromCloud === 'function') {
             state.data = state.migrate(JSON.parse(JSON.stringify(DEFAULT_STATE)));
             state.lastETag = null;
@@ -101,6 +102,8 @@ const auth = (function() {
             if (typeof state.fetchAdminCredentials === 'function') {
                 await state.fetchAdminCredentials().catch(e => console.warn("[AUTH] Error hidratando credenciales:", e));
             }
+        } else if (!isTeacher && userObj.coId && !state.data?.companies?.[userObj.coId] && typeof state.fetchFromCloud === 'function') {
+            await state.fetchFromCloud(true).catch(() => {});
         }
 
         if (typeof ui.playLoginAnimation === 'function') {
@@ -665,6 +668,9 @@ const auth = (function() {
                 state.lastCompanyVersion = 0;
                 state._pushDirty = false;
                 state._adminCredentialsFetched = false;
+                if (typeof state.setOfflineContainment === 'function') {
+                    state.setOfflineContainment(false);
+                }
                 if (state.data && typeof state.sanitizeForLocalStorage === 'function') {
                     state.data = state.sanitizeForLocalStorage(state.data);
                 }
